@@ -78,6 +78,15 @@ def _vehicle_lock_raw_text(value: Any) -> str | None:
     return None
 
 
+def _invert_binary_status(value: Any) -> int | None:
+    status = _as_int(value)
+    if status == 0:
+        return 1
+    if status == 1:
+        return 0
+    return None
+
+
 @dataclass(frozen=True, kw_only=True)
 class NinebotSensorDescription(SensorEntityDescription):
     """Describes Ninebot sensor entity behavior."""
@@ -111,7 +120,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         key="vehicle_lock_raw",
         translation_key="vehicle_lock_raw",
         icon="mdi:lock-clock",
-        value_fn=lambda state, _device, _sn: _as_int(state.get("status")),
+        value_fn=lambda state, _device, _sn: _invert_binary_status(state.get("status")),
     ),
     NinebotSensorDescription(
         key="gsm_csq",
@@ -205,8 +214,9 @@ class NinebotSensor(NinebotCoordinatorEntity, SensorEntity):
         if self.entity_description.key != "vehicle_lock_raw":
             return None
 
-        status = _as_int(self._state.get("status"))
+        status = _invert_binary_status(self._state.get("status"))
         return {
             "status_text": _vehicle_lock_raw_text(status),
             "status_text_en": "Locked" if status == STATUS_LOCKED else "Unlocked" if status == STATUS_UNLOCKED else None,
+            "status_original": _as_int(self._state.get("status")),
         }
