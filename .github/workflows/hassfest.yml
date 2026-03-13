@@ -7,19 +7,12 @@ on:
     - cron: "0 1 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: read
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   hassfest:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Hassfest Validation
         uses: home-assistant/actions/hassfest@master
