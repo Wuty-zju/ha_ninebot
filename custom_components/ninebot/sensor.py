@@ -18,7 +18,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import DATA_COORDINATOR, DOMAIN, STATUS_LOCKED, STATUS_UNLOCKED
+from .const import (
+    DATA_COORDINATOR,
+    DOMAIN,
+    STATUS_LOCKED,
+    STATUS_UNLOCKED,
+    lock_status_from_state,
+)
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
 
@@ -111,7 +117,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         key="vehicle_lock_raw",
         translation_key="vehicle_lock_raw",
         icon="mdi:lock-clock",
-        value_fn=lambda state, _device, _sn: _as_int(state.get("status")),
+        value_fn=lambda state, _device, _sn: lock_status_from_state(state),
     ),
     NinebotSensorDescription(
         key="gsm_csq",
@@ -205,7 +211,7 @@ class NinebotSensor(NinebotCoordinatorEntity, SensorEntity):
         if self.entity_description.key != "vehicle_lock_raw":
             return None
 
-        status = _as_int(self._state.get("status"))
+        status = lock_status_from_state(self._state)
         return {
             "status_text": _vehicle_lock_raw_text(status),
             "status_text_en": "Locked" if status == STATUS_LOCKED else "Unlocked" if status == STATUS_UNLOCKED else None,

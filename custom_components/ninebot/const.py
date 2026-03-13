@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Any
 from typing import Final
 
 DOMAIN: Final = "ninebot"
@@ -81,3 +82,26 @@ def status_to_locked(status: int | None) -> bool | None:
 	if status == STATUS_UNLOCKED:
 		return False
 	return None
+
+
+def parse_lock_status_value(value: Any) -> int | None:
+	"""Parse lock status from API payload without semantic conversion.
+
+	Accepted raw values:
+	- 0: locked
+	- 1: unlocked
+	"""
+	if isinstance(value, bool):
+		return int(value)
+	if isinstance(value, int):
+		return value
+	if isinstance(value, str):
+		text = value.strip()
+		if text in {"0", "1"}:
+			return int(text)
+	return None
+
+
+def lock_status_from_state(state: dict[str, Any]) -> int | None:
+	"""Read raw lock status from merged coordinator state."""
+	return parse_lock_status_value(state.get("status"))

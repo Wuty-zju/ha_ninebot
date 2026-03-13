@@ -100,7 +100,7 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
 
             normalized_state = {
                 "battery": _normalize_int(_first_present(state.get("battery"), state.get("dumpEnergy"))),
-                "status": _normalize_int(_first_present(state.get("status"), state.get("powerStatus"))),
+                "status": _normalize_int(state.get("status")),
                 "chargingState": _normalize_int(state.get("chargingState")),
                 "pwr": _normalize_int(state.get("pwr")),
                 "gsm": _normalize_int(state.get("gsm")),
