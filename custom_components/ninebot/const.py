@@ -6,7 +6,7 @@ from datetime import timedelta
 from typing import Final
 
 DOMAIN: Final = "ninebot"
-PLATFORMS: Final = ["sensor"]
+PLATFORMS: Final = ["sensor", "lock", "binary_sensor", "image"]
 
 CONF_LANG: Final = "lang"
 CONF_SCAN_INTERVAL: Final = "scan_interval"

@@ -10,7 +10,7 @@
           "password": "Password",
           "lang": "Language",
           "scan_interval": "Scan interval (seconds)",
-          "debug": "Enable debug log (credentials are redacted)"
+          "debug": "Enable debug logs"
         }
       }
     },
@@ -30,33 +30,79 @@
         "name": "Battery"
       },
       "estimate_mileage": {
-        "name": "Estimated mileage"
+        "name": "Remaining range"
       },
-      "gsm": {
-        "name": "Signal strength"
+      "device_name": {
+        "name": "Vehicle name"
       },
-      "charging_state": {
-        "name": "Charging state",
+      "sn": {
+        "name": "Vehicle SN"
+      },
+      "location_info": {
+        "name": "Location info"
+      },
+      "remain_charge_time": {
+        "name": "Remaining charge time"
+      },
+      "gsm_raw": {
+        "name": "GSM CSQ raw"
+      },
+      "rssi": {
+        "name": "Signal strength RSSI"
+      },
+      "charging_state_raw": {
+        "name": "Charging state raw"
+      },
+      "charging_state_text": {
+        "name": "Charging state text",
         "state": {
           "not_charging": "Not charging",
           "charging": "Charging"
         }
       },
-      "pwr": {
-        "name": "Power",
+      "pwr_raw": {
+        "name": "Main power raw"
+      },
+      "pwr_text": {
+        "name": "Main power text",
         "state": {
-          "off": "Off",
-          "on": "On"
+          "main_power_disconnected": "Main power disconnected",
+          "main_power_connected": "Main power connected"
         }
       },
-      "power_status": {
-        "name": "Vehicle status"
+      "status_raw": {
+        "name": "Lock status raw"
       },
-      "location_desc": {
-        "name": "Location"
+      "status_text": {
+        "name": "Lock status text",
+        "state": {
+          "locked": "Locked",
+          "unlocked": "Unlocked"
+        }
       },
-      "remain_charge_time": {
-        "name": "Remaining charge time"
+      "gsm_time_raw": {
+        "name": "Report timestamp raw"
+      },
+      "report_time": {
+        "name": "Report time"
+      }
+    },
+    "binary_sensor": {
+      "is_charging": {
+        "name": "Charging"
+      },
+      "main_power_connected": {
+        "name": "Main power connected"
+      }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Vehicle lock"
+      }
+    },
+    "image": {
+      "vehicle_image": {
+        "name": "Vehicle image"
       }
     }
   }

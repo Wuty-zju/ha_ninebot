@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Callable
 
 from homeassistant.components.sensor import (
@@ -14,6 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfLength
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import DATA_COORDINATOR, DOMAIN
 from .coordinator import NinebotDataUpdateCoordinator
@@ -24,6 +26,38 @@ def _enum_from_map(value: Any, mapping: dict[int, str]) -> str | None:
     if not isinstance(value, int):
         return None
     return mapping.get(value, str(value))
+
+
+def _raw_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _rssi_dbm_from_csq(value: Any) -> int | None:
+    if not isinstance(value, int):
+        return None
+    if value < 0 or value > 31:
+        return None
+    return -113 + (2 * value)
+
+
+def _location_desc(state: dict[str, Any]) -> str | None:
+    location = state.get("locationInfo")
+    if isinstance(location, dict):
+        desc = location.get("locationDesc")
+        if desc is None:
+            return None
+        return str(desc)
+    return None
+
+
+def _report_time_local(state: dict[str, Any]) -> datetime | None:
+    ts = state.get("gsmTime")
+    if isinstance(ts, (int, float)):
+        utc_dt = dt_util.utc_from_timestamp(float(ts))
+        return dt_util.as_local(utc_dt)
+    return None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -50,60 +84,103 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         value_fn=lambda state: state.get("estimateMileage"),
     ),
     NinebotSensorDescription(
-        key="gsm",
-        translation_key="gsm",
-        icon="mdi:signal",
-        value_fn=lambda state: state.get("gsm"),
+        key="device_name",
+        translation_key="device_name",
+        icon="mdi:rename-box",
+        value_fn=lambda state: None,
     ),
     NinebotSensorDescription(
-        key="charging_state",
-        translation_key="charging_state",
-        icon="mdi:battery-charging",
-        device_class=SensorDeviceClass.ENUM,
-        options=["not_charging", "charging"],
-        value_fn=lambda state: _enum_from_map(
-            state.get("chargingState"),
-            {
-                0: "not_charging",
-                1: "charging",
-            },
-        ),
+        key="sn",
+        translation_key="sn",
+        icon="mdi:barcode",
+        value_fn=lambda state: None,
     ),
     NinebotSensorDescription(
-        key="pwr",
-        translation_key="pwr",
-        icon="mdi:power",
-        device_class=SensorDeviceClass.ENUM,
-        options=["off", "on"],
-        value_fn=lambda state: _enum_from_map(
-            state.get("pwr"),
-            {
-                0: "off",
-                1: "on",
-            },
-        ),
-    ),
-    NinebotSensorDescription(
-        key="power_status",
-        translation_key="power_status",
-        icon="mdi:scooter",
-        value_fn=lambda state: state.get("powerStatus"),
-    ),
-    NinebotSensorDescription(
-        key="location_desc",
-        translation_key="location_desc",
+        key="location_info",
+        translation_key="location_info",
         icon="mdi:map-marker",
-        value_fn=lambda state: (
-            (state.get("locationInfo") or {}).get("locationDesc")
-            if isinstance(state.get("locationInfo"), dict)
-            else None
-        ),
+        value_fn=_location_desc,
     ),
     NinebotSensorDescription(
         key="remain_charge_time",
         translation_key="remain_charge_time",
         icon="mdi:timer-sand",
-        value_fn=lambda state: state.get("remainChargeTime"),
+        value_fn=lambda state: _raw_text(state.get("remainChargeTime")),
+    ),
+    NinebotSensorDescription(
+        key="gsm_raw",
+        translation_key="gsm_raw",
+        icon="mdi:signal",
+        value_fn=lambda state: _raw_text(state.get("gsm")),
+    ),
+    NinebotSensorDescription(
+        key="rssi",
+        translation_key="rssi",
+        icon="mdi:wifi",
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        native_unit_of_measurement="dBm",
+        value_fn=lambda state: _rssi_dbm_from_csq(state.get("gsm")),
+    ),
+    NinebotSensorDescription(
+        key="charging_state_raw",
+        translation_key="charging_state_raw",
+        icon="mdi:battery-charging",
+        value_fn=lambda state: _raw_text(state.get("chargingState")),
+    ),
+    NinebotSensorDescription(
+        key="charging_state_text",
+        translation_key="charging_state_text",
+        icon="mdi:battery-charging-medium",
+        device_class=SensorDeviceClass.ENUM,
+        options=["not_charging", "charging"],
+        value_fn=lambda state: _enum_from_map(state.get("chargingState"), {0: "not_charging", 1: "charging"}),
+    ),
+    NinebotSensorDescription(
+        key="pwr_raw",
+        translation_key="pwr_raw",
+        icon="mdi:power-plug",
+        value_fn=lambda state: _raw_text(state.get("pwr")),
+    ),
+    NinebotSensorDescription(
+        key="pwr_text",
+        translation_key="pwr_text",
+        icon="mdi:power",
+        device_class=SensorDeviceClass.ENUM,
+        options=["main_power_disconnected", "main_power_connected"],
+        value_fn=lambda state: _enum_from_map(
+            state.get("pwr"),
+            {0: "main_power_disconnected", 1: "main_power_connected"},
+        ),
+    ),
+    NinebotSensorDescription(
+        key="status_raw",
+        translation_key="status_raw",
+        icon="mdi:scooter",
+        value_fn=lambda state: _raw_text(state.get("powerStatus")),
+    ),
+    NinebotSensorDescription(
+        key="status_text",
+        translation_key="status_text",
+        icon="mdi:lock",
+        device_class=SensorDeviceClass.ENUM,
+        options=["locked", "unlocked"],
+        value_fn=lambda state: _enum_from_map(
+            state.get("powerStatus"),
+            {0: "locked", 1: "unlocked"},
+        ),
+    ),
+    NinebotSensorDescription(
+        key="gsm_time_raw",
+        translation_key="gsm_time_raw",
+        icon="mdi:clock-outline",
+        value_fn=lambda state: _raw_text(state.get("gsmTime")),
+    ),
+    NinebotSensorDescription(
+        key="report_time",
+        translation_key="report_time",
+        icon="mdi:clock-check-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_report_time_local,
     ),
 )
 
@@ -146,4 +223,8 @@ class NinebotSensor(NinebotCoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
+        if self.entity_description.key == "device_name":
+            return self._device.get("deviceName")
+        if self.entity_description.key == "sn":
+            return self._sn
         return self.entity_description.value_fn(self._state)

@@ -2,6 +2,8 @@
 
 [English](./README.md) | [简体中文](./README_zh.md)
 
+![Ninebot Logo](https://oms-oss-public.ninebot.com/website/npm/resource/doc/logo.png)
+
 A custom integration to connect Ninebot cloud devices into Home Assistant.
 
 Maintainer: Wuty-zju

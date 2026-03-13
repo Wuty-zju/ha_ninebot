@@ -2,6 +2,8 @@
 
 [English](./README.md) | [简体中文](./README_zh.md)
 
+![Ninebot Logo](https://oms-oss-public.ninebot.com/website/npm/resource/doc/logo.png)
+
 这是一个将 Ninebot 云端设备接入 Home Assistant 的自定义集成。
 
 维护者：Wuty-zju

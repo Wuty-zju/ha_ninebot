@@ -10,7 +10,7 @@
           "password": "密码",
           "lang": "语言",
           "scan_interval": "轮询间隔（秒）",
-          "debug": "启用调试日志（自动脱敏账号和令牌）"
+          "debug": "启用调试日志"
         }
       }
     },
@@ -30,33 +30,79 @@
         "name": "电量"
       },
       "estimate_mileage": {
-        "name": "预计续航"
+        "name": "剩余里程"
       },
-      "gsm": {
-        "name": "信号强度"
+      "device_name": {
+        "name": "车辆名称"
       },
-      "charging_state": {
-        "name": "充电状态",
+      "sn": {
+        "name": "车辆 SN"
+      },
+      "location_info": {
+        "name": "位置信息"
+      },
+      "remain_charge_time": {
+        "name": "剩余充电时间"
+      },
+      "gsm_raw": {
+        "name": "GSM CSQ 原始值"
+      },
+      "rssi": {
+        "name": "RSSI 信号强度"
+      },
+      "charging_state_raw": {
+        "name": "充电状态原始值"
+      },
+      "charging_state_text": {
+        "name": "充电状态文本",
         "state": {
           "not_charging": "未充电",
           "charging": "充电中"
         }
       },
-      "pwr": {
-        "name": "电源状态",
+      "pwr_raw": {
+        "name": "主电源原始值"
+      },
+      "pwr_text": {
+        "name": "主电源状态文本",
         "state": {
-          "off": "关机",
-          "on": "开机"
+          "main_power_disconnected": "主电源断开",
+          "main_power_connected": "主电源连通"
         }
       },
-      "power_status": {
-        "name": "车辆状态"
+      "status_raw": {
+        "name": "上锁状态原始值"
       },
-      "location_desc": {
-        "name": "地址描述"
+      "status_text": {
+        "name": "上锁状态文本",
+        "state": {
+          "locked": "上锁",
+          "unlocked": "已解锁"
+        }
       },
-      "remain_charge_time": {
-        "name": "剩余充电时间"
+      "gsm_time_raw": {
+        "name": "上报时间戳原始值"
+      },
+      "report_time": {
+        "name": "上报时间"
+      }
+    },
+    "binary_sensor": {
+      "is_charging": {
+        "name": "是否充电中"
+      },
+      "main_power_connected": {
+        "name": "主电源是否连通"
+      }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "车辆锁"
+      }
+    },
+    "image": {
+      "vehicle_image": {
+        "name": "车辆图片"
       }
     }
   }
