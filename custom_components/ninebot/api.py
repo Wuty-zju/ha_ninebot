@@ -78,15 +78,30 @@ class NinebotApiClient:
 
     @staticmethod
     def _result_ok(payload: dict[str, Any]) -> bool:
-        code = payload.get("resultCode", payload.get("code", 0))
+        code = payload.get("resultCode", payload.get("code"))
+        if code is None:
+            # Some endpoints may omit code while still returning valid payload.
+            return True
         try:
-            return int(code) == 0
+            # Ninebot APIs may use 0 or 1 to indicate success depending on endpoint.
+            return int(code) in (0, 1)
         except (TypeError, ValueError):
             return False
 
     @staticmethod
     def _result_message(payload: dict[str, Any]) -> str:
         return str(payload.get("resultDesc") or payload.get("desc") or "unknown error")
+
+    @staticmethod
+    def _is_auth_error(message: str) -> bool:
+        lowered = message.lower()
+        return (
+            "token" in lowered
+            or "auth" in lowered
+            or "login" in lowered
+            or "登录" in message
+            or "认证" in message
+        )
 
     async def async_login(self) -> None:
         """Authenticate and update local token cache."""
@@ -155,7 +170,7 @@ class NinebotApiClient:
         )
         if not self._result_ok(response):
             message = self._result_message(response)
-            if "token" in message.lower():
+            if self._is_auth_error(message):
                 self._access_token = None
                 raise NinebotAuthError(message)
             raise NinebotApiError(message)
@@ -176,7 +191,7 @@ class NinebotApiClient:
         )
         if not self._result_ok(response):
             message = self._result_message(response)
-            if "token" in message.lower():
+            if self._is_auth_error(message):
                 self._access_token = None
                 raise NinebotAuthError(message)
             raise NinebotApiError(message)
