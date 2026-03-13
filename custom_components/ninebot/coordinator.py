@@ -245,10 +245,11 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
         sns = list(device_by_sn.keys())
         await self.runtime_storage.async_initialize(sns)
 
+        existing_data = self.data if isinstance(self.data, dict) else {}
         merged: dict[str, dict[str, Any]] = {}
         for sn in sns:
             device = device_by_sn[sn]
-            current_item = self.data.get(sn)
+            current_item = existing_data.get(sn)
             previous_state: dict[str, Any] | None = None
             if isinstance(current_item, dict):
                 state = current_item.get("state")
