@@ -22,12 +22,6 @@ from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
 
 
-def _enum_from_map(value: Any, mapping: dict[int, str]) -> str | None:
-    if not isinstance(value, int):
-        return None
-    return mapping.get(value, str(value))
-
-
 def _raw_text(value: Any) -> str | None:
     if value is None:
         return None
@@ -77,13 +71,6 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         value_fn=lambda state: state.get("dumpEnergy"),
     ),
     NinebotSensorDescription(
-        key="estimate_mileage",
-        translation_key="estimate_mileage",
-        icon="mdi:map-marker-distance",
-        native_unit_of_measurement=UnitOfLength.KILOMETERS,
-        value_fn=lambda state: state.get("estimateMileage"),
-    ),
-    NinebotSensorDescription(
         key="device_name",
         translation_key="device_name",
         icon="mdi:rename-box",
@@ -100,6 +87,13 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         translation_key="location_info",
         icon="mdi:map-marker",
         value_fn=_location_desc,
+    ),
+    NinebotSensorDescription(
+        key="estimate_mileage",
+        translation_key="estimate_mileage",
+        icon="mdi:map-marker-distance",
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        value_fn=lambda state: state.get("estimateMileage"),
     ),
     NinebotSensorDescription(
         key="remain_charge_time",
@@ -122,52 +116,10 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         value_fn=lambda state: _rssi_dbm_from_csq(state.get("gsm")),
     ),
     NinebotSensorDescription(
-        key="charging_state_raw",
-        translation_key="charging_state_raw",
-        icon="mdi:battery-charging",
-        value_fn=lambda state: _raw_text(state.get("chargingState")),
-    ),
-    NinebotSensorDescription(
-        key="charging_state_text",
-        translation_key="charging_state_text",
-        icon="mdi:battery-charging-medium",
-        device_class=SensorDeviceClass.ENUM,
-        options=["not_charging", "charging"],
-        value_fn=lambda state: _enum_from_map(state.get("chargingState"), {0: "not_charging", 1: "charging"}),
-    ),
-    NinebotSensorDescription(
-        key="pwr_raw",
-        translation_key="pwr_raw",
-        icon="mdi:power-plug",
-        value_fn=lambda state: _raw_text(state.get("pwr")),
-    ),
-    NinebotSensorDescription(
-        key="pwr_text",
-        translation_key="pwr_text",
-        icon="mdi:power",
-        device_class=SensorDeviceClass.ENUM,
-        options=["main_power_disconnected", "main_power_connected"],
-        value_fn=lambda state: _enum_from_map(
-            state.get("pwr"),
-            {0: "main_power_disconnected", 1: "main_power_connected"},
-        ),
-    ),
-    NinebotSensorDescription(
-        key="status_raw",
+        key="lock_status_raw",
         translation_key="status_raw",
         icon="mdi:scooter",
         value_fn=lambda state: _raw_text(state.get("powerStatus")),
-    ),
-    NinebotSensorDescription(
-        key="status_text",
-        translation_key="status_text",
-        icon="mdi:lock",
-        device_class=SensorDeviceClass.ENUM,
-        options=["locked", "unlocked"],
-        value_fn=lambda state: _enum_from_map(
-            state.get("powerStatus"),
-            {0: "locked", 1: "unlocked"},
-        ),
     ),
     NinebotSensorDescription(
         key="gsm_time_raw",
@@ -216,6 +168,7 @@ class NinebotSensor(NinebotCoordinatorEntity, SensorEntity):
         self.entity_description = description
         self._attr_has_entity_name = True
         self._attr_unique_id = f"{sn}_{description.key}"
+        self._attr_object_id = f"ninebot_{sn}_{description.key}".lower()
 
     @property
     def name(self) -> str | None:

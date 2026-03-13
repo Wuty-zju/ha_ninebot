@@ -27,72 +27,48 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Battery"
-      },
-      "estimate_mileage": {
-        "name": "Remaining range"
+        "name": "Main battery level"
       },
       "device_name": {
         "name": "Vehicle name"
       },
       "sn": {
-        "name": "Vehicle SN"
+        "name": "SN code"
       },
       "location_info": {
-        "name": "Location info"
+        "name": "Vehicle location"
+      },
+      "estimate_mileage": {
+        "name": "Remaining range"
       },
       "remain_charge_time": {
-        "name": "Remaining charge time"
+        "name": "Remaining charging time"
       },
       "gsm_raw": {
-        "name": "GSM CSQ raw"
+        "name": "GSM signal strength (CSQ)"
       },
       "rssi": {
-        "name": "Signal strength RSSI"
-      },
-      "charging_state_raw": {
-        "name": "Charging state raw"
-      },
-      "charging_state_text": {
-        "name": "Charging state text",
-        "state": {
-          "not_charging": "Not charging",
-          "charging": "Charging"
-        }
-      },
-      "pwr_raw": {
-        "name": "Main power raw"
-      },
-      "pwr_text": {
-        "name": "Main power text",
-        "state": {
-          "main_power_disconnected": "Main power disconnected",
-          "main_power_connected": "Main power connected"
-        }
+        "name": "GSM signal strength (RSSI)"
       },
       "status_raw": {
         "name": "Lock status raw"
       },
-      "status_text": {
-        "name": "Lock status text",
-        "state": {
-          "locked": "Locked",
-          "unlocked": "Unlocked"
-        }
-      },
       "gsm_time_raw": {
-        "name": "Report timestamp raw"
+        "name": "GSM report timestamp"
       },
       "report_time": {
-        "name": "Report time"
+        "name": "GSM report time"
       }
     },
     "binary_sensor": {
-      "is_charging": {
-        "name": "Charging"
+      "charging_state": {
+        "name": "Charging status"
       },
-      "main_power_connected": {
-        "name": "Main power connected"
+      "main_power_status": {
+        "name": "Main power status"
+      },
+      "vehicle_lock_binary": {
+        "name": "Vehicle lock"
       }
     },
     "lock": {

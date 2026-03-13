@@ -40,6 +40,7 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
         super().__init__(coordinator, sn)
         self._session = session
         self._attr_unique_id = f"{sn}_vehicle_image"
+        self._attr_object_id = f"ninebot_{sn}_vehicle_image".lower()
         self._attr_content_type = "image/png"
 
     @property
@@ -54,7 +55,7 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
         if not url:
             return None
         try:
-            async with self._session.get(url, timeout=15) as resp:
+            async with self._session.get(url, allow_redirects=True, timeout=20) as resp:
                 if resp.status != 200:
                     _LOGGER.debug("Ninebot image request failed status=%s url=%s", resp.status, url)
                     return None

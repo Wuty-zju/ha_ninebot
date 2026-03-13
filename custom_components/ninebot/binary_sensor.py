@@ -28,18 +28,25 @@ class NinebotBinaryDescription(BinarySensorEntityDescription):
 
 BINARY_DESCRIPTIONS: tuple[NinebotBinaryDescription, ...] = (
     NinebotBinaryDescription(
-        key="is_charging",
-        translation_key="is_charging",
+        key="charging_state",
+        translation_key="charging_state",
         icon="mdi:battery-charging",
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
         value_fn=lambda state: True if state.get("chargingState") == 1 else False if state.get("chargingState") == 0 else None,
     ),
     NinebotBinaryDescription(
-        key="main_power_connected",
-        translation_key="main_power_connected",
+        key="main_power_status",
+        translation_key="main_power_status",
         icon="mdi:power-plug",
         device_class=BinarySensorDeviceClass.POWER,
         value_fn=lambda state: True if state.get("pwr") == 1 else False if state.get("pwr") == 0 else None,
+    ),
+    NinebotBinaryDescription(
+        key="vehicle_lock",
+        translation_key="vehicle_lock_binary",
+        icon="mdi:lock",
+        device_class=BinarySensorDeviceClass.LOCK,
+        value_fn=lambda state: True if state.get("powerStatus") == 0 else False if state.get("powerStatus") == 1 else None,
     ),
 )
 
@@ -73,6 +80,7 @@ class NinebotBinarySensor(NinebotCoordinatorEntity, BinarySensorEntity):
         super().__init__(coordinator, sn)
         self.entity_description = description
         self._attr_unique_id = f"{sn}_{description.key}"
+        self._attr_object_id = f"ninebot_{sn}_{description.key}".lower()
 
     @property
     def is_on(self) -> bool | None:

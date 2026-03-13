@@ -27,72 +27,48 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "电量"
-      },
-      "estimate_mileage": {
-        "name": "剩余里程"
+        "name": "主电池电量"
       },
       "device_name": {
         "name": "车辆名称"
       },
       "sn": {
-        "name": "车辆 SN"
+        "name": "SN码"
       },
       "location_info": {
         "name": "位置信息"
       },
+      "estimate_mileage": {
+        "name": "剩余里程"
+      },
       "remain_charge_time": {
-        "name": "剩余充电时间"
+        "name": "充电剩余时间"
       },
       "gsm_raw": {
-        "name": "GSM CSQ 原始值"
+        "name": "GSM信号强度（CSQ）"
       },
       "rssi": {
-        "name": "RSSI 信号强度"
-      },
-      "charging_state_raw": {
-        "name": "充电状态原始值"
-      },
-      "charging_state_text": {
-        "name": "充电状态文本",
-        "state": {
-          "not_charging": "未充电",
-          "charging": "充电中"
-        }
-      },
-      "pwr_raw": {
-        "name": "主电源原始值"
-      },
-      "pwr_text": {
-        "name": "主电源状态文本",
-        "state": {
-          "main_power_disconnected": "主电源断开",
-          "main_power_connected": "主电源连通"
-        }
+        "name": "GSM信号强度（RSSI）"
       },
       "status_raw": {
-        "name": "上锁状态原始值"
-      },
-      "status_text": {
-        "name": "上锁状态文本",
-        "state": {
-          "locked": "上锁",
-          "unlocked": "已解锁"
-        }
+        "name": "车辆锁原始值"
       },
       "gsm_time_raw": {
-        "name": "上报时间戳原始值"
+        "name": "GSM上报时间戳"
       },
       "report_time": {
-        "name": "上报时间"
+        "name": "GSM上报时间"
       }
     },
     "binary_sensor": {
-      "is_charging": {
-        "name": "是否充电中"
+      "charging_state": {
+        "name": "充电状态"
       },
-      "main_power_connected": {
-        "name": "主电源是否连通"
+      "main_power_status": {
+        "name": "主电源状态"
+      },
+      "vehicle_lock_binary": {
+        "name": "车辆锁"
       }
     },
     "lock": {

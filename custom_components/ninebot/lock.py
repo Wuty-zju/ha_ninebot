@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.components.lock import LockEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DATA_COORDINATOR, DOMAIN
@@ -33,6 +34,7 @@ class NinebotVehicleLock(NinebotCoordinatorEntity, LockEntity):
     def __init__(self, coordinator: NinebotDataUpdateCoordinator, sn: str) -> None:
         super().__init__(coordinator, sn)
         self._attr_unique_id = f"{sn}_vehicle_lock"
+        self._attr_object_id = f"ninebot_{sn}_vehicle_lock".lower()
 
     @property
     def is_locked(self) -> bool | None:
@@ -42,7 +44,7 @@ class NinebotVehicleLock(NinebotCoordinatorEntity, LockEntity):
         return value == 0
 
     async def async_lock(self, **kwargs) -> None:
-        raise NotImplementedError("Ninebot lock control is not implemented yet")
+        raise HomeAssistantError("Ninebot lock is read-only")
 
     async def async_unlock(self, **kwargs) -> None:
-        raise NotImplementedError("Ninebot unlock control is not implemented yet")
+        raise HomeAssistantError("Ninebot lock is read-only")
