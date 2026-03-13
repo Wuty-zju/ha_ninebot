@@ -12,7 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Login to GHCR
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Hassfest Validation
-        uses: home-assistant/actions/hassfest@master
+        run: |
+          for i in 1 2 3 4 5; do
+            docker run --rm -v "$GITHUB_WORKSPACE:/github/workspace" -w /github/workspace ghcr.io/home-assistant/hassfest:latest && exit 0
+            echo "Hassfest failed due to transient registry/network issue (attempt $i), retrying in 20s..."
+            sleep 20
+          done
+          echo "Hassfest failed after 5 attempts"
+          exit 1
