@@ -39,6 +39,29 @@
       "already_configured": "This account is already configured"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ninebot options",
+        "description": "Adjust account, language, polling strategy and debug settings.",
+        "data": {
+          "username": "Username",
+          "password": "Password",
+          "lang": "Language",
+          "default_scan_interval": "Default scan interval (seconds)",
+          "unlocked_scan_interval": "Unlocked scan interval (seconds)",
+          "charging_scan_interval": "Charging scan interval (seconds)",
+          "debug": "Enable debug logs"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password",
+      "cannot_connect": "Cannot connect to Ninebot cloud",
+      "api_error": "Ninebot API returned an error",
+      "unknown": "Unexpected error"
+    }
+  },
   "entity": {
     "sensor": {
       "battery": {

@@ -39,6 +39,29 @@
       "already_configured": "该账号已配置"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ninebot 选项",
+        "description": "调整账号、语言、轮询策略和调试设置。",
+        "data": {
+          "username": "用户名",
+          "password": "密码",
+          "lang": "语言",
+          "default_scan_interval": "默认轮询间隔（秒）",
+          "unlocked_scan_interval": "解锁轮询间隔（秒）",
+          "charging_scan_interval": "充电轮询间隔（秒）",
+          "debug": "启用调试日志"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "用户名或密码错误",
+      "cannot_connect": "无法连接 Ninebot 云端",
+      "api_error": "Ninebot 接口返回错误",
+      "unknown": "未知错误"
+    }
+  },
   "entity": {
     "sensor": {
       "battery": {
