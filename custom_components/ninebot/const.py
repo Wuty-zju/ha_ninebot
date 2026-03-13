@@ -1,0 +1,30 @@
+"""Constants for the Ninebot integration."""
+
+from __future__ import annotations
+
+from datetime import timedelta
+from typing import Final
+
+DOMAIN: Final = "ninebot"
+PLATFORMS: Final = ["sensor"]
+
+CONF_LANG: Final = "lang"
+CONF_SCAN_INTERVAL: Final = "scan_interval"
+
+DEFAULT_LANG: Final = "zh"
+DEFAULT_SCAN_INTERVAL: Final = 60
+MIN_SCAN_INTERVAL: Final = 15
+
+MANUFACTURER: Final = "Ninebot"
+
+LOGIN_BASE_URL: Final = "https://api-passport-bj.ninebot.com"
+LOGIN_PATH: Final = "/v3/openClaw/user/login"
+DEVICE_BASE_URL: Final = "https://cn-cbu-gateway.ninebot.com"
+DEVICES_PATH: Final = "/app-api/inner/device/ai/get-device-list"
+DEVICE_DYNAMIC_INFO_PATH: Final = "/app-api/inner/device/ai/get-device-dynamic-info"
+
+DEFAULT_TIMEOUT_SECONDS: Final = 15
+
+DATA_COORDINATOR: Final = "coordinator"
+
+SCAN_INTERVAL_DEFAULT: Final = timedelta(seconds=DEFAULT_SCAN_INTERVAL)

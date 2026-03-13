@@ -1,0 +1,62 @@
+{
+  "config": {
+    "flow_title": "Ninebot",
+    "step": {
+      "user": {
+        "title": "Connect Ninebot account",
+        "description": "Enter your Ninebot account credentials.",
+        "data": {
+          "username": "Username",
+          "password": "Password",
+          "lang": "Language",
+          "scan_interval": "Scan interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password",
+      "cannot_connect": "Cannot connect to Ninebot cloud",
+      "api_error": "Ninebot API returned an error",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This account is already configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "Battery"
+      },
+      "estimate_mileage": {
+        "name": "Estimated mileage"
+      },
+      "gsm": {
+        "name": "Signal strength"
+      },
+      "charging_state": {
+        "name": "Charging state",
+        "state": {
+          "not_charging": "Not charging",
+          "charging": "Charging"
+        }
+      },
+      "pwr": {
+        "name": "Power",
+        "state": {
+          "off": "Off",
+          "on": "On"
+        }
+      },
+      "power_status": {
+        "name": "Vehicle status"
+      },
+      "location_desc": {
+        "name": "Location"
+      },
+      "remain_charge_time": {
+        "name": "Remaining charge time"
+      }
+    }
+  }
+}

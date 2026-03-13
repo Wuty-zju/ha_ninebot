@@ -1,0 +1,16 @@
+{
+  "domain": "ninebot",
+  "name": "Ninebot",
+  "codeowners": [
+    "@openclaw"
+  ],
+  "config_flow": true,
+  "documentation": "https://www.home-assistant.io/integrations/",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "0.1.0",
+  "loggers": [
+    "custom_components.ninebot"
+  ]
+}

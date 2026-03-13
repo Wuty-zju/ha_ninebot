@@ -1,0 +1,62 @@
+{
+  "config": {
+    "flow_title": "九号车辆",
+    "step": {
+      "user": {
+        "title": "连接九号账号",
+        "description": "请输入九号账号登录信息。",
+        "data": {
+          "username": "用户名",
+          "password": "密码",
+          "lang": "语言",
+          "scan_interval": "轮询间隔（秒）"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "用户名或密码错误",
+      "cannot_connect": "无法连接九号云端",
+      "api_error": "九号接口返回错误",
+      "unknown": "未知错误"
+    },
+    "abort": {
+      "already_configured": "该账号已配置"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "电量"
+      },
+      "estimate_mileage": {
+        "name": "预计续航"
+      },
+      "gsm": {
+        "name": "信号强度"
+      },
+      "charging_state": {
+        "name": "充电状态",
+        "state": {
+          "not_charging": "未充电",
+          "charging": "充电中"
+        }
+      },
+      "pwr": {
+        "name": "电源状态",
+        "state": {
+          "off": "关机",
+          "on": "开机"
+        }
+      },
+      "power_status": {
+        "name": "车辆状态"
+      },
+      "location_desc": {
+        "name": "地址描述"
+      },
+      "remain_charge_time": {
+        "name": "剩余充电时间"
+      }
+    }
+  }
+}
