@@ -25,7 +25,7 @@ async def async_setup_entry(
     """Set up Ninebot image entities."""
     coordinator: NinebotDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATOR]
     session = async_get_clientsession(hass)
-    entities = [NinebotVehicleImage(coordinator, sn, session) for sn in coordinator.data]
+    entities = [NinebotVehicleImage(hass, coordinator, sn, session) for sn in coordinator.data]
     async_add_entities(entities)
 
 
@@ -36,8 +36,15 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
     _attr_icon = "mdi:image-outline"
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: NinebotDataUpdateCoordinator, sn: str, session) -> None:
-        super().__init__(coordinator, sn)
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        coordinator: NinebotDataUpdateCoordinator,
+        sn: str,
+        session,
+    ) -> None:
+        ImageEntity.__init__(self, hass)
+        NinebotCoordinatorEntity.__init__(self, coordinator, sn)
         self._session = session
         self._attr_unique_id = f"{sn}_vehicle_image"
         self._attr_object_id = f"ninebot_{sn}_vehicle_image".lower()

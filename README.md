@@ -2,11 +2,21 @@
 
 [English](./README.md) | [简体中文](./README_zh.md)
 
-![Ninebot Logo](https://oms-oss-public.ninebot.com/website/npm/resource/doc/logo.png)
+![Ninebot Logo](./icon.png)
 
 A custom integration to connect Ninebot cloud devices into Home Assistant.
 
 Maintainer: Wuty-zju
+
+## Integration Description
+
+This integration provides vehicle-focused entities for Ninebot cloud devices, including:
+
+- Main battery level and remaining range
+- Vehicle lock state (read-only lock + binary lock state)
+- Charging status and main power status
+- GSM signal metrics (CSQ and converted RSSI)
+- Vehicle location, report timestamp/time, SN, name, and vehicle image
 
 ## Requirements
 
