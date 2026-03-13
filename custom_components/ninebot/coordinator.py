@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from datetime import timedelta
 import logging
 from typing import Any
@@ -16,10 +17,12 @@ from .api import NinebotApiClient
 from .const import (
     CHARGING_ON,
     CONF_CHARGING_SCAN_INTERVAL,
+    CONF_DEBUG,
     CONF_DEFAULT_SCAN_INTERVAL,
     CONF_SCAN_INTERVAL,
     CONF_UNLOCKED_SCAN_INTERVAL,
     DEFAULT_CHARGING_SCAN_INTERVAL,
+    DEFAULT_DEBUG,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_UNLOCKED_SCAN_INTERVAL,
     DOMAIN,
@@ -80,6 +83,18 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
         )
         self.runtime_storage = NinebotRuntimeStorage(hass, config_entry.entry_id)
         self._polling_mode = "default"
+        self._raw_polling_payloads: dict[str, dict[str, Any]] = {}
+        self._raw_devices_payload: list[dict[str, Any]] = []
+
+    @property
+    def debug_enabled(self) -> bool:
+        return bool(self.config_entry.options.get(CONF_DEBUG, self.config_entry.data.get(CONF_DEBUG, DEFAULT_DEBUG)))
+
+    def get_raw_polling_payload(self, sn: str) -> dict[str, Any] | None:
+        payload = self._raw_polling_payloads.get(sn)
+        if payload is None:
+            return None
+        return copy.deepcopy(payload)
 
     def _interval_from_entry(self, key: str, *, default: int) -> int:
         raw = self.config_entry.options.get(key, self.config_entry.data.get(key, default))
@@ -160,6 +175,8 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
             raise UpdateFailed(f"Ninebot API error: {err}") from err
 
         merged: dict[str, dict[str, Any]] = {}
+        self._raw_polling_payloads = {}
+        self._raw_devices_payload = copy.deepcopy(devices) if self.debug_enabled else []
         device_sns = [str(device.get("sn") or "").strip() for device in devices if str(device.get("sn") or "").strip()]
         await self.runtime_storage.async_initialize(device_sns)
         now = dt_util.utcnow()
@@ -176,6 +193,14 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
                 raise UpdateFailed(f"Unable to connect to Ninebot cloud: {err}") from err
             except NinebotApiError as err:
                 raise UpdateFailed(f"Ninebot API error: {err}") from err
+
+            if self.debug_enabled:
+                self._raw_polling_payloads[sn] = {
+                    "fetched_at": now.isoformat(),
+                    "device_list_item": copy.deepcopy(device),
+                    "dynamic_info": copy.deepcopy(state),
+                    "devices_list_raw": copy.deepcopy(self._raw_devices_payload),
+                }
 
             location = state.get("locationInfo")
             if not isinstance(location, dict):

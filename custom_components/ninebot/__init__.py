@@ -13,6 +13,7 @@ from homeassistant.helpers import entity_registry as er
 from .api import NinebotApiClient
 from .const import (
     BINARY_SENSOR_KEYS,
+    BUTTON_KEYS,
     CONF_DEBUG,
     CONF_LANG,
     DATA_COORDINATOR,
@@ -38,7 +39,7 @@ def _expected_unique_id(sn: str, key: str) -> str:
     return f"ninebot_{sn}_{key}".lower()
 
 
-def _build_expected_registry_map(data: dict[str, dict]) -> dict[str, str]:
+def _build_expected_registry_map(data: dict[str, dict], *, include_debug_buttons: bool) -> dict[str, str]:
     expected: dict[str, str] = {}
     for sn in data:
         for key in SENSOR_KEYS:
@@ -51,11 +52,14 @@ def _build_expected_registry_map(data: dict[str, dict]) -> dict[str, str]:
             expected[_expected_unique_id(sn, key)] = _expected_entity_id("lock", sn, key)
         for key in NUMBER_KEYS:
             expected[_expected_unique_id(sn, key)] = _expected_entity_id("number", sn, key)
+        if include_debug_buttons:
+            for key in BUTTON_KEYS:
+                expected[_expected_unique_id(sn, key)] = _expected_entity_id("button", sn, key)
     return expected
 
 
 def _is_ninebot_entity(entry: er.RegistryEntry) -> bool:
-    return entry.platform == DOMAIN and entry.domain in {"sensor", "binary_sensor", "image", "lock", "number"}
+    return entry.platform == DOMAIN and entry.domain in {"sensor", "binary_sensor", "image", "lock", "number", "button"}
 
 
 async def _async_enforce_entity_registry(
@@ -69,7 +73,10 @@ async def _async_enforce_entity_registry(
     """
     entity_registry = er.async_get(hass)
     existing = er.async_entries_for_config_entry(entity_registry, config_entry.entry_id)
-    expected_by_unique = _build_expected_registry_map(coordinator.data)
+    expected_by_unique = _build_expected_registry_map(
+        coordinator.data,
+        include_debug_buttons=coordinator.debug_enabled,
+    )
 
     existing_by_entity_id = {entry.entity_id: entry for entry in existing}
 

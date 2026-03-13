@@ -149,6 +149,11 @@
         "name": "车辆图片"
       }
     },
+    "button": {
+      "polling_raw_json_info": {
+        "name": "轮询原始JSON信息"
+      }
+    },
     "number": {
       "main_battery_voltage": {
         "name": "主电池电压"

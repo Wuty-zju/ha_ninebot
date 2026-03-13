@@ -149,6 +149,11 @@
         "name": "Vehicle Image"
       }
     },
+    "button": {
+      "polling_raw_json_info": {
+        "name": "Polling Raw JSON Info"
+      }
+    },
     "number": {
       "main_battery_voltage": {
         "name": "Main Battery Voltage"

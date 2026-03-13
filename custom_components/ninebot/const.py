@@ -7,7 +7,7 @@ from typing import Any
 from typing import Final
 
 DOMAIN: Final = "ninebot"
-PLATFORMS: Final = ["sensor", "lock", "binary_sensor", "image", "number"]
+PLATFORMS: Final = ["sensor", "lock", "binary_sensor", "image", "number", "button"]
 
 CONF_LANG: Final = "lang"
 CONF_SCAN_INTERVAL: Final = "scan_interval"
@@ -90,6 +90,10 @@ LOCK_KEYS: Final[tuple[str, ...]] = (
 NUMBER_KEYS: Final[tuple[str, ...]] = (
 	"main_battery_voltage",
 	"battery_capacity",
+)
+
+BUTTON_KEYS: Final[tuple[str, ...]] = (
+	"polling_raw_json_info",
 )
 
 
