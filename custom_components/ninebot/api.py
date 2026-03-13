@@ -2,27 +2,29 @@
 
 from __future__ import annotations
 
+import asyncio
+import copy
 import logging
 import time
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 
 from .const import (
     DEFAULT_TIMEOUT_SECONDS,
     DEVICE_BASE_URL,
     DEVICE_DYNAMIC_INFO_PATH,
     DEVICES_PATH,
+    DOMAIN,
     LOGIN_BASE_URL,
     LOGIN_PATH,
 )
-from .exceptions import (
-    NinebotApiError,
-    NinebotAuthError,
-    NinebotConnectionError,
-)
+from .exceptions import NinebotApiError, NinebotAuthError, NinebotConnectionError
 
 _LOGGER = logging.getLogger(__name__)
+_CACHE_VERSION = 1
 
 
 class NinebotApiClient:
@@ -30,6 +32,8 @@ class NinebotApiClient:
 
     def __init__(
         self,
+        hass: HomeAssistant | None,
+        entry_id: str | None,
         session: ClientSession,
         username: str,
         password: str,
@@ -45,6 +49,21 @@ class NinebotApiClient:
         self._access_token: str | None = None
         self._refresh_token: str | None = None
         self._expires_at: int | None = None
+        self._token_checked_at: int | None = None
+
+        self._devices_cache: list[dict[str, Any]] = []
+        self._devices_last_refresh: int | None = None
+        self._store: Store[dict[str, Any]] | None = None
+        self._cache_loaded = False
+        if hass is not None and entry_id:
+            self._store = Store(
+                hass,
+                _CACHE_VERSION,
+                f"{DOMAIN}_{entry_id}_api_cache",
+            )
+        else:
+            # Config flow validation client: no persistence needed.
+            self._cache_loaded = True
 
     @staticmethod
     def _mask(value: Any) -> Any:
@@ -83,6 +102,86 @@ class NinebotApiClient:
             return
         safe_kwargs = {k: self._redact_obj(v) for k, v in kwargs.items()}
         _LOGGER.debug("%s | %s", message, safe_kwargs)
+
+    async def _async_ensure_cache_loaded(self) -> None:
+        if self._cache_loaded:
+            return
+        if self._store is None:
+            self._cache_loaded = True
+            return
+        payload = await self._store.async_load()
+        if not isinstance(payload, dict):
+            self._cache_loaded = True
+            return
+
+        account = payload.get("account")
+        if isinstance(account, dict):
+            access_token = account.get("access_token")
+            refresh_token = account.get("refresh_token")
+            expires_at = account.get("expires_at")
+            token_checked_at = account.get("token_checked_at")
+            devices_last_refresh = account.get("devices_last_refresh")
+            devices = account.get("devices")
+
+            if isinstance(access_token, str) and access_token:
+                self._access_token = access_token
+            if isinstance(refresh_token, str) and refresh_token:
+                self._refresh_token = refresh_token
+            if isinstance(expires_at, (int, float)):
+                self._expires_at = int(expires_at)
+            if isinstance(token_checked_at, (int, float)):
+                self._token_checked_at = int(token_checked_at)
+            if isinstance(devices_last_refresh, (int, float)):
+                self._devices_last_refresh = int(devices_last_refresh)
+            if isinstance(devices, list):
+                self._devices_cache = [d for d in devices if isinstance(d, dict)]
+
+        self._cache_loaded = True
+
+    async def _async_save_cache(self) -> None:
+        if self._store is None:
+            return
+        await self._store.async_save(
+            {
+                "account": {
+                    "access_token": self._access_token,
+                    "refresh_token": self._refresh_token,
+                    "expires_at": self._expires_at,
+                    "token_checked_at": self._token_checked_at,
+                    "devices_last_refresh": self._devices_last_refresh,
+                    "devices": self._devices_cache,
+                }
+            }
+        )
+
+    async def async_load_cached_auth(self) -> None:
+        await self._async_ensure_cache_loaded()
+
+    async def async_save_cached_auth(self) -> None:
+        await self._async_ensure_cache_loaded()
+        await self._async_save_cache()
+
+    async def async_load_cached_devices(self) -> None:
+        await self._async_ensure_cache_loaded()
+
+    async def async_save_cached_devices(self) -> None:
+        await self._async_ensure_cache_loaded()
+        await self._async_save_cache()
+
+    async def async_should_refresh_token(self, refresh_interval_hours: int) -> bool:
+        await self._async_ensure_cache_loaded()
+        now = int(time.time())
+
+        if not self._access_token:
+            return True
+
+        if self._expires_at is not None and now >= int(self._expires_at) - 30:
+            return True
+
+        interval_seconds = max(1, int(refresh_interval_hours)) * 3600
+        if self._token_checked_at is None:
+            return True
+        return (now - int(self._token_checked_at)) >= interval_seconds
 
     async def _async_post(
         self,
@@ -159,6 +258,7 @@ class NinebotApiClient:
 
     async def async_login(self) -> None:
         """Authenticate and update local token cache."""
+        await self._async_ensure_cache_loaded()
         headers = {
             "clientId": "open_claw_client",
             "timestamp": str(int(time.time() * 1000)),
@@ -196,32 +296,53 @@ class NinebotApiClient:
             self._refresh_token = refresh
 
         validity = data.get("accessTokenValidity") if isinstance(data, dict) else None
+        now = int(time.time())
         if isinstance(validity, int):
-            self._expires_at = int(time.time()) + validity
+            self._expires_at = now + validity
         else:
             self._expires_at = None
+        self._token_checked_at = now
+        await self._async_save_cache()
 
-    async def async_ensure_token(self) -> str:
+    async def async_ensure_token(self, *, force: bool = False, refresh_interval_hours: int = 24) -> str:
         """Ensure there is a usable token.
 
         TODO: Add refresh-token call when public API is available.
         """
-        if self._access_token and self._expires_at:
-            # Keep 30 seconds margin to avoid expiry during requests.
-            if int(time.time()) < self._expires_at - 30:
-                return self._access_token
+        await self._async_ensure_cache_loaded()
+        should_refresh = await self.async_should_refresh_token(refresh_interval_hours)
 
-        if self._access_token and self._expires_at is None:
+        if not force and not should_refresh and self._access_token:
             return self._access_token
 
+        # Placeholder for refresh-token extension point.
         await self.async_login()
         if not self._access_token:
             raise NinebotAuthError("Login succeeded but no access token was cached")
         return self._access_token
 
-    async def async_get_devices(self) -> list[dict[str, Any]]:
+    async def async_should_refresh_devices(self, refresh_interval_hours: int) -> bool:
+        await self._async_ensure_cache_loaded()
+        if not self._devices_cache:
+            return True
+        if self._devices_last_refresh is None:
+            return True
+        interval_seconds = max(1, int(refresh_interval_hours)) * 3600
+        return (int(time.time()) - int(self._devices_last_refresh)) >= interval_seconds
+
+    async def async_get_devices(
+        self,
+        *,
+        force_refresh: bool = False,
+        refresh_interval_hours: int = 24,
+        token_refresh_interval_hours: int = 24,
+    ) -> list[dict[str, Any]]:
         """Fetch account devices."""
-        token = await self.async_ensure_token()
+        await self._async_ensure_cache_loaded()
+        if not force_refresh and not await self.async_should_refresh_devices(refresh_interval_hours):
+            return copy.deepcopy(self._devices_cache)
+
+        token = await self.async_ensure_token(refresh_interval_hours=token_refresh_interval_hours)
         response = await self._async_post(
             base_url=DEVICE_BASE_URL,
             path=DEVICES_PATH,
@@ -238,11 +359,15 @@ class NinebotApiClient:
         if not isinstance(data, list):
             raise NinebotApiError("Device list response is invalid")
 
-        return [item for item in data if isinstance(item, dict)]
+        devices = [item for item in data if isinstance(item, dict)]
+        self._devices_cache = devices
+        self._devices_last_refresh = int(time.time())
+        await self._async_save_cache()
+        return copy.deepcopy(devices)
 
-    async def async_get_device_dynamic_info(self, sn: str) -> dict[str, Any]:
+    async def async_get_device_dynamic_info(self, sn: str, *, token_refresh_interval_hours: int = 24) -> dict[str, Any]:
         """Fetch dynamic state for one device SN."""
-        token = await self.async_ensure_token()
+        token = await self.async_ensure_token(refresh_interval_hours=token_refresh_interval_hours)
         response = await self._async_post(
             base_url=DEVICE_BASE_URL,
             path=DEVICE_DYNAMIC_INFO_PATH,
@@ -259,3 +384,31 @@ class NinebotApiClient:
         if not isinstance(data, dict):
             raise NinebotApiError(f"Dynamic state for {sn} is invalid")
         return data
+
+    async def async_get_multiple_device_dynamic_info(
+        self,
+        sns: list[str],
+        *,
+        max_concurrency: int,
+        token_refresh_interval_hours: int,
+    ) -> tuple[dict[str, dict[str, Any]], dict[str, Exception]]:
+        """Fetch dynamic state concurrently with concurrency control."""
+        results: dict[str, dict[str, Any]] = {}
+        errors: dict[str, Exception] = {}
+        if not sns:
+            return results, errors
+
+        semaphore = asyncio.Semaphore(max(1, int(max_concurrency)))
+
+        async def _fetch(sn: str) -> None:
+            async with semaphore:
+                try:
+                    results[sn] = await self.async_get_device_dynamic_info(
+                        sn,
+                        token_refresh_interval_hours=token_refresh_interval_hours,
+                    )
+                except Exception as err:  # noqa: BLE001 - isolate per-device errors
+                    errors[sn] = err
+
+        await asyncio.gather(*(_fetch(sn) for sn in sns))
+        return results, errors

@@ -16,15 +16,28 @@ from .const import (
     CONF_CHARGING_SCAN_INTERVAL,
     CONF_DEBUG,
     CONF_DEFAULT_SCAN_INTERVAL,
+    CONF_DEVICE_INFO_FAILURE_TOLERANCE,
+    CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
     CONF_LANG,
+    CONF_MAX_DEVICE_INFO_CONCURRENCY,
     CONF_SCAN_INTERVAL,
+    CONF_TOKEN_REFRESH_INTERVAL_HOURS,
     CONF_UNLOCKED_SCAN_INTERVAL,
     DEFAULT_CHARGING_SCAN_INTERVAL,
     DEFAULT_DEBUG,
+    DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
+    DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
     DEFAULT_LANG,
+    DEFAULT_MAX_DEVICE_INFO_CONCURRENCY,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
     DEFAULT_UNLOCKED_SCAN_INTERVAL,
     DOMAIN,
+    MAX_DEVICE_INFO_CONCURRENCY,
+    MAX_DEVICE_INFO_FAILURE_TOLERANCE,
+    MIN_DEVICE_INFO_CONCURRENCY,
+    MIN_DEVICE_INFO_FAILURE_TOLERANCE,
+    MIN_REFRESH_INTERVAL_HOURS,
     MIN_SCAN_INTERVAL,
 )
 from .exceptions import NinebotAuthError, NinebotConnectionError, NinebotError
@@ -33,6 +46,8 @@ from .exceptions import NinebotAuthError, NinebotConnectionError, NinebotError
 async def _async_validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     """Validate credentials by attempting to login to Ninebot cloud."""
     client = NinebotApiClient(
+        hass=None,
+        entry_id=None,
         session=async_get_clientsession(hass),
         username=data[CONF_USERNAME],
         password=data[CONF_PASSWORD],
@@ -81,8 +96,44 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
                     DEFAULT_CHARGING_SCAN_INTERVAL,
                 ),
+                CONF_TOKEN_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
+                    user_input.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS),
+                    DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
+                ),
+                CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
+                    user_input.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS),
+                    DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
+                ),
+                CONF_MAX_DEVICE_INFO_CONCURRENCY: _safe_scan_interval(
+                    user_input.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, DEFAULT_MAX_DEVICE_INFO_CONCURRENCY),
+                    DEFAULT_MAX_DEVICE_INFO_CONCURRENCY,
+                ),
+                CONF_DEVICE_INFO_FAILURE_TOLERANCE: max(
+                    MIN_DEVICE_INFO_FAILURE_TOLERANCE,
+                    _safe_scan_interval(
+                        user_input.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE),
+                        DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
+                    ),
+                ),
                 CONF_DEBUG: bool(user_input.get(CONF_DEBUG, DEFAULT_DEBUG)),
             }
+
+            normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS] = max(
+                MIN_REFRESH_INTERVAL_HOURS,
+                int(normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS]),
+            )
+            normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS] = max(
+                MIN_REFRESH_INTERVAL_HOURS,
+                int(normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS]),
+            )
+            normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY] = min(
+                MAX_DEVICE_INFO_CONCURRENCY,
+                max(MIN_DEVICE_INFO_CONCURRENCY, int(normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY])),
+            )
+            normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE] = min(
+                MAX_DEVICE_INFO_FAILURE_TOLERANCE,
+                max(MIN_DEVICE_INFO_FAILURE_TOLERANCE, int(normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE])),
+            )
 
             # Keep legacy key for backward compatibility.
             normalized[CONF_SCAN_INTERVAL] = normalized[CONF_DEFAULT_SCAN_INTERVAL]
@@ -120,6 +171,22 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_CHARGING_SCAN_INTERVAL, default=DEFAULT_CHARGING_SCAN_INTERVAL): vol.All(
                     vol.Coerce(int),
                     vol.Range(min=MIN_SCAN_INTERVAL),
+                ),
+                vol.Optional(CONF_TOKEN_REFRESH_INTERVAL_HOURS, default=DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=MIN_REFRESH_INTERVAL_HOURS),
+                ),
+                vol.Optional(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, default=DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=MIN_REFRESH_INTERVAL_HOURS),
+                ),
+                vol.Optional(CONF_MAX_DEVICE_INFO_CONCURRENCY, default=DEFAULT_MAX_DEVICE_INFO_CONCURRENCY): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=MIN_DEVICE_INFO_CONCURRENCY, max=MAX_DEVICE_INFO_CONCURRENCY),
+                ),
+                vol.Optional(CONF_DEVICE_INFO_FAILURE_TOLERANCE, default=DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=MIN_DEVICE_INFO_FAILURE_TOLERANCE, max=MAX_DEVICE_INFO_FAILURE_TOLERANCE),
                 ),
                 vol.Optional(CONF_DEBUG, default=DEFAULT_DEBUG): bool,
             }
@@ -167,6 +234,25 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     user_input.get(CONF_CHARGING_SCAN_INTERVAL, self._entry.options.get(CONF_CHARGING_SCAN_INTERVAL, self._entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL))),
                     DEFAULT_CHARGING_SCAN_INTERVAL,
                 ),
+                CONF_TOKEN_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
+                    user_input.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, self._entry.options.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, self._entry.data.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS))),
+                    DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
+                ),
+                CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
+                    user_input.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, self._entry.options.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, self._entry.data.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS))),
+                    DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
+                ),
+                CONF_MAX_DEVICE_INFO_CONCURRENCY: _safe_scan_interval(
+                    user_input.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, self._entry.options.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, self._entry.data.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, DEFAULT_MAX_DEVICE_INFO_CONCURRENCY))),
+                    DEFAULT_MAX_DEVICE_INFO_CONCURRENCY,
+                ),
+                CONF_DEVICE_INFO_FAILURE_TOLERANCE: max(
+                    MIN_DEVICE_INFO_FAILURE_TOLERANCE,
+                    _safe_scan_interval(
+                        user_input.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, self._entry.options.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, self._entry.data.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE))),
+                        DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
+                    ),
+                ),
                 CONF_DEBUG: bool(
                     user_input.get(
                         CONF_DEBUG,
@@ -190,11 +276,32 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 errors["base"] = "unknown"
 
             if not errors:
+                normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS] = max(
+                    MIN_REFRESH_INTERVAL_HOURS,
+                    int(normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS]),
+                )
+                normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS] = max(
+                    MIN_REFRESH_INTERVAL_HOURS,
+                    int(normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS]),
+                )
+                normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY] = min(
+                    MAX_DEVICE_INFO_CONCURRENCY,
+                    max(MIN_DEVICE_INFO_CONCURRENCY, int(normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY])),
+                )
+                normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE] = min(
+                    MAX_DEVICE_INFO_FAILURE_TOLERANCE,
+                    max(MIN_DEVICE_INFO_FAILURE_TOLERANCE, int(normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE])),
+                )
+
                 options = {
                     CONF_LANG: normalized[CONF_LANG],
                     CONF_DEFAULT_SCAN_INTERVAL: normalized[CONF_DEFAULT_SCAN_INTERVAL],
                     CONF_UNLOCKED_SCAN_INTERVAL: normalized[CONF_UNLOCKED_SCAN_INTERVAL],
                     CONF_CHARGING_SCAN_INTERVAL: normalized[CONF_CHARGING_SCAN_INTERVAL],
+                    CONF_TOKEN_REFRESH_INTERVAL_HOURS: normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS],
+                    CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS: normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS],
+                    CONF_MAX_DEVICE_INFO_CONCURRENCY: normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY],
+                    CONF_DEVICE_INFO_FAILURE_TOLERANCE: normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE],
                     CONF_DEBUG: normalized[CONF_DEBUG],
                 }
 
@@ -207,6 +314,10 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 data[CONF_DEFAULT_SCAN_INTERVAL] = normalized[CONF_DEFAULT_SCAN_INTERVAL]
                 data[CONF_UNLOCKED_SCAN_INTERVAL] = normalized[CONF_UNLOCKED_SCAN_INTERVAL]
                 data[CONF_CHARGING_SCAN_INTERVAL] = normalized[CONF_CHARGING_SCAN_INTERVAL]
+                data[CONF_TOKEN_REFRESH_INTERVAL_HOURS] = normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS]
+                data[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS] = normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS]
+                data[CONF_MAX_DEVICE_INFO_CONCURRENCY] = normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY]
+                data[CONF_DEVICE_INFO_FAILURE_TOLERANCE] = normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE]
 
                 self.hass.config_entries.async_update_entry(
                     self._entry,
@@ -254,6 +365,34 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                         self._entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
                     ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
+                vol.Optional(
+                    CONF_TOKEN_REFRESH_INTERVAL_HOURS,
+                    default=self._entry.options.get(
+                        CONF_TOKEN_REFRESH_INTERVAL_HOURS,
+                        self._entry.data.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS),
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_REFRESH_INTERVAL_HOURS)),
+                vol.Optional(
+                    CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
+                    default=self._entry.options.get(
+                        CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
+                        self._entry.data.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS),
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_REFRESH_INTERVAL_HOURS)),
+                vol.Optional(
+                    CONF_MAX_DEVICE_INFO_CONCURRENCY,
+                    default=self._entry.options.get(
+                        CONF_MAX_DEVICE_INFO_CONCURRENCY,
+                        self._entry.data.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, DEFAULT_MAX_DEVICE_INFO_CONCURRENCY),
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_DEVICE_INFO_CONCURRENCY, max=MAX_DEVICE_INFO_CONCURRENCY)),
+                vol.Optional(
+                    CONF_DEVICE_INFO_FAILURE_TOLERANCE,
+                    default=self._entry.options.get(
+                        CONF_DEVICE_INFO_FAILURE_TOLERANCE,
+                        self._entry.data.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE),
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_DEVICE_INFO_FAILURE_TOLERANCE, max=MAX_DEVICE_INFO_FAILURE_TOLERANCE)),
                 vol.Optional(
                     CONF_DEBUG,
                     default=self._entry.options.get(

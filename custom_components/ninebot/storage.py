@@ -8,17 +8,13 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .const import (
-    DEFAULT_BATTERY_CAPACITY,
-    DEFAULT_MAIN_BATTERY_VOLTAGE,
-    DOMAIN,
-)
+from .const import DEFAULT_BATTERY_CAPACITY, DEFAULT_MAIN_BATTERY_VOLTAGE, DOMAIN
 
-_STORAGE_VERSION = 1
+_STORAGE_VERSION = 2
 
 
 class NinebotRuntimeStorage:
-    """Persist per-device parameters and energy counters."""
+    """Persist per-device parameters, energy counters and last successful states."""
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         self._store: Store[dict[str, Any]] = Store(
@@ -67,11 +63,21 @@ class NinebotRuntimeStorage:
             dirty |= self._ensure_float(existing, "daily_outflow_kwh", 0.0)
             dirty |= self._ensure_float(existing, "monthly_inflow_kwh", 0.0)
             dirty |= self._ensure_float(existing, "monthly_outflow_kwh", 0.0)
+            dirty |= self._ensure_int(existing, "failure_count", 0)
+            dirty |= self._ensure_int(existing, "current_interval", 60)
+            dirty |= self._ensure_optional_float(existing, "last_success_at")
+            dirty |= self._ensure_optional_float(existing, "last_attempt_at")
             if not isinstance(existing.get("daily_bucket"), str):
                 existing["daily_bucket"] = ""
                 dirty = True
             if not isinstance(existing.get("monthly_bucket"), str):
                 existing["monthly_bucket"] = ""
+                dirty = True
+            if existing.get("raw_state") is not None and not isinstance(existing.get("raw_state"), dict):
+                existing["raw_state"] = None
+                dirty = True
+            if existing.get("parsed_state") is not None and not isinstance(existing.get("parsed_state"), dict):
+                existing["parsed_state"] = None
                 dirty = True
             return dirty
 
@@ -88,6 +94,12 @@ class NinebotRuntimeStorage:
             "monthly_outflow_kwh": 0.0,
             "daily_bucket": "",
             "monthly_bucket": "",
+            "raw_state": None,
+            "parsed_state": None,
+            "last_success_at": None,
+            "last_attempt_at": None,
+            "failure_count": 0,
+            "current_interval": 60,
         }
         return True
 
@@ -102,6 +114,20 @@ class NinebotRuntimeStorage:
             data[key] = float(value)
             return False
         data[key] = float(default)
+        return True
+
+    @staticmethod
+    def _ensure_int(data: dict[str, Any], key: str, default: int) -> bool:
+        value = data.get(key)
+        if isinstance(value, bool):
+            data[key] = int(default)
+            return True
+        if isinstance(value, int):
+            return False
+        if isinstance(value, float):
+            data[key] = int(value)
+            return True
+        data[key] = int(default)
         return True
 
     @staticmethod
@@ -129,6 +155,53 @@ class NinebotRuntimeStorage:
             device["battery_capacity"] = float(capacity)
             dirty = True
         if dirty:
+            await self.async_save()
+
+    def get_cached_vehicle_state(self, sn: str) -> dict[str, Any] | None:
+        parsed = self._device(sn).get("parsed_state")
+        if not isinstance(parsed, dict):
+            return None
+        return dict(parsed)
+
+    def get_vehicle_metadata(self, sn: str) -> dict[str, Any]:
+        device = self._device(sn)
+        return {
+            "last_success_at": device.get("last_success_at"),
+            "last_attempt_at": device.get("last_attempt_at"),
+            "failure_count": int(device.get("failure_count") or 0),
+            "current_interval": int(device.get("current_interval") or 60),
+        }
+
+    async def async_record_vehicle_success(
+        self,
+        sn: str,
+        *,
+        raw_state: dict[str, Any],
+        parsed_state: dict[str, Any],
+        now_ts: float,
+        current_interval: int,
+    ) -> None:
+        device = self._device(sn)
+        device["raw_state"] = raw_state
+        device["parsed_state"] = parsed_state
+        device["last_success_at"] = float(now_ts)
+        device["last_attempt_at"] = float(now_ts)
+        device["failure_count"] = 0
+        device["current_interval"] = int(current_interval)
+        await self.async_save()
+
+    async def async_record_vehicle_failure(self, sn: str, *, now_ts: float, current_interval: int) -> int:
+        device = self._device(sn)
+        device["last_attempt_at"] = float(now_ts)
+        device["failure_count"] = int(device.get("failure_count") or 0) + 1
+        device["current_interval"] = int(current_interval)
+        await self.async_save()
+        return int(device["failure_count"])
+
+    async def async_set_vehicle_interval(self, sn: str, interval: int) -> None:
+        device = self._device(sn)
+        if int(device.get("current_interval") or 60) != int(interval):
+            device["current_interval"] = int(interval)
             await self.async_save()
 
     async def async_build_energy_snapshot(
@@ -175,7 +248,6 @@ class NinebotRuntimeStorage:
             delta_percent = float(battery_percent) - float(prev_percent)
 
             if delta_seconds > 0:
-                # Basic jump protection for clearly invalid telemetry spikes.
                 if abs(delta_percent) <= 40 or delta_seconds >= 60:
                     delta_kwh = nominal_kwh * delta_percent / 100.0
                     inflow_step = max(delta_kwh, 0.0)

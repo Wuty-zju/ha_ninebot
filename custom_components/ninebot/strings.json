@@ -12,6 +12,10 @@
           "default_scan_interval": "Default scan interval (seconds)",
           "unlocked_scan_interval": "Unlocked scan interval (seconds)",
           "charging_scan_interval": "Charging scan interval (seconds)",
+          "token_refresh_interval_hours": "Token refresh interval (hours)",
+          "device_list_refresh_interval_hours": "Device list refresh interval (hours)",
+          "max_device_info_concurrency": "Max concurrent device info requests",
+          "device_info_failure_tolerance": "Device info failure tolerance (times)",
           "debug": "Enable debug logs"
         }
       },
@@ -25,6 +29,10 @@
           "default_scan_interval": "Default scan interval (seconds)",
           "unlocked_scan_interval": "Unlocked scan interval (seconds)",
           "charging_scan_interval": "Charging scan interval (seconds)",
+          "token_refresh_interval_hours": "Token refresh interval (hours)",
+          "device_list_refresh_interval_hours": "Device list refresh interval (hours)",
+          "max_device_info_concurrency": "Max concurrent device info requests",
+          "device_info_failure_tolerance": "Device info failure tolerance (times)",
           "debug": "Enable debug logs"
         }
       }
@@ -51,6 +59,10 @@
           "default_scan_interval": "Default scan interval (seconds)",
           "unlocked_scan_interval": "Unlocked scan interval (seconds)",
           "charging_scan_interval": "Charging scan interval (seconds)",
+          "token_refresh_interval_hours": "Token refresh interval (hours)",
+          "device_list_refresh_interval_hours": "Device list refresh interval (hours)",
+          "max_device_info_concurrency": "Max concurrent device info requests",
+          "device_info_failure_tolerance": "Device info failure tolerance (times)",
           "debug": "Enable debug logs"
         }
       }

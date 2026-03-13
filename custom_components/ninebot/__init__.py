@@ -109,6 +109,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ninebot from a config entry."""
     session = async_get_clientsession(hass)
     client = NinebotApiClient(
+        hass=hass,
+        entry_id=entry.entry_id,
         session=session,
         username=entry.data[CONF_USERNAME],
         password=entry.data[CONF_PASSWORD],

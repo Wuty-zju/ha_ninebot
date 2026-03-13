@@ -12,6 +12,10 @@
           "default_scan_interval": "默认轮询间隔（秒）",
           "unlocked_scan_interval": "解锁轮询间隔（秒）",
           "charging_scan_interval": "充电轮询间隔（秒）",
+          "token_refresh_interval_hours": "Token 刷新间隔（小时）",
+          "device_list_refresh_interval_hours": "设备列表刷新间隔（小时）",
+          "max_device_info_concurrency": "设备详情最大并发请求数",
+          "device_info_failure_tolerance": "设备详情失败容忍次数",
           "debug": "启用调试日志"
         }
       },
@@ -25,6 +29,10 @@
           "default_scan_interval": "默认轮询间隔（秒）",
           "unlocked_scan_interval": "解锁轮询间隔（秒）",
           "charging_scan_interval": "充电轮询间隔（秒）",
+          "token_refresh_interval_hours": "Token 刷新间隔（小时）",
+          "device_list_refresh_interval_hours": "设备列表刷新间隔（小时）",
+          "max_device_info_concurrency": "设备详情最大并发请求数",
+          "device_info_failure_tolerance": "设备详情失败容忍次数",
           "debug": "启用调试日志"
         }
       }
@@ -51,6 +59,10 @@
           "default_scan_interval": "默认轮询间隔（秒）",
           "unlocked_scan_interval": "解锁轮询间隔（秒）",
           "charging_scan_interval": "充电轮询间隔（秒）",
+          "token_refresh_interval_hours": "Token 刷新间隔（小时）",
+          "device_list_refresh_interval_hours": "设备列表刷新间隔（小时）",
+          "max_device_info_concurrency": "设备详情最大并发请求数",
+          "device_info_failure_tolerance": "设备详情失败容忍次数",
           "debug": "启用调试日志"
         }
       }
