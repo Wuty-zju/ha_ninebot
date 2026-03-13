@@ -19,6 +19,8 @@
         "title": "Ninebot 选项",
         "description": "调整语言、轮询策略和调试设置。",
         "data": {
+          "username": "用户名",
+          "password": "密码",
           "lang": "语言",
           "default_scan_interval": "默认轮询间隔（秒）",
           "unlocked_scan_interval": "解锁轮询间隔（秒）",

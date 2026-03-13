@@ -42,6 +42,14 @@ async def _async_validate_input(hass: HomeAssistant, data: dict[str, Any]) -> No
     await client.async_login()
 
 
+def _safe_scan_interval(value: Any, default: int) -> int:
+    """Return a safe scan interval value and avoid flow-time exceptions."""
+    try:
+        return max(MIN_SCAN_INTERVAL, int(value))
+    except (TypeError, ValueError):
+        return max(MIN_SCAN_INTERVAL, int(default))
+
+
 class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Ninebot."""
 
@@ -59,18 +67,19 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             normalized = {
                 **user_input,
                 CONF_USERNAME: username,
+                CONF_PASSWORD: str(user_input.get(CONF_PASSWORD, "")),
                 CONF_LANG: user_input.get(CONF_LANG, DEFAULT_LANG),
-                CONF_DEFAULT_SCAN_INTERVAL: max(
-                    MIN_SCAN_INTERVAL,
-                    int(user_input.get(CONF_DEFAULT_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                CONF_DEFAULT_SCAN_INTERVAL: _safe_scan_interval(
+                    user_input.get(CONF_DEFAULT_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                    DEFAULT_SCAN_INTERVAL,
                 ),
-                CONF_UNLOCKED_SCAN_INTERVAL: max(
-                    MIN_SCAN_INTERVAL,
-                    int(user_input.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL)),
+                CONF_UNLOCKED_SCAN_INTERVAL: _safe_scan_interval(
+                    user_input.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL),
+                    DEFAULT_UNLOCKED_SCAN_INTERVAL,
                 ),
-                CONF_CHARGING_SCAN_INTERVAL: max(
-                    MIN_SCAN_INTERVAL,
-                    int(user_input.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL)),
+                CONF_CHARGING_SCAN_INTERVAL: _safe_scan_interval(
+                    user_input.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
+                    DEFAULT_CHARGING_SCAN_INTERVAL,
                 ),
                 CONF_DEBUG: bool(user_input.get(CONF_DEBUG, DEFAULT_DEBUG)),
             }
@@ -130,8 +139,15 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            options = {
+            username = str(user_input.get(CONF_USERNAME, self.config_entry.data.get(CONF_USERNAME, ""))).strip()
+            password = str(user_input.get(CONF_PASSWORD, self.config_entry.data.get(CONF_PASSWORD, "")))
+
+            normalized = {
+                CONF_USERNAME: username,
+                CONF_PASSWORD: password,
                 CONF_LANG: user_input.get(
                     CONF_LANG,
                     self.config_entry.options.get(
@@ -139,17 +155,17 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                         self.config_entry.data.get(CONF_LANG, DEFAULT_LANG),
                     ),
                 ),
-                CONF_DEFAULT_SCAN_INTERVAL: max(
-                    MIN_SCAN_INTERVAL,
-                    int(user_input.get(CONF_DEFAULT_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                CONF_DEFAULT_SCAN_INTERVAL: _safe_scan_interval(
+                    user_input.get(CONF_DEFAULT_SCAN_INTERVAL, self.config_entry.options.get(CONF_DEFAULT_SCAN_INTERVAL, self.config_entry.data.get(CONF_DEFAULT_SCAN_INTERVAL, self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)))),
+                    DEFAULT_SCAN_INTERVAL,
                 ),
-                CONF_UNLOCKED_SCAN_INTERVAL: max(
-                    MIN_SCAN_INTERVAL,
-                    int(user_input.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL)),
+                CONF_UNLOCKED_SCAN_INTERVAL: _safe_scan_interval(
+                    user_input.get(CONF_UNLOCKED_SCAN_INTERVAL, self.config_entry.options.get(CONF_UNLOCKED_SCAN_INTERVAL, self.config_entry.data.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL))),
+                    DEFAULT_UNLOCKED_SCAN_INTERVAL,
                 ),
-                CONF_CHARGING_SCAN_INTERVAL: max(
-                    MIN_SCAN_INTERVAL,
-                    int(user_input.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL)),
+                CONF_CHARGING_SCAN_INTERVAL: _safe_scan_interval(
+                    user_input.get(CONF_CHARGING_SCAN_INTERVAL, self.config_entry.options.get(CONF_CHARGING_SCAN_INTERVAL, self.config_entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL))),
+                    DEFAULT_CHARGING_SCAN_INTERVAL,
                 ),
                 CONF_DEBUG: bool(
                     user_input.get(
@@ -161,10 +177,55 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     )
                 ),
             }
-            return self.async_create_entry(title="", data=options)
+
+            try:
+                await _async_validate_input(self.hass, normalized)
+            except NinebotAuthError:
+                errors["base"] = "invalid_auth"
+            except NinebotConnectionError:
+                errors["base"] = "cannot_connect"
+            except NinebotError:
+                errors["base"] = "api_error"
+            except Exception:  # pragma: no cover - defensive catch for flow UX
+                errors["base"] = "unknown"
+
+            if not errors:
+                options = {
+                    CONF_LANG: normalized[CONF_LANG],
+                    CONF_DEFAULT_SCAN_INTERVAL: normalized[CONF_DEFAULT_SCAN_INTERVAL],
+                    CONF_UNLOCKED_SCAN_INTERVAL: normalized[CONF_UNLOCKED_SCAN_INTERVAL],
+                    CONF_CHARGING_SCAN_INTERVAL: normalized[CONF_CHARGING_SCAN_INTERVAL],
+                    CONF_DEBUG: normalized[CONF_DEBUG],
+                }
+
+                data = dict(self.config_entry.data)
+                data[CONF_USERNAME] = normalized[CONF_USERNAME]
+                data[CONF_PASSWORD] = normalized[CONF_PASSWORD]
+                data[CONF_LANG] = normalized[CONF_LANG]
+                data[CONF_DEBUG] = normalized[CONF_DEBUG]
+                data[CONF_SCAN_INTERVAL] = normalized[CONF_DEFAULT_SCAN_INTERVAL]
+                data[CONF_DEFAULT_SCAN_INTERVAL] = normalized[CONF_DEFAULT_SCAN_INTERVAL]
+                data[CONF_UNLOCKED_SCAN_INTERVAL] = normalized[CONF_UNLOCKED_SCAN_INTERVAL]
+                data[CONF_CHARGING_SCAN_INTERVAL] = normalized[CONF_CHARGING_SCAN_INTERVAL]
+
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data=data,
+                    options=options,
+                )
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                return self.async_create_entry(title="", data=options)
 
         schema = vol.Schema(
             {
+                vol.Required(
+                    CONF_USERNAME,
+                    default=self.config_entry.data.get(CONF_USERNAME, ""),
+                ): str,
+                vol.Required(
+                    CONF_PASSWORD,
+                    default=self.config_entry.data.get(CONF_PASSWORD, ""),
+                ): str,
                 vol.Optional(
                     CONF_LANG,
                     default=self.config_entry.options.get(
@@ -202,4 +263,4 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 ): bool,
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)

@@ -19,6 +19,8 @@
         "title": "Ninebot options",
         "description": "Adjust language, polling strategy and debug settings.",
         "data": {
+          "username": "Username",
+          "password": "Password",
           "lang": "Language",
           "default_scan_interval": "Default scan interval (seconds)",
           "unlocked_scan_interval": "Unlocked scan interval (seconds)",

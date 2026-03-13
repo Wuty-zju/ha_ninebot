@@ -105,8 +105,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         session=session,
         username=entry.data[CONF_USERNAME],
         password=entry.data[CONF_PASSWORD],
-        lang=entry.data.get(CONF_LANG, DEFAULT_LANG),
-        debug=entry.data.get(CONF_DEBUG, DEFAULT_DEBUG),
+        lang=entry.options.get(CONF_LANG, entry.data.get(CONF_LANG, DEFAULT_LANG)),
+        debug=entry.options.get(CONF_DEBUG, entry.data.get(CONF_DEBUG, DEFAULT_DEBUG)),
     )
     coordinator = NinebotDataUpdateCoordinator(
         hass,
