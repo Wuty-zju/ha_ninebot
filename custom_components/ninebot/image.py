@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 from secrets import token_hex
 from typing import Any
@@ -13,7 +13,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import dt as dt_util
 
 from .const import DATA_COORDINATOR, DOMAIN
 from .coordinator import NinebotDataUpdateCoordinator
@@ -55,7 +54,7 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
         self._attr_suggested_object_id = self._build_object_id("vehicle_image")
         self._attr_content_type = "image/png"
         self._last_image_url: str | None = self.image_url
-        self._last_image_updated: datetime | None = coordinator.last_update_success_time
+        self._last_image_updated: datetime | None = datetime.now(UTC) if self._last_image_url else None
         # Defensive fallback for older/newer core behaviors where ImageEntity init chain differs.
         if not hasattr(self, "access_tokens"):
             self.access_tokens = deque([token_hex(16)], maxlen=2)
@@ -63,9 +62,7 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
     @property
     def image_last_updated(self) -> datetime | None:
         """Expose a stable, timezone-aware update timestamp for HA state."""
-        if self._last_image_updated is not None:
-            return self._last_image_updated
-        return self.coordinator.last_update_success_time
+        return self._last_image_updated
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -84,13 +81,12 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
 
     def _update_image_timestamp(self) -> None:
         current_url = self.image_url
-        coordinator_updated = self.coordinator.last_update_success_time or dt_util.utcnow()
         if current_url != self._last_image_url:
             self._last_image_url = current_url
-            self._last_image_updated = coordinator_updated
+            self._last_image_updated = datetime.now(UTC) if current_url else None
             return
-        if self._last_image_updated is None:
-            self._last_image_updated = coordinator_updated
+        if self._last_image_updated is None and current_url:
+            self._last_image_updated = datetime.now(UTC)
 
     def _handle_coordinator_update(self) -> None:
         self._update_image_timestamp()
