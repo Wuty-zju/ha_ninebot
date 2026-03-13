@@ -7,7 +7,9 @@ on:
     - cron: "0 1 * * *"
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
+  packages: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -24,4 +26,4 @@ jobs:
 
       - name: Hassfest Validation
         run: |
-          docker run --rm -v "${{ github.workspace }}:/github/workspace" ghcr.io/home-assistant/hassfest
+          docker run --rm -v "$GITHUB_WORKSPACE:/github/workspace" -w /github/workspace ghcr.io/home-assistant/hassfest:latest
