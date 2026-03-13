@@ -1,8 +1,8 @@
-# Home Assistant 九号车辆集成
+# Home Assistant Ninebot 车辆集成
 
 [English](./README.md) | [简体中文](./README_zh.md)
 
-这是一个将 Ninebot（九号）云端设备接入 Home Assistant 的自定义集成。
+这是一个将 Ninebot 云端设备接入 Home Assistant 的自定义集成。
 
 维护者：Wuty-zju
 

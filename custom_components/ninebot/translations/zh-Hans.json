@@ -1,10 +1,10 @@
 {
   "config": {
-    "flow_title": "九号车辆",
+    "flow_title": "Ninebot 车辆",
     "step": {
       "user": {
-        "title": "连接九号账号",
-        "description": "请输入九号账号登录信息。",
+        "title": "连接 Ninebot 账号",
+        "description": "请输入 Ninebot 账号登录信息。",
         "data": {
           "username": "用户名",
           "password": "密码",
@@ -16,8 +16,8 @@
     },
     "error": {
       "invalid_auth": "用户名或密码错误",
-      "cannot_connect": "无法连接九号云端",
-      "api_error": "九号接口返回错误",
+      "cannot_connect": "无法连接 Ninebot 云端",
+      "api_error": "Ninebot 接口返回错误",
       "unknown": "未知错误"
     },
     "abort": {

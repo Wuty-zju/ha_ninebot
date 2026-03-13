@@ -147,8 +147,14 @@ class NinebotApiClient:
             "token" in lowered
             or "auth" in lowered
             or "login" in lowered
+            or "password" in lowered
+            or "username" in lowered
+            or "account" in lowered
             or "登录" in message
             or "认证" in message
+            or "密码" in message
+            or "账号" in message
+            or "用户名" in message
         )
 
     async def async_login(self) -> None:
@@ -167,27 +173,29 @@ class NinebotApiClient:
             payload=payload,
             headers=headers,
         )
+        data = response.get("data")
 
-        if not self._result_ok(response):
+        token: str | None = None
+        if isinstance(data, dict):
+            raw_token = data.get("access_token")
+            if isinstance(raw_token, str) and raw_token:
+                token = raw_token
+
+        # Follow the reference script behavior: token presence is the source of truth.
+        if not isinstance(token, str) or not token:
             message = self._result_message(response)
             if self._is_auth_error(message):
                 raise NinebotAuthError(message)
-            raise NinebotApiError(f"Login failed: {message}")
-
-        data = response.get("data")
-        if not isinstance(data, dict):
-            raise NinebotApiError("Login response missing data object")
-
-        token = data.get("access_token")
-        if not isinstance(token, str) or not token:
+            if not self._result_ok(response):
+                raise NinebotApiError(f"Login failed: {message}")
             raise NinebotApiError("Login response missing access_token")
 
         self._access_token = token
-        refresh = data.get("refresh_token")
+        refresh = data.get("refresh_token") if isinstance(data, dict) else None
         if isinstance(refresh, str) and refresh:
             self._refresh_token = refresh
 
-        validity = data.get("accessTokenValidity")
+        validity = data.get("accessTokenValidity") if isinstance(data, dict) else None
         if isinstance(validity, int):
             self._expires_at = int(time.time()) + validity
         else:
