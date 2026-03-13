@@ -206,6 +206,7 @@ class NinebotRuntimeStorage:
         parsed_state: dict[str, Any],
         now_ts: float,
         current_interval: int,
+        save: bool = True,
     ) -> None:
         device = self._device(sn)
         device["raw_state"] = raw_state
@@ -214,7 +215,8 @@ class NinebotRuntimeStorage:
         device["last_attempt_at"] = float(now_ts)
         device["failure_count"] = 0
         device["current_interval"] = int(current_interval)
-        await self.async_save()
+        if save:
+            await self.async_save()
 
     async def async_record_vehicle_failure(self, sn: str, *, now_ts: float, current_interval: int) -> int:
         device = self._device(sn)
@@ -236,6 +238,7 @@ class NinebotRuntimeStorage:
         *,
         battery_percent: int | None,
         sample_time: datetime,
+        persist: bool = True,
     ) -> dict[str, float | None]:
         device = self._device(sn)
 
@@ -298,7 +301,7 @@ class NinebotRuntimeStorage:
             device["last_sample_ts"] = float(sample_time.timestamp())
             dirty = True
 
-        if dirty:
+        if dirty and persist:
             await self.async_save()
 
         return {

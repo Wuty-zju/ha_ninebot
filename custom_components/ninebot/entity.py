@@ -22,7 +22,11 @@ class NinebotCoordinatorEntity(CoordinatorEntity[NinebotDataUpdateCoordinator]):
 
     @property
     def _merged(self) -> dict[str, Any]:
-        return self.coordinator.data.get(self._sn, {})
+        data = self.coordinator.data
+        if not isinstance(data, dict):
+            return {}
+        value = data.get(self._sn)
+        return value if isinstance(value, dict) else {}
 
     @property
     def _device(self) -> dict[str, Any]:

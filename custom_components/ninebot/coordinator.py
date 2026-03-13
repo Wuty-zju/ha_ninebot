@@ -316,6 +316,7 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
                         sn,
                         battery_percent=state["battery"],
                         sample_time=now_dt,
+                        persist=False,
                     )
                 )
                 voltage, capacity = self.runtime_storage.get_battery_params(sn)
@@ -336,6 +337,7 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
                     parsed_state=state,
                     now_ts=now_ts,
                     current_interval=interval,
+                    save=True,
                 )
                 metadata = self.runtime_storage.get_vehicle_metadata(sn)
                 state["last_success_at"] = metadata.get("last_success_at")
@@ -352,7 +354,7 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
                         "fetched_at": now_dt.isoformat(),
                         "device_list_item": copy.deepcopy(device),
                         "dynamic_info": copy.deepcopy(raw_state),
-                        "devices_list_raw": copy.deepcopy(self._raw_devices_payload),
+                        "devices_list_raw": self._raw_devices_payload,
                     }
                 continue
 

@@ -365,9 +365,15 @@ class NinebotApiClient:
         await self._async_save_cache()
         return copy.deepcopy(devices)
 
-    async def async_get_device_dynamic_info(self, sn: str, *, token_refresh_interval_hours: int = 24) -> dict[str, Any]:
+    async def async_get_device_dynamic_info(
+        self,
+        sn: str,
+        *,
+        token_refresh_interval_hours: int = 24,
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
         """Fetch dynamic state for one device SN."""
-        token = await self.async_ensure_token(refresh_interval_hours=token_refresh_interval_hours)
+        token = access_token or await self.async_ensure_token(refresh_interval_hours=token_refresh_interval_hours)
         response = await self._async_post(
             base_url=DEVICE_BASE_URL,
             path=DEVICE_DYNAMIC_INFO_PATH,
@@ -398,6 +404,7 @@ class NinebotApiClient:
         if not sns:
             return results, errors
 
+        token = await self.async_ensure_token(refresh_interval_hours=token_refresh_interval_hours)
         semaphore = asyncio.Semaphore(max(1, int(max_concurrency)))
 
         async def _fetch(sn: str) -> None:
@@ -406,6 +413,7 @@ class NinebotApiClient:
                     results[sn] = await self.async_get_device_dynamic_info(
                         sn,
                         token_refresh_interval_hours=token_refresh_interval_hours,
+                        access_token=token,
                     )
                 except Exception as err:  # noqa: BLE001 - isolate per-device errors
                     errors[sn] = err

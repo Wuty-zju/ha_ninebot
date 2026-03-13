@@ -304,8 +304,8 @@ Recommended release flow:
 3. Create and push matching tag, for example:
 
 ```bash
-git tag v0.8.2
-git push origin v0.8.2
+git tag v0.9
+git push origin v0.9
 ```
 
 4. Create GitHub Release notes for the tag
@@ -317,6 +317,8 @@ git push origin v0.8.2
 - `v0.8`: account cache + per-vehicle scheduler + async concurrency + cache fallback
 - `v0.8.1`: storage migration fix for runtime Store compatibility
 - `v0.8.2`: release packaging update
+- `v0.8.3`: compatibility and stability hardening
+- `v0.9`: codebase optimization pass (reduced redundant persistence writes, improved null-safety, and lower debug memory overhead)
 
 ## Repository Layout
 
