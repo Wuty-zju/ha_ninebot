@@ -27,6 +27,19 @@ from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
 
 
+def _vehicle_lock_raw_value(state: dict[str, Any]) -> int | None:
+    value = state.get("status")
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if text in {"0", "1"}:
+            return int(text)
+    return None
+
+
 @dataclass(frozen=True, kw_only=True)
 class NinebotBinaryDescription(BinarySensorEntityDescription):
     """Describe Ninebot binary sensor behavior."""
@@ -54,8 +67,8 @@ BINARY_DESCRIPTIONS: tuple[NinebotBinaryDescription, ...] = (
         translation_key="vehicle_lock",
         icon="mdi:lock",
         device_class=BinarySensorDeviceClass.LOCK,
-        # Core contract: status=0 -> locked(True), status=1 -> unlocked(False).
-        value_fn=lambda state: status_to_locked(state.get("status")),
+        # Uses vehicle_lock_raw numeric contract: 0=locked, 1=unlocked.
+        value_fn=lambda state: status_to_locked(_vehicle_lock_raw_value(state)),
     ),
 )
 
