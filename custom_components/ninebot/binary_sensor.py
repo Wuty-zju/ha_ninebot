@@ -40,6 +40,19 @@ def _vehicle_lock_raw_value(state: dict[str, Any]) -> int | None:
     return None
 
 
+def _vehicle_lock_is_on(state: dict[str, Any]) -> bool | None:
+    """Map raw status to HA lock binary sensor semantics.
+
+    Home Assistant binary_sensor with LOCK device class treats:
+    - is_on=True as unlocked
+    - is_on=False as locked
+    """
+    locked = status_to_locked(_vehicle_lock_raw_value(state))
+    if locked is None:
+        return None
+    return not locked
+
+
 @dataclass(frozen=True, kw_only=True)
 class NinebotBinaryDescription(BinarySensorEntityDescription):
     """Describe Ninebot binary sensor behavior."""
@@ -67,8 +80,8 @@ BINARY_DESCRIPTIONS: tuple[NinebotBinaryDescription, ...] = (
         translation_key="vehicle_lock",
         icon="mdi:lock",
         device_class=BinarySensorDeviceClass.LOCK,
-        # Raw status mapping: 0 -> locked/on, 1 -> unlocked/off.
-        value_fn=lambda state: status_to_locked(_vehicle_lock_raw_value(state)),
+        # Raw status mapping: 0 -> locked, 1 -> unlocked.
+        value_fn=_vehicle_lock_is_on,
     ),
 )
 
