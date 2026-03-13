@@ -13,11 +13,37 @@ from .const import DEFAULT_BATTERY_CAPACITY, DEFAULT_MAIN_BATTERY_VOLTAGE, DOMAI
 _STORAGE_VERSION = 2
 
 
+class _NinebotStore(Store[dict[str, Any]]):
+    """Store wrapper with backward-compatible migration support."""
+
+    async def _async_migrate_func(
+        self,
+        old_major_version: int,
+        old_minor_version: int,
+        old_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        del old_major_version, old_minor_version
+
+        if not isinstance(old_data, dict):
+            return {"devices": {}}
+
+        devices = old_data.get("devices")
+        if isinstance(devices, dict):
+            return {"devices": devices}
+
+        # Legacy layouts may store per-device payloads directly at root.
+        legacy_devices: dict[str, dict[str, Any]] = {}
+        for sn, payload in old_data.items():
+            if isinstance(payload, dict):
+                legacy_devices[str(sn)] = payload
+        return {"devices": legacy_devices}
+
+
 class NinebotRuntimeStorage:
     """Persist per-device parameters, energy counters and last successful states."""
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
-        self._store: Store[dict[str, Any]] = Store(
+        self._store: Store[dict[str, Any]] = _NinebotStore(
             hass,
             _STORAGE_VERSION,
             f"{DOMAIN}_{entry_id}_runtime",
