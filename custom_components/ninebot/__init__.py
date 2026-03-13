@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import NinebotApiClient
-from .const import CONF_LANG, DATA_COORDINATOR, DEFAULT_LANG, DOMAIN, PLATFORMS
+from .const import CONF_DEBUG, CONF_LANG, DATA_COORDINATOR, DEFAULT_DEBUG, DEFAULT_LANG, DOMAIN, PLATFORMS
 from .coordinator import NinebotDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,6 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         username=entry.data[CONF_USERNAME],
         password=entry.data[CONF_PASSWORD],
         lang=entry.data.get(CONF_LANG, DEFAULT_LANG),
+        debug=entry.data.get(CONF_DEBUG, DEFAULT_DEBUG),
     )
     coordinator = NinebotDataUpdateCoordinator(
         hass,

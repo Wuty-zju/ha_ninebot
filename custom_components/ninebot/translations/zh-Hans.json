@@ -9,7 +9,8 @@
           "username": "用户名",
           "password": "密码",
           "lang": "语言",
-          "scan_interval": "轮询间隔（秒）"
+          "scan_interval": "轮询间隔（秒）",
+          "debug": "启用调试日志（自动脱敏账号和令牌）"
         }
       }
     },

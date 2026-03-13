@@ -12,7 +12,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import NinebotApiClient
-from .const import CONF_LANG, CONF_SCAN_INTERVAL, DEFAULT_LANG, DEFAULT_SCAN_INTERVAL, DOMAIN, MIN_SCAN_INTERVAL
+from .const import (
+    CONF_DEBUG,
+    CONF_LANG,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_DEBUG,
+    DEFAULT_LANG,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    MIN_SCAN_INTERVAL,
+)
 from .exceptions import NinebotAuthError, NinebotConnectionError, NinebotError
 
 
@@ -23,6 +32,7 @@ async def _async_validate_input(hass: HomeAssistant, data: dict[str, Any]) -> No
         username=data[CONF_USERNAME],
         password=data[CONF_PASSWORD],
         lang=data.get(CONF_LANG, DEFAULT_LANG),
+        debug=bool(data.get(CONF_DEBUG, DEFAULT_DEBUG)),
     )
     await client.async_login()
 
@@ -49,6 +59,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     MIN_SCAN_INTERVAL,
                     int(user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
                 ),
+                CONF_DEBUG: bool(user_input.get(CONF_DEBUG, DEFAULT_DEBUG)),
             }
 
             try:
@@ -77,6 +88,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Coerce(int),
                     vol.Range(min=MIN_SCAN_INTERVAL),
                 ),
+                vol.Optional(CONF_DEBUG, default=DEFAULT_DEBUG): bool,
             }
         )
 

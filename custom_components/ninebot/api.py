@@ -34,15 +34,55 @@ class NinebotApiClient:
         username: str,
         password: str,
         lang: str,
+        debug: bool = False,
     ) -> None:
         self._session = session
         self._username = username
         self._password = password
         self._lang = lang
+        self._debug = debug
 
         self._access_token: str | None = None
         self._refresh_token: str | None = None
         self._expires_at: int | None = None
+
+    @staticmethod
+    def _mask(value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        if len(value) <= 6:
+            return "***"
+        return f"{value[:3]}***{value[-3:]}"
+
+    def _redact_obj(self, obj: Any) -> Any:
+        if isinstance(obj, dict):
+            redacted: dict[str, Any] = {}
+            for key, value in obj.items():
+                key_l = key.lower()
+                if key_l in {
+                    "password",
+                    "access_token",
+                    "refresh_token",
+                    "authorization",
+                    "token",
+                }:
+                    redacted[key] = "***"
+                elif key_l in {"username", "mobile", "phone", "sn"}:
+                    redacted[key] = self._mask(value)
+                else:
+                    redacted[key] = self._redact_obj(value)
+            return redacted
+        if isinstance(obj, list):
+            return [self._redact_obj(item) for item in obj]
+        if isinstance(obj, str) and len(obj) > 64:
+            return self._mask(obj)
+        return obj
+
+    def _debug_log(self, message: str, **kwargs: Any) -> None:
+        if not self._debug:
+            return
+        safe_kwargs = {k: self._redact_obj(v) for k, v in kwargs.items()}
+        _LOGGER.debug("%s | %s", message, safe_kwargs)
 
     async def _async_post(
         self,
@@ -57,6 +97,13 @@ class NinebotApiClient:
             req_headers.update(headers)
 
         try:
+            self._debug_log(
+                "ninebot request",
+                method="POST",
+                url=f"{base_url}{path}",
+                headers=headers,
+                payload=payload,
+            )
             response = await self._session.post(
                 f"{base_url}{path}",
                 json=payload,
@@ -65,6 +112,7 @@ class NinebotApiClient:
             )
             response.raise_for_status()
             data = await response.json(content_type=None)
+            self._debug_log("ninebot response", path=path, response=data)
         except ClientResponseError as err:
             _LOGGER.debug("Ninebot API HTTP error path=%s status=%s", path, err.status)
             raise NinebotApiError(f"HTTP error from Ninebot API: {err.status}") from err
@@ -121,15 +169,18 @@ class NinebotApiClient:
         )
 
         if not self._result_ok(response):
-            raise NinebotAuthError(self._result_message(response))
+            message = self._result_message(response)
+            if self._is_auth_error(message):
+                raise NinebotAuthError(message)
+            raise NinebotApiError(f"Login failed: {message}")
 
         data = response.get("data")
         if not isinstance(data, dict):
-            raise NinebotAuthError("Missing login response data")
+            raise NinebotApiError("Login response missing data object")
 
         token = data.get("access_token")
         if not isinstance(token, str) or not token:
-            raise NinebotAuthError("Missing access token in login response")
+            raise NinebotApiError("Login response missing access_token")
 
         self._access_token = token
         refresh = data.get("refresh_token")

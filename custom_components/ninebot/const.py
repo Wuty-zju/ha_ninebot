@@ -10,10 +10,12 @@ PLATFORMS: Final = ["sensor"]
 
 CONF_LANG: Final = "lang"
 CONF_SCAN_INTERVAL: Final = "scan_interval"
+CONF_DEBUG: Final = "debug"
 
 DEFAULT_LANG: Final = "zh"
 DEFAULT_SCAN_INTERVAL: Final = 60
 MIN_SCAN_INTERVAL: Final = 15
+DEFAULT_DEBUG: Final = False
 
 MANUFACTURER: Final = "Ninebot"
 
