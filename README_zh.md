@@ -48,17 +48,13 @@ HACS 通过仓库的 Git tag / Release 检测新版本。
 3. 创建并推送与 version 一致的 tag，例如：
 
 ```bash
-git tag v0.7
-git push origin v0.7
+git tag v0.7.2
+git push origin v0.7.2
 ```
 
-4. 可选但推荐：在 GitHub 上为该 tag 创建 Release
+4. 在 GitHub 为该 tag 创建 Release，并直接在 Release 页面编写本次更新与新功能说明
 
 完成后，HACS 会检测到可更新版本。
-
-## 发布说明
-
-- [v0.7 发布说明](./RELEASE_NOTES_v0.7.md)
 
 ## 手动安装
 
