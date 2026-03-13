@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DATA_COORDINATOR, DOMAIN, status_to_locked
+from .const import DATA_COORDINATOR, DOMAIN, lock_status_from_state, status_to_locked
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
 
@@ -38,18 +38,7 @@ class NinebotVehicleLock(NinebotCoordinatorEntity, LockEntity):
 
     @property
     def is_locked(self) -> bool | None:
-        value = self._state.get("status")
-        if isinstance(value, bool):
-            value = int(value)
-        elif isinstance(value, str):
-            text = value.strip()
-            if text in {"0", "1"}:
-                value = int(text)
-            else:
-                return None
-        if not isinstance(value, int):
-            return None
-        return status_to_locked(value)
+        return status_to_locked(lock_status_from_state(self._state))
 
     @property
     def icon(self) -> str | None:

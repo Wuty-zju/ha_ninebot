@@ -304,8 +304,8 @@ Recommended release flow:
 3. Create and push matching tag, for example:
 
 ```bash
-git tag v0.9.2
-git push origin v0.9.2
+git tag v0.9.3
+git push origin v0.9.3
 ```
 
 4. Create GitHub Release notes for the tag
@@ -321,6 +321,7 @@ git push origin v0.9.2
 - `v0.9`: codebase optimization pass (reduced redundant persistence writes, improved null-safety, and lower debug memory overhead)
 - `v0.9.1`: lock status semantic fix and debug button payload cache retention
 - `v0.9.2`: fix binary lock state display to align with Home Assistant lock binary-sensor semantics
+- `v0.9.3`: fix vehicle lock icon direction and unify lock-state parsing path for robustness
 
 ## Repository Layout
 

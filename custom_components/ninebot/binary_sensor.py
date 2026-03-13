@@ -19,25 +19,13 @@ from .const import (
     CHARGING_ON,
     DATA_COORDINATOR,
     DOMAIN,
+    lock_status_from_state,
     MAIN_POWER_OFF,
     MAIN_POWER_ON,
     status_to_locked,
 )
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
-
-
-def _vehicle_lock_raw_value(state: dict[str, Any]) -> int | None:
-    value = state.get("status")
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str):
-        text = value.strip()
-        if text in {"0", "1"}:
-            return int(text)
-    return None
 
 
 def _vehicle_lock_is_on(state: dict[str, Any]) -> bool | None:
@@ -47,7 +35,7 @@ def _vehicle_lock_is_on(state: dict[str, Any]) -> bool | None:
     - is_on=True as unlocked
     - is_on=False as locked
     """
-    locked = status_to_locked(_vehicle_lock_raw_value(state))
+    locked = status_to_locked(lock_status_from_state(state))
     if locked is None:
         return None
     return not locked
@@ -128,7 +116,7 @@ class NinebotBinarySensor(NinebotCoordinatorEntity, BinarySensorEntity):
         if key == "vehicle_lock":
             if value is None:
                 return "mdi:lock"
-            return "mdi:lock" if value else "mdi:lock-open-variant"
+            return "mdi:lock-open-variant" if value else "mdi:lock"
         if key == "charging":
             if value is None:
                 return "mdi:battery"
