@@ -116,7 +116,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         value_fn=lambda state: _rssi_dbm_from_csq(state.get("gsm")),
     ),
     NinebotSensorDescription(
-        key="lock_status_raw",
+        key="status_raw",
         translation_key="status_raw",
         icon="mdi:scooter",
         value_fn=lambda state: _raw_text(state.get("powerStatus")),

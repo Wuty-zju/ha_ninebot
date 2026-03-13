@@ -36,7 +36,7 @@
         "name": "SN码"
       },
       "location_info": {
-        "name": "位置信息"
+        "name": "车辆位置"
       },
       "estimate_mileage": {
         "name": "剩余里程"
