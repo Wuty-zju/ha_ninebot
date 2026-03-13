@@ -302,8 +302,8 @@ HACS 通过 Git tag/Release 检测新版本。
 3. 创建并推送同版本 tag，例如：
 
 ```bash
-git tag v0.9
-git push origin v0.9
+git tag v0.9.1
+git push origin v0.9.1
 ```
 
 4. 在 GitHub 创建 Release 并填写更新说明
@@ -317,6 +317,7 @@ git push origin v0.9
 - `v0.8.2`：发布整理与版本更新
 - `v0.8.3`：兼容性与稳定性补丁
 - `v0.9`：代码层优化（减少冗余持久化写入、增强空值鲁棒性、降低调试路径内存开销）
+- `v0.9.1`：修复车辆锁状态语义链路，并保留调试按钮最近一次请求缓存
 
 ## 仓库结构
 

@@ -21,18 +21,22 @@ from .const import (
     DOMAIN,
     MAIN_POWER_OFF,
     MAIN_POWER_ON,
-    lock_status_from_state,
+    status_to_locked,
 )
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
 
 
-def _vehicle_lock_binary_value(state: dict[str, Any]) -> bool | None:
-    raw = lock_status_from_state(state)
-    if raw == 0:
-        return True
-    if raw == 1:
-        return False
+def _vehicle_lock_raw_value(state: dict[str, Any]) -> int | None:
+    value = state.get("status")
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if text in {"0", "1"}:
+            return int(text)
     return None
 
 
@@ -63,9 +67,8 @@ BINARY_DESCRIPTIONS: tuple[NinebotBinaryDescription, ...] = (
         translation_key="vehicle_lock",
         icon="mdi:lock",
         device_class=BinarySensorDeviceClass.LOCK,
-        # Keep semantics aligned with lock entity:
-        # 0 -> locked -> on, 1 -> unlocked -> off.
-        value_fn=_vehicle_lock_binary_value,
+        # Raw status mapping: 0 -> locked/on, 1 -> unlocked/off.
+        value_fn=lambda state: status_to_locked(_vehicle_lock_raw_value(state)),
     ),
 )
 

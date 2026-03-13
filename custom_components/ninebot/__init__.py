@@ -62,6 +62,11 @@ def _is_ninebot_entity(entry: er.RegistryEntry) -> bool:
     return entry.platform == DOMAIN and entry.domain in {"sensor", "binary_sensor", "image", "lock", "number", "button"}
 
 
+def _is_legacy_lock_entity_id(entity_id: str) -> bool:
+    # Remove known historical lock IDs that could keep stale state semantics.
+    return entity_id.startswith("lock.") and entity_id.endswith("_vehicle_lock_2")
+
+
 async def _async_enforce_entity_registry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -82,6 +87,10 @@ async def _async_enforce_entity_registry(
 
     for entry in existing:
         if not _is_ninebot_entity(entry):
+            continue
+
+        if _is_legacy_lock_entity_id(entry.entity_id):
+            entity_registry.async_remove(entry.entity_id)
             continue
 
         expected_entity_id = expected_by_unique.get(entry.unique_id)

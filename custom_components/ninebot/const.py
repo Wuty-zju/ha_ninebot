@@ -118,9 +118,9 @@ def status_to_locked(status: int | None) -> bool | None:
 	- status=0 -> locked=True
 	- status=1 -> locked=False
 	"""
-	if status == STATUS_LOCKED:
+	if status == 0:
 		return True
-	if status == STATUS_UNLOCKED:
+	if status == 1:
 		return False
 	return None
 

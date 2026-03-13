@@ -173,6 +173,7 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
             location = {}
         return {
             "battery": _normalize_int(_first_present(raw_state.get("battery"), raw_state.get("dumpEnergy"))),
+            # Keep raw lock status semantics for all entity layers: 0=locked, 1=unlocked.
             "status": _normalize_int(_first_present(raw_state.get("status"), raw_state.get("powerStatus"))),
             "chargingState": _normalize_int(raw_state.get("chargingState")),
             "pwr": _normalize_int(raw_state.get("pwr")),
@@ -233,7 +234,6 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
         except NinebotApiError as err:
             raise UpdateFailed(f"Ninebot API error: {err}") from err
 
-        self._raw_polling_payloads = {}
         self._raw_devices_payload = copy.deepcopy(devices) if self.debug_enabled else []
 
         device_by_sn: dict[str, dict[str, Any]] = {}
@@ -281,6 +281,10 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
             if sn not in device_by_sn:
                 self._vehicle_next_poll_at.pop(sn, None)
                 self._vehicle_intervals.pop(sn, None)
+
+        for sn in list(self._raw_polling_payloads):
+            if sn not in device_by_sn:
+                self._raw_polling_payloads.pop(sn, None)
 
         due_sns = [sn for sn in sns if now_ts >= float(self._vehicle_next_poll_at.get(sn, 0.0))]
         results: dict[str, dict[str, Any]] = {}
@@ -386,6 +390,15 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
             state_for_merge["failure_count"] = metadata.get("failure_count")
 
             merged[sn]["state"] = state_for_merge
+
+            if self.debug_enabled:
+                self._raw_polling_payloads[sn] = {
+                    "fetched_at": now_dt.isoformat(),
+                    "device_list_item": copy.deepcopy(device),
+                    "dynamic_info": None,
+                    "error": str(err) if err is not None else None,
+                    "devices_list_raw": self._raw_devices_payload,
+                }
 
         for sn, item in merged.items():
             state = item.get("state")
