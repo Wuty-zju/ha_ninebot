@@ -18,6 +18,29 @@ from .exceptions import NinebotApiError, NinebotAuthError, NinebotConnectionErro
 _LOGGER = logging.getLogger(__name__)
 
 
+def _first_present(*values: Any) -> Any:
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _normalize_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return int(text)
+        except ValueError:
+            return None
+    return None
+
+
 class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     """Coordinator that aggregates all devices and state in one polling run."""
 
@@ -71,14 +94,39 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
             except NinebotApiError as err:
                 raise UpdateFailed(f"Ninebot API error: {err}") from err
 
+            location = state.get("locationInfo")
+            if not isinstance(location, dict):
+                location = {}
+
+            normalized_state = {
+                "battery": _normalize_int(_first_present(state.get("battery"), state.get("dumpEnergy"))),
+                "status": _normalize_int(_first_present(state.get("status"), state.get("powerStatus"))),
+                "chargingState": _normalize_int(state.get("chargingState")),
+                "pwr": _normalize_int(state.get("pwr")),
+                "gsm": _normalize_int(state.get("gsm")),
+                "estimateMileage": _first_present(state.get("estimateMileage"), state.get("mileage")),
+                "remainChargeTime": state.get("remainChargeTime"),
+                "gsmTime": _normalize_int(state.get("gsmTime")),
+                "locationInfo": location,
+            }
+
+            device_name = str(
+                _first_present(
+                    device.get("deviceName"),
+                    device.get("name"),
+                    state.get("deviceName"),
+                    sn,
+                )
+            )
+
             merged[sn] = {
                 "device": {
                     "sn": sn,
-                    "deviceName": device.get("deviceName") or sn,
-                    "img": device.get("img"),
+                    "device_name": device_name,
+                    "img": _first_present(device.get("img"), state.get("img")),
                     "model": device.get("model") or device.get("productName") or "",
                 },
-                "state": state,
+                "state": normalized_state,
             }
 
         return merged

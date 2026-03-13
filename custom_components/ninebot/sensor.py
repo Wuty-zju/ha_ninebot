@@ -10,6 +10,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfLength
@@ -17,40 +18,63 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import DATA_COORDINATOR, DOMAIN
+from .const import DATA_COORDINATOR, DOMAIN, STATUS_LOCKED, STATUS_UNLOCKED
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
 
 
-def _raw_text(value: Any) -> str | None:
-    if value is None:
+def _as_text(value: Any) -> str | None:
+    if value is None or value == "":
         return None
     return str(value)
 
 
+def _as_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return int(text)
+        except ValueError:
+            return None
+    return None
+
+
 def _rssi_dbm_from_csq(value: Any) -> int | None:
-    if not isinstance(value, int):
+    csq = _as_int(value)
+    if csq is None:
         return None
-    if value < 0 or value > 31:
+    if csq < 0 or csq > 31:
         return None
-    return -113 + (2 * value)
+    return -113 + (2 * csq)
 
 
 def _location_desc(state: dict[str, Any]) -> str | None:
     location = state.get("locationInfo")
     if isinstance(location, dict):
         desc = location.get("locationDesc")
-        if desc is None:
-            return None
-        return str(desc)
+        return _as_text(desc)
     return None
 
 
-def _report_time_local(state: dict[str, Any]) -> datetime | None:
+def _report_time_utc(state: dict[str, Any]) -> datetime | None:
     ts = state.get("gsmTime")
-    if isinstance(ts, (int, float)):
-        utc_dt = dt_util.utc_from_timestamp(float(ts))
-        return dt_util.as_local(utc_dt)
+    if isinstance(ts, (int, float)) and ts > 0:
+        return dt_util.utc_from_timestamp(float(ts))
+    return None
+
+
+def _vehicle_lock_raw_text(value: Any) -> str | None:
+    status = _as_int(value)
+    if status == STATUS_LOCKED:
+        return "上锁"
+    if status == STATUS_UNLOCKED:
+        return "已解锁"
     return None
 
 
@@ -58,7 +82,7 @@ def _report_time_local(state: dict[str, Any]) -> datetime | None:
 class NinebotSensorDescription(SensorEntityDescription):
     """Describes Ninebot sensor entity behavior."""
 
-    value_fn: Callable[[dict[str, Any]], Any]
+    value_fn: Callable[[dict[str, Any], dict[str, Any], str], Any]
 
 
 SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
@@ -67,72 +91,74 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         translation_key="battery",
         icon="mdi:battery",
         device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
-        value_fn=lambda state: state.get("dumpEnergy"),
+        value_fn=lambda state, _device, _sn: _as_int(state.get("battery")),
     ),
     NinebotSensorDescription(
         key="device_name",
         translation_key="device_name",
-        icon="mdi:rename-box",
-        value_fn=lambda state: None,
+        icon="mdi:card-text",
+        value_fn=lambda _state, device, _sn: _as_text(device.get("device_name")),
     ),
     NinebotSensorDescription(
         key="sn",
         translation_key="sn",
         icon="mdi:barcode",
-        value_fn=lambda state: None,
+        value_fn=lambda _state, _device, sn: sn,
     ),
     NinebotSensorDescription(
-        key="location_info",
-        translation_key="location_info",
-        icon="mdi:map-marker",
-        value_fn=_location_desc,
+        key="vehicle_lock_raw",
+        translation_key="vehicle_lock_raw",
+        icon="mdi:lock-clock",
+        value_fn=lambda state, _device, _sn: _as_int(state.get("status")),
     ),
     NinebotSensorDescription(
-        key="estimate_mileage",
-        translation_key="estimate_mileage",
-        icon="mdi:map-marker-distance",
-        native_unit_of_measurement=UnitOfLength.KILOMETERS,
-        value_fn=lambda state: state.get("estimateMileage"),
-    ),
-    NinebotSensorDescription(
-        key="remain_charge_time",
-        translation_key="remain_charge_time",
-        icon="mdi:timer-sand",
-        value_fn=lambda state: _raw_text(state.get("remainChargeTime")),
-    ),
-    NinebotSensorDescription(
-        key="gsm_raw",
-        translation_key="gsm_raw",
+        key="gsm_csq",
+        translation_key="gsm_csq",
         icon="mdi:signal",
-        value_fn=lambda state: _raw_text(state.get("gsm")),
+        value_fn=lambda state, _device, _sn: _as_int(state.get("gsm")),
     ),
     NinebotSensorDescription(
-        key="rssi",
-        translation_key="rssi",
+        key="gsm_rssi",
+        translation_key="gsm_rssi",
         icon="mdi:wifi",
-        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="dBm",
-        value_fn=lambda state: _rssi_dbm_from_csq(state.get("gsm")),
+        value_fn=lambda state, _device, _sn: _rssi_dbm_from_csq(state.get("gsm")),
     ),
     NinebotSensorDescription(
-        key="status_raw",
-        translation_key="status_raw",
-        icon="mdi:scooter",
-        value_fn=lambda state: _raw_text(state.get("powerStatus")),
+        key="remaining_range",
+        translation_key="remaining_range",
+        icon="mdi:map-marker-distance",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        value_fn=lambda state, _device, _sn: state.get("estimateMileage"),
     ),
     NinebotSensorDescription(
-        key="gsm_time_raw",
-        translation_key="gsm_time_raw",
+        key="remaining_charge_time",
+        translation_key="remaining_charge_time",
+        icon="mdi:timer-sand",
+        value_fn=lambda state, _device, _sn: _as_text(state.get("remainChargeTime")),
+    ),
+    NinebotSensorDescription(
+        key="gsm_report_timestamp",
+        translation_key="gsm_report_timestamp",
         icon="mdi:clock-outline",
-        value_fn=lambda state: _raw_text(state.get("gsmTime")),
+        value_fn=lambda state, _device, _sn: _as_int(state.get("gsmTime")),
     ),
     NinebotSensorDescription(
-        key="report_time",
-        translation_key="report_time",
+        key="gsm_report_time",
+        translation_key="gsm_report_time",
         icon="mdi:clock-check-outline",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=_report_time_local,
+        value_fn=lambda state, _device, _sn: _report_time_utc(state),
+    ),
+    NinebotSensorDescription(
+        key="location",
+        translation_key="location",
+        icon="mdi:map-marker",
+        value_fn=lambda state, _device, _sn: _location_desc(state),
     ),
 )
 
@@ -167,17 +193,19 @@ class NinebotSensor(NinebotCoordinatorEntity, SensorEntity):
         super().__init__(coordinator, sn)
         self.entity_description = description
         self._attr_has_entity_name = True
-        self._attr_unique_id = f"{sn}_{description.key}"
-        self._attr_object_id = f"ninebot_{sn}_{description.key}".lower()
-
-    @property
-    def name(self) -> str | None:
-        return self.entity_description.name
+        self._attr_unique_id = self._build_unique_id("sensor", description.key)
+        self._attr_suggested_object_id = self._build_object_id(description.key)
 
     @property
     def native_value(self) -> Any:
-        if self.entity_description.key == "device_name":
-            return self._device.get("deviceName")
-        if self.entity_description.key == "sn":
-            return self._sn
-        return self.entity_description.value_fn(self._state)
+        return self.entity_description.value_fn(self._state, self._device, self._sn)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        if self.entity_description.key != "vehicle_lock_raw":
+            return None
+
+        status = _as_int(self._state.get("status"))
+        return {
+            "status_text": _vehicle_lock_raw_text(status),
+        }

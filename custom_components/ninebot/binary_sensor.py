@@ -14,7 +14,16 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DATA_COORDINATOR, DOMAIN
+from .const import (
+    CHARGING_OFF,
+    CHARGING_ON,
+    DATA_COORDINATOR,
+    DOMAIN,
+    MAIN_POWER_OFF,
+    MAIN_POWER_ON,
+    STATUS_LOCKED,
+    STATUS_UNLOCKED,
+)
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
 
@@ -28,25 +37,25 @@ class NinebotBinaryDescription(BinarySensorEntityDescription):
 
 BINARY_DESCRIPTIONS: tuple[NinebotBinaryDescription, ...] = (
     NinebotBinaryDescription(
-        key="charging_state",
-        translation_key="charging_state",
+        key="charging",
+        translation_key="charging",
         icon="mdi:battery-charging",
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
-        value_fn=lambda state: True if state.get("chargingState") == 1 else False if state.get("chargingState") == 0 else None,
+        value_fn=lambda state: True if state.get("chargingState") == CHARGING_ON else False if state.get("chargingState") == CHARGING_OFF else None,
     ),
     NinebotBinaryDescription(
-        key="main_power_status",
-        translation_key="main_power_status",
+        key="main_power",
+        translation_key="main_power",
         icon="mdi:power-plug",
         device_class=BinarySensorDeviceClass.POWER,
-        value_fn=lambda state: True if state.get("pwr") == 1 else False if state.get("pwr") == 0 else None,
+        value_fn=lambda state: True if state.get("pwr") == MAIN_POWER_ON else False if state.get("pwr") == MAIN_POWER_OFF else None,
     ),
     NinebotBinaryDescription(
         key="vehicle_lock",
-        translation_key="vehicle_lock_binary",
+        translation_key="vehicle_lock",
         icon="mdi:lock",
         device_class=BinarySensorDeviceClass.LOCK,
-        value_fn=lambda state: True if state.get("powerStatus") == 0 else False if state.get("powerStatus") == 1 else None,
+        value_fn=lambda state: True if state.get("status") == STATUS_LOCKED else False if state.get("status") == STATUS_UNLOCKED else None,
     ),
 )
 
@@ -79,9 +88,27 @@ class NinebotBinarySensor(NinebotCoordinatorEntity, BinarySensorEntity):
     ) -> None:
         super().__init__(coordinator, sn)
         self.entity_description = description
-        self._attr_unique_id = f"{sn}_{description.key}"
-        self._attr_object_id = f"ninebot_{sn}_{description.key}".lower()
+        self._attr_unique_id = self._build_unique_id("binary_sensor", description.key)
+        self._attr_suggested_object_id = self._build_object_id(description.key)
 
     @property
     def is_on(self) -> bool | None:
         return self.entity_description.value_fn(self._state)
+
+    @property
+    def icon(self) -> str | None:
+        key = self.entity_description.key
+        value = self.is_on
+        if key == "vehicle_lock":
+            if value is None:
+                return "mdi:lock"
+            return "mdi:lock" if value else "mdi:lock-open-variant"
+        if key == "charging":
+            if value is None:
+                return "mdi:battery"
+            return "mdi:battery-charging" if value else "mdi:battery"
+        if key == "main_power":
+            if value is None:
+                return "mdi:power-plug"
+            return "mdi:power-plug" if value else "mdi:power-plug-off"
+        return self.entity_description.icon

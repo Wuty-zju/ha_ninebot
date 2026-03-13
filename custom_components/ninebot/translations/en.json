@@ -27,58 +27,58 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Main battery level"
+        "name": "Main Battery Level"
       },
       "device_name": {
-        "name": "Vehicle name"
+        "name": "Vehicle Name"
       },
       "sn": {
-        "name": "SN code"
+        "name": "Serial Number"
       },
-      "location_info": {
-        "name": "Vehicle location"
+      "vehicle_lock_raw": {
+        "name": "Vehicle Lock Raw State"
       },
-      "estimate_mileage": {
-        "name": "Remaining range"
+      "gsm_csq": {
+        "name": "GSM Signal Strength (CSQ)"
       },
-      "remain_charge_time": {
-        "name": "Remaining charging time"
+      "gsm_rssi": {
+        "name": "GSM Signal Strength (RSSI)"
       },
-      "gsm_raw": {
-        "name": "GSM signal strength (CSQ)"
+      "remaining_range": {
+        "name": "Remaining Range"
       },
-      "rssi": {
-        "name": "GSM signal strength (RSSI)"
+      "remaining_charge_time": {
+        "name": "Remaining Charge Time"
       },
-      "status_raw": {
-        "name": "Lock status raw"
+      "gsm_report_timestamp": {
+        "name": "GSM Report Timestamp"
       },
-      "gsm_time_raw": {
-        "name": "GSM report timestamp"
+      "gsm_report_time": {
+        "name": "GSM Report Time"
       },
-      "report_time": {
-        "name": "GSM report time"
+      "location": {
+        "name": "Vehicle Location"
       }
     },
     "binary_sensor": {
-      "charging_state": {
-        "name": "Charging status"
+      "vehicle_lock": {
+        "name": "Vehicle Lock"
       },
-      "main_power_status": {
-        "name": "Main power status"
+      "charging": {
+        "name": "Charging Status"
       },
-      "vehicle_lock_binary": {
-        "name": "Vehicle lock"
+      "main_power": {
+        "name": "Main Power Status"
       }
     },
     "lock": {
-      "vehicle_lock": {
-        "name": "Vehicle lock"
+      "vehicle_lock_control": {
+        "name": "Vehicle Lock"
       }
     },
     "image": {
       "vehicle_image": {
-        "name": "Vehicle image"
+        "name": "Vehicle Image"
       }
     }
   }

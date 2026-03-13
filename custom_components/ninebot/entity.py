@@ -36,7 +36,7 @@ class NinebotCoordinatorEntity(CoordinatorEntity[NinebotDataUpdateCoordinator]):
 
     @property
     def device_info(self) -> DeviceInfo:
-        name = str(self._device.get("deviceName") or self._sn)
+        name = str(self._device.get("device_name") or self._sn)
         model = str(self._device.get("model") or "Ninebot Vehicle")
         return DeviceInfo(
             identifiers={(DOMAIN, self._sn)},
@@ -44,3 +44,9 @@ class NinebotCoordinatorEntity(CoordinatorEntity[NinebotDataUpdateCoordinator]):
             manufacturer=MANUFACTURER,
             model=model,
         )
+
+    def _build_unique_id(self, platform: str, entity_key: str) -> str:
+        return f"{platform}.ninebot_{self._sn}_{entity_key}".lower()
+
+    def _build_object_id(self, entity_key: str) -> str:
+        return f"ninebot_{self._sn}_{entity_key}".lower()

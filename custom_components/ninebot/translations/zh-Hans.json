@@ -35,44 +35,44 @@
       "sn": {
         "name": "SN码"
       },
-      "location_info": {
-        "name": "车辆位置"
+      "vehicle_lock_raw": {
+        "name": "车辆锁原始状态"
       },
-      "estimate_mileage": {
-        "name": "剩余里程"
-      },
-      "remain_charge_time": {
-        "name": "充电剩余时间"
-      },
-      "gsm_raw": {
+      "gsm_csq": {
         "name": "GSM信号强度（CSQ）"
       },
-      "rssi": {
+      "gsm_rssi": {
         "name": "GSM信号强度（RSSI）"
       },
-      "status_raw": {
-        "name": "车辆锁原始值"
+      "remaining_range": {
+        "name": "剩余里程"
       },
-      "gsm_time_raw": {
+      "remaining_charge_time": {
+        "name": "充电剩余时间"
+      },
+      "gsm_report_timestamp": {
         "name": "GSM上报时间戳"
       },
-      "report_time": {
+      "gsm_report_time": {
         "name": "GSM上报时间"
+      },
+      "location": {
+        "name": "车辆位置"
       }
     },
     "binary_sensor": {
-      "charging_state": {
+      "vehicle_lock": {
+        "name": "车辆锁"
+      },
+      "charging": {
         "name": "充电状态"
       },
-      "main_power_status": {
+      "main_power": {
         "name": "主电源状态"
-      },
-      "vehicle_lock_binary": {
-        "name": "车辆锁"
       }
     },
     "lock": {
-      "vehicle_lock": {
+      "vehicle_lock_control": {
         "name": "车辆锁"
       }
     },

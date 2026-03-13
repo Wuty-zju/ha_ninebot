@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections import deque
 import logging
+from secrets import token_hex
 
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
@@ -33,7 +35,7 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
     """Vehicle image entity loaded from Ninebot device img URL."""
 
     _attr_translation_key = "vehicle_image"
-    _attr_icon = "mdi:image-outline"
+    _attr_icon = "mdi:image"
     _attr_has_entity_name = True
 
     def __init__(
@@ -46,9 +48,12 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
         ImageEntity.__init__(self, hass)
         NinebotCoordinatorEntity.__init__(self, coordinator, sn)
         self._session = session
-        self._attr_unique_id = f"{sn}_vehicle_image"
-        self._attr_object_id = f"ninebot_{sn}_vehicle_image".lower()
+        self._attr_unique_id = self._build_unique_id("image", "vehicle_image")
+        self._attr_suggested_object_id = self._build_object_id("vehicle_image")
         self._attr_content_type = "image/png"
+        # Defensive fallback for older/newer core behaviors where ImageEntity init chain differs.
+        if not hasattr(self, "access_tokens"):
+            self.access_tokens = deque([token_hex(16)], maxlen=2)
 
     @property
     def image_url(self) -> str | None:
