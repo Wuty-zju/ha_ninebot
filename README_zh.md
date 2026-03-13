@@ -108,7 +108,7 @@
 
 ## 发布与更新
 
-当前发布目标版本：v1.0.0。
+当前发布目标版本：v1.0.1。
 
 推荐发布流程：
 
@@ -117,8 +117,8 @@
 3. 创建并推送同版本 tag，例如：
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
 4. 在 GitHub Release 页面发布对应版本说明

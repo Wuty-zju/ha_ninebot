@@ -118,7 +118,7 @@ Key mechanisms:
 
 ## Release and Update
 
-Current release target: v1.0.0.
+Current release target: v1.0.1.
 
 Recommended flow:
 
@@ -127,8 +127,8 @@ Recommended flow:
 3. Create and push matching tag, for example:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
 4. Create GitHub Release notes for that tag
