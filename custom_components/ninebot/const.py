@@ -39,3 +39,45 @@ CHARGING_OFF: Final = 0
 
 MAIN_POWER_ON: Final = 1
 MAIN_POWER_OFF: Final = 0
+
+SENSOR_KEYS: Final[tuple[str, ...]] = (
+	"battery",
+	"device_name",
+	"sn",
+	"vehicle_lock_raw",
+	"gsm_csq",
+	"gsm_rssi",
+	"remaining_range",
+	"remaining_charge_time",
+	"gsm_report_timestamp",
+	"gsm_report_time",
+	"location",
+)
+
+BINARY_SENSOR_KEYS: Final[tuple[str, ...]] = (
+	"vehicle_lock",
+	"charging",
+	"main_power",
+)
+
+IMAGE_KEYS: Final[tuple[str, ...]] = (
+	"vehicle_image",
+)
+
+LOCK_KEYS: Final[tuple[str, ...]] = (
+	"vehicle_lock_control",
+)
+
+
+def status_to_locked(status: int | None) -> bool | None:
+	"""Convert Ninebot status to lock state.
+
+	Self-check mapping contract:
+	- status=0 -> locked=True
+	- status=1 -> locked=False
+	"""
+	if status == STATUS_LOCKED:
+		return True
+	if status == STATUS_UNLOCKED:
+		return False
+	return None

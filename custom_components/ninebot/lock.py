@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DATA_COORDINATOR, DOMAIN, STATUS_LOCKED
+from .const import DATA_COORDINATOR, DOMAIN, status_to_locked
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
 
@@ -33,7 +33,7 @@ class NinebotVehicleLock(NinebotCoordinatorEntity, LockEntity):
 
     def __init__(self, coordinator: NinebotDataUpdateCoordinator, sn: str) -> None:
         super().__init__(coordinator, sn)
-        self._attr_unique_id = self._build_unique_id("lock", "vehicle_lock_control")
+        self._attr_unique_id = self._build_unique_id("vehicle_lock_control")
         self._attr_suggested_object_id = self._build_object_id("vehicle_lock_control")
 
     @property
@@ -41,7 +41,7 @@ class NinebotVehicleLock(NinebotCoordinatorEntity, LockEntity):
         value = self._state.get("status")
         if not isinstance(value, int):
             return None
-        return value == STATUS_LOCKED
+        return status_to_locked(value)
 
     @property
     def icon(self) -> str | None:

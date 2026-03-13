@@ -48,7 +48,7 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
         ImageEntity.__init__(self, hass)
         NinebotCoordinatorEntity.__init__(self, coordinator, sn)
         self._session = session
-        self._attr_unique_id = self._build_unique_id("image", "vehicle_image")
+        self._attr_unique_id = self._build_unique_id("vehicle_image")
         self._attr_suggested_object_id = self._build_object_id("vehicle_image")
         self._attr_content_type = "image/png"
         # Defensive fallback for older/newer core behaviors where ImageEntity init chain differs.

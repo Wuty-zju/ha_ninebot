@@ -66,3 +66,13 @@ After that, HACS will detect the update.
 
 - Integration code: custom_components/ninebot
 - HACS metadata: hacs.json
+
+## Release Notes
+
+### v0.5.1
+
+- Fully corrected entity naming to deterministic IDs based on SN.
+- Fully corrected vehicle lock status mapping (status=0 locked, status=1 unlocked).
+- Removed legacy slug/suffixed entity naming residues.
+- Kept only required entities and unified bilingual default names.
+- Fixed lock status display inconsistency in frontend.

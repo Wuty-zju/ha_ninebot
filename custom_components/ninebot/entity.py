@@ -45,8 +45,8 @@ class NinebotCoordinatorEntity(CoordinatorEntity[NinebotDataUpdateCoordinator]):
             model=model,
         )
 
-    def _build_unique_id(self, platform: str, entity_key: str) -> str:
-        return f"{platform}.ninebot_{self._sn}_{entity_key}".lower()
+    def _build_unique_id(self, entity_key: str) -> str:
+        return f"ninebot_{self._sn}_{entity_key}".lower()
 
     def _build_object_id(self, entity_key: str) -> str:
         return f"ninebot_{self._sn}_{entity_key}".lower()

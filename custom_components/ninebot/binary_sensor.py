@@ -21,8 +21,7 @@ from .const import (
     DOMAIN,
     MAIN_POWER_OFF,
     MAIN_POWER_ON,
-    STATUS_LOCKED,
-    STATUS_UNLOCKED,
+    status_to_locked,
 )
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
@@ -55,7 +54,8 @@ BINARY_DESCRIPTIONS: tuple[NinebotBinaryDescription, ...] = (
         translation_key="vehicle_lock",
         icon="mdi:lock",
         device_class=BinarySensorDeviceClass.LOCK,
-        value_fn=lambda state: True if state.get("status") == STATUS_LOCKED else False if state.get("status") == STATUS_UNLOCKED else None,
+        # Core contract: status=0 -> locked(True), status=1 -> unlocked(False).
+        value_fn=lambda state: status_to_locked(state.get("status")),
     ),
 )
 
@@ -88,7 +88,7 @@ class NinebotBinarySensor(NinebotCoordinatorEntity, BinarySensorEntity):
     ) -> None:
         super().__init__(coordinator, sn)
         self.entity_description = description
-        self._attr_unique_id = self._build_unique_id("binary_sensor", description.key)
+        self._attr_unique_id = self._build_unique_id(description.key)
         self._attr_suggested_object_id = self._build_object_id(description.key)
 
     @property

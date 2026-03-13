@@ -193,7 +193,7 @@ class NinebotSensor(NinebotCoordinatorEntity, SensorEntity):
         super().__init__(coordinator, sn)
         self.entity_description = description
         self._attr_has_entity_name = True
-        self._attr_unique_id = self._build_unique_id("sensor", description.key)
+        self._attr_unique_id = self._build_unique_id(description.key)
         self._attr_suggested_object_id = self._build_object_id(description.key)
 
     @property
@@ -208,4 +208,5 @@ class NinebotSensor(NinebotCoordinatorEntity, SensorEntity):
         status = _as_int(self._state.get("status"))
         return {
             "status_text": _vehicle_lock_raw_text(status),
+            "status_text_en": "Locked" if status == STATUS_LOCKED else "Unlocked" if status == STATUS_UNLOCKED else None,
         }
