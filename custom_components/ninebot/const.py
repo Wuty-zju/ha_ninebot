@@ -93,7 +93,7 @@ NUMBER_KEYS: Final[tuple[str, ...]] = (
 )
 
 BUTTON_KEYS: Final[tuple[str, ...]] = (
-	"polling_raw_json_info",
+	"info",
 )
 
 

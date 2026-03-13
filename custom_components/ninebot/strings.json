@@ -150,8 +150,8 @@
       }
     },
     "button": {
-      "polling_raw_json_info": {
-        "name": "Polling Raw JSON Info"
+      "info": {
+        "name": "Info"
       }
     },
     "number": {

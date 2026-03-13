@@ -5,9 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.components.button import ButtonDeviceClass, ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DATA_COORDINATOR, DOMAIN
@@ -22,9 +23,10 @@ class NinebotButtonDescription(ButtonEntityDescription):
 
 BUTTON_DESCRIPTIONS: tuple[NinebotButtonDescription, ...] = (
     NinebotButtonDescription(
-        key="polling_raw_json_info",
-        translation_key="polling_raw_json_info",
-        icon="mdi:code-json",
+        key="info",
+        translation_key="info",
+        icon="mdi:information",
+        device_class=ButtonDeviceClass.UPDATE,
     ),
 )
 
@@ -53,6 +55,7 @@ class NinebotDebugButton(NinebotCoordinatorEntity, ButtonEntity):
 
     entity_description: NinebotButtonDescription
     _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
         self,
@@ -71,10 +74,12 @@ class NinebotDebugButton(NinebotCoordinatorEntity, ButtonEntity):
         if payload is None:
             return {
                 "debug_enabled": self.coordinator.debug_enabled,
+                "updated_at": None,
                 "message": "No raw payload yet, wait for next polling cycle.",
             }
         return {
             "debug_enabled": self.coordinator.debug_enabled,
+            "updated_at": payload.get("fetched_at"),
             "raw_polling_payload": payload,
         }
 

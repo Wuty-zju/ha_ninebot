@@ -150,8 +150,8 @@
       }
     },
     "button": {
-      "polling_raw_json_info": {
-        "name": "轮询原始JSON信息"
+      "info": {
+        "name": "信息"
       }
     },
     "number": {
