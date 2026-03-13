@@ -136,43 +136,43 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
     """Handle Ninebot options."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
+        self._entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            username = str(user_input.get(CONF_USERNAME, self.config_entry.data.get(CONF_USERNAME, ""))).strip()
-            password = str(user_input.get(CONF_PASSWORD, self.config_entry.data.get(CONF_PASSWORD, "")))
+            username = str(user_input.get(CONF_USERNAME, self._entry.data.get(CONF_USERNAME, ""))).strip()
+            password = str(user_input.get(CONF_PASSWORD, self._entry.data.get(CONF_PASSWORD, "")))
 
             normalized = {
                 CONF_USERNAME: username,
                 CONF_PASSWORD: password,
                 CONF_LANG: user_input.get(
                     CONF_LANG,
-                    self.config_entry.options.get(
+                    self._entry.options.get(
                         CONF_LANG,
-                        self.config_entry.data.get(CONF_LANG, DEFAULT_LANG),
+                        self._entry.data.get(CONF_LANG, DEFAULT_LANG),
                     ),
                 ),
                 CONF_DEFAULT_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_DEFAULT_SCAN_INTERVAL, self.config_entry.options.get(CONF_DEFAULT_SCAN_INTERVAL, self.config_entry.data.get(CONF_DEFAULT_SCAN_INTERVAL, self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)))),
+                    user_input.get(CONF_DEFAULT_SCAN_INTERVAL, self._entry.options.get(CONF_DEFAULT_SCAN_INTERVAL, self._entry.data.get(CONF_DEFAULT_SCAN_INTERVAL, self._entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)))),
                     DEFAULT_SCAN_INTERVAL,
                 ),
                 CONF_UNLOCKED_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_UNLOCKED_SCAN_INTERVAL, self.config_entry.options.get(CONF_UNLOCKED_SCAN_INTERVAL, self.config_entry.data.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL))),
+                    user_input.get(CONF_UNLOCKED_SCAN_INTERVAL, self._entry.options.get(CONF_UNLOCKED_SCAN_INTERVAL, self._entry.data.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL))),
                     DEFAULT_UNLOCKED_SCAN_INTERVAL,
                 ),
                 CONF_CHARGING_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_CHARGING_SCAN_INTERVAL, self.config_entry.options.get(CONF_CHARGING_SCAN_INTERVAL, self.config_entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL))),
+                    user_input.get(CONF_CHARGING_SCAN_INTERVAL, self._entry.options.get(CONF_CHARGING_SCAN_INTERVAL, self._entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL))),
                     DEFAULT_CHARGING_SCAN_INTERVAL,
                 ),
                 CONF_DEBUG: bool(
                     user_input.get(
                         CONF_DEBUG,
-                        self.config_entry.options.get(
+                        self._entry.options.get(
                             CONF_DEBUG,
-                            self.config_entry.data.get(CONF_DEBUG, DEFAULT_DEBUG),
+                            self._entry.data.get(CONF_DEBUG, DEFAULT_DEBUG),
                         ),
                     )
                 ),
@@ -198,7 +198,7 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     CONF_DEBUG: normalized[CONF_DEBUG],
                 }
 
-                data = dict(self.config_entry.data)
+                data = dict(self._entry.data)
                 data[CONF_USERNAME] = normalized[CONF_USERNAME]
                 data[CONF_PASSWORD] = normalized[CONF_PASSWORD]
                 data[CONF_LANG] = normalized[CONF_LANG]
@@ -209,56 +209,56 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 data[CONF_CHARGING_SCAN_INTERVAL] = normalized[CONF_CHARGING_SCAN_INTERVAL]
 
                 self.hass.config_entries.async_update_entry(
-                    self.config_entry,
+                    self._entry,
                     data=data,
                     options=options,
                 )
-                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                await self.hass.config_entries.async_reload(self._entry.entry_id)
                 return self.async_create_entry(title="", data=options)
 
         schema = vol.Schema(
             {
                 vol.Required(
                     CONF_USERNAME,
-                    default=self.config_entry.data.get(CONF_USERNAME, ""),
+                    default=self._entry.data.get(CONF_USERNAME, ""),
                 ): str,
                 vol.Required(
                     CONF_PASSWORD,
-                    default=self.config_entry.data.get(CONF_PASSWORD, ""),
+                    default=self._entry.data.get(CONF_PASSWORD, ""),
                 ): str,
                 vol.Optional(
                     CONF_LANG,
-                    default=self.config_entry.options.get(
+                    default=self._entry.options.get(
                         CONF_LANG,
-                        self.config_entry.data.get(CONF_LANG, DEFAULT_LANG),
+                        self._entry.data.get(CONF_LANG, DEFAULT_LANG),
                     ),
                 ): vol.In(["zh", "zh-hant", "en"]),
                 vol.Optional(
                     CONF_DEFAULT_SCAN_INTERVAL,
-                    default=self.config_entry.options.get(
+                    default=self._entry.options.get(
                         CONF_DEFAULT_SCAN_INTERVAL,
-                        self.config_entry.data.get(CONF_DEFAULT_SCAN_INTERVAL, self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                        self._entry.data.get(CONF_DEFAULT_SCAN_INTERVAL, self._entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
                     ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
                 vol.Optional(
                     CONF_UNLOCKED_SCAN_INTERVAL,
-                    default=self.config_entry.options.get(
+                    default=self._entry.options.get(
                         CONF_UNLOCKED_SCAN_INTERVAL,
-                        self.config_entry.data.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL),
+                        self._entry.data.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL),
                     ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
                 vol.Optional(
                     CONF_CHARGING_SCAN_INTERVAL,
-                    default=self.config_entry.options.get(
+                    default=self._entry.options.get(
                         CONF_CHARGING_SCAN_INTERVAL,
-                        self.config_entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
+                        self._entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
                     ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
                 vol.Optional(
                     CONF_DEBUG,
-                    default=self.config_entry.options.get(
+                    default=self._entry.options.get(
                         CONF_DEBUG,
-                        self.config_entry.data.get(CONF_DEBUG, DEFAULT_DEBUG),
+                        self._entry.data.get(CONF_DEBUG, DEFAULT_DEBUG),
                     ),
                 ): bool,
             }
