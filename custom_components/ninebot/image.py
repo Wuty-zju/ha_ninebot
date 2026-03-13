@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from collections import deque
+from datetime import datetime
 import logging
 from secrets import token_hex
+from typing import Any
 
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import DATA_COORDINATOR, DOMAIN
 from .coordinator import NinebotDataUpdateCoordinator
@@ -51,9 +54,47 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
         self._attr_unique_id = self._build_unique_id("vehicle_image")
         self._attr_suggested_object_id = self._build_object_id("vehicle_image")
         self._attr_content_type = "image/png"
+        self._last_image_url: str | None = self.image_url
+        self._last_image_updated: datetime | None = coordinator.last_update_success_time
         # Defensive fallback for older/newer core behaviors where ImageEntity init chain differs.
         if not hasattr(self, "access_tokens"):
             self.access_tokens = deque([token_hex(16)], maxlen=2)
+
+    @property
+    def image_last_updated(self) -> datetime | None:
+        """Expose a stable, timezone-aware update timestamp for HA state."""
+        if self._last_image_updated is not None:
+            return self._last_image_updated
+        return self.coordinator.last_update_success_time
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "image_source": "device.img",
+            "image_url": self.image_url,
+        }
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.image_url is not None
+
+    @property
+    def should_poll(self) -> bool:
+        return False
+
+    def _update_image_timestamp(self) -> None:
+        current_url = self.image_url
+        coordinator_updated = self.coordinator.last_update_success_time or dt_util.utcnow()
+        if current_url != self._last_image_url:
+            self._last_image_url = current_url
+            self._last_image_updated = coordinator_updated
+            return
+        if self._last_image_updated is None:
+            self._last_image_updated = coordinator_updated
+
+    def _handle_coordinator_update(self) -> None:
+        self._update_image_timestamp()
+        super()._handle_coordinator_update()
 
     @property
     def image_url(self) -> str | None:
@@ -63,6 +104,7 @@ class NinebotVehicleImage(NinebotCoordinatorEntity, ImageEntity):
         return None
 
     async def async_image(self) -> bytes | None:
+        self._update_image_timestamp()
         url = self.image_url
         if not url:
             return None
