@@ -7,9 +7,7 @@ on:
     - cron: "0 1 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: read
+permissions: {}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -21,19 +19,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Login to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-      - name: Pull Hassfest Image
-        run: |
-          for i in 1 2 3; do
-            docker pull ghcr.io/home-assistant/hassfest:latest && exit 0
-            echo "Pull failed (attempt $i), retrying in 15s..."
-            sleep 15
-          done
-          echo "Failed to pull ghcr.io/home-assistant/hassfest:latest after retries"
-          exit 1
-
       - name: Hassfest Validation
-        run: |
-          docker run --rm -v "$GITHUB_WORKSPACE:/github/workspace" -w /github/workspace ghcr.io/home-assistant/hassfest:latest
+        uses: home-assistant/actions/hassfest@master
