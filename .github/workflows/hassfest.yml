@@ -20,4 +20,5 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Hassfest Validation
-        uses: home-assistant/actions/hassfest@master
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/github/workspace" ghcr.io/home-assistant/hassfest
