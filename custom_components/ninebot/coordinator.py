@@ -66,6 +66,8 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
         config_entry: ConfigEntry,
         api_client: NinebotApiClient,
     ) -> None:
+        self.config_entry = config_entry
+        self.api_client = api_client
         scan_interval = self._interval_from_entry(
             CONF_DEFAULT_SCAN_INTERVAL,
             default=int(config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
@@ -76,8 +78,6 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
             name=f"{DOMAIN}_{config_entry.entry_id}",
             update_interval=timedelta(seconds=scan_interval),
         )
-        self.config_entry = config_entry
-        self.api_client = api_client
         self.runtime_storage = NinebotRuntimeStorage(hass, config_entry.entry_id)
         self._polling_mode = "default"
 
