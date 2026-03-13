@@ -2,9 +2,5 @@
   "name": "Ninebot",
   "homeassistant": "2024.4.0",
   "hacs": "1.34.0",
-  "domains": [
-    "ninebot"
-  ],
-  "content_in_root": false,
-  "zip_release": false
+  "content_in_root": false
 }
