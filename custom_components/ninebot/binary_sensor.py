@@ -22,10 +22,18 @@ from .const import (
     MAIN_POWER_OFF,
     MAIN_POWER_ON,
     lock_status_from_state,
-    status_to_locked,
 )
 from .coordinator import NinebotDataUpdateCoordinator
 from .entity import NinebotCoordinatorEntity
+
+
+def _vehicle_lock_binary_value(state: dict[str, Any]) -> bool | None:
+    raw = lock_status_from_state(state)
+    if raw == 0:
+        return False
+    if raw == 1:
+        return True
+    return None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -55,8 +63,9 @@ BINARY_DESCRIPTIONS: tuple[NinebotBinaryDescription, ...] = (
         translation_key="vehicle_lock",
         icon="mdi:lock",
         device_class=BinarySensorDeviceClass.LOCK,
-        # Uses vehicle_lock_raw numeric contract: 0=locked, 1=unlocked.
-        value_fn=lambda state: status_to_locked(lock_status_from_state(state)),
+        # Inverted per current HA expectation for this binary sensor:
+        # 0 -> off, 1 -> on.
+        value_fn=_vehicle_lock_binary_value,
     ),
 )
 
@@ -103,7 +112,7 @@ class NinebotBinarySensor(NinebotCoordinatorEntity, BinarySensorEntity):
         if key == "vehicle_lock":
             if value is None:
                 return "mdi:lock"
-            return "mdi:lock" if value else "mdi:lock-open-variant"
+            return "mdi:lock-open-variant" if value else "mdi:lock"
         if key == "charging":
             if value is None:
                 return "mdi:battery"
