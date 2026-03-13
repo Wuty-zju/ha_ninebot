@@ -1,5 +1,7 @@
 # Ninebot Integration for Home Assistant
 
+![Ninebot Logo](https://oms-oss-public.ninebot.com/website/npm/resource/doc/logo.png)
+
 [![version](https://img.shields.io/github/manifest-json/v/Wuty-zju/ha_ninebot?filename=custom_components%2Fninebot%2Fmanifest.json)](https://github.com/Wuty-zju/ha_ninebot/releases/latest)
 [![releases](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/total)](https://github.com/Wuty-zju/ha_ninebot/releases)
 [![stars](https://img.shields.io/github/stars/Wuty-zju/ha_ninebot)](https://github.com/Wuty-zju/ha_ninebot/stargazers)
@@ -8,107 +10,137 @@
 
 [English](./README.md) | [简体中文](./README_zh.md)
 
-Ninebot is a Home Assistant custom integration for Segway-Ninebot cloud vehicles.
+A custom integration to connect Ninebot cloud devices into Home Assistant.
 
 Maintainer: Wuty-zju
 
 ## HACS Listing Status
 
-This repository is currently released for HACS Custom Repository installation.
+This repository is available via HACS Custom Repository.
 
 It is not listed in HACS Default yet.
 
-Before default inclusion, users must add this repository manually in HACS Custom repositories.
+## Integration Description
 
-After all required checks pass, a PR will be submitted to `hacs/default`.
-Only after that inclusion can users install by searching directly in HACS store without adding custom repository.
+This integration provides vehicle-focused entities for Ninebot cloud devices, including:
+
+- Main battery level and remaining range
+- Vehicle lock state (read-only lock + binary lock state)
+- Charging status and main power status
+- GSM signal metrics (CSQ and converted RSSI)
+- Vehicle location, report timestamp/time, SN, name, and vehicle image
 
 ## Requirements
 
 - Home Assistant Core >= 2024.4.0
 
-## Install via HACS
+## Installation
 
-### Chinese Steps
+### Method 1: HACS (recommended)
 
-1. 打开 Home Assistant
-2. 打开 HACS -> Integrations
-3. 打开右上角三点菜单 -> Custom repositories
-4. 添加仓库地址: https://github.com/Wuty-zju/ha_ninebot
-5. 类型选择 Integration
-6. 搜索 Ninebot
-7. 点击 Download
-8. 重启 Home Assistant
-9. 打开 设置 -> 设备与服务 -> 添加集成
-10. 搜索 Ninebot
-11. 完成配置
+One-click install:
 
-### English Steps
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
 
-1. Open Home Assistant
-2. Open HACS -> Integrations
-3. Open the three-dot menu -> Custom repositories
-4. Add repository URL: https://github.com/Wuty-zju/ha_ninebot
-5. Select category: Integration
-6. Search for Ninebot
-7. Click Download
-8. Restart Home Assistant
-9. Go to Settings -> Devices & Services -> Add Integration
-10. Search for Ninebot
-11. Complete setup
+Or add manually in HACS:
 
-## Manual Installation
+1. Open Home Assistant -> HACS -> Integrations
+2. Open menu (three dots) -> Custom repositories
+3. Repository URL: https://github.com/Wuty-zju/ha_ninebot
+4. Category: Integration
+5. Search Ninebot and click Download
+6. Restart Home Assistant
+7. Go to Settings -> Devices & Services -> Add Integration -> Ninebot
 
-1. Copy `custom_components/ninebot` into your Home Assistant `config/custom_components` directory.
-2. Restart Home Assistant.
-3. Go to Settings -> Devices & Services -> Add Integration.
-4. Search and add Ninebot.
+### Method 2: Manual copy
 
-## Configuration Notes
+1. Copy custom_components/ninebot into your Home Assistant config/custom_components directory
+2. Restart Home Assistant
+3. Add integration from UI
 
-- Multiple accounts are supported.
-- Per-device scheduler and cache fallback are enabled.
-- Vehicle lock semantics are unified:
-  - raw `status=0` means locked
-  - raw `status=1` means unlocked
+## Quick Start
 
-## Release / Version
+1. Add integration: Settings -> Devices & Services -> Add Integration -> Ninebot
+2. Enter account and password
+3. Choose language and polling options
+4. Save and wait for first sync
 
-Current release target: `v0.9.5`.
+Multiple accounts are supported. Each account creates one config entry and one coordinator instance.
 
-Please install the latest version from:
+## Configuration Options
 
-- GitHub Releases: https://github.com/Wuty-zju/ha_ninebot/releases
-- HACS (custom repository mode before default inclusion)
+All options are available in initial setup and in options flow later.
 
-Tag and release should match the same version number.
+- default_scan_interval (seconds, default 60): normal polling interval per vehicle
+- unlocked_scan_interval (seconds, default 3): polling interval when one vehicle is unlocked
+- charging_scan_interval (seconds, default 30): polling interval when one vehicle is charging
+- token_refresh_interval_hours (hours, default 24): forced token check/refresh cycle
+- device_list_refresh_interval_hours (hours, default 24): device list refresh cycle
+- max_device_info_concurrency (default 3): max concurrent device dynamic info requests
+- device_info_failure_tolerance (default 3): allowed consecutive failures before marking one vehicle unavailable
+- debug (default off): enables extra diagnostics in memory only
 
-## Repository Metadata Suggestions
+## Canonical Entity Contract
 
-For better discoverability and HACS readiness:
+Recommended entity identifier format:
 
-- Set GitHub repository description
-- Set GitHub repository topics (for example: `home-assistant`, `hacs`, `ninebot`)
-- Keep formal GitHub Releases updated for each version
+`<domain>.ninebot_<vehicle_sn_lower>_<english_entity_name>`
 
-## HACS Default Preparation (Next Phase)
+Example:
 
-The following must be ready before submitting to `hacs/default`:
+- `sensor.ninebot_2pde42522j0242_battery`
+- `binary_sensor.ninebot_2pde42522j0242_vehicle_lock`
 
-- HACS Action passes
-- Hassfest passes
-- Repository is public
-- Formal GitHub Release `v0.9.5` exists
-- PR submitted by repository owner or major contributor
-- Integration entry added in `hacs/default` list
-- Brand icon exists at `custom_components/ninebot/brand/icon.png`
+Status semantic rules:
+
+- Raw status=0 means locked, status=1 means unlocked
+- In binary locked sensor, use inverted boolean for locked semantics
+- Read-only lock entity mirrors status and must not send lock/unlock commands
+
+## Architecture
+
+Implementation mapping:
+
+- custom_components/ninebot/api.py: auth cache, device list cache, async multi-device fetch
+- custom_components/ninebot/coordinator.py: per-vehicle scheduler, boost policy, failure fallback orchestration
+- custom_components/ninebot/storage.py: persistent account/runtime data and migration-safe Store layer
+- custom_components/ninebot/config_flow.py: setup/options for polling, cache, concurrency, tolerance
+- custom_components/ninebot/const.py: option keys/defaults and polling constants
+
+Key mechanisms:
+
+- Token cache with periodic refresh and re-login fallback
+- Device list cache with periodic refresh and error-triggered force refresh
+- Persistent Store for account/runtime data, while debug payload stays memory-only
+- Async concurrent per-vehicle requests with semaphore limit
+- Per-vehicle scheduler with unlocked/charging/default interval priority
+- Failure tolerance with cache fallback before availability degradation
+
+## Release and Update
+
+Current release target: v1.0.0.
+
+Recommended flow:
+
+1. Bump version in custom_components/ninebot/manifest.json
+2. Commit and push to main
+3. Create and push matching tag, for example:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+4. Create GitHub Release notes for that tag
+
+HACS detects updates from tags/releases.
 
 ## Repository Layout
 
-- Integration code: `custom_components/ninebot`
-- HACS metadata: `hacs.json`
+- Integration code: custom_components/ninebot
+- HACS metadata: hacs.json
 
 ## Links
 
-- Chinese README: `README_zh.md`
-- Issue tracker: https://github.com/Wuty-zju/ha_ninebot/issues
+- Chinese README: README_zh.md
+- Issues: https://github.com/Wuty-zju/ha_ninebot/issues
