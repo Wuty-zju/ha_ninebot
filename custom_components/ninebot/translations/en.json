@@ -9,7 +9,20 @@
           "username": "Username",
           "password": "Password",
           "lang": "Language",
-          "scan_interval": "Scan interval (seconds)",
+          "default_scan_interval": "Default scan interval (seconds)",
+          "unlocked_scan_interval": "Unlocked scan interval (seconds)",
+          "charging_scan_interval": "Charging scan interval (seconds)",
+          "debug": "Enable debug logs"
+        }
+      },
+      "init": {
+        "title": "Ninebot options",
+        "description": "Adjust language, polling strategy and debug settings.",
+        "data": {
+          "lang": "Language",
+          "default_scan_interval": "Default scan interval (seconds)",
+          "unlocked_scan_interval": "Unlocked scan interval (seconds)",
+          "charging_scan_interval": "Charging scan interval (seconds)",
           "debug": "Enable debug logs"
         }
       }
@@ -58,6 +71,36 @@
       },
       "location": {
         "name": "Vehicle Location"
+      },
+      "battery_nominal_energy": {
+        "name": "Main Battery Nominal Energy"
+      },
+      "battery_energy_delta": {
+        "name": "Main Battery Energy Delta"
+      },
+      "battery_outflow_energy_step": {
+        "name": "Main Battery Outflow Energy Step"
+      },
+      "battery_inflow_energy_step": {
+        "name": "Main Battery Inflow Energy Step"
+      },
+      "battery_outflow_power": {
+        "name": "Main Battery Outflow Power"
+      },
+      "battery_inflow_power": {
+        "name": "Main Battery Inflow Power"
+      },
+      "battery_outflow_energy_daily": {
+        "name": "Daily Main Battery Outflow"
+      },
+      "battery_outflow_energy_monthly": {
+        "name": "Monthly Main Battery Outflow"
+      },
+      "battery_inflow_energy_daily": {
+        "name": "Daily Main Battery Inflow"
+      },
+      "battery_inflow_energy_monthly": {
+        "name": "Monthly Main Battery Inflow"
       }
     },
     "binary_sensor": {
@@ -79,6 +122,14 @@
     "image": {
       "vehicle_image": {
         "name": "Vehicle Image"
+      }
+    },
+    "number": {
+      "main_battery_voltage": {
+        "name": "Main Battery Voltage"
+      },
+      "battery_capacity": {
+        "name": "Battery Capacity"
       }
     }
   }

@@ -21,6 +21,7 @@ from .const import (
     DOMAIN,
     IMAGE_KEYS,
     LOCK_KEYS,
+    NUMBER_KEYS,
     PLATFORMS,
     SENSOR_KEYS,
 )
@@ -48,11 +49,13 @@ def _build_expected_registry_map(data: dict[str, dict]) -> dict[str, str]:
             expected[_expected_unique_id(sn, key)] = _expected_entity_id("image", sn, key)
         for key in LOCK_KEYS:
             expected[_expected_unique_id(sn, key)] = _expected_entity_id("lock", sn, key)
+        for key in NUMBER_KEYS:
+            expected[_expected_unique_id(sn, key)] = _expected_entity_id("number", sn, key)
     return expected
 
 
 def _is_ninebot_entity(entry: er.RegistryEntry) -> bool:
-    return entry.platform == DOMAIN and entry.domain in {"sensor", "binary_sensor", "image", "lock"}
+    return entry.platform == DOMAIN and entry.domain in {"sensor", "binary_sensor", "image", "lock", "number"}
 
 
 async def _async_enforce_entity_registry(

@@ -48,13 +48,17 @@ Recommended release flow:
 3. Create and push a tag matching the manifest version, for example:
 
 ```bash
-git tag 0.1.1
-git push origin 0.1.1
+git tag v0.7
+git push origin v0.7
 ```
 
 4. Optional but recommended: create a GitHub Release for the tag
 
 After that, HACS will detect the update.
+
+## Release Notes
+
+- [v0.7 Release Notes](./RELEASE_NOTES_v0.7.md)
 
 ## Manual installation
 

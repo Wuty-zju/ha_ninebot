@@ -9,7 +9,20 @@
           "username": "用户名",
           "password": "密码",
           "lang": "语言",
-          "scan_interval": "轮询间隔（秒）",
+          "default_scan_interval": "默认轮询间隔（秒）",
+          "unlocked_scan_interval": "解锁轮询间隔（秒）",
+          "charging_scan_interval": "充电轮询间隔（秒）",
+          "debug": "启用调试日志"
+        }
+      },
+      "init": {
+        "title": "Ninebot 选项",
+        "description": "调整语言、轮询策略和调试设置。",
+        "data": {
+          "lang": "语言",
+          "default_scan_interval": "默认轮询间隔（秒）",
+          "unlocked_scan_interval": "解锁轮询间隔（秒）",
+          "charging_scan_interval": "充电轮询间隔（秒）",
           "debug": "启用调试日志"
         }
       }
@@ -58,6 +71,36 @@
       },
       "location": {
         "name": "车辆位置"
+      },
+      "battery_nominal_energy": {
+        "name": "主电池标称能量"
+      },
+      "battery_energy_delta": {
+        "name": "主电池能量变化"
+      },
+      "battery_outflow_energy_step": {
+        "name": "主电池单次流出能量"
+      },
+      "battery_inflow_energy_step": {
+        "name": "主电池单次流入能量"
+      },
+      "battery_outflow_power": {
+        "name": "主电池流出瞬时功率"
+      },
+      "battery_inflow_power": {
+        "name": "主电池流入瞬时功率"
+      },
+      "battery_outflow_energy_daily": {
+        "name": "当日主电池流出"
+      },
+      "battery_outflow_energy_monthly": {
+        "name": "当月主电池流出"
+      },
+      "battery_inflow_energy_daily": {
+        "name": "当日主电池流入"
+      },
+      "battery_inflow_energy_monthly": {
+        "name": "当月主电池流入"
       }
     },
     "binary_sensor": {
@@ -79,6 +122,14 @@
     "image": {
       "vehicle_image": {
         "name": "车辆图片"
+      }
+    },
+    "number": {
+      "main_battery_voltage": {
+        "name": "主电池电压"
+      },
+      "battery_capacity": {
+        "name": "电池容量"
       }
     }
   }

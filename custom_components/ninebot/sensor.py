@@ -13,7 +13,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfLength
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfLength, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
@@ -46,6 +46,22 @@ def _as_int(value: Any) -> int | None:
             return None
         try:
             return int(text)
+        except ValueError:
+            return None
+    return None
+
+
+def _as_float(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return float(int(value))
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return float(text)
         except ValueError:
             return None
     return None
@@ -165,6 +181,95 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         translation_key="location",
         icon="mdi:map-marker",
         value_fn=lambda state, _device, _sn: _location_desc(state),
+    ),
+    NinebotSensorDescription(
+        key="battery_nominal_energy",
+        translation_key="battery_nominal_energy",
+        icon="mdi:battery-heart-variant",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_nominal_energy")),
+    ),
+    NinebotSensorDescription(
+        key="battery_energy_delta",
+        translation_key="battery_energy_delta",
+        icon="mdi:battery-sync",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_energy_delta")),
+    ),
+    NinebotSensorDescription(
+        key="battery_outflow_energy_step",
+        translation_key="battery_outflow_energy_step",
+        icon="mdi:battery-arrow-down",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_energy_step")),
+    ),
+    NinebotSensorDescription(
+        key="battery_inflow_energy_step",
+        translation_key="battery_inflow_energy_step",
+        icon="mdi:battery-arrow-up",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_energy_step")),
+    ),
+    NinebotSensorDescription(
+        key="battery_outflow_power",
+        translation_key="battery_outflow_power",
+        icon="mdi:flash-outline",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_power")),
+    ),
+    NinebotSensorDescription(
+        key="battery_inflow_power",
+        translation_key="battery_inflow_power",
+        icon="mdi:flash",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_power")),
+    ),
+    NinebotSensorDescription(
+        key="battery_outflow_energy_daily",
+        translation_key="battery_outflow_energy_daily",
+        icon="mdi:calendar-today",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_energy_daily")),
+    ),
+    NinebotSensorDescription(
+        key="battery_outflow_energy_monthly",
+        translation_key="battery_outflow_energy_monthly",
+        icon="mdi:calendar-month",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_energy_monthly")),
+    ),
+    NinebotSensorDescription(
+        key="battery_inflow_energy_daily",
+        translation_key="battery_inflow_energy_daily",
+        icon="mdi:calendar-today",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_energy_daily")),
+    ),
+    NinebotSensorDescription(
+        key="battery_inflow_energy_monthly",
+        translation_key="battery_inflow_energy_monthly",
+        icon="mdi:calendar-month",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_energy_monthly")),
     ),
 )
 

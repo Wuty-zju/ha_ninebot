@@ -7,16 +7,24 @@ from typing import Any
 from typing import Final
 
 DOMAIN: Final = "ninebot"
-PLATFORMS: Final = ["sensor", "lock", "binary_sensor", "image"]
+PLATFORMS: Final = ["sensor", "lock", "binary_sensor", "image", "number"]
 
 CONF_LANG: Final = "lang"
 CONF_SCAN_INTERVAL: Final = "scan_interval"
+CONF_DEFAULT_SCAN_INTERVAL: Final = "default_scan_interval"
+CONF_UNLOCKED_SCAN_INTERVAL: Final = "unlocked_scan_interval"
+CONF_CHARGING_SCAN_INTERVAL: Final = "charging_scan_interval"
 CONF_DEBUG: Final = "debug"
 
 DEFAULT_LANG: Final = "zh"
 DEFAULT_SCAN_INTERVAL: Final = 60
-MIN_SCAN_INTERVAL: Final = 15
+DEFAULT_UNLOCKED_SCAN_INTERVAL: Final = 3
+DEFAULT_CHARGING_SCAN_INTERVAL: Final = 30
+MIN_SCAN_INTERVAL: Final = 1
 DEFAULT_DEBUG: Final = False
+
+DEFAULT_MAIN_BATTERY_VOLTAGE: Final = 72.0
+DEFAULT_BATTERY_CAPACITY: Final = 20.0
 
 MANUFACTURER: Final = "Ninebot"
 
@@ -53,6 +61,16 @@ SENSOR_KEYS: Final[tuple[str, ...]] = (
 	"gsm_report_timestamp",
 	"gsm_report_time",
 	"location",
+	"battery_nominal_energy",
+	"battery_energy_delta",
+	"battery_outflow_energy_step",
+	"battery_inflow_energy_step",
+	"battery_outflow_power",
+	"battery_inflow_power",
+	"battery_outflow_energy_daily",
+	"battery_outflow_energy_monthly",
+	"battery_inflow_energy_daily",
+	"battery_inflow_energy_monthly",
 )
 
 BINARY_SENSOR_KEYS: Final[tuple[str, ...]] = (
@@ -67,6 +85,11 @@ IMAGE_KEYS: Final[tuple[str, ...]] = (
 
 LOCK_KEYS: Final[tuple[str, ...]] = (
 	"vehicle_lock_control",
+)
+
+NUMBER_KEYS: Final[tuple[str, ...]] = (
+	"main_battery_voltage",
+	"battery_capacity",
 )
 
 
