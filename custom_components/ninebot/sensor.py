@@ -269,6 +269,16 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_energy_monthly")),
     ),
     NinebotSensorDescription(
+        key="battery_outflow_energy_total",
+        translation_key="battery_outflow_energy_total",
+        icon="mdi:meter-electric-outline",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_energy_total")),
+    ),
+    NinebotSensorDescription(
         key="battery_inflow_energy_daily",
         translation_key="battery_inflow_energy_daily",
         icon="mdi:calendar-today",
@@ -287,6 +297,16 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_energy_monthly")),
+    ),
+    NinebotSensorDescription(
+        key="battery_inflow_energy_total",
+        translation_key="battery_inflow_energy_total",
+        icon="mdi:meter-electric",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_energy_total")),
     ),
 )
 
@@ -330,11 +350,20 @@ class NinebotSensor(NinebotCoordinatorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        if self.entity_description.key != "vehicle_lock_raw":
-            return None
+        if self.entity_description.key == "vehicle_lock_raw":
+            status = lock_status_from_state(self._state)
+            return {
+                "status_text": _vehicle_lock_raw_text(status),
+                "status_text_en": "Locked" if status == STATUS_LOCKED else "Unlocked" if status == STATUS_UNLOCKED else None,
+            }
 
-        status = lock_status_from_state(self._state)
-        return {
-            "status_text": _vehicle_lock_raw_text(status),
-            "status_text_en": "Locked" if status == STATUS_LOCKED else "Unlocked" if status == STATUS_UNLOCKED else None,
-        }
+        if self.entity_description.key in {"battery_outflow_energy_total", "battery_inflow_energy_total"}:
+            return {
+                "raw_total_kwh": _as_float(self._state.get(self.entity_description.key)),
+                "accumulation_version": _as_int(self._state.get("battery_accumulation_version")),
+                "last_valid_battery_percent": _as_float(self._state.get("battery_last_valid_battery_percent")),
+                "last_accumulated_ts": _as_float(self._state.get("battery_last_accumulated_ts")),
+                "last_invalid_sample_reason": _as_text(self._state.get("battery_last_invalid_sample_reason")),
+            }
+
+        return None

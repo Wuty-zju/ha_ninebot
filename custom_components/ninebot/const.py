@@ -90,8 +90,10 @@ SENSOR_KEYS: Final[tuple[str, ...]] = (
 	"battery_inflow_power",
 	"battery_outflow_energy_daily",
 	"battery_outflow_energy_monthly",
+	"battery_outflow_energy_total",
 	"battery_inflow_energy_daily",
 	"battery_inflow_energy_monthly",
+	"battery_inflow_energy_total",
 )
 
 BINARY_SENSOR_KEYS: Final[tuple[str, ...]] = (

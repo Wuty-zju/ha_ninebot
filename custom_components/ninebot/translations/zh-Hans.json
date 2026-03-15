@@ -142,11 +142,17 @@
       "battery_outflow_energy_monthly": {
         "name": "当月主电池流出"
       },
+      "battery_outflow_energy_total": {
+        "name": "累积主电池流出"
+      },
       "battery_inflow_energy_daily": {
         "name": "当日主电池流入"
       },
       "battery_inflow_energy_monthly": {
         "name": "当月主电池流入"
+      },
+      "battery_inflow_energy_total": {
+        "name": "累积主电池流入"
       }
     },
     "binary_sensor": {

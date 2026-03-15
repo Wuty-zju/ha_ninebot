@@ -142,11 +142,17 @@
       "battery_outflow_energy_monthly": {
         "name": "Monthly Main Battery Outflow"
       },
+      "battery_outflow_energy_total": {
+        "name": "Accumulated Main Battery Outflow"
+      },
       "battery_inflow_energy_daily": {
         "name": "Daily Main Battery Inflow"
       },
       "battery_inflow_energy_monthly": {
         "name": "Monthly Main Battery Inflow"
+      },
+      "battery_inflow_energy_total": {
+        "name": "Accumulated Main Battery Inflow"
       }
     },
     "binary_sensor": {
