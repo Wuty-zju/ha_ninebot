@@ -65,6 +65,7 @@ MAIN_POWER_OFF: Final = 0
 
 SENSOR_KEYS: Final[tuple[str, ...]] = (
 	"battery",
+	"battery_calculated",
 	"device_name",
 	"sn",
 	"vehicle_lock_raw",
@@ -104,6 +105,7 @@ LOCK_KEYS: Final[tuple[str, ...]] = (
 NUMBER_KEYS: Final[tuple[str, ...]] = (
 	"main_battery_voltage",
 	"battery_capacity",
+	"battery_max_range",
 )
 
 BUTTON_KEYS: Final[tuple[str, ...]] = (

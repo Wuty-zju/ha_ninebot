@@ -79,6 +79,9 @@
       "battery": {
         "name": "主电池电量"
       },
+      "battery_calculated": {
+        "name": "主电池电量（计算）"
+      },
       "device_name": {
         "name": "车辆名称"
       },
@@ -172,6 +175,9 @@
       },
       "battery_capacity": {
         "name": "电池容量"
+      },
+      "battery_max_range": {
+        "name": "最大里程"
       }
     }
   }

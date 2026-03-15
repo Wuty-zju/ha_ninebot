@@ -118,6 +118,16 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         value_fn=lambda state, _device, _sn: _as_int(state.get("battery")),
     ),
     NinebotSensorDescription(
+        key="battery_calculated",
+        translation_key="battery_calculated",
+        icon="mdi:battery-sync",
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=3,
+        value_fn=lambda state, _device, _sn: _as_float(state.get("battery_calculated")),
+    ),
+    NinebotSensorDescription(
         key="device_name",
         translation_key="device_name",
         icon="mdi:card-text",
@@ -188,6 +198,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         icon="mdi:battery-heart-variant",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_nominal_energy")),
     ),
     NinebotSensorDescription(
@@ -196,6 +207,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         icon="mdi:battery-sync",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_energy_delta")),
     ),
     NinebotSensorDescription(
@@ -204,6 +216,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         icon="mdi:battery-arrow-down",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_energy_step")),
     ),
     NinebotSensorDescription(
@@ -212,6 +225,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         icon="mdi:battery-arrow-up",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_energy_step")),
     ),
     NinebotSensorDescription(
@@ -221,6 +235,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_power")),
     ),
     NinebotSensorDescription(
@@ -230,6 +245,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_power")),
     ),
     NinebotSensorDescription(
@@ -239,6 +255,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_energy_daily")),
     ),
     NinebotSensorDescription(
@@ -248,6 +265,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_outflow_energy_monthly")),
     ),
     NinebotSensorDescription(
@@ -257,6 +275,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_energy_daily")),
     ),
     NinebotSensorDescription(
@@ -266,6 +285,7 @@ SENSOR_DESCRIPTIONS: tuple[NinebotSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
         value_fn=lambda state, _device, _sn: _as_float(state.get("battery_inflow_energy_monthly")),
     ),
 )

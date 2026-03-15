@@ -7,6 +7,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from .const import DEFAULT_BATTERY_CAPACITY, DEFAULT_MAIN_BATTERY_VOLTAGE, DOMAIN
 
@@ -81,6 +82,7 @@ class NinebotRuntimeStorage:
             dirty = False
             dirty |= self._ensure_float(existing, "main_battery_voltage", DEFAULT_MAIN_BATTERY_VOLTAGE)
             dirty |= self._ensure_float(existing, "battery_capacity", DEFAULT_BATTERY_CAPACITY)
+            dirty |= self._ensure_optional_float(existing, "battery_max_range_km")
             dirty |= self._ensure_optional_float(existing, "last_battery_percent")
             dirty |= self._ensure_optional_float(existing, "last_sample_ts")
             dirty |= self._ensure_float(existing, "inflow_total_kwh", 0.0)
@@ -110,6 +112,7 @@ class NinebotRuntimeStorage:
         devices[sn] = {
             "main_battery_voltage": DEFAULT_MAIN_BATTERY_VOLTAGE,
             "battery_capacity": DEFAULT_BATTERY_CAPACITY,
+            "battery_max_range_km": None,
             "last_battery_percent": None,
             "last_sample_ts": None,
             "inflow_total_kwh": 0.0,
@@ -183,6 +186,60 @@ class NinebotRuntimeStorage:
         if dirty:
             await self.async_save()
 
+    def get_battery_max_range(self, sn: str) -> float | None:
+        value = self._device(sn).get("battery_max_range_km")
+        if isinstance(value, (int, float)) and float(value) > 0:
+            return float(value)
+        return None
+
+    async def async_set_battery_max_range(self, sn: str, value: float) -> None:
+        normalized = max(1.0, float(value))
+        device = self._device(sn)
+        if float(device.get("battery_max_range_km") or 0.0) != normalized:
+            device["battery_max_range_km"] = normalized
+            await self.async_save()
+
+    async def async_resolve_battery_max_range(
+        self,
+        sn: str,
+        *,
+        remaining_range_km: float | None,
+        raw_battery_percent: int | None,
+        persist: bool = True,
+    ) -> float:
+        """Resolve per-device max range and only auto-initialize once.
+
+        The user-editable max range should never be overwritten after it exists.
+        """
+        device = self._device(sn)
+        existing = self.get_battery_max_range(sn)
+        if existing is not None:
+            return existing
+
+        resolved = self._derive_default_max_range(remaining_range_km, raw_battery_percent)
+        device["battery_max_range_km"] = resolved
+        if persist:
+            await self.async_save()
+        return resolved
+
+    @staticmethod
+    def _derive_default_max_range(remaining_range_km: float | None, raw_battery_percent: int | None) -> float:
+        if (
+            isinstance(remaining_range_km, (int, float))
+            and float(remaining_range_km) >= 0
+            and isinstance(raw_battery_percent, int)
+            and 0 < raw_battery_percent <= 100
+        ):
+            # Initial default: max_range = remaining_range / (battery_percent / 100).
+            ratio = float(raw_battery_percent) / 100.0
+            if ratio > 0:
+                estimated = float(remaining_range_km) / ratio
+                if estimated > 0:
+                    return float(max(1, round(estimated)))
+
+        # Safe fallback to avoid division by zero and unavailable values.
+        return 100.0
+
     def get_cached_vehicle_state(self, sn: str) -> dict[str, Any] | None:
         parsed = self._device(sn).get("parsed_state")
         if not isinstance(parsed, dict):
@@ -236,7 +293,7 @@ class NinebotRuntimeStorage:
         self,
         sn: str,
         *,
-        battery_percent: int | None,
+        battery_percent: float | None,
         sample_time: datetime,
         persist: bool = True,
     ) -> dict[str, float | None]:
@@ -246,8 +303,10 @@ class NinebotRuntimeStorage:
         capacity = float(device["battery_capacity"])
         nominal_kwh = (voltage * capacity) / 1000.0
 
-        daily_bucket = sample_time.strftime("%Y-%m-%d")
-        monthly_bucket = sample_time.strftime("%Y-%m")
+        # Daily/monthly counters must follow HA local timezone natural boundaries.
+        local_time = dt_util.as_local(sample_time)
+        daily_bucket = local_time.date().isoformat()
+        monthly_bucket = f"{local_time.year:04d}-{local_time.month:02d}"
 
         dirty = False
         if device.get("daily_bucket") != daily_bucket:
@@ -271,16 +330,27 @@ class NinebotRuntimeStorage:
         prev_percent = device.get("last_battery_percent")
         prev_ts = device.get("last_sample_ts")
 
-        valid_battery = isinstance(battery_percent, int) and 0 <= battery_percent <= 100
+        valid_battery = isinstance(battery_percent, (int, float)) and 0.0 <= float(battery_percent) <= 100.0
         if valid_battery and isinstance(prev_percent, (int, float)) and isinstance(prev_ts, (int, float)):
             delta_seconds = sample_time.timestamp() - float(prev_ts)
             delta_percent = float(battery_percent) - float(prev_percent)
 
             if delta_seconds > 0:
                 if abs(delta_percent) <= 40 or delta_seconds >= 60:
-                    delta_kwh = nominal_kwh * delta_percent / 100.0
-                    inflow_step = max(delta_kwh, 0.0)
-                    outflow_step = max(-delta_kwh, 0.0)
+                    # Step sensors represent one-direction positive energy increment.
+                    step_kwh = nominal_kwh * abs(delta_percent) / 100.0
+                    if delta_percent > 0:
+                        inflow_step = step_kwh
+                        outflow_step = 0.0
+                        delta_kwh = step_kwh
+                    elif delta_percent < 0:
+                        inflow_step = 0.0
+                        outflow_step = step_kwh
+                        delta_kwh = -step_kwh
+                    else:
+                        inflow_step = 0.0
+                        outflow_step = 0.0
+                        delta_kwh = 0.0
 
                     if inflow_step > 0:
                         device["inflow_total_kwh"] = float(device["inflow_total_kwh"]) + inflow_step

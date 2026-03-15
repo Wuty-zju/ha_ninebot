@@ -7,9 +7,10 @@ from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfElectricPotential
+from homeassistant.const import UnitOfElectricPotential, UnitOfLength
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DATA_COORDINATOR, DOMAIN
 from .coordinator import NinebotDataUpdateCoordinator
@@ -40,6 +41,15 @@ NUMBER_DESCRIPTIONS: tuple[NinebotNumberDescription, ...] = (
         native_max_value=500.0,
         native_step=0.1,
     ),
+    NinebotNumberDescription(
+        key="battery_max_range",
+        translation_key="battery_max_range",
+        icon="mdi:map-marker-distance",
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        native_min_value=1.0,
+        native_max_value=1000.0,
+        native_step=1.0,
+    ),
 )
 
 
@@ -59,7 +69,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class NinebotNumberEntity(NinebotCoordinatorEntity, NumberEntity):
+class NinebotNumberEntity(NinebotCoordinatorEntity, NumberEntity, RestoreEntity):
     """Per-device local configurable battery parameters."""
 
     entity_description: NinebotNumberDescription
@@ -76,12 +86,27 @@ class NinebotNumberEntity(NinebotCoordinatorEntity, NumberEntity):
         self._attr_unique_id = self._build_unique_id(description.key)
         self._attr_suggested_object_id = self._build_object_id(description.key)
         self._attr_mode = "box"
+        self._restored_native_value: float | None = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if self.entity_description.key != "battery_max_range":
+            return
+        last_state = await self.async_get_last_state()
+        if last_state is None:
+            return
+        try:
+            self._restored_native_value = float(last_state.state)
+        except (TypeError, ValueError):
+            self._restored_native_value = None
 
     @property
     def native_value(self) -> float | None:
         value = self._state.get(self.entity_description.key)
         if isinstance(value, (int, float)):
             return float(value)
+        if self.entity_description.key == "battery_max_range":
+            return self._restored_native_value
         return None
 
     async def async_set_native_value(self, value: float) -> None:
@@ -90,6 +115,10 @@ class NinebotNumberEntity(NinebotCoordinatorEntity, NumberEntity):
             return
         if self.entity_description.key == "battery_capacity":
             await self.coordinator.async_set_battery_capacity(self._sn, float(value))
+            return
+        if self.entity_description.key == "battery_max_range":
+            self._restored_native_value = float(value)
+            await self.coordinator.async_set_battery_max_range(self._sn, float(value))
             return
         raise ValueError(f"Unsupported number key: {self.entity_description.key}")
 

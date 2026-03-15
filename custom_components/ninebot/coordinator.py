@@ -66,6 +66,26 @@ def _normalize_int(value: Any) -> int | None:
     return None
 
 
+def _normalize_float(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return float(int(value))
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return float(text)
+        except ValueError:
+            return None
+    return None
+
+
+def _clamp_battery_percent(value: float) -> float:
+    return max(0.0, min(100.0, value))
+
+
 class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     """Coordinator with account-level cache and per-vehicle polling scheduler."""
 
@@ -183,6 +203,19 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
             "gsmTime": _normalize_int(raw_state.get("gsmTime")),
             "locationInfo": location,
         }
+
+    @staticmethod
+    def _calculate_battery_percent(*, remaining_range_km: float | None, max_range_km: float | None) -> float | None:
+        """Derive battery percentage from remaining/max range with safe guards.
+
+        Formula: battery_calculated = remaining_range_km / max_range_km * 100.
+        """
+        if not isinstance(remaining_range_km, (int, float)):
+            return None
+        if not isinstance(max_range_km, (int, float)) or float(max_range_km) <= 0:
+            return None
+        computed = float(remaining_range_km) / float(max_range_km) * 100.0
+        return _clamp_battery_percent(computed)
 
     @staticmethod
     def _build_device_meta(device: dict[str, Any], raw_state: dict[str, Any], sn: str) -> dict[str, Any]:
@@ -315,10 +348,28 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
             if sn in results:
                 raw_state = results[sn]
                 state = self._normalize_state(raw_state)
+
+                # All power/energy estimation is intentionally bound to the
+                # derived battery percentage from remaining range + max range,
+                # instead of the cloud-reported raw battery percentage.
+                remaining_range_km = _normalize_float(state.get("estimateMileage"))
+                max_range_km = await self.runtime_storage.async_resolve_battery_max_range(
+                    sn,
+                    remaining_range_km=remaining_range_km,
+                    raw_battery_percent=state["battery"],
+                    persist=False,
+                )
+                state["battery_max_range"] = round(max_range_km, 3)
+                battery_calculated = self._calculate_battery_percent(
+                    remaining_range_km=remaining_range_km,
+                    max_range_km=max_range_km,
+                )
+                state["battery_calculated"] = round(battery_calculated, 3) if battery_calculated is not None else None
+
                 state.update(
                     await self.runtime_storage.async_build_energy_snapshot(
                         sn,
-                        battery_percent=state["battery"],
+                        battery_percent=state["battery_calculated"],
                         sample_time=now_dt,
                         persist=False,
                     )
@@ -418,4 +469,8 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
 
     async def async_set_battery_capacity(self, sn: str, value: float) -> None:
         await self.runtime_storage.async_set_battery_param(sn, capacity=value)
+        await self.async_request_refresh()
+
+    async def async_set_battery_max_range(self, sn: str, value: float) -> None:
+        await self.runtime_storage.async_set_battery_max_range(sn, value)
         await self.async_request_refresh()

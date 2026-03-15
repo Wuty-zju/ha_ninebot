@@ -79,6 +79,9 @@
       "battery": {
         "name": "Main Battery Level"
       },
+      "battery_calculated": {
+        "name": "Main Battery Level (Calculated)"
+      },
       "device_name": {
         "name": "Vehicle Name"
       },
@@ -172,6 +175,9 @@
       },
       "battery_capacity": {
         "name": "Battery Capacity"
+      },
+      "battery_max_range": {
+        "name": "Max Range"
       }
     }
   }
