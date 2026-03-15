@@ -15,19 +15,23 @@ from homeassistant.util import dt as dt_util
 
 from .api import NinebotApiClient
 from .const import (
+    CONF_CHARGE_POWER_WINDOW_SECONDS,
     CHARGING_ON,
     COORDINATOR_TICK_SECONDS,
     CONF_CHARGING_SCAN_INTERVAL,
     CONF_DEBUG,
     CONF_DEFAULT_SCAN_INTERVAL,
+    CONF_DISCHARGE_POWER_WINDOW_SECONDS,
     CONF_DEVICE_INFO_FAILURE_TOLERANCE,
     CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
     CONF_MAX_DEVICE_INFO_CONCURRENCY,
     CONF_SCAN_INTERVAL,
     CONF_TOKEN_REFRESH_INTERVAL_HOURS,
     CONF_UNLOCKED_SCAN_INTERVAL,
+    DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
     DEFAULT_CHARGING_SCAN_INTERVAL,
     DEFAULT_DEBUG,
+    DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
     DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
     DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
     DEFAULT_MAX_DEVICE_INFO_CONCURRENCY,
@@ -153,6 +157,22 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
     @property
     def charging_scan_interval(self) -> int:
         return self._int_from_entry(CONF_CHARGING_SCAN_INTERVAL, default=DEFAULT_CHARGING_SCAN_INTERVAL, minimum=1)
+
+    @property
+    def discharge_power_window_seconds(self) -> int:
+        return self._int_from_entry(
+            CONF_DISCHARGE_POWER_WINDOW_SECONDS,
+            default=DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
+            minimum=1,
+        )
+
+    @property
+    def charge_power_window_seconds(self) -> int:
+        return self._int_from_entry(
+            CONF_CHARGE_POWER_WINDOW_SECONDS,
+            default=DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
+            minimum=1,
+        )
 
     @property
     def token_refresh_interval_hours(self) -> int:
@@ -371,6 +391,8 @@ class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any
                         sn,
                         battery_percent=state["battery_calculated"],
                         sample_time=now_dt,
+                        discharge_window_seconds=self.discharge_power_window_seconds,
+                        charge_window_seconds=self.charge_power_window_seconds,
                         persist=False,
                     )
                 )

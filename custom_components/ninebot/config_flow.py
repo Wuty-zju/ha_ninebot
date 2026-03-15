@@ -13,9 +13,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import NinebotApiClient
 from .const import (
+    CONF_CHARGE_POWER_WINDOW_SECONDS,
     CONF_CHARGING_SCAN_INTERVAL,
     CONF_DEBUG,
     CONF_DEFAULT_SCAN_INTERVAL,
+    CONF_DISCHARGE_POWER_WINDOW_SECONDS,
     CONF_DEVICE_INFO_FAILURE_TOLERANCE,
     CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
     CONF_LANG,
@@ -23,8 +25,10 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_TOKEN_REFRESH_INTERVAL_HOURS,
     CONF_UNLOCKED_SCAN_INTERVAL,
+    DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
     DEFAULT_CHARGING_SCAN_INTERVAL,
     DEFAULT_DEBUG,
+    DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
     DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
     DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
     DEFAULT_LANG,
@@ -33,10 +37,12 @@ from .const import (
     DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
     DEFAULT_UNLOCKED_SCAN_INTERVAL,
     DOMAIN,
+    MAX_POWER_WINDOW_SECONDS,
     MAX_DEVICE_INFO_CONCURRENCY,
     MAX_DEVICE_INFO_FAILURE_TOLERANCE,
     MIN_DEVICE_INFO_CONCURRENCY,
     MIN_DEVICE_INFO_FAILURE_TOLERANCE,
+    MIN_POWER_WINDOW_SECONDS,
     MIN_REFRESH_INTERVAL_HOURS,
     MIN_SCAN_INTERVAL,
 )
@@ -96,6 +102,14 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
                     DEFAULT_CHARGING_SCAN_INTERVAL,
                 ),
+                CONF_DISCHARGE_POWER_WINDOW_SECONDS: _safe_scan_interval(
+                    user_input.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS),
+                    DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
+                ),
+                CONF_CHARGE_POWER_WINDOW_SECONDS: _safe_scan_interval(
+                    user_input.get(CONF_CHARGE_POWER_WINDOW_SECONDS, DEFAULT_CHARGE_POWER_WINDOW_SECONDS),
+                    DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
+                ),
                 CONF_TOKEN_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
                     user_input.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS),
                     DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
@@ -129,6 +143,14 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY] = min(
                 MAX_DEVICE_INFO_CONCURRENCY,
                 max(MIN_DEVICE_INFO_CONCURRENCY, int(normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY])),
+            )
+            normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS] = min(
+                MAX_POWER_WINDOW_SECONDS,
+                max(MIN_POWER_WINDOW_SECONDS, int(normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS])),
+            )
+            normalized[CONF_CHARGE_POWER_WINDOW_SECONDS] = min(
+                MAX_POWER_WINDOW_SECONDS,
+                max(MIN_POWER_WINDOW_SECONDS, int(normalized[CONF_CHARGE_POWER_WINDOW_SECONDS])),
             )
             normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE] = min(
                 MAX_DEVICE_INFO_FAILURE_TOLERANCE,
@@ -171,6 +193,14 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_CHARGING_SCAN_INTERVAL, default=DEFAULT_CHARGING_SCAN_INTERVAL): vol.All(
                     vol.Coerce(int),
                     vol.Range(min=MIN_SCAN_INTERVAL),
+                ),
+                vol.Optional(CONF_DISCHARGE_POWER_WINDOW_SECONDS, default=DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=MIN_POWER_WINDOW_SECONDS, max=MAX_POWER_WINDOW_SECONDS),
+                ),
+                vol.Optional(CONF_CHARGE_POWER_WINDOW_SECONDS, default=DEFAULT_CHARGE_POWER_WINDOW_SECONDS): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=MIN_POWER_WINDOW_SECONDS, max=MAX_POWER_WINDOW_SECONDS),
                 ),
                 vol.Optional(CONF_TOKEN_REFRESH_INTERVAL_HOURS, default=DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS): vol.All(
                     vol.Coerce(int),
@@ -234,6 +264,14 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     user_input.get(CONF_CHARGING_SCAN_INTERVAL, self._entry.options.get(CONF_CHARGING_SCAN_INTERVAL, self._entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL))),
                     DEFAULT_CHARGING_SCAN_INTERVAL,
                 ),
+                CONF_DISCHARGE_POWER_WINDOW_SECONDS: _safe_scan_interval(
+                    user_input.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, self._entry.options.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, self._entry.data.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS))),
+                    DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
+                ),
+                CONF_CHARGE_POWER_WINDOW_SECONDS: _safe_scan_interval(
+                    user_input.get(CONF_CHARGE_POWER_WINDOW_SECONDS, self._entry.options.get(CONF_CHARGE_POWER_WINDOW_SECONDS, self._entry.data.get(CONF_CHARGE_POWER_WINDOW_SECONDS, DEFAULT_CHARGE_POWER_WINDOW_SECONDS))),
+                    DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
+                ),
                 CONF_TOKEN_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
                     user_input.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, self._entry.options.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, self._entry.data.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS))),
                     DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
@@ -288,6 +326,14 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     MAX_DEVICE_INFO_CONCURRENCY,
                     max(MIN_DEVICE_INFO_CONCURRENCY, int(normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY])),
                 )
+                normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS] = min(
+                    MAX_POWER_WINDOW_SECONDS,
+                    max(MIN_POWER_WINDOW_SECONDS, int(normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS])),
+                )
+                normalized[CONF_CHARGE_POWER_WINDOW_SECONDS] = min(
+                    MAX_POWER_WINDOW_SECONDS,
+                    max(MIN_POWER_WINDOW_SECONDS, int(normalized[CONF_CHARGE_POWER_WINDOW_SECONDS])),
+                )
                 normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE] = min(
                     MAX_DEVICE_INFO_FAILURE_TOLERANCE,
                     max(MIN_DEVICE_INFO_FAILURE_TOLERANCE, int(normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE])),
@@ -298,6 +344,8 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     CONF_DEFAULT_SCAN_INTERVAL: normalized[CONF_DEFAULT_SCAN_INTERVAL],
                     CONF_UNLOCKED_SCAN_INTERVAL: normalized[CONF_UNLOCKED_SCAN_INTERVAL],
                     CONF_CHARGING_SCAN_INTERVAL: normalized[CONF_CHARGING_SCAN_INTERVAL],
+                    CONF_DISCHARGE_POWER_WINDOW_SECONDS: normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS],
+                    CONF_CHARGE_POWER_WINDOW_SECONDS: normalized[CONF_CHARGE_POWER_WINDOW_SECONDS],
                     CONF_TOKEN_REFRESH_INTERVAL_HOURS: normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS],
                     CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS: normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS],
                     CONF_MAX_DEVICE_INFO_CONCURRENCY: normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY],
@@ -314,6 +362,8 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 data[CONF_DEFAULT_SCAN_INTERVAL] = normalized[CONF_DEFAULT_SCAN_INTERVAL]
                 data[CONF_UNLOCKED_SCAN_INTERVAL] = normalized[CONF_UNLOCKED_SCAN_INTERVAL]
                 data[CONF_CHARGING_SCAN_INTERVAL] = normalized[CONF_CHARGING_SCAN_INTERVAL]
+                data[CONF_DISCHARGE_POWER_WINDOW_SECONDS] = normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS]
+                data[CONF_CHARGE_POWER_WINDOW_SECONDS] = normalized[CONF_CHARGE_POWER_WINDOW_SECONDS]
                 data[CONF_TOKEN_REFRESH_INTERVAL_HOURS] = normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS]
                 data[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS] = normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS]
                 data[CONF_MAX_DEVICE_INFO_CONCURRENCY] = normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY]
@@ -365,6 +415,20 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                         self._entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
                     ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
+                vol.Optional(
+                    CONF_DISCHARGE_POWER_WINDOW_SECONDS,
+                    default=self._entry.options.get(
+                        CONF_DISCHARGE_POWER_WINDOW_SECONDS,
+                        self._entry.data.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS),
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_POWER_WINDOW_SECONDS, max=MAX_POWER_WINDOW_SECONDS)),
+                vol.Optional(
+                    CONF_CHARGE_POWER_WINDOW_SECONDS,
+                    default=self._entry.options.get(
+                        CONF_CHARGE_POWER_WINDOW_SECONDS,
+                        self._entry.data.get(CONF_CHARGE_POWER_WINDOW_SECONDS, DEFAULT_CHARGE_POWER_WINDOW_SECONDS),
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_POWER_WINDOW_SECONDS, max=MAX_POWER_WINDOW_SECONDS)),
                 vol.Optional(
                     CONF_TOKEN_REFRESH_INTERVAL_HOURS,
                     default=self._entry.options.get(

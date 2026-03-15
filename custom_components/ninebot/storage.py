@@ -95,6 +95,8 @@ class NinebotRuntimeStorage:
             dirty |= self._ensure_int(existing, "current_interval", 60)
             dirty |= self._ensure_optional_float(existing, "last_success_at")
             dirty |= self._ensure_optional_float(existing, "last_attempt_at")
+            dirty |= self._ensure_sample_history(existing, "inflow_samples")
+            dirty |= self._ensure_sample_history(existing, "outflow_samples")
             if not isinstance(existing.get("daily_bucket"), str):
                 existing["daily_bucket"] = ""
                 dirty = True
@@ -129,6 +131,8 @@ class NinebotRuntimeStorage:
             "last_attempt_at": None,
             "failure_count": 0,
             "current_interval": 60,
+            "inflow_samples": [],
+            "outflow_samples": [],
         }
         return True
 
@@ -169,6 +173,40 @@ class NinebotRuntimeStorage:
             return False
         data[key] = None
         return True
+
+    @staticmethod
+    def _ensure_sample_history(data: dict[str, Any], key: str) -> bool:
+        raw = data.get(key)
+        if raw is None:
+            data[key] = []
+            return True
+        if not isinstance(raw, list):
+            data[key] = []
+            return True
+
+        normalized: list[list[float]] = []
+        for item in raw:
+            if not isinstance(item, (list, tuple)) or len(item) != 2:
+                continue
+            ts, energy = item
+            if isinstance(ts, (int, float)) and isinstance(energy, (int, float)):
+                normalized.append([float(ts), float(energy)])
+
+        changed = normalized != raw
+        data[key] = normalized
+        return changed
+
+    @staticmethod
+    def _append_sample(history: list[list[float]], *, sample_ts: float, sample_kwh: float, retain_seconds: int) -> list[list[float]]:
+        history.append([sample_ts, sample_kwh])
+        cutoff = sample_ts - float(max(1, retain_seconds))
+        return [item for item in history if item[0] >= cutoff and item[1] > 0]
+
+    @staticmethod
+    def _window_power_watts(history: list[list[float]], *, sample_ts: float, window_seconds: int) -> float:
+        cutoff = sample_ts - float(max(1, window_seconds))
+        energy_kwh = sum(item[1] for item in history if item[0] >= cutoff)
+        return energy_kwh * 3600000.0 / float(max(1, window_seconds))
 
     def get_battery_params(self, sn: str) -> tuple[float, float]:
         device = self._device(sn)
@@ -295,6 +333,8 @@ class NinebotRuntimeStorage:
         *,
         battery_percent: float | None,
         sample_time: datetime,
+        discharge_window_seconds: int,
+        charge_window_seconds: int,
         persist: bool = True,
     ) -> dict[str, float | None]:
         device = self._device(sn)
@@ -326,9 +366,23 @@ class NinebotRuntimeStorage:
         outflow_step = 0.0
         inflow_power = 0.0
         outflow_power = 0.0
+        inflow_history = list(device.get("inflow_samples") or [])
+        outflow_history = list(device.get("outflow_samples") or [])
 
         prev_percent = device.get("last_battery_percent")
         prev_ts = device.get("last_sample_ts")
+        sample_ts = sample_time.timestamp()
+
+        inflow_history = [
+            item
+            for item in inflow_history
+            if item[0] >= sample_ts - float(max(charge_window_seconds, 300)) and item[1] > 0
+        ]
+        outflow_history = [
+            item
+            for item in outflow_history
+            if item[0] >= sample_ts - float(max(discharge_window_seconds, 300)) and item[1] > 0
+        ]
 
         valid_battery = isinstance(battery_percent, (int, float)) and 0.0 <= float(battery_percent) <= 100.0
         if valid_battery and isinstance(prev_percent, (int, float)) and isinstance(prev_ts, (int, float)):
@@ -356,15 +410,41 @@ class NinebotRuntimeStorage:
                         device["inflow_total_kwh"] = float(device["inflow_total_kwh"]) + inflow_step
                         device["daily_inflow_kwh"] = float(device["daily_inflow_kwh"]) + inflow_step
                         device["monthly_inflow_kwh"] = float(device["monthly_inflow_kwh"]) + inflow_step
-                        inflow_power = inflow_step * 3600000.0 / delta_seconds
+                        inflow_history = self._append_sample(
+                            inflow_history,
+                            sample_ts=sample_ts,
+                            sample_kwh=inflow_step,
+                            retain_seconds=max(charge_window_seconds, 300),
+                        )
                         dirty = True
 
                     if outflow_step > 0:
                         device["outflow_total_kwh"] = float(device["outflow_total_kwh"]) + outflow_step
                         device["daily_outflow_kwh"] = float(device["daily_outflow_kwh"]) + outflow_step
                         device["monthly_outflow_kwh"] = float(device["monthly_outflow_kwh"]) + outflow_step
-                        outflow_power = outflow_step * 3600000.0 / delta_seconds
+                        outflow_history = self._append_sample(
+                            outflow_history,
+                            sample_ts=sample_ts,
+                            sample_kwh=outflow_step,
+                            retain_seconds=max(discharge_window_seconds, 300),
+                        )
                         dirty = True
+
+        # Power is computed as energy accumulated within a configurable sliding
+        # window divided by the window duration, which smooths jumps caused by
+        # high-frequency polling and 0.1km range report granularity.
+        inflow_power = self._window_power_watts(
+            inflow_history,
+            sample_ts=sample_ts,
+            window_seconds=charge_window_seconds,
+        )
+        outflow_power = self._window_power_watts(
+            outflow_history,
+            sample_ts=sample_ts,
+            window_seconds=discharge_window_seconds,
+        )
+        device["inflow_samples"] = inflow_history
+        device["outflow_samples"] = outflow_history
 
         if valid_battery:
             device["last_battery_percent"] = float(battery_percent)
