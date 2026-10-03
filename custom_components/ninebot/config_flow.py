@@ -3,7 +3,6 @@
 import uuid
 from typing import Any
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState, ConfigFlowResult
 from homeassistant.const import CONF_PASSWORD
@@ -18,6 +17,7 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 
+from .compat import validation as vol
 from .const import (
     CONF_ACCOUNT,
     CONF_BUSINESS_UID,

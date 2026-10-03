@@ -1,0 +1,10 @@
+[
+  {
+    "wnumber": "SyntheticImageSN",
+    "device_name": "Synthetic image vehicle",
+    "vehicle_name": "Synthetic model",
+    "img_url": "https://oms-oss-public.ninebot.com/synthetic-original.png?nbchecksignv1=synthetic-signature",
+    "v6_light_img_url": "https://oms-oss-public.ninebot.com/synthetic-light.png?nbchecksignv1=synthetic-signature",
+    "v6_dark_img_url": "https://oms-oss-public.ninebot.com/synthetic-dark.png?nbchecksignv1=synthetic-signature"
+  }
+]

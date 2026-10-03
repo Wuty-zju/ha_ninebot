@@ -37,6 +37,7 @@ async def async_get_config_entry_diagnostics(
             {
                 "present": snapshot.present,
                 "groups": groups,
+                "polling_demand": runtime.coordinator.demand(snapshot.profile.sn).diagnostics(),
                 "battery_count": len(snapshot.battery.batteries),
                 "battery_model": battery_summary(snapshot.battery),
                 "cycle_support": [

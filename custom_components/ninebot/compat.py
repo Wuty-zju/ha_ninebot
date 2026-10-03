@@ -1,6 +1,15 @@
 """Centralized public-API capability detection, without HA version strings."""
 
+from importlib import import_module
+from types import ModuleType
+
 from homeassistant.helpers import device_registry as dr
+
+# HA's documented startup alias resolves this public name to Probatio on new
+# Core, and to voluptuous on old Core. Dynamic resolution is confined here:
+# static module types disagree about Schema even though the runtime API matches.
+# Do not choose merely because probatio happens to be installed on an old HA.
+validation: ModuleType = import_module("voluptuous")
 
 
 def child_registry_api_available() -> bool:

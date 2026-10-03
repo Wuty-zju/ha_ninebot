@@ -93,5 +93,22 @@
       "node arrays (null in sample)",
       "all-vehicle/general schema coverage"
     ]
+  },
+  "selected_shape_fixtures": [
+    {
+      "file": "vehicle-image.json",
+      "endpoint": "vehicles",
+      "source_date": "2026-10-04",
+      "provenance": "recorded_selected_shape_with_synthetic_values",
+      "scope": "selected URL fields only; reviewed origin and nbchecksignv1 key retained; all identity, model, asset paths and signature values synthetic; not a full response"
+    }
+  ],
+  "phase8_requests": {
+    "vehicles_rest_business_operations": 1,
+    "unsigned_image_head_operations": 1,
+    "image_body_downloads": 0,
+    "controls": 0,
+    "production_writes": 0,
+    "authentication_internals_included": false
   }
 }

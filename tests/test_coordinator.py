@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import MappingProxyType
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntry
@@ -47,6 +47,8 @@ async def coordinator(tmp_path, request):
     client.async_get_battery.return_value = {"battery_list": []}
     client.async_get_travel.return_value = {"total_mileages": 0, "ec": 0, "list": None}
     co = NinebotCoordinator(hass, entry, client)
+    from custom_components.ninebot.demand import ConsumerContext, Need
+
     normalize = adapters.status
 
     def mock_verified_status(raw):
@@ -70,12 +72,17 @@ async def coordinator(tmp_path, request):
         return value
 
     with (
+        patch.object(co, "_schedule_refresh"),
         patch.object(entry, "async_start_reauth"),
         patch(
             "custom_components.ninebot.coordinator.adapters.status",
             side_effect=mock_verified_status,
         ),
     ):
+        # These tests explicitly drive time/polls, not HA timer callbacks.
+        for sn in ("synthetic-one", "synthetic-two"):
+            for need in (Need.STATUS, Need.BATTERY, Need.LAST_RIDE):
+                co.async_add_listener(lambda: None, context=ConsumerContext(sn, need))
         yield co
     await co.async_close()
     await hass.async_stop(force=True)
@@ -758,3 +765,104 @@ async def test_control_diagnostics_and_execution_share_all_gates(coordinator):
     assert "authentication_required" in co.control_decision("synthetic-one", "bell").blockers
     await co.async_close()
     assert "runtime_stopped" in co.control_decision("synthetic-one", "bell").blockers
+
+
+async def test_contexts_skip_unneeded_groups_and_scope_month_fallback(coordinator, freezer):
+    from custom_components.ninebot.demand import ConsumerContext, Need
+
+    co = coordinator
+    co.client.async_get_battery.return_value = {"battery_list": [{}]}
+    now = datetime(2026, 10, 4, tzinfo=UTC)
+    freezer.move_to(now)
+    await co._async_update_data()
+    freezer.move_to(now + timedelta(seconds=601))
+    for sn in co.data:
+        for group in ("status", "battery", "travel"):
+            co._next_attempt[(sn, group)] = 0
+    for method in (
+        co.client.async_get_status,
+        co.client.async_get_battery,
+        co.client.async_get_travel,
+    ):
+        method.reset_mock()
+    with patch.object(
+        co, "async_contexts", return_value=(ConsumerContext("synthetic-one", Need.STATUS),)
+    ):
+        await co._async_update_data()
+    co.client.async_get_status.assert_awaited_once_with("synthetic-one")
+    co.client.async_get_battery.assert_not_awaited()
+    co.client.async_get_travel.assert_not_awaited()
+    with patch.object(
+        co, "async_contexts", return_value=(ConsumerContext("synthetic-one", Need.MONTH),)
+    ):
+        await co._async_update_data()
+    co.client.async_get_travel.assert_awaited_once_with("synthetic-one", "202610")
+    co.client.async_get_travel.reset_mock()
+    co._next_attempt[("synthetic-one", "travel")] = 0
+    with patch.object(
+        co, "async_contexts", return_value=(ConsumerContext("synthetic-one", Need.RIDE_EVENT),)
+    ):
+        await co._async_update_data()
+    assert co.client.async_get_travel.await_args_list == [
+        call("synthetic-one", "202610"),
+        call("synthetic-one", "202609"),
+    ]
+
+
+@pytest.mark.parametrize("coordinator", [{"enable_estimation": True}], indirect=True)
+async def test_internal_model_keeps_battery_and_status_without_enabled_entities(coordinator):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from custom_components.ninebot.estimation import EnergyModel
+
+    co = coordinator
+    models = {sn: EnergyModel(72, 20) for sn in ("synthetic-one", "synthetic-two")}
+    co.models = SimpleNamespace(models=models, model=models.__getitem__, schedule_save=MagicMock())
+    co.client.async_get_battery.return_value = {"battery_list": [{}]}
+    await co._async_update_data()
+    for sn in co.data:
+        for group in ("status", "battery", "travel"):
+            co._next_attempt[(sn, group)] = 0
+    for method in (
+        co.client.async_get_status,
+        co.client.async_get_battery,
+        co.client.async_get_travel,
+    ):
+        method.reset_mock()
+    with patch.object(co, "async_contexts", return_value=()):
+        await co._async_update_data()
+    assert co.client.async_get_status.await_count == co.client.async_get_battery.await_count == 2
+    co.client.async_get_travel.assert_not_awaited()
+    assert all(model.baseline_soc == 80 for model in models.values())
+
+
+async def test_new_vehicle_and_failed_battery_discovery_do_not_need_existing_entities(
+    coordinator, freezer
+):
+    co = coordinator
+    now = datetime(2026, 10, 4, tzinfo=UTC)
+    freezer.move_to(now)
+    co.client.async_get_battery.side_effect = NinebotError(ErrorKind.CONNECTION)
+    with patch.object(co, "async_contexts", return_value=()):
+        await co._async_update_data()
+        assert all(value.battery_freshness.succeeded_at is None for value in co.data.values())
+        freezer.move_to(now + timedelta(seconds=60))
+        co.client.async_get_battery.side_effect = None
+        co.client.async_get_battery.return_value = {"battery_list": [{}]}
+        co.client.async_get_status.reset_mock()
+        co.client.async_get_travel.reset_mock()
+        await co._async_update_data()
+        assert all(value.battery_freshness.succeeded_at is not None for value in co.data.values())
+        co.client.async_get_status.assert_not_awaited()
+        co.client.async_get_travel.assert_not_awaited()
+        co.client.async_get_battery.reset_mock()
+        freezer.move_to(now + timedelta(seconds=601))
+        await co._async_update_data()
+        co.client.async_get_battery.assert_not_awaited()
+        co.client.async_list_vehicles.return_value.append({"wnumber": "new-vehicle"})
+        co._next_attempt[("", "profile")] = 0
+        await co._async_update_data()
+    co.client.async_get_status.assert_awaited_once_with("new-vehicle")
+    co.client.async_get_battery.assert_awaited_once_with("new-vehicle")
+    assert co.client.async_get_travel.await_count == 2

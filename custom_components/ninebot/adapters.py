@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from .const import BUSINESS_TIMEZONE
 from .exceptions import ErrorKind, NinebotError
+from .image_urls import public_image_url
 from .models import Battery, BatteryInfo, LastRide, TravelMonth, VehicleProfile, VehicleStatus
 from .parsing import boolean as boolean
 from .parsing import number as number
@@ -27,12 +28,14 @@ def profiles(raw: object) -> tuple[VehicleProfile, ...]:
         sn = text(item.get("wnumber")) or text(item.get("sn"))
         if sn is None:
             raise NinebotError(ErrorKind.PROTOCOL)
-        image = text(item.get("v6_light_img_url")) or text(item.get("img_url"))
+        image = public_image_url(item.get("v6_light_img_url")) or public_image_url(
+            item.get("img_url")
+        )
         profile = VehicleProfile(
             sn,
             text(item.get("device_name")) or text(item.get("ble_name")) or sn,
             text(item.get("vehicle_name_en")) or text(item.get("vehicle_name")) or "Ninebot",
-            image if image and image.startswith("https://") else None,
+            image,
         )
         # CLI merges owned/shared business lists. Reject ambiguous duplicates.
         if sn in result and result[sn] != profile:

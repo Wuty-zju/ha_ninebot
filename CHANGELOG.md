@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.0b8 — 2026-10-04
+
+- Keep HA image cache and timestamp until the normalized model-image URL changes.
+  Review the public HTTPS origin, remove the observed opaque signature, verify TLS,
+  reject redirects and avoid URL/exception-text logs. Unknown origins are unavailable.
+- Use native GPS tracker exports and verify Zones plus coordinate opt-out through
+  actual HA entity tests; preserve IDs and do not transform unverified coordinates.
+- Poll groups from typed per-vehicle entity contexts and internal estimator/event
+  dependencies. Preserve bootstrap, bounded BMS discovery, group backoff/freshness,
+  profile discovery, manual refresh and on-demand historical actions.
+- Document the isolated vehicles query and one anonymous unsigned image HEAD;
+  preserve only a selected synthetic image fixture and non-sensitive source evidence.
+- Resolve HA's documented validation-engine alias centrally, preserving old HA
+  and modern Probatio schema behavior without a new dependency.
+- Add the pinned HA 2026.10.0b0 beta to minimum/stable CI. No dependency/minimum-HA,
+  entity ID, translation key or storage schema change; no production HA writes or
+  real vehicle controls. Battery physical identity/permissions/CRS remain unverified.
+
 ## 2.0.0b7 — 2026-10-04
 
 - Share one control policy between availability, pre/post-queue execution checks

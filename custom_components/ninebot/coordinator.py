@@ -6,7 +6,7 @@ import random
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, timedelta
-from typing import Any, Literal
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
@@ -32,13 +32,13 @@ from .const import (
     DOMAIN,
     VEHICLE_INTERVAL,
 )
+from .demand import Group, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .models import Freshness, VehicleSnapshot
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
 from .storage import ModelStorage
 
 LOGGER = logging.getLogger(__name__)
-type Group = Literal["status", "battery", "travel"]
 
 
 class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
@@ -212,7 +212,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._authenticated = True
         self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, True)
 
-    async def _group(self, sn: str, group: Group, *, force: bool = False) -> None:
+    async def _group(
+        self, sn: str, group: Group, *, force: bool = False, include_last_ride: bool = True
+    ) -> None:
         now = dt_util.utcnow()
         stamp = now.timestamp()
         if not force and not self._due(sn, group, stamp):
@@ -257,7 +259,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 travel = await self.hass.async_add_executor_job(
                     adapters.travel, result.payload, month
                 )
-                if travel.last_ride is None:
+                if include_last_ride and travel.last_ride is None:
                     previous = adapters.previous_month(month)
                     try:
                         fallback_record = self.raw.get(Endpoint.TRAVEL, sn, previous, now=now)
@@ -411,6 +413,18 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         model.sample(snapshot.status.battery, now, source)
         self.models.schedule_save()
 
+    def demand(self, sn: str) -> PollingDemand:
+        return polling_demand(
+            self.data[sn],
+            self.async_contexts(),
+            estimation=bool(
+                self.models
+                and self.config_entry
+                and self.config_entry.options.get(CONF_ESTIMATION) is True
+            ),
+            now=dt_util.utcnow(),
+        )
+
     async def _async_update_data(self) -> dict[str, VehicleSnapshot]:
         task = asyncio.current_task()
         if task:
@@ -425,12 +439,16 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         model.rollover(now)
                 await self._list(now)
                 sns = [sn for sn, value in self.data.items() if value.present]
+                demands = {sn: self.demand(sn) for sn in sns}
                 # Status has priority, but every cycle also gives due details a turn.
                 for sn in sns:
-                    await self._group(sn, "status")
+                    if "status" in demands[sn].groups:
+                        await self._group(sn, "status")
                 for sn in sns:
-                    await self._group(sn, "battery")
-                    await self._group(sn, "travel")
+                    if "battery" in demands[sn].groups:
+                        await self._group(sn, "battery")
+                    if "travel" in demands[sn].groups:
+                        await self._group(sn, "travel", include_last_ride=demands[sn].last_ride)
                     self._sample_model(sn)
                 return dict(self.data)
         except NinebotAuthError as err:

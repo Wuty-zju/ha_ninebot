@@ -15,8 +15,13 @@ jobs:
         include:
           - python: '3.13'
             test-plugin: '0.13.305'
+            ha: '2026.1.0'
           - python: '3.14'
             test-plugin: '0.13.367'
+            ha: '2026.9.4'
+          - python: '3.14'
+            test-plugin: '0.13.368'
+            ha: '2026.10.0b0'
     env:
       LITELLM_LOCAL_MODEL_COST_MAP: 'True'
     steps:
@@ -29,6 +34,12 @@ jobs:
           python -m pip install
           pytest-homeassistant-custom-component==${{ matrix.test-plugin }}
           ninecli==0.1.7 ruff==0.16.10 mypy==2.4.0
+      - name: Verify the pinned Home Assistant test environment
+        env:
+          EXPECTED_HA: ${{ matrix.ha }}
+        run: >-
+          python -c 'import os; from importlib.metadata import version;
+          assert version("homeassistant") == os.environ["EXPECTED_HA"]'
       - run: ruff check custom_components tests scripts
       - run: ruff format --check custom_components tests scripts
       - run: mypy custom_components/ninebot --follow-imports=silent
