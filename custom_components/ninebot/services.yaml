@@ -1,0 +1,60 @@
+get_trips:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: ninebot
+    month:
+      required: true
+      example: "202609"
+      selector:
+        text:
+    page:
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 1000
+          mode: box
+    limit:
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    include_detail:
+      default: false
+      selector:
+        boolean:
+    include_track:
+      default: false
+      selector:
+        boolean:
+get_trip_detail:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: ninebot
+    ride_id:
+      required: true
+      selector:
+        text:
+    query_month:
+      example: "202609"
+      selector:
+        text:
+    max_points:
+      default: 500
+      selector:
+        number:
+          min: 1
+          max: 2000
+          mode: box
+    include_track:
+      default: false
+      selector:
+        boolean:

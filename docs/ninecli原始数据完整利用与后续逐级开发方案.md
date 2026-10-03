@@ -852,3 +852,10 @@ Phase 2 的 dependency scheduling 可以再拆小PR：先typedcontexts/内部需
 | 生命周期/质量 | [Config flow](https://developers.home-assistant.io/docs/core/integration/config_flow/)、[Diagnostics](https://developers.home-assistant.io/docs/core/integration/diagnostics/)、[Repairs](https://developers.home-assistant.io/docs/core/platform/repairs/)、[Quality checklist](https://developers.home-assistant.io/docs/core/integration-quality-scale/checklist/)、[HACS requirements](https://hacs.xyz/docs/publish/integration/) |
 
 版本与endpoint能力未来会变；后续实施/发布必须重新核实最新stable/beta/ninecli，不能把本次日期报告当永久事实。复核首先使用现有脱敏fixtures/源码，不借“重新核实”重复打九号云。此次交付仅新增本设计与无值机器清单、更新docs入口；运行实现仍为原2.0.0b0。
+
+### Phase 4 实施补充（2.0.0b4）
+
+已实现的参数及响应契约见 [历史查询 Actions 契约](v2x-历史查询Actions契约.md)，
+实现/验收见 [实施记录](v2x-实施与验收记录.md)。包含详情时要求limit<=5，
+以输入约束避免隐含partial fanout；云端分页仍待证据，未新增上游page参数。
+查询默认当前业务月；历史detail必须显式传query_month，不扫描月份猜测关联。

@@ -266,6 +266,101 @@ async def test_raw_capture_unknown_fields_policy_failure_and_unload(coordinator)
     assert co.raw.retained_bytes == 0
 
 
+async def test_history_query_reuses_polling_payload_without_changing_current_state(coordinator):
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    await co._async_update_data()
+    month = co.data["synthetic-one"].travel.month
+    before = dict(co.data)
+    co.client.async_get_travel.reset_mock()
+    record = await co.async_query_month("synthetic-one", month)
+    assert record.endpoint is Endpoint.TRAVEL and record.query_month == month
+    co.client.async_get_travel.assert_not_awaited()
+    assert co.data == before
+    co.client.async_get_travel.return_value = {"list": [{"travel_id": "synthetic-ride"}]}
+    first, second = await asyncio.gather(
+        co.async_query_month("synthetic-one", "202001"),
+        co.async_query_month("synthetic-one", "202001"),
+    )
+    assert first is second
+    co.client.async_get_travel.assert_awaited_once_with("synthetic-one", "202001")
+    assert co.data == before
+    co.client.async_get_trip_detail.return_value = {"duration": 2}
+    detail = await co.async_query_detail("synthetic-one", "synthetic-ride", "202001")
+    assert detail.endpoint is Endpoint.TRIP_DETAIL and detail.query_month == "202001"
+    assert await co.async_query_detail("synthetic-one", "synthetic-ride", "202001") is detail
+    co.client.async_get_trip_detail.assert_awaited_once()
+    other = await co.async_query_detail("synthetic-one", "synthetic-ride", "202002")
+    assert other is not detail and co.client.async_get_trip_detail.await_count == 2
+
+
+async def test_newer_action_month_is_reused_by_poll_without_extending_timestamp(
+    coordinator, freezer
+):
+    co = coordinator
+    now = datetime(2026, 9, 26, tzinfo=UTC)
+    freezer.move_to(now)
+    co.client.async_get_travel.return_value = {"list": [{"travel_id": "one"}], "total_mileages": 2}
+    await co._async_update_data()
+    freezer.move_to(now + timedelta(seconds=601))
+    co.client.async_get_travel.return_value = {"list": [{"travel_id": "two"}], "total_mileages": 3}
+    record = await co.async_query_month("synthetic-one", "202609")
+    assert co.data["synthetic-one"].travel.mileage == 2
+    co.client.async_get_travel.reset_mock()
+    freezer.move_to(now + timedelta(seconds=650))
+    await co._group("synthetic-one", "travel")
+    co.client.async_get_travel.assert_not_awaited()
+    assert co.data["synthetic-one"].travel.mileage == 3
+    assert co.data["synthetic-one"].travel_freshness.succeeded_at == record.received_at
+    assert co._next_attempt[("synthetic-one", "travel")] == record.received_at.timestamp() + 600
+
+
+async def test_history_query_auth_policy_queue_and_unload(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    with pytest.raises(NinebotError):
+        await co.async_query_detail("synthetic-one", "", "202001")
+    with pytest.raises(HomeAssistantError):
+        await co.async_query_month("missing", "202001")
+    co.client.async_get_travel.return_value = [None] * 25001
+    with pytest.raises(NinebotError):
+        await co.async_query_month("synthetic-one", "202001")
+    co.client.async_get_travel.side_effect = NinebotAuthError()
+    with pytest.raises(ConfigEntryAuthFailed):
+        await co.async_query_month("synthetic-one", "202001")
+    assert not co._authenticated and co._query_pending == 0
+    co._authenticated = True
+    co.client.async_get_travel.side_effect = None
+    co.client.async_get_travel.reset_mock()
+    await co._mutex.acquire()
+    tasks = [asyncio.create_task(co.async_query_month("synthetic-one", "202001")) for _ in range(4)]
+    await asyncio.sleep(0)
+    with pytest.raises(HomeAssistantError) as error:
+        await co.async_query_month("synthetic-one", "202001")
+    assert error.value.translation_key == "busy"
+    await co.async_close()
+    co._mutex.release()
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    assert all(isinstance(result, asyncio.CancelledError) for result in results)
+    assert co._query_pending == 0
+    co.client.async_get_travel.assert_not_awaited()
+
+
+async def test_removed_ownership_clears_private_query_cache(coordinator):
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    await co._async_update_data()
+    assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC))
+    co.client.async_list_vehicles.return_value = [{"wnumber": "synthetic-two"}]
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is None
+    with pytest.raises(HomeAssistantError):
+        await co.async_query_month("synthetic-one", "202001")
+
+
 async def test_cancelled_raw_preparation_cannot_repopulate_unloaded_cache(coordinator):
     import threading
 

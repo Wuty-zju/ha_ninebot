@@ -30,9 +30,9 @@ from .const import (
     DOMAIN,
     VEHICLE_INTERVAL,
 )
-from .exceptions import NinebotAuthError, NinebotError
+from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .models import Freshness, VehicleSnapshot
-from .raw import RawLimitError, RawStore, build_record
+from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
 from .storage import ModelStorage
 
 LOGGER = logging.getLogger(__name__)
@@ -74,6 +74,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._stopping = False
         self._authenticated = False
         self._control_pending = 0
+        self._query_pending = 0
         self._active: set[asyncio.Task[Any]] = set()
         self._forced: dict[str, asyncio.Task[None]] = {}
         self._shutdown_task: asyncio.Task[None] | None = None
@@ -183,6 +184,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 raise UpdateFailed(err.kind.value) from err
             return
         sns = {profile.sn for profile in found}
+        for sn in self.data:
+            if sn not in sns:
+                self.raw.discard_vehicle(sn)
         self.data = {
             sn: snapshot if sn in sns else replace(snapshot, present=False)
             for sn, snapshot in self.data.items()
@@ -198,6 +202,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 for group in ("status", "battery", "travel"):
                     self._next_attempt.pop((profile.sn, group), None)
                     self._failures.pop((profile.sn, group), None)
+                self.raw.discard_vehicle(profile.sn)
                 if self.models:
                     self.models.model(profile.sn).reset_baseline()
         finished = dt_util.utcnow()
@@ -212,6 +217,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return
         snapshot = self.data[sn]
         success = False
+        cached_success: datetime | None = None
         try:
             if group == "status":
                 result = await self.backend.async_status(sn)
@@ -229,16 +235,44 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 )
             else:
                 month = adapters.month_at(now)
-                result = await self.backend.async_travel_month(sn, month)
-                await self._capture(result, sn)
+                cached = self.raw.get(Endpoint.TRAVEL, sn, month, now=now)
+                previous_success = snapshot.travel_freshness.succeeded_at
+                if (
+                    cached
+                    and not force
+                    and 0 <= (now - cached.received_at).total_seconds() < DETAIL_INTERVAL
+                    and (previous_success is None or cached.received_at > previous_success)
+                ):
+                    # An explicit current-month action already fetched newer data.
+                    # Reuse it without extending its actual success timestamp.
+                    result = BackendResult(
+                        cached.payload(), Endpoint.TRAVEL, cached.received_at, month
+                    )
+                    cached_success = cached.received_at
+                else:
+                    result = await self.backend.async_travel_month(sn, month)
+                    await self._capture(result, sn)
                 travel = await self.hass.async_add_executor_job(
                     adapters.travel, result.payload, month
                 )
                 if travel.last_ride is None:
                     previous = adapters.previous_month(month)
                     try:
-                        result = await self.backend.async_travel_month(sn, previous)
-                        await self._capture(result, sn)
+                        fallback_record = self.raw.get(Endpoint.TRAVEL, sn, previous, now=now)
+                        if fallback_record and (
+                            0
+                            <= (now - fallback_record.received_at).total_seconds()
+                            < DETAIL_INTERVAL
+                        ):
+                            result = BackendResult(
+                                fallback_record.payload(),
+                                Endpoint.TRAVEL,
+                                fallback_record.received_at,
+                                previous,
+                            )
+                        else:
+                            result = await self.backend.async_travel_month(sn, previous)
+                            await self._capture(result, sn)
                         fallback = await self.hass.async_add_executor_job(
                             adapters.travel, result.payload, previous
                         )
@@ -249,7 +283,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         # Optional last-ride fallback cannot invalidate current totals.
                         pass
                 updated = replace(
-                    snapshot, travel=travel, travel_freshness=Freshness(now, dt_util.utcnow())
+                    snapshot,
+                    travel=travel,
+                    travel_freshness=Freshness(now, cached_success or dt_util.utcnow()),
                 )
             self.data[sn] = updated
             success = True
@@ -268,12 +304,14 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._attempt_finished(
             sn,
             group,
-            dt_util.utcnow().timestamp(),
+            (cached_success if success and cached_success else dt_util.utcnow()).timestamp(),
             self.interval if group == "status" else DETAIL_INTERVAL,
             success,
         )
 
-    async def _capture(self, result: BackendResult, sn: str = "", detail_id: str = "") -> None:
+    async def _capture(
+        self, result: BackendResult, sn: str = "", detail_id: str = ""
+    ) -> RawRecord | None:
         """Raw policy failure cannot discard otherwise valid normalized data."""
         try:
             record = await self.hass.async_add_executor_job(
@@ -285,9 +323,61 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             )
         except RawLimitError:
             self.raw.rejected += 1
-            return
+            return None
         if not self._stopping:
-            self.raw.put(record, sn, result.query_month or detail_id)
+            scope = (result.query_month or "") if result.endpoint is Endpoint.TRAVEL else detail_id
+            if self.raw.put(record, sn, scope):
+                return record
+        return None
+
+    async def async_query_month(self, sn: str, month: str) -> RawRecord:
+        """Explicit history query; never changes current-month state/events."""
+        adapters.previous_month(month)
+        return await self._query_record(sn, Endpoint.TRAVEL, month, month)
+
+    async def async_query_detail(self, sn: str, detail_id: str, month: str) -> RawRecord:
+        """The action layer must resolve this ID from this vehicle's month index."""
+        adapters.previous_month(month)
+        if not detail_id or len(detail_id) > 256:
+            raise NinebotError(ErrorKind.PROTOCOL)
+        return await self._query_record(sn, Endpoint.TRIP_DETAIL, detail_id, month)
+
+    async def _query_record(self, sn: str, endpoint: Endpoint, scope: str, month: str) -> RawRecord:
+        if self._query_pending >= 4:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
+        self._query_pending += 1
+        task = asyncio.current_task()
+        if task:
+            self._active.add(task)
+        try:
+            async with self._mutex:
+                # Recheck ownership/load/authentication after the queue wait.
+                if self._stopping or not self.fresh(sn, "profile"):
+                    raise HomeAssistantError(
+                        translation_domain=DOMAIN, translation_key="query_unavailable"
+                    )
+                now = dt_util.utcnow()
+                cached = self.raw.get(endpoint, sn, scope, now=now, query_month=month)
+                ttl = 900 if endpoint is Endpoint.TRIP_DETAIL else DETAIL_INTERVAL
+                if cached and 0 <= (now - cached.received_at).total_seconds() < ttl:
+                    return cached
+                try:
+                    if endpoint is Endpoint.TRAVEL:
+                        result = await self.backend.async_travel_month(sn, month)
+                    else:
+                        result = replace(
+                            await self.backend.async_trip_detail(sn, scope), query_month=month
+                        )
+                    record = await self._capture(result, sn, scope)
+                    if record is None:
+                        raise NinebotError(ErrorKind.PROTOCOL)
+                    return record
+                except NinebotAuthError as err:
+                    raise self._manual_auth_failure() from err
+        finally:
+            self._query_pending -= 1
+            if task:
+                self._active.discard(task)
 
     def _sample_model(self, sn: str) -> None:
         """Sample after due BMS data, so startup cannot pretend a pack changed."""

@@ -228,6 +228,24 @@
     },
     "engine_lock_unverified": {
       "message": "engine-start/stop are not verified equivalents of lock/unlock. This entity retains observed lock state and does not execute engine controls."
+    },
+    "query_unavailable": {
+      "message": "Vehicle query unavailable: ensure the integration is loaded, the session is valid and the vehicle remains in a fresh account vehicle list."
+    },
+    "query_device": {
+      "message": "Select one unambiguous Ninebot vehicle device belonging to this integration."
+    },
+    "query_coordinates": {
+      "message": "Enable coordinates in integration options before requesting a trip track."
+    },
+    "query_detail_limit": {
+      "message": "When including details, set the page size to five or less."
+    },
+    "query_track_detail": {
+      "message": "A trip track requires include_detail."
+    },
+    "query_ride": {
+      "message": "The ride does not have one verified detail mapping in this vehicle and month. Specify the correct month and use Get trips first."
     }
   },
   "issues": {
@@ -250,6 +268,64 @@
     "model_storage_invalid": {
       "title": "Unsupported estimation storage",
       "description": "The estimation storage format or version is unsupported. Setup stopped without overwriting it. Retain a backup and use the integration version matching this storage, or restore a complete pre-upgrade backup. Do not edit the model version field manually."
+    }
+  },
+  "services": {
+    "get_trips": {
+      "name": "Get trips",
+      "description": "Query a vehicle month with local pagination. Cloud completeness is unknown. Detail requests require a limit of five or less.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select the vehicle device, not a battery component."
+        },
+        "month": {
+          "name": "Month",
+          "description": "Business month YYYYMM, for example 202609. Future months are rejected."
+        },
+        "page": {
+          "name": "Page",
+          "description": "Page within the rows returned by ninecli, not cloud pagination."
+        },
+        "limit": {
+          "name": "Page size",
+          "description": "Maximum 100; maximum five when including details."
+        },
+        "include_detail": {
+          "name": "Include details",
+          "description": "Read at most five trip details in this call."
+        },
+        "include_track": {
+          "name": "Include track",
+          "description": "Requires details and coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        }
+      }
+    },
+    "get_trip_detail": {
+      "name": "Get trip detail",
+      "description": "Query one trip verified in the selected vehicle and month. No history scan or vehicle control.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select the vehicle device, not a battery component."
+        },
+        "ride_id": {
+          "name": "Ride ID",
+          "description": "Use the ride_id returned by Get trips for this vehicle and month."
+        },
+        "query_month": {
+          "name": "Query month",
+          "description": "YYYYMM; defaults to the current month in Asia/Shanghai. Specify it for older trips."
+        },
+        "max_points": {
+          "name": "Point limit",
+          "description": "Maximum 2000; defaults to 500. Also bounds speed samples."
+        },
+        "include_track": {
+          "name": "Include track",
+          "description": "Requires coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        }
+      }
     }
   }
 }

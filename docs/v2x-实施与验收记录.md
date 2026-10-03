@@ -98,3 +98,41 @@ unit/state class、未来/含糊时刻、duration冲突、旧无时间兼容，�
 
 下一阶段Phase4注册get_trips/get_trip_detail ONLY-response查询action，严格
 设备/账户/车辆路由和GPS opt-in，仍不将大历史对象放入state machine。
+
+## 2.0.0b4：Phase 4 Historical query actions
+
+基于已发布main `8fa540b9`的Phase3内容，分支 `feature/v2x-query-actions`。
+`async_setup`常驻注册两项SupportsResponse.ONLY Actions；最低2026.1已支持，
+无新增WebSocket、minimum bump或attrs/bus fallback。新services/compat资源全部
+位于integration directory，可被HACS打包。中英字段描述、icons与参数契约见
+[v2x-历史查询Actions契约.md](v2x-历史查询Actions契约.md)。
+
+- 必填device_id；按Device Registry所属entry查找本次账户已知/新鲜/存在车辆，
+  拒绝child、battery identifier、foreign/disabled、多个Ninebot owner及无明确
+  owner的composite，不用primary entry猜账户。compat集中检测新单owner属性与
+  旧config_entries集合。没有启用实体也可按车辆设备查询。
+- month限ASCII YYYYMM、200001至当前业务月份；page<=1000、limit<=100，
+  不截断float/接受bool。详情ride_id须在该车辆指定month index唯一，并有已确认
+  detail关联；冷查询最多一次该月，不扫历史/猜legacy id。详情时刻与已知summary
+  不符/返回空对象/响应ID矛盾时拒绝合并。
+- include_detail需要limit<=5；串行最多5详情。轨迹需要include_detail（列表）
+  或detail action、coordinates选项与include_track双重opt-in。最终返回前再次
+  检查设备归属/状态与位置选项，取消/卸载/移除不能返回旧scope数据。
+- 共用RawStore：month600秒/detail900秒，detail ID再按month隔离；最多4个网络
+  排队查询，账号互斥、相同查询复用。卸载取消网络请求、清空缓存，auth进入原有
+  reauth。ownership消失/恢复清除私有缓存。超限raw不返回旧记录冒充新成功。
+- Action不直接改coordinator.data/current month freshness/event baseline。周期
+  poll可重用action更近的当月记录，成功时刻仍是真实received_at，下一次到期也
+  基于原始时刻；previous-month近期cache复用，避免重复空月fallback。
+- 月完整性未知：本地available_in_response和has_more仅指已取得集合，
+  total_known=null、upstream_complete=unknown，不把20条或times=128当全月计数。
+- 输出是normalized whitelist，不含account/SN/password/token/原始JSON/URL；
+  默认没有coordinates/track/start-end location。能耗和samples单位仍unknown，
+  单次详情max_points默认500/最大2000，同时约束samples。UTC时间编码ISO8601。
+  response变量/automation trace可能保留GPS，文档明确此出口边界。
+
+验证使用recorded sanitized fixtures与隔离HA/mock，无本阶段真实车辆/云查询、
+生产HA写入/部署/重启或控制。验证结果见 `evidence/v2x-b4-validation.json`；
+release前对应提交必须通过完整pytest、Ruff/format、mypy、Hassfest/HACS CI。
+尚待Phase5事件、Phase6电池身份/兼容及Phase8Image/GPS优化；不能将本阶段
+query能力当作完整历史数据库或云端分页实现。

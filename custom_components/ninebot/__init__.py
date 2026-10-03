@@ -6,6 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 
 from .client import NinecliClient
 from .const import CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN, PLATFORMS, SESSION_DIRECTORY
@@ -14,8 +15,14 @@ from .entity import async_audit_device_identities
 from .exceptions import NinebotError
 from .migration import async_migrate
 from .runtime import NinebotConfigEntry, RuntimeData
+from .services import async_register_actions
 from .session import SessionManager, session_uid
 from .storage import ModelStorage
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    async_register_actions(hass)
+    return True
 
 
 def manager_for(hass: HomeAssistant) -> SessionManager:

@@ -17,5 +17,13 @@
         "default": "mdi:speedometer-medium"
       }
     }
+  },
+  "services": {
+    "get_trips": {
+      "service": "mdi:map-marker-path"
+    },
+    "get_trip_detail": {
+      "service": "mdi:routes"
+    }
   }
 }

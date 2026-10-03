@@ -24,6 +24,8 @@ MAX_TRACK_POINTS = 2000
 def opaque_id(value: object) -> str | None:
     if type(value) is int and value >= 0:
         return str(value)
+    if isinstance(value, str) and any(ord(char) < 32 for char in value):
+        return None
     value = text(value)
     if value is not None and len(value) <= 256 and not any(ord(char) < 32 for char in value):
         return value
