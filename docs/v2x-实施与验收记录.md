@@ -136,3 +136,25 @@ unit/state class、未来/含糊时刻、duration冲突、旧无时间兼容，�
 release前对应提交必须通过完整pytest、Ruff/format、mypy、Hassfest/HACS CI。
 尚待Phase5事件、Phase6电池身份/兼容及Phase8Image/GPS优化；不能将本阶段
 query能力当作完整历史数据库或云端分页实现。
+
+## Phase 5 进行中：事件 cursor（未发布）
+
+分支 `feature/v2x-ride-events` 基于Phase4源提交，已有纯领域cursor模块，
+尚未接入EventEntity或HA Store，不应当作ride事件功能已交付。
+
+- 只有ID、过去的可靠起止、正时长与时间跨度一致才作为云端结束报告候选；
+  时间/身份冲突、未来结束、未知起止不因“新ID”就发completed。
+- 首次非空可靠窗口建立baseline，不发历史；空/未知保持uninitialized。
+  restart/首次启用必须由pipeline强制baseline（尚待接入），旧backup不重放。
+- 跨月按hashed opaque ride ID比较集合，重排和重复查询不制造新事件。
+  seen最多128，超限建立保守retention_floor，防止已驱逐ID被重放；同结束时刻
+  的过大批次可能被全部抑制，优先防重复而非承诺不遗漏。
+- 30分钟late window与24小时gap rebaseline是本地保守策略，**不是实测上传延迟**。
+  超窗backfill不补发，时钟回退/长期缺口重建baseline；实际上传时延仍待证据。
+- cursor只包含时间、hash与有界集合，restore严格拒绝未知/不完整/非法结构。
+  后续Store保存前确认schema版本与账户/车辆scope，不能用RestoreEvent当去重真相。
+
+20项领域测试覆盖baseline、重排、跨月、迟到、恢复、容量上限和非法存储，
+该模块分支覆盖100%，Ruff/format和mypy通过。没有新增真实查询、生产HA写入或
+控制。待完成：版本化Store、durable-before-emit、enabled订阅与卸载取消、
+EventEntity/中英翻译/icons、月边界窗口、HA集成测试及完整发布校验。
