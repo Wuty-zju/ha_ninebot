@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-04",
+  "source_baseline_commit": "b13cfe96286c7d385b1ca89061bdd336c1dbaa6b",
+  "version": "2.0.0b6",
+  "phases": ["6 Battery observation identity and compatibility"],
+  "tests": {
+    "passed": 275,
+    "combined_branch_coverage_percent": 97.62,
+    "battery_policy_coverage_percent": 100,
+    "sensor_coverage_percent": 100,
+    "compatibility_coverage_percent": 100,
+    "python": "3.13.16",
+    "ha": "2026.1.0"
+  },
+  "checks": {
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed, 34 source files",
+    "hassfest": "required on exact release commit via CI",
+    "hacs": "required on exact release commit via CI"
+  },
+  "observed_battery_paths_reviewed": 21,
+  "identity_fixtures": "synthetic; no SN in either recorded battery fixture",
+  "child_device_creation": false,
+  "device_assignment": "vehicle",
+  "registry_migration": false,
+  "new_cloud_requests": 0,
+  "real_controls": 0,
+  "production_ha_writes": 0,
+  "legacy_unique_id_changes": 0,
+  "signature_upgrade": "matching legacy source rebaselines; generation and totals retained",
+  "pending": [
+    "real repeated pack identity and physical/logical composition evidence",
+    "child/physical battery registration and downgrade backup rehearsal after evidence",
+    "anonymous same-count physical replacement cannot be detected",
+    "battery_count/score/electricity/charging_power/protection semantics",
+    "capability evidence and diagnostics",
+    "Image/GPS and dependency-based scheduling"
+  ],
+  "release_evidence": "Exact-commit CI and merge SHA appear in prerelease notes."
+}

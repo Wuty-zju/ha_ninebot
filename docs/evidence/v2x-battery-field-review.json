@@ -1,0 +1,366 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-04",
+  "version": "2.0.0b6",
+  "source": "v2x-field-inventory.json historical recorded battery shapes",
+  "contract": "../v2x-电池身份与设备模型契约.md",
+  "observed_path_count": 21,
+  "observed_fields": [
+    {
+      "path": "$",
+      "types": [
+        "dict"
+      ],
+      "container": true,
+      "meaning": "结构容器；仅记录 shape，不创建 Entity",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R"
+    },
+    {
+      "path": "$.battery_count",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "服务端 count；历史为字符串，曾与数组长度不符；只作 schema",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；不可信计数"
+    },
+    {
+      "path": "$.battery_find_my_support",
+      "types": [
+        "bool"
+      ],
+      "container": false,
+      "meaning": "寻电池支持标志；不是 bell/buck/engine 权限",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.battery_list",
+      "types": [
+        "list"
+      ],
+      "container": true,
+      "meaning": "结构容器；仅记录 shape，不创建 Entity",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R"
+    },
+    {
+      "path": "$.battery_list[]",
+      "types": [
+        "dict"
+      ],
+      "container": true,
+      "meaning": "结构容器；仅记录 shape，不创建 Entity",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R"
+    },
+    {
+      "path": "$.battery_list[].bat_temp",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "BMS 温度；保持身份",
+      "unit": "°C",
+      "classification": "A",
+      "enabled": "是",
+      "device_class": "temperature",
+      "state_class": "M",
+      "entity_category": "—",
+      "compatibility": "C0/CG",
+      "evidence": "R/S；沿用 v2 契约"
+    },
+    {
+      "path": "$.battery_list[].bms_cycle",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "循环数；只有明确 support=true 才启用，false 的哨兵不使用",
+      "unit": "次",
+      "classification": "B",
+      "enabled": "否且 support gate",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "diagnostic",
+      "compatibility": "C0/CG",
+      "evidence": "R/S；样本 support=false"
+    },
+    {
+      "path": "$.battery_list[].bms_volt",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "BMS 电压；显式合法数值，保持单/多包旧身份",
+      "unit": "V",
+      "classification": "A",
+      "enabled": "是",
+      "device_class": "voltage",
+      "state_class": "M",
+      "entity_category": "—",
+      "compatibility": "C0/CG",
+      "evidence": "R/S；沿用 v2 契约"
+    },
+    {
+      "path": "$.battery_list[].electricity",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "包 SOC 候选；范围/主包/缓存语义待核，与 status SOC 区分",
+      "unit": "待验证（可能 %）",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.battery_list[].score",
+      "types": [
+        "int"
+      ],
+      "container": false,
+      "meaning": "评分原始量；不得直接命名 SOH",
+      "unit": "未知",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.battery_main",
+      "types": [
+        "dict"
+      ],
+      "container": true,
+      "meaning": "结构容器；仅记录 shape，不创建 Entity",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R"
+    },
+    {
+      "path": "$.battery_main.electricity",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "主电池量；与外层及车辆 SOC 数值不同，不自动归并",
+      "unit": "待验证",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.battery_type",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "电池类型编码；核实枚举后 metadata",
+      "unit": "—",
+      "classification": "G/H",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "CG",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.charging",
+      "types": [
+        "int"
+      ],
+      "container": false,
+      "meaning": "BMS 充电标志；与 status 比较，当前 primary 继续 status",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.charging_power",
+      "types": [
+        "int"
+      ],
+      "container": false,
+      "meaning": "原始充电量；charging_power_raw 保持无单位",
+      "unit": "未知",
+      "classification": "C",
+      "enabled": "否",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "diagnostic",
+      "compatibility": "C2",
+      "evidence": "R/S"
+    },
+    {
+      "path": "$.charging_protection",
+      "types": [
+        "dict"
+      ],
+      "container": true,
+      "meaning": "结构容器；仅记录 shape，不创建 Entity",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R"
+    },
+    {
+      "path": "$.charging_protection.status",
+      "types": [
+        "int"
+      ],
+      "container": false,
+      "meaning": "充电保护标志；枚举未知，不直接套 Problem class",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.charging_protection.url",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "充电保护相关 URL；功能/访问权限未知，禁止后台任意抓取",
+      "unit": "—",
+      "classification": "J/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.electricity",
+      "types": [
+        "int"
+      ],
+      "container": false,
+      "meaning": "电池外层量；与 status/main 分开，未知更新时间",
+      "unit": "待验证",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R；语义 V"
+    },
+    {
+      "path": "$.have_bms_cycle_support",
+      "types": [
+        "bool"
+      ],
+      "container": false,
+      "meaning": "循环数 feature gate；必须 True，不从 cycle 数值猜能力",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R/S"
+    },
+    {
+      "path": "$.remain_charge_time",
+      "types": [
+        "str"
+      ],
+      "container": false,
+      "meaning": "BMS 充电文字；保留 raw，避免与 status 重复实体",
+      "unit": "—",
+      "classification": "H/I",
+      "enabled": "—",
+      "device_class": "—",
+      "state_class": "—",
+      "entity_category": "—",
+      "compatibility": "C0",
+      "evidence": "R/S"
+    }
+  ],
+  "identity_aliases": {
+    "battery_list[].battery_sn": "source/synthetic only, absent from recorded fixtures",
+    "battery_list[].sn": "source/synthetic only, absent from recorded fixtures"
+  },
+  "registry_policy": "vehicle; no verified physical/composition identity",
+  "child_registry_capability": "centralized feature detection, not automatic device eligibility",
+  "unresolved": [
+    "physical pack identity across repeated queries/replacement/vehicles",
+    "fixed logical component identity",
+    "battery_count meaning",
+    "electricity freshness/units",
+    "score meaning",
+    "charging_power unit",
+    "charging protection enum",
+    "battery_type enum",
+    "anonymous same-count replacement detection"
+  ],
+  "new_cloud_requests": 0,
+  "production_ha_writes": 0,
+  "real_controls": 0
+}
