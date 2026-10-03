@@ -8,6 +8,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 
 from .adapters import number, text
 from .const import (
@@ -17,6 +18,7 @@ from .const import (
     CONF_POLL_INTERVAL,
     CONF_SESSION_KEY,
     DEFAULT_POLL_INTERVAL,
+    DOMAIN,
 )
 from .exceptions import NinebotError
 from .session import SessionManager
@@ -58,24 +60,42 @@ async def async_migrate(hass: HomeAssistant, entry: ConfigEntry, manager: Sessio
     if entry.version == 2:
         return True
     uid = text(entry.data.get(CONF_BUSINESS_UID))
+    if uid and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", uid) is None:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            f"migration_identity_{entry.entry_id}",
+            is_fixable=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key="migration_identity_invalid",
+        )
+        return False
     scheme = "app_v1" if uid else "open_v1"
     data: dict[str, Any] = {
         CONF_ACCOUNT: text(entry.data.get("username")) or "",
         CONF_IDENTITY_SCHEME: scheme,
-        CONF_SESSION_KEY: uuid.uuid4().hex,
+        # Repeating an interrupted v1 migration must not leave a new orphan
+        # directory on each attempt. This is an identifier, not a secret.
+        CONF_SESSION_KEY: uuid.uuid5(
+            uuid.NAMESPACE_URL, f"{DOMAIN}:{entry.entry_id}:v2-session"
+        ).hex,
     }
     if uid:
         data[CONF_BUSINESS_UID] = uid
-        if re.fullmatch(r"[A-Za-z0-9_-]{1,128}", uid):
-            source = Path(hass.config.path(".storage", "ninebot", uid))
-            try:
-                key, candidate = await manager.async_import(source, uid)
+        source = Path(hass.config.path(".storage", "ninebot", uid))
+        candidate = None
+        try:
+            _, candidate = await manager.async_import(source, uid)
+            key = data[CONF_SESSION_KEY]
+            async with manager.transaction(key):
                 await manager.async_commit(candidate, key)
                 await manager.async_finalize(key)
-                data[CONF_SESSION_KEY] = key
-            except (NinebotError, OSError):
-                # No cloud login in migration; setup will offer reauth.
-                pass
+        except (NinebotError, OSError):
+            # No cloud login in migration; setup will offer reauth.
+            pass
+        finally:
+            if candidate is not None:
+                await manager.async_discard(candidate)
     else:
         parameters = await hass.async_add_executor_job(
             legacy_parameters,
@@ -98,4 +118,5 @@ async def async_migrate(hass: HomeAssistant, entry: ConfigEntry, manager: Sessio
     hass.config_entries.async_update_entry(
         entry, data=data, options=options, version=2, minor_version=1
     )
+    ir.async_delete_issue(hass, DOMAIN, f"migration_identity_{entry.entry_id}")
     return True

@@ -34,7 +34,7 @@ def test_gaps_jumps_source_changes_do_not_count_energy():
     model.sample(93, now, "a")
     model.sample(10, now + timedelta(seconds=30), "a")
     assert model.quality == "implausible_jump"
-    assert model.values["out_step"] == 0
+    assert model.values.get("out_step") is None
     model.sample(90, now + timedelta(hours=2), "a")
     assert model.quality == "baseline_only"
     model.sample(50, now + timedelta(hours=2, seconds=120), "new-battery")

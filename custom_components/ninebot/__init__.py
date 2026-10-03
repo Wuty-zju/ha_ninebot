@@ -7,7 +7,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .client import NinecliClient
-from .const import CONF_BUSINESS_UID, CONF_SESSION_KEY, PLATFORMS, SESSION_DIRECTORY
+from .const import CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN, PLATFORMS, SESSION_DIRECTORY
 from .coordinator import NinebotCoordinator
 from .exceptions import NinebotError
 from .migration import async_migrate
@@ -17,9 +17,13 @@ from .storage import ModelStorage
 
 
 def manager_for(hass: HomeAssistant) -> SessionManager:
-    return SessionManager(
-        Path(hass.config.path(".storage", SESSION_DIRECTORY)), async_get_clientsession(hass)
-    )
+    key = f"{DOMAIN}_sessions"
+    if key not in hass.data:
+        hass.data[key] = SessionManager(
+            Path(hass.config.path(".storage", SESSION_DIRECTORY)), async_get_clientsession(hass)
+        )
+    manager: SessionManager = hass.data[key]
+    return manager
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> bool:

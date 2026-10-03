@@ -44,6 +44,13 @@ class EnergyModel:
         self.values = {}
         self.quality = "baseline_reset"
 
+    def reset_baseline(self) -> None:
+        """Keep totals, but do not bridge an interval with no observed session."""
+        self.baseline_soc = self.sampled_at = None
+        for key in ("delta", "out_step", "in_step"):
+            self.values.pop(key, None)
+        self.quality = "baseline_reset"
+
     def rollover(self, now: datetime) -> None:
         local = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE))
         day, month = local.strftime("%Y%m%d"), local.strftime("%Y%m")
@@ -57,7 +64,8 @@ class EnergyModel:
     def sample(self, soc: float | None, now: datetime, source: str) -> None:
         """Re-baseline after gaps/jumps; quantized SOC is not a precision meter."""
         self.rollover(now)
-        self.values.update(delta=0, out_step=0, in_step=0)
+        for key in ("delta", "out_step", "in_step"):
+            self.values.pop(key, None)
         valid = number(soc, 0, 100)
         if valid is None or self.nominal is None:
             self.quality = "missing_soc" if valid is None else "unconfigured"
@@ -82,6 +90,7 @@ class EnergyModel:
             self.quality = "implausible_jump"
             return
         energy = self.nominal * difference / 100
+        self.values.update(out_step=0, in_step=0)
         self.values["delta"] = energy
         direction = "out" if energy < 0 else "in"
         self.values[f"{direction}_step"] = abs(energy)

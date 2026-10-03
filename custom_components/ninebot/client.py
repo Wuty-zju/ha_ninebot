@@ -161,8 +161,10 @@ class NinecliClient:
     async def async_close(self) -> None:
         """Stop even when another request is waiting on the local HTTP child."""
         self._closed = True
-        await self._stop()
-        self._bearer = ""
+        try:
+            await self._stop()
+        finally:
+            self._bearer = ""
 
     async def _request(self, method: str, path: str, body: dict[str, str] | None = None) -> Any:
         if self._closed:

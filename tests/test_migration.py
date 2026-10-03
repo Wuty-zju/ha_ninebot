@@ -122,3 +122,51 @@ def test_legacy_parameter_reader_rejects_raw_and_invalid_layouts(tmp_path):
         )
     )
     assert legacy_parameters(path) == {"one": {}}
+
+
+async def test_interrupted_fork_metadata_update_reuses_private_destination(hass, tmp_path):
+    import pytest
+
+    hass.config.config_dir = str(tmp_path)
+    uid = "synthetic-business"
+    entry = MockConfigEntry(
+        domain="ninebot",
+        version=1,
+        unique_id=uid,
+        data={"username": "fake-account", "business_uid": uid},
+    )
+    entry.add_to_hass(hass)
+    source = tmp_path / ".storage" / "ninebot" / uid
+    source.mkdir(parents=True)
+    (source / "tokens.json").write_text(json.dumps({"business_uid": uid}))
+    before = (source / "tokens.json").read_bytes()
+    with patch.object(hass.config_entries, "async_update_entry", side_effect=OSError("synthetic")):
+        with pytest.raises(OSError):
+            await async_migrate_entry(hass, entry)
+    assert entry.version == 1
+    root = tmp_path / ".storage" / "ninebot_v2"
+    first = list(root.iterdir())
+    assert len(first) == 1
+    assert await async_migrate_entry(hass, entry)
+    assert list(root.iterdir()) == first
+    assert first[0].name == entry.data["session_key"]
+    assert (source / "tokens.json").read_bytes() == before
+    assert not list(root.glob(".*"))
+
+
+async def test_unsafe_legacy_identity_preserves_configuration_and_creates_repair(hass):
+    from homeassistant.helpers import issue_registry as ir
+
+    entry = MockConfigEntry(
+        domain="ninebot",
+        version=1,
+        unique_id="synthetic",
+        data={"username": "fake-account", "business_uid": "../untrusted"},
+    )
+    entry.add_to_hass(hass)
+    before = dict(entry.data)
+    assert not await async_migrate_entry(hass, entry)
+    assert entry.version == 1
+    assert dict(entry.data) == before
+    issue = ir.async_get(hass).async_get_issue("ninebot", f"migration_identity_{entry.entry_id}")
+    assert issue and issue.translation_key == "migration_identity_invalid"

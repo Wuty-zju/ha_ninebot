@@ -66,6 +66,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._control_pending = 0
         self._active: set[asyncio.Task[Any]] = set()
         self._forced: dict[str, asyncio.Task[None]] = {}
+        self._shutdown_task: asyncio.Task[None] | None = None
 
     def fresh(self, sn: str, group: str) -> bool:
         snapshot = self.data.get(sn)
@@ -135,17 +136,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if group == "status":
                 status = adapters.status(await self.client.async_get_status(sn))
                 updated = replace(snapshot, status=status, status_freshness=freshness)
-                if (
-                    self.models
-                    and self.config_entry
-                    and self.config_entry.options.get(CONF_ESTIMATION)
-                ):
-                    batteries = ",".join(
-                        b.key if b.identified else "unidentified"
-                        for b in snapshot.battery.batteries
-                    )
-                    self.models.model(sn).sample(status.battery, now, f"vehicle_soc:{batteries}")
-                    self.models.schedule_save()
             elif group == "battery":
                 battery = adapters.batteries(await self.client.async_get_battery(sn))
                 updated = replace(snapshot, battery=battery, battery_freshness=freshness)
@@ -183,6 +173,29 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             sn, group, stamp, self.interval if group == "status" else DETAIL_INTERVAL, success
         )
 
+    def _sample_model(self, sn: str) -> None:
+        """Sample after due BMS data, so startup cannot pretend a pack changed."""
+        if not (
+            self.models and self.config_entry and self.config_entry.options.get(CONF_ESTIMATION)
+        ):
+            return
+        snapshot = self.data[sn]
+        now = snapshot.status_freshness.succeeded_at
+        if now is None or snapshot.status_freshness.error is not None:
+            return
+        model = self.models.model(sn)
+        if not self.fresh(sn, "battery"):
+            model.reset_baseline()
+            self.models.schedule_save()
+            return
+        if model.sampled_at is not None and now.timestamp() <= model.sampled_at:
+            return
+        batteries = ",".join(
+            sorted(b.key if b.identified else "unidentified" for b in snapshot.battery.batteries)
+        )
+        model.sample(snapshot.status.battery, now, f"vehicle_soc:{batteries}")
+        self.models.schedule_save()
+
     async def _async_update_data(self) -> dict[str, VehicleSnapshot]:
         task = asyncio.current_task()
         if task:
@@ -203,6 +216,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 for sn in sns:
                     await self._group(sn, "battery", now)
                     await self._group(sn, "travel", now)
+                    self._sample_model(sn)
                 return dict(self.data)
         except NinebotAuthError as err:
             self._authenticated = False
@@ -228,6 +242,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 except NinebotAuthError as err:
                     self._authenticated = False
                     raise ConfigEntryAuthFailed("auth") from err
+                self._sample_model(sn)
                 self.async_set_updated_data(dict(self.data))
 
         task = asyncio.create_task(refresh())
@@ -289,13 +304,20 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     async def async_close(self) -> None:
         self._stopping = True
-        tasks = self._active | set(self._forced.values())
-        current = asyncio.current_task()
-        for task in tasks:
-            if task is not current:
+        if self._shutdown_task is None:
+            current = asyncio.current_task()
+            tasks = (self._active | set(self._forced.values())) - {current}
+            for task in tasks:
                 task.cancel()
+            self._shutdown_task = asyncio.create_task(self._shutdown(tasks))
+        try:
+            await asyncio.shield(self._shutdown_task)
+        except asyncio.CancelledError:
+            await self._shutdown_task
+            raise
+
+    async def _shutdown(self, tasks: set[asyncio.Task[Any]]) -> None:
+        """Finish cleanup before propagating cancellation of the unload caller."""
         await self.client.async_close()
-        await asyncio.gather(
-            *(task for task in tasks if task is not current), return_exceptions=True
-        )
+        await asyncio.gather(*tasks, return_exceptions=True)
         await self.async_shutdown()

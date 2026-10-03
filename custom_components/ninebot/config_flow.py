@@ -1,7 +1,6 @@
 """Explicit credential entry, isolated validation and account-safe reauth."""
 
 import uuid
-from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
@@ -9,7 +8,6 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState, ConfigFlowResult
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     SelectOptionDict,
     SelectSelector,
@@ -31,7 +29,6 @@ from .const import (
     CONF_SESSION_KEY,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
-    SESSION_DIRECTORY,
 )
 from .exceptions import ErrorKind, NinebotError
 from .session import SessionManager
@@ -55,87 +52,124 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._entry: ConfigEntry | None = None
 
     def _manager(self) -> SessionManager:
-        return SessionManager(
-            Path(self.hass.config.path(".storage", SESSION_DIRECTORY)),
-            async_get_clientsession(self.hass),
-        )
+        from . import manager_for
+
+        return manager_for(self.hass)
 
     async def _credentials(self, step: str, user_input: dict[str, Any] | None) -> ConfigFlowResult:
         errors = {}
         if user_input is not None:
             account = str(user_input[CONF_ACCOUNT]).strip()
             manager = self._manager()
-            candidate = None
-            committed = False
-            finished = False
-            metadata_updated = False
-            old_data = dict(self._entry.data) if self._entry else None
-            old_uid = self._entry.unique_id if self._entry else None
             key = self._entry.data[CONF_SESSION_KEY] if self._entry else uuid.uuid4().hex
-            unloaded = False
-            try:
-                candidate = await manager.async_prepare(account, str(user_input[CONF_PASSWORD]))
-                if self._entry:
-                    expected = self._entry.data.get(CONF_BUSINESS_UID)
-                    if (expected and candidate.uid != expected) or (
-                        not expected and account != self._entry.data.get(CONF_ACCOUNT)
-                    ):
-                        return self.async_abort(reason="wrong_account")
-                await self.async_set_unique_id(candidate.uid, raise_on_progress=self._entry is None)
-                for entry in self._async_current_entries():
-                    if entry is not self._entry and (
-                        entry.unique_id == candidate.uid
-                        or entry.data.get(CONF_BUSINESS_UID) == candidate.uid
-                    ):
-                        return self.async_abort(reason="already_configured")
-                if self._entry and self._entry.state == ConfigEntryState.LOADED:
-                    unloaded = await self.hass.config_entries.async_unload(self._entry.entry_id)
-                    if not unloaded:
-                        raise NinebotError(ErrorKind.BUSY)
-                await manager.async_commit(candidate, key)
-                committed = True
-                data = {
-                    CONF_ACCOUNT: account,
-                    CONF_BUSINESS_UID: candidate.uid,
-                    CONF_SESSION_KEY: key,
-                    CONF_IDENTITY_SCHEME: self._entry.data.get(CONF_IDENTITY_SCHEME, "v2")
-                    if self._entry
-                    else "v2",
-                }
-                if self._entry:
-                    self.hass.config_entries.async_update_entry(
-                        self._entry, data=data, unique_id=candidate.uid
+            async with manager.transaction(key):
+                candidate = None
+                committed = False
+                finished = False
+                metadata_updated = False
+                old_data = dict(self._entry.data) if self._entry else None
+                old_uid = self._entry.unique_id if self._entry else None
+                unloaded = False
+                try:
+                    candidate = await manager.async_prepare(account, str(user_input[CONF_PASSWORD]))
+                    if self._entry:
+                        expected = self._entry.data.get(CONF_BUSINESS_UID)
+                        if (expected and candidate.uid != expected) or (
+                            not expected and account != self._entry.data.get(CONF_ACCOUNT)
+                        ):
+                            return self.async_abort(reason="wrong_account")
+                    await self.async_set_unique_id(
+                        candidate.uid, raise_on_progress=self._entry is None
                     )
-                    metadata_updated = True
+                    for entry in self._async_current_entries():
+                        if entry is not self._entry and (
+                            entry.unique_id == candidate.uid
+                            or entry.data.get(CONF_BUSINESS_UID) == candidate.uid
+                        ):
+                            return self.async_abort(reason="already_configured")
+                    if self._entry and self._entry.state == ConfigEntryState.LOADED:
+                        unloaded = await self.hass.config_entries.async_unload(self._entry.entry_id)
+                        if not unloaded:
+                            raise NinebotError(ErrorKind.BUSY)
+                    await manager.async_commit(candidate, key)
+                    committed = True
+                    data = {
+                        CONF_ACCOUNT: account,
+                        CONF_BUSINESS_UID: candidate.uid,
+                        CONF_SESSION_KEY: key,
+                        CONF_IDENTITY_SCHEME: self._entry.data.get(CONF_IDENTITY_SCHEME, "v2")
+                        if self._entry
+                        else "v2",
+                    }
+                    if self._entry:
+                        self.hass.config_entries.async_update_entry(
+                            self._entry, data=data, unique_id=candidate.uid
+                        )
+                        metadata_updated = True
+                        if not await self.hass.config_entries.async_reload(self._entry.entry_id):
+                            raise NinebotError(ErrorKind.CONNECTION)
+                        await manager.async_finalize(key)
+                        committed = False
+                        finished = True
+                        return self.async_abort(
+                            reason="reauth_successful"
+                            if step == "reauth_confirm"
+                            else "reconfigure_successful"
+                        )
+                    result = self.async_create_entry(title="Ninebot", data=data)
                     await manager.async_finalize(key)
                     committed = False
                     finished = True
-                    await self.hass.config_entries.async_reload(self._entry.entry_id)
-                    return self.async_abort(
-                        reason="reauth_successful"
-                        if step == "reauth_confirm"
-                        else "reconfigure_successful"
-                    )
-                result = self.async_create_entry(title="Ninebot", data=data)
-                await manager.async_finalize(key)
-                committed = False
-                finished = True
-                return result
-            except NinebotError as err:
-                errors["base"] = ERRORS[err.kind]
-            except OSError:
-                errors["base"] = "storage_error"
-            finally:
-                if committed:
-                    await manager.async_rollback(key)
-                    if self._entry and metadata_updated and old_data is not None:
-                        self.hass.config_entries.async_update_entry(
-                            self._entry, data=old_data, unique_id=old_uid
-                        )
-                if candidate:
-                    await manager.async_discard(candidate)
-                if unloaded and not finished and self._entry:
-                    await self.hass.config_entries.async_reload(self._entry.entry_id)
+                    return result
+                except NinebotError as err:
+                    errors["base"] = ERRORS[err.kind]
+                except OSError:
+                    errors["base"] = "storage_error"
+                finally:
+                    if committed and await manager.async_is_pending(key):
+                        if self._entry and self._entry.state == ConfigEntryState.LOADED:
+                            if not await self.hass.config_entries.async_unload(
+                                self._entry.entry_id
+                            ):
+                                # A live replacement runtime must never read a directory
+                                # while it is being rolled back. Retain the journal and
+                                # backups so a subsequent unload/start can recover.
+                                raise NinebotError(ErrorKind.BUSY)
+                        rolled_back = await manager.async_rollback(key)
+                        if (
+                            rolled_back
+                            and self._entry
+                            and metadata_updated
+                            and old_data is not None
+                        ):
+                            self.hass.config_entries.async_update_entry(
+                                self._entry, data=old_data, unique_id=old_uid
+                            )
+                        if not rolled_back:
+                            # Finalize may have completed in its worker before
+                            # cancellation reached the caller. Keep the accepted
+                            # metadata rather than undoing only half the commit.
+                            finished = True
+                    elif committed:
+                        # The finalization worker crossed the commit point before
+                        # cancellation. The replacement runtime and metadata agree.
+                        finished = True
+                    if candidate:
+                        await manager.async_discard(candidate)
+                    if self._entry and not finished and (metadata_updated or unloaded):
+                        await self.hass.config_entries.async_reload(self._entry.entry_id)
+            if (
+                errors
+                and self._entry
+                and metadata_updated
+                and not any(
+                    flow["flow_id"] == self.flow_id
+                    for flow in self.hass.config_entries.flow.async_progress()
+                )
+            ):
+                # HA async_reload aborts reauth flows, even if setup subsequently
+                # fails. Returning a form for that removed flow raises UnknownFlow.
+                return self.async_abort(reason="session_update_failed")
         default = self._entry.data.get(CONF_ACCOUNT, "") if self._entry else ""
         return self.async_show_form(
             step_id=step,

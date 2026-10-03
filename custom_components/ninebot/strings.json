@@ -39,7 +39,8 @@
       "already_configured": "Account already configured",
       "wrong_account": "Reauthenticate with the same account",
       "reauth_successful": "Reauthentication successful",
-      "reconfigure_successful": "Reconfiguration successful"
+      "reconfigure_successful": "Reconfiguration successful",
+      "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again."
     }
   },
   "options": {
@@ -81,7 +82,7 @@
         "name": "Serial number"
       },
       "vehicle_lock_raw": {
-        "name": "App lock code"
+        "name": "Normalized lock code (0 means locked)"
       },
       "month_mileage": {
         "name": "Current month distance"
@@ -208,6 +209,10 @@
     "entity_identity_conflict": {
       "title": "Duplicate legacy entity identities",
       "description": "Multiple legacy entities represent the same function. Their identities and history are preserved; equivalent sensors continue to receive values. No entries were deleted. Review automations and user settings before deciding which entities to retain through the HA UI."
+    },
+    "migration_identity_invalid": {
+      "title": "Legacy account identity is invalid",
+      "description": "Migration stopped because the legacy business identity is invalid. Existing configuration and sessions were preserved. Check the backup and confirm the account identity before retrying; do not merge accounts by vehicle nickname."
     }
   }
 }

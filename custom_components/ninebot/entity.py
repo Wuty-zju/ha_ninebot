@@ -34,7 +34,7 @@ class NinebotEntity(CoordinatorEntity[NinebotCoordinator]):
         super().__init__(entry.runtime_data.coordinator)
         self.entry = entry
         self.sn = sn
-        self.group = group
+        self._data_group = group
         registry = er.async_get(self.coordinator.hass)
         candidates = [f"ninebot_{sn}_{alias}".lower() for alias in (key, *aliases)]
         candidates.extend(f"{sn}_{alias}" for alias in (key, *aliases))
@@ -72,7 +72,7 @@ class NinebotEntity(CoordinatorEntity[NinebotCoordinator]):
 
     @property
     def available(self) -> bool:
-        return self.coordinator.fresh(self.sn, self.group)
+        return self.coordinator.fresh(self.sn, self._data_group)
 
     @property
     def device_info(self) -> DeviceInfo:

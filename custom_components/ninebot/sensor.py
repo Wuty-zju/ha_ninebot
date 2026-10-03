@@ -94,7 +94,7 @@ SENSORS = (
     Description(
         key="vehicle_lock_raw",
         group="status",
-        value=lambda s: int(s.status.locked) if s.status.locked is not None else None,
+        value=lambda s: int(not s.status.locked) if s.status.locked is not None else None,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
     ),

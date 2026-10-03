@@ -15,12 +15,18 @@ class ModelStorage:
 
     async def async_load(self) -> None:
         raw = await self._store.async_load()
-        if isinstance(raw, dict) and isinstance(raw.get("models"), dict):
+        if (
+            isinstance(raw, dict)
+            and raw.get("model_version") == 2
+            and isinstance(raw.get("models"), dict)
+        ):
             self.models = {
                 sn: EnergyModel.restore(value)
                 for sn, value in raw["models"].items()
                 if isinstance(sn, str)
             }
+            for model in self.models.values():
+                model.reset_baseline()
 
     def model(self, sn: str) -> EnergyModel:
         return self.models.setdefault(sn, EnergyModel())

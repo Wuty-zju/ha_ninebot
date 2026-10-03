@@ -114,3 +114,6 @@ and v2 parser/lifecycle/HA flows using synthetic tests. New real password login,
 refresh recovery, all hardware controls and additional platforms require separate
 verification. Complete Go source/reproducible builds are not available from the
 reviewed wheels; the dependency audit states that limitation explicitly.
+
+Legacy lock-code diagnostics retain 0=locked and 1=unlocked. Restarting or re-enabling
+estimation preserves totals while rebuilding the sample baseline; disabled intervals are not counted.

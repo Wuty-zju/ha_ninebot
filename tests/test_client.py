@@ -164,3 +164,148 @@ async def test_actual_proxy_startup_auth_and_unload(tmp_path):
         finally:
             await client.async_close()
         assert process.returncode is not None
+
+
+@pytest.mark.parametrize("raw", [None, {"code": "token_expired"}, {"code": "invalid_auth"}])
+def test_explicit_auth_or_malformed_error_envelope(raw):
+    with pytest.raises(NinebotError) as error:
+        response_data(502, {"ok": False, "error": raw})
+    assert error.value.kind == (ErrorKind.PROTOCOL if raw is None else ErrorKind.AUTH)
+
+
+@pytest.mark.parametrize(
+    "anonymous,authenticated,exit_code,expected",
+    [
+        (200, 404, None, ErrorKind.PROTOCOL),
+        (401, 401, None, ErrorKind.PROTOCOL),
+        (401, 404, 7, ErrorKind.PLATFORM),
+    ],
+)
+async def test_startup_rejects_unprotected_wrong_or_exited_server(
+    tmp_path, anonymous, authenticated, exit_code, expected
+):
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    process = MagicMock()
+    process.returncode = exit_code
+    process.wait = AsyncMock(return_value=0)
+
+    def terminate():
+        process.returncode = -15
+
+    process.terminate.side_effect = terminate
+    session = MagicMock()
+
+    @asynccontextmanager
+    async def get(url, **kwargs):
+        yield SimpleNamespace(
+            status=authenticated if "auth_probe" in url else anonymous,
+            content=SimpleNamespace(read=AsyncMock(return_value=b"")),
+        )
+
+    session.get.side_effect = get
+    client = NinecliClient(tmp_path, session)
+    with patch(
+        "custom_components.ninebot.client.asyncio.create_subprocess_exec", return_value=process
+    ) as spawn:
+        with pytest.raises(NinebotError) as error:
+            await client._start()
+    assert error.value.kind == expected
+    assert client._process is None
+    process.wait.assert_awaited()
+    assert "NINEBOT_SERVE_TOKEN" in spawn.call_args.kwargs["env"]
+    assert "--token" not in spawn.call_args.args
+
+
+async def test_startup_spawn_failure_and_closed_client(tmp_path):
+    from unittest.mock import MagicMock, patch
+
+    client = NinecliClient(tmp_path, MagicMock())
+    with patch(
+        "custom_components.ninebot.client.asyncio.create_subprocess_exec",
+        side_effect=OSError("synthetic"),
+    ):
+        with pytest.raises(NinebotError) as error:
+            await client._start()
+    assert error.value.kind == ErrorKind.PLATFORM
+    await client.async_close()
+    with pytest.raises(NinebotError) as error:
+        await client._start()
+    assert error.value.kind == ErrorKind.CLOSED
+
+
+async def test_request_timeout_cleans_up_and_releases_queue(tmp_path, proxy):
+    url, _, _, _ = proxy
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session, timeout=0.03)
+        client._base = url
+        client._start = AsyncMock()
+        client._stop = AsyncMock()
+        with pytest.raises(NinebotError) as error:
+            await client.async_get_status("slow")
+        assert error.value.kind == ErrorKind.CONNECTION
+        client._stop.assert_awaited_once()
+        assert client._pending == 0 and not client._lock.locked()
+
+
+async def test_cancel_queued_request_never_stops_active_child(tmp_path):
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        await client._lock.acquire()
+        client._stop = AsyncMock()
+        queued = asyncio.create_task(client.async_get_battery("synthetic"))
+        await asyncio.sleep(0)
+        queued.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await queued
+        client._stop.assert_not_awaited()
+        assert client._pending == 0
+        client._lock.release()
+
+
+async def test_session_queue_is_bounded(tmp_path, proxy):
+    url, _, wait, started = proxy
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        client._base = url
+        client._start = AsyncMock()
+        client._stop = AsyncMock()
+        first = asyncio.create_task(client.async_get_status("slow"))
+        await started.wait()
+        rest = [asyncio.create_task(client.async_get_battery("synthetic")) for _ in range(7)]
+        await asyncio.sleep(0)
+        with pytest.raises(NinebotError) as error:
+            await client.async_get_travel("synthetic", "202610")
+        assert error.value.kind == ErrorKind.BUSY
+        wait.set()
+        await asyncio.gather(first, *rest)
+        assert client._pending == 0
+
+
+async def test_cancel_close_reaps_child_before_clearing_bearer(tmp_path):
+    from unittest.mock import MagicMock
+
+    started, release = asyncio.Event(), asyncio.Event()
+    client = NinecliClient(tmp_path, MagicMock())
+    client._process = MagicMock()
+    client._bearer = "synthetic-local-token"
+
+    async def reap(process):
+        started.set()
+        await release.wait()
+
+    client._reap = AsyncMock(side_effect=reap)
+    task = asyncio.create_task(client.async_close())
+    await started.wait()
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert client._process is None
+    assert client._bearer == ""
+    await client.async_close()
+    client._reap.assert_awaited_once()

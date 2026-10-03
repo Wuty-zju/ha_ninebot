@@ -39,7 +39,8 @@
       "already_configured": "账号已配置",
       "wrong_account": "重认证必须使用原账号",
       "reauth_successful": "重认证成功",
-      "reconfigure_successful": "重新配置成功"
+      "reconfigure_successful": "重新配置成功",
+      "session_update_failed": "会话更新未完成，已恢复旧会话。请重新开始认证。"
     }
   },
   "options": {
@@ -81,7 +82,7 @@
         "name": "序列号"
       },
       "vehicle_lock_raw": {
-        "name": "App锁状态编码"
+        "name": "规范化锁编码（0为锁定）"
       },
       "month_mileage": {
         "name": "本月里程"
@@ -208,6 +209,10 @@
     "entity_identity_conflict": {
       "title": "存在重复的旧实体身份",
       "description": "同一功能存在多个旧实体。集成保留这些身份和历史；同口径的传感器继续提供值，不删除任何条目。请检查自动化与用户设置，再通过HA界面决定保留哪些实体。"
+    },
+    "migration_identity_invalid": {
+      "title": "旧账户身份无效，升级已停止",
+      "description": "旧配置中的业务账户身份格式无效。原配置和会话未被替换。请检查备份并确认账户身份后重试，勿按车辆昵称合并账户。"
     }
   }
 }

@@ -7,7 +7,8 @@ import re
 import shutil
 import tempfile
 import uuid
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,18 @@ from .exceptions import ErrorKind, NinebotError
 type ClientFactory = Callable[[Path, aiohttp.ClientSession], NinecliClient]
 
 
+async def finish_io[T](operation: Callable[[], T]) -> T:
+    """A cancelled coroutine must not leave an executor write racing cleanup."""
+    task = asyncio.create_task(asyncio.to_thread(operation))
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        try:
+            await task
+        finally:
+            raise
+
+
 def private_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
     if path.is_symlink():
@@ -30,7 +43,7 @@ def private_directory(path: Path) -> None:
 def session_uid(path: Path) -> str:
     """Only a completed business login identifies the account."""
     file = path / "tokens.json"
-    if file.is_symlink():
+    if path.is_symlink() or file.is_symlink():
         raise NinebotError(ErrorKind.PROTOCOL)
     try:
         raw = json.loads(file.read_bytes())
@@ -68,6 +81,25 @@ class SessionManager:
         self._session = session
         self._factory = client_factory
         self._lock = asyncio.Lock()
+        self._transactions: dict[str, asyncio.Lock] = {}
+        self._live_transactions: set[str] = set()
+
+    @asynccontextmanager
+    async def transaction(self, key: str) -> AsyncIterator[None]:
+        """Serialize the entire entry change, including its runtime reload.
+
+        Setup during this reload must not mistake our pending journal for a
+        crashed flow. A fresh HA instance has no live transactions and recovers
+        that journal normally.
+        """
+        self.path(key)
+        lock = self._transactions.setdefault(key, asyncio.Lock())
+        async with lock:
+            self._live_transactions.add(key)
+            try:
+                yield
+            finally:
+                self._live_transactions.discard(key)
 
     def path(self, key: str) -> Path:
         if re.fullmatch(r"[0-9a-f]{32}", key) is None:
@@ -86,26 +118,33 @@ class SessionManager:
             directory = await task
             await asyncio.to_thread(shutil.rmtree, directory, True)
             raise
-        client = self._factory(directory, self._session)
+        client = None
         try:
+            client = self._factory(directory, self._session)
             await client.async_login(account, password)
             profiles(await client.async_list_vehicles())
-            uid = await asyncio.to_thread(session_uid, directory)
+            uid = await finish_io(lambda: session_uid(directory))
             await client.async_close()
-            await asyncio.to_thread(secure_files, directory)
+            await finish_io(lambda: secure_files(directory))
             return Candidate(directory, uid)
         except BaseException:
-            await client.async_close()
-            await asyncio.to_thread(shutil.rmtree, directory, True)
+            try:
+                if client is not None:
+                    await client.async_close()
+            finally:
+                await finish_io(lambda: shutil.rmtree(directory, True))
             raise
 
     async def async_discard(self, candidate: Candidate) -> None:
-        await asyncio.to_thread(shutil.rmtree, candidate.path, True)
+        await finish_io(lambda: shutil.rmtree(candidate.path, True))
 
     def _recover(self, key: str) -> None:
         destination = self.path(key)
         backup = self.root / f".backup-{key}"
-        if (self.root / f".transaction-{key}.json").exists():
+        journal = self.root / f".transaction-{key}.json"
+        if any(path.is_symlink() for path in (destination, backup, journal)):
+            raise NinebotError(ErrorKind.PROTOCOL)
+        if journal.exists():
             self._rollback(key)
             return
         # Also recover a pre-journal backup (or a manual recovery fixture).
@@ -116,12 +155,17 @@ class SessionManager:
         (self.root / f".journal-{key}.tmp").unlink(missing_ok=True)
 
     async def async_recover(self, key: str) -> None:
+        if key in self._live_transactions:
+            return
         async with self._lock:
-            await asyncio.to_thread(self._recover, key)
+            await finish_io(lambda: self._recover(key))
 
     def _commit(self, candidate: Candidate, key: str) -> None:
         destination = self.path(key)
-        if candidate.path.parent != self.root or not candidate.path.name.startswith(".candidate-"):
+        if (
+            candidate.path.parent != self.root
+            or re.fullmatch(r"\.candidate-[\w-]+", candidate.path.name) is None
+        ):
             raise NinebotError(ErrorKind.PROTOCOL)
         if session_uid(candidate.path) != candidate.uid:
             raise NinebotError(ErrorKind.PROTOCOL)
@@ -160,13 +204,18 @@ class SessionManager:
                 await asyncio.to_thread(self._rollback, key)
                 raise
 
-    def _rollback(self, key: str) -> None:
+    def _rollback(self, key: str) -> bool:
         destination = self.path(key)
         backup = self.root / f".backup-{key}"
         journal = self.root / f".transaction-{key}.json"
         if not journal.exists():
-            return
-        record = json.loads(journal.read_bytes())
+            return False
+        if any(path.is_symlink() for path in (destination, backup, journal)):
+            raise NinebotError(ErrorKind.PROTOCOL)
+        try:
+            record = json.loads(journal.read_bytes())
+        except (OSError, ValueError) as err:
+            raise NinebotError(ErrorKind.PROTOCOL) from err
         if not isinstance(record, dict) or type(record.get("had_previous")) is not bool:
             raise NinebotError(ErrorKind.PROTOCOL)
         if backup.exists():
@@ -178,10 +227,15 @@ class SessionManager:
         if isinstance(candidate, str) and re.fullmatch(r"\.candidate-[\w-]+", candidate):
             shutil.rmtree(self.root / candidate, ignore_errors=True)
         journal.unlink()
+        return True
 
-    async def async_rollback(self, key: str) -> None:
+    async def async_rollback(self, key: str) -> bool:
         async with self._lock:
-            await asyncio.to_thread(self._rollback, key)
+            return await finish_io(lambda: self._rollback(key))
+
+    async def async_is_pending(self, key: str) -> bool:
+        self.path(key)
+        return await finish_io(lambda: (self.root / f".transaction-{key}.json").exists())
 
     async def async_finalize(self, key: str) -> None:
         async with self._lock:
