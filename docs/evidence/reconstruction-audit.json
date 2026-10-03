@@ -1,0 +1,1077 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-03T09:49:13.244086+00:00",
+  "scope": "documentation and offline audit; no implementation, deployment or vehicle controls",
+  "repository_baselines": {
+    "ha_ninebot": "c6caabee0b58c0f7a3fb19b7fb47285e0a47fd9a",
+    "ninebot": "e4004cba1da8c27c896f6062ba98abb9f6586e70"
+  },
+  "ha_readonly_snapshot": {
+    "entity_counts": {
+      "sensor": 18,
+      "binary_sensor": 6,
+      "device_tracker": 2,
+      "button": 4,
+      "lock": 2
+    },
+    "installed_fork_python_differences": [],
+    "poll_interval_seconds": 30
+  },
+  "ninecli": {
+    "public_metadata_url": "https://pypi.org/pypi/ninecli/0.1.7/json",
+    "metadata": {
+      "name": "ninecli",
+      "version": "0.1.7",
+      "requires_python": ">=3.8",
+      "license": "MIT",
+      "license_expression": null,
+      "project_urls": null,
+      "requires_dist": null
+    },
+    "artifacts": [
+      {
+        "filename": "ninecli-0.1.7-py3-none-macosx_10_9_x86_64.whl",
+        "packagetype": "bdist_wheel",
+        "size": 3650688,
+        "url": "https://files.pythonhosted.org/packages/cd/f6/b63dd7cf8e8a352c98bc2ab23d101a3f09583b08e7349ef2e7b6fba0df06/ninecli-0.1.7-py3-none-macosx_10_9_x86_64.whl",
+        "digests": {
+          "blake2b_256": "cdf6b63dd7cf8e8a352c98bc2ab23d101a3f09583b08e7349ef2e7b6fba0df06",
+          "md5": "a3859e81e029672b523a83d1fb2437f5",
+          "sha256": "4b248e639e2e359f8ee1f2268ba369c602d21fafc6c0d0eaf146cc5031b7da6d"
+        },
+        "yanked": false,
+        "upload_time_iso_8601": "2026-07-01T23:48:00.523398Z"
+      },
+      {
+        "filename": "ninecli-0.1.7-py3-none-macosx_11_0_arm64.whl",
+        "packagetype": "bdist_wheel",
+        "size": 3365854,
+        "url": "https://files.pythonhosted.org/packages/da/22/d648e0c96d8fe4b1cffe0d7c86c3e35e06e1b948756956e290fe8313c2f1/ninecli-0.1.7-py3-none-macosx_11_0_arm64.whl",
+        "digests": {
+          "blake2b_256": "da22d648e0c96d8fe4b1cffe0d7c86c3e35e06e1b948756956e290fe8313c2f1",
+          "md5": "94e96a05d81db68bc1e15624992578bb",
+          "sha256": "ab3276dc7ae7675806ed21efc68b1f8ce01a233d6236bb67c82291037a564534"
+        },
+        "yanked": false,
+        "upload_time_iso_8601": "2026-07-01T23:48:02.627134Z"
+      },
+      {
+        "filename": "ninecli-0.1.7-py3-none-manylinux_2_17_aarch64.whl",
+        "packagetype": "bdist_wheel",
+        "size": 3248378,
+        "url": "https://files.pythonhosted.org/packages/0e/34/9f7c92c8dd0c880a87f59cf948c911d3760caa30736c06af790315c5d513/ninecli-0.1.7-py3-none-manylinux_2_17_aarch64.whl",
+        "digests": {
+          "blake2b_256": "0e349f7c92c8dd0c880a87f59cf948c911d3760caa30736c06af790315c5d513",
+          "md5": "2f43c63d374674d17548ebb4d52c653a",
+          "sha256": "ff362ad6e1f41dab94d4fb5d477365adc7daa1a5996beebd0c94637ecdd7be15"
+        },
+        "yanked": false,
+        "upload_time_iso_8601": "2026-07-01T23:48:04.482890Z"
+      },
+      {
+        "filename": "ninecli-0.1.7-py3-none-manylinux_2_17_x86_64.whl",
+        "packagetype": "bdist_wheel",
+        "size": 3598203,
+        "url": "https://files.pythonhosted.org/packages/9f/5a/897692667b5293cc54e02cc0d99e1889c5220eb6b18ce9e209cf4c25dd6b/ninecli-0.1.7-py3-none-manylinux_2_17_x86_64.whl",
+        "digests": {
+          "blake2b_256": "9f5a897692667b5293cc54e02cc0d99e1889c5220eb6b18ce9e209cf4c25dd6b",
+          "md5": "eb9045fd3615c2f33421c555af7bdc48",
+          "sha256": "ff3941b81d60e4bba60e9477900e63a9ebd2b02e74cb4b8138f3cfe1d94a81cc"
+        },
+        "yanked": false,
+        "upload_time_iso_8601": "2026-07-01T23:48:06.462235Z"
+      },
+      {
+        "filename": "ninecli-0.1.7-py3-none-musllinux_1_2_aarch64.whl",
+        "packagetype": "bdist_wheel",
+        "size": 3248377,
+        "url": "https://files.pythonhosted.org/packages/05/c8/e2f17bc29ce5001fa820a3b214473e2d389181773bbddc16ca0610e1b238/ninecli-0.1.7-py3-none-musllinux_1_2_aarch64.whl",
+        "digests": {
+          "blake2b_256": "05c8e2f17bc29ce5001fa820a3b214473e2d389181773bbddc16ca0610e1b238",
+          "md5": "c36cd49f5029ebb4e20ab01fee10ba28",
+          "sha256": "e2c82740839948a50ae02142a16f0a260c74667a1ccceda167ef570621b37c90"
+        },
+        "yanked": false,
+        "upload_time_iso_8601": "2026-07-01T23:48:08.519371Z"
+      },
+      {
+        "filename": "ninecli-0.1.7-py3-none-musllinux_1_2_x86_64.whl",
+        "packagetype": "bdist_wheel",
+        "size": 3598202,
+        "url": "https://files.pythonhosted.org/packages/fc/88/f317519463e56cbd7caa5963960f858e17e47c08fcd84edcfc4a2fe59a76/ninecli-0.1.7-py3-none-musllinux_1_2_x86_64.whl",
+        "digests": {
+          "blake2b_256": "fc88f317519463e56cbd7caa5963960f858e17e47c08fcd84edcfc4a2fe59a76",
+          "md5": "bfe07996e21a475c1e9ed090f1089424",
+          "sha256": "2de20e64f77d79143861f4a50cf0093b3a813836b15bbf57da0f81fd2950af56"
+        },
+        "yanked": false,
+        "upload_time_iso_8601": "2026-07-01T23:48:10.403177Z"
+      },
+      {
+        "filename": "ninecli-0.1.7-py3-none-win_amd64.whl",
+        "packagetype": "bdist_wheel",
+        "size": 3687385,
+        "url": "https://files.pythonhosted.org/packages/b8/8d/42fe5fd17f93c3bda63fb41471afc05462b95651d401f5db4903e0b5243e/ninecli-0.1.7-py3-none-win_amd64.whl",
+        "digests": {
+          "blake2b_256": "b88d42fe5fd17f93c3bda63fb41471afc05462b95651d401f5db4903e0b5243e",
+          "md5": "b91bdeb45da28d9bac18c79f4c1256dd",
+          "sha256": "7fc00300bb5b02f431830912b3bdfb1c77b2a423e7686e01ebaeaab6252ae683"
+        },
+        "yanked": false,
+        "upload_time_iso_8601": "2026-07-01T23:48:12.329099Z"
+      },
+      {
+        "filename": "ninecli-0.1.7-py3-none-win_arm64.whl",
+        "packagetype": "bdist_wheel",
+        "size": 3286768,
+        "url": "https://files.pythonhosted.org/packages/ef/ab/2c1e4c1d29228006f8c1db48dbe4fb28c80dc0eb71f0db955cb3548ff46b/ninecli-0.1.7-py3-none-win_arm64.whl",
+        "digests": {
+          "blake2b_256": "efab2c1e4c1d29228006f8c1db48dbe4fb28c80dc0eb71f0db955cb3548ff46b",
+          "md5": "3db1e50807de37820443c0159ad4307e",
+          "sha256": "8ceedd6fa0d3e7a2cffa5ebf83cdb37180280d74948efb64fee338e69104be88"
+        },
+        "yanked": false,
+        "upload_time_iso_8601": "2026-07-01T23:48:14.603482Z"
+      }
+    ],
+    "sdist_published": false,
+    "inspected_wheels": [
+      {
+        "filename": "ninecli-0.1.7-py3-none-musllinux_1_2_aarch64.whl",
+        "sha256_verified": true,
+        "members": [
+          "ninecli/__init__.py",
+          "ninecli/__main__.py",
+          "ninecli/bin/ninecli",
+          "ninecli-0.1.7.dist-info/METADATA",
+          "ninecli-0.1.7.dist-info/WHEEL",
+          "ninecli-0.1.7.dist-info/entry_points.txt",
+          "ninecli-0.1.7.dist-info/top_level.txt",
+          "ninecli-0.1.7.dist-info/RECORD"
+        ],
+        "binary_sha256": "78665c4a72a5edbdf3a9e07d81b578afcacdd8dfe3f7cd23911a01613b879271",
+        "installed_copy_matches": true
+      }
+    ],
+    "go_build_info": [
+      "ninecli-installed/bin/ninecli: go1.25.0",
+      "\tpath\tgitea.com/ninebot/cli",
+      "\tmod\tgitea.com/ninebot/cli\tv0.0.0-20260701232148-3ec468a5a739+dirty\t",
+      "\tdep\tgithub.com/google/jsonschema-go\tv0.4.2\th1:tmrUohrwoLZZS/P3x7ex0WAVknEkBZM46iALbcqoRA8=",
+      "\tdep\tgithub.com/modelcontextprotocol/go-sdk\tv1.3.1\th1:TfqtNKOIWN4Z1oqmPAiWDC2Jq7K9OdJaooe0teoXASI=",
+      "\tdep\tgithub.com/segmentio/asm\tv1.1.3\th1:WM03sfUOENvvKexOLp+pCqgb/WDjsi7EK8gIsICtzhc=",
+      "\tdep\tgithub.com/segmentio/encoding\tv0.5.3\th1:OjMgICtcSFuNvQCdwqMCv9Tg7lEOXGwm1J5RPQccx6w=",
+      "\tdep\tgithub.com/spf13/cobra\tv1.10.2\th1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=",
+      "\tdep\tgithub.com/spf13/pflag\tv1.0.9\th1:9exaQaMOCwffKiiiYk6/BndUBv+iRViNW+4lEMi0PvY=",
+      "\tdep\tgithub.com/yosida95/uritemplate/v3\tv3.0.2\th1:Ed3Oyj9yrmi9087+NczuL5BwkIc4wvTb5zIM+UJPGz4=",
+      "\tdep\tgolang.org/x/sys\tv0.35.0\th1:vz1N37gP5bs89s7He8XuIYXpyY0+QlsKmzipCbUtyxI=",
+      "\tbuild\t-buildmode=exe",
+      "\tbuild\t-compiler=gc",
+      "\tbuild\t-trimpath=true",
+      "\tbuild\tCGO_ENABLED=0",
+      "\tbuild\tGOARCH=arm64",
+      "\tbuild\tGOOS=linux",
+      "\tbuild\tGOARM64=v8.0",
+      "\tbuild\tvcs=git",
+      "\tbuild\tvcs.revision=3ec468a5a739030d94b9366ada210e6d7017b44e",
+      "\tbuild\tvcs.time=2026-07-01T23:21:48Z",
+      "\tbuild\tvcs.modified=true"
+    ],
+    "recovered_project_function_records": 209,
+    "go_source_text_obtained": false,
+    "recovered_module_paths": [
+      "gitea.com/ninebot/cli/cmd/battery.go",
+      "gitea.com/ninebot/cli/cmd/control.go",
+      "gitea.com/ninebot/cli/cmd/login.go",
+      "gitea.com/ninebot/cli/cmd/login_code.go",
+      "gitea.com/ninebot/cli/cmd/mcp.go",
+      "gitea.com/ninebot/cli/cmd/refresh.go",
+      "gitea.com/ninebot/cli/cmd/root.go",
+      "gitea.com/ninebot/cli/cmd/serve.go",
+      "gitea.com/ninebot/cli/cmd/vehicles.go",
+      "gitea.com/ninebot/cli/cmd/whoami.go",
+      "gitea.com/ninebot/cli/internal/api/business.go",
+      "gitea.com/ninebot/cli/internal/api/control.go",
+      "gitea.com/ninebot/cli/internal/api/passport.go",
+      "gitea.com/ninebot/cli/internal/api/travel.go",
+      "gitea.com/ninebot/cli/internal/api/vehicle.go",
+      "gitea.com/ninebot/cli/internal/config/store.go",
+      "gitea.com/ninebot/cli/internal/crypto/androidb64.go",
+      "gitea.com/ninebot/cli/internal/crypto/control.go",
+      "gitea.com/ninebot/cli/internal/crypto/keyderive.go",
+      "gitea.com/ninebot/cli/internal/crypto/keys.go",
+      "gitea.com/ninebot/cli/internal/crypto/netease.go",
+      "gitea.com/ninebot/cli/internal/crypto/passport.go",
+      "gitea.com/ninebot/cli/internal/crypto/wrapper.go",
+      "gitea.com/ninebot/cli/internal/mcp/http.go",
+      "gitea.com/ninebot/cli/internal/mcp/server.go",
+      "gitea.com/ninebot/cli/internal/mcp/tokens.go",
+      "gitea.com/ninebot/cli/internal/mcp/tools.go",
+      "gitea.com/ninebot/cli/internal/proxy/proxy.go"
+    ]
+  },
+  "entity_definition_counts": {
+    "ha_ninebot": 33,
+    "ninebot": 16
+  },
+  "entity_definitions": [
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery",
+      "name": "主电池电量",
+      "line": 111,
+      "declaration": {
+        "key": "'battery'",
+        "translation_key": "'battery'",
+        "icon": "'mdi:battery'",
+        "device_class": "SensorDeviceClass.BATTERY",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "PERCENTAGE",
+        "value_fn": "lambda state, _device, _sn: _as_int(state.get('battery'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_calculated",
+      "name": "主电池电量（计算）",
+      "line": 120,
+      "declaration": {
+        "key": "'battery_calculated'",
+        "translation_key": "'battery_calculated'",
+        "icon": "'mdi:battery-sync'",
+        "device_class": "SensorDeviceClass.BATTERY",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "PERCENTAGE",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_calculated'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "device_name",
+      "name": "车辆名称",
+      "line": 130,
+      "declaration": {
+        "key": "'device_name'",
+        "translation_key": "'device_name'",
+        "icon": "'mdi:card-text'",
+        "value_fn": "lambda _state, device, _sn: _as_text(device.get('device_name'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "sn",
+      "name": "SN码",
+      "line": 136,
+      "declaration": {
+        "key": "'sn'",
+        "translation_key": "'sn'",
+        "icon": "'mdi:barcode'",
+        "value_fn": "lambda _state, _device, sn: sn"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "vehicle_lock_raw",
+      "name": "车辆锁原始状态",
+      "line": 142,
+      "declaration": {
+        "key": "'vehicle_lock_raw'",
+        "translation_key": "'vehicle_lock_raw'",
+        "icon": "'mdi:lock-clock'",
+        "value_fn": "lambda state, _device, _sn: lock_status_from_state(state)"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "gsm_csq",
+      "name": "GSM信号强度（CSQ）",
+      "line": 148,
+      "declaration": {
+        "key": "'gsm_csq'",
+        "translation_key": "'gsm_csq'",
+        "icon": "'mdi:signal'",
+        "value_fn": "lambda state, _device, _sn: _as_int(state.get('gsm'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "gsm_rssi",
+      "name": "GSM信号强度（RSSI）",
+      "line": 154,
+      "declaration": {
+        "key": "'gsm_rssi'",
+        "translation_key": "'gsm_rssi'",
+        "icon": "'mdi:wifi'",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "'dBm'",
+        "value_fn": "lambda state, _device, _sn: _rssi_dbm_from_csq(state.get('gsm'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "remaining_range",
+      "name": "剩余里程",
+      "line": 162,
+      "declaration": {
+        "key": "'remaining_range'",
+        "translation_key": "'remaining_range'",
+        "icon": "'mdi:map-marker-distance'",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "UnitOfLength.KILOMETERS",
+        "value_fn": "lambda state, _device, _sn: state.get('estimateMileage')"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "remaining_charge_time",
+      "name": "充电剩余时间",
+      "line": 170,
+      "declaration": {
+        "key": "'remaining_charge_time'",
+        "translation_key": "'remaining_charge_time'",
+        "icon": "'mdi:timer-sand'",
+        "value_fn": "lambda state, _device, _sn: _as_text(state.get('remainChargeTime'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "gsm_report_timestamp",
+      "name": "GSM上报时间戳",
+      "line": 176,
+      "declaration": {
+        "key": "'gsm_report_timestamp'",
+        "translation_key": "'gsm_report_timestamp'",
+        "icon": "'mdi:clock-outline'",
+        "value_fn": "lambda state, _device, _sn: _as_int(state.get('gsmTime'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "gsm_report_time",
+      "name": "GSM上报时间",
+      "line": 182,
+      "declaration": {
+        "key": "'gsm_report_time'",
+        "translation_key": "'gsm_report_time'",
+        "icon": "'mdi:clock-check-outline'",
+        "device_class": "SensorDeviceClass.TIMESTAMP",
+        "value_fn": "lambda state, _device, _sn: _report_time_utc(state)"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "location",
+      "name": "车辆位置",
+      "line": 189,
+      "declaration": {
+        "key": "'location'",
+        "translation_key": "'location'",
+        "icon": "'mdi:map-marker'",
+        "value_fn": "lambda state, _device, _sn: _location_desc(state)"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_nominal_energy",
+      "name": "主电池标称能量",
+      "line": 195,
+      "declaration": {
+        "key": "'battery_nominal_energy'",
+        "translation_key": "'battery_nominal_energy'",
+        "icon": "'mdi:battery-heart-variant'",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_nominal_energy'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_energy_delta",
+      "name": "主电池能量变化",
+      "line": 204,
+      "declaration": {
+        "key": "'battery_energy_delta'",
+        "translation_key": "'battery_energy_delta'",
+        "icon": "'mdi:battery-sync'",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_energy_delta'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_outflow_energy_step",
+      "name": "主电池单次流出能量",
+      "line": 213,
+      "declaration": {
+        "key": "'battery_outflow_energy_step'",
+        "translation_key": "'battery_outflow_energy_step'",
+        "icon": "'mdi:battery-arrow-down'",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_outflow_energy_step'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_inflow_energy_step",
+      "name": "主电池单次流入能量",
+      "line": 222,
+      "declaration": {
+        "key": "'battery_inflow_energy_step'",
+        "translation_key": "'battery_inflow_energy_step'",
+        "icon": "'mdi:battery-arrow-up'",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_inflow_energy_step'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_outflow_power",
+      "name": "主电池流出瞬时功率",
+      "line": 231,
+      "declaration": {
+        "key": "'battery_outflow_power'",
+        "translation_key": "'battery_outflow_power'",
+        "icon": "'mdi:flash-outline'",
+        "device_class": "SensorDeviceClass.POWER",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "UnitOfPower.WATT",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_outflow_power'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_inflow_power",
+      "name": "主电池流入瞬时功率",
+      "line": 241,
+      "declaration": {
+        "key": "'battery_inflow_power'",
+        "translation_key": "'battery_inflow_power'",
+        "icon": "'mdi:flash'",
+        "device_class": "SensorDeviceClass.POWER",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "native_unit_of_measurement": "UnitOfPower.WATT",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_inflow_power'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_outflow_energy_daily",
+      "name": "当日主电池流出",
+      "line": 251,
+      "declaration": {
+        "key": "'battery_outflow_energy_daily'",
+        "translation_key": "'battery_outflow_energy_daily'",
+        "icon": "'mdi:calendar-today'",
+        "device_class": "SensorDeviceClass.ENERGY",
+        "state_class": "SensorStateClass.TOTAL",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_outflow_energy_daily'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_outflow_energy_monthly",
+      "name": "当月主电池流出",
+      "line": 261,
+      "declaration": {
+        "key": "'battery_outflow_energy_monthly'",
+        "translation_key": "'battery_outflow_energy_monthly'",
+        "icon": "'mdi:calendar-month'",
+        "device_class": "SensorDeviceClass.ENERGY",
+        "state_class": "SensorStateClass.TOTAL",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_outflow_energy_monthly'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_outflow_energy_total",
+      "name": "累积主电池流出",
+      "line": 271,
+      "declaration": {
+        "key": "'battery_outflow_energy_total'",
+        "translation_key": "'battery_outflow_energy_total'",
+        "icon": "'mdi:meter-electric-outline'",
+        "device_class": "SensorDeviceClass.ENERGY",
+        "state_class": "SensorStateClass.TOTAL_INCREASING",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_outflow_energy_total'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_inflow_energy_daily",
+      "name": "当日主电池流入",
+      "line": 281,
+      "declaration": {
+        "key": "'battery_inflow_energy_daily'",
+        "translation_key": "'battery_inflow_energy_daily'",
+        "icon": "'mdi:calendar-today'",
+        "device_class": "SensorDeviceClass.ENERGY",
+        "state_class": "SensorStateClass.TOTAL",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_inflow_energy_daily'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_inflow_energy_monthly",
+      "name": "当月主电池流入",
+      "line": 291,
+      "declaration": {
+        "key": "'battery_inflow_energy_monthly'",
+        "translation_key": "'battery_inflow_energy_monthly'",
+        "icon": "'mdi:calendar-month'",
+        "device_class": "SensorDeviceClass.ENERGY",
+        "state_class": "SensorStateClass.TOTAL",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_inflow_energy_monthly'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "sensor",
+      "key": "battery_inflow_energy_total",
+      "name": "累积主电池流入",
+      "line": 301,
+      "declaration": {
+        "key": "'battery_inflow_energy_total'",
+        "translation_key": "'battery_inflow_energy_total'",
+        "icon": "'mdi:meter-electric'",
+        "device_class": "SensorDeviceClass.ENERGY",
+        "state_class": "SensorStateClass.TOTAL_INCREASING",
+        "native_unit_of_measurement": "UnitOfEnergy.KILO_WATT_HOUR",
+        "suggested_display_precision": "3",
+        "value_fn": "lambda state, _device, _sn: _as_float(state.get('battery_inflow_energy_total'))"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "binary_sensor",
+      "key": "charging",
+      "name": "充电状态",
+      "line": 52,
+      "declaration": {
+        "key": "'charging'",
+        "translation_key": "'charging'",
+        "icon": "'mdi:battery-charging'",
+        "device_class": "BinarySensorDeviceClass.BATTERY_CHARGING",
+        "value_fn": "lambda state: True if state.get('chargingState') == CHARGING_ON else False if state.get('chargingState') == CHARGING_OFF else None"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "binary_sensor",
+      "key": "main_power",
+      "name": "主电源状态",
+      "line": 59,
+      "declaration": {
+        "key": "'main_power'",
+        "translation_key": "'main_power'",
+        "icon": "'mdi:power-plug'",
+        "device_class": "BinarySensorDeviceClass.POWER",
+        "value_fn": "lambda state: True if state.get('pwr') == MAIN_POWER_ON else False if state.get('pwr') == MAIN_POWER_OFF else None"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "binary_sensor",
+      "key": "vehicle_lock",
+      "name": "车辆锁",
+      "line": 66,
+      "declaration": {
+        "key": "'vehicle_lock'",
+        "translation_key": "'vehicle_lock'",
+        "icon": "'mdi:lock'",
+        "device_class": "BinarySensorDeviceClass.LOCK",
+        "value_fn": "_vehicle_lock_is_on"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "number",
+      "key": "main_battery_voltage",
+      "name": "主电池电压",
+      "line": 26,
+      "declaration": {
+        "key": "'main_battery_voltage'",
+        "translation_key": "'main_battery_voltage'",
+        "icon": "'mdi:sine-wave'",
+        "native_unit_of_measurement": "UnitOfElectricPotential.VOLT",
+        "native_min_value": "1.0",
+        "native_max_value": "300.0",
+        "native_step": "0.1"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "number",
+      "key": "battery_capacity",
+      "name": "电池容量",
+      "line": 35,
+      "declaration": {
+        "key": "'battery_capacity'",
+        "translation_key": "'battery_capacity'",
+        "icon": "'mdi:battery-high'",
+        "native_unit_of_measurement": "'Ah'",
+        "native_min_value": "1.0",
+        "native_max_value": "500.0",
+        "native_step": "0.1"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "number",
+      "key": "battery_max_range",
+      "name": "最大里程",
+      "line": 44,
+      "declaration": {
+        "key": "'battery_max_range'",
+        "translation_key": "'battery_max_range'",
+        "icon": "'mdi:map-marker-distance'",
+        "native_unit_of_measurement": "UnitOfLength.KILOMETERS",
+        "native_min_value": "1.0",
+        "native_max_value": "1000.0",
+        "native_step": "1.0"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "button",
+      "key": "info",
+      "name": "信息",
+      "line": 25,
+      "declaration": {
+        "key": "'info'",
+        "translation_key": "'info'",
+        "icon": "'mdi:information'",
+        "device_class": "ButtonDeviceClass.UPDATE"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "lock",
+      "key": "vehicle_lock_control",
+      "name": "车辆锁",
+      "line": 1,
+      "declaration": {
+        "implementation": "single entity class; no description tuple"
+      }
+    },
+    {
+      "repo": "ha_ninebot",
+      "platform": "image",
+      "key": "vehicle_image",
+      "name": "车辆图片",
+      "line": 1,
+      "declaration": {
+        "implementation": "single entity class; no description tuple"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "battery",
+      "name": "电量",
+      "line": 44,
+      "declaration": {
+        "key": "'battery'",
+        "device_class": "SensorDeviceClass.BATTERY",
+        "native_unit_of_measurement": "PERCENTAGE",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "value_fn": "lambda entity: entity.device_state.get('battery')"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "endurance",
+      "name": "续航",
+      "line": 51,
+      "declaration": {
+        "key": "'endurance'",
+        "device_class": "SensorDeviceClass.DISTANCE",
+        "native_unit_of_measurement": "UnitOfLength.KILOMETERS",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "suggested_display_precision": "1",
+        "value_fn": "lambda entity: entity.device_state.get('endurance')"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "month_mileage",
+      "name": "本月里程",
+      "line": 59,
+      "declaration": {
+        "key": "'month_mileage'",
+        "device_class": "SensorDeviceClass.DISTANCE",
+        "native_unit_of_measurement": "UnitOfLength.KILOMETERS",
+        "state_class": "SensorStateClass.TOTAL_INCREASING",
+        "suggested_display_precision": "1",
+        "value_fn": "lambda entity: entity.device_state.get('month_mileage')"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "last_mileage",
+      "name": "最后里程",
+      "line": 67,
+      "declaration": {
+        "key": "'last_mileage'",
+        "device_class": "SensorDeviceClass.DISTANCE",
+        "native_unit_of_measurement": "UnitOfLength.KILOMETERS",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "suggested_display_precision": "1",
+        "value_fn": "lambda entity: entity.device_state.get('last_mileage')",
+        "attrs_fn": "_last_ride_attributes"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "month_energy",
+      "name": "本月耗电",
+      "line": 76,
+      "declaration": {
+        "key": "'month_energy'",
+        "device_class": "SensorDeviceClass.ENERGY",
+        "icon": "'mdi:flash'",
+        "native_unit_of_measurement": "UnitOfEnergy.WATT_HOUR",
+        "state_class": "SensorStateClass.TOTAL_INCREASING",
+        "suggested_display_precision": "1",
+        "value_fn": "lambda entity: entity.device_state.get('month_energy')",
+        "attrs_fn": "_month_energy_attributes"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "last_energy",
+      "name": "最后耗电",
+      "line": 86,
+      "declaration": {
+        "key": "'last_energy'",
+        "device_class": "SensorDeviceClass.ENERGY",
+        "icon": "'mdi:flash'",
+        "native_unit_of_measurement": "UnitOfEnergy.WATT_HOUR",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "suggested_display_precision": "1",
+        "value_fn": "lambda entity: entity.device_state.get('last_energy')",
+        "attrs_fn": "_last_energy_attributes"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "bms_voltage",
+      "name": "BMS 电压",
+      "line": 96,
+      "declaration": {
+        "key": "'bms_voltage'",
+        "device_class": "SensorDeviceClass.VOLTAGE",
+        "native_unit_of_measurement": "'V'",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "suggested_display_precision": "1",
+        "value_fn": "lambda entity: entity.device_state.get('bms_voltage')"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "batt_temp",
+      "name": "电池温度",
+      "line": 104,
+      "declaration": {
+        "key": "'batt_temp'",
+        "device_class": "SensorDeviceClass.TEMPERATURE",
+        "native_unit_of_measurement": "'°C'",
+        "state_class": "SensorStateClass.MEASUREMENT",
+        "suggested_display_precision": "1",
+        "value_fn": "lambda entity: entity.device_state.get('batt_temp')"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "sensor",
+      "key": "bms_cycles",
+      "name": "BMS 循环次数",
+      "line": 112,
+      "declaration": {
+        "key": "'bms_cycles'",
+        "icon": "'mdi:battery-sync'",
+        "state_class": "SensorStateClass.TOTAL_INCREASING",
+        "value_fn": "lambda entity: entity.device_state.get('bms_cycles')",
+        "attrs_fn": "lambda entity: {'bms_score': entity.device_state['bms_score']} if 'bms_score' in entity.device_state else {}"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "binary_sensor",
+      "key": "charging",
+      "name": "充电状态",
+      "line": 26,
+      "declaration": {
+        "key": "'charging'",
+        "device_class": "BinarySensorDeviceClass.BATTERY_CHARGING",
+        "value_fn": "lambda entity: _coerce_bool(entity.device_state.get('charging'), on_value=1)",
+        "attrs_fn": "lambda entity: {'charging_power': entity.device_state['charging_power']} if 'charging_power' in entity.device_state else {}"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "binary_sensor",
+      "key": "power",
+      "name": "电源状态",
+      "line": 36,
+      "declaration": {
+        "key": "'power'",
+        "device_class": "BinarySensorDeviceClass.POWER",
+        "value_fn": "lambda entity: _coerce_bool(entity.device_state.get('power'), on_value=1)"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "binary_sensor",
+      "key": "unlocked",
+      "name": "解锁状态",
+      "line": 41,
+      "declaration": {
+        "key": "'unlocked'",
+        "device_class": "BinarySensorDeviceClass.LOCK",
+        "value_fn": "lambda entity: _coerce_bool(entity.device_state.get('lock'), on_value=0)"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "button",
+      "key": "bell",
+      "name": "闪灯鸣笛",
+      "line": 30,
+      "declaration": {
+        "key": "'bell'",
+        "icon": "'mdi:bell'",
+        "press_fn": "_async_press_bell"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "button",
+      "key": "bucket",
+      "name": "打开座桶",
+      "line": 35,
+      "declaration": {
+        "key": "'bucket'",
+        "icon": "'mdi:car-seat'",
+        "press_fn": "_async_press_bucket"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "device_tracker",
+      "key": "location",
+      "name": "位置",
+      "line": 13,
+      "declaration": {
+        "key": "'location'"
+      }
+    },
+    {
+      "repo": "ninebot",
+      "platform": "lock",
+      "key": "lock",
+      "name": "车锁",
+      "line": 15,
+      "declaration": {
+        "key": "'lock'"
+      }
+    }
+  ],
+  "checks": {
+    "previous_regression": {
+      "time_utc": "2026-10-03T09:35:28.590970+00:00",
+      "network": "disabled",
+      "tests": [
+        {
+          "test": "python_syntax",
+          "reproduced": true,
+          "observed": {
+            "files": 25,
+            "python": "3.14.6"
+          }
+        },
+        {
+          "test": "opposite_lock_encoding",
+          "reproduced": true,
+          "observed": {
+            "open_status_1_locked": false,
+            "app_loc_lock_1_locked": true
+          }
+        },
+        {
+          "test": "previous_month_overwrites_current_month",
+          "reproduced": true,
+          "observed": {
+            "requested_month": "202610",
+            "actual_month_mileage": 303.9,
+            "expected_current_month_mileage": 0
+          }
+        },
+        {
+          "test": "one_status_failure_aborts_account",
+          "reproduced": true,
+          "observed": "UpdateFailed"
+        },
+        {
+          "test": "cached_state_never_marks_unavailable_after_tolerance",
+          "reproduced": true,
+          "observed": {
+            "failure_count": 5,
+            "tolerance": 3,
+            "available_flag": null,
+            "source": "cached"
+          }
+        },
+        {
+          "test": "range_parameter_change_can_create_estimated_energy",
+          "reproduced": true,
+          "observed": {
+            "same_remaining_range_km": 50,
+            "max_range_before": 100,
+            "max_range_after": 200,
+            "artificial_outflow_kwh": 0.36,
+            "window_power_w": 86400.0
+          }
+        },
+        {
+          "test": "string_status_is_unknown",
+          "reproduced": true,
+          "observed": {
+            "charging_string_1": null
+          }
+        },
+        {
+          "test": "broad_server_code_maps_to_auth_error",
+          "reproduced": true,
+          "observed": "NinebotApiAuthError"
+        }
+      ]
+    },
+    "additional_offline": {
+      "environment": {
+        "network": "none",
+        "real_credentials": false,
+        "real_homeassistant_config": false,
+        "real_control_commands": false
+      },
+      "tests": [
+        {
+          "test": "cancelled_cli_task_does_not_kill_child",
+          "reproduced": true,
+          "observed": {
+            "child_kill_called": false,
+            "test_process": "fake process only; no real child or network"
+          }
+        },
+        {
+          "test": "unsupported_cycles_and_second_battery_ignored",
+          "reproduced": true,
+          "observed": {
+            "bms_voltage": 75.3,
+            "bms_cycles": 100
+          }
+        },
+        {
+          "test": "non_finite_float_accepted",
+          "reproduced": true,
+          "observed": {
+            "endurance": "NaN (not a finite HA value)"
+          }
+        },
+        {
+          "test": "utc_query_month_differs_from_shanghai",
+          "reproduced": true,
+          "observed": {
+            "utc_month": "202609",
+            "ha_local_month": "202610"
+          }
+        },
+        {
+          "test": "validation_replaces_permanent_session_before_duplicate_check",
+          "reproduced": true,
+          "observed": {
+            "old_fake_session_overwritten": true,
+            "scope": "temporary directory only"
+          }
+        }
+      ]
+    },
+    "missing_refresh_mutex": {
+      "scenario": "fake status only; no control command",
+      "harness": "frame.report_usage diagnostic patched; real coordinator constructor",
+      "result": "AttributeError",
+      "message": "'NinebotDataUpdateCoordinator' object has no attribute '_refresh_mutex'",
+      "initialized_coordinator_has_mutex": false
+    },
+    "all_entity_keys": true
+  },
+  "ha_readonly_verification": {
+    "unchanged_labels": [
+      "config_entries",
+      "entity_registry",
+      "ninecli_session_0_config.json",
+      "ninecli_session_0_tokens.json",
+      "ninecli_session_0_vehicles.json"
+    ],
+    "changed_labels": [
+      "device_registry"
+    ],
+    "all_tracked_files_unchanged": false,
+    "device_registry_observation": {
+      "device_registry_mtime_utc": "2026-10-03T09:44:46.331784+00:00",
+      "recently_modified_device_count": 1,
+      "recent_ninebot_device_count": 0,
+      "scope": "read-only observation, not attribution of writer"
+    },
+    "review_actions": "read-only; device registry writer not determined from hashes"
+  }
+}

@@ -1,87 +1,44 @@
-"""Button platform for Ninebot integration."""
+"""A per-vehicle refresh and explicitly gated experimental controls."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import Any
-
-from homeassistant.components.button import ButtonDeviceClass, ButtonEntity, ButtonEntityDescription
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DATA_COORDINATOR, DOMAIN
-from .coordinator import NinebotDataUpdateCoordinator
-from .entity import NinebotCoordinatorEntity
+from .entity import NinebotEntity, async_setup_dynamic
+from .runtime import NinebotConfigEntry
 
 
-@dataclass(frozen=True, kw_only=True)
-class NinebotButtonDescription(ButtonEntityDescription):
-    """Description for Ninebot button entities."""
+class NinebotButton(NinebotEntity, ButtonEntity):
+    def __init__(self, entry: NinebotConfigEntry, sn: str, key: str, action: str | None) -> None:
+        super().__init__(entry, sn, key, "button", "profile", ("info",) if key == "refresh" else ())
+        self.action = action
+        self._attr_entity_registry_enabled_default = action is None
+        if action is None:
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
+    @property
+    def available(self) -> bool:
+        return super().available and (
+            self.action is None or self.coordinator.controls_enabled(self.sn)
+        )
 
-BUTTON_DESCRIPTIONS: tuple[NinebotButtonDescription, ...] = (
-    NinebotButtonDescription(
-        key="info",
-        translation_key="info",
-        icon="mdi:information",
-        device_class=ButtonDeviceClass.UPDATE,
-    ),
-)
+    async def async_press(self) -> None:
+        if self.action is None:
+            await self.coordinator.async_refresh_vehicle(self.sn)
+        else:
+            await self.coordinator.async_control(self.sn, self.action)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant, entry: NinebotConfigEntry, add: AddEntitiesCallback
 ) -> None:
-    """Set up Ninebot debug buttons."""
-    coordinator: NinebotDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATOR]
-
-    if not coordinator.debug_enabled:
-        return
-
-    entities: list[NinebotDebugButton] = []
-    for sn in coordinator.data:
-        for description in BUTTON_DESCRIPTIONS:
-            entities.append(NinebotDebugButton(coordinator, sn, description))
-
-    async_add_entities(entities)
-
-
-class NinebotDebugButton(NinebotCoordinatorEntity, ButtonEntity):
-    """Show raw polling payload in attributes and trigger manual refresh on press."""
-
-    entity_description: NinebotButtonDescription
-    _attr_has_entity_name = True
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(
-        self,
-        coordinator: NinebotDataUpdateCoordinator,
-        sn: str,
-        description: NinebotButtonDescription,
-    ) -> None:
-        super().__init__(coordinator, sn)
-        self.entity_description = description
-        self._attr_unique_id = self._build_unique_id(description.key)
-        self._attr_suggested_object_id = self._build_object_id(description.key)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any] | None:
-        payload = self.coordinator.get_raw_polling_payload(self._sn)
-        if payload is None:
-            return {
-                "debug_enabled": self.coordinator.debug_enabled,
-                "updated_at": None,
-                "message": "No raw payload yet, wait for next polling cycle.",
-            }
-        return {
-            "debug_enabled": self.coordinator.debug_enabled,
-            "updated_at": payload.get("fetched_at"),
-            "raw_polling_payload": payload,
-        }
-
-    async def async_press(self) -> None:
-        await self.coordinator.async_request_refresh()
+    async_setup_dynamic(
+        hass,
+        entry,
+        add,
+        lambda sn: [
+            NinebotButton(entry, sn, key, action)
+            for key, action in [("refresh", None), ("bell", "bell"), ("bucket", "buck")]
+        ],
+    )

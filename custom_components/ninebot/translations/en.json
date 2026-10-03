@@ -1,196 +1,237 @@
 {
   "config": {
-    "flow_title": "Ninebot",
     "step": {
       "user": {
-        "title": "Connect Ninebot account",
-        "description": "Enter your Ninebot account credentials.",
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
-          "username": "Username",
-          "password": "Password",
-          "lang": "Language",
-          "default_scan_interval": "Default scan interval (seconds)",
-          "unlocked_scan_interval": "Unlocked scan interval (seconds)",
-          "charging_scan_interval": "Charging scan interval (seconds)",
-          "discharge_power_window_seconds": "Discharge power smoothing window (seconds)",
-          "charge_power_window_seconds": "Charge power smoothing window (seconds)",
-          "token_refresh_interval_hours": "Token refresh interval (hours)",
-          "device_list_refresh_interval_hours": "Device list refresh interval (hours)",
-          "max_device_info_concurrency": "Max concurrent device info requests",
-          "device_info_failure_tolerance": "Device info failure tolerance (times)",
-          "debug": "Enable debug logs"
+          "account": "Account",
+          "password": "Password"
         }
       },
-      "init": {
-        "title": "Ninebot options",
-        "description": "Adjust language, polling strategy and debug settings.",
+      "reauth_confirm": {
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
-          "username": "Username",
-          "password": "Password",
-          "lang": "Language",
-          "default_scan_interval": "Default scan interval (seconds)",
-          "unlocked_scan_interval": "Unlocked scan interval (seconds)",
-          "charging_scan_interval": "Charging scan interval (seconds)",
-          "discharge_power_window_seconds": "Discharge power smoothing window (seconds)",
-          "charge_power_window_seconds": "Charge power smoothing window (seconds)",
-          "token_refresh_interval_hours": "Token refresh interval (hours)",
-          "device_list_refresh_interval_hours": "Device list refresh interval (hours)",
-          "max_device_info_concurrency": "Max concurrent device info requests",
-          "device_info_failure_tolerance": "Device info failure tolerance (times)",
-          "debug": "Enable debug logs"
+          "account": "Account",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "data": {
+          "account": "Account",
+          "password": "Password"
         }
       }
     },
     "error": {
-      "invalid_auth": "Invalid username or password",
-      "cannot_connect": "Cannot connect to Ninebot cloud",
-      "api_error": "Ninebot API returned an error",
-      "unknown": "Unexpected error"
+      "invalid_auth": "Session or credentials are invalid",
+      "cannot_connect": "Cannot connect; try again later",
+      "upstream_error": "Ninebot service returned an error; try later",
+      "invalid_response": "Unexpected response format",
+      "unsupported_platform": "ninecli cannot start on this platform",
+      "busy": "Session is busy; try again later",
+      "storage_error": "Cannot save session; check storage and permissions"
     },
     "abort": {
-      "already_configured": "This account is already configured"
+      "already_configured": "Account already configured",
+      "wrong_account": "Reauthenticate with the same account",
+      "reauth_successful": "Reauthentication successful",
+      "reconfigure_successful": "Reconfiguration successful",
+      "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
+      "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Ninebot options",
-        "description": "Adjust account, language, polling strategy and debug settings.",
+        "title": "Options",
+        "description": "Estimation needs explicit voltage/capacity. Coordinate reference is unverified. Experimental controls are hardware-unverified; confirm support and permission, enable and select individual vehicles.",
         "data": {
-          "username": "Username",
-          "password": "Password",
-          "lang": "Language",
-          "default_scan_interval": "Default scan interval (seconds)",
-          "unlocked_scan_interval": "Unlocked scan interval (seconds)",
-          "charging_scan_interval": "Charging scan interval (seconds)",
-          "discharge_power_window_seconds": "Discharge power smoothing window (seconds)",
-          "charge_power_window_seconds": "Charge power smoothing window (seconds)",
-          "token_refresh_interval_hours": "Token refresh interval (hours)",
-          "device_list_refresh_interval_hours": "Device list refresh interval (hours)",
-          "max_device_info_concurrency": "Max concurrent device info requests",
-          "device_info_failure_tolerance": "Device info failure tolerance (times)",
-          "debug": "Enable debug logs"
+          "poll_interval": "Status polling interval (seconds)",
+          "enable_estimation": "Enable SOC energy estimation",
+          "enable_coordinates": "Show cloud coordinates (reference unverified)",
+          "enable_controls": "Enable experimental controls (hardware unverified)",
+          "control_vehicles": "Vehicles explicitly allowed for experimental controls"
         }
       }
-    },
-    "error": {
-      "invalid_auth": "Invalid username or password",
-      "cannot_connect": "Cannot connect to Ninebot cloud",
-      "api_error": "Ninebot API returned an error",
-      "unknown": "Unexpected error"
     }
   },
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Main Battery Level"
+        "name": "Battery"
       },
-      "battery_calculated": {
-        "name": "Main Battery Level (Calculated)"
+      "endurance": {
+        "name": "Cloud precise range"
       },
-      "device_name": {
-        "name": "Vehicle Name"
+      "range_estimated": {
+        "name": "Cloud estimated range"
       },
-      "sn": {
-        "name": "Serial Number"
-      },
-      "vehicle_lock_raw": {
-        "name": "Vehicle Lock Raw State"
-      },
-      "gsm_csq": {
-        "name": "GSM Signal Strength (CSQ)"
-      },
-      "gsm_rssi": {
-        "name": "GSM Signal Strength (RSSI)"
-      },
-      "remaining_range": {
-        "name": "Remaining Range"
+      "range_ai": {
+        "name": "Cloud AI range"
       },
       "remaining_charge_time": {
-        "name": "Remaining Charge Time"
+        "name": "Remaining charge time"
       },
-      "gsm_report_timestamp": {
-        "name": "GSM Report Timestamp"
+      "device_name": {
+        "name": "Device name"
       },
-      "gsm_report_time": {
-        "name": "GSM Report Time"
+      "sn": {
+        "name": "Serial number"
       },
-      "location": {
-        "name": "Vehicle Location"
+      "vehicle_lock_raw": {
+        "name": "Normalized lock code (0 means locked)"
       },
-      "battery_nominal_energy": {
-        "name": "Main Battery Nominal Energy"
+      "month_mileage": {
+        "name": "Current month distance"
       },
-      "battery_energy_delta": {
-        "name": "Main Battery Energy Delta"
+      "last_mileage": {
+        "name": "Last returned ride distance"
       },
-      "battery_outflow_energy_step": {
-        "name": "Main Battery Outflow Energy Step"
+      "month_energy_raw": {
+        "name": "Current month energy (unverified unit)"
       },
-      "battery_inflow_energy_step": {
-        "name": "Main Battery Inflow Energy Step"
+      "last_energy_raw": {
+        "name": "Last ride energy (unverified unit)"
       },
-      "battery_outflow_power": {
-        "name": "Main Battery Outflow Power"
+      "charging_power_raw": {
+        "name": "Charging power (unverified unit)"
       },
-      "battery_inflow_power": {
-        "name": "Main Battery Inflow Power"
+      "bms_voltage": {
+        "name": "Battery voltage"
       },
-      "battery_outflow_energy_daily": {
-        "name": "Daily Main Battery Outflow"
+      "batt_temp": {
+        "name": "Battery temperature"
       },
-      "battery_outflow_energy_monthly": {
-        "name": "Monthly Main Battery Outflow"
+      "bms_cycles": {
+        "name": "Battery cycles"
       },
-      "battery_outflow_energy_total": {
-        "name": "Accumulated Main Battery Outflow"
+      "legacy": {
+        "name": "Legacy value (unavailable)"
       },
-      "battery_inflow_energy_daily": {
-        "name": "Daily Main Battery Inflow"
+      "estimated_nominal": {
+        "name": "Estimated nominal energy"
       },
-      "battery_inflow_energy_monthly": {
-        "name": "Monthly Main Battery Inflow"
+      "estimated_delta": {
+        "name": "Estimated energy change"
       },
-      "battery_inflow_energy_total": {
-        "name": "Accumulated Main Battery Inflow"
+      "estimated_out_step": {
+        "name": "Estimated discharge sample energy"
+      },
+      "estimated_in_step": {
+        "name": "Estimated charge sample energy"
+      },
+      "estimated_out_daily": {
+        "name": "Estimated daily discharge energy"
+      },
+      "estimated_out_monthly": {
+        "name": "Estimated monthly discharge energy"
+      },
+      "estimated_out_total": {
+        "name": "Estimated total discharge energy"
+      },
+      "estimated_in_daily": {
+        "name": "Estimated daily charge energy"
+      },
+      "estimated_in_monthly": {
+        "name": "Estimated monthly charge energy"
+      },
+      "estimated_in_total": {
+        "name": "Estimated total charge energy"
       }
     },
     "binary_sensor": {
-      "vehicle_lock": {
-        "name": "Vehicle Lock"
-      },
       "charging": {
-        "name": "Charging Status"
+        "name": "Charging"
       },
-      "main_power": {
-        "name": "Main Power Status"
+      "power": {
+        "name": "Main power"
+      },
+      "unlocked": {
+        "name": "Unlocked"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh vehicle status"
+      },
+      "bell": {
+        "name": "Experimental bell"
+      },
+      "bucket": {
+        "name": "Experimental seat trunk"
       }
     },
     "lock": {
-      "vehicle_lock_control": {
-        "name": "Vehicle Lock"
+      "lock": {
+        "name": "Lock state / experimental control"
       }
     },
     "image": {
       "vehicle_image": {
-        "name": "Vehicle Image"
+        "name": "Vehicle image"
       }
     },
-    "button": {
-      "info": {
-        "name": "Info"
+    "device_tracker": {
+      "location": {
+        "name": "Cloud location"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Main Battery Voltage"
+        "name": "Nominal voltage (local model)"
       },
       "battery_capacity": {
-        "name": "Battery Capacity"
+        "name": "Capacity (local model)"
       },
       "battery_max_range": {
-        "name": "Max Range"
+        "name": "Legacy full range (unused by energy model)"
       }
+    }
+  },
+  "exceptions": {
+    "controls_disabled": {
+      "message": "Experimental controls are disabled or the vehicle is unavailable."
+    },
+    "control_uncertain": {
+      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+    },
+    "control_readback_failed": {
+      "message": "The control request returned successfully, but status readback failed."
+    },
+    "busy": {
+      "message": "The request queue is full; try again later."
+    },
+    "model_storage_invalid": {
+      "message": "Unsupported estimation storage; see Repairs. Existing data was preserved."
+    },
+    "invalid_auth": {
+      "message": "The session is invalid; reauthenticate through Devices & services."
+    }
+  },
+  "issues": {
+    "entity_identity_conflict": {
+      "title": "Duplicate legacy entity identities",
+      "description": "Multiple legacy entities represent the same function. Their identities and history are preserved; equivalent sensors continue to receive values. No entries were deleted. Review automations and user settings before deciding which entities to retain through the HA UI."
+    },
+    "migration_identity_invalid": {
+      "title": "Legacy account identity is invalid",
+      "description": "Migration stopped because the legacy business identity is invalid. Existing configuration and sessions were preserved. Check the backup and confirm the account identity before retrying; do not merge accounts by vehicle nickname."
+    },
+    "legacy_device_unmatched": {
+      "title": "Legacy device identity is unmatched",
+      "description": "An existing device identity is absent from the current account vehicle list. The vehicle may have been removed or use a different interface identity. Entities and history are preserved; no nickname-based merge was attempted. Check the backup and current identities before making changes through the HA UI."
+    },
+    "session_recovery_pending": {
+      "title": "Session recovery needs a restart",
+      "description": "After a failed session update, HA could not unload the runtime using the replacement session. Its files were not replaced; the transaction journal and previous session backup remain. Back up HA configuration and restart HA to recover the previous session at startup. If recovery fails, retain the backup and check storage permissions; do not manually delete session directories."
+    },
+    "model_storage_invalid": {
+      "title": "Unsupported estimation storage",
+      "description": "The estimation storage format or version is unsupported. Setup stopped without overwriting it. Retain a backup and use the integration version matching this storage, or restore a complete pre-upgrade backup. Do not edit the model version field manually."
     }
   }
 }
