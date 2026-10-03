@@ -251,3 +251,28 @@ format/mypy34源文件通过。精确main提交最低/稳定CI、Hassfest/HACS�
 生产HA写入0；无dependency/最低HA/registry/storage schema变更。
 未交付权限位图解析与真实控制语义，待协议证据及具体动作授权；下一阶段继续
 Image缓存、安全URL/GPS及启用实体/内部模型依赖决定请求，不缩小主要目标。
+
+### Phase 8 Image 缓存开发检查点（未发布）
+
+基于已发布b7 main `7d05b6c21ff5`，独立分支feature/v2x-native-ux，尚未完成
+Phase8验收或递增版本，不当作完整阶段交付。
+
+核对HA2026.1实际ImageEntity实现：它缓存图片bytes，并不会因上游profile/URL
+自行清除。旧实现每次profile success都改变image_last_updated，却可能在URL切换
+后继续返回旧cached image。当前检查点仅在URL变化时更新时间和清除官方缓存，
+无URL则unavailable/无图片时间，并启用官方HTTP client TLS证书校验。
+保持image_url/官方下载及缓存，不自建下载器。Tracker改用最低版已导出的公开
+根模块TrackerEntity，与新版Core原生Zone API对接，不自行实现zone判定。
+
+现有21项setup tests通过，新增一项通过实际HA image component/async_get_image
+入口验证同URL仍使用cached bytes、换URL取新图、移除URL不可用；图片下载完全
+mock，测试目录一次性。初次新test把success time置于未来造成freshness拒绝，已用
+受控clock纠正（运行实现不需要为此放宽时间检查）。Ruff/format/mypy通过。
+没有新增云请求、真实下载/控制或生产HA写入。
+
+仍需完成URL origin/敏感query/redirect安全契约、实际GPS/Zone/选项撤销测试、
+typed entity contexts + estimator/event/bootstrap dependency scheduling及阶段完整CI。
+公开fixture均为替换URL，现有保存travel资料不含vehicles payload；只读production
+registry/restore参考亦无可用图片origin，因此不能声称已核实CDN allowlist。
+不得猜域名，必要时另立一次孤立只读vehicles查询计划。阶段整体设计/验收报告
+完成前不发b8，不以此检查点替代主要目标。

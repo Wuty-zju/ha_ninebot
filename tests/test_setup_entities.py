@@ -224,7 +224,8 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
     app_client.async_control.assert_awaited_once_with("SyntheticSN", "bell")
     image = NinebotImage(entry, "SyntheticSN")
     assert image.image_url is None
-    assert image.image_last_updated is not None
+    assert image.image_last_updated is None
+    assert not image.available
 
 
 def test_multiple_batteries_need_stable_identity():
@@ -572,3 +573,65 @@ async def test_battery_transitions_preserve_registry_history_and_device_assignme
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
     assert len(devices) == 1
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_image_native_cache_tracks_url_changes_not_profile_poll(
+    hass, entry, app_client, freezer
+):
+    from dataclasses import replace
+    from datetime import timedelta
+    from unittest.mock import AsyncMock
+
+    from homeassistant.components.image import Image, async_get_image
+    from homeassistant.exceptions import HomeAssistantError
+
+    from custom_components.ninebot.image import NinebotImage
+
+    registry = er.async_get(hass)
+    row = registry.async_get_or_create(
+        "image", "ninebot", "SyntheticSN_vehicle_image", config_entry=entry
+    )
+    app_client.async_list_vehicles.return_value[0]["img_url"] = "https://example.invalid/one.png"
+    fetch = AsyncMock(
+        side_effect=[
+            Image(content=b"first", content_type="image/png"),
+            Image(content=b"second", content_type="image/png"),
+        ]
+    )
+    with patch.object(NinebotImage, "_async_load_image_from_url", fetch):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        co = entry.runtime_data.coordinator
+        image_id = row.entity_id
+        first_time = hass.states.get(image_id).state
+        assert (await async_get_image(hass, image_id)).content == b"first"
+        co._list_freshness = replace(
+            co._list_freshness, succeeded_at=co._list_freshness.succeeded_at + timedelta(seconds=60)
+        )
+        freezer.move_to(co._list_freshness.succeeded_at)
+        co.async_set_updated_data(dict(co.data))
+        await hass.async_block_till_done()
+        assert hass.states.get(image_id).state == first_time
+        assert (await async_get_image(hass, image_id)).content == b"first"
+        assert fetch.await_count == 1
+        old = co.data["SyntheticSN"]
+        co.async_set_updated_data(
+            {
+                "SyntheticSN": replace(
+                    old, profile=replace(old.profile, image_url="https://example.invalid/two.png")
+                )
+            }
+        )
+        await hass.async_block_till_done()
+        assert hass.states.get(image_id).state != first_time
+        assert (await async_get_image(hass, image_id)).content == b"second"
+        assert fetch.await_count == 2
+        co.async_set_updated_data(
+            {"SyntheticSN": replace(old, profile=replace(old.profile, image_url=None))}
+        )
+        await hass.async_block_till_done()
+        assert hass.states.get(image_id).state == "unavailable"
+        with pytest.raises(HomeAssistantError):
+            await async_get_image(hass, image_id)
+        assert fetch.await_count == 2
+        assert await hass.config_entries.async_unload(entry.entry_id)
