@@ -305,3 +305,8 @@ ninecli pin。具体安全与发现例外见[Phase 8契约](v2x-图片位置与�
 保持拒绝，engine语义不映射lock。能量、trail speed/delta、CRS、服务端全量分页
 继续待验证。Phase 9成本收益不成立时不创建任意raw entities；Native backend为
 长期独立项目，不纳入本轮默认替换。
+
+Phase8首次beta CI发现3处Probatio/voluptuous静态Schema类型不匹配（run
+37162821409），未跳过或移除beta门槛。按官方公共alias规则在compat集中动态
+解析validation namespace，配置/Actions使用同一引擎；没有新runtime依赖。
+本地42项受影响测试通过，最终完整验收以修复后的精确提交三版本CI为准。

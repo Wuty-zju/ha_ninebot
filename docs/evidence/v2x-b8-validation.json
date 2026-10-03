@@ -38,5 +38,12 @@
     "energy and trail speed/delta units",
     "coordinate system and upstream historical completeness"
   ],
-  "release_evidence": "Exact source/merge SHA, matrix and HACS/Hassfest run URLs in prerelease notes."
+  "release_evidence": "Exact source/merge SHA, matrix and HACS/Hassfest run URLs in prerelease notes.",
+  "compatibility_fix": {
+    "initial_beta_run": 37162821409,
+    "issue": "3 static Schema type mismatches between voluptuous and Probatio signatures",
+    "resolution": "Centralized dynamic resolution of documented voluptuous startup alias; no engine guessing, type ignores or dependency change",
+    "affected_local_tests_passed": 42,
+    "full_final_matrix": "Required on corrected exact source/main commit, authoritative links in release notes"
+  }
 }

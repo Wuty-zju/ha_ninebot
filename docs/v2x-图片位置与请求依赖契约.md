@@ -101,3 +101,17 @@ shape/域名/参数名，身份、路径和签名均为合成值，单独标注�
 参考：[HA Image](https://developers.home-assistant.io/docs/core/entity/image/)、
 [GPS tracker](https://developers.home-assistant.io/docs/core/entity/device-tracker/)、
 [Coordinator contexts](https://developers.home-assistant.io/docs/integration_fetching_data/)。
+
+## Beta 校验发现的 schema 类型兼容
+
+2026.10.0b0 的首次 CI 在 mypy 阶段实际报告3处Schema类型不匹配：Core签名已
+使用Probatio，静态分析仍把直接voluptuous import识别为旧Schema。这不是字段
+schema改变或新增功能，也不能靠跳过beta/关掉mypy处理。
+
+按[官方启动alias契约](https://developers.home-assistant.io/blog/2026/09/30/probatio-validation-engine/)，
+Core将公共voluptuous名字指向新validator。compat.py集中用import_module解析该
+公共名字，ModuleType仅界定这个版本变化的动态边界，config_flow/services复用
+同一namespace；不依据probatio是否碰巧安装、HA字符串或版本号猜引擎，不在
+旧HA新增依赖，也不使用beta专有validator。领域模型与其它typing保持原规则。
+42项受影响的配置/Actions测试在最低HA通过；最终最低/稳定/beta完整CI验证实际
+引擎行为、输入拒绝、reauth、device routing和response，并记录成功提交。

@@ -12,6 +12,8 @@
   profile discovery, manual refresh and on-demand historical actions.
 - Document the isolated vehicles query and one anonymous unsigned image HEAD;
   preserve only a selected synthetic image fixture and non-sensitive source evidence.
+- Resolve HA's documented validation-engine alias centrally, preserving old HA
+  and modern Probatio schema behavior without a new dependency.
 - Add the pinned HA 2026.10.0b0 beta to minimum/stable CI. No dependency/minimum-HA,
   entity ID, translation key or storage schema change; no production HA writes or
   real vehicle controls. Battery physical identity/permissions/CRS remain unverified.

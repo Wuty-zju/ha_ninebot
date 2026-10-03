@@ -4,7 +4,6 @@ from datetime import datetime
 from functools import partial
 from typing import Any, cast
 
-import voluptuous as vol
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
@@ -14,6 +13,7 @@ from homeassistant.util import dt as dt_util
 
 from . import adapters
 from .compat import device_entry_ids, is_child_device
+from .compat import validation as vol
 from .const import CONF_COORDINATES, DOMAIN
 from .coordinator import NinebotCoordinator
 from .exceptions import ErrorKind, NinebotError
