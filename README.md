@@ -6,18 +6,19 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-The 2.0 refactor is under development on `refactor/ninecli-v2`. A release is
-not ready until its checks, migration tests and final release audit pass.
-Target prerelease: **v2.0.0b0** (manifest `2.0.0b0`).
+**2.0.0b0 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b0)
+and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
 
-When the prerelease is published, add `Wuty-zju/ha_ninebot` as a custom
+Add `Wuty-zju/ha_ninebot` as a custom
 integration repository in HACS and select the beta version. Alternatively,
 copy `custom_components/ninebot` into your HA configuration. Restart your
 own HA after installation, then add **Ninebot** through Devices & services.
-The development/release task does not install anything into the owner's HA.
 
+
+The backend targets the Chinese App service; other regions are unverified.
 Requires HA **2026.1.0+**, Python supplied by that HA release, and a compatible
 ninecli wheel. Linux x86_64/arm64 musl and glibc, macOS x86_64/arm64 and Windows
 amd64/arm64 wheels are published; published availability is not proof that every
@@ -39,7 +40,8 @@ No service is exposed to the LAN and no binary is downloaded at runtime.
 
 Default status polling is 120 seconds, battery/trips 600 seconds and vehicle
 list 3600 seconds. Polling is serialized per account. A failed car/group does
-not discard other successful results; expired data becomes unavailable.
+not discard other successful results; a local timer notifies entities when data
+expires or the business month changes, without extra cloud requests.
 
 Main entities include vehicle SOC, cloud precise range, charging, main power,
 unlocked state, battery voltage/temperature and current-month distance.
@@ -87,8 +89,8 @@ matched by vehicle nickname. No recorder SQL is edited.
 Legacy SOC-by-range, GSM/address/report-time and estimated-energy identities do
 not receive fabricated replacements. New SOC model entities have separate IDs.
 The legacy full-range parameter remains local and is not used as an energy source.
-App raw lock codes differ from the old OpenClaw encoding: update automations
-that depended on the raw code to use normalized lock/unlocked entities.
+Legacy lock-code diagnostics retain 0=locked and 1=unlocked. The reversed App
+codes are normalized internally; lock/unlocked entities are preferred for automations.
 
 Rolling back code alone does not reverse a ConfigEntry schema upgrade. Restore
 both the pre-upgrade integration version and the matching HA configuration/storage
@@ -98,10 +100,10 @@ backup. Never downgrade storage by editing recorder or token JSON manually.
 
 ```sh
 python -m pip install pytest-homeassistant-custom-component==0.13.305 ninecli==0.1.7 ruff==0.16.10 mypy==2.4.0
-ruff check custom_components tests
-ruff format --check custom_components tests
+ruff check custom_components tests scripts
+ruff format --check custom_components tests scripts
 mypy custom_components/ninebot --follow-imports=silent
-LITELLM_LOCAL_MODEL_COST_MAP=True pytest --cov=custom_components.ninebot --cov-branch --cov-fail-under=95
+LITELLM_LOCAL_MODEL_COST_MAP=True python -m pytest --cov=custom_components.ninebot --cov-branch --cov-fail-under=95
 ```
 
 Tests use synthetic credentials, identities and coordinates. Controls are mocked;
@@ -109,11 +111,16 @@ the running HA is never a test target. See [development reports](docs/README.md)
 for endpoint/entity mappings and source/binary audit boundaries. Diagnostics use
 an explicit whitelist and contain no account, serial, token or position.
 
-Current evidence verifies query behavior using earlier isolated session copies,
-and v2 parser/lifecycle/HA flows using synthetic tests. New real password login,
+The v2 serve client completed one bounded read-only query pass for two vehicles
+using a copied session in an isolated Linux musl/arm64 container. Parser, HA flows,
+migration and lifecycle boundaries are covered by synthetic tests; see the
+[prerelease audit](docs/2.0-预发布验收.md) for platform and evidence details. New real password login,
 refresh recovery, all hardware controls and additional platforms require separate
 verification. Complete Go source/reproducible builds are not available from the
 reviewed wheels; the dependency audit states that limitation explicitly.
 
-Legacy lock-code diagnostics retain 0=locked and 1=unlocked. Restarting or re-enabling
-estimation preserves totals while rebuilding the sample baseline; disabled intervals are not counted.
+Restarting or re-enabling estimation preserves totals while rebuilding the sample
+baseline; disabled intervals are not counted. Unknown estimation storage versions
+stop setup with a Repair issue rather than overwriting saved data. A failed session
+rollback that cannot unload the runtime retains its journal/backup and requests a
+user-managed restart through Repairs.

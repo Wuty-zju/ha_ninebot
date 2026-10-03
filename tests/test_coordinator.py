@@ -41,7 +41,8 @@ async def coordinator(tmp_path, request):
     client.async_get_battery.return_value = {"battery_list": []}
     client.async_get_travel.return_value = {"total_mileages": 0, "ec": 0, "list": None}
     co = NinebotCoordinator(hass, entry, client)
-    yield co
+    with patch.object(entry, "async_start_reauth"):
+        yield co
     await co.async_close()
     await hass.async_stop(force=True)
 
@@ -136,6 +137,29 @@ async def test_removed_vehicle_kept_and_new_vehicle_discovered(coordinator):
     assert not co.fresh("synthetic-one", "profile")
 
 
+async def test_rediscovery_requeries_all_groups_without_reviving_old_status(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co.client.async_list_vehicles.return_value = [{"wnumber": "synthetic-two"}]
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    assert not co.data["synthetic-one"].present
+    for group in ("status", "battery", "travel"):
+        co._next_attempt[("synthetic-one", group)] = float("inf")
+    co.client.async_get_status.side_effect = NinebotError(ErrorKind.CONNECTION)
+    co.client.async_get_battery.reset_mock()
+    co.client.async_get_travel.reset_mock()
+    co.client.async_list_vehicles.return_value.append({"wnumber": "synthetic-one"})
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    assert co.data["synthetic-one"].present
+    assert co.data["synthetic-one"].status.battery is None
+    assert not co.fresh("synthetic-one", "status")
+    assert co.fresh("synthetic-one", "battery")
+    co.client.async_get_battery.assert_awaited_once_with("synthetic-one")
+    assert co.client.async_get_travel.await_args_list[0].args[0] == "synthetic-one"
+
+
 async def test_controls_disabled_without_explicit_option(coordinator):
     co = coordinator
     await co._async_update_data()
@@ -152,6 +176,19 @@ async def test_control_timeout_never_retried(coordinator):
     with pytest.raises(HomeAssistantError):
         await co.async_control("synthetic-one", "bell")
     co.client.async_control.assert_awaited_once()
+
+
+@pytest.mark.parametrize("coordinator", [True], indirect=True)
+async def test_control_auth_error_starts_reauth_without_resending(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co.client.async_control.side_effect = NinebotAuthError()
+    with pytest.raises(HomeAssistantError) as error:
+        await co.async_control("synthetic-one", "bell")
+    assert error.value.translation_key == "control_uncertain"
+    co.config_entry.async_start_reauth.assert_called_once_with(co.hass)
+    co.client.async_control.assert_awaited_once()
+    assert not co.fresh("synthetic-one", "status")
 
 
 async def test_list_failure_retries_initial_setup_but_preserves_prior_data(coordinator):
@@ -416,3 +453,36 @@ async def test_freshness_measures_actual_request_completion_and_retry_is_bounded
     for _ in range(20):
         co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
     assert co._next_attempt[("synthetic-one", "status")] <= start.timestamp() + 120
+
+
+@pytest.mark.parametrize("coordinator", [{"enable_estimation": True}], indirect=True)
+async def test_local_month_boundary_expires_travel_and_resets_model_buckets(coordinator):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from custom_components.ninebot.estimation import EnergyModel
+
+    co = coordinator
+    before = datetime(2026, 9, 30, 15, 59, 59, tzinfo=UTC)
+    model = EnergyModel(72, 20)
+    model.rollover(before)
+    model.values.update(out_daily=1, out_monthly=2, out_total=3)
+    models = SimpleNamespace(models={"synthetic-one": model}, schedule_save=MagicMock())
+    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=before):
+        await co._async_update_data()
+        co.models = models
+        with patch("custom_components.ninebot.coordinator.async_track_point_in_utc_time") as timer:
+            co._schedule_validity_check()
+            notify, deadline = timer.call_args.args[1:]
+            assert deadline == before + timedelta(seconds=1)
+            co.client.reset_mock()
+            with patch(
+                "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+            ):
+                notify(deadline)
+                assert not co.fresh("synthetic-one", "travel")
+            assert model.values["out_daily"] == model.values["out_monthly"] == 0
+            assert model.values["out_total"] == 3
+            models.schedule_save.assert_called_once()
+            co.client.async_get_status.assert_not_awaited()
+            co.client.async_get_travel.assert_not_awaited()

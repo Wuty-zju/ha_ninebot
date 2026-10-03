@@ -20,9 +20,8 @@ def app_client():
         "loc": {"lock": 1, "lat": 0, "lon": 0},
     }
     client.async_get_battery.return_value = {
-        "battery_list": [
-            {"bms_volt": "75.3", "bat_temp": 25, "bms_cycle": 100, "have_bms_cycle_support": False}
-        ]
+        "have_bms_cycle_support": False,
+        "battery_list": [{"bms_volt": "75.3", "bat_temp": 25, "bms_cycle": 100}],
     }
     client.async_get_travel.return_value = {"total_mileages": 0, "ec": 0, "list": None}
     with (

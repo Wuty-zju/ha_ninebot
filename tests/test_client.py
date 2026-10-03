@@ -326,3 +326,36 @@ async def test_transport_failure_does_not_leak_request_details_in_traceback(tmp_
     rendered = "".join(traceback.format_exception(caught.value))
     assert "synthetic-secret-in-error" not in rendered
     assert caught.value.__suppress_context__
+
+
+@pytest.mark.parametrize("cancelled", [False, True])
+async def test_startup_deadline_or_cancellation_reaps_child(tmp_path, cancelled):
+    from unittest.mock import MagicMock, patch
+
+    started = asyncio.Event()
+    process = MagicMock()
+    process.returncode = None
+    process.wait = AsyncMock(return_value=0)
+    process.terminate.side_effect = lambda: setattr(process, "returncode", -15)
+    session = MagicMock()
+
+    def unavailable(*args, **kwargs):
+        started.set()
+        raise aiohttp.ClientConnectionError()
+
+    session.get.side_effect = unavailable
+    client = NinecliClient(tmp_path, session, timeout=0.05 if not cancelled else 10)
+    with patch(
+        "custom_components.ninebot.client.asyncio.create_subprocess_exec", return_value=process
+    ):
+        task = asyncio.create_task(client.async_list_vehicles())
+        await started.wait()
+        if cancelled:
+            task.cancel()
+        with pytest.raises(asyncio.CancelledError if cancelled else NinebotError) as error:
+            await task
+        if not cancelled:
+            assert error.value.kind == ErrorKind.PLATFORM
+    assert client._process is None
+    process.wait.assert_awaited()
+    assert not client._lock.locked() and client._pending == 0

@@ -8,6 +8,7 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState, ConfigFlowResult
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import callback
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.selector import (
     SelectOptionDict,
     SelectSelector,
@@ -70,7 +71,12 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 old_data = dict(self._entry.data) if self._entry else None
                 old_uid = self._entry.unique_id if self._entry else None
                 unloaded = False
+                recovery_pending = False
                 try:
+                    if self._entry and self._entry.state == ConfigEntryState.FAILED_UNLOAD:
+                        # The old runtime may still own this directory. Do not
+                        # recover or replace it until HA can unload it safely.
+                        raise NinebotError(ErrorKind.BUSY)
                     candidate = await manager.async_prepare(account, str(user_input[CONF_PASSWORD]))
                     if self._entry:
                         expected = self._entry.data.get(CONF_BUSINESS_UID)
@@ -127,37 +133,53 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors["base"] = "storage_error"
                 finally:
                     if committed and await manager.async_is_pending(key):
+                        can_rollback = True
                         if self._entry and self._entry.state == ConfigEntryState.LOADED:
-                            if not await self.hass.config_entries.async_unload(
+                            can_rollback = await self.hass.config_entries.async_unload(
                                 self._entry.entry_id
-                            ):
-                                # A live replacement runtime must never read a directory
-                                # while it is being rolled back. Retain the journal and
-                                # backups so a subsequent unload/start can recover.
-                                raise NinebotError(ErrorKind.BUSY)
-                        rolled_back = await manager.async_rollback(key)
-                        if (
-                            rolled_back
-                            and self._entry
-                            and metadata_updated
-                            and old_data is not None
-                        ):
-                            self.hass.config_entries.async_update_entry(
-                                self._entry, data=old_data, unique_id=old_uid
                             )
-                        if not rolled_back:
-                            # Finalize may have completed in its worker before
-                            # cancellation reached the caller. Keep the accepted
-                            # metadata rather than undoing only half the commit.
-                            finished = True
+                        if not can_rollback and self._entry:
+                            # Never replace files under a live runtime. Retain
+                            # the journal and backup for recovery after restart.
+                            recovery_pending = True
+                            ir.async_create_issue(
+                                self.hass,
+                                DOMAIN,
+                                f"session_recovery_{self._entry.entry_id}",
+                                is_fixable=False,
+                                severity=ir.IssueSeverity.ERROR,
+                                translation_key="session_recovery_pending",
+                            )
+                        else:
+                            rolled_back = await manager.async_rollback(key)
+                            if (
+                                rolled_back
+                                and self._entry
+                                and metadata_updated
+                                and old_data is not None
+                            ):
+                                self.hass.config_entries.async_update_entry(
+                                    self._entry, data=old_data, unique_id=old_uid
+                                )
+                            if not rolled_back:
+                                # A cancelled finalization may have passed its
+                                # commit point. Keep both accepted metadata/files.
+                                finished = True
                     elif committed:
                         # The finalization worker crossed the commit point before
                         # cancellation. The replacement runtime and metadata agree.
                         finished = True
                     if candidate:
                         await manager.async_discard(candidate)
-                    if self._entry and not finished and (metadata_updated or unloaded):
+                    if (
+                        self._entry
+                        and not finished
+                        and not recovery_pending
+                        and (metadata_updated or unloaded)
+                    ):
                         await self.hass.config_entries.async_reload(self._entry.entry_id)
+            if recovery_pending:
+                return self.async_abort(reason="session_recovery_pending")
             if (
                 errors
                 and self._entry
@@ -221,8 +243,11 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
             if snapshot.present
         ]
         for sn in options.get(CONF_CONTROL_VEHICLES, []):
-            if sn not in vehicles:
-                choices.append(SelectOptionDict(value=sn, label=sn))
+            if sn not in {choice["value"] for choice in choices}:
+                snapshot = vehicles.get(sn)
+                choices.append(
+                    SelectOptionDict(value=sn, label=snapshot.profile.name if snapshot else sn)
+                )
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(

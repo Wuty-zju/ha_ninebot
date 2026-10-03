@@ -101,6 +101,7 @@ def batteries(raw: object) -> BatteryInfo:
         raise NinebotError(ErrorKind.PROTOCOL)
     result = []
     keys: set[str] = set()
+    vehicle_support = boolean(item.get("have_bms_cycle_support"))
     for index, row in enumerate(rows):
         value = payload(row)
         identity = text(value.get("battery_sn")) or text(value.get("sn"))
@@ -108,7 +109,16 @@ def batteries(raw: object) -> BatteryInfo:
         if key in keys:
             raise NinebotError(ErrorKind.PROTOCOL)
         keys.add(key)
-        support = boolean(value.get("have_bms_cycle_support"))
+        # Captured App responses put this capability alongside battery_list,
+        # not inside each pack. Preserve explicit pack overrides when supplied,
+        # but a vehicle-wide denial cannot be promoted to support by one row.
+        support = (
+            False
+            if vehicle_support is False
+            else boolean(value["have_bms_cycle_support"])
+            if "have_bms_cycle_support" in value
+            else vehicle_support
+        )
         cycles = number(value.get("bms_cycle"), 0, 100000)
         result.append(
             Battery(

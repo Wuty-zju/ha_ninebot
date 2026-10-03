@@ -8,16 +8,17 @@ from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.ninebot.config_flow import ERRORS
 from custom_components.ninebot.exceptions import ErrorKind, NinebotError
-from custom_components.ninebot.session import Candidate, SessionManager, session_uid
+from custom_components.ninebot.session import Candidate, session_uid
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
 @pytest.fixture
 async def flow_manager(hass, tmp_path):
-    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+    from custom_components.ninebot import manager_for
 
-    manager = SessionManager(tmp_path / "private", async_get_clientsession(hass))
+    hass.config.config_dir = str(tmp_path)
+    manager = manager_for(hass)
 
     async def prepare(account, password):
         directory = await hass.async_add_executor_job(manager._candidate_dir)
@@ -30,9 +31,6 @@ async def flow_manager(hass, tmp_path):
         return Candidate(directory, "synthetic-business")
 
     with (
-        patch(
-            "custom_components.ninebot.config_flow.NinebotConfigFlow._manager", return_value=manager
-        ),
         patch.object(manager, "async_prepare", side_effect=prepare),
         patch("custom_components.ninebot.async_setup_entry", return_value=True),
         patch("custom_components.ninebot.async_unload_entry", return_value=True),
@@ -243,3 +241,68 @@ async def test_loaded_runtime_must_unload_before_replacing_session(hass, entry, 
     assert result["errors"] == {"base": "busy"}
     assert (path / "tokens.json").read_text() == before
     assert not list(flow_manager.root.glob(".*"))
+
+
+async def test_failed_unload_never_revalidates_or_replaces_private_session(
+    hass, entry, flow_manager
+):
+    from homeassistant.config_entries import ConfigEntryState
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    with patch("custom_components.ninebot.async_unload_entry", return_value=False):
+        assert not await hass.config_entries.async_unload(entry.entry_id)
+    assert entry.state is ConfigEntryState.FAILED_UNLOAD
+    flow_manager.async_prepare.reset_mock()
+    form = await hass.config_entries.flow.async_init(
+        "ninebot", context={"source": SOURCE_REAUTH, "entry_id": entry.entry_id}, data=entry.data
+    )
+    result = await hass.config_entries.flow.async_configure(
+        form["flow_id"], {"account": "fake-account", "password": "synthetic-password"}
+    )
+    assert result["errors"] == {"base": "busy"}
+    flow_manager.async_prepare.assert_not_awaited()
+    assert not flow_manager.root.exists()
+
+
+@pytest.mark.parametrize("cancelled", [False, True])
+async def test_failed_rollback_unload_retains_journal_and_reports_recovery(
+    hass, entry, flow_manager, cancelled
+):
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.ninebot.session import SessionManager
+
+    path = flow_manager.path(entry.data["session_key"])
+    path.mkdir(parents=True)
+    before = json.dumps({"business_uid": "synthetic-business", "access_token": "prior"})
+    (path / "tokens.json").write_text(before)
+    form = await hass.config_entries.flow.async_init(
+        "ninebot", context={"source": SOURCE_REAUTH, "entry_id": entry.entry_id}, data=entry.data
+    )
+    with (
+        patch.object(
+            flow_manager,
+            "async_finalize",
+            side_effect=asyncio.CancelledError() if cancelled else OSError("synthetic-disk"),
+        ),
+        patch.object(hass.config_entries, "async_unload", return_value=False),
+    ):
+        if cancelled:
+            with pytest.raises(asyncio.CancelledError):
+                await hass.config_entries.flow.async_configure(
+                    form["flow_id"], {"account": "fake-account", "password": "synthetic-password"}
+                )
+        else:
+            result = await hass.config_entries.flow.async_configure(
+                form["flow_id"], {"account": "fake-account", "password": "synthetic-password"}
+            )
+            assert result["type"] is FlowResultType.ABORT
+            assert result["reason"] == "session_recovery_pending"
+    assert ir.async_get(hass).async_get_issue("ninebot", f"session_recovery_{entry.entry_id}")
+    assert await flow_manager.async_is_pending(entry.data["session_key"])
+    assert json.loads((path / "tokens.json").read_text())["access_token"] == "synthetic-new-token"
+    # A fresh manager represents restart, with no live flow owning the journal.
+    recovery = SessionManager(flow_manager.root, None)
+    await recovery.async_recover(entry.data["session_key"])
+    assert (path / "tokens.json").read_text() == before
+    assert not await recovery.async_is_pending(entry.data["session_key"])

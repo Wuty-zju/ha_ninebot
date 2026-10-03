@@ -156,4 +156,19 @@ serve认证，云端仍由Go程序执行Passport/App token、签名与业务加�
 
 同权限用户仍可能观察进程环境或私有文件，loopback认证不消除该本机信任边界。
 完整Go源码、发布构建改动和可重复构建依然未取得；上述runtime行为证据不替代
-完整源码或供应链审计。平台与新版隔离实测结果需在最终发布验收记录中更新。
+完整源码或供应链审计。平台与新版隔离实测结果见[预发布验收](2.0-预发布验收.md)。
+
+
+## 10. 预发布实现与证据补充
+
+最终client使用固定ninecli0.1.7的serve，不移植未完整取得的Go加密/签名实现。
+该client已在隔离会话副本上完成一次两车列表/status/battery/当月travel查询；
+公开白名单结果见[evidence/v2-live-query.json](evidence/v2-live-query.json)。
+password_login=not_called仅指wrapper未调用login，未instrument内部刷新。
+新真实密码登录和刷新失败恢复不在该查询证明范围。
+
+BMS响应的have_bms_cycle_support位于battery_list同级；先前单包字段假设不完整。
+现adapter使用车辆级能力和单包显式能力，false均作否决，unknown不发布循环计量。
+修正发生在该次新版云端查询之后，使用原始脱敏结构和合成冲突样本验证。
+Go源码、构建改动、依赖许可文本及可重复构建的限制仍成立，不能因runtime可运行
+而宣称完整供应链审查完成。详情和当前平台矩阵见预发布验收。

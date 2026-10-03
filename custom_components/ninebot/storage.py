@@ -3,8 +3,11 @@
 from typing import Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryError
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 
+from .const import DOMAIN
 from .estimation import EnergyModel
 
 
@@ -12,14 +15,31 @@ class ModelStorage:
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         self._store = Store[dict[str, Any]](hass, 1, f"ninebot.{entry_id}.energy_v2", private=True)
         self.models: dict[str, EnergyModel] = {}
+        self._hass = hass
+        self._issue_id = f"model_storage_{entry_id}"
+        self._writable = False
 
     async def async_load(self) -> None:
+        self._writable = False
         raw = await self._store.async_load()
-        if (
-            isinstance(raw, dict)
-            and raw.get("model_version") == 2
-            and isinstance(raw.get("models"), dict)
-        ):
+        if raw is not None:
+            if not (
+                isinstance(raw, dict)
+                and type(raw.get("model_version")) is int
+                and raw["model_version"] == 2
+                and isinstance(raw.get("models"), dict)
+            ):
+                ir.async_create_issue(
+                    self._hass,
+                    DOMAIN,
+                    self._issue_id,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.ERROR,
+                    translation_key="model_storage_invalid",
+                )
+                raise ConfigEntryError(
+                    translation_domain=DOMAIN, translation_key="model_storage_invalid"
+                )
             self.models = {
                 sn: EnergyModel.restore(value)
                 for sn, value in raw["models"].items()
@@ -27,6 +47,10 @@ class ModelStorage:
             }
             for model in self.models.values():
                 model.reset_baseline()
+        else:
+            self.models = {}
+        self._writable = True
+        ir.async_delete_issue(self._hass, DOMAIN, self._issue_id)
 
     def model(self, sn: str) -> EnergyModel:
         return self.models.setdefault(sn, EnergyModel())
@@ -38,7 +62,9 @@ class ModelStorage:
         }
 
     def schedule_save(self) -> None:
-        self._store.async_delay_save(self._data, 5)
+        if self._writable:
+            self._store.async_delay_save(self._data, 5)
 
     async def async_save(self) -> None:
-        await self._store.async_save(self._data())
+        if self._writable:
+            await self._store.async_save(self._data())

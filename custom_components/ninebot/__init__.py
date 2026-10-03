@@ -4,6 +4,7 @@ from pathlib import Path
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .client import NinecliClient
@@ -37,6 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         raise ConfigEntryAuthFailed("auth") from err
     if uid != entry.data.get(CONF_BUSINESS_UID):
         raise ConfigEntryAuthFailed("auth")
+    ir.async_delete_issue(hass, DOMAIN, f"session_recovery_{entry.entry_id}")
     client = NinecliClient(manager.path(key), async_get_clientsession(hass))
     store = ModelStorage(hass, entry.entry_id)
     coordinator = NinebotCoordinator(hass, entry, client, models=store)

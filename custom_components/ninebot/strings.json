@@ -40,7 +40,8 @@
       "wrong_account": "Reauthenticate with the same account",
       "reauth_successful": "Reauthentication successful",
       "reconfigure_successful": "Reconfiguration successful",
-      "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again."
+      "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
+      "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying."
     }
   },
   "options": {
@@ -203,6 +204,12 @@
     },
     "busy": {
       "message": "The request queue is full; try again later."
+    },
+    "model_storage_invalid": {
+      "message": "Unsupported estimation storage; see Repairs. Existing data was preserved."
+    },
+    "invalid_auth": {
+      "message": "The session is invalid; reauthenticate through Devices & services."
     }
   },
   "issues": {
@@ -217,6 +224,14 @@
     "legacy_device_unmatched": {
       "title": "Legacy device identity is unmatched",
       "description": "An existing device identity is absent from the current account vehicle list. The vehicle may have been removed or use a different interface identity. Entities and history are preserved; no nickname-based merge was attempted. Check the backup and current identities before making changes through the HA UI."
+    },
+    "session_recovery_pending": {
+      "title": "Session recovery needs a restart",
+      "description": "After a failed session update, HA could not unload the runtime using the replacement session. Its files were not replaced; the transaction journal and previous session backup remain. Back up HA configuration and restart HA to recover the previous session at startup. If recovery fails, retain the backup and check storage permissions; do not manually delete session directories."
+    },
+    "model_storage_invalid": {
+      "title": "Unsupported estimation storage",
+      "description": "The estimation storage format or version is unsupported. Setup stopped without overwriting it. Retain a backup and use the integration version matching this storage, or restore a complete pre-upgrade backup. Do not edit the model version field manually."
     }
   }
 }

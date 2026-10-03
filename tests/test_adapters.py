@@ -126,3 +126,30 @@ def test_freshness_is_query_success_not_report_time():
     assert not Freshness().valid(now, 30)
     assert Freshness(succeeded_at=now).valid(now, 30)
     assert not Freshness(succeeded_at=now).valid(datetime(2026, 10, 4, tzinfo=UTC), 30)
+
+
+@pytest.mark.parametrize("support,expected", [(False, None), (True, 100), (None, None)])
+def test_vehicle_level_cycle_support_matches_captured_app_shape(support, expected):
+    result = adapters.batteries(
+        {
+            "have_bms_cycle_support": support,
+            "battery_count": "0",
+            "battery_list": [{"bms_volt": "75.3", "bat_temp": "26", "bms_cycle": "100"}],
+        }
+    )
+    assert result.batteries[0].cycle_supported is support
+    assert result.batteries[0].cycles == expected
+    assert result.batteries[0].voltage == 75.3
+    assert len(result.batteries) == 1
+
+
+def test_vehicle_denial_and_explicit_pack_denial_both_gate_cycles():
+    for vehicle, pack in ((False, True), (True, False)):
+        result = adapters.batteries(
+            {
+                "have_bms_cycle_support": vehicle,
+                "battery_list": [{"have_bms_cycle_support": pack, "bms_cycle": 100}],
+            }
+        )
+        assert result.batteries[0].cycle_supported is False
+        assert result.batteries[0].cycles is None

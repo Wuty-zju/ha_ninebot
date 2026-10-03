@@ -2,5 +2,5 @@
   "name": "Ninebot",
   "homeassistant": "2026.1.0",
   "content_in_root": false,
-  "render_readme": true
+  "country": "CN"
 }

@@ -40,7 +40,8 @@
       "wrong_account": "重认证必须使用原账号",
       "reauth_successful": "重认证成功",
       "reconfigure_successful": "重新配置成功",
-      "session_update_failed": "会话更新未完成，已恢复旧会话。请重新开始认证。"
+      "session_update_failed": "会话更新未完成，已恢复旧会话。请重新开始认证。",
+      "session_recovery_pending": "会话恢复尚未完成，备份已保留。请查看“修复”提示并重启 HA 后重试。"
     }
   },
   "options": {
@@ -203,6 +204,12 @@
     },
     "busy": {
       "message": "请求队列已满，请稍后重试。"
+    },
+    "model_storage_invalid": {
+      "message": "无法识别估算存储，请查看“修复”提示；原数据已保留。"
+    },
+    "invalid_auth": {
+      "message": "会话已失效，请通过设备与服务重新认证。"
     }
   },
   "issues": {
@@ -217,6 +224,14 @@
     "legacy_device_unmatched": {
       "title": "旧设备身份未匹配",
       "description": "已有设备的身份未出现在当前账户的车辆列表中，可能是车辆移除或接口身份不同。旧实体和历史已保留，不会按昵称自动合并。请核对原配置备份与当前车辆身份，再通过HA界面处理。"
+    },
+    "session_recovery_pending": {
+      "title": "会话恢复需要重启",
+      "description": "会话更新失败后，HA 无法卸载仍在使用新会话的运行实例，因此未替换其文件。事务记录和旧会话备份已保留。请先备份 HA 配置，再自行重启 HA；启动时会恢复原会话。若问题持续，请保留备份并检查存储权限，勿手动删除会话目录。"
+    },
+    "model_storage_invalid": {
+      "title": "估算存储版本无法识别",
+      "description": "估算存储格式或版本无法识别，集成已停止加载且未覆盖该数据。请保留备份，使用与存储匹配的集成版本，或通过完整升级前备份回滚；不要手动修改模型版本字段。"
     }
   }
 }

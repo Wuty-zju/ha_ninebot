@@ -3,19 +3,23 @@
 import asyncio
 import logging
 import random
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from . import adapters
 from .client import NinecliClient
 from .const import (
+    BUSINESS_TIMEZONE,
     CONF_CONTROL_VEHICLES,
     CONF_CONTROLS,
     CONF_ESTIMATION,
@@ -68,6 +72,60 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._active: set[asyncio.Task[Any]] = set()
         self._forced: dict[str, asyncio.Task[None]] = {}
         self._shutdown_task: asyncio.Task[None] | None = None
+        self._validity_cancel: Callable[[], None] | None = None
+
+    @callback
+    def _schedule_validity_check(self) -> None:
+        """Notify local expiry/month changes without waiting for a cloud poll."""
+        if self._validity_cancel:
+            self._validity_cancel()
+            self._validity_cancel = None
+        if self._stopping or not self._authenticated:
+            return
+        now = dt_util.utcnow()
+        local = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE))
+        next_month = datetime(
+            local.year + (local.month == 12),
+            local.month % 12 + 1,
+            1,
+            tzinfo=local.tzinfo,
+        )
+        deadlines = [next_month]
+        fresh = [(self._list_freshness, 3 * VEHICLE_INTERVAL)]
+        for snapshot in self.data.values():
+            if snapshot.present:
+                fresh.extend(
+                    [
+                        (snapshot.status_freshness, max(3 * self.interval, 180)),
+                        (snapshot.battery_freshness, 3 * DETAIL_INTERVAL),
+                        (snapshot.travel_freshness, 3 * DETAIL_INTERVAL),
+                    ]
+                )
+        for freshness, ttl in fresh:
+            if freshness.succeeded_at is not None:
+                expiry = freshness.succeeded_at + timedelta(seconds=ttl, milliseconds=1)
+                if expiry > now:
+                    deadlines.append(expiry)
+        if self.models and self.config_entry and self.config_entry.options.get(CONF_ESTIMATION):
+            deadlines.append(
+                (local + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            )
+
+        @callback
+        def notify(at: datetime) -> None:
+            self._validity_cancel = None
+            if self.models:
+                for model in self.models.models.values():
+                    model.rollover(at)
+                self.models.schedule_save()
+            self.async_update_listeners()
+            self._schedule_validity_check()
+
+        self._validity_cancel = async_track_point_in_utc_time(self.hass, notify, min(deadlines))
+
+    @callback
+    def _async_refresh_finished(self) -> None:
+        self._schedule_validity_check()
 
     def fresh(self, sn: str, group: str) -> bool:
         snapshot = self.data.get(sn)
@@ -118,12 +176,23 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 raise UpdateFailed(err.kind.value) from err
             return
         sns = {profile.sn for profile in found}
-        self.data = {sn: replace(snapshot, present=sn in sns) for sn, snapshot in self.data.items()}
+        self.data = {
+            sn: snapshot if sn in sns else replace(snapshot, present=False)
+            for sn, snapshot in self.data.items()
+        }
         for profile in found:
             old = self.data.get(profile.sn)
             self.data[profile.sn] = (
-                replace(old, profile=profile, present=True) if old else VehicleSnapshot(profile)
+                replace(old, profile=profile) if old and old.present else VehicleSnapshot(profile)
             )
+            if old and not old.present:
+                # Reappearing ownership is a new observation interval. Do not
+                # revive cached readings or bridge energy across the absence.
+                for group in ("status", "battery", "travel"):
+                    self._next_attempt.pop((profile.sn, group), None)
+                    self._failures.pop((profile.sn, group), None)
+                if self.models:
+                    self.models.model(profile.sn).reset_baseline()
         finished = dt_util.utcnow()
         self._list_freshness = Freshness(now, finished)
         self._authenticated = True
@@ -254,10 +323,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 try:
                     await self._group(sn, "status", force=True)
                 except NinebotAuthError as err:
-                    self._authenticated = False
-                    raise ConfigEntryAuthFailed("auth") from err
+                    raise self._manual_auth_failure() from err
                 self._sample_model(sn)
                 self.async_set_updated_data(dict(self.data))
+                self._schedule_validity_check()
 
         task = asyncio.create_task(refresh())
         self._forced[sn] = task
@@ -273,6 +342,16 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             and self.config_entry.options.get(CONF_CONTROLS)
             and sn in self.config_entry.options.get(CONF_CONTROL_VEHICLES, [])
         )
+
+    def _manual_auth_failure(self) -> ConfigEntryAuthFailed:
+        """Manual I/O bypasses the coordinator's automatic reauth handler."""
+        self._authenticated = False
+        error = ConfigEntryAuthFailed(translation_domain=DOMAIN, translation_key="invalid_auth")
+        self.async_set_update_error(error)
+        self._schedule_validity_check()
+        if self.config_entry:
+            self.config_entry.async_start_reauth(self.hass)
+        return error
 
     async def async_control(self, sn: str, action: str) -> None:
         if self._control_pending >= 4:
@@ -301,6 +380,11 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         async with self._mutex:
             try:
                 await self.client.async_control(sn, action)
+            except NinebotAuthError:
+                self._manual_auth_failure()
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN, translation_key="control_uncertain"
+                ) from None
             except NinebotError as err:
                 # No automatic retry, even if the action's outcome is uncertain.
                 raise HomeAssistantError(
@@ -318,6 +402,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     async def async_close(self) -> None:
         self._stopping = True
+        if self._validity_cancel:
+            self._validity_cancel()
+            self._validity_cancel = None
         if self._shutdown_task is None:
             current = asyncio.current_task()
             tasks = (self._active | set(self._forced.values())) - {current}

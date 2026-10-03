@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 import pytest
 from homeassistant.helpers import device_registry as dr
@@ -7,6 +8,48 @@ from homeassistant.helpers import entity_registry as er
 from custom_components.ninebot.diagnostics import async_get_config_entry_diagnostics
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
+
+
+async def test_manual_auth_failure_updates_entities_and_starts_ui_reauth(hass, entry, app_client):
+    from homeassistant.exceptions import ConfigEntryAuthFailed
+
+    from custom_components.ninebot.exceptions import NinebotAuthError
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    battery = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_battery")
+    assert hass.states.get(battery).state == "80.0"
+    app_client.async_get_status.side_effect = NinebotAuthError()
+    with patch.object(entry, "async_start_reauth") as reauth:
+        with pytest.raises(ConfigEntryAuthFailed):
+            await entry.runtime_data.coordinator.async_refresh_vehicle("SyntheticSN")
+        reauth.assert_called_once_with(hass)
+    assert hass.states.get(battery).state == "unavailable"
+
+
+async def test_local_expiry_notifies_ha_without_cloud_poll(hass, entry, app_client, freezer):
+    from datetime import UTC, datetime, timedelta
+
+    from pytest_homeassistant_custom_component.common import async_fire_time_changed
+
+    now = datetime(2026, 10, 3, 12, tzinfo=UTC)
+    freezer.move_to(now)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = entry.runtime_data.coordinator
+    co._async_unsub_refresh()
+    registry = er.async_get(hass)
+    battery = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_battery")
+    app_client.async_get_status.reset_mock()
+    later = now + timedelta(seconds=361)
+    freezer.move_to(later)
+    async_fire_time_changed(hass, later)
+    await hass.async_block_till_done()
+    assert hass.states.get(battery).state == "unavailable"
+    app_client.async_get_status.assert_not_awaited()
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert co._validity_cancel is None
 
 
 async def test_full_setup_physical_values_and_unload(hass, entry, app_client):
@@ -410,3 +453,25 @@ async def test_legacy_cycle_entity_recovers_supported_values_without_duplicate(
     await co.async_refresh()
     await hass.async_block_till_done()
     assert hass.states.get(old.entity_id).state == "unknown"
+
+
+async def test_options_preserve_selected_missing_and_removed_vehicle_choices(
+    hass, entry, app_client
+):
+    from dataclasses import replace
+
+    hass.config_entries.async_update_entry(
+        entry, options={"control_vehicles": ["SyntheticSN", "MissingSelection"]}
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    co = entry.runtime_data.coordinator
+    co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], present=False)
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    selector = next(
+        value for key, value in form["data_schema"].schema.items() if str(key) == "control_vehicles"
+    )
+    assert selector.config["options"] == [
+        {"value": "SyntheticSN", "label": "Scooter"},
+        {"value": "MissingSelection", "label": "MissingSelection"},
+    ]
+    assert not co.controls_enabled("SyntheticSN")
