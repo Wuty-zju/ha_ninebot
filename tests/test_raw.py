@@ -121,8 +121,8 @@ def test_lru_detail_count_expiry_global_budget_and_replacement():
 
 def test_sanitized_recorded_fixtures_replay_and_provenance():
     metadata = json.loads((FIXTURES / "metadata.json").read_text())
-    assert metadata["new_cloud_requests"] == 0
-    assert "travel detail" in metadata["missing"]
+    assert metadata["new_cloud_requests"] == 5
+    assert not metadata["missing"]
     for row in metadata["records"]:
         assert row["provenance"] == "recorded_sanitized"
         payload = json.loads((FIXTURES / row["file"]).read_text())
@@ -143,7 +143,17 @@ def test_sanitized_recorded_fixtures_replay_and_provenance():
             assert len(packs.batteries) == 1
             assert not packs.batteries[0].identified
             assert packs.batteries[0].cycles is None
-        else:
+        elif endpoint is Endpoint.TRAVEL:
             travel = adapters.travel(payload, payload["month"])
-            assert travel.last_ride is None
-            assert travel.mileage == 0
+            if row["file"] == "travel-nonempty.json":
+                assert len(travel.rides) == 20
+                assert travel.last_ride.ride_id == "fixture-ride-01"
+            else:
+                assert travel.last_ride is None
+                assert travel.mileage == 0
+        else:
+            from custom_components.ninebot.travel import parse_ride
+
+            ride = parse_ride(payload, "202609", source=endpoint)
+            assert len(ride.track_points) == 5
+            assert all(point.latitude >= 30 for point in ride.track_points)

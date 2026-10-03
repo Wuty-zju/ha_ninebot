@@ -28,3 +28,45 @@ minimum HA2026.1.0，依赖ninecli==0.1.7，HACS运行资源仅integration目录
 验证记录在 `evidence/v2x-b1-validation.json`；发布前完整pytest、Ruff/format、
 mypy及对应提交的Hassfest/HACS CI必须通过。下一阶段是travel domain/detail
 查询与证据补齐，不提前将未确认单位变成正式物理实体。
+
+## 2.0.0b2：Phase 2 Travel domain / backend
+
+基于main `a99af471`，分支 `feature/v2x-travel-domain`。保留已有client/session
+生命周期，通过薄NinecliBackend接入统一结果及endpoint metadata；backend
+endpoint支持与VehicleCapabilities权限完全分开。coordinator轮询/互斥/
+取消/reauth逻辑沿用，travel归一化在executor执行。
+
+### 新只读证据与采样边界
+
+只读复制生产会话到0700隔离目录，在只读root filesystem、限制内存/PID、
+无特权的独立容器内启动Bearer鉴权loopback serve；没有挂载生产config。
+一次vehicles、两辆车各一次202609月查询，后续为确认详情关联再读一次
+vehicles，并读取一个travel_id详情，共5个业务REST操作。认证内部云调用
+数未抓包计数，不冒称只有5个底层网络请求。没有控制请求、自动轮询或全历史
+扫描。临时凭据与SN selector已删除，私有原始证据仅保留在仓库外的受限审阅
+目录；公开样本全面替换身份、时间安排、图片及GPS。
+
+- 一辆车list为null，另一辆20条；times=128仅保留raw计数，分页完整性未知。
+- list只有travel_id，没有detail_id。recon源码/协议报告说明该字段原样作为
+  详情参数；实读同ride起止/时长一致，距离/最高速度数字一致，确认关联。
+  legacy id不自动等价detail ID；多ID冲突拒绝关联。
+- 20/20行duration=end_time-start_time；20/20 end_time_format对应Unix秒
+  Asia/Shanghai。内部统一UTC，不按HA用户时区/字符串长度猜秒或毫秒。
+- mileages为km、speed为服务端max km/h来自ninecli0.1.7显示契约与recon
+  静态取证，真实list/detail数字一致；App UI未独立核验。契约来源在Ride
+  provenance保留，未扩大为任意候选字段通用解释。
+- trail是真实字符串，semicolon分点，每点lon,lat,speed,distFromPrev四列；
+  lon-first经数值范围及源码标签核对。坐标系/后两列单位仍unknown，不转坐标，
+  不补点时刻、不用samples改写servermax/overallaverage。
+- detail avg_speed返回0，语义未确认，仅server_average_speed_raw；总平均是
+  distance/duration。energy/used_electricity继续raw；不进入Energy Dashboard。
+
+旧实体ID不变。时间明确时选真实时间排序的最近ride；旧无时间结构保留last
+returned兼容值，但新时间依赖实体不能借此推断排序。month polling不存完整
+轨迹、不拉detail；只有显式详情parser生成有界TrackPoint模型供下一阶段Action。
+归一化rides保存在runtime，不作为entity attributes。
+
+证据：[travel schema](evidence/v2x-travel-schema.json)、fixtures metadata及
+[逐字段补充](v2x-行程字段与解析契约.md)。模型/parser受影响114项测试、Ruff、
+mypy已通过；发布前完整校验结果见 `evidence/v2x-b2-validation.json` 与发布CI。
+Phase3/4/5实体、actions、event尚未实施，不能据本阶段模型声称用户功能已齐备。

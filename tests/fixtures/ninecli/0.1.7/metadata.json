@@ -1,59 +1,97 @@
 {
   "ninecli_version": "0.1.7",
   "source_date": "2026-10-03",
-  "new_cloud_requests": 0,
+  "new_cloud_requests": 5,
   "records": [
     {
       "file": "vehicles.json",
       "endpoint": "vehicles",
       "provenance": "recorded_sanitized",
-      "vehicle_alias": null
+      "vehicle_alias": null,
+      "source_date": "2026-10-03"
     },
     {
       "file": "status-01.json",
       "endpoint": "status",
       "provenance": "recorded_sanitized",
-      "vehicle_alias": "fixture-vehicle-01"
+      "vehicle_alias": "fixture-vehicle-01",
+      "source_date": "2026-10-03"
     },
     {
       "file": "battery-01.json",
       "endpoint": "battery",
       "provenance": "recorded_sanitized",
-      "vehicle_alias": "fixture-vehicle-01"
+      "vehicle_alias": "fixture-vehicle-01",
+      "source_date": "2026-10-03"
     },
     {
       "file": "travel-01.json",
       "endpoint": "travel",
       "provenance": "recorded_sanitized",
-      "vehicle_alias": "fixture-vehicle-01"
+      "vehicle_alias": "fixture-vehicle-01",
+      "source_date": "2026-10-03"
     },
     {
       "file": "status-02.json",
       "endpoint": "status",
       "provenance": "recorded_sanitized",
-      "vehicle_alias": "fixture-vehicle-02"
+      "vehicle_alias": "fixture-vehicle-02",
+      "source_date": "2026-10-03"
     },
     {
       "file": "battery-02.json",
       "endpoint": "battery",
       "provenance": "recorded_sanitized",
-      "vehicle_alias": "fixture-vehicle-02"
+      "vehicle_alias": "fixture-vehicle-02",
+      "source_date": "2026-10-03"
     },
     {
       "file": "travel-02.json",
       "endpoint": "travel",
       "provenance": "recorded_sanitized",
-      "vehicle_alias": "fixture-vehicle-02"
+      "vehicle_alias": "fixture-vehicle-02",
+      "source_date": "2026-10-03"
+    },
+    {
+      "file": "travel-nonempty.json",
+      "endpoint": "travel",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-vehicle-02",
+      "source_date": "2026-10-04"
+    },
+    {
+      "file": "trip-detail.json",
+      "endpoint": "trip_detail",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-vehicle-02",
+      "ride_alias": "fixture-ride-01",
+      "source_id_mapping": "travel_id sent to REST detail parameter; no detail_id in list",
+      "source_date": "2026-10-04"
     }
   ],
   "substitutions": [
     "identities, names, URLs and personal profile strings replaced",
     "coordinates replaced with synthetic 0.0, not real location",
-    "unrecognized strings redacted; numeric business strings retained"
+    "unrecognized strings redacted; numeric business strings retained",
+    "new trip timestamps are synthetic with original duration preserved; all real schedule/IDs removed",
+    "new trail preserves semicolon/comma structure and non-location raw columns; all coordinates synthetic"
   ],
-  "missing": [
-    "nonempty travel month",
-    "travel detail"
-  ],
-  "warning": "These are sanitized historical business payloads, not original byte-for-byte responses. Synthetic coordinates are not evidence of real GPS semantics."
+  "missing": [],
+  "warning": "These are sanitized historical business payloads, not original byte-for-byte responses. Synthetic coordinates are not evidence of real GPS semantics.",
+  "new_cloud_request_scope": "Phase2 research: vehicles twice, September month once per vehicle, selected detail once; no control calls. This is REST operation count; authentication internals are not counted.",
+  "contract_evidence": {
+    "unix_seconds_duration": "20/20 real rows duration=end-start before timestamp substitution",
+    "business_timezone": "20/20 real end_time_format equals Unix end_time in Asia/Shanghai",
+    "distance_and_server_max_speed": "ninecli 0.1.7 display contract km and max km/h, corroborated by recon binary report and numeric list/detail equality; App UI not independently tested",
+    "trail_shape": "selected real detail: string, semicolon points, four comma-separated numeric columns; lon-first corroborated by valid ranges and ninecli display labels",
+    "unknown": [
+      "coordinate system",
+      "trail point speed unit",
+      "distFromPrev unit/meaning",
+      "ec and used_electricity units",
+      "avg_speed semantics",
+      "node arrays (null in sample)",
+      "all-vehicle/general schema coverage"
+    ]
+  }
 }

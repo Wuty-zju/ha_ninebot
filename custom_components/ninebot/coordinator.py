@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from . import adapters
+from .backend import BackendResult, NinebotBackend, NinecliBackend
 from .client import NinecliClient
 from .const import (
     BUSINESS_TIMEZONE,
@@ -31,7 +32,7 @@ from .const import (
 )
 from .exceptions import NinebotAuthError, NinebotError
 from .models import Freshness, VehicleSnapshot
-from .raw import Endpoint, RawLimitError, RawStore, build_record
+from .raw import RawLimitError, RawStore, build_record
 from .storage import ModelStorage
 
 LOGGER = logging.getLogger(__name__)
@@ -48,8 +49,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         client: NinecliClient,
         *,
         models: ModelStorage | None = None,
+        backend: NinebotBackend | None = None,
     ) -> None:
         self.client = client
+        self.backend: NinebotBackend = backend or NinecliBackend(client)
         self.raw = RawStore()
         self.models = models
         self.interval = max(
@@ -168,9 +171,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         if not self._due("", "profile", stamp):
             return
         try:
-            raw = await self.client.async_list_vehicles()
-            await self._capture(Endpoint.VEHICLES, raw)
-            found = adapters.profiles(raw)
+            result = await self.backend.async_vehicles()
+            await self._capture(result)
+            found = adapters.profiles(result.payload)
         except NinebotAuthError:
             raise
         except NinebotError as err:
@@ -211,30 +214,34 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         success = False
         try:
             if group == "status":
-                raw = await self.client.async_get_status(sn)
-                await self._capture(Endpoint.STATUS, raw, sn)
-                status = adapters.status(raw)
+                result = await self.backend.async_status(sn)
+                await self._capture(result, sn)
+                status = adapters.status(result.payload)
                 updated = replace(
                     snapshot, status=status, status_freshness=Freshness(now, dt_util.utcnow())
                 )
             elif group == "battery":
-                raw = await self.client.async_get_battery(sn)
-                await self._capture(Endpoint.BATTERY, raw, sn)
-                battery = adapters.batteries(raw)
+                result = await self.backend.async_battery(sn)
+                await self._capture(result, sn)
+                battery = adapters.batteries(result.payload)
                 updated = replace(
                     snapshot, battery=battery, battery_freshness=Freshness(now, dt_util.utcnow())
                 )
             else:
                 month = adapters.month_at(now)
-                raw = await self.client.async_get_travel(sn, month)
-                await self._capture(Endpoint.TRAVEL, raw, sn, month)
-                travel = adapters.travel(raw, month)
+                result = await self.backend.async_travel_month(sn, month)
+                await self._capture(result, sn)
+                travel = await self.hass.async_add_executor_job(
+                    adapters.travel, result.payload, month
+                )
                 if travel.last_ride is None:
                     previous = adapters.previous_month(month)
                     try:
-                        raw = await self.client.async_get_travel(sn, previous)
-                        await self._capture(Endpoint.TRAVEL, raw, sn, previous)
-                        fallback = adapters.travel(raw, previous)
+                        result = await self.backend.async_travel_month(sn, previous)
+                        await self._capture(result, sn)
+                        fallback = await self.hass.async_add_executor_job(
+                            adapters.travel, result.payload, previous
+                        )
                         travel = replace(travel, last_ride=fallback.last_ride)
                     except NinebotAuthError:
                         raise
@@ -266,19 +273,21 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             success,
         )
 
-    async def _capture(
-        self, endpoint: Endpoint, payload: object, sn: str = "", month: str | None = None
-    ) -> None:
+    async def _capture(self, result: BackendResult, sn: str = "", detail_id: str = "") -> None:
         """Raw policy failure cannot discard otherwise valid normalized data."""
         try:
             record = await self.hass.async_add_executor_job(
-                build_record, endpoint, payload, dt_util.utcnow(), month
+                build_record,
+                result.endpoint,
+                result.payload,
+                result.received_at,
+                result.query_month,
             )
         except RawLimitError:
             self.raw.rejected += 1
             return
         if not self._stopping:
-            self.raw.put(record, sn, month or "")
+            self.raw.put(record, sn, result.query_month or detail_id)
 
     def _sample_model(self, sn: str) -> None:
         """Sample after due BMS data, so startup cannot pretend a pack changed."""
@@ -420,7 +429,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     translation_domain=DOMAIN, translation_key="controls_disabled"
                 )
             try:
-                await self.client.async_control(sn, action)
+                await self.backend.async_control(sn, action)
             except NinebotAuthError:
                 self._manual_auth_failure()
                 raise HomeAssistantError(
@@ -460,7 +469,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     async def _shutdown(self, tasks: set[asyncio.Task[Any]]) -> None:
         """Finish cleanup before propagating cancellation of the unload caller."""
-        await self.client.async_close()
+        await self.backend.async_close()
         await asyncio.gather(*tasks, return_exceptions=True)
         self.raw.clear()
         await self.async_shutdown()

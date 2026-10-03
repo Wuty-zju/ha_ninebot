@@ -1,0 +1,214 @@
+{
+  "date": "2026-10-04",
+  "ninecli_version": "0.1.7",
+  "provenance": "real readonly observations; no values included",
+  "rest_operation_count": 5,
+  "nonempty_rows_observed": 20,
+  "reported_times_raw": 128,
+  "upstream_complete": "unknown",
+  "fields": [
+    {
+      "path": "$",
+      "type": "dict"
+    },
+    {
+      "path": "avg_engine_power",
+      "type": "NoneType"
+    },
+    {
+      "path": "avg_shaft_speed",
+      "type": "NoneType"
+    },
+    {
+      "path": "avg_speed",
+      "type": "int"
+    },
+    {
+      "path": "avg_throttle_opening",
+      "type": "NoneType"
+    },
+    {
+      "path": "avg_torque",
+      "type": "NoneType"
+    },
+    {
+      "path": "detail",
+      "type": "list"
+    },
+    {
+      "path": "detail[]",
+      "type": "str"
+    },
+    {
+      "path": "duration",
+      "type": "int"
+    },
+    {
+      "path": "ec",
+      "type": "int"
+    },
+    {
+      "path": "ec",
+      "type": "str"
+    },
+    {
+      "path": "end_time",
+      "type": "int"
+    },
+    {
+      "path": "engine_power_nodes",
+      "type": "NoneType"
+    },
+    {
+      "path": "first_time",
+      "type": "int"
+    },
+    {
+      "path": "img",
+      "type": "str"
+    },
+    {
+      "path": "is_show_simple_point",
+      "type": "bool"
+    },
+    {
+      "path": "list",
+      "type": "list"
+    },
+    {
+      "path": "list[]",
+      "type": "dict"
+    },
+    {
+      "path": "list[].day_total_mileage",
+      "type": "str"
+    },
+    {
+      "path": "list[].duration",
+      "type": "int"
+    },
+    {
+      "path": "list[].ec",
+      "type": "str"
+    },
+    {
+      "path": "list[].end_time",
+      "type": "int"
+    },
+    {
+      "path": "list[].end_time_format",
+      "type": "str"
+    },
+    {
+      "path": "list[].longest_distance",
+      "type": "NoneType"
+    },
+    {
+      "path": "list[].longest_time",
+      "type": "NoneType"
+    },
+    {
+      "path": "list[].mileages",
+      "type": "str"
+    },
+    {
+      "path": "list[].speed",
+      "type": "str"
+    },
+    {
+      "path": "list[].start_time",
+      "type": "int"
+    },
+    {
+      "path": "list[].travel_id",
+      "type": "str"
+    },
+    {
+      "path": "list[].used_electricity",
+      "type": "str"
+    },
+    {
+      "path": "max_shaft_speed",
+      "type": "NoneType"
+    },
+    {
+      "path": "max_torque",
+      "type": "NoneType"
+    },
+    {
+      "path": "mileages",
+      "type": "str"
+    },
+    {
+      "path": "mileages_nodes",
+      "type": "NoneType"
+    },
+    {
+      "path": "month",
+      "type": "str"
+    },
+    {
+      "path": "shaft_speed_nodes",
+      "type": "NoneType"
+    },
+    {
+      "path": "show_simple_point_days",
+      "type": "int"
+    },
+    {
+      "path": "speed",
+      "type": "str"
+    },
+    {
+      "path": "speed_nodes",
+      "type": "NoneType"
+    },
+    {
+      "path": "start_time",
+      "type": "int"
+    },
+    {
+      "path": "tamp_speed_nodes",
+      "type": "NoneType"
+    },
+    {
+      "path": "throttle_opening_nodes",
+      "type": "NoneType"
+    },
+    {
+      "path": "times",
+      "type": "int"
+    },
+    {
+      "path": "torque_nodes",
+      "type": "NoneType"
+    },
+    {
+      "path": "total_mileages",
+      "type": "str"
+    },
+    {
+      "path": "trail",
+      "type": "str"
+    },
+    {
+      "path": "used_electricity",
+      "type": "int"
+    }
+  ],
+  "contract_evidence": {
+    "unix_seconds_duration": "20/20 real rows duration=end-start before timestamp substitution",
+    "business_timezone": "20/20 real end_time_format equals Unix end_time in Asia/Shanghai",
+    "distance_and_server_max_speed": "ninecli 0.1.7 display contract km and max km/h, corroborated by recon binary report and numeric list/detail equality; App UI not independently tested",
+    "trail_shape": "selected real detail: string, semicolon points, four comma-separated numeric columns; lon-first corroborated by valid ranges and ninecli display labels",
+    "unknown": [
+      "coordinate system",
+      "trail point speed unit",
+      "distFromPrev unit/meaning",
+      "ec and used_electricity units",
+      "avg_speed semantics",
+      "node arrays (null in sample)",
+      "all-vehicle/general schema coverage"
+    ]
+  }
+}
