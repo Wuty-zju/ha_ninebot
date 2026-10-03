@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "Options",
-        "description": "Estimation needs explicit nominal voltage/capacity. Coordinate reference is unverified. Controls require opt-in, a vehicle allowlist and integration-verified permission and action semantics; unknown permissions are denied.",
+        "description": "Estimation needs explicit nominal voltage/capacity. Coordinate reference is unverified. Controls require opt-in, an allowed vehicle, fresh data and verified upstream support, permission and action semantics. This version has no verified cloud permission parser, so enabling controls alone does not activate hardware actions. Diagnostics explains the blocking conditions.",
         "data": {
           "poll_interval": "Status polling interval (seconds)",
           "enable_estimation": "Enable SOC energy estimation",

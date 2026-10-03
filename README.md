@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b6 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b6)
+**2.0.0b7 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b7)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -173,3 +173,8 @@ local 30-minute late window and 24-hour gap rebaseline suppress history floods.
 Acknowledged disk storage precedes emission, so crash/cancellation may lose a
 notification. No exactly-once guarantee or historical catch-up is claimed.
 See [ride event behavior](docs/v2x-骑行事件契约.md).
+
+Control diagnostics separates software endpoint support from vehicle support,
+permission and verified action semantics, and lists each blocking condition.
+This version has no verified permission parser: enabling controls alone does
+not activate hardware actions. See the [policy contract](docs/v2x-权限门禁与能力证据契约.md).

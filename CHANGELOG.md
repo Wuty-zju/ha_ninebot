@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0b7 — 2026-10-04
+
+- Share one control policy between availability, pre/post-queue execution checks
+  and privacy-safe diagnostics. Require explicit consent and verified evidence.
+- Report support/permission separately, fixed blocking reasons, and backend
+  endpoint support without exposing identifiers or free-form evidence labels.
+- Reject duplicate capabilities, unknown actions, missing/blank evidence and
+  unsupported backend controls. Current raw permissions remain unverified and
+  fail closed; engine commands still do not implement lock/unlock.
+- Clarify English/Chinese options and document the permission evidence contract.
+  No real control tests, new cloud queries, entity identity or storage changes.
+
 ## 2.0.0b6 — 2026-10-04
 
 - Keep legacy vehicle battery measurements unknown with multiple reported packs;

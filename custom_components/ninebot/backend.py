@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from .capabilities import CONTROL_ACTIONS
 from .client import NinecliClient
 from .raw import BACKEND_VERSION, Endpoint
 
@@ -22,6 +23,7 @@ class NinebotBackend(Protocol):
     """Transport support is not proof of vehicle ownership or permissions."""
 
     endpoints: frozenset[Endpoint]
+    control_actions: frozenset[str]
 
     async def async_vehicles(self) -> BackendResult: ...
     async def async_status(self, vehicle: str) -> BackendResult: ...
@@ -36,6 +38,7 @@ class NinecliBackend:
     """Thin adapter; the existing client/session transaction owns authentication."""
 
     endpoints = frozenset(Endpoint)
+    control_actions = CONTROL_ACTIONS
 
     def __init__(self, client: NinecliClient) -> None:
         self.client = client
