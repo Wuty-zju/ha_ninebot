@@ -31,6 +31,7 @@ def completed_report(ride: Ride, now: datetime) -> bool:
     return bool(
         ride.ride_id
         and opaque_id(ride.ride_id) == ride.ride_id
+        and dict(ride.field_provenance).get("ride_id") == "travel_id"
         and ride.started_at
         and ride.ended_at
         and ride.started_at < ride.ended_at <= now

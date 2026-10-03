@@ -189,3 +189,19 @@ failure、取消、首次enable的HA自动reload debounce、重启不重发、�
 与公开state不含大对象。cursor模块覆盖100%，event/store受影响覆盖约92%，
 Ruff/format、mypy通过；阶段完整pytest/最低与stable CI、Hassfest/HACS待执行。
 没有生产HA写入、部署、重启、真实控制或新增云查询。
+
+## 2.0.0b5：Phase 5 骑行事件阶段验收
+
+前述两份“进行中”记录是开发检查点，正式行为以
+[v2x-骑行事件契约.md](v2x-骑行事件契约.md)为准。候选版本2.0.0b5，
+分支feature/v2x-ride-events，基于Phase4已合并main `bd2ffcbdf367`。
+
+正式身份仅接受已确认travel_id provenance，不将legacy id或detail ID未知
+语义用于completed判断。缺乏可靠时间/时长的车型保留state/query功能，不发
+推测事件。HA最小/稳定版实际Entity restore/生命周期、cursor离线场景、
+原子writer及磁盘确认是验收依据。完整校验见evidence/v2x-b5-validation.json；
+只有相同main提交的CI通过后才发布，release notes记录确切SHA与CI链接。
+
+不提高最低HA、不更新ninecli、不更改旧unique_id或生产HA。Phase6电池身份/
+compat、Phase7权限诊断/证据门禁和Phase8Image/GPS/按依赖轮询仍需继续；
+原始能量/点速度/delta/坐标系/permissions仍有待验证，不以事件阶段替代这些要求。

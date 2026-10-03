@@ -29,6 +29,7 @@ def ride(key, end, month="202609"):
         distance_m=300,
         duration_s=60,
         server_max_speed_m_s=10,
+        field_provenance=(("ride_id", "travel_id"),),
     )
 
 
@@ -97,6 +98,7 @@ def test_unknown_future_inconsistent_or_conflicting_completion_is_not_emitted():
         replace(candidate, issues=("conflicting_detail_ids",)),
         replace(candidate, started_at=NOW + timedelta(seconds=1)),
         replace(candidate, ride_id="unsafe\n"),
+        replace(candidate, field_provenance=(("ride_id", "legacy-id"),)),
     ):
         assert not completed_report(bad, NOW)
     cursor = discover_rides(RideCursor(), (candidate,), NOW).cursor

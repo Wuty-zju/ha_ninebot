@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b4 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b4)
+**2.0.0b5 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b5)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -153,3 +153,17 @@ coordinates opt-in and `include_track`; automation traces or response variables
 may retain locations. Detail fanout is limited to five; pages cover only the
 rows returned by ninecli, with cloud completeness explicitly unknown.
 See the [action contract and examples](docs/v2x-历史查询Actions契约.md).
+
+## Optional ride events
+
+Enable the disabled-by-default Ride event entity to observe `completed` cloud
+travel end reports. Startup/re-enable establish a baseline without replaying
+history. Reports require a verified travel ID and consistent past start/end
+and duration; a new ID alone does not trigger an event. Attributes contain
+small ride summaries, without coordinates, tracks, speed samples or raw JSON.
+
+Observation is best effort: cloud pagination/upload timing is unverified. A
+local 30-minute late window and 24-hour gap rebaseline suppress history floods.
+Acknowledged disk storage precedes emission, so crash/cancellation may lose a
+notification. No exactly-once guarantee or historical catch-up is claimed.
+See [ride event behavior](docs/v2x-骑行事件契约.md).

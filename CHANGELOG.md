@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0b5 — 2026-10-04
+
+- Add a disabled-by-default Ride EventEntity for verified cloud travel end
+  reports, with small translated attributes and no GPS/track/sample/raw data.
+- Require confirmed travel ID provenance, past start/end and consistent positive
+  duration. Startup/re-enable establish a baseline without historical replay.
+- Persist bounded, per-entry hashed vehicle/ride cursors. Compare sets across
+  reordering/month changes, suppress duplicates and old/ambiguous reports.
+- Preflight the actual cursor envelope and verify on-disk acknowledgement after
+  HA Store writes, before emission. Suspend events with a translated Repair on
+  unsupported/corrupt storage or failed acknowledgement; other queries remain.
+- Add isolated tests using the real atomic writer in disposable HA directories,
+  including cancellation, silent write failure and native EventEntity restore.
+
+Best-effort polling does not guarantee all rides. The 30-minute late window and
+24-hour gap threshold are local policies, not measured vendor guarantees.
+Crash/cancellation between persistence and emission can lose a notification.
+No production HA writes, new cloud queries, real controls or identity changes.
+HA minimum and ninecli pin remain unchanged.
+
 ## 2.0.0b4 — 2026-10-04
 
 - Add device-scoped `get_trips` and `get_trip_detail` response-only actions,
