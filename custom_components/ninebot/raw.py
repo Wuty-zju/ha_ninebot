@@ -247,7 +247,7 @@ class RawStore:
         self.max_records = max_records
         self.max_details = max_details
         self.detail_ttl = detail_ttl
-        self._records: OrderedDict[tuple[Endpoint, str, str], RawRecord] = OrderedDict()
+        self._records: OrderedDict[tuple[Endpoint, str, str, str | None], RawRecord] = OrderedDict()
         self.rejected = 0
 
     @property
@@ -267,7 +267,12 @@ class RawStore:
         if len(vehicle) > 256 or len(detail_id) > 256 or record.retained_bytes > self.max_bytes:
             self.rejected += 1
             return False
-        key = record.endpoint, vehicle, detail_id
+        key = (
+            record.endpoint,
+            vehicle,
+            detail_id,
+            record.query_month if record.endpoint is Endpoint.TRIP_DETAIL else None,
+        )
         self._records.pop(key, None)
         self._records[key] = record
         details = [key for key in self._records if key[0] is Endpoint.TRIP_DETAIL]
@@ -278,14 +283,31 @@ class RawStore:
         return True
 
     def get(
-        self, endpoint: Endpoint, vehicle: str, detail_id: str = "", *, now: datetime
+        self,
+        endpoint: Endpoint,
+        vehicle: str,
+        detail_id: str = "",
+        *,
+        now: datetime,
+        query_month: str | None = None,
     ) -> RawRecord | None:
         self.expire(now)
-        key = endpoint, vehicle, detail_id
+        key = (
+            endpoint,
+            vehicle,
+            detail_id,
+            query_month if endpoint is Endpoint.TRIP_DETAIL else None,
+        )
         record = self._records.get(key)
         if record:
             self._records.move_to_end(key)
         return record
+
+    def discard_vehicle(self, vehicle: str) -> None:
+        """Ownership disappearance/reappearance cannot revive cached telemetry."""
+        for key in list(self._records):
+            if key[1] == vehicle:
+                self._records.pop(key)
 
     def diagnostics(self, now: datetime) -> dict[str, Any]:
         self.expire(now)

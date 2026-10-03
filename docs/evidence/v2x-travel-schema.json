@@ -8,190 +8,247 @@
   "upstream_complete": "unknown",
   "fields": [
     {
+      "endpoint": "travel",
       "path": "$",
       "type": "dict"
     },
     {
-      "path": "avg_engine_power",
-      "type": "NoneType"
-    },
-    {
-      "path": "avg_shaft_speed",
-      "type": "NoneType"
-    },
-    {
-      "path": "avg_speed",
-      "type": "int"
-    },
-    {
-      "path": "avg_throttle_opening",
-      "type": "NoneType"
-    },
-    {
-      "path": "avg_torque",
-      "type": "NoneType"
-    },
-    {
+      "endpoint": "travel",
       "path": "detail",
       "type": "list"
     },
     {
+      "endpoint": "travel",
       "path": "detail[]",
       "type": "str"
     },
     {
+      "endpoint": "travel",
       "path": "duration",
       "type": "int"
     },
     {
+      "endpoint": "travel",
       "path": "ec",
       "type": "int"
     },
     {
-      "path": "ec",
-      "type": "str"
-    },
-    {
-      "path": "end_time",
-      "type": "int"
-    },
-    {
-      "path": "engine_power_nodes",
-      "type": "NoneType"
-    },
-    {
+      "endpoint": "travel",
       "path": "first_time",
       "type": "int"
     },
     {
-      "path": "img",
-      "type": "str"
-    },
-    {
-      "path": "is_show_simple_point",
-      "type": "bool"
-    },
-    {
+      "endpoint": "travel",
       "path": "list",
       "type": "list"
     },
     {
+      "endpoint": "travel",
       "path": "list[]",
       "type": "dict"
     },
     {
+      "endpoint": "travel",
       "path": "list[].day_total_mileage",
       "type": "str"
     },
     {
+      "endpoint": "travel",
       "path": "list[].duration",
       "type": "int"
     },
     {
+      "endpoint": "travel",
       "path": "list[].ec",
       "type": "str"
     },
     {
+      "endpoint": "travel",
       "path": "list[].end_time",
       "type": "int"
     },
     {
+      "endpoint": "travel",
       "path": "list[].end_time_format",
       "type": "str"
     },
     {
+      "endpoint": "travel",
       "path": "list[].longest_distance",
       "type": "NoneType"
     },
     {
+      "endpoint": "travel",
       "path": "list[].longest_time",
       "type": "NoneType"
     },
     {
+      "endpoint": "travel",
       "path": "list[].mileages",
       "type": "str"
     },
     {
+      "endpoint": "travel",
       "path": "list[].speed",
       "type": "str"
     },
     {
+      "endpoint": "travel",
       "path": "list[].start_time",
       "type": "int"
     },
     {
+      "endpoint": "travel",
       "path": "list[].travel_id",
       "type": "str"
     },
     {
+      "endpoint": "travel",
       "path": "list[].used_electricity",
       "type": "str"
     },
     {
-      "path": "max_shaft_speed",
-      "type": "NoneType"
-    },
-    {
-      "path": "max_torque",
-      "type": "NoneType"
-    },
-    {
-      "path": "mileages",
-      "type": "str"
-    },
-    {
-      "path": "mileages_nodes",
-      "type": "NoneType"
-    },
-    {
+      "endpoint": "travel",
       "path": "month",
       "type": "str"
     },
     {
-      "path": "shaft_speed_nodes",
-      "type": "NoneType"
-    },
-    {
-      "path": "show_simple_point_days",
-      "type": "int"
-    },
-    {
-      "path": "speed",
-      "type": "str"
-    },
-    {
-      "path": "speed_nodes",
-      "type": "NoneType"
-    },
-    {
-      "path": "start_time",
-      "type": "int"
-    },
-    {
-      "path": "tamp_speed_nodes",
-      "type": "NoneType"
-    },
-    {
-      "path": "throttle_opening_nodes",
-      "type": "NoneType"
-    },
-    {
+      "endpoint": "travel",
       "path": "times",
       "type": "int"
     },
     {
-      "path": "torque_nodes",
-      "type": "NoneType"
-    },
-    {
+      "endpoint": "travel",
       "path": "total_mileages",
       "type": "str"
     },
     {
+      "endpoint": "trip_detail",
+      "path": "$",
+      "type": "dict"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "avg_engine_power",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "avg_shaft_speed",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "avg_speed",
+      "type": "int"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "avg_throttle_opening",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "avg_torque",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "duration",
+      "type": "int"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "ec",
+      "type": "str"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "end_time",
+      "type": "int"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "engine_power_nodes",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "img",
+      "type": "str"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "is_show_simple_point",
+      "type": "bool"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "max_shaft_speed",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "max_torque",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "mileages",
+      "type": "str"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "mileages_nodes",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "shaft_speed_nodes",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "show_simple_point_days",
+      "type": "int"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "speed",
+      "type": "str"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "speed_nodes",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "start_time",
+      "type": "int"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "tamp_speed_nodes",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "throttle_opening_nodes",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
+      "path": "torque_nodes",
+      "type": "NoneType"
+    },
+    {
+      "endpoint": "trip_detail",
       "path": "trail",
       "type": "str"
     },
     {
+      "endpoint": "trip_detail",
       "path": "used_electricity",
       "type": "int"
     }

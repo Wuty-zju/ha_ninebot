@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0b4 — 2026-10-04
+
+- Add device-scoped `get_trips` and `get_trip_detail` response-only actions,
+  registered independently of loaded entries. No entity or control is required.
+- Share bounded month/detail memory caches with polling; reuse newer action
+  results without extending their actual success timestamps. Queries do not
+  directly update current-month state or ride-event baselines.
+- Validate account/device ownership, fresh vehicle presence and unique
+  ride-to-detail association. Reject child components and ambiguous devices.
+  Registry capability detection is centralized for old and new HA APIs.
+- Limit detail fanout to five, page size to 100 and track points to 2000.
+  Default responses omit GPS; explicit tracks require coordinates opt-in.
+  Return normalized data only, with unknown cloud completeness and raw units.
+- Add service selectors, English/Chinese descriptions, icons and automation
+  examples. Reject control characters in ride IDs before normalization.
+
+No production HA changes, new cloud requests or real controls in this phase.
+Minimum HA 2026.1.0 and ninecli==0.1.7 remain unchanged. Location responses may
+persist in automation traces; response data is not a privacy-free storage path.
+
 ## 2.0.0b3 — 2026-10-04
 
 - Add five disabled-by-default last-ride sensors: duration (seconds), UTC start/end

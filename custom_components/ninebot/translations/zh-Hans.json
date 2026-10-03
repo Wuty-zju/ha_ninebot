@@ -228,6 +228,24 @@
     },
     "engine_lock_unverified": {
       "message": "engine-start/stop 与 lock/unlock 的等价关系尚未验证。此实体仅保留观测到的锁定状态，不执行发动机控制。"
+    },
+    "query_unavailable": {
+      "message": "车辆查询不可用：请确保集成已加载、会话有效且车辆仍在最新账户列表中。"
+    },
+    "query_device": {
+      "message": "请选择本集成中归属明确的九号车辆设备。"
+    },
+    "query_coordinates": {
+      "message": "请求行程轨迹前请在集成选项中启用位置。"
+    },
+    "query_detail_limit": {
+      "message": "包含详情时请将每页条数设为五条或更少。"
+    },
+    "query_track_detail": {
+      "message": "查询轨迹需要启用包含详情。"
+    },
+    "query_ride": {
+      "message": "该车辆及月份中没有唯一、已确认的详情关联。请填写正确月份并先查询行程。"
     }
   },
   "issues": {
@@ -250,6 +268,64 @@
     "model_storage_invalid": {
       "title": "估算存储版本无法识别",
       "description": "估算存储格式或版本无法识别，集成已停止加载且未覆盖该数据。请保留备份，使用与存储匹配的集成版本，或通过完整升级前备份回滚；不要手动修改模型版本字段。"
+    }
+  },
+  "services": {
+    "get_trips": {
+      "name": "查询行程",
+      "description": "查询指定车辆月份并本地分页；云端完整性未知。包含详情时每页不得超过五条。",
+      "fields": {
+        "device_id": {
+          "name": "车辆",
+          "description": "选择车辆设备，而非电池组件。"
+        },
+        "month": {
+          "name": "月份",
+          "description": "业务月份 YYYYMM，例如 202609；不接受未来月份。"
+        },
+        "page": {
+          "name": "页码",
+          "description": "仅对 ninecli 已返回的行程分页，不代表云端分页。"
+        },
+        "limit": {
+          "name": "每页条数",
+          "description": "最多 100 条；包含详情时最多五条。"
+        },
+        "include_detail": {
+          "name": "包含详情",
+          "description": "单次调用最多读取五条详情。"
+        },
+        "include_track": {
+          "name": "包含轨迹",
+          "description": "需要包含详情并启用位置选项。精确位置可能保存在自动化跟踪或响应变量中。"
+        }
+      }
+    },
+    "get_trip_detail": {
+      "name": "查询单次行程详情",
+      "description": "只查询已确认属于选定车辆和月份的行程，不扫描历史、不控制车辆。",
+      "fields": {
+        "device_id": {
+          "name": "车辆",
+          "description": "选择车辆设备，而非电池组件。"
+        },
+        "ride_id": {
+          "name": "行程 ID",
+          "description": "使用查询行程动作对该车辆和月份返回的 ride_id。"
+        },
+        "query_month": {
+          "name": "查询月份",
+          "description": "YYYYMM；默认 Asia/Shanghai 当前月份，历史行程须填写对应月份。"
+        },
+        "max_points": {
+          "name": "轨迹点上限",
+          "description": "最多 2000，默认 500；同时限制速度样本数量。"
+        },
+        "include_track": {
+          "name": "包含轨迹",
+          "description": "需要启用位置选项。精确位置可能保存在自动化跟踪或响应变量中。"
+        }
+      }
     }
   }
 }

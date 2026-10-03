@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-04",
+  "source_baseline_commit": "8fa540b97b2f45d75cdac06ebdeb2e8980e24923",
+  "version": "2.0.0b4",
+  "phases": ["4 Historical query actions"],
+  "tests": {
+    "passed": 236,
+    "combined_branch_coverage_percent": 97.94,
+    "python": "3.13.16",
+    "ha": "2026.1.0"
+  },
+  "checks": {
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed",
+    "hassfest": "required on exact release commit via CI",
+    "hacs": "required on exact release commit via CI"
+  },
+  "new_cloud_requests": 0,
+  "real_controls": 0,
+  "production_ha_writes": 0,
+  "legacy_unique_id_changes": 0,
+  "actions": ["get_trips", "get_trip_detail"],
+  "response_support": "ONLY",
+  "detail_fanout_max": 5,
+  "detail_point_limit_max": 2000,
+  "track_requires_explicit_opt_in": true,
+  "upstream_month_completeness": "unknown",
+  "pending": [
+    "cloud pagination contract",
+    "point speed/distance-delta units and coordinate system",
+    "Ride Event",
+    "battery identity/compat and Image/GPS followup"
+  ],
+  "release_evidence": "Exact-commit CI and merge SHA appear in prerelease notes."
+}

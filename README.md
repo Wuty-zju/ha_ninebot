@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b3 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b3)
+**2.0.0b4 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b4)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -144,3 +144,12 @@ baseline; disabled intervals are not counted. Unknown estimation storage version
 stop setup with a Repair issue rather than overwriting saved data. A failed session
 rollback that cannot unload the runtime retains its journal/backup and requests a
 user-managed restart through Repairs.
+
+## Historical query actions
+
+`ninebot.get_trips` and `ninebot.get_trip_detail` require a vehicle `device_id`
+and response data. They do not create historical entities. Tracks require both
+coordinates opt-in and `include_track`; automation traces or response variables
+may retain locations. Detail fanout is limited to five; pages cover only the
+rows returned by ninecli, with cloud completeness explicitly unknown.
+See the [action contract and examples](docs/v2x-历史查询Actions契约.md).
