@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import NinebotCoordinator
+from .demand import entity_context
 from .models import VehicleSnapshot
 from .runtime import NinebotConfigEntry
 
@@ -31,7 +32,9 @@ class NinebotEntity(CoordinatorEntity[NinebotCoordinator]):
         *,
         unique_id: str | None = None,
     ) -> None:
-        super().__init__(entry.runtime_data.coordinator)
+        super().__init__(
+            entry.runtime_data.coordinator, context=entity_context(sn, platform, key, group)
+        )
         self.entry = entry
         self.sn = sn
         self._data_group = group

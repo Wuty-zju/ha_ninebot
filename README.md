@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b7 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b7)
+**2.0.0b8 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b8)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -23,7 +23,7 @@ Requires HA **2026.1.0+**, Python supplied by that HA release, and a compatible
 ninecli wheel. Linux x86_64/arm64 musl and glibc, macOS x86_64/arm64 and Windows
 amd64/arm64 wheels are published; published availability is not proof that every
 platform has been runtime-tested. ARMv7/32-bit is unsupported. CI targets HA
-2026.1.0/Python 3.13 and HA 2026.9.4/Python 3.14.
+2026.1.0/Python 3.13 and HA 2026.9.4 / 2026.10.0b0/Python 3.14.
 
 The account/password form validates an isolated candidate session. Account
 identity and token files are committed only after validation and duplicate
@@ -39,7 +39,10 @@ No service is exposed to the LAN and no binary is downloaded at runtime.
 ## Data and options
 
 Default status polling is 120 seconds, battery/trips 600 seconds and vehicle
-list 3600 seconds. Polling is serialized per account. A failed car/group does
+list 3600 seconds. After discovery, periodic groups follow enabled entities and
+internal dependencies: disabling BMS/travel entities stops their regular requests
+unless the SOC model or Ride event needs them. Empty/anonymous multi-pack inventory
+keeps an hourly discovery probe; a failed initial BMS discovery uses group backoff. Polling is serialized per account. A failed car/group does
 not discard other successful results; a local timer notifies entities when data
 expires or the business month changes, without extra cloud requests.
 
@@ -66,7 +69,11 @@ while its raw times field reported 128. Previous-month fallback updates only
 last-ride information, never current-month totals.
 
 Cloud coordinates are opt-in because the coordinate reference is unverified.
-No automatic GCJ/WGS conversion is claimed. Vehicle images are optional.
+No automatic GCJ/WGS conversion is claimed. Standard GPS trackers participate in
+HA Zones/Map; disabling coordinates removes their location attributes. Vehicle
+images are optional, use a reviewed public HTTPS origin without opaque signatures
+or redirects, and retain the HA image cache while the URL stays the same.
+Unknown origins remain unavailable; not every model image has been verified.
 
 **SOC energy estimation is opt-in.** Set nominal voltage and capacity explicitly;
 there is no assumed 72 V/20 Ah pack for new users. The model estimates
@@ -87,7 +94,7 @@ is unaffected. All development control tests use a fake verified backend contrac
 Raw business responses are retained only in bounded private memory, with secrets
 and personal profile fields removed. They are never entity attributes or persistent
 trip history. Diagnostics export approved schema names/types/counts, not raw values
-or arbitrary unknown keys. Nine sanitized recorded fixtures are replayable; identity, location and schedule
+or arbitrary unknown keys. Nine sanitized recorded payloads plus a separately labeled selected image-shape fixture are replayable; identity, location and schedule
 replacements are explicitly synthetic. Nonempty travel/detail structure and
 Unix-second/China-time relationships were confirmed in a bounded read-only study.
 Ride distance and server maximum speed use ninecli's km/max-km/h display contract;
@@ -96,8 +103,8 @@ and energy meanings remain unverified. Five optional last-ride sensors now expos
 maximum and total-trip average speed. Enable them individually in the entity UI.
 They have no cumulative statistics class, large attributes or extra detail calls;
 ambiguous/future time or missing data stays unknown. Average speed is unknown if
-duration conflicts with the observed time span. No historical query action is
-exposed yet.
+duration conflicts with the observed time span. Historical queries use the
+response actions documented below.
 
 ## Upgrade and rollback
 
@@ -178,3 +185,7 @@ Control diagnostics separates software endpoint support from vehicle support,
 permission and verified action semantics, and lists each blocking condition.
 This version has no verified permission parser: enabling controls alone does
 not activate hardware actions. See the [policy contract](docs/v2x-权限门禁与能力证据契约.md).
+
+Image/GPS privacy and per-vehicle request dependencies are documented in the
+[Phase 8 contract](docs/v2x-图片位置与请求依赖契约.md). No new entity identities or
+storage schema are introduced in this phase.

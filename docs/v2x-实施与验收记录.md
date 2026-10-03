@@ -276,3 +276,32 @@ typed entity contexts + estimator/event/bootstrap dependency scheduling及阶段
 registry/restore参考亦无可用图片origin，因此不能声称已核实CDN allowlist。
 不得猜域名，必要时另立一次孤立只读vehicles查询计划。阶段整体设计/验收报告
 完成前不发b8，不以此检查点替代主要目标。
+
+## 2.0.0b8：Phase 8 图片 / GPS / 功能请求图
+
+独立分支 feature/v2x-native-ux，基于 b7 main `7d05b6c21ff5`。
+增量实现保留旧 ID、entity translation keys、ConfigEntry/Store schema、最低 HA 和
+ninecli pin。具体安全与发现例外见[Phase 8契约](v2x-图片位置与请求依赖契约.md)。
+
+- 图片 URL 只接受审核的匿名 HTTPS 资源；移除真实返回的 opaque nbchecksignv1，
+  TLS验证、redirect禁用、错误不打印 URL/异常正文，复用 Core 解码/bytes cache。
+  同URL保持时间戳/缓存，变化/移除才失效。首选light可安全回退img，dark不新增实体。
+- GPS 使用公共 TrackerEntity 导出；实际HA测试 home/not_home、无自动坐标转换、
+  非法坐标不可用、撤销选项后无坐标且ID保持。测试位置是合成值，不证明实车CRS。
+- 有类型 per-vehicle context + 内部 estimator/event 依赖决定组参与轮询。已发现
+  可表示电池且全部禁用时停止常规BMS；空/匿名多包每小时稀疏probe，首次失败
+  按原组退避发现。保留新车bootstrap与每小时车辆发现；month-only不额外查上月。
+- 单次隔离 vehicles 业务请求确认两车六URL来源；选取一资源去掉签名匿名HEAD
+  200/image/png，不下载正文/不跟随跳转。公开 evidence 和 selected shape fixture
+  只留域名/参数名/形状，真实资产路径、签名、身份不入Git。源会话前后hash相同，
+  子进程回收、临时会话副本删除；无生产写入/重启/部署/车辆控制。
+- 本地完整336 tests通过，含分支覆盖97.85%；新增demand/image/image_urls和GPS
+  模块100%，Ruff/format通过，mypy36源文件通过。HTTP hook另经真实Core解码/
+  缓存路径的单项验证。最低2026.1、stable2026.9.4、beta2026.10.0b0均精确pin
+  独立CI；Hassfest/HACS和准确发布提交的结果以release notes为准，不以本地结果
+  冒充远程成功。未变化的安全/迁移测试沿用阶段完整suite，无额外实车轮询。
+
+尚未确认物理pack身份与composition，所以不强建child；opaque/null permissions
+保持拒绝，engine语义不映射lock。能量、trail speed/delta、CRS、服务端全量分页
+继续待验证。Phase 9成本收益不成立时不创建任意raw entities；Native backend为
+长期独立项目，不纳入本轮默认替换。

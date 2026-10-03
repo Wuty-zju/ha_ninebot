@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-04",
+  "version": "2.0.0b8",
+  "source_baseline_commit": "7d05b6c21ff5bf8aa589d287ec32e9a735af80e8",
+  "phases": [
+    "8 Image/GPS/native UX",
+    "dependency-aware polling"
+  ],
+  "tests": {
+    "passed": 336,
+    "combined_branch_coverage_percent": 97.85,
+    "python": "3.13.16",
+    "ha": "2026.1.0",
+    "demand_image_image_urls_tracker_coverage_percent": 100
+  },
+  "checks": {
+    "ruff": "passed",
+    "format": "passed, 58 files",
+    "mypy": "passed, 36 source files",
+    "minimum_stable_beta_ci": "required on exact release commit; authoritative run links in release notes",
+    "hassfest": "required on exact release commit; authoritative run link in release notes",
+    "hacs": "required on exact release commit; authoritative run link in release notes"
+  },
+  "new_cloud_rest_business_operations": 1,
+  "unsigned_image_head_operations": 1,
+  "image_body_downloads": 0,
+  "real_controls": 0,
+  "production_ha_writes": 0,
+  "legacy_unique_id_changes": 0,
+  "storage_schema_changes": 0,
+  "translation_key_changes": 0,
+  "signed_image_query_forwarded": false,
+  "image_redirects_followed": false,
+  "unit_coordinate_permission_guesses": false,
+  "deferred": [
+    "physical battery identity/composition and Child Devices",
+    "nonempty permissions and action semantics",
+    "energy and trail speed/delta units",
+    "coordinate system and upstream historical completeness"
+  ],
+  "release_evidence": "Exact source/merge SHA, matrix and HACS/Hassfest run URLs in prerelease notes."
+}

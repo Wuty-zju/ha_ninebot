@@ -591,7 +591,9 @@ async def test_image_native_cache_tracks_url_changes_not_profile_poll(
     row = registry.async_get_or_create(
         "image", "ninebot", "SyntheticSN_vehicle_image", config_entry=entry
     )
-    app_client.async_list_vehicles.return_value[0]["img_url"] = "https://example.invalid/one.png"
+    app_client.async_list_vehicles.return_value[0]["img_url"] = (
+        "https://oms-oss-public.ninebot.com/synthetic-one.png"
+    )
     fetch = AsyncMock(
         side_effect=[
             Image(content=b"first", content_type="image/png"),
@@ -618,7 +620,11 @@ async def test_image_native_cache_tracks_url_changes_not_profile_poll(
         co.async_set_updated_data(
             {
                 "SyntheticSN": replace(
-                    old, profile=replace(old.profile, image_url="https://example.invalid/two.png")
+                    old,
+                    profile=replace(
+                        old.profile,
+                        image_url="https://oms-oss-public.ninebot.com/synthetic-two.png",
+                    ),
                 )
             }
         )
@@ -635,3 +641,110 @@ async def test_image_native_cache_tracks_url_changes_not_profile_poll(
             await async_get_image(hass, image_id)
         assert fetch.await_count == 2
         assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_reenable(
+    hass, entry, app_client
+):
+    registry = er.async_get(hass)
+    rows = [
+        registry.async_get_or_create(
+            "sensor",
+            "ninebot",
+            f"SyntheticSN_{key}",
+            config_entry=entry,
+            disabled_by=er.RegistryEntryDisabler.USER,
+        )
+        for key in ("bms_voltage", "batt_temp", "month_mileage")
+    ]
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = entry.runtime_data.coordinator
+    assert co.demand("SyntheticSN").groups == {"status"}
+    for group in ("status", "battery", "travel"):
+        co._next_attempt[("SyntheticSN", group)] = 0
+    app_client.async_get_battery.reset_mock()
+    app_client.async_get_travel.reset_mock()
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    app_client.async_get_battery.assert_not_awaited()
+    app_client.async_get_travel.assert_not_awaited()
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    registry.async_update_entity(rows[0].entity_id, disabled_by=None)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.runtime_data.coordinator.demand("SyntheticSN").groups == {"status", "battery"}
+    assert float(hass.states.get(rows[0].entity_id).state) == 75.3
+    assert registry.async_get(rows[1].entity_id).disabled_by is er.RegistryEntryDisabler.USER
+    assert registry.async_get(rows[2].entity_id).disabled_by is er.RegistryEntryDisabler.USER
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_enabled_native_ride_event_keeps_travel_dependency(hass, entry, app_client):
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "sensor",
+        "ninebot",
+        "SyntheticSN_month_mileage",
+        config_entry=entry,
+        disabled_by=er.RegistryEntryDisabler.USER,
+    )
+    event = registry.async_get_or_create("event", "ninebot", "SyntheticSN_ride", config_entry=entry)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(event.entity_id) is not None
+    co = entry.runtime_data.coordinator
+    assert "travel" in co.demand("SyntheticSN").groups
+    assert co.demand("SyntheticSN").last_ride
+    co._next_attempt[("SyntheticSN", "travel")] = 0
+    app_client.async_get_travel.reset_mock()
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    app_client.async_get_travel.assert_awaited()
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_native_gps_tracker_uses_zones_and_removes_coordinates_on_opt_out(
+    hass, entry, app_client
+):
+    from dataclasses import replace
+
+    from custom_components.ninebot.adapters import status
+
+    registry = er.async_get(hass)
+    row = registry.async_get_or_create(
+        "device_tracker", "ninebot", "SyntheticSN_location", config_entry=entry
+    )
+    hass.config_entries.async_update_entry(entry, options={"enable_coordinates": True})
+    app_client.async_get_status.return_value["loc"].update(
+        {"lat": hass.config.latitude, "lon": hass.config.longitude}
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    state = hass.states.get(row.entity_id)
+    assert state.state == "home"
+    assert state.attributes["source_type"] == "gps"
+    assert state.attributes["latitude"] == hass.config.latitude
+    assert state.attributes["longitude"] == hass.config.longitude
+    co = entry.runtime_data.coordinator
+    original = co.data["SyntheticSN"]
+    co.async_set_updated_data(
+        {"SyntheticSN": replace(original, status=status({"loc": {"lat": 12.3456, "lon": 45.6789}}))}
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get(row.entity_id)
+    assert state.state == "not_home"
+    assert state.attributes["latitude"] == 12.3456 and state.attributes["longitude"] == 45.6789
+    co.async_set_updated_data(
+        {"SyntheticSN": replace(original, status=status({"loc": {"lat": 91, "lon": 45.6789}}))}
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(row.entity_id).state == "unavailable"
+    # Actual options reload, not a monkey-patched tracker property.
+    hass.config_entries.async_update_entry(entry, options={"enable_coordinates": False})
+    await hass.async_block_till_done()
+    state = hass.states.get(row.entity_id)
+    assert state.state == "unavailable"
+    assert "latitude" not in state.attributes and "longitude" not in state.attributes
+    assert registry.async_get(row.entity_id).unique_id == row.unique_id
+    assert await hass.config_entries.async_unload(entry.entry_id)

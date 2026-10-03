@@ -15,7 +15,6 @@ class NinebotRideEvent(NinebotEntity, EventEntity):
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "ride", "event", "travel")
-        self.coordinator_context = (sn, "ride")
 
     @property
     def available(self) -> bool:
