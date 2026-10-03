@@ -35,7 +35,11 @@ async def query_device(hass, entry, app_client, freezer):
     )
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    return dr.async_get(hass).async_get_device(identifiers={("ninebot", "SyntheticSN")}).id
+    return next(
+        device.id
+        for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+        if ("ninebot", "SyntheticSN") in device.identifiers
+    )
 
 
 async def call(hass, service, data):
