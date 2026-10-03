@@ -5,6 +5,7 @@ from datetime import datetime
 
 from .capabilities import VehicleCapabilities
 from .exceptions import ErrorKind
+from .ride_models import Ride
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class LastRide:
     mileage: float | None
     energy_raw: float | None
     ride_id: str | None
+    ride: Ride | None = None
 
 
 @dataclass(frozen=True)
@@ -60,6 +62,7 @@ class TravelMonth:
     mileage: float | None = None
     energy_raw: float | None = None
     last_ride: LastRide | None = None
+    rides: tuple[Ride, ...] = ()
 
 
 @dataclass(frozen=True)

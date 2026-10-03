@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b1 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b1)
+**2.0.0b2 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b2)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -52,9 +52,12 @@ when unlocked; the App lock encoding is normalized before entity mapping.
 
 Trip `ec` and `charging_power` units are not independently established, so raw
 diagnostics have no physical unit or statistics class. They are not Energy
-Dashboard meters. Last-row ordering/pagination is unverified; `last_*` remains
-an optional snapshot of the first returned ride. Previous-month fallback updates
-only last-ride information, never current-month totals.
+Dashboard meters. Timestamped rides are selected by valid end/start time, so
+server reordering does not select an older ride. Legacy payloads without valid
+timestamps retain the optional last-returned snapshot; ordering is unknown.
+Pagination/completeness remains unverified: an observed month returned 20 rows
+while its raw times field reported 128. Previous-month fallback updates only
+last-ride information, never current-month totals.
 
 Cloud coordinates are opt-in because the coordinate reference is unverified.
 No automatic GCJ/WGS conversion is claimed. Vehicle images are optional.
@@ -78,9 +81,12 @@ is unaffected. All development control tests use a fake verified backend contrac
 Raw business responses are retained only in bounded private memory, with secrets
 and personal profile fields removed. They are never entity attributes or persistent
 trip history. Diagnostics export approved schema names/types/counts, not raw values
-or arbitrary unknown keys. Seven sanitized historical fixtures are replayable; their
-location and identity replacements are explicitly synthetic. Nonempty travel and
-detail schema still need bounded read-only evidence.
+or arbitrary unknown keys. Nine sanitized recorded fixtures are replayable; identity, location and schedule
+replacements are explicitly synthetic. Nonempty travel/detail structure and
+Unix-second/China-time relationships were confirmed in a bounded read-only study.
+Ride distance and server maximum speed use ninecli's km/max-km/h display contract;
+App UI was not independently tested. Trail speed/delta units, coordinate system
+and energy meanings remain unverified. No historical query action is exposed yet.
 
 ## Upgrade and rollback
 

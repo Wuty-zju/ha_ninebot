@@ -233,6 +233,11 @@ class NinecliClient:
             "GET", f"/vehicles/{quote(sn, safe='')}/travel?month={quote(month, safe='')}"
         )
 
+    async def async_get_trip_detail(self, sn: str, detail_id: str) -> Any:
+        return await self._request(
+            "GET", f"/vehicles/{quote(sn, safe='')}/travel/{quote(detail_id, safe='')}"
+        )
+
     async def async_control(self, sn: str, action: str) -> None:
         """One attempt only. A timeout leaves the physical outcome unknown."""
         if action not in {"engine/start", "engine/stop", "bell", "buck"}:

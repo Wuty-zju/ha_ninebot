@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0b2 — 2026-10-04
+
+- Introduce a typed NinebotBackend contract and production NinecliBackend around
+  the existing authenticated client; add the read-only travel-detail route.
+- Add immutable Ride/SpeedSample/RideTrackPoint models and explicit ninecli 0.1.7
+  parsing contracts. Overall average remains distance/duration; server maximum
+  speed is not replaced by a sample mean/max or the unverified avg_speed field.
+- Select timestamped last rides by time rather than server row order. Preserve
+  the legacy last-returned snapshot if older payloads have no valid timestamps.
+- Parse confirmed semicolon-separated lon,lat,speed,distFromPrev trails on demand
+  with bounds, truncation and invalid-point reporting. Point speed/delta units
+  and coordinate reference remain unknown, without conversion or invented times.
+- Add sanitized nonempty-month and detail recorded fixtures. Real IDs, schedules
+  and GPS were substituted; real duration/time relationships were checked before
+  sanitizing. The cloud returned 20 rows while times reported 128: month
+  completeness is not assumed and no hidden history scan was added.
+
+No new entities/actions yet: these models support subsequent phases. No real
+controls or production HA changes. Dependency and minimum HA are unchanged.
+
 ## 2.0.0b1 — 2026-10-04
 
 - Add seven replayable sanitized historical business payloads with explicit

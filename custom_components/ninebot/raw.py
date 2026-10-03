@@ -35,6 +35,10 @@ SCHEMA_NAMES = frozenset(
     start_time_format end_time_format speed_list speeds trail track points route
     support latest_support common_user_permissions index version businessType
     color is_img_special smart_service_surplus_days total_mileage vehicle_type""".split()
+    + """day_total_mileage longest_distance longest_time avg_engine_power avg_shaft_speed
+    avg_speed avg_throttle_opening avg_torque engine_power_nodes is_show_simple_point
+    max_shaft_speed max_torque mileages_nodes shaft_speed_nodes show_simple_point_days
+    speed_nodes tamp_speed_nodes throttle_opening_nodes torque_nodes""".split()
 )
 
 
@@ -79,6 +83,7 @@ def sensitive_key(key: str) -> bool:
             "device_name",
             "authorization",
             "cookie",
+            "img",
         }
     )
 
