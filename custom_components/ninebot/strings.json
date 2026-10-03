@@ -213,6 +213,10 @@
     "migration_identity_invalid": {
       "title": "Legacy account identity is invalid",
       "description": "Migration stopped because the legacy business identity is invalid. Existing configuration and sessions were preserved. Check the backup and confirm the account identity before retrying; do not merge accounts by vehicle nickname."
+    },
+    "legacy_device_unmatched": {
+      "title": "Legacy device identity is unmatched",
+      "description": "An existing device identity is absent from the current account vehicle list. The vehicle may have been removed or use a different interface identity. Entities and history are preserved; no nickname-based merge was attempted. Check the backup and current identities before making changes through the HA UI."
     }
   }
 }

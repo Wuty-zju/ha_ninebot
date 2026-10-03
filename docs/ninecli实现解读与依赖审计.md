@@ -126,3 +126,34 @@ PyPI/安装 METADATA 标记 MIT，但所检查 wheel 没有单独 LICENSE 文件
 - 会话事务：临时目录验证 → 检查 unique_id/账户一致性 → 原子提交 → 更新 entry；失败保留旧会话，取消清理临时目录。
 
 本轮离线复现5项补充行为、此前8项回归与全部实体回放均已通过。两项关键生命周期问题是“验证中提前替换正式会话”和“取消任务未 kill 子进程”；状态刷新缺失 mutex 则见配套实体文档。后续使用真实源码和模拟进程测试实现修复，不在用户的运行中 HA 上用控制动作试错。
+
+## 9. 2.0重构的实际接入选择
+
+以上章节保留固定审阅材料。重构已将原CLI逐命令stdout包装候选替换为固定版本的
+受管理serve进程，详见[实施记录](2.0-实施记录.md)和[client实现](../custom_components/ninebot/client.py)。
+原因是当前login命令只提供argv密码参数；serve允许从本地HTTP请求体提交密码，
+不需要编造stdin支持或移植未完整取得源码的Go签名算法。
+
+Python client启动`python -m ninecli --config <private-dir> serve --bind 127.0.0.1:<port> --quiet`，
+随机Bearer通过NINEBOT_SERVE_TOKEN传入。它不是官方云端的Bearer鉴权：本地请求由
+serve认证，云端仍由Go程序执行Passport/App token、签名与业务加密。两层不能混淆。
+集成不会启用MCP，不提供生产host override或公开端口，不记录stdout/stderr及响应错误正文。
+
+| 本地REST | 上游职责 | 验证范围 |
+|---|---|---|
+| POST /auth/login | Passport与业务登录两阶段；body包含account/password | 假凭据送至受控Passport模拟器；未真实新密码登录 |
+| GET /vehicles | 合并车辆列表 | client envelope/认证测试；既有实车证据来自原CLI查询 |
+| GET /vehicles/{SN}/status | App车辆状态 | 合成HA流程与client路径测试 |
+| GET /vehicles/{SN}/battery | App BMS详情 | 同上；兼容data包装并严格解析 |
+| GET /vehicles/{SN}/travel?month=YYYYMM | 月度行程 | 同上；当前月与上月last ride分离 |
+| POST /vehicles/{SN}/engine/start、engine/stop、bell、buck | 实验控制 | 全部模拟；未向真实车辆发送 |
+
+启动时先验证无认证/vehicles为401，再验证带Bearer的不存在路由为404，之后才发送
+凭据。请求串行、队列上限8、输出上限1MiB；超时、取消、close均回收进程。代理
+响应按ok/data/error envelope处理；仅明确unauthorized/invalid_auth/token_expired证据
+触发认证错误，upstream_error不被泛化为密码错误。未确认的上游鉴权码保留服务错误，
+不能从任意错误字符串猜测账号失效。
+
+同权限用户仍可能观察进程环境或私有文件，loopback认证不消除该本机信任边界。
+完整Go源码、发布构建改动和可重复构建依然未取得；上述runtime行为证据不替代
+完整源码或供应链审计。平台与新版隔离实测结果需在最终发布验收记录中更新。

@@ -389,3 +389,30 @@ async def test_estimation_waits_for_battery_then_rebaselines_without_fake_energy
         await co.async_refresh_vehicle("synthetic-one")
     assert model.baseline_soc is None
     assert model.values["out_total"] == pytest.approx(0.0144)
+
+
+async def test_freshness_measures_actual_request_completion_and_retry_is_bounded(coordinator):
+    from unittest.mock import MagicMock
+
+    co = coordinator
+    await co._async_update_data()
+    start = datetime(2026, 10, 3, tzinfo=UTC)
+    now = MagicMock(return_value=start)
+
+    async def status(sn):
+        now.return_value = start + timedelta(seconds=20)
+        return {"dump_energy": 75}
+
+    co.client.async_get_status.side_effect = status
+    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", now):
+        await co.async_refresh_vehicle("synthetic-one")
+    freshness = co.data["synthetic-one"].status_freshness
+    assert freshness.attempted_at == start
+    assert freshness.succeeded_at == start + timedelta(seconds=20)
+    assert co._next_attempt[("synthetic-one", "status")] == start.timestamp() + 20 + co.interval
+    co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
+    delay = co._next_attempt[("synthetic-one", "status")] - start.timestamp()
+    assert 24 <= delay <= 36
+    for _ in range(20):
+        co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
+    assert co._next_attempt[("synthetic-one", "status")] <= start.timestamp() + 120

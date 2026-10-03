@@ -124,9 +124,9 @@ class NinecliClient:
         except asyncio.CancelledError:
             await self._stop()
             raise
-        except (OSError, TimeoutError) as err:
+        except (OSError, TimeoutError):
             await self._stop()
-            raise NinebotError(ErrorKind.PLATFORM) from err
+            raise NinebotError(ErrorKind.PLATFORM) from None
         except NinebotError:
             await self._stop()
             raise
@@ -176,8 +176,8 @@ class NinecliClient:
         try:
             try:
                 await asyncio.wait_for(self._lock.acquire(), self._timeout)
-            except TimeoutError as err:
-                raise NinebotError(ErrorKind.BUSY) from err
+            except TimeoutError:
+                raise NinebotError(ErrorKind.BUSY) from None
             acquired = True
             await self._start()
             async with asyncio.timeout(self._timeout):
@@ -197,16 +197,16 @@ class NinecliClient:
                             raise NinebotError(ErrorKind.PROTOCOL)
                     try:
                         raw = json.loads(data)
-                    except (ValueError, UnicodeError) as err:
-                        raise NinebotError(ErrorKind.PROTOCOL) from err
+                    except (ValueError, UnicodeError):
+                        raise NinebotError(ErrorKind.PROTOCOL) from None
                     return response_data(response.status, raw)
         except asyncio.CancelledError:
             if acquired:
                 await self._stop()
             raise
-        except (aiohttp.ClientError, TimeoutError) as err:
+        except (aiohttp.ClientError, TimeoutError):
             await self._stop()
-            raise NinebotError(ErrorKind.CONNECTION) from err
+            raise NinebotError(ErrorKind.CONNECTION) from None
         except NinebotError as err:
             if err.kind == ErrorKind.PROTOCOL:
                 await self._stop()

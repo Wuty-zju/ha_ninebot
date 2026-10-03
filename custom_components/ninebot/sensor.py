@@ -192,7 +192,6 @@ class NinebotSensor(NinebotEntity, SensorEntity):
 class LegacySensor(NinebotEntity, SensorEntity):
     """Keep registry/history; missing sources are never represented as zero."""
 
-    _attr_name = "Legacy value (unavailable)"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str, unique_id: str) -> None:
@@ -288,6 +287,32 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
     return result
 
 
+def legacy_battery_description(key: str) -> Description:
+    """An old primary-pack ID is meaningful only while there is one pack."""
+    field, unit, device_class = {
+        "bms_voltage": ("voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE),
+        "batt_temp": ("temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+        "bms_cycles": ("cycles", None, None),
+    }[key]
+
+    def value(snapshot: VehicleSnapshot) -> float | None:
+        if len(snapshot.battery.batteries) != 1:
+            return None
+        battery = snapshot.battery.batteries[0]
+        return getattr(battery, field) if key != "bms_cycles" or battery.cycle_supported else None
+
+    return Description(
+        key=key,
+        group="battery",
+        value=value,
+        native_unit_of_measurement=unit,
+        device_class=device_class,
+        state_class=SensorStateClass.MEASUREMENT if device_class else None,
+        entity_category=EntityCategory.DIAGNOSTIC if key == "bms_cycles" else None,
+        entity_registry_enabled_default=key != "bms_cycles",
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: NinebotConfigEntry, add: AddEntitiesCallback
 ) -> None:
@@ -323,8 +348,13 @@ async def async_setup_entry(
     for sn, key, uid in legacy_rows(hass, entry, "sensor", known):
         if uid in seen:
             continue
+        seen.add(uid)
         if key in equivalent:
             existing.append(NinebotSensor(entry, sn, equivalent[key], unique_id=uid))
+        elif key in {"bms_voltage", "batt_temp", "bms_cycles"}:
+            existing.append(
+                NinebotSensor(entry, sn, legacy_battery_description(key), unique_id=uid)
+            )
         else:
             existing.append(LegacySensor(entry, sn, key, uid))
     if existing:

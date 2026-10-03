@@ -338,3 +338,75 @@ async def test_legacy_lock_code_keeps_original_semantics(hass, entry, app_client
     app_client.async_get_status.return_value = {"loc": {"lock": 0}}
     await entry.runtime_data.coordinator.async_refresh_vehicle("SyntheticSN")
     assert entity.native_value == 1
+
+
+async def test_unmatched_device_keeps_identity_and_repairs_clear_after_confirmed_discovery(
+    hass, entry, app_client
+):
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.ninebot.entity import async_audit_device_identities
+
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={("ninebot", "DifferentLegacySN")},
+        name="Scooter",
+    )
+    old = er.async_get(hass).async_get_or_create(
+        "sensor",
+        "ninebot",
+        "ninebot_differentlegacysn_battery",
+        config_entry=entry,
+        device_id=device.id,
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    issue_id = next(
+        key for key in entry.runtime_data.identity_conflicts if key.startswith("legacy_device_")
+    )
+    assert ("ninebot", issue_id) in ir.async_get(hass).issues
+    assert "DifferentLegacySN" not in issue_id
+    assert er.async_get(hass).async_get(old.entity_id).unique_id == old.unique_id
+    assert hass.states.get(old.entity_id).state == "unavailable"
+    assert er.async_get(hass).async_get_entity_id("sensor", "ninebot", "SyntheticSN_battery")
+    # Persistent repairs must clear even if a new runtime has lost its in-memory set.
+    entry.runtime_data.identity_conflicts.clear()
+    app_client.async_list_vehicles.return_value.append({"wnumber": "DifferentLegacySN"})
+    co = entry.runtime_data.coordinator
+    co._next_attempt[("", "profile")] = 0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    async_audit_device_identities(hass, entry)
+    assert ("ninebot", issue_id) not in ir.async_get(hass).issues
+    assert float(hass.states.get(old.entity_id).state) == 80
+
+
+async def test_legacy_cycle_entity_recovers_supported_values_without_duplicate(
+    hass, entry, app_client
+):
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={("ninebot", "SyntheticSN")}
+    )
+    registry = er.async_get(hass)
+    old = registry.async_get_or_create(
+        "sensor", "ninebot", "SyntheticSN_bms_cycles", config_entry=entry, device_id=device.id
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(old.entity_id).state == "unknown"
+    app_client.async_get_battery.return_value = {
+        "battery_list": [{"bms_cycle": 12, "have_bms_cycle_support": True}]
+    }
+    co = entry.runtime_data.coordinator
+    co._next_attempt[("SyntheticSN", "battery")] = 0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert float(hass.states.get(old.entity_id).state) == 12
+    assert (
+        registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_bms_cycles") == old.entity_id
+    )
+    app_client.async_get_battery.return_value = {"battery_list": [{}, {}]}
+    co._next_attempt[("SyntheticSN", "battery")] = 0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(old.entity_id).state == "unknown"

@@ -28,7 +28,7 @@ jobs:
           python -m pip install
           pytest-homeassistant-custom-component==${{ matrix.test-plugin }}
           ninecli==0.1.7 ruff==0.16.10 mypy==2.4.0
-      - run: ruff check custom_components tests
-      - run: ruff format --check custom_components tests
+      - run: ruff check custom_components tests scripts
+      - run: ruff format --check custom_components tests scripts
       - run: mypy custom_components/ninebot --follow-imports=silent
       - run: python -m pytest --cov=custom_components.ninebot --cov-branch --cov-fail-under=95

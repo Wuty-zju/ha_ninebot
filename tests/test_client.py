@@ -309,3 +309,20 @@ async def test_cancel_close_reaps_child_before_clearing_bearer(tmp_path):
     assert client._bearer == ""
     await client.async_close()
     client._reap.assert_awaited_once()
+
+
+async def test_transport_failure_does_not_leak_request_details_in_traceback(tmp_path):
+    import traceback
+    from unittest.mock import MagicMock
+
+    session = MagicMock()
+    session.request.side_effect = aiohttp.ClientError("synthetic-secret-in-error")
+    client = NinecliClient(tmp_path, session)
+    client._start = AsyncMock()
+    client._stop = AsyncMock()
+    with pytest.raises(NinebotError) as caught:
+        await client.async_list_vehicles()
+    assert caught.value.kind is ErrorKind.CONNECTION
+    rendered = "".join(traceback.format_exception(caught.value))
+    assert "synthetic-secret-in-error" not in rendered
+    assert caught.value.__suppress_context__

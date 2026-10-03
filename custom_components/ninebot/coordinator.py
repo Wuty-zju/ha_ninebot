@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import random
 from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Any, Literal
@@ -98,6 +99,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._failures[key] = failures
         # Keep retries bounded and never stack catch-up cycles.
         delay = interval if success else min(interval, 30 * 2 ** min(failures - 1, 6))
+        if not success:
+            delay = min(interval, delay * random.uniform(0.8, 1.2))
         self._next_attempt[key] = stamp + delay
 
     async def _list(self, now: datetime) -> None:
@@ -121,24 +124,29 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self.data[profile.sn] = (
                 replace(old, profile=profile, present=True) if old else VehicleSnapshot(profile)
             )
-        self._list_freshness = Freshness(now, now)
+        finished = dt_util.utcnow()
+        self._list_freshness = Freshness(now, finished)
         self._authenticated = True
-        self._attempt_finished("", "profile", stamp, VEHICLE_INTERVAL, True)
+        self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, True)
 
-    async def _group(self, sn: str, group: Group, now: datetime, *, force: bool = False) -> None:
+    async def _group(self, sn: str, group: Group, *, force: bool = False) -> None:
+        now = dt_util.utcnow()
         stamp = now.timestamp()
         if not force and not self._due(sn, group, stamp):
             return
         snapshot = self.data[sn]
         success = False
-        freshness = Freshness(now, now)
         try:
             if group == "status":
                 status = adapters.status(await self.client.async_get_status(sn))
-                updated = replace(snapshot, status=status, status_freshness=freshness)
+                updated = replace(
+                    snapshot, status=status, status_freshness=Freshness(now, dt_util.utcnow())
+                )
             elif group == "battery":
                 battery = adapters.batteries(await self.client.async_get_battery(sn))
-                updated = replace(snapshot, battery=battery, battery_freshness=freshness)
+                updated = replace(
+                    snapshot, battery=battery, battery_freshness=Freshness(now, dt_util.utcnow())
+                )
             else:
                 month = adapters.month_at(now)
                 travel = adapters.travel(await self.client.async_get_travel(sn, month), month)
@@ -154,7 +162,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     except NinebotError:
                         # Optional last-ride fallback cannot invalidate current totals.
                         pass
-                updated = replace(snapshot, travel=travel, travel_freshness=freshness)
+                updated = replace(
+                    snapshot, travel=travel, travel_freshness=Freshness(now, dt_util.utcnow())
+                )
             self.data[sn] = updated
             success = True
         except NinebotAuthError:
@@ -170,7 +180,11 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 failed = replace(snapshot.travel_freshness, attempted_at=now, error=err.kind)
                 self.data[sn] = replace(snapshot, travel_freshness=failed)
         self._attempt_finished(
-            sn, group, stamp, self.interval if group == "status" else DETAIL_INTERVAL, success
+            sn,
+            group,
+            dt_util.utcnow().timestamp(),
+            self.interval if group == "status" else DETAIL_INTERVAL,
+            success,
         )
 
     def _sample_model(self, sn: str) -> None:
@@ -212,10 +226,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 sns = [sn for sn, value in self.data.items() if value.present]
                 # Status has priority, but every cycle also gives due details a turn.
                 for sn in sns:
-                    await self._group(sn, "status", now)
+                    await self._group(sn, "status")
                 for sn in sns:
-                    await self._group(sn, "battery", now)
-                    await self._group(sn, "travel", now)
+                    await self._group(sn, "battery")
+                    await self._group(sn, "travel")
                     self._sample_model(sn)
                 return dict(self.data)
         except NinebotAuthError as err:
@@ -238,7 +252,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 if sn not in self.data or not self.data[sn].present:
                     return
                 try:
-                    await self._group(sn, "status", dt_util.utcnow(), force=True)
+                    await self._group(sn, "status", force=True)
                 except NinebotAuthError as err:
                     self._authenticated = False
                     raise ConfigEntryAuthFailed("auth") from err

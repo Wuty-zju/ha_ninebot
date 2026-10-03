@@ -9,6 +9,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .client import NinecliClient
 from .const import CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN, PLATFORMS, SESSION_DIRECTORY
 from .coordinator import NinebotCoordinator
+from .entity import async_audit_device_identities
 from .exceptions import NinebotError
 from .migration import async_migrate
 from .runtime import NinebotConfigEntry, RuntimeData
@@ -43,11 +44,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
     try:
         await store.async_load()
         await coordinator.async_config_entry_first_refresh()
+        async_audit_device_identities(hass, entry)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except BaseException:
         await coordinator.async_close()
         raise
     entry.async_on_unload(entry.add_update_listener(async_update_options))
+    entry.async_on_unload(
+        coordinator.async_add_listener(lambda: async_audit_device_identities(hass, entry))
+    )
     return True
 
 

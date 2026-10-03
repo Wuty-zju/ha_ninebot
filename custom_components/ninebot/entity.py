@@ -60,7 +60,7 @@ class NinebotEntity(CoordinatorEntity[NinebotCoordinator]):
                 severity=ir.IssueSeverity.WARNING,
                 translation_key="entity_identity_conflict",
             )
-        elif issue_id in entry.runtime_data.identity_conflicts:
+        else:
             entry.runtime_data.identity_conflicts.discard(issue_id)
             ir.async_delete_issue(self.coordinator.hass, DOMAIN, issue_id)
         self._attr_unique_id = unique_id or (found[0] if found else f"{sn}_{key}")
@@ -128,3 +128,35 @@ def legacy_rows(
             for key in known_keys:
                 if row.unique_id in {f"ninebot_{sn}_{key}".lower(), f"{sn}_{key}"}:
                     yield sn, key, row.unique_id
+
+
+@callback
+def async_audit_device_identities(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    """Warn about unmatched legacy identities without guessing or deleting."""
+    prefix = f"legacy_device_{entry.entry_id}_"
+    expected = set()
+    for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id):
+        for domain, sn in device.identifiers:
+            if domain != DOMAIN or sn in entry.runtime_data.coordinator.data:
+                continue
+            issue_id = f"{prefix}{hashlib.sha256(sn.encode()).hexdigest()[:12]}"
+            expected.add(issue_id)
+            entry.runtime_data.identity_conflicts.add(issue_id)
+            ir.async_create_issue(
+                hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="legacy_device_unmatched",
+            )
+    # Repair issues persist across reload; the new runtime set starts empty.
+    # Reconcile the persisted issues as well as this runtime's bookkeeping.
+    previous = {
+        issue_id
+        for domain, issue_id in ir.async_get(hass).issues
+        if domain == DOMAIN and issue_id.startswith(prefix)
+    }
+    for issue_id in previous - expected:
+        entry.runtime_data.identity_conflicts.discard(issue_id)
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
