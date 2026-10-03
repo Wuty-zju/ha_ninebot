@@ -1,0 +1,21 @@
+{
+  "entity": {
+    "sensor": {
+      "last_ride_duration": {
+        "default": "mdi:timer-outline"
+      },
+      "last_ride_start": {
+        "default": "mdi:clock-outline"
+      },
+      "last_ride_end": {
+        "default": "mdi:clock-outline"
+      },
+      "last_ride_max_speed": {
+        "default": "mdi:speedometer"
+      },
+      "last_ride_average_speed": {
+        "default": "mdi:speedometer-medium"
+      }
+    }
+  }
+}

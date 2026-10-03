@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.0b3 — 2026-10-04
+
+- Add five disabled-by-default last-ride sensors: duration (seconds), UTC start/end
+  timestamps, server maximum speed and distance/duration average speed (km/h).
+- Require known end-time ordering for new values; ambiguous/future end times stay
+  unknown. Average speed is unknown if the reported duration conflicts with the
+  observed time span. Legacy last-distance/raw-energy identities are unchanged.
+- Add English/Chinese entity translations and icon translations. No cumulative
+  statistics classes, track/state attributes, detail polling or control expansion.
+
+Speed/distance use ninecli 0.1.7 display contracts; direct App UI cross-check is
+pending. All five sensors are optional and retain independent new identities.
+Minimum HA and exact dependency pin remain unchanged; no production HA changes.
+
 ## 2.0.0b2 — 2026-10-04
 
 - Introduce a typed NinebotBackend contract and production NinecliBackend around

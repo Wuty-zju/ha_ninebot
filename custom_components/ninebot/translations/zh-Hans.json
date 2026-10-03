@@ -141,6 +141,21 @@
       },
       "estimated_in_total": {
         "name": "估算累计充入能量"
+      },
+      "last_ride_duration": {
+        "name": "最近行程时长"
+      },
+      "last_ride_start": {
+        "name": "最近行程开始时间"
+      },
+      "last_ride_end": {
+        "name": "最近行程结束时间"
+      },
+      "last_ride_max_speed": {
+        "name": "最近行程最高速度"
+      },
+      "last_ride_average_speed": {
+        "name": "最近行程总平均速度"
       }
     },
     "binary_sensor": {
