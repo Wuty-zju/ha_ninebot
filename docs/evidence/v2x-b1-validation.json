@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-04",
+  "source_baseline_commit": "1bba9eb91b9c84e94de18cd1f38ba1a9daf1608c",
+  "version": "2.0.0b1",
+  "phases": [
+    "0 recorded fixtures and inventory",
+    "1 bounded raw retention and schema diagnostics",
+    "7 fail-closed control foundation"
+  ],
+  "latest_pypi_ninecli": "0.1.7",
+  "dependency": "ninecli==0.1.7",
+  "minimum_ha": "2026.1.0",
+  "tests": {
+    "passed": 183,
+    "branch_coverage_percent": 97.79,
+    "raw_module_branch_coverage_percent": 100,
+    "platform": "macOS arm64",
+    "python": "3.13.16",
+    "ha": "2026.1.0"
+  },
+  "checks": {
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed",
+    "hassfest": "required on release commit via GitHub CI",
+    "hacs": "required on release commit via GitHub CI"
+  },
+  "new_cloud_queries": 0,
+  "real_controls": 0,
+  "production_ha_writes": 0,
+  "replay_fixtures": 7,
+  "fixtures_provenance": "recorded_sanitized with explicit synthetic identity/URL/location substitutions",
+  "pending": [
+    "nonempty travel and travel detail recorded fixtures",
+    "real permission and physical engine semantics",
+    "HA beta-specific APIs not introduced"
+  ],
+  "release_evidence": "Successful exact-commit CI URLs and merge commit are published in GitHub prerelease notes; local checks are not a substitute for those validations."
+}

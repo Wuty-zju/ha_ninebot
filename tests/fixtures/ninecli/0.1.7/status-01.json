@@ -1,0 +1,27 @@
+{
+  "ai_estimate_mileage": 0,
+  "barrel_lock_status": 0,
+  "battery_exist": 1,
+  "ble_name": "Fixture vehicle 1",
+  "charging": 0,
+  "dump_energy": "93",
+  "estimate_mileage": 86.4,
+  "is_common_user": 0,
+  "is_smart_service_expired": 0,
+  "left_mileage_user_choose": 1,
+  "loc": {
+    "acc": 0,
+    "lat": "0.0",
+    "lock": 1,
+    "lon": "0.0"
+  },
+  "permissions": null,
+  "precise_estimate_mileage": 104.7,
+  "precise_mileage_user_choose": 2,
+  "pwr": 1,
+  "remain_charge_time": "[redacted]",
+  "remain_charge_timestamp": 0,
+  "sn": "fixture-vehicle-01",
+  "v6_dark_img_url": "https://example.invalid/fixture.png",
+  "v6_light_img_url": "https://example.invalid/fixture.png"
+}

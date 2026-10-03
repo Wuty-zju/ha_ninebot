@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "Options",
-        "description": "Estimation needs explicit voltage/capacity. Coordinate reference is unverified. Experimental controls are hardware-unverified; confirm support and permission, enable and select individual vehicles.",
+        "description": "Estimation needs explicit nominal voltage/capacity. Coordinate reference is unverified. Controls require opt-in, a vehicle allowlist and integration-verified permission and action semantics; unknown permissions are denied.",
         "data": {
           "poll_interval": "Status polling interval (seconds)",
           "enable_estimation": "Enable SOC energy estimation",
@@ -167,7 +167,7 @@
     },
     "lock": {
       "lock": {
-        "name": "Lock state / experimental control"
+        "name": "Lock state"
       }
     },
     "image": {
@@ -194,7 +194,7 @@
   },
   "exceptions": {
     "controls_disabled": {
-      "message": "Experimental controls are disabled or the vehicle is unavailable."
+      "message": "Control refused: enable controls, allow this vehicle, and require fresh verified upstream support, permission and action semantics. Unknown permissions are denied."
     },
     "control_uncertain": {
       "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
@@ -210,6 +210,9 @@
     },
     "invalid_auth": {
       "message": "The session is invalid; reauthenticate through Devices & services."
+    },
+    "engine_lock_unverified": {
+      "message": "engine-start/stop are not verified equivalents of lock/unlock. This entity retains observed lock state and does not execute engine controls."
     }
   },
   "issues": {

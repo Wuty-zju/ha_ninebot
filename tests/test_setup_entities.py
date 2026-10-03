@@ -180,15 +180,48 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
     assert tracker.entity_picture is None
     lock = NinebotLock(entry, "SyntheticSN")
     assert lock.is_locked is True
-    assert lock.extra_state_attributes["experimental_controls_enabled"]
-    await lock.async_unlock()
-    await lock.async_lock()
+    assert not lock.extra_state_attributes["experimental_controls_enabled"]
+    from dataclasses import replace
+
+    from homeassistant.exceptions import HomeAssistantError
+
+    from custom_components.ninebot.capabilities import (
+        CapabilityState,
+        ControlCapability,
+        VehicleCapabilities,
+    )
+
+    for command in (lock.async_unlock, lock.async_lock):
+        with pytest.raises(HomeAssistantError) as error:
+            await command()
+        assert error.value.translation_key == "engine_lock_unverified"
     bell = NinebotButton(entry, "SyntheticSN", "bell", "bell")
+    assert not bell.available
+    with pytest.raises(HomeAssistantError):
+        await bell.async_press()
+    app_client.async_control.assert_not_awaited()
+    co = entry.runtime_data.coordinator
+    snapshot = co.data["SyntheticSN"]
+    co.data["SyntheticSN"] = replace(
+        snapshot,
+        status=replace(
+            snapshot.status,
+            capabilities=VehicleCapabilities(
+                (
+                    ControlCapability(
+                        "bell",
+                        CapabilityState.ALLOWED,
+                        CapabilityState.ALLOWED,
+                        True,
+                        "mock-contract",
+                    ),
+                )
+            ),
+        ),
+    )
     assert bell.available
     await bell.async_press()
-    assert app_client.async_control.await_args_list[0].args == ("SyntheticSN", "engine/start")
-    assert app_client.async_control.await_args_list[1].args == ("SyntheticSN", "engine/stop")
-    assert app_client.async_control.await_args_list[2].args == ("SyntheticSN", "bell")
+    app_client.async_control.assert_awaited_once_with("SyntheticSN", "bell")
     image = NinebotImage(entry, "SyntheticSN")
     assert image.image_url is None
     assert image.image_last_updated is not None

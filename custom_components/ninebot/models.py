@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .capabilities import VehicleCapabilities
 from .exceptions import ErrorKind
 
 
@@ -26,6 +27,7 @@ class VehicleStatus:
     charge_remaining: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    capabilities: VehicleCapabilities = field(default_factory=VehicleCapabilities)
 
 
 @dataclass(frozen=True)

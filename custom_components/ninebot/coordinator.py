@@ -31,6 +31,7 @@ from .const import (
 )
 from .exceptions import NinebotAuthError, NinebotError
 from .models import Freshness, VehicleSnapshot
+from .raw import Endpoint, RawLimitError, RawStore, build_record
 from .storage import ModelStorage
 
 LOGGER = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         models: ModelStorage | None = None,
     ) -> None:
         self.client = client
+        self.raw = RawStore()
         self.models = models
         self.interval = max(
             30, min(3600, int(entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)))
@@ -166,7 +168,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         if not self._due("", "profile", stamp):
             return
         try:
-            found = adapters.profiles(await self.client.async_list_vehicles())
+            raw = await self.client.async_list_vehicles()
+            await self._capture(Endpoint.VEHICLES, raw)
+            found = adapters.profiles(raw)
         except NinebotAuthError:
             raise
         except NinebotError as err:
@@ -207,24 +211,30 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         success = False
         try:
             if group == "status":
-                status = adapters.status(await self.client.async_get_status(sn))
+                raw = await self.client.async_get_status(sn)
+                await self._capture(Endpoint.STATUS, raw, sn)
+                status = adapters.status(raw)
                 updated = replace(
                     snapshot, status=status, status_freshness=Freshness(now, dt_util.utcnow())
                 )
             elif group == "battery":
-                battery = adapters.batteries(await self.client.async_get_battery(sn))
+                raw = await self.client.async_get_battery(sn)
+                await self._capture(Endpoint.BATTERY, raw, sn)
+                battery = adapters.batteries(raw)
                 updated = replace(
                     snapshot, battery=battery, battery_freshness=Freshness(now, dt_util.utcnow())
                 )
             else:
                 month = adapters.month_at(now)
-                travel = adapters.travel(await self.client.async_get_travel(sn, month), month)
+                raw = await self.client.async_get_travel(sn, month)
+                await self._capture(Endpoint.TRAVEL, raw, sn, month)
+                travel = adapters.travel(raw, month)
                 if travel.last_ride is None:
                     previous = adapters.previous_month(month)
                     try:
-                        fallback = adapters.travel(
-                            await self.client.async_get_travel(sn, previous), previous
-                        )
+                        raw = await self.client.async_get_travel(sn, previous)
+                        await self._capture(Endpoint.TRAVEL, raw, sn, previous)
+                        fallback = adapters.travel(raw, previous)
                         travel = replace(travel, last_ride=fallback.last_ride)
                     except NinebotAuthError:
                         raise
@@ -255,6 +265,20 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self.interval if group == "status" else DETAIL_INTERVAL,
             success,
         )
+
+    async def _capture(
+        self, endpoint: Endpoint, payload: object, sn: str = "", month: str | None = None
+    ) -> None:
+        """Raw policy failure cannot discard otherwise valid normalized data."""
+        try:
+            record = await self.hass.async_add_executor_job(
+                build_record, endpoint, payload, dt_util.utcnow(), month
+            )
+        except RawLimitError:
+            self.raw.rejected += 1
+            return
+        if not self._stopping:
+            self.raw.put(record, sn, month or "")
 
     def _sample_model(self, sn: str) -> None:
         """Sample after due BMS data, so startup cannot pretend a pack changed."""
@@ -335,12 +359,24 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         finally:
             self._forced.pop(sn, None)
 
-    def controls_enabled(self, sn: str) -> bool:
-        """Unknown upstream capability needs an explicit per-vehicle opt-in."""
+    def controls_enabled(self, sn: str, action: str | None = None) -> bool:
+        """User consent AND fresh proven support/permission/semantics."""
+        snapshot = self.data.get(sn)
         return bool(
             self.config_entry
             and self.config_entry.options.get(CONF_CONTROLS)
             and sn in self.config_entry.options.get(CONF_CONTROL_VEHICLES, [])
+            and snapshot
+            and self.fresh(sn, "profile")
+            and self.fresh(sn, "status")
+            and snapshot.status_freshness.error is None
+            and self._list_freshness.error is None
+            and any(
+                snapshot.status.capabilities.allows(candidate)
+                for candidate in (
+                    (action,) if action else ("bell", "buck", "engine/start", "engine/stop")
+                )
+            )
         )
 
     def _manual_auth_failure(self) -> ConfigEntryAuthFailed:
@@ -372,12 +408,17 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         if (
             self._stopping
             or not self.config_entry
-            or not self.controls_enabled(sn)
+            or not self.controls_enabled(sn, action)
             or sn not in self.data
             or not self.data[sn].present
         ):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="controls_disabled")
         async with self._mutex:
+            # Permission/freshness may change while a request waits in the queue.
+            if not self.controls_enabled(sn, action):
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN, translation_key="controls_disabled"
+                )
             try:
                 await self.client.async_control(sn, action)
             except NinebotAuthError:
@@ -421,4 +462,5 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         """Finish cleanup before propagating cancellation of the unload caller."""
         await self.client.async_close()
         await asyncio.gather(*tasks, return_exceptions=True)
+        self.raw.clear()
         await self.async_shutdown()

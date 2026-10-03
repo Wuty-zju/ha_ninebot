@@ -1,0 +1,2369 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-04",
+  "baseline_commit": "1bba9eb91b9c84e94de18cd1f38ba1a9daf1608c",
+  "ninecli_version": "0.1.7",
+  "source_records": 7,
+  "new_cloud_requests": 0,
+  "scope": "Historical real schema shapes only; no payload values. Source/synthetic/candidate fields separated.",
+  "observed_endpoints": [
+    {
+      "endpoint": "vehicles",
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "list"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$[]",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$[].active_date",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "激活时间/枚举；格式/语义 V，不创建时间实体",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].active_uid",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "用户身份；无需 HA 状态表达，值从公开输出删除",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].actived",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "激活时间/枚举；格式/语义 V，不创建时间实体",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].and_mac",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "平台相关 MAC；个人设备标识，不导出或作为已验证连接",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].auth_date",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "授权时间；格式/有效期关系未确认",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].auth_email",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "个人资料；不用于 Entity/diagnostics/debug export",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；个人信息"
+        },
+        {
+          "path": "$[].auth_nickname",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "个人资料；不用于 Entity/diagnostics/debug export",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；个人信息"
+        },
+        {
+          "path": "$[].auth_phone",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "个人资料；不用于 Entity/diagnostics/debug export",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；个人信息"
+        },
+        {
+          "path": "$[].auth_uid",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "用户身份；无需 HA 状态表达，值从公开输出删除",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].ble_name",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "蓝牙名称；非 connectivity 状态，不作为身份",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].blue_secret",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "蓝牙凭据；禁止保存到新 raw cache/diagnostics，保留已遮蔽形状",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；敏感信息"
+        },
+        {
+          "path": "$[].businessType",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "车型/业务枚举；路由和支持矩阵，不能转权限",
+          "unit": "—",
+          "classification": "F/H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].color",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "颜色；稳定后可作 metadata，枚举含义待核",
+          "unit": "—",
+          "classification": "F/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].common_user_permissions",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "共享用户权限；真实值 null，未知必须 fail closed",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].common_user_vehicle_index",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "共享列表索引；不能作稳定车辆 ID",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].common_user_version",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "支持/版本候选；真实 null，禁止猜 bit mask",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].device_name",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "用户车辆名；Device name，诊断名实体保持",
+          "unit": "—",
+          "classification": "F/C",
+          "enabled": "否",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "diagnostic",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$[].img_url",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车型图片；沿用已实现 ImageEntity/实体图片",
+          "unit": "—",
+          "classification": "B/F",
+          "enabled": "否",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$[].ios_mac",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "平台相关 MAC；个人设备标识，不导出或作为已验证连接",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].is_common_user",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "共享用户标志；不是操作授权许可",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].is_img_special",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "图片标志；null 未确认",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].latest_support",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "支持/版本候选；真实 null，禁止猜 bit mask",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].loc_delay_time",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "位置延迟候选；null，单位未知，不作 freshness",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].owner_user_area_code",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "个人资料；不用于 Entity/diagnostics/debug export",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；个人信息"
+        },
+        {
+          "path": "$[].owner_user_avatar",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "个人资料；不用于 Entity/diagnostics/debug export",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；个人信息"
+        },
+        {
+          "path": "$[].owner_user_id",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "用户身份；无需 HA 状态表达，值从公开输出删除",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].owner_user_nickname",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "个人资料；不用于 Entity/diagnostics/debug export",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；个人信息"
+        },
+        {
+          "path": "$[].owner_user_phone",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "个人资料；不用于 Entity/diagnostics/debug export",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；个人信息"
+        },
+        {
+          "path": "$[].smart_service_surplus_days",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "智能服务剩余天数候选；确认后可禁用诊断，当前 runtime",
+          "unit": "待验证（名称提示天）",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].support",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "支持/版本候选；真实 null，禁止猜 bit mask",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].total_mileage",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "总里程候选；真实 null，不冒充 odometer",
+          "unit": "待验证",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].v6_dark_img_url",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "暗色车型图片；未来主题表达，URL 安全审查",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].v6_light_img_url",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车型图片；沿用已实现 ImageEntity/实体图片",
+          "unit": "—",
+          "classification": "B/F",
+          "enabled": "否",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$[].vehicle_name",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车型；当前 model 来源",
+          "unit": "—",
+          "classification": "F",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$[].vehicle_name_en",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车型语言版本；display fallback，非独立状态",
+          "unit": "—",
+          "classification": "F/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].vehicle_name_zh",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车型语言版本；display fallback，非独立状态",
+          "unit": "—",
+          "classification": "F/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].vehicle_type",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "车型/业务枚举；路由和支持矩阵，不能转权限",
+          "unit": "—",
+          "classification": "F/H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$[].vin",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车辆 VIN；可评估敏感 metadata，当前未映射，不进入 diagnostics",
+          "unit": "—",
+          "classification": "F/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；用途 V"
+        },
+        {
+          "path": "$[].wnumber",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车辆云身份；用于现有 unique_id/device identifier",
+          "unit": "—",
+          "classification": "F/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        }
+      ]
+    },
+    {
+      "endpoint": "status",
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.ai_estimate_mileage",
+          "types": [
+            "float",
+            "int"
+          ],
+          "container": false,
+          "meaning": "普通/AI 续航，分别表达",
+          "unit": "km",
+          "classification": "B",
+          "enabled": "否",
+          "device_class": "distance",
+          "state_class": "M",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S；沿用 v2 契约"
+        },
+        {
+          "path": "$.barrel_lock_status",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "座桶锁候选；无值枚举/反馈契约，暂不造 Lock",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.battery_exist",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "电池存在枚举；确认后可诊断，不与 pack_count 等价",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.ble_name",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "蓝牙名称；不能当蓝牙连接在线状态",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.charging",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "充电状态；当前 binary_sensor",
+          "unit": "—",
+          "classification": "A",
+          "enabled": "是",
+          "device_class": "battery_charging",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$.dump_energy",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车辆 SOC；当前 battery Entity",
+          "unit": "%",
+          "classification": "A",
+          "enabled": "是",
+          "device_class": "battery",
+          "state_class": "M",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S；沿用 v2 契约"
+        },
+        {
+          "path": "$.estimate_mileage",
+          "types": [
+            "float"
+          ],
+          "container": false,
+          "meaning": "普通/AI 续航，分别表达",
+          "unit": "km",
+          "classification": "B",
+          "enabled": "否",
+          "device_class": "distance",
+          "state_class": "M",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S；沿用 v2 契约"
+        },
+        {
+          "path": "$.is_common_user",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "共享账户标记；不能推出 owner 或控制权",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.is_smart_service_expired",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "服务到期标志候选；需验证对 endpoint 权限影响",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.left_mileage_user_choose",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "App 续航显示偏好/阈值候选；未知语义",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.loc",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.loc.acc",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "acc；可能 ignition 或定位属性，不能直接判精度/电源",
+          "unit": "待验证",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.loc.lat",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "位置；双坐标有效+opt-in 后 tracker，详情 actions 另需隐私门禁",
+          "unit": "degree；坐标系 V",
+          "classification": "B/E",
+          "enabled": "否；opt-in",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C3",
+          "evidence": "R/S；坐标系 V"
+        },
+        {
+          "path": "$.loc.lock",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "当前 parser 1=locked/0=unlocked；legacy raw 反码为0=locked/1=unlocked；非 engine 指令契约",
+          "unit": "—",
+          "classification": "A/C",
+          "enabled": "是/诊断否",
+          "device_class": "lock（binary）",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S/F"
+        },
+        {
+          "path": "$.loc.lon",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "位置；双坐标有效+opt-in 后 tracker，详情 actions 另需隐私门禁",
+          "unit": "degree；坐标系 V",
+          "classification": "B/E",
+          "enabled": "否；opt-in",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C3",
+          "evidence": "R/S；坐标系 V"
+        },
+        {
+          "path": "$.permissions",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "操作权限；真实 null，不能判为允许",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.precise_estimate_mileage",
+          "types": [
+            "float"
+          ],
+          "container": false,
+          "meaning": "精确续航；沿用 endurance/remaining_range aliases",
+          "unit": "km",
+          "classification": "A",
+          "enabled": "是",
+          "device_class": "distance",
+          "state_class": "M",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S；沿用 v2 契约"
+        },
+        {
+          "path": "$.precise_mileage_user_choose",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "App 续航显示偏好/阈值候选；未知语义",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.pwr",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "车辆电源状态；不是功率",
+          "unit": "—",
+          "classification": "A",
+          "enabled": "是",
+          "device_class": "power",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$.remain_charge_time",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "服务器剩余充电文字；保留原实体，不能当秒",
+          "unit": "—",
+          "classification": "B",
+          "enabled": "否",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C2",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$.remain_charge_timestamp",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "剩余充电时间候选；duration 或 deadline 不明确",
+          "unit": "待验证",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.sn",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "状态所属车辆校验；不新增重复序列号实体",
+          "unit": "—",
+          "classification": "F/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$.v6_dark_img_url",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车型图片备用来源；沿用 profile 图片策略，非独立新实体",
+          "unit": "—",
+          "classification": "F/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.v6_light_img_url",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "车型图片备用来源；沿用 profile 图片策略，非独立新实体",
+          "unit": "—",
+          "classification": "F/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        }
+      ]
+    },
+    {
+      "endpoint": "battery",
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.battery_count",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "服务端 count；历史为字符串，曾与数组长度不符；只作 schema",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；不可信计数"
+        },
+        {
+          "path": "$.battery_find_my_support",
+          "types": [
+            "bool"
+          ],
+          "container": false,
+          "meaning": "寻电池支持标志；不是 bell/buck/engine 权限",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.battery_list",
+          "types": [
+            "list"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.battery_list[]",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.battery_list[].bat_temp",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "BMS 温度；保持身份",
+          "unit": "°C",
+          "classification": "A",
+          "enabled": "是",
+          "device_class": "temperature",
+          "state_class": "M",
+          "entity_category": "—",
+          "compatibility": "C0/CG",
+          "evidence": "R/S；沿用 v2 契约"
+        },
+        {
+          "path": "$.battery_list[].bms_cycle",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "循环数；只有明确 support=true 才启用，false 的哨兵不使用",
+          "unit": "次",
+          "classification": "B",
+          "enabled": "否且 support gate",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "diagnostic",
+          "compatibility": "C0/CG",
+          "evidence": "R/S；样本 support=false"
+        },
+        {
+          "path": "$.battery_list[].bms_volt",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "BMS 电压；显式合法数值，保持单/多包旧身份",
+          "unit": "V",
+          "classification": "A",
+          "enabled": "是",
+          "device_class": "voltage",
+          "state_class": "M",
+          "entity_category": "—",
+          "compatibility": "C0/CG",
+          "evidence": "R/S；沿用 v2 契约"
+        },
+        {
+          "path": "$.battery_list[].electricity",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "包 SOC 候选；范围/主包/缓存语义待核，与 status SOC 区分",
+          "unit": "待验证（可能 %）",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.battery_list[].score",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "评分原始量；不得直接命名 SOH",
+          "unit": "未知",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.battery_main",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.battery_main.electricity",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "主电池量；与外层及车辆 SOC 数值不同，不自动归并",
+          "unit": "待验证",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.battery_type",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "电池类型编码；核实枚举后 metadata",
+          "unit": "—",
+          "classification": "G/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "CG",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.charging",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "BMS 充电标志；与 status 比较，当前 primary 继续 status",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.charging_power",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "原始充电量；charging_power_raw 保持无单位",
+          "unit": "未知",
+          "classification": "C",
+          "enabled": "否",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "diagnostic",
+          "compatibility": "C2",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$.charging_protection",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.charging_protection.status",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "充电保护标志；枚举未知，不直接套 Problem class",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.charging_protection.url",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "充电保护相关 URL；功能/访问权限未知，禁止后台任意抓取",
+          "unit": "—",
+          "classification": "J/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.electricity",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "电池外层量；与 status/main 分开，未知更新时间",
+          "unit": "待验证",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.have_bms_cycle_support",
+          "types": [
+            "bool"
+          ],
+          "container": false,
+          "meaning": "循环数 feature gate；必须 True，不从 cycle 数值猜能力",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$.remain_charge_time",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "BMS 充电文字；保留 raw，避免与 status 重复实体",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        }
+      ]
+    },
+    {
+      "endpoint": "travel",
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.detail",
+          "types": [
+            "list"
+          ],
+          "container": true,
+          "meaning": "结构容器；仅记录 shape，不创建 Entity",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R"
+        },
+        {
+          "path": "$.detail[]",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "月汇总字符串列表；不是 ride detail endpoint/轨迹",
+          "unit": "—",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；str[]"
+        },
+        {
+          "path": "$.duration",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "月时长候选；不能当 last ride duration",
+          "unit": "待验证",
+          "classification": "E/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.ec",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "月能量原始值；禁止直接 Energy Dashboard",
+          "unit": "未知",
+          "classification": "C/E",
+          "enabled": "否",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "diagnostic",
+          "compatibility": "C2",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$.first_time",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "首行程/状态候选；样本零，不能推出 timestamp",
+          "unit": "待验证",
+          "classification": "H/I",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.list",
+          "types": [
+            "null"
+          ],
+          "container": false,
+          "meaning": "真实样本 null；有历史 synthetic list，不宣称真实列表 schema 已确认",
+          "unit": "—",
+          "classification": "E/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R（null）/F（list）"
+        },
+        {
+          "path": "$.month",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "查询月份；必须与 requested month 一致，不能取当前日期覆盖",
+          "unit": "YYYYMM",
+          "classification": "E/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S"
+        },
+        {
+          "path": "$.times",
+          "types": [
+            "int"
+          ],
+          "container": false,
+          "meaning": "月次数候选；分页/撤销/重复语义待验",
+          "unit": "待验证（次数）",
+          "classification": "E/H",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R；语义 V"
+        },
+        {
+          "path": "$.total_mileages",
+          "types": [
+            "str"
+          ],
+          "container": false,
+          "meaning": "月里程；现 month_mileage 无 state_class；单调性待验",
+          "unit": "km（沿用 v2）",
+          "classification": "A/E",
+          "enabled": "是",
+          "device_class": "distance",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0",
+          "evidence": "R/S；本样本月为零"
+        }
+      ]
+    }
+  ],
+  "source_fixture_aliases": [
+    {
+      "endpoint": "vehicles",
+      "path": "$[].sn",
+      "meaning": "当前 adapter profile 身份备用路径",
+      "unit": "—",
+      "classification": "F/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C0"
+    },
+    {
+      "endpoint": "status",
+      "path": "$.lock_status",
+      "meaning": "当前 lock fallback；不能让非法 loc.lock 阻断有效 fallback",
+      "unit": "枚举",
+      "classification": "A/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C0"
+    },
+    {
+      "endpoint": "battery",
+      "path": "$.data",
+      "meaning": "当前支持的 envelope wrapper；先解包再按 battery 路径解释",
+      "unit": "—",
+      "classification": "H/I",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C0"
+    },
+    {
+      "endpoint": "battery",
+      "path": "$.battery_list[].battery_sn",
+      "meaning": "当前 adapter 的稳定包身份候选；真实记录不存在",
+      "unit": "—",
+      "classification": "G/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "CG"
+    },
+    {
+      "endpoint": "battery",
+      "path": "$.battery_list[].sn",
+      "meaning": "当前 adapter 的稳定包身份候选；真实记录不存在",
+      "unit": "—",
+      "classification": "G/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "CG"
+    },
+    {
+      "endpoint": "battery",
+      "path": "$.battery_list[].have_bms_cycle_support",
+      "meaning": "单包 support override；当前 source/fixture 规则",
+      "unit": "bool",
+      "classification": "H/I",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C0/CG"
+    },
+    {
+      "endpoint": "travel",
+      "path": "$.list[]",
+      "meaning": "当前 synthetic 行程条目容器；真实非空样本缺失",
+      "unit": "—",
+      "classification": "E/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel",
+      "path": "$.list[].id",
+      "meaning": "当前 LastRide parser 字段；ID 区分、距离/能量依据需真实补齐",
+      "unit": "待验证",
+      "classification": "E/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel",
+      "path": "$.list[].detail_id",
+      "meaning": "当前 LastRide parser 字段；ID 区分、距离/能量依据需真实补齐",
+      "unit": "待验证",
+      "classification": "E/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel",
+      "path": "$.list[].mileages",
+      "meaning": "当前 LastRide parser 字段；ID 区分、距离/能量依据需真实补齐",
+      "unit": "待验证",
+      "classification": "E/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C0/C2"
+    },
+    {
+      "endpoint": "travel",
+      "path": "$.list[].ec",
+      "meaning": "当前 LastRide parser 字段；ID 区分、距离/能量依据需真实补齐",
+      "unit": "待验证",
+      "classification": "E/H",
+      "evidence": "S/F；真实 V",
+      "compatibility": "C0/C2"
+    }
+  ],
+  "unverified_candidates": [
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.travel_id",
+      "meaning": "recon ID；不能默认等于 detail_id",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.id",
+      "meaning": "当前/recon ID；不同 endpoint 可能有不同身份",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.detail_id",
+      "meaning": "当前 parser 可识别；详情查找关联待验",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.travelId",
+      "meaning": "recon 别名",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.start_time_format",
+      "meaning": "recon 时间格式；无时区可能",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.end_time_format",
+      "meaning": "recon 时间格式；无时区可能",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.start_time",
+      "meaning": "binary CLI/recon；Unix 单位及 CST 契约待交叉验证",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.end_time",
+      "meaning": "binary CLI/recon；Unix 单位及 CST 契约待交叉验证",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.mileages",
+      "meaning": "binary CLI/recon 距离",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.duration",
+      "meaning": "binary CLI/recon 时长",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.used_electricity",
+      "meaning": "binary CLI/recon；百分比/百分点与细节缩放待验",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.ec",
+      "meaning": "binary CLI 提示 Wh，但本车型未交叉验证",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.speed",
+      "meaning": "binary CLI max 显示/recon；标量和列表不可混同",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.speed_list",
+      "meaning": "recon samples 候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.speeds",
+      "meaning": "recon samples 候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.track",
+      "meaning": "recon 轨迹候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.trail",
+      "meaning": "binary CLI 实际引用；recon KEY_TRACK 未覆盖",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.points",
+      "meaning": "recon 候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.gps",
+      "meaning": "recon 候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.route",
+      "meaning": "recon 候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.track_points",
+      "meaning": "recon 候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.locations",
+      "meaning": "recon 候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.lat_lng",
+      "meaning": "recon 候选",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.startTime",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.begin_time",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.beginTime",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.time",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.endTime",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.finish_time",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.finishTime",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.mileage",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.distance",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.total_mileage",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.mileage_km",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.duration_s",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.ride_time",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.rideTime",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.total_seconds",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.seconds",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.time_span",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.electricity",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.power_used",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.battery_used",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.used_power",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.max_speed",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.maxSpeed",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.top_speed",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.topSpeed",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.highest_speed",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.speed_max",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.max",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.speed_samples",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "travel-list/detail candidate",
+      "path": "$.speedList",
+      "meaning": "recon 候选别名；未在本轮真实 schema 出现，不能自动启用",
+      "unit": "待验证",
+      "classification": "J→E/D/B（验证后）",
+      "evidence": "S（候选源码/CLI解释）；真实/单位 V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.latitude",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.longitude",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.timestamp",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.speed",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.distance_delta",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.heading",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.altitude",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.sequence",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "track domain candidate",
+      "path": "$.raw_fields",
+      "meaning": "建议 domain 字段名，不声称同名 raw 字段存在",
+      "unit": "待验证",
+      "classification": "J→E/H（验证后）",
+      "evidence": "设计；raw path V",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "status future candidate",
+      "path": "$.capabilities",
+      "meaning": "用户提出的研究主题；本轮真实 raw 未出现该路径，禁止自动造实体",
+      "unit": "待验证",
+      "classification": "J/I",
+      "evidence": "V；非已观察字段",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "status future candidate",
+      "path": "$.ownership",
+      "meaning": "用户提出的研究主题；本轮真实 raw 未出现该路径，禁止自动造实体",
+      "unit": "待验证",
+      "classification": "J/I",
+      "evidence": "V；非已观察字段",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "status future candidate",
+      "path": "$.control_support",
+      "meaning": "用户提出的研究主题；本轮真实 raw 未出现该路径，禁止自动造实体",
+      "unit": "待验证",
+      "classification": "J/I",
+      "evidence": "V；非已观察字段",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "status future candidate",
+      "path": "$.connectivity",
+      "meaning": "用户提出的研究主题；本轮真实 raw 未出现该路径，禁止自动造实体",
+      "unit": "待验证",
+      "classification": "J/I",
+      "evidence": "V；非已观察字段",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "status future candidate",
+      "path": "$.report_timestamp",
+      "meaning": "用户提出的研究主题；本轮真实 raw 未出现该路径，禁止自动造实体",
+      "unit": "待验证",
+      "classification": "J/I",
+      "evidence": "V；非已观察字段",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "status future candidate",
+      "path": "$.gsm",
+      "meaning": "用户提出的研究主题；本轮真实 raw 未出现该路径，禁止自动造实体",
+      "unit": "待验证",
+      "classification": "J/I",
+      "evidence": "V；非已观察字段",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "status future candidate",
+      "path": "$.network",
+      "meaning": "用户提出的研究主题；本轮真实 raw 未出现该路径，禁止自动造实体",
+      "unit": "待验证",
+      "classification": "J/I",
+      "evidence": "V；非已观察字段",
+      "compatibility": "C1"
+    },
+    {
+      "endpoint": "status future candidate",
+      "path": "$.device_status",
+      "meaning": "用户提出的研究主题；本轮真实 raw 未出现该路径，禁止自动造实体",
+      "unit": "待验证",
+      "classification": "J/I",
+      "evidence": "V；非已观察字段",
+      "compatibility": "C1"
+    }
+  ],
+  "checks": {
+    "pytest_passed": 162,
+    "coverage_combined_percent": 97.58,
+    "ruff": "passed",
+    "format_files": 33,
+    "mypy_source_files": 22,
+    "hassfest_hacs": "Existing baseline SHA CI success, not rerun",
+    "recon_offline_self_test": "passed",
+    "expired_token_refresh_calls": 0,
+    "adapters_combined_coverage_rounded_percent": 93,
+    "baseline_ci": [
+      {
+        "workflow": "Checks",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/actions/runs/37127668805",
+        "status": "success",
+        "head_sha": "1bba9eb91b9c84e94de18cd1f38ba1a9daf1608c"
+      },
+      {
+        "workflow": "Hassfest",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/actions/runs/37127668813",
+        "status": "success",
+        "head_sha": "1bba9eb91b9c84e94de18cd1f38ba1a9daf1608c"
+      },
+      {
+        "workflow": "HACS",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/actions/runs/37127668840",
+        "status": "success",
+        "head_sha": "1bba9eb91b9c84e94de18cd1f38ba1a9daf1608c"
+      }
+    ]
+  },
+  "correction": {
+    "function": "(*Business).TravelDetail",
+    "path_pointer_instruction": "0x2937ec",
+    "path_length_instruction": "0x2937f0: mov x4, #0x1e",
+    "call": "0x293808: PostWithExtras",
+    "length_bytes": 30,
+    "path": "/app-api/travel/v6/travel-info",
+    "old_overread": "travel-infostream is path concatenated with adjacent Go string",
+    "binary_platform": "ninecli 0.1.7 Linux musl aarch64",
+    "binary_sha256": "78665c4a72a5edbdf3a9e07d81b578afcacdd8dfe3f7cd23911a01613b879271"
+  },
+  "public_source_checks": {
+    "home_assistant_stable": "2026.9.4",
+    "home_assistant_beta": "2026.10.0b0",
+    "ninecli_latest": "0.1.7",
+    "recon_commit": "a46124d6290179554e1688c01384a7f4116ac96a",
+    "supports_response_only_core_2026_1": true,
+    "device_class_selector_core_2026_9_4": true,
+    "state_class_selector_core_2026_9_4": false,
+    "state_class_selector_core_2026_10_b0": true
+  }
+}

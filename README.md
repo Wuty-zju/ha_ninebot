@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b0 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b0)
+**2.0.0b1 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b1)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -67,11 +67,20 @@ generation has new entity identities; old model history is never rewritten.
 Daily/monthly samples are assigned to the receiving business day/month; sampling
 across a boundary is approximate. No instantaneous power is inferred from SOC.
 
-**Experimental controls are off by default.** Enable them only after confirming
-support and permission, and explicitly select individual vehicles. These use
-engine start/stop, bell and seat-trunk commands; hardware effects and permissions
-have not been verified in this development task. Timeouts are not retried.
-A successful command with failed status readback is reported separately.
+**Controls fail closed.** Options and a vehicle allowlist are necessary but do
+not prove upstream permission. The integration additionally requires fresh,
+verified support, permission and action semantics. Current opaque/null capability
+data does not meet this requirement, so hardware controls remain unavailable.
+The existing Lock entity retains observed state and identity; lock/unlock actions
+are rejected because engine start/stop equivalence is unverified. Read-only refresh
+is unaffected. All development control tests use a fake verified backend contract.
+
+Raw business responses are retained only in bounded private memory, with secrets
+and personal profile fields removed. They are never entity attributes or persistent
+trip history. Diagnostics export approved schema names/types/counts, not raw values
+or arbitrary unknown keys. Seven sanitized historical fixtures are replayable; their
+location and identity replacements are explicitly synthetic. Nonempty travel and
+detail schema still need bounded read-only evidence.
 
 ## Upgrade and rollback
 

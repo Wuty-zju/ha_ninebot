@@ -1,0 +1,26 @@
+{
+  "battery_count": "0",
+  "battery_find_my_support": false,
+  "battery_list": [
+    {
+      "bat_temp": "25",
+      "bms_cycle": "100",
+      "bms_volt": "75.6",
+      "electricity": "79",
+      "score": 0
+    }
+  ],
+  "battery_main": {
+    "electricity": "93"
+  },
+  "battery_type": "2",
+  "charging": 0,
+  "charging_power": 0,
+  "charging_protection": {
+    "status": 0,
+    "url": "https://example.invalid/fixture.png"
+  },
+  "electricity": 79,
+  "have_bms_cycle_support": false,
+  "remain_charge_time": "[redacted]"
+}

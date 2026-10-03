@@ -20,7 +20,7 @@ class NinebotButton(NinebotEntity, ButtonEntity):
     @property
     def available(self) -> bool:
         return super().available and (
-            self.action is None or self.coordinator.controls_enabled(self.sn)
+            self.action is None or self.coordinator.controls_enabled(self.sn, self.action)
         )
 
     async def async_press(self) -> None:
