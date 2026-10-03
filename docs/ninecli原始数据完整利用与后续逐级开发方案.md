@@ -859,3 +859,10 @@ Phase 2 的 dependency scheduling 可以再拆小PR：先typedcontexts/内部需
 实现/验收见 [实施记录](v2x-实施与验收记录.md)。包含详情时要求limit<=5，
 以输入约束避免隐含partial fanout；云端分页仍待证据，未新增上游page参数。
 查询默认当前业务月；历史detail必须显式传query_month，不扫描月份猜测关联。
+
+### Phase 5 实施补充（2.0.0b5）
+
+实体行为、基线、迟到/容量/持久化边界见[骑行事件契约](v2x-骑行事件契约.md)。
+当前只观察成功travel snapshot及已取得fallback，不声称云端完整性、不新增
+全历史扫描；事件不能作为完整骑行账本。cursor文件与Event state无跨存储事务，
+先确认磁盘再发事件，仍可能因崩溃而遗漏，不能承诺exactly-once。

@@ -12,6 +12,7 @@ from .client import NinecliClient
 from .const import CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN, PLATFORMS, SESSION_DIRECTORY
 from .coordinator import NinebotCoordinator
 from .entity import async_audit_device_identities
+from .event_store import RideEventPipeline
 from .exceptions import NinebotError
 from .migration import async_migrate
 from .runtime import NinebotConfigEntry, RuntimeData
@@ -49,13 +50,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
     client = NinecliClient(manager.path(key), async_get_clientsession(hass))
     store = ModelStorage(hass, entry.entry_id)
     coordinator = NinebotCoordinator(hass, entry, client, models=store)
-    entry.runtime_data = RuntimeData(client, coordinator, manager, store)
+    entry.runtime_data = RuntimeData(
+        client,
+        coordinator,
+        manager,
+        store,
+        events=RideEventPipeline(hass, entry.entry_id, coordinator),
+    )
     try:
         await store.async_load()
         await coordinator.async_config_entry_first_refresh()
         async_audit_device_identities(hass, entry)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except BaseException:
+        if entry.runtime_data.events:
+            await entry.runtime_data.events.async_close()
         await coordinator.async_close()
         raise
     entry.async_on_unload(entry.add_update_listener(async_update_options))
@@ -67,6 +76,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> bool:
     if await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        if entry.runtime_data.events:
+            await entry.runtime_data.events.async_close()
         await entry.runtime_data.coordinator.async_close()
         await entry.runtime_data.models.async_save()
         return True

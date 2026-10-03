@@ -205,6 +205,19 @@
       "battery_max_range": {
         "name": "Legacy full range (unused by energy model)"
       }
+    },
+    "event": {
+      "ride": {
+        "name": "Ride event",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "completed": "Completed"
+            }
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -268,6 +281,10 @@
     "model_storage_invalid": {
       "title": "Unsupported estimation storage",
       "description": "The estimation storage format or version is unsupported. Setup stopped without overwriting it. Retain a backup and use the integration version matching this storage, or restore a complete pre-upgrade backup. Do not edit the model version field manually."
+    },
+    "ride_event_storage_invalid": {
+      "title": "Ride event storage unavailable",
+      "description": "The event cursor store is unreadable, incompatible or cannot be safely written. Event emission is suspended. Retain configuration/storage backups and check storage permissions and the integration version. Do not edit or delete the cursor file as a repair attempt. Other vehicle state and queries remain available."
     }
   },
   "services": {

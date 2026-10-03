@@ -136,3 +136,72 @@ unit/state class、未来/含糊时刻、duration冲突、旧无时间兼容，�
 release前对应提交必须通过完整pytest、Ruff/format、mypy、Hassfest/HACS CI。
 尚待Phase5事件、Phase6电池身份/兼容及Phase8Image/GPS优化；不能将本阶段
 query能力当作完整历史数据库或云端分页实现。
+
+## Phase 5 进行中：事件 cursor（未发布）
+
+分支 `feature/v2x-ride-events` 基于Phase4源提交，已有纯领域cursor模块，
+尚未接入EventEntity或HA Store，不应当作ride事件功能已交付。
+
+- 只有ID、过去的可靠起止、正时长与时间跨度一致才作为云端结束报告候选；
+  时间/身份冲突、未来结束、未知起止不因“新ID”就发completed。
+- 首次非空可靠窗口建立baseline，不发历史；空/未知保持uninitialized。
+  restart/首次启用必须由pipeline强制baseline（尚待接入），旧backup不重放。
+- 跨月按hashed opaque ride ID比较集合，重排和重复查询不制造新事件。
+  seen最多128，超限建立保守retention_floor，防止已驱逐ID被重放；同结束时刻
+  的过大批次可能被全部抑制，优先防重复而非承诺不遗漏。
+- 30分钟late window与24小时gap rebaseline是本地保守策略，**不是实测上传延迟**。
+  超窗backfill不补发，时钟回退/长期缺口重建baseline；实际上传时延仍待证据。
+- cursor只包含时间、hash与有界集合，restore严格拒绝未知/不完整/非法结构。
+  后续Store保存前确认schema版本与账户/车辆scope，不能用RestoreEvent当去重真相。
+
+20项领域测试覆盖baseline、重排、跨月、迟到、恢复、容量上限和非法存储，
+该模块分支覆盖100%，Ruff/format和mypy通过。没有新增真实查询、生产HA写入或
+控制。待完成：版本化Store、durable-before-emit、enabled订阅与卸载取消、
+EventEntity/中英翻译/icons、月边界窗口、HA集成测试及完整发布校验。
+
+### Phase 5 EventEntity / Store 开发检查点（未发布）
+
+已接入默认禁用的 `event.<vehicle>_ride` 与按entry的RideEventPipeline，
+但版本尚未递增、未做阶段完整CI/发布验收，仍不当作Phase5正式交付。
+
+enabled entity在added时订阅、remove时注销；无订阅不读写事件Store、不新增
+详情或云端请求。每次启动/重新订阅重建baseline，RestoreEvent仅恢复可见旧状态，
+不会回放历史。cursor比较现有成功travel snapshot及已取得的上月fallback Ride，
+保留跨月seen集合；不宣称收到所有物理骑行。当前没有为事件另扫上一月，因此
+上月late upload只有出现在已有fallback/已取得数据流时可被发现；云端分页及
+上传延迟仍未知，事件是best-effort cloud end report，不是完整骑行账本。
+
+Store以entry key隔离，vehicle/ride ID仅存hash，每车128个seen、最多128车、
+文件读取上限3MiB。通过公共HA Store原子保存，但不能只依赖async_save返回：
+Core实现对部分WriteError仅日志记录，不抛异常。pipeline在executor预读真实
+envelope（拒绝未知版本/损坏，不触发Core自动rename/migration），保存后再次
+核对磁盘data与候选cursor相同，才更新内存并发EventEntity事件。失败暂停事件，
+保留旧文件与其他车辆状态/查询，产生需要用户处理的存储Repair。
+
+写盘后/发事件前崩溃或取消仍可能漏一次事件；不是exactly-once。超窗或大量
+同结束时刻batch会保守抑制；不承诺追补。属性只有稳定ID、月、起止、距离/时长、
+服务端max/总平均、source和late，没有raw、GPS、samples。诊断只含健康与计数。
+新event名称/状态属性/Repair/icon均中英翻译，runtime资源在integration目录。
+
+20项cursor单元测试与8项pipeline测试通过；与既有setup测试合计48项通过。
+测试在一次性HA config目录中使用真实原子writer及磁盘确认，验证静默write
+failure、取消、首次enable的HA自动reload debounce、重启不重发、缺省不启用
+与公开state不含大对象。cursor模块覆盖100%，event/store受影响覆盖约92%，
+Ruff/format、mypy通过；阶段完整pytest/最低与stable CI、Hassfest/HACS待执行。
+没有生产HA写入、部署、重启、真实控制或新增云查询。
+
+## 2.0.0b5：Phase 5 骑行事件阶段验收
+
+前述两份“进行中”记录是开发检查点，正式行为以
+[v2x-骑行事件契约.md](v2x-骑行事件契约.md)为准。候选版本2.0.0b5，
+分支feature/v2x-ride-events，基于Phase4已合并main `bd2ffcbdf367`。
+
+正式身份仅接受已确认travel_id provenance，不将legacy id或detail ID未知
+语义用于completed判断。缺乏可靠时间/时长的车型保留state/query功能，不发
+推测事件。HA最小/稳定版实际Entity restore/生命周期、cursor离线场景、
+原子writer及磁盘确认是验收依据。完整校验见evidence/v2x-b5-validation.json；
+只有相同main提交的CI通过后才发布，release notes记录确切SHA与CI链接。
+
+不提高最低HA、不更新ninecli、不更改旧unique_id或生产HA。Phase6电池身份/
+compat、Phase7权限诊断/证据门禁和Phase8Image/GPS/按依赖轮询仍需继续；
+原始能量/点速度/delta/坐标系/permissions仍有待验证，不以事件阶段替代这些要求。

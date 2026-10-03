@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-04",
+  "source_baseline_commit": "bd2ffcbdf367170fdaee2d3208dfe87e1fb22334",
+  "version": "2.0.0b5",
+  "phases": ["5 Ride Event"],
+  "tests": {
+    "passed": 264,
+    "combined_branch_coverage_percent": 97.54,
+    "cursor_branch_coverage_percent": 100,
+    "python": "3.13.16",
+    "ha": "2026.1.0"
+  },
+  "checks": {
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed",
+    "hassfest": "required on exact release commit via CI",
+    "hacs": "required on exact release commit via CI"
+  },
+  "new_cloud_requests": 0,
+  "real_controls": 0,
+  "production_ha_writes": 0,
+  "legacy_unique_id_changes": 0,
+  "event_key": "ride",
+  "default_enabled": false,
+  "event_type": "completed",
+  "source_semantics": "verified cloud travel end report",
+  "seen_limit_per_vehicle": 128,
+  "cursor_vehicle_limit": 128,
+  "cursor_file_read_limit_bytes": 3145728,
+  "disk_acknowledgement_before_emission": true,
+  "delivery": "best effort, at-most-once oriented; crash/cancellation may lose events",
+  "late_window_seconds": 1800,
+  "rebaseline_gap_seconds": 86400,
+  "threshold_provenance": "conservative local policy, not measured vendor guarantees",
+  "pending": [
+    "cloud pagination and upload timing contract",
+    "battery identity/compat modernization",
+    "capability evidence and diagnostics",
+    "Image/GPS and dependency-based scheduling"
+  ],
+  "release_evidence": "Exact-commit CI and merge SHA appear in prerelease notes."
+}
