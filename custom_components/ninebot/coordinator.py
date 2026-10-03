@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 
 from . import adapters
 from .backend import BackendResult, NinebotBackend, NinecliBackend
+from .battery import battery_signature
 from .client import NinecliClient
 from .const import (
     BUSINESS_TIMEZONE,
@@ -396,10 +397,17 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return
         if model.sampled_at is not None and now.timestamp() <= model.sampled_at:
             return
-        batteries = ",".join(
+        batteries = battery_signature(snapshot.battery)
+        source = f"vehicle_soc:v2:{batteries}"
+        legacy_source = "vehicle_soc:" + ",".join(
             sorted(b.key if b.identified else "unidentified" for b in snapshot.battery.batteries)
         )
-        model.sample(snapshot.status.battery, now, f"vehicle_soc:{batteries}")
+        if model.source == legacy_source:
+            # Upgrade the encoding, not the entity/model identity. Never bridge
+            # the old ambiguous signature's interval or discard its totals.
+            model.reset_baseline()
+            model.source = source
+        model.sample(snapshot.status.battery, now, source)
         self.models.schedule_save()
 
     async def _async_update_data(self) -> dict[str, VehicleSnapshot]:

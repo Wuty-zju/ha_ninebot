@@ -26,6 +26,7 @@ from homeassistant.helpers.entity import Entity, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from .battery import current_battery, identified_battery
 from .const import CONF_ESTIMATION
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
@@ -339,9 +340,13 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                 identity: str = identity,
                 primary: bool = not prefix,
             ) -> float | None:
-                found = next((b for b in s.battery.batteries if b.key == identity), None)
-                if found is None and len(s.battery.batteries) == 1 and primary:
-                    found = s.battery.batteries[0]
+                found = (
+                    current_battery(s.battery)
+                    if primary
+                    else identified_battery(s.battery, identity)
+                )
+                if found and field == "cycles" and found.cycle_supported is not True:
+                    return None
                 return getattr(found, field) if found else None
 
             result.append(
@@ -369,10 +374,14 @@ def legacy_battery_description(key: str) -> Description:
     }[key]
 
     def value(snapshot: VehicleSnapshot) -> float | None:
-        if len(snapshot.battery.batteries) != 1:
+        battery = current_battery(snapshot.battery)
+        if battery is None:
             return None
-        battery = snapshot.battery.batteries[0]
-        return getattr(battery, field) if key != "bms_cycles" or battery.cycle_supported else None
+        return (
+            getattr(battery, field)
+            if key != "bms_cycles" or battery.cycle_supported is True
+            else None
+        )
 
     return Description(
         key=key,

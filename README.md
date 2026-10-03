@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b5 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b5)
+**2.0.0b6 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b6)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -49,6 +49,12 @@ Cloud estimated/AI ranges, last returned trip and raw energy/power diagnostics
 are disabled by default. Missing is unknown; valid zero remains zero. Unsupported
 BMS cycles are not published as real counts. HA lock binary sensors are on
 when unlocked; the App lock encoding is normalized before entity mapping.
+
+Battery measurements keep their existing IDs. Vehicle-level voltage/temperature
+are known only with one reported pack; multiple rows do not imply a primary pack.
+Identified pack measurements follow their reported identity across reordering and
+become unknown when that identity disappears. All remain on the vehicle device;
+physical pack identity/composition is not yet verified for Child Devices.
 
 Trip `ec` and `charging_power` units are not independently established, so raw
 diagnostics have no physical unit or statistics class. They are not Energy

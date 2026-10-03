@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.0.0b6 — 2026-10-04
+
+- Keep legacy vehicle battery measurements unknown with multiple reported packs;
+  retain their IDs and current sole-pack semantics after replacement.
+- Match pack measurements only to explicitly identified rows, independent of
+  ordering; separate real serials from anonymous slot placeholders and reject
+  conflicting aliases instead of silently attaching another pack history.
+- Use a typed, order-independent SOC observation signature. Upgrade matching old
+  signatures with a fresh baseline, preserving model generation and totals.
+- Add privacy-safe battery grouping diagnostics and centralized Child Device
+  registry capability detection. Physical identity/composition remain unverified;
+  no battery device migration, dependency upgrade or additional cloud requests.
+- Document all observed BMS fields and the evidence required before child/physical
+  device registration. Test transitions, registry continuity and compatibility.
+
 ## 2.0.0b5 — 2026-10-04
 
 - Add a disabled-by-default Ride EventEntity for verified cloud travel end

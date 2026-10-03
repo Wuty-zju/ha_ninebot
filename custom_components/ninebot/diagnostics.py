@@ -8,6 +8,8 @@ from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
+from .battery import battery_summary
+from .compat import child_registry_api_available
 from .const import VERSION
 from .runtime import NinebotConfigEntry
 
@@ -35,6 +37,7 @@ async def async_get_config_entry_diagnostics(
                 "present": snapshot.present,
                 "groups": groups,
                 "battery_count": len(snapshot.battery.batteries),
+                "battery_model": battery_summary(snapshot.battery),
                 "cycle_support": [
                     battery.cycle_supported for battery in snapshot.battery.batteries
                 ],
@@ -50,6 +53,7 @@ async def async_get_config_entry_diagnostics(
         "ha_version": HA_VERSION,
         "python_version": platform.python_version(),
         "platform": {"system": platform.system(), "architecture": platform.machine()},
+        "compatibility": {"child_registry_api": child_registry_api_available()},
         "identity_scheme": entry.data.get("identity_scheme"),
         "identity_conflict_count": len(runtime.identity_conflicts),
         "vehicles": vehicles,

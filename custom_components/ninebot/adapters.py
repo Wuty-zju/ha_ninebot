@@ -73,15 +73,21 @@ def batteries(raw: object) -> BatteryInfo:
     if not isinstance(rows, list):
         raise NinebotError(ErrorKind.PROTOCOL)
     result = []
-    keys: set[str] = set()
+    keys: set[tuple[bool, str]] = set()
     vehicle_support = boolean(item.get("have_bms_cycle_support"))
     for index, row in enumerate(rows):
         value = payload(row)
-        identity = text(value.get("battery_sn")) or text(value.get("sn"))
-        key = identity or f"slot_{index}"
-        if key in keys:
+        battery_sn, sn = text(value.get("battery_sn")), text(value.get("sn"))
+        if battery_sn and sn and battery_sn != sn:
             raise NinebotError(ErrorKind.PROTOCOL)
-        keys.add(key)
+        identity = battery_sn or sn
+        key = identity or f"slot_{index}"
+        # Synthetic slot labels and a real serial spelling "slot_0" belong to
+        # different namespaces. Neither may silently become the other.
+        scoped_key = (identity is not None, key)
+        if scoped_key in keys:
+            raise NinebotError(ErrorKind.PROTOCOL)
+        keys.add(scoped_key)
         # Captured App responses put this capability alongside battery_list,
         # not inside each pack. Preserve explicit pack overrides when supplied,
         # but a vehicle-wide denial cannot be promoted to support by one row.

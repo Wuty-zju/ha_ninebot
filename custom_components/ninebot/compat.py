@@ -1,5 +1,20 @@
 """Centralized public-API capability detection, without HA version strings."""
 
+from homeassistant.helpers import device_registry as dr
+
+
+def child_registry_api_available() -> bool:
+    """Report registry APIs, not eligibility of a battery to become a child.
+
+    Physical identity and composition still need evidence. Do not register a
+    child just because this runtime can do so.
+    """
+    return (
+        hasattr(dr, "ChildDeviceInfo")
+        and callable(getattr(dr.DeviceRegistry, "async_get_or_create_child", None))
+        and callable(getattr(dr.DeviceRegistry, "async_get_child_device_by_identifier", None))
+    )
+
 
 def device_entry_ids(device: object) -> frozenset[str]:
     """New registry entries have one owner; old entries may have several.

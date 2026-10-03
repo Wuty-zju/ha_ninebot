@@ -508,3 +508,67 @@ async def test_options_preserve_selected_missing_and_removed_vehicle_choices(
         {"value": "MissingSelection", "label": "MissingSelection"},
     ]
     assert not co.controls_enabled("SyntheticSN")
+
+
+async def test_battery_transitions_preserve_registry_history_and_device_assignment(
+    hass, entry, app_client
+):
+    import hashlib
+    from dataclasses import replace
+
+    from custom_components.ninebot.adapters import batteries
+
+    def payload(*pairs):
+        return {
+            "battery_list": [
+                {"sn": identity, "bms_volt": voltage, "bat_temp": 25} for identity, voltage in pairs
+            ]
+        }
+
+    app_client.async_get_battery.return_value = payload(("pack-a", 72))
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = entry.runtime_data.coordinator
+    registry = er.async_get(hass)
+    primary_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_bms_voltage")
+    original = registry.async_get(primary_id)
+    registry.async_update_entity(primary_id, name="My voltage")
+
+    async def update(*pairs):
+        co.async_set_updated_data(
+            {"SyntheticSN": replace(co.data["SyntheticSN"], battery=batteries(payload(*pairs)))}
+        )
+        await hass.async_block_till_done()
+
+    await update(("pack-a", 72), ("pack-b", 73))
+    assert hass.states.get(primary_id).state == "unknown"
+    pack_ids = [
+        registry.async_get_entity_id(
+            "sensor",
+            "ninebot",
+            f"SyntheticSN_battery_{hashlib.sha256(identity.encode()).hexdigest()[:12]}_bms_voltage",
+        )
+        for identity in ("pack-a", "pack-b")
+    ]
+    assert [float(hass.states.get(eid).state) for eid in pack_ids] == [72, 73]
+    assert all(registry.async_get(eid).device_id == original.device_id for eid in pack_ids)
+    await update(("pack-b", 74), ("pack-a", 75))
+    assert [float(hass.states.get(eid).state) for eid in pack_ids] == [75, 74]
+    await update(("pack-b", 76))
+    assert float(hass.states.get(primary_id).state) == 76
+    assert hass.states.get(pack_ids[0]).state == "unknown"
+    assert float(hass.states.get(pack_ids[1]).state) == 76
+    assert registry.async_get(primary_id).name == "My voltage"
+    assert registry.async_get(primary_id).unique_id == original.unique_id
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    app_client.async_get_battery.return_value = payload(("pack-b", 76), ("pack-a", 75))
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(primary_id).state == "unknown"
+    assert registry.async_get(primary_id).name == "My voltage"
+    assert [float(hass.states.get(eid).state) for eid in pack_ids] == [75, 76]
+    rows = er.async_entries_for_config_entry(registry, entry.entry_id)
+    assert len({row.unique_id for row in rows}) == len(rows)
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    assert len(devices) == 1
+    assert await hass.config_entries.async_unload(entry.entry_id)

@@ -205,3 +205,27 @@ Ruff/format、mypy通过；阶段完整pytest/最低与stable CI、Hassfest/HACS
 不提高最低HA、不更新ninecli、不更改旧unique_id或生产HA。Phase6电池身份/
 compat、Phase7权限诊断/证据门禁和Phase8Image/GPS/按依赖轮询仍需继续；
 原始能量/点速度/delta/坐标系/permissions仍有待验证，不以事件阶段替代这些要求。
+
+## 2.0.0b6：Phase 6 电池观察身份与兼容
+
+基于已发布main `b13cfe96286c`，独立分支 feature/v2x-battery-identity。
+[电池契约](v2x-电池身份与设备模型契约.md)与
+[evidence/v2x-battery-field-review.json](evidence/v2x-battery-field-review.json)
+复核21个已观察BMS路径；源码/合成身份别名与真实样本区分。
+
+修复旧单包实体在多包时继续抓旧包的歧义，以及分包实体误认匿名slot placeholder。
+集中选择策略保证single→multi→replacement/reorder/identity-loss保留原ID/用户名称/
+vehicle assignment，支持否定不出循环数；明确别名冲突拒绝，不偷偷合并历史。
+SOC observation signature使用有序类型化哈希，旧编码匹配时rebaseline而不换generation
+或清累计；真正source change仍按现有模型处理。无身份同数量换装无法识别，明确保留限制。
+
+compat集中feature detection仅输出registry API能力，诊断新增无身份/测量值的grouping
+摘要。当前真实两份battery样本无packSN，不能证明固定child组成或可移动硬件身份，
+因此没有新电池device/child、registry迁移，也没有child downgrade演练可以宣称通过。
+硬件模型/真实identity取得证据后另立实施项，不能用合成tests代替；不阻碍Phase7/8。
+
+完整离线275tests通过，combined branch coverage97.62%；battery/sensor/compat100%。
+Ruff、format、mypy34源文件通过；精确main提交的最低/稳定CI、Hassfest/HACS通过后
+发布b6，证据见evidence/v2x-b6-validation.json及release notes。
+未修改生产HA、未执行控制、未增加云查询、未改变最低HA/依赖pin/旧unique_id。
+本阶段不增加实体名称或配置项，因此沿用既有中英translation keys与icons。
