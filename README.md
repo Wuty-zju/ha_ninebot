@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b2 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b2)
+**2.0.0b3 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b3)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -86,7 +86,12 @@ replacements are explicitly synthetic. Nonempty travel/detail structure and
 Unix-second/China-time relationships were confirmed in a bounded read-only study.
 Ride distance and server maximum speed use ninecli's km/max-km/h display contract;
 App UI was not independently tested. Trail speed/delta units, coordinate system
-and energy meanings remain unverified. No historical query action is exposed yet.
+and energy meanings remain unverified. Five optional last-ride sensors now expose duration, UTC start/end, server
+maximum and total-trip average speed. Enable them individually in the entity UI.
+They have no cumulative statistics class, large attributes or extra detail calls;
+ambiguous/future time or missing data stays unknown. Average speed is unknown if
+duration conflicts with the observed time span. No historical query action is
+exposed yet.
 
 ## Upgrade and rollback
 

@@ -3,6 +3,7 @@
 import hashlib
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -16,23 +17,57 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfLength,
+    UnitOfSpeed,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import Entity, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import CONF_ESTIMATION
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
+from .ride_models import Ride
 from .runtime import NinebotConfigEntry
 
 
 @dataclass(frozen=True, kw_only=True)
 class Description(SensorEntityDescription):
     group: str
-    value: Callable[[VehicleSnapshot], str | float | None]
+    value: Callable[[VehicleSnapshot], str | float | datetime | None]
     aliases: tuple[str, ...] = ()
+
+
+def last_timed_ride(snapshot: VehicleSnapshot) -> Ride | None:
+    """New ride measurements require a known latest completed-time observation."""
+    last = snapshot.travel.last_ride if snapshot.travel else None
+    ride = last.ride if last else None
+    if (
+        ride is None
+        or ride.ended_at is None
+        or ride.ended_at > dt_util.utcnow()
+        or any(
+            issue in ride.issues
+            for issue in ("reversed_timestamps", "conflicting_time_representations")
+        )
+    ):
+        return None
+    return ride
+
+
+def ride_value(snapshot: VehicleSnapshot, field: str) -> float | datetime | None:
+    ride = last_timed_ride(snapshot)
+    return getattr(ride, field) if ride else None
+
+
+def ride_speed(snapshot: VehicleSnapshot, field: str) -> float | None:
+    ride = last_timed_ride(snapshot)
+    if ride and field == "average_speed_m_s" and "duration_time_difference" in ride.issues:
+        return None
+    value = getattr(ride, field) if ride else None
+    return value * 3.6 if value is not None else None
 
 
 SENSORS = (
@@ -134,6 +169,44 @@ SENSORS = (
         entity_registry_enabled_default=False,
         value=lambda s: s.battery.charging_power_raw,
     ),
+    Description(
+        key="last_ride_duration",
+        group="travel",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_registry_enabled_default=False,
+        value=lambda s: ride_value(s, "duration_s"),
+    ),
+    Description(
+        key="last_ride_start",
+        group="travel",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_registry_enabled_default=False,
+        value=lambda s: ride_value(s, "started_at"),
+    ),
+    Description(
+        key="last_ride_end",
+        group="travel",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_registry_enabled_default=False,
+        value=lambda s: ride_value(s, "ended_at"),
+    ),
+    Description(
+        key="last_ride_max_speed",
+        group="travel",
+        device_class=SensorDeviceClass.SPEED,
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        entity_registry_enabled_default=False,
+        value=lambda s: ride_speed(s, "server_max_speed_m_s"),
+    ),
+    Description(
+        key="last_ride_average_speed",
+        group="travel",
+        device_class=SensorDeviceClass.SPEED,
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        entity_registry_enabled_default=False,
+        value=lambda s: ride_speed(s, "average_speed_m_s"),
+    ),
 )
 
 # Old estimated energy identities cannot become v2 SOC-model identities.
@@ -185,7 +258,7 @@ class NinebotSensor(NinebotEntity, SensorEntity):
         self._attr_translation_key = description.translation_key or description.key
 
     @property
-    def native_value(self) -> str | float | None:
+    def native_value(self) -> str | float | datetime | None:
         return self.entity_description.value(self.snapshot) if self.snapshot else None
 
 

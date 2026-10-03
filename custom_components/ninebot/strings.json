@@ -141,6 +141,21 @@
       },
       "estimated_in_total": {
         "name": "Estimated total charge energy"
+      },
+      "last_ride_duration": {
+        "name": "Last ride duration"
+      },
+      "last_ride_start": {
+        "name": "Last ride start"
+      },
+      "last_ride_end": {
+        "name": "Last ride end"
+      },
+      "last_ride_max_speed": {
+        "name": "Last ride maximum speed"
+      },
+      "last_ride_average_speed": {
+        "name": "Last ride average speed"
       }
     },
     "binary_sensor": {

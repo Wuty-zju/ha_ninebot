@@ -70,3 +70,31 @@ returned兼容值，但新时间依赖实体不能借此推断排序。month pol
 [逐字段补充](v2x-行程字段与解析契约.md)。模型/parser受影响114项测试、Ruff、
 mypy已通过；发布前完整校验结果见 `evidence/v2x-b2-validation.json` 与发布CI。
 Phase3/4/5实体、actions、event尚未实施，不能据本阶段模型声称用户功能已齐备。
+
+## 2.0.0b3：Phase 3 Last Ride entities
+
+基于Phase2已合并main `f8c786da`，分支 `feature/v2x-last-ride`。新增5个
+默认禁用sensor，stable key见下表；没有修改legacy unique_id、模型/ConfigEntry
+存储或分组轮询。所有名称采用has_entity_name+中英translation_key，icons.json
+放在integration运行目录。
+
+| key | 数据与HA表示 | 验收/限制 |
+|---|---|---|
+| last_ride_duration | Ride.duration_s；DURATION/s，无SC | 实读20/20 duration=end-start秒；不当累计时间 |
+| last_ride_start | Ride.started_at UTC；TIMESTAMP，无unit/SC | 原生datetime，不是普通文本；仅有可靠ended_at排序的ride |
+| last_ride_end | Ride.ended_at UTC；TIMESTAMP，无unit/SC | future/conflicting_time/reversed不可用值，不假定已完成 |
+| last_ride_max_speed | server_max_speed_m_s×3.6；SPEED/km/h，无SC | 明确ninecli显示契约，samples不能覆盖；App核对仍待用户参考 |
+| last_ride_average_speed | distance_m/duration_s×3.6；SPEED/km/h，无SC | duration>0、零距离合法0；时长与时间跨度冲突不发布平均值 |
+
+旧无时间payload仍给legacy last_mileage/last_energy_raw兼容值，但这5个新
+量返回None；group过期则HA标准unavailable。已有上月fallback只更新last ride，
+不会把上月合计覆盖本月。实体属性不含rides/raw/track/samples/GPS；没有自动
+详情请求或额外轮询。energy/used_electricity仍raw，没有创建猜测单位的新实体。
+
+测试在隔离HA中检查默认禁用、启用后的真正Timestamp state编码、device class/
+unit/state class、未来/含糊时刻、duration冲突、旧无时间兼容，以及无详情/控制
+请求。原有身份/reauth/隐私/门禁/生命周期测试继续通过。完整校验与CI以
+`evidence/v2x-b3-validation.json`和GitHub prerelease notes为准；生产HA未部署。
+
+下一阶段Phase4注册get_trips/get_trip_detail ONLY-response查询action，严格
+设备/账户/车辆路由和GPS opt-in，仍不将大历史对象放入state machine。
