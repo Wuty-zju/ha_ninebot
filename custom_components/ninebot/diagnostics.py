@@ -1,9 +1,12 @@
 """A strict diagnostic whitelist. No raw payload, identity or position."""
 
+import platform
 from importlib.metadata import version
 from typing import Any
 
+from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 
 from .const import VERSION
 from .runtime import NinebotConfigEntry
@@ -35,12 +38,20 @@ async def async_get_config_entry_diagnostics(
                 "cycle_support": [
                     battery.cycle_supported for battery in snapshot.battery.batteries
                 ],
+                "controls": {
+                    action: runtime.coordinator.controls_enabled(snapshot.profile.sn, action)
+                    for action in ("bell", "buck", "engine/start", "engine/stop")
+                },
             }
         )
     return {
         "integration_version": VERSION,
         "ninecli_version": version("ninecli"),
+        "ha_version": HA_VERSION,
+        "python_version": platform.python_version(),
+        "platform": {"system": platform.system(), "architecture": platform.machine()},
         "identity_scheme": entry.data.get("identity_scheme"),
         "identity_conflict_count": len(runtime.identity_conflicts),
         "vehicles": vehicles,
+        "raw_schema": runtime.coordinator.raw.diagnostics(dt_util.utcnow()),
     }

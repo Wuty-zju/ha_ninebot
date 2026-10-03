@@ -1,0 +1,59 @@
+{
+  "ninecli_version": "0.1.7",
+  "source_date": "2026-10-03",
+  "new_cloud_requests": 0,
+  "records": [
+    {
+      "file": "vehicles.json",
+      "endpoint": "vehicles",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": null
+    },
+    {
+      "file": "status-01.json",
+      "endpoint": "status",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-vehicle-01"
+    },
+    {
+      "file": "battery-01.json",
+      "endpoint": "battery",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-vehicle-01"
+    },
+    {
+      "file": "travel-01.json",
+      "endpoint": "travel",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-vehicle-01"
+    },
+    {
+      "file": "status-02.json",
+      "endpoint": "status",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-vehicle-02"
+    },
+    {
+      "file": "battery-02.json",
+      "endpoint": "battery",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-vehicle-02"
+    },
+    {
+      "file": "travel-02.json",
+      "endpoint": "travel",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-vehicle-02"
+    }
+  ],
+  "substitutions": [
+    "identities, names, URLs and personal profile strings replaced",
+    "coordinates replaced with synthetic 0.0, not real location",
+    "unrecognized strings redacted; numeric business strings retained"
+  ],
+  "missing": [
+    "nonempty travel month",
+    "travel detail"
+  ],
+  "warning": "These are sanitized historical business payloads, not original byte-for-byte responses. Synthetic coordinates are not evidence of real GPS semantics."
+}

@@ -9,6 +9,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 
+from custom_components.ninebot import adapters
+from custom_components.ninebot.capabilities import (
+    CapabilityState,
+    ControlCapability,
+    VehicleCapabilities,
+)
 from custom_components.ninebot.coordinator import NinebotCoordinator
 from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
 
@@ -41,7 +47,35 @@ async def coordinator(tmp_path, request):
     client.async_get_battery.return_value = {"battery_list": []}
     client.async_get_travel.return_value = {"total_mileages": 0, "ec": 0, "list": None}
     co = NinebotCoordinator(hass, entry, client)
-    with patch.object(entry, "async_start_reauth"):
+    normalize = adapters.status
+
+    def mock_verified_status(raw):
+        # Test-only reviewed capability: never inferred from a production mask.
+        value = normalize(raw)
+        if getattr(request, "param", False) is True:
+            return replace(
+                value,
+                capabilities=VehicleCapabilities(
+                    (
+                        ControlCapability(
+                            "bell",
+                            CapabilityState.ALLOWED,
+                            CapabilityState.ALLOWED,
+                            True,
+                            "mock-contract",
+                        ),
+                    )
+                ),
+            )
+        return value
+
+    with (
+        patch.object(entry, "async_start_reauth"),
+        patch(
+            "custom_components.ninebot.coordinator.adapters.status",
+            side_effect=mock_verified_status,
+        ),
+    ):
         yield co
     await co.async_close()
     await hass.async_stop(force=True)
@@ -166,6 +200,99 @@ async def test_controls_disabled_without_explicit_option(coordinator):
     with pytest.raises(HomeAssistantError):
         await co.async_control("synthetic-one", "bell")
     co.client.async_control.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "coordinator", [{"enable_controls": True, "control_vehicles": ["synthetic-one"]}], indirect=True
+)
+async def test_unknown_permissions_are_denied_even_with_user_consent(coordinator):
+    co = coordinator
+    co.client.async_get_status.return_value = {
+        "permissions": None,
+        "support": True,
+        "loc": {"lock": 1},
+        "pwr": 1,
+    }
+    await co._async_update_data()
+    for action in ("bell", "buck", "engine/start", "engine/stop", "arbitrary"):
+        assert not co.controls_enabled("synthetic-one", action)
+        with pytest.raises(HomeAssistantError):
+            await co.async_control("synthetic-one", action)
+    co.client.async_control.assert_not_awaited()
+
+
+@pytest.mark.parametrize("coordinator", [True], indirect=True)
+async def test_gate_is_action_specific_and_rechecks_permission_after_queue_wait(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    assert co.controls_enabled("synthetic-one", "bell")
+    assert not co.controls_enabled("synthetic-one", "buck")
+    assert not co.controls_enabled("synthetic-two", "bell")
+    await co._mutex.acquire()
+    task = asyncio.create_task(co.async_control("synthetic-one", "bell"))
+    await asyncio.sleep(0)
+    snapshot = co.data["synthetic-one"]
+    co.data["synthetic-one"] = replace(
+        snapshot, status=replace(snapshot.status, capabilities=VehicleCapabilities())
+    )
+    co._mutex.release()
+    with pytest.raises(HomeAssistantError):
+        await task
+    co.client.async_control.assert_not_awaited()
+    co.data["synthetic-one"] = snapshot
+    later = datetime.now(UTC) + timedelta(days=1)
+    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=later):
+        assert not co.controls_enabled("synthetic-one", "bell")
+    co.data["synthetic-one"] = replace(
+        snapshot, status_freshness=replace(snapshot.status_freshness, error=ErrorKind.SERVICE)
+    )
+    assert not co.controls_enabled("synthetic-one", "bell")
+
+
+async def test_raw_capture_unknown_fields_policy_failure_and_unload(coordinator):
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    co.client.async_get_status.return_value = {"dump_energy": 80, "future_value": {"x": 10}}
+    await co._async_update_data()
+    record = co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC))
+    assert record.payload()["future_value"] == {"x": 10}
+    co.client.async_get_status.return_value = {"dump_energy": 75, "too_deep": [[None]] * 25001}
+    await co.async_refresh_vehicle("synthetic-one")
+    assert co.data["synthetic-one"].status.battery == 75
+    assert co.raw.rejected == 1
+    assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is record
+    await co.async_close()
+    assert co.raw.retained_bytes == 0
+
+
+async def test_cancelled_raw_preparation_cannot_repopulate_unloaded_cache(coordinator):
+    import threading
+
+    from custom_components.ninebot.raw import build_record
+
+    co = coordinator
+    await co._async_update_data()
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+
+    def slow_prepare(*args):
+        started.set()
+        release.wait(2)
+        record = build_record(*args)
+        finished.set()
+        return record
+
+    with patch("custom_components.ninebot.coordinator.build_record", side_effect=slow_prepare):
+        task = asyncio.create_task(co.async_refresh_vehicle("synthetic-one"))
+        try:
+            assert await asyncio.to_thread(started.wait, 2)
+            await co.async_close()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        finally:
+            release.set()
+            assert await asyncio.to_thread(finished.wait, 2)
+    assert co.raw.retained_bytes == 0
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)

@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "选项",
-        "description": "估算需手动设置标称电压和容量。坐标系尚未核验。实验控制未经实机验证，请确认每辆车的支持能力和权限后，启用并选择车辆。",
+        "description": "估算需要明确的标称电压和容量；坐标系尚未验证。控制需要启用和车辆白名单，并由集成验证上游权限与动作语义；当前未知权限默认拒绝。",
         "data": {
           "poll_interval": "状态轮询间隔（秒）",
           "enable_estimation": "启用SOC能量估算",
@@ -167,7 +167,7 @@
     },
     "lock": {
       "lock": {
-        "name": "锁状态 / 实验控制"
+        "name": "锁定状态"
       }
     },
     "image": {
@@ -194,7 +194,7 @@
   },
   "exceptions": {
     "controls_disabled": {
-      "message": "实验控制未启用或车辆不可用。"
+      "message": "控制被拒绝：需要启用选项、车辆白名单、有效的新鲜数据，以及已验证的上游支持、权限和动作语义。未知权限默认拒绝。"
     },
     "control_uncertain": {
       "message": "控制未确认；可能已执行，请检查车辆后再操作。"
@@ -210,6 +210,9 @@
     },
     "invalid_auth": {
       "message": "会话已失效，请通过设备与服务重新认证。"
+    },
+    "engine_lock_unverified": {
+      "message": "engine-start/stop 与 lock/unlock 的等价关系尚未验证。此实体仅保留观测到的锁定状态，不执行发动机控制。"
     }
   },
   "issues": {

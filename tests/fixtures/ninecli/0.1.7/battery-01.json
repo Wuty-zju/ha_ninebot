@@ -1,0 +1,21 @@
+{
+  "battery_count": "0",
+  "battery_find_my_support": false,
+  "battery_list": [
+    {
+      "bat_temp": "26",
+      "bms_cycle": "100",
+      "bms_volt": "75.3",
+      "electricity": "93",
+      "score": 0
+    }
+  ],
+  "battery_main": {
+    "electricity": "100"
+  },
+  "battery_type": "2",
+  "charging": 0,
+  "electricity": 93,
+  "have_bms_cycle_support": false,
+  "remain_charge_time": "[redacted]"
+}

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0b1 — 2026-10-04
+
+- Add seven replayable sanitized historical business payloads with explicit
+  provenance and synthetic location/identity substitutions. Nonempty trips and
+  trip-detail fixtures remain unverified.
+- Preserve decrypted business responses in a private memory-only RawStore with
+  an 8 MiB retained-data budget, 128-record cap, eight-detail LRU/15-minute TTL,
+  structural limits and unload cleanup. Secrets/personal profile fields are removed.
+- Diagnostics include approved schema paths/types/counts, runtime versions and
+  control gate outcomes; arbitrary field names, values and coordinates are excluded.
+- Controls now require opt-in, allowlist, fresh successful observations and proven
+  support/permission/semantics. Current opaque/null permission data fails closed.
+- Preserve the existing Lock identity and observed state; lock/unlock requests
+  return a translated error rather than assuming engine start/stop equivalence.
+
+Behavior change: current production permission contracts are unverified, so bell,
+seat-trunk and engine controls are unavailable even when options are enabled.
+Read-only refresh is unaffected. No production HA changes or real controls were
+performed. Dependency remains ninecli==0.1.7 and minimum HA remains 2026.1.0.
+
 ## 2.0.0b0 — 2026-10-03
 
 Beta release: replaces the old OpenClaw query backend with pinned ninecli 0.1.7
