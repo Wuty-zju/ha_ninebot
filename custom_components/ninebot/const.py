@@ -12,6 +12,7 @@ PLATFORMS = [
     Platform.LOCK,
     Platform.BUTTON,
     Platform.NUMBER,
+    Platform.EVENT,
 ]
 CONF_BUSINESS_UID = "business_uid"
 CONF_SESSION_KEY = "session_key"

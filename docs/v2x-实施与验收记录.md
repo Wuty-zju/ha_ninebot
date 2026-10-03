@@ -158,3 +158,34 @@ query能力当作完整历史数据库或云端分页实现。
 该模块分支覆盖100%，Ruff/format和mypy通过。没有新增真实查询、生产HA写入或
 控制。待完成：版本化Store、durable-before-emit、enabled订阅与卸载取消、
 EventEntity/中英翻译/icons、月边界窗口、HA集成测试及完整发布校验。
+
+### Phase 5 EventEntity / Store 开发检查点（未发布）
+
+已接入默认禁用的 `event.<vehicle>_ride` 与按entry的RideEventPipeline，
+但版本尚未递增、未做阶段完整CI/发布验收，仍不当作Phase5正式交付。
+
+enabled entity在added时订阅、remove时注销；无订阅不读写事件Store、不新增
+详情或云端请求。每次启动/重新订阅重建baseline，RestoreEvent仅恢复可见旧状态，
+不会回放历史。cursor比较现有成功travel snapshot及已取得的上月fallback Ride，
+保留跨月seen集合；不宣称收到所有物理骑行。当前没有为事件另扫上一月，因此
+上月late upload只有出现在已有fallback/已取得数据流时可被发现；云端分页及
+上传延迟仍未知，事件是best-effort cloud end report，不是完整骑行账本。
+
+Store以entry key隔离，vehicle/ride ID仅存hash，每车128个seen、最多128车、
+文件读取上限3MiB。通过公共HA Store原子保存，但不能只依赖async_save返回：
+Core实现对部分WriteError仅日志记录，不抛异常。pipeline在executor预读真实
+envelope（拒绝未知版本/损坏，不触发Core自动rename/migration），保存后再次
+核对磁盘data与候选cursor相同，才更新内存并发EventEntity事件。失败暂停事件，
+保留旧文件与其他车辆状态/查询，产生需要用户处理的存储Repair。
+
+写盘后/发事件前崩溃或取消仍可能漏一次事件；不是exactly-once。超窗或大量
+同结束时刻batch会保守抑制；不承诺追补。属性只有稳定ID、月、起止、距离/时长、
+服务端max/总平均、source和late，没有raw、GPS、samples。诊断只含健康与计数。
+新event名称/状态属性/Repair/icon均中英翻译，runtime资源在integration目录。
+
+20项cursor单元测试与8项pipeline测试通过；与既有setup测试合计48项通过。
+测试在一次性HA config目录中使用真实原子writer及磁盘确认，验证静默write
+failure、取消、首次enable的HA自动reload debounce、重启不重发、缺省不启用
+与公开state不含大对象。cursor模块覆盖100%，event/store受影响覆盖约92%，
+Ruff/format、mypy通过；阶段完整pytest/最低与stable CI、Hassfest/HACS待执行。
+没有生产HA写入、部署、重启、真实控制或新增云查询。

@@ -16,6 +16,11 @@
       "last_ride_average_speed": {
         "default": "mdi:speedometer-medium"
       }
+    },
+    "event": {
+      "ride": {
+        "default": "mdi:motorbike"
+      }
     }
   },
   "services": {

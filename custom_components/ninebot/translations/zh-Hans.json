@@ -205,6 +205,19 @@
       "battery_max_range": {
         "name": "旧满电续航参数（不用于能量模型）"
       }
+    },
+    "event": {
+      "ride": {
+        "name": "骑行事件",
+        "state_attributes": {
+          "event_type": {
+            "name": "事件类型",
+            "state": {
+              "completed": "骑行结束"
+            }
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -268,6 +281,10 @@
     "model_storage_invalid": {
       "title": "估算存储版本无法识别",
       "description": "估算存储格式或版本无法识别，集成已停止加载且未覆盖该数据。请保留备份，使用与存储匹配的集成版本，或通过完整升级前备份回滚；不要手动修改模型版本字段。"
+    },
+    "ride_event_storage_invalid": {
+      "title": "骑行事件存储不可用",
+      "description": "事件去重存储不可读取、不兼容或无法安全写入，已停止事件发送。请保留配置与存储备份，检查存储权限和集成版本；不要编辑或删除存储来尝试修复。其他车辆状态与查询仍可使用。"
     }
   },
   "services": {
