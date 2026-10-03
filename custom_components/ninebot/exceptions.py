@@ -1,19 +1,30 @@
-"""Custom exceptions for the Ninebot integration."""
+"""Sanitized errors: upstream text can contain tokens, account or location."""
 
-from __future__ import annotations
+from enum import StrEnum
+
+
+class ErrorKind(StrEnum):
+    """Stable categories for diagnostics and translated HA errors."""
+
+    AUTH = "auth"
+    CONNECTION = "connection"
+    SERVICE = "service"
+    PROTOCOL = "protocol"
+    PLATFORM = "platform"
+    BUSY = "busy"
+    CLOSED = "closed"
 
 
 class NinebotError(Exception):
-    """Base exception for Ninebot errors."""
+    """Never carry an upstream response or command line in the exception."""
+
+    def __init__(self, kind: ErrorKind) -> None:
+        self.kind = kind
+        super().__init__(kind.value)
 
 
 class NinebotAuthError(NinebotError):
-    """Raised when authentication fails."""
+    """Only explicit authentication evidence warrants reauthentication."""
 
-
-class NinebotApiError(NinebotError):
-    """Raised when the upstream API returns an unexpected response."""
-
-
-class NinebotConnectionError(NinebotError):
-    """Raised when a network call fails."""
+    def __init__(self) -> None:
+        super().__init__(ErrorKind.AUTH)

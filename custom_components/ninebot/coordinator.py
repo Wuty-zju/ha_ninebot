@@ -1,498 +1,301 @@
-"""DataUpdateCoordinator for Ninebot integration."""
+"""Account polling with per-vehicle, per-group freshness and partial failure."""
 
-from __future__ import annotations
-
-import copy
-from datetime import timedelta
+import asyncio
 import logging
-from typing import Any
+from dataclasses import replace
+from datetime import datetime, timedelta
+from typing import Any, Literal
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .api import NinebotApiClient
+from . import adapters
+from .client import NinecliClient
 from .const import (
-    CONF_CHARGE_POWER_WINDOW_SECONDS,
-    CHARGING_ON,
-    COORDINATOR_TICK_SECONDS,
-    CONF_CHARGING_SCAN_INTERVAL,
-    CONF_DEBUG,
-    CONF_DEFAULT_SCAN_INTERVAL,
-    CONF_DISCHARGE_POWER_WINDOW_SECONDS,
-    CONF_DEVICE_INFO_FAILURE_TOLERANCE,
-    CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-    CONF_MAX_DEVICE_INFO_CONCURRENCY,
-    CONF_SCAN_INTERVAL,
-    CONF_TOKEN_REFRESH_INTERVAL_HOURS,
-    CONF_UNLOCKED_SCAN_INTERVAL,
-    DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
-    DEFAULT_CHARGING_SCAN_INTERVAL,
-    DEFAULT_DEBUG,
-    DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
-    DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
-    DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-    DEFAULT_MAX_DEVICE_INFO_CONCURRENCY,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
-    DEFAULT_UNLOCKED_SCAN_INTERVAL,
+    CONF_CONTROL_VEHICLES,
+    CONF_CONTROLS,
+    CONF_ESTIMATION,
+    CONF_POLL_INTERVAL,
+    DEFAULT_POLL_INTERVAL,
+    DETAIL_INTERVAL,
     DOMAIN,
-    status_to_locked,
+    VEHICLE_INTERVAL,
 )
-from .exceptions import NinebotApiError, NinebotAuthError, NinebotConnectionError
-from .storage import NinebotRuntimeStorage
+from .exceptions import NinebotAuthError, NinebotError
+from .models import Freshness, VehicleSnapshot
+from .storage import ModelStorage
 
-_LOGGER = logging.getLogger(__name__)
-
-
-def _first_present(*values: Any) -> Any:
-    for value in values:
-        if value is not None:
-            return value
-    return None
+LOGGER = logging.getLogger(__name__)
+type Group = Literal["status", "battery", "travel"]
 
 
-def _normalize_int(value: Any) -> int | None:
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str):
-        text = value.strip()
-        if not text:
-            return None
-        try:
-            return int(text)
-        except ValueError:
-            return None
-    return None
-
-
-def _normalize_float(value: Any) -> float | None:
-    if isinstance(value, bool):
-        return float(int(value))
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        text = value.strip()
-        if not text:
-            return None
-        try:
-            return float(text)
-        except ValueError:
-            return None
-    return None
-
-
-def _clamp_battery_percent(value: float) -> float:
-    return max(0.0, min(100.0, value))
-
-
-class NinebotDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
-    """Coordinator with account-level cache and per-vehicle polling scheduler."""
-
-    config_entry: ConfigEntry
+class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
+    """All update paths share a mutex; no one-car failure discards other cars."""
 
     def __init__(
         self,
         hass: HomeAssistant,
+        entry: ConfigEntry,
+        client: NinecliClient,
         *,
-        config_entry: ConfigEntry,
-        api_client: NinebotApiClient,
+        models: ModelStorage | None = None,
     ) -> None:
-        self.config_entry = config_entry
-        self.api_client = api_client
+        self.client = client
+        self.models = models
+        self.interval = max(
+            30, min(3600, int(entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)))
+        )
         super().__init__(
             hass,
-            _LOGGER,
-            name=f"{DOMAIN}_{config_entry.entry_id}",
-            update_interval=timedelta(seconds=COORDINATOR_TICK_SECONDS),
+            LOGGER,
+            config_entry=entry,
+            name=DOMAIN,
+            update_interval=timedelta(seconds=self.interval),
+            always_update=True,
         )
-        self.runtime_storage = NinebotRuntimeStorage(hass, config_entry.entry_id)
-        self._raw_polling_payloads: dict[str, dict[str, Any]] = {}
-        self._raw_devices_payload: list[dict[str, Any]] = []
-        self._vehicle_next_poll_at: dict[str, float] = {}
-        self._vehicle_intervals: dict[str, int] = {}
+        self.data = {}
+        self._mutex = asyncio.Lock()
+        self._list_freshness = Freshness()
+        self._next_attempt: dict[tuple[str, str], float] = {}
+        self._failures: dict[tuple[str, str], int] = {}
+        self._stopping = False
+        self._authenticated = False
+        self._control_pending = 0
+        self._active: set[asyncio.Task[Any]] = set()
+        self._forced: dict[str, asyncio.Task[None]] = {}
 
-    @property
-    def debug_enabled(self) -> bool:
-        return bool(self.config_entry.options.get(CONF_DEBUG, self.config_entry.data.get(CONF_DEBUG, DEFAULT_DEBUG)))
+    def fresh(self, sn: str, group: str) -> bool:
+        snapshot = self.data.get(sn)
+        if snapshot is None or not snapshot.present or self._stopping or not self._authenticated:
+            return False
+        now = dt_util.utcnow()
+        if group == "profile":
+            return self._list_freshness.valid(now, 3 * VEHICLE_INTERVAL)
+        if group == "status":
+            return snapshot.status_freshness.valid(now, max(3 * self.interval, 180))
+        if group == "battery":
+            return snapshot.battery_freshness.valid(now, 3 * DETAIL_INTERVAL)
+        if group == "travel":
+            return (
+                snapshot.travel is not None
+                and snapshot.travel.month == adapters.month_at(now)
+                and snapshot.travel_freshness.valid(now, 3 * DETAIL_INTERVAL)
+            )
+        return False
 
-    def get_raw_polling_payload(self, sn: str) -> dict[str, Any] | None:
-        payload = self._raw_polling_payloads.get(sn)
-        if payload is None:
-            return None
-        return copy.deepcopy(payload)
+    def _due(self, sn: str, group: str, stamp: float) -> bool:
+        return stamp >= self._next_attempt.get((sn, group), 0)
 
-    def _int_from_entry(self, key: str, *, default: int, minimum: int = 1) -> int:
-        raw = self.config_entry.options.get(key, self.config_entry.data.get(key, default))
-        if isinstance(raw, bool):
-            return max(minimum, default)
-        if isinstance(raw, (int, float)):
-            return max(minimum, int(raw))
-        if isinstance(raw, str):
-            text = raw.strip()
-            if not text:
-                return max(minimum, default)
-            try:
-                return max(minimum, int(text))
-            except ValueError:
-                return max(minimum, default)
-        return max(minimum, default)
+    def _attempt_finished(
+        self, sn: str, group: str, stamp: float, interval: int, success: bool
+    ) -> None:
+        key = (sn, group)
+        failures = 0 if success else self._failures.get(key, 0) + 1
+        self._failures[key] = failures
+        # Keep retries bounded and never stack catch-up cycles.
+        delay = interval if success else min(interval, 30 * 2 ** min(failures - 1, 6))
+        self._next_attempt[key] = stamp + delay
 
-    @property
-    def default_scan_interval(self) -> int:
-        return self._int_from_entry(
-            CONF_DEFAULT_SCAN_INTERVAL,
-            default=int(self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
-            minimum=1,
-        )
-
-    @property
-    def unlocked_scan_interval(self) -> int:
-        return self._int_from_entry(CONF_UNLOCKED_SCAN_INTERVAL, default=DEFAULT_UNLOCKED_SCAN_INTERVAL, minimum=1)
-
-    @property
-    def charging_scan_interval(self) -> int:
-        return self._int_from_entry(CONF_CHARGING_SCAN_INTERVAL, default=DEFAULT_CHARGING_SCAN_INTERVAL, minimum=1)
-
-    @property
-    def discharge_power_window_seconds(self) -> int:
-        return self._int_from_entry(
-            CONF_DISCHARGE_POWER_WINDOW_SECONDS,
-            default=DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
-            minimum=1,
-        )
-
-    @property
-    def charge_power_window_seconds(self) -> int:
-        return self._int_from_entry(
-            CONF_CHARGE_POWER_WINDOW_SECONDS,
-            default=DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
-            minimum=1,
-        )
-
-    @property
-    def token_refresh_interval_hours(self) -> int:
-        return self._int_from_entry(CONF_TOKEN_REFRESH_INTERVAL_HOURS, default=DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS, minimum=1)
-
-    @property
-    def device_list_refresh_interval_hours(self) -> int:
-        return self._int_from_entry(
-            CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-            default=DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-            minimum=1,
-        )
-
-    @property
-    def max_device_info_concurrency(self) -> int:
-        return self._int_from_entry(CONF_MAX_DEVICE_INFO_CONCURRENCY, default=DEFAULT_MAX_DEVICE_INFO_CONCURRENCY, minimum=1)
-
-    @property
-    def device_info_failure_tolerance(self) -> int:
-        return self._int_from_entry(
-            CONF_DEVICE_INFO_FAILURE_TOLERANCE,
-            default=DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
-            minimum=0,
-        )
-
-    def _interval_mode_for_state(self, state: dict[str, Any]) -> tuple[str, int]:
-        lock_state = status_to_locked(_normalize_int(state.get("status")))
-        if lock_state is False:
-            return "unlocked", self.unlocked_scan_interval
-        if _normalize_int(state.get("chargingState")) == CHARGING_ON:
-            return "charging", self.charging_scan_interval
-        return "default", self.default_scan_interval
-
-    @staticmethod
-    def _normalize_state(raw_state: dict[str, Any]) -> dict[str, Any]:
-        location = raw_state.get("locationInfo")
-        if not isinstance(location, dict):
-            location = {}
-        return {
-            "battery": _normalize_int(_first_present(raw_state.get("battery"), raw_state.get("dumpEnergy"))),
-            # Keep raw lock status semantics for all entity layers: 0=locked, 1=unlocked.
-            "status": _normalize_int(_first_present(raw_state.get("status"), raw_state.get("powerStatus"))),
-            "chargingState": _normalize_int(raw_state.get("chargingState")),
-            "pwr": _normalize_int(raw_state.get("pwr")),
-            "gsm": _normalize_int(raw_state.get("gsm")),
-            "estimateMileage": _first_present(raw_state.get("estimateMileage"), raw_state.get("mileage")),
-            "remainChargeTime": raw_state.get("remainChargeTime"),
-            "gsmTime": _normalize_int(raw_state.get("gsmTime")),
-            "locationInfo": location,
-        }
-
-    @staticmethod
-    def _calculate_battery_percent(*, remaining_range_km: float | None, max_range_km: float | None) -> float | None:
-        """Derive battery percentage from remaining/max range with safe guards.
-
-        Formula: battery_calculated = remaining_range_km / max_range_km * 100.
-        """
-        if not isinstance(remaining_range_km, (int, float)):
-            return None
-        if not isinstance(max_range_km, (int, float)) or float(max_range_km) <= 0:
-            return None
-        computed = float(remaining_range_km) / float(max_range_km) * 100.0
-        return _clamp_battery_percent(computed)
-
-    @staticmethod
-    def _build_device_meta(device: dict[str, Any], raw_state: dict[str, Any], sn: str) -> dict[str, Any]:
-        return {
-            "sn": sn,
-            "device_name": str(_first_present(device.get("deviceName"), device.get("name"), raw_state.get("deviceName"), sn)),
-            "img": _first_present(device.get("img"), raw_state.get("img")),
-            "model": device.get("model") or device.get("productName") or "",
-        }
-
-    @staticmethod
-    def _should_force_refresh_devices_from_error(err: Exception) -> bool:
-        text = str(err).lower()
-        return any(keyword in text for keyword in ("device", "sn", "not found", "mismatch", "account"))
-
-    async def _async_setup(self) -> None:
-        """Prime auth/device caches on startup."""
-        await self.api_client.async_load_cached_auth()
-        await self.api_client.async_load_cached_devices()
-        await self.api_client.async_ensure_token(refresh_interval_hours=self.token_refresh_interval_hours)
+    async def _list(self, now: datetime) -> None:
+        stamp = now.timestamp()
+        if not self._due("", "profile", stamp):
+            return
         try:
-            devices = await self.api_client.async_get_devices(
-                force_refresh=False,
-                refresh_interval_hours=self.device_list_refresh_interval_hours,
-                token_refresh_interval_hours=self.token_refresh_interval_hours,
+            found = adapters.profiles(await self.client.async_list_vehicles())
+        except NinebotAuthError:
+            raise
+        except NinebotError as err:
+            self._list_freshness = replace(self._list_freshness, attempted_at=now, error=err.kind)
+            self._attempt_finished("", "profile", stamp, VEHICLE_INTERVAL, False)
+            if self._list_freshness.succeeded_at is None:
+                raise UpdateFailed(err.kind.value) from err
+            return
+        sns = {profile.sn for profile in found}
+        self.data = {sn: replace(snapshot, present=sn in sns) for sn, snapshot in self.data.items()}
+        for profile in found:
+            old = self.data.get(profile.sn)
+            self.data[profile.sn] = (
+                replace(old, profile=profile, present=True) if old else VehicleSnapshot(profile)
             )
-            sns = [str(device.get("sn") or "").strip() for device in devices if str(device.get("sn") or "").strip()]
-        except Exception:  # noqa: BLE001 - continue with persisted cache
-            sns = []
+        self._list_freshness = Freshness(now, now)
+        self._authenticated = True
+        self._attempt_finished("", "profile", stamp, VEHICLE_INTERVAL, True)
 
-        await self.runtime_storage.async_initialize(sns)
-
-    async def _async_update_data(self) -> dict[str, dict[str, Any]]:
-        """Run scheduler tick: refresh due vehicles only."""
-        now_dt = dt_util.utcnow()
-        now_ts = float(now_dt.timestamp())
-
+    async def _group(self, sn: str, group: Group, now: datetime, *, force: bool = False) -> None:
+        stamp = now.timestamp()
+        if not force and not self._due(sn, group, stamp):
+            return
+        snapshot = self.data[sn]
+        success = False
+        freshness = Freshness(now, now)
         try:
-            await self.api_client.async_ensure_token(refresh_interval_hours=self.token_refresh_interval_hours)
-            devices = await self.api_client.async_get_devices(
-                force_refresh=False,
-                refresh_interval_hours=self.device_list_refresh_interval_hours,
-                token_refresh_interval_hours=self.token_refresh_interval_hours,
-            )
-        except NinebotAuthError as err:
-            raise ConfigEntryAuthFailed(f"Ninebot authentication failed: {err}") from err
-        except NinebotConnectionError as err:
-            raise UpdateFailed(f"Unable to connect to Ninebot cloud: {err}") from err
-        except NinebotApiError as err:
-            raise UpdateFailed(f"Ninebot API error: {err}") from err
-
-        self._raw_devices_payload = copy.deepcopy(devices) if self.debug_enabled else []
-
-        device_by_sn: dict[str, dict[str, Any]] = {}
-        for device in devices:
-            sn = str(device.get("sn") or "").strip()
-            if sn:
-                device_by_sn[sn] = device
-
-        sns = list(device_by_sn.keys())
-        await self.runtime_storage.async_initialize(sns)
-
-        existing_data = self.data if isinstance(self.data, dict) else {}
-        merged: dict[str, dict[str, Any]] = {}
-        for sn in sns:
-            device = device_by_sn[sn]
-            current_item = existing_data.get(sn)
-            previous_state: dict[str, Any] | None = None
-            if isinstance(current_item, dict):
-                state = current_item.get("state")
-                if isinstance(state, dict):
-                    previous_state = dict(state)
-            if previous_state is None:
-                previous_state = self.runtime_storage.get_cached_vehicle_state(sn)
-            if previous_state is None:
-                previous_state = {}
-
-            mode, interval = self._interval_mode_for_state(previous_state)
-            self._vehicle_intervals[sn] = interval
-            self._vehicle_next_poll_at.setdefault(sn, 0.0)
-
-            metadata = self.runtime_storage.get_vehicle_metadata(sn)
-            previous_state.setdefault("polling_mode", mode)
-            previous_state.setdefault("current_scan_interval", interval)
-            previous_state.setdefault("last_success_at", metadata.get("last_success_at"))
-            previous_state.setdefault("last_attempt_at", metadata.get("last_attempt_at"))
-            previous_state.setdefault("failure_count", metadata.get("failure_count"))
-            previous_state.setdefault("data_source", "cached")
-
-            merged[sn] = {
-                "device": self._build_device_meta(device, previous_state, sn),
-                "state": previous_state,
-            }
-
-        for sn in list(self._vehicle_next_poll_at):
-            if sn not in device_by_sn:
-                self._vehicle_next_poll_at.pop(sn, None)
-                self._vehicle_intervals.pop(sn, None)
-
-        for sn in list(self._raw_polling_payloads):
-            if sn not in device_by_sn:
-                self._raw_polling_payloads.pop(sn, None)
-
-        due_sns = [sn for sn in sns if now_ts >= float(self._vehicle_next_poll_at.get(sn, 0.0))]
-        results: dict[str, dict[str, Any]] = {}
-        errors: dict[str, Exception] = {}
-
-        if due_sns:
-            results, errors = await self.api_client.async_get_multiple_device_dynamic_info(
-                due_sns,
-                max_concurrency=self.max_device_info_concurrency,
-                token_refresh_interval_hours=self.token_refresh_interval_hours,
-            )
-
-        if errors and any(self._should_force_refresh_devices_from_error(err) for err in errors.values()):
-            try:
-                await self.api_client.async_get_devices(
-                    force_refresh=True,
-                    refresh_interval_hours=self.device_list_refresh_interval_hours,
-                    token_refresh_interval_hours=self.token_refresh_interval_hours,
-                )
-            except Exception:  # noqa: BLE001 - keep current cycle data
-                pass
-
-        for sn in due_sns:
-            device = device_by_sn.get(sn)
-            if not isinstance(device, dict):
-                continue
-
-            if sn in results:
-                raw_state = results[sn]
-                state = self._normalize_state(raw_state)
-
-                # All power/energy estimation is intentionally bound to the
-                # derived battery percentage from remaining range + max range,
-                # instead of the cloud-reported raw battery percentage.
-                remaining_range_km = _normalize_float(state.get("estimateMileage"))
-                max_range_km = await self.runtime_storage.async_resolve_battery_max_range(
-                    sn,
-                    remaining_range_km=remaining_range_km,
-                    raw_battery_percent=state["battery"],
-                    persist=False,
-                )
-                state["battery_max_range"] = round(max_range_km, 3)
-                battery_calculated = self._calculate_battery_percent(
-                    remaining_range_km=remaining_range_km,
-                    max_range_km=max_range_km,
-                )
-                state["battery_calculated"] = round(battery_calculated, 3) if battery_calculated is not None else None
-
-                state.update(
-                    await self.runtime_storage.async_build_energy_snapshot(
-                        sn,
-                        battery_percent=state["battery_calculated"],
-                        sample_time=now_dt,
-                        discharge_window_seconds=self.discharge_power_window_seconds,
-                        charge_window_seconds=self.charge_power_window_seconds,
-                        persist=False,
+            if group == "status":
+                status = adapters.status(await self.client.async_get_status(sn))
+                updated = replace(snapshot, status=status, status_freshness=freshness)
+                if (
+                    self.models
+                    and self.config_entry
+                    and self.config_entry.options.get(CONF_ESTIMATION)
+                ):
+                    batteries = ",".join(
+                        b.key if b.identified else "unidentified"
+                        for b in snapshot.battery.batteries
                     )
-                )
-                voltage, capacity = self.runtime_storage.get_battery_params(sn)
-                state["main_battery_voltage"] = round(voltage, 3)
-                state["battery_capacity"] = round(capacity, 3)
+                    self.models.model(sn).sample(status.battery, now, f"vehicle_soc:{batteries}")
+                    self.models.schedule_save()
+            elif group == "battery":
+                battery = adapters.batteries(await self.client.async_get_battery(sn))
+                updated = replace(snapshot, battery=battery, battery_freshness=freshness)
+            else:
+                month = adapters.month_at(now)
+                travel = adapters.travel(await self.client.async_get_travel(sn, month), month)
+                if travel.last_ride is None:
+                    previous = adapters.previous_month(month)
+                    try:
+                        fallback = adapters.travel(
+                            await self.client.async_get_travel(sn, previous), previous
+                        )
+                        travel = replace(travel, last_ride=fallback.last_ride)
+                    except NinebotAuthError:
+                        raise
+                    except NinebotError:
+                        # Optional last-ride fallback cannot invalidate current totals.
+                        pass
+                updated = replace(snapshot, travel=travel, travel_freshness=freshness)
+            self.data[sn] = updated
+            success = True
+        except NinebotAuthError:
+            raise
+        except NinebotError as err:
+            if group == "status":
+                failed = replace(snapshot.status_freshness, attempted_at=now, error=err.kind)
+                self.data[sn] = replace(snapshot, status_freshness=failed)
+            elif group == "battery":
+                failed = replace(snapshot.battery_freshness, attempted_at=now, error=err.kind)
+                self.data[sn] = replace(snapshot, battery_freshness=failed)
+            else:
+                failed = replace(snapshot.travel_freshness, attempted_at=now, error=err.kind)
+                self.data[sn] = replace(snapshot, travel_freshness=failed)
+        self._attempt_finished(
+            sn, group, stamp, self.interval if group == "status" else DETAIL_INTERVAL, success
+        )
 
-                mode, interval = self._interval_mode_for_state(state)
-                self._vehicle_intervals[sn] = interval
-                self._vehicle_next_poll_at[sn] = now_ts + interval
+    async def _async_update_data(self) -> dict[str, VehicleSnapshot]:
+        task = asyncio.current_task()
+        if task:
+            self._active.add(task)
+        try:
+            async with self._mutex:
+                if self._stopping:
+                    return self.data
+                now = dt_util.utcnow()
+                if self.models:
+                    for model in self.models.models.values():
+                        model.rollover(now)
+                await self._list(now)
+                sns = [sn for sn, value in self.data.items() if value.present]
+                # Status has priority, but every cycle also gives due details a turn.
+                for sn in sns:
+                    await self._group(sn, "status", now)
+                for sn in sns:
+                    await self._group(sn, "battery", now)
+                    await self._group(sn, "travel", now)
+                return dict(self.data)
+        except NinebotAuthError as err:
+            self._authenticated = False
+            raise ConfigEntryAuthFailed("auth") from err
+        finally:
+            if task:
+                self._active.discard(task)
 
-                state["polling_mode"] = mode
-                state["current_scan_interval"] = interval
-                state["data_source"] = "live"
+    async def async_refresh_vehicle(self, sn: str) -> None:
+        """Coalesce simultaneous manual requests, force exactly this status."""
+        if self._stopping:
+            return
+        if existing := self._forced.get(sn):
+            await asyncio.shield(existing)
+            return
 
-                await self.runtime_storage.async_record_vehicle_success(
-                    sn,
-                    raw_state=raw_state,
-                    parsed_state=state,
-                    now_ts=now_ts,
-                    current_interval=interval,
-                    save=True,
-                )
-                metadata = self.runtime_storage.get_vehicle_metadata(sn)
-                state["last_success_at"] = metadata.get("last_success_at")
-                state["last_attempt_at"] = metadata.get("last_attempt_at")
-                state["failure_count"] = metadata.get("failure_count")
+        async def refresh() -> None:
+            async with self._mutex:
+                if sn not in self.data or not self.data[sn].present:
+                    return
+                try:
+                    await self._group(sn, "status", dt_util.utcnow(), force=True)
+                except NinebotAuthError as err:
+                    self._authenticated = False
+                    raise ConfigEntryAuthFailed("auth") from err
+                self.async_set_updated_data(dict(self.data))
 
-                merged[sn] = {
-                    "device": self._build_device_meta(device, raw_state, sn),
-                    "state": state,
-                }
+        task = asyncio.create_task(refresh())
+        self._forced[sn] = task
+        try:
+            await task
+        finally:
+            self._forced.pop(sn, None)
 
-                if self.debug_enabled:
-                    self._raw_polling_payloads[sn] = {
-                        "fetched_at": now_dt.isoformat(),
-                        "device_list_item": copy.deepcopy(device),
-                        "dynamic_info": copy.deepcopy(raw_state),
-                        "devices_list_raw": self._raw_devices_payload,
-                    }
-                continue
+    def controls_enabled(self, sn: str) -> bool:
+        """Unknown upstream capability needs an explicit per-vehicle opt-in."""
+        return bool(
+            self.config_entry
+            and self.config_entry.options.get(CONF_CONTROLS)
+            and sn in self.config_entry.options.get(CONF_CONTROL_VEHICLES, [])
+        )
 
-            err = errors.get(sn)
-            cached_state = merged.get(sn, {}).get("state")
-            if not isinstance(cached_state, dict):
-                cached_state = self.runtime_storage.get_cached_vehicle_state(sn) or {}
+    async def async_control(self, sn: str, action: str) -> None:
+        if self._control_pending >= 4:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
+        self._control_pending += 1
+        task = asyncio.current_task()
+        if task:
+            self._active.add(task)
+        try:
+            await self._control(sn, action)
+        finally:
+            self._control_pending -= 1
+            if task:
+                self._active.discard(task)
 
-            mode, interval = self._interval_mode_for_state(cached_state)
-            self._vehicle_intervals[sn] = interval
-            self._vehicle_next_poll_at[sn] = now_ts + interval
-            failure_count = await self.runtime_storage.async_record_vehicle_failure(
-                sn,
-                now_ts=now_ts,
-                current_interval=interval,
-            )
+    async def _control(self, sn: str, action: str) -> None:
+        """Experimental controls need explicit consent and a present vehicle."""
+        if (
+            self._stopping
+            or not self.config_entry
+            or not self.controls_enabled(sn)
+            or sn not in self.data
+            or not self.data[sn].present
+        ):
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="controls_disabled")
+        async with self._mutex:
+            try:
+                await self.client.async_control(sn, action)
+            except NinebotError as err:
+                # No automatic retry, even if the action's outcome is uncertain.
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN, translation_key="control_uncertain"
+                ) from err
+        try:
+            await self.async_refresh_vehicle(sn)
+            error = self.data[sn].status_freshness.error
+            if error is not None:
+                raise NinebotError(error)
+        except (ConfigEntryAuthFailed, NinebotError):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="control_readback_failed"
+            ) from None
 
-            state_for_merge = dict(cached_state)
-            if not state_for_merge and failure_count > self.device_info_failure_tolerance:
-                state_for_merge["available"] = False
-
-            state_for_merge["polling_mode"] = mode
-            state_for_merge["current_scan_interval"] = interval
-            state_for_merge["data_source"] = "cached"
-            state_for_merge["last_error"] = str(err) if err is not None else None
-            metadata = self.runtime_storage.get_vehicle_metadata(sn)
-            state_for_merge["last_success_at"] = metadata.get("last_success_at")
-            state_for_merge["last_attempt_at"] = metadata.get("last_attempt_at")
-            state_for_merge["failure_count"] = metadata.get("failure_count")
-
-            merged[sn]["state"] = state_for_merge
-
-            if self.debug_enabled:
-                self._raw_polling_payloads[sn] = {
-                    "fetched_at": now_dt.isoformat(),
-                    "device_list_item": copy.deepcopy(device),
-                    "dynamic_info": None,
-                    "error": str(err) if err is not None else None,
-                    "devices_list_raw": self._raw_devices_payload,
-                }
-
-        for sn, item in merged.items():
-            state = item.get("state")
-            if not isinstance(state, dict):
-                state = {}
-                item["state"] = state
-            state.setdefault("current_scan_interval", int(self._vehicle_intervals.get(sn, self.default_scan_interval)))
-            state.setdefault("polling_mode", "default")
-            state.setdefault("data_source", "cached")
-            state.setdefault("failure_count", int(self.runtime_storage.get_vehicle_metadata(sn).get("failure_count") or 0))
-
-        return merged
-
-    async def async_set_main_battery_voltage(self, sn: str, value: float) -> None:
-        await self.runtime_storage.async_set_battery_param(sn, voltage=value)
-        await self.async_request_refresh()
-
-    async def async_set_battery_capacity(self, sn: str, value: float) -> None:
-        await self.runtime_storage.async_set_battery_param(sn, capacity=value)
-        await self.async_request_refresh()
-
-    async def async_set_battery_max_range(self, sn: str, value: float) -> None:
-        await self.runtime_storage.async_set_battery_max_range(sn, value)
-        await self.async_request_refresh()
+    async def async_close(self) -> None:
+        self._stopping = True
+        tasks = self._active | set(self._forced.values())
+        current = asyncio.current_task()
+        for task in tasks:
+            if task is not current:
+                task.cancel()
+        await self.client.async_close()
+        await asyncio.gather(
+            *(task for task in tasks if task is not current), return_exceptions=True
+        )
+        await self.async_shutdown()

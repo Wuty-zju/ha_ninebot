@@ -1,136 +1,55 @@
-# Home Assistant Ninebot 车辆集成
+# Ninebot 九号 Home Assistant 集成
 
-![Ninebot Logo](https://oms-oss-public.ninebot.com/website/npm/resource/doc/logo.png)
+2.0 使用固定版本 `ninecli==0.1.7` 的 App 协议，替换旧 OpenClaw 查询链。
+项目独立开发，与九号/Segway 官方没有隶属关系。
 
-[![version](https://img.shields.io/github/manifest-json/v/Wuty-zju/ha_ninebot?filename=custom_components%2Fninebot%2Fmanifest.json)](https://github.com/Wuty-zju/ha_ninebot/releases/latest)
-[![releases](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/total)](https://github.com/Wuty-zju/ha_ninebot/releases)
-[![stars](https://img.shields.io/github/stars/Wuty-zju/ha_ninebot)](https://github.com/Wuty-zju/ha_ninebot/stargazers)
-[![issues](https://img.shields.io/github/issues/Wuty-zju/ha_ninebot)](https://github.com/Wuty-zju/ha_ninebot/issues)
-[![HACS](https://img.shields.io/badge/HACS-Custom-blue.svg)](https://hacs.xyz)
+当前在 `refactor/ninecli-v2` 开发，预发布目标为 `v2.0.0b0`。检查、迁移验收
+和发布审计完成前，不视为可发布版本。本次开发不会部署到作者当前的 HA。
 
-[English](./README.md) | [简体中文](./README_zh.md)
+预发布完成后，在 HACS 添加自定义集成仓库 `Wuty-zju/ha_ninebot`，选择测试版；
+安装后由用户自行重启 HA，通过“设备与服务”添加 Ninebot。最低候选 HA 为
+2026.1.0，CI覆盖 2026.1.0/Python3.13 与 2026.9.4/Python3.14。ninecli 发布了
+Linux musl/glibc、macOS 与 Windows 的64位 x86/ARM wheel；包存在不代表所有
+平台均已实测。不支持 ARMv7/32位。
 
-这是一个将 Segway-Ninebot 云端车辆接入 Home Assistant 的自定义集成。
+登录先在私有候选目录验证，再查重和提交。配置条目不保存密码。失效会话通过 UI
+重认证恢复；重认证不允许换账号。本地 REST 子进程只监听 loopback，使用随机
+Bearer 认证，密码通过请求体传递，不进入命令行参数。会话保存在
+`.storage/ninebot_v2` 私有目录；同权限或高权限进程仍属于本地信任边界。
 
-维护者：Wuty-zju
+默认状态轮询120秒，BMS/行程600秒，列表3600秒。按账户串行，按车辆和数据组判断
+新鲜度；单车失败不拖垮整个账户，过期数据不可用。缺失不填零，真实零保留。
 
-## HACS 收录状态
+主实体提供车辆真实SOC、云端精准续航、充电、主电源、解锁状态、电池实测电压/
+温度和当月里程。普通/AI续航、最后返回行程、原始耗电/功率诊断默认关闭。BMS
+循环次数检查支持标志，不将不支持设备返回的100次当作真实数据，也不将score0
+当作健康度0%。HA的锁二元传感器 on 表示“已解锁”。
 
-当前仓库通过 HACS Custom Repository 方式安装，暂未进入 HACS Default。
+行程ec和charging_power单位尚未独立核验，因此只提供无单位、无统计类型的可选
+诊断，不能当作 Energy Dashboard 能耗表。行程排序/分页尚未核验，“最后行程”
+表示第一条返回记录；上月回退仅补充最后行程，不覆盖当月合计。坐标系尚未核验，
+位置展示需主动选择，不承诺自动GCJ/WGS转换。
 
-## 集成能力说明
+SOC能量估算默认关闭。启用后手动设置标称电压与容量，新用户没有默认72V/20Ah。
+估算公式为 `V×Ah×ΔSOC/100/1000` kWh，不是实测储能、充电器输入或精密计量。
+长失联、异常跳变、数据源/参数变化重建基线；新模型generation使用新实体身份，
+不改写旧历史。跨日/月区间按接收时间归桶，属于估算；不由SOC推导瞬时功率。
 
-本集成提供面向车辆场景的实体，包括：
+实验控制默认关闭，还需逐车明确选择并确认支持和权限。命令对应主电源启动/
+关闭、鸣笛和开座桶，真实硬件效果与权限未经本任务实测。超时不自动重发；控制
+返回成功但状态回读失败，会给出独立提示。本任务所有控制测试均为模拟。
 
-- 主电池电量与剩余里程
-- 车辆锁状态（只读 lock + binary lock）
-- 充电状态与主电源状态
-- GSM 信号指标（CSQ 与换算 RSSI）
-- 车辆位置、上报时间戳/时间、SN、名称、车辆图片
+升级前备份 HA 配置和`.storage`。兼容自研与fork两种旧配置：fork会话复制到
+新版目录，原文件保留；旧OpenClaw用户通过App重新认证，迁移不后台反复登录。
+同口径实体保留身份、用户命名与禁用设置。地址、GSM、上报时间和旧估算实体没有
+可靠替代时保留注册表/历史，不伪造值；云端行程耗电不覆盖本地估算总量。
 
-## 环境要求
+旧满电续航参数保留为本地参数，不再用于能量模型。App原始锁编码与旧后端相反，
+依赖原始编码的自动化应改用规范化锁/解锁实体。车辆身份不按昵称模糊合并，
+不直接修改recorder SQL。回滚须同时恢复原集成版本及对应配置/存储备份；仅降级
+代码不能逆转ConfigEntry schema升级。
 
-- Home Assistant Core >= 2024.4.0
-
-## 安装方式
-
-### 方法 1：HACS（推荐）
-
-一键安装：
-
-[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
-
-或在 HACS 中手动添加：
-
-1. 打开 Home Assistant -> HACS -> Integrations
-2. 打开右上角菜单（三点）-> Custom repositories
-3. 仓库地址填入：https://github.com/Wuty-zju/ha_ninebot
-4. 类型选择 Integration
-5. 搜索 Ninebot 并点击 Download
-6. 重启 Home Assistant
-7. 打开 设置 -> 设备与服务 -> 添加集成 -> Ninebot
-
-### 方法 2：手动复制
-
-1. 将 custom_components/ninebot 复制到 Home Assistant 的 config/custom_components 目录
-2. 重启 Home Assistant
-3. 在 UI 中添加集成
-
-## 快速开始
-
-1. 设置 -> 设备与服务 -> 添加集成 -> Ninebot
-2. 输入账号密码
-3. 选择语言和轮询参数
-4. 保存并等待首轮同步
-
-支持多账号，每个账号会创建一个 config entry 与一个 coordinator 实例。
-
-## 配置项
-
-- default_scan_interval（秒，默认 60）：车辆常规轮询周期
-- unlocked_scan_interval（秒，默认 3）：车辆解锁时轮询周期
-- charging_scan_interval（秒，默认 30）：车辆充电时轮询周期
-- token_refresh_interval_hours（小时，默认 24）：token 刷新检查周期
-- device_list_refresh_interval_hours（小时，默认 24）：设备列表刷新周期
-- max_device_info_concurrency（默认 3）：并发查询设备动态信息上限
-- device_info_failure_tolerance（默认 3）：设备连续失败容忍阈值
-- debug（默认关闭）：只在内存中启用额外诊断数据
-
-## 语义约定
-
-推荐实体标识格式：
-
-`<domain>.ninebot_<vehicle_sn_lower>_<english_entity_name>`
-
-状态规则：
-
-- 原始 status=0 表示上锁，status=1 表示解锁
-- binary_sensor 的锁语义使用反转后的布尔状态
-- lock 实体为只读镜像，不发送 lock/unlock 控制命令
-
-## 架构说明
-
-代码映射：
-
-- custom_components/ninebot/api.py：登录、token、设备列表与并发查询
-- custom_components/ninebot/coordinator.py：按车辆独立调度与失败回退
-- custom_components/ninebot/storage.py：持久化缓存与迁移
-- custom_components/ninebot/config_flow.py：安装/选项配置流程
-- custom_components/ninebot/const.py：默认值与配置键定义
-
-机制要点：
-
-- token 与设备列表采用持久化缓存
-- 车辆动态信息采用异步并发抓取 + 并发限制
-- 每辆车独立 next_poll_at 与动态轮询间隔
-- 失败后优先回退到最近有效缓存，超过阈值才标记 unavailable
-- 调试数据仅保存在内存中，不写入持久化存储
-
-## 发布与更新
-
-当前发布目标版本：v1.0.1。
-
-推荐发布流程：
-
-1. 更新 custom_components/ninebot/manifest.json 版本
-2. 提交并推送到 main
-3. 创建并推送同版本 tag，例如：
-
-```bash
-git tag v1.0.1
-git push origin v1.0.1
-```
-
-4. 在 GitHub Release 页面发布对应版本说明
-
-HACS 通过 tag/release 检测更新。
-
-## 仓库结构
-
-- 集成代码：custom_components/ninebot
-- HACS 元数据：hacs.json
-
-## 相关链接
-
-- English README：README.md
-- 问题反馈：https://github.com/Wuty-zju/ha_ninebot/issues
+详见[英文说明](README.md)、[开发报告索引](docs/README.md)。报告明确区分源码、
+反汇编、实测与候选设计。已验证范围包括先前隔离会话查询和新版合成测试；真实
+新密码登录、刷新恢复、其他平台和全部车辆控制仍需独立验证。未获得完整Go源码，
+不声称已完成完整源码审查或可重复构建。

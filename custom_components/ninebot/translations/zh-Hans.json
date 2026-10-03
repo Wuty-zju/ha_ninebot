@@ -1,174 +1,171 @@
 {
   "config": {
-    "flow_title": "Ninebot 车辆",
     "step": {
       "user": {
-        "title": "连接 Ninebot 账号",
-        "description": "请输入 Ninebot 账号登录信息。",
+        "title": "Ninebot",
+        "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
-          "username": "用户名",
-          "password": "密码",
-          "lang": "语言",
-          "default_scan_interval": "默认轮询间隔（秒）",
-          "unlocked_scan_interval": "解锁轮询间隔（秒）",
-          "charging_scan_interval": "充电轮询间隔（秒）",
-          "discharge_power_window_seconds": "放电瞬时功率平滑窗口（秒）",
-          "charge_power_window_seconds": "充电瞬时功率平滑窗口（秒）",
-          "token_refresh_interval_hours": "Token 刷新间隔（小时）",
-          "device_list_refresh_interval_hours": "设备列表刷新间隔（小时）",
-          "max_device_info_concurrency": "设备详情最大并发请求数",
-          "device_info_failure_tolerance": "设备详情失败容忍次数",
-          "debug": "启用调试日志"
+          "account": "账号",
+          "password": "密码"
         }
       },
-      "init": {
-        "title": "Ninebot 选项",
-        "description": "调整语言、轮询策略和调试设置。",
+      "reauth_confirm": {
+        "title": "Ninebot",
+        "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
-          "username": "用户名",
-          "password": "密码",
-          "lang": "语言",
-          "default_scan_interval": "默认轮询间隔（秒）",
-          "unlocked_scan_interval": "解锁轮询间隔（秒）",
-          "charging_scan_interval": "充电轮询间隔（秒）",
-          "discharge_power_window_seconds": "放电瞬时功率平滑窗口（秒）",
-          "charge_power_window_seconds": "充电瞬时功率平滑窗口（秒）",
-          "token_refresh_interval_hours": "Token 刷新间隔（小时）",
-          "device_list_refresh_interval_hours": "设备列表刷新间隔（小时）",
-          "max_device_info_concurrency": "设备详情最大并发请求数",
-          "device_info_failure_tolerance": "设备详情失败容忍次数",
-          "debug": "启用调试日志"
+          "account": "账号",
+          "password": "密码"
+        }
+      },
+      "reconfigure": {
+        "title": "Ninebot",
+        "description": "密码仅用于本次登录验证，不保存到集成配置。",
+        "data": {
+          "account": "账号",
+          "password": "密码"
         }
       }
     },
     "error": {
-      "invalid_auth": "用户名或密码错误",
-      "cannot_connect": "无法连接 Ninebot 云端",
-      "api_error": "Ninebot 接口返回错误",
-      "unknown": "未知错误"
+      "invalid_auth": "会话或凭据失效",
+      "cannot_connect": "连接失败，请稍后重试",
+      "upstream_error": "九号服务返回错误，请稍后重试",
+      "invalid_response": "返回数据格式不符合预期",
+      "unsupported_platform": "ninecli 无法在当前平台启动",
+      "busy": "会话正在使用，请稍后重试",
+      "storage_error": "无法安全保存会话，请检查存储空间和权限"
     },
     "abort": {
-      "already_configured": "该账号已配置"
+      "already_configured": "账号已配置",
+      "wrong_account": "重认证必须使用原账号",
+      "reauth_successful": "重认证成功",
+      "reconfigure_successful": "重新配置成功"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Ninebot 选项",
-        "description": "调整账号、语言、轮询策略和调试设置。",
+        "title": "选项",
+        "description": "估算需手动设置标称电压和容量。坐标系尚未核验。实验控制未经实机验证，请确认每辆车的支持能力和权限后，启用并选择车辆。",
         "data": {
-          "username": "用户名",
-          "password": "密码",
-          "lang": "语言",
-          "default_scan_interval": "默认轮询间隔（秒）",
-          "unlocked_scan_interval": "解锁轮询间隔（秒）",
-          "charging_scan_interval": "充电轮询间隔（秒）",
-          "discharge_power_window_seconds": "放电瞬时功率平滑窗口（秒）",
-          "charge_power_window_seconds": "充电瞬时功率平滑窗口（秒）",
-          "token_refresh_interval_hours": "Token 刷新间隔（小时）",
-          "device_list_refresh_interval_hours": "设备列表刷新间隔（小时）",
-          "max_device_info_concurrency": "设备详情最大并发请求数",
-          "device_info_failure_tolerance": "设备详情失败容忍次数",
-          "debug": "启用调试日志"
+          "poll_interval": "状态轮询间隔（秒）",
+          "enable_estimation": "启用SOC能量估算",
+          "enable_coordinates": "显示云端坐标（坐标系未核验）",
+          "enable_controls": "启用实验车辆控制（未经实机验证）",
+          "control_vehicles": "允许实验控制的车辆"
         }
       }
-    },
-    "error": {
-      "invalid_auth": "用户名或密码错误",
-      "cannot_connect": "无法连接 Ninebot 云端",
-      "api_error": "Ninebot 接口返回错误",
-      "unknown": "未知错误"
     }
   },
   "entity": {
     "sensor": {
       "battery": {
-        "name": "主电池电量"
+        "name": "电量"
       },
-      "battery_calculated": {
-        "name": "主电池电量（计算）"
+      "endurance": {
+        "name": "云端精准续航"
       },
-      "device_name": {
-        "name": "车辆名称"
+      "range_estimated": {
+        "name": "云端估算续航"
       },
-      "sn": {
-        "name": "SN码"
-      },
-      "vehicle_lock_raw": {
-        "name": "车辆锁原始状态"
-      },
-      "gsm_csq": {
-        "name": "GSM信号强度（CSQ）"
-      },
-      "gsm_rssi": {
-        "name": "GSM信号强度（RSSI）"
-      },
-      "remaining_range": {
-        "name": "剩余里程"
+      "range_ai": {
+        "name": "云端AI续航"
       },
       "remaining_charge_time": {
-        "name": "充电剩余时间"
+        "name": "剩余充电时间"
       },
-      "gsm_report_timestamp": {
-        "name": "GSM上报时间戳"
+      "device_name": {
+        "name": "设备名称"
       },
-      "gsm_report_time": {
-        "name": "GSM上报时间"
+      "sn": {
+        "name": "序列号"
       },
-      "location": {
-        "name": "车辆位置"
+      "vehicle_lock_raw": {
+        "name": "App锁状态编码"
       },
-      "battery_nominal_energy": {
-        "name": "主电池标称能量"
+      "month_mileage": {
+        "name": "本月里程"
       },
-      "battery_energy_delta": {
-        "name": "主电池能量变化"
+      "last_mileage": {
+        "name": "最后返回行程里程"
       },
-      "battery_outflow_energy_step": {
-        "name": "主电池单次流出能量"
+      "month_energy_raw": {
+        "name": "本月行程耗电原值（单位未核验）"
       },
-      "battery_inflow_energy_step": {
-        "name": "主电池单次流入能量"
+      "last_energy_raw": {
+        "name": "最后行程耗电原值（单位未核验）"
       },
-      "battery_outflow_power": {
-        "name": "主电池流出瞬时功率"
+      "charging_power_raw": {
+        "name": "充电功率原值（单位未核验）"
       },
-      "battery_inflow_power": {
-        "name": "主电池流入瞬时功率"
+      "bms_voltage": {
+        "name": "电池实测电压"
       },
-      "battery_outflow_energy_daily": {
-        "name": "当日主电池流出"
+      "batt_temp": {
+        "name": "电池温度"
       },
-      "battery_outflow_energy_monthly": {
-        "name": "当月主电池流出"
+      "bms_cycles": {
+        "name": "电池循环次数"
       },
-      "battery_outflow_energy_total": {
-        "name": "累积主电池流出"
+      "legacy": {
+        "name": "旧实体（无等价来源）"
       },
-      "battery_inflow_energy_daily": {
-        "name": "当日主电池流入"
+      "estimated_nominal": {
+        "name": "估算标称电池能量"
       },
-      "battery_inflow_energy_monthly": {
-        "name": "当月主电池流入"
+      "estimated_delta": {
+        "name": "估算能量变化"
       },
-      "battery_inflow_energy_total": {
-        "name": "累积主电池流入"
+      "estimated_out_step": {
+        "name": "估算单次放电能量"
+      },
+      "estimated_in_step": {
+        "name": "估算单次充入能量"
+      },
+      "estimated_out_daily": {
+        "name": "估算每日放电能量"
+      },
+      "estimated_out_monthly": {
+        "name": "估算每月放电能量"
+      },
+      "estimated_out_total": {
+        "name": "估算累计放电能量"
+      },
+      "estimated_in_daily": {
+        "name": "估算每日充入能量"
+      },
+      "estimated_in_monthly": {
+        "name": "估算每月充入能量"
+      },
+      "estimated_in_total": {
+        "name": "估算累计充入能量"
       }
     },
     "binary_sensor": {
-      "vehicle_lock": {
-        "name": "车辆锁"
-      },
       "charging": {
-        "name": "充电状态"
+        "name": "正在充电"
       },
-      "main_power": {
-        "name": "主电源状态"
+      "power": {
+        "name": "主电源"
+      },
+      "unlocked": {
+        "name": "已解锁"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "刷新车辆状态"
+      },
+      "bell": {
+        "name": "实验鸣笛"
+      },
+      "bucket": {
+        "name": "实验开座桶"
       }
     },
     "lock": {
-      "vehicle_lock_control": {
-        "name": "车辆锁"
+      "lock": {
+        "name": "锁状态 / 实验控制"
       }
     },
     "image": {
@@ -176,21 +173,41 @@
         "name": "车辆图片"
       }
     },
-    "button": {
-      "info": {
-        "name": "信息"
+    "device_tracker": {
+      "location": {
+        "name": "云端位置"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "主电池电压"
+        "name": "标称电压（本地模型）"
       },
       "battery_capacity": {
-        "name": "电池容量"
+        "name": "容量（本地模型）"
       },
       "battery_max_range": {
-        "name": "最大里程"
+        "name": "旧满电续航参数（不用于能量模型）"
       }
+    }
+  },
+  "exceptions": {
+    "controls_disabled": {
+      "message": "实验控制未启用或车辆不可用。"
+    },
+    "control_uncertain": {
+      "message": "控制未确认；可能已执行，请检查车辆后再操作。"
+    },
+    "control_readback_failed": {
+      "message": "控制请求已成功返回，但车辆状态回读失败。"
+    },
+    "busy": {
+      "message": "请求队列已满，请稍后重试。"
+    }
+  },
+  "issues": {
+    "entity_identity_conflict": {
+      "title": "存在重复的旧实体身份",
+      "description": "同一功能存在多个旧实体。集成保留这些身份和历史；同口径的传感器继续提供值，不删除任何条目。请检查自动化与用户设置，再通过HA界面决定保留哪些实体。"
     }
   }
 }

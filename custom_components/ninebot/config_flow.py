@@ -1,469 +1,212 @@
-"""Config flow for the Ninebot integration."""
+"""Explicit credential entry, isolated validation and account-safe reauth."""
 
-from __future__ import annotations
-
+import uuid
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
-from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState, ConfigFlowResult
+from homeassistant.const import CONF_PASSWORD
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-
-from .api import NinebotApiClient
-from .const import (
-    CONF_CHARGE_POWER_WINDOW_SECONDS,
-    CONF_CHARGING_SCAN_INTERVAL,
-    CONF_DEBUG,
-    CONF_DEFAULT_SCAN_INTERVAL,
-    CONF_DISCHARGE_POWER_WINDOW_SECONDS,
-    CONF_DEVICE_INFO_FAILURE_TOLERANCE,
-    CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-    CONF_LANG,
-    CONF_MAX_DEVICE_INFO_CONCURRENCY,
-    CONF_SCAN_INTERVAL,
-    CONF_TOKEN_REFRESH_INTERVAL_HOURS,
-    CONF_UNLOCKED_SCAN_INTERVAL,
-    DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
-    DEFAULT_CHARGING_SCAN_INTERVAL,
-    DEFAULT_DEBUG,
-    DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
-    DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
-    DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-    DEFAULT_LANG,
-    DEFAULT_MAX_DEVICE_INFO_CONCURRENCY,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
-    DEFAULT_UNLOCKED_SCAN_INTERVAL,
-    DOMAIN,
-    MAX_POWER_WINDOW_SECONDS,
-    MAX_DEVICE_INFO_CONCURRENCY,
-    MAX_DEVICE_INFO_FAILURE_TOLERANCE,
-    MIN_DEVICE_INFO_CONCURRENCY,
-    MIN_DEVICE_INFO_FAILURE_TOLERANCE,
-    MIN_POWER_WINDOW_SECONDS,
-    MIN_REFRESH_INTERVAL_HOURS,
-    MIN_SCAN_INTERVAL,
+from homeassistant.helpers.selector import (
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
-from .exceptions import NinebotAuthError, NinebotConnectionError, NinebotError
 
+from .const import (
+    CONF_ACCOUNT,
+    CONF_BUSINESS_UID,
+    CONF_CONTROL_VEHICLES,
+    CONF_CONTROLS,
+    CONF_COORDINATES,
+    CONF_ESTIMATION,
+    CONF_IDENTITY_SCHEME,
+    CONF_POLL_INTERVAL,
+    CONF_SESSION_KEY,
+    DEFAULT_POLL_INTERVAL,
+    DOMAIN,
+    SESSION_DIRECTORY,
+)
+from .exceptions import ErrorKind, NinebotError
+from .session import SessionManager
 
-async def _async_validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
-    """Validate credentials by attempting to login to Ninebot cloud."""
-    client = NinebotApiClient(
-        hass=None,
-        entry_id=None,
-        session=async_get_clientsession(hass),
-        username=data[CONF_USERNAME],
-        password=data[CONF_PASSWORD],
-        lang=data.get(CONF_LANG, DEFAULT_LANG),
-        debug=bool(data.get(CONF_DEBUG, DEFAULT_DEBUG)),
-    )
-    await client.async_login()
-
-
-def _safe_scan_interval(value: Any, default: int) -> int:
-    """Return a safe scan interval value and avoid flow-time exceptions."""
-    try:
-        return max(MIN_SCAN_INTERVAL, int(value))
-    except (TypeError, ValueError):
-        return max(MIN_SCAN_INTERVAL, int(default))
+ERRORS = {
+    ErrorKind.AUTH: "invalid_auth",
+    ErrorKind.CONNECTION: "cannot_connect",
+    ErrorKind.SERVICE: "upstream_error",
+    ErrorKind.PROTOCOL: "invalid_response",
+    ErrorKind.PLATFORM: "unsupported_platform",
+    ErrorKind.BUSY: "busy",
+    ErrorKind.CLOSED: "cannot_connect",
+}
 
 
 class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Ninebot."""
+    VERSION = 2
+    MINOR_VERSION = 1
 
-    VERSION = 1
+    def __init__(self) -> None:
+        self._entry: ConfigEntry | None = None
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            username = user_input[CONF_USERNAME].strip()
-            unique_id = username.lower()
-            await self.async_set_unique_id(unique_id)
-            self._abort_if_unique_id_configured()
-
-            normalized = {
-                **user_input,
-                CONF_USERNAME: username,
-                CONF_PASSWORD: str(user_input.get(CONF_PASSWORD, "")),
-                CONF_LANG: user_input.get(CONF_LANG, DEFAULT_LANG),
-                CONF_DEFAULT_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_DEFAULT_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-                    DEFAULT_SCAN_INTERVAL,
-                ),
-                CONF_UNLOCKED_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL),
-                    DEFAULT_UNLOCKED_SCAN_INTERVAL,
-                ),
-                CONF_CHARGING_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
-                    DEFAULT_CHARGING_SCAN_INTERVAL,
-                ),
-                CONF_DISCHARGE_POWER_WINDOW_SECONDS: _safe_scan_interval(
-                    user_input.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS),
-                    DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
-                ),
-                CONF_CHARGE_POWER_WINDOW_SECONDS: _safe_scan_interval(
-                    user_input.get(CONF_CHARGE_POWER_WINDOW_SECONDS, DEFAULT_CHARGE_POWER_WINDOW_SECONDS),
-                    DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
-                ),
-                CONF_TOKEN_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
-                    user_input.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS),
-                    DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
-                ),
-                CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
-                    user_input.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS),
-                    DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-                ),
-                CONF_MAX_DEVICE_INFO_CONCURRENCY: _safe_scan_interval(
-                    user_input.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, DEFAULT_MAX_DEVICE_INFO_CONCURRENCY),
-                    DEFAULT_MAX_DEVICE_INFO_CONCURRENCY,
-                ),
-                CONF_DEVICE_INFO_FAILURE_TOLERANCE: max(
-                    MIN_DEVICE_INFO_FAILURE_TOLERANCE,
-                    _safe_scan_interval(
-                        user_input.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE),
-                        DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
-                    ),
-                ),
-                CONF_DEBUG: bool(user_input.get(CONF_DEBUG, DEFAULT_DEBUG)),
-            }
-
-            normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS] = max(
-                MIN_REFRESH_INTERVAL_HOURS,
-                int(normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS]),
-            )
-            normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS] = max(
-                MIN_REFRESH_INTERVAL_HOURS,
-                int(normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS]),
-            )
-            normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY] = min(
-                MAX_DEVICE_INFO_CONCURRENCY,
-                max(MIN_DEVICE_INFO_CONCURRENCY, int(normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY])),
-            )
-            normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS] = min(
-                MAX_POWER_WINDOW_SECONDS,
-                max(MIN_POWER_WINDOW_SECONDS, int(normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS])),
-            )
-            normalized[CONF_CHARGE_POWER_WINDOW_SECONDS] = min(
-                MAX_POWER_WINDOW_SECONDS,
-                max(MIN_POWER_WINDOW_SECONDS, int(normalized[CONF_CHARGE_POWER_WINDOW_SECONDS])),
-            )
-            normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE] = min(
-                MAX_DEVICE_INFO_FAILURE_TOLERANCE,
-                max(MIN_DEVICE_INFO_FAILURE_TOLERANCE, int(normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE])),
-            )
-
-            # Keep legacy key for backward compatibility.
-            normalized[CONF_SCAN_INTERVAL] = normalized[CONF_DEFAULT_SCAN_INTERVAL]
-
-            try:
-                await _async_validate_input(self.hass, normalized)
-            except NinebotAuthError:
-                errors["base"] = "invalid_auth"
-            except NinebotConnectionError:
-                errors["base"] = "cannot_connect"
-            except NinebotError:
-                errors["base"] = "api_error"
-            except Exception:  # pragma: no cover - defensive catch for flow UX
-                errors["base"] = "unknown"
-
-            if not errors:
-                return self.async_create_entry(
-                    title=f"Ninebot ({username})",
-                    data=normalized,
-                )
-
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_USERNAME): str,
-                vol.Required(CONF_PASSWORD): str,
-                vol.Optional(CONF_LANG, default=DEFAULT_LANG): vol.In(["zh", "zh-hant", "en"]),
-                vol.Optional(CONF_DEFAULT_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_SCAN_INTERVAL),
-                ),
-                vol.Optional(CONF_UNLOCKED_SCAN_INTERVAL, default=DEFAULT_UNLOCKED_SCAN_INTERVAL): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_SCAN_INTERVAL),
-                ),
-                vol.Optional(CONF_CHARGING_SCAN_INTERVAL, default=DEFAULT_CHARGING_SCAN_INTERVAL): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_SCAN_INTERVAL),
-                ),
-                vol.Optional(CONF_DISCHARGE_POWER_WINDOW_SECONDS, default=DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_POWER_WINDOW_SECONDS, max=MAX_POWER_WINDOW_SECONDS),
-                ),
-                vol.Optional(CONF_CHARGE_POWER_WINDOW_SECONDS, default=DEFAULT_CHARGE_POWER_WINDOW_SECONDS): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_POWER_WINDOW_SECONDS, max=MAX_POWER_WINDOW_SECONDS),
-                ),
-                vol.Optional(CONF_TOKEN_REFRESH_INTERVAL_HOURS, default=DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_REFRESH_INTERVAL_HOURS),
-                ),
-                vol.Optional(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, default=DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_REFRESH_INTERVAL_HOURS),
-                ),
-                vol.Optional(CONF_MAX_DEVICE_INFO_CONCURRENCY, default=DEFAULT_MAX_DEVICE_INFO_CONCURRENCY): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_DEVICE_INFO_CONCURRENCY, max=MAX_DEVICE_INFO_CONCURRENCY),
-                ),
-                vol.Optional(CONF_DEVICE_INFO_FAILURE_TOLERANCE, default=DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE): vol.All(
-                    vol.Coerce(int),
-                    vol.Range(min=MIN_DEVICE_INFO_FAILURE_TOLERANCE, max=MAX_DEVICE_INFO_FAILURE_TOLERANCE),
-                ),
-                vol.Optional(CONF_DEBUG, default=DEFAULT_DEBUG): bool,
-            }
+    def _manager(self) -> SessionManager:
+        return SessionManager(
+            Path(self.hass.config.path(".storage", SESSION_DIRECTORY)),
+            async_get_clientsession(self.hass),
         )
 
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+    async def _credentials(self, step: str, user_input: dict[str, Any] | None) -> ConfigFlowResult:
+        errors = {}
+        if user_input is not None:
+            account = str(user_input[CONF_ACCOUNT]).strip()
+            manager = self._manager()
+            candidate = None
+            committed = False
+            finished = False
+            metadata_updated = False
+            old_data = dict(self._entry.data) if self._entry else None
+            old_uid = self._entry.unique_id if self._entry else None
+            key = self._entry.data[CONF_SESSION_KEY] if self._entry else uuid.uuid4().hex
+            unloaded = False
+            try:
+                candidate = await manager.async_prepare(account, str(user_input[CONF_PASSWORD]))
+                if self._entry:
+                    expected = self._entry.data.get(CONF_BUSINESS_UID)
+                    if (expected and candidate.uid != expected) or (
+                        not expected and account != self._entry.data.get(CONF_ACCOUNT)
+                    ):
+                        return self.async_abort(reason="wrong_account")
+                await self.async_set_unique_id(candidate.uid, raise_on_progress=self._entry is None)
+                for entry in self._async_current_entries():
+                    if entry is not self._entry and (
+                        entry.unique_id == candidate.uid
+                        or entry.data.get(CONF_BUSINESS_UID) == candidate.uid
+                    ):
+                        return self.async_abort(reason="already_configured")
+                if self._entry and self._entry.state == ConfigEntryState.LOADED:
+                    unloaded = await self.hass.config_entries.async_unload(self._entry.entry_id)
+                    if not unloaded:
+                        raise NinebotError(ErrorKind.BUSY)
+                await manager.async_commit(candidate, key)
+                committed = True
+                data = {
+                    CONF_ACCOUNT: account,
+                    CONF_BUSINESS_UID: candidate.uid,
+                    CONF_SESSION_KEY: key,
+                    CONF_IDENTITY_SCHEME: self._entry.data.get(CONF_IDENTITY_SCHEME, "v2")
+                    if self._entry
+                    else "v2",
+                }
+                if self._entry:
+                    self.hass.config_entries.async_update_entry(
+                        self._entry, data=data, unique_id=candidate.uid
+                    )
+                    metadata_updated = True
+                    await manager.async_finalize(key)
+                    committed = False
+                    finished = True
+                    await self.hass.config_entries.async_reload(self._entry.entry_id)
+                    return self.async_abort(
+                        reason="reauth_successful"
+                        if step == "reauth_confirm"
+                        else "reconfigure_successful"
+                    )
+                result = self.async_create_entry(title="Ninebot", data=data)
+                await manager.async_finalize(key)
+                committed = False
+                finished = True
+                return result
+            except NinebotError as err:
+                errors["base"] = ERRORS[err.kind]
+            except OSError:
+                errors["base"] = "storage_error"
+            finally:
+                if committed:
+                    await manager.async_rollback(key)
+                    if self._entry and metadata_updated and old_data is not None:
+                        self.hass.config_entries.async_update_entry(
+                            self._entry, data=old_data, unique_id=old_uid
+                        )
+                if candidate:
+                    await manager.async_discard(candidate)
+                if unloaded and not finished and self._entry:
+                    await self.hass.config_entries.async_reload(self._entry.entry_id)
+        default = self._entry.data.get(CONF_ACCOUNT, "") if self._entry else ""
+        return self.async_show_form(
+            step_id=step,
+            errors=errors,
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ACCOUNT, default=default): str,
+                    vol.Required(CONF_PASSWORD): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            ),
+        )
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return await self._credentials("user", user_input)
+
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
+        self._entry = self._get_reauth_entry()
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._credentials("reauth_confirm", user_input)
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        self._entry = self._get_reconfigure_entry()
+        return await self._credentials("reconfigure", user_input)
 
     @staticmethod
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
-        return NinebotOptionsFlow(config_entry)
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> "NinebotOptionsFlow":
+        return NinebotOptionsFlow()
 
 
 class NinebotOptionsFlow(config_entries.OptionsFlow):
-    """Handle Ninebot options."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self._entry = config_entry
-
-    async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
-
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            username = str(user_input.get(CONF_USERNAME, self._entry.data.get(CONF_USERNAME, ""))).strip()
-            password = str(user_input.get(CONF_PASSWORD, self._entry.data.get(CONF_PASSWORD, "")))
-
-            normalized = {
-                CONF_USERNAME: username,
-                CONF_PASSWORD: password,
-                CONF_LANG: user_input.get(
-                    CONF_LANG,
-                    self._entry.options.get(
-                        CONF_LANG,
-                        self._entry.data.get(CONF_LANG, DEFAULT_LANG),
-                    ),
-                ),
-                CONF_DEFAULT_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_DEFAULT_SCAN_INTERVAL, self._entry.options.get(CONF_DEFAULT_SCAN_INTERVAL, self._entry.data.get(CONF_DEFAULT_SCAN_INTERVAL, self._entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)))),
-                    DEFAULT_SCAN_INTERVAL,
-                ),
-                CONF_UNLOCKED_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_UNLOCKED_SCAN_INTERVAL, self._entry.options.get(CONF_UNLOCKED_SCAN_INTERVAL, self._entry.data.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL))),
-                    DEFAULT_UNLOCKED_SCAN_INTERVAL,
-                ),
-                CONF_CHARGING_SCAN_INTERVAL: _safe_scan_interval(
-                    user_input.get(CONF_CHARGING_SCAN_INTERVAL, self._entry.options.get(CONF_CHARGING_SCAN_INTERVAL, self._entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL))),
-                    DEFAULT_CHARGING_SCAN_INTERVAL,
-                ),
-                CONF_DISCHARGE_POWER_WINDOW_SECONDS: _safe_scan_interval(
-                    user_input.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, self._entry.options.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, self._entry.data.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS))),
-                    DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS,
-                ),
-                CONF_CHARGE_POWER_WINDOW_SECONDS: _safe_scan_interval(
-                    user_input.get(CONF_CHARGE_POWER_WINDOW_SECONDS, self._entry.options.get(CONF_CHARGE_POWER_WINDOW_SECONDS, self._entry.data.get(CONF_CHARGE_POWER_WINDOW_SECONDS, DEFAULT_CHARGE_POWER_WINDOW_SECONDS))),
-                    DEFAULT_CHARGE_POWER_WINDOW_SECONDS,
-                ),
-                CONF_TOKEN_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
-                    user_input.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, self._entry.options.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, self._entry.data.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS))),
-                    DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS,
-                ),
-                CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS: _safe_scan_interval(
-                    user_input.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, self._entry.options.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, self._entry.data.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS))),
-                    DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-                ),
-                CONF_MAX_DEVICE_INFO_CONCURRENCY: _safe_scan_interval(
-                    user_input.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, self._entry.options.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, self._entry.data.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, DEFAULT_MAX_DEVICE_INFO_CONCURRENCY))),
-                    DEFAULT_MAX_DEVICE_INFO_CONCURRENCY,
-                ),
-                CONF_DEVICE_INFO_FAILURE_TOLERANCE: max(
-                    MIN_DEVICE_INFO_FAILURE_TOLERANCE,
-                    _safe_scan_interval(
-                        user_input.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, self._entry.options.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, self._entry.data.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE))),
-                        DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE,
-                    ),
-                ),
-                CONF_DEBUG: bool(
-                    user_input.get(
-                        CONF_DEBUG,
-                        self._entry.options.get(
-                            CONF_DEBUG,
-                            self._entry.data.get(CONF_DEBUG, DEFAULT_DEBUG),
-                        ),
-                    )
-                ),
-            }
-
-            try:
-                await _async_validate_input(self.hass, normalized)
-            except NinebotAuthError:
-                errors["base"] = "invalid_auth"
-            except NinebotConnectionError:
-                errors["base"] = "cannot_connect"
-            except NinebotError:
-                errors["base"] = "api_error"
-            except Exception:  # pragma: no cover - defensive catch for flow UX
-                errors["base"] = "unknown"
-
-            if not errors:
-                normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS] = max(
-                    MIN_REFRESH_INTERVAL_HOURS,
-                    int(normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS]),
-                )
-                normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS] = max(
-                    MIN_REFRESH_INTERVAL_HOURS,
-                    int(normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS]),
-                )
-                normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY] = min(
-                    MAX_DEVICE_INFO_CONCURRENCY,
-                    max(MIN_DEVICE_INFO_CONCURRENCY, int(normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY])),
-                )
-                normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS] = min(
-                    MAX_POWER_WINDOW_SECONDS,
-                    max(MIN_POWER_WINDOW_SECONDS, int(normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS])),
-                )
-                normalized[CONF_CHARGE_POWER_WINDOW_SECONDS] = min(
-                    MAX_POWER_WINDOW_SECONDS,
-                    max(MIN_POWER_WINDOW_SECONDS, int(normalized[CONF_CHARGE_POWER_WINDOW_SECONDS])),
-                )
-                normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE] = min(
-                    MAX_DEVICE_INFO_FAILURE_TOLERANCE,
-                    max(MIN_DEVICE_INFO_FAILURE_TOLERANCE, int(normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE])),
-                )
-
-                options = {
-                    CONF_LANG: normalized[CONF_LANG],
-                    CONF_DEFAULT_SCAN_INTERVAL: normalized[CONF_DEFAULT_SCAN_INTERVAL],
-                    CONF_UNLOCKED_SCAN_INTERVAL: normalized[CONF_UNLOCKED_SCAN_INTERVAL],
-                    CONF_CHARGING_SCAN_INTERVAL: normalized[CONF_CHARGING_SCAN_INTERVAL],
-                    CONF_DISCHARGE_POWER_WINDOW_SECONDS: normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS],
-                    CONF_CHARGE_POWER_WINDOW_SECONDS: normalized[CONF_CHARGE_POWER_WINDOW_SECONDS],
-                    CONF_TOKEN_REFRESH_INTERVAL_HOURS: normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS],
-                    CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS: normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS],
-                    CONF_MAX_DEVICE_INFO_CONCURRENCY: normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY],
-                    CONF_DEVICE_INFO_FAILURE_TOLERANCE: normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE],
-                    CONF_DEBUG: normalized[CONF_DEBUG],
+            return self.async_create_entry(title="", data=user_input)
+        options = self.config_entry.options
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        vehicles = runtime.coordinator.data if runtime else {}
+        choices = [
+            SelectOptionDict(value=sn, label=snapshot.profile.name)
+            for sn, snapshot in vehicles.items()
+            if snapshot.present
+        ]
+        for sn in options.get(CONF_CONTROL_VEHICLES, []):
+            if sn not in vehicles:
+                choices.append(SelectOptionDict(value=sn, label=sn))
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_POLL_INTERVAL,
+                        default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=30, max=3600)),
+                    vol.Optional(
+                        CONF_ESTIMATION, default=options.get(CONF_ESTIMATION, False)
+                    ): bool,
+                    vol.Optional(
+                        CONF_COORDINATES, default=options.get(CONF_COORDINATES, False)
+                    ): bool,
+                    vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
+                    vol.Optional(
+                        CONF_CONTROL_VEHICLES, default=options.get(CONF_CONTROL_VEHICLES, [])
+                    ): SelectSelector(SelectSelectorConfig(options=choices, multiple=True)),
                 }
-
-                data = dict(self._entry.data)
-                data[CONF_USERNAME] = normalized[CONF_USERNAME]
-                data[CONF_PASSWORD] = normalized[CONF_PASSWORD]
-                data[CONF_LANG] = normalized[CONF_LANG]
-                data[CONF_DEBUG] = normalized[CONF_DEBUG]
-                data[CONF_SCAN_INTERVAL] = normalized[CONF_DEFAULT_SCAN_INTERVAL]
-                data[CONF_DEFAULT_SCAN_INTERVAL] = normalized[CONF_DEFAULT_SCAN_INTERVAL]
-                data[CONF_UNLOCKED_SCAN_INTERVAL] = normalized[CONF_UNLOCKED_SCAN_INTERVAL]
-                data[CONF_CHARGING_SCAN_INTERVAL] = normalized[CONF_CHARGING_SCAN_INTERVAL]
-                data[CONF_DISCHARGE_POWER_WINDOW_SECONDS] = normalized[CONF_DISCHARGE_POWER_WINDOW_SECONDS]
-                data[CONF_CHARGE_POWER_WINDOW_SECONDS] = normalized[CONF_CHARGE_POWER_WINDOW_SECONDS]
-                data[CONF_TOKEN_REFRESH_INTERVAL_HOURS] = normalized[CONF_TOKEN_REFRESH_INTERVAL_HOURS]
-                data[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS] = normalized[CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS]
-                data[CONF_MAX_DEVICE_INFO_CONCURRENCY] = normalized[CONF_MAX_DEVICE_INFO_CONCURRENCY]
-                data[CONF_DEVICE_INFO_FAILURE_TOLERANCE] = normalized[CONF_DEVICE_INFO_FAILURE_TOLERANCE]
-
-                self.hass.config_entries.async_update_entry(
-                    self._entry,
-                    data=data,
-                    options=options,
-                )
-                await self.hass.config_entries.async_reload(self._entry.entry_id)
-                return self.async_create_entry(title="", data=options)
-
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_USERNAME,
-                    default=self._entry.data.get(CONF_USERNAME, ""),
-                ): str,
-                vol.Required(
-                    CONF_PASSWORD,
-                    default=self._entry.data.get(CONF_PASSWORD, ""),
-                ): str,
-                vol.Optional(
-                    CONF_LANG,
-                    default=self._entry.options.get(
-                        CONF_LANG,
-                        self._entry.data.get(CONF_LANG, DEFAULT_LANG),
-                    ),
-                ): vol.In(["zh", "zh-hant", "en"]),
-                vol.Optional(
-                    CONF_DEFAULT_SCAN_INTERVAL,
-                    default=self._entry.options.get(
-                        CONF_DEFAULT_SCAN_INTERVAL,
-                        self._entry.data.get(CONF_DEFAULT_SCAN_INTERVAL, self._entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
-                vol.Optional(
-                    CONF_UNLOCKED_SCAN_INTERVAL,
-                    default=self._entry.options.get(
-                        CONF_UNLOCKED_SCAN_INTERVAL,
-                        self._entry.data.get(CONF_UNLOCKED_SCAN_INTERVAL, DEFAULT_UNLOCKED_SCAN_INTERVAL),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
-                vol.Optional(
-                    CONF_CHARGING_SCAN_INTERVAL,
-                    default=self._entry.options.get(
-                        CONF_CHARGING_SCAN_INTERVAL,
-                        self._entry.data.get(CONF_CHARGING_SCAN_INTERVAL, DEFAULT_CHARGING_SCAN_INTERVAL),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
-                vol.Optional(
-                    CONF_DISCHARGE_POWER_WINDOW_SECONDS,
-                    default=self._entry.options.get(
-                        CONF_DISCHARGE_POWER_WINDOW_SECONDS,
-                        self._entry.data.get(CONF_DISCHARGE_POWER_WINDOW_SECONDS, DEFAULT_DISCHARGE_POWER_WINDOW_SECONDS),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_POWER_WINDOW_SECONDS, max=MAX_POWER_WINDOW_SECONDS)),
-                vol.Optional(
-                    CONF_CHARGE_POWER_WINDOW_SECONDS,
-                    default=self._entry.options.get(
-                        CONF_CHARGE_POWER_WINDOW_SECONDS,
-                        self._entry.data.get(CONF_CHARGE_POWER_WINDOW_SECONDS, DEFAULT_CHARGE_POWER_WINDOW_SECONDS),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_POWER_WINDOW_SECONDS, max=MAX_POWER_WINDOW_SECONDS)),
-                vol.Optional(
-                    CONF_TOKEN_REFRESH_INTERVAL_HOURS,
-                    default=self._entry.options.get(
-                        CONF_TOKEN_REFRESH_INTERVAL_HOURS,
-                        self._entry.data.get(CONF_TOKEN_REFRESH_INTERVAL_HOURS, DEFAULT_TOKEN_REFRESH_INTERVAL_HOURS),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_REFRESH_INTERVAL_HOURS)),
-                vol.Optional(
-                    CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-                    default=self._entry.options.get(
-                        CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS,
-                        self._entry.data.get(CONF_DEVICE_LIST_REFRESH_INTERVAL_HOURS, DEFAULT_DEVICE_LIST_REFRESH_INTERVAL_HOURS),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_REFRESH_INTERVAL_HOURS)),
-                vol.Optional(
-                    CONF_MAX_DEVICE_INFO_CONCURRENCY,
-                    default=self._entry.options.get(
-                        CONF_MAX_DEVICE_INFO_CONCURRENCY,
-                        self._entry.data.get(CONF_MAX_DEVICE_INFO_CONCURRENCY, DEFAULT_MAX_DEVICE_INFO_CONCURRENCY),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_DEVICE_INFO_CONCURRENCY, max=MAX_DEVICE_INFO_CONCURRENCY)),
-                vol.Optional(
-                    CONF_DEVICE_INFO_FAILURE_TOLERANCE,
-                    default=self._entry.options.get(
-                        CONF_DEVICE_INFO_FAILURE_TOLERANCE,
-                        self._entry.data.get(CONF_DEVICE_INFO_FAILURE_TOLERANCE, DEFAULT_DEVICE_INFO_FAILURE_TOLERANCE),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_DEVICE_INFO_FAILURE_TOLERANCE, max=MAX_DEVICE_INFO_FAILURE_TOLERANCE)),
-                vol.Optional(
-                    CONF_DEBUG,
-                    default=self._entry.options.get(
-                        CONF_DEBUG,
-                        self._entry.data.get(CONF_DEBUG, DEFAULT_DEBUG),
-                    ),
-                ): bool,
-            }
+            ),
         )
-        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
