@@ -229,3 +229,25 @@ Ruff、format、mypy34源文件通过；精确main提交的最低/稳定CI、Has
 发布b6，证据见evidence/v2x-b6-validation.json及release notes。
 未修改生产HA、未执行控制、未增加云查询、未改变最低HA/依赖pin/旧unique_id。
 本阶段不增加实体名称或配置项，因此沿用既有中英translation keys与icons。
+
+## 2.0.0b7：Phase 7 能力证据与统一控制决策
+
+基于已发布main `c61dd2afed526`，独立分支feature/v2x-control-diagnostics。
+[权限契约](v2x-权限门禁与能力证据契约.md)区分backend软件endpoint、车型support、
+账号permission和已验证动作语义。现有真实权限null/未知，生产parser没有verified
+capability，未知继续拒绝，不用ownership/acc/锁状态等候选字段推导授权。
+
+按钮availability、排队前/后执行检查、diagnostics共用ControlDecision。诊断输出
+固定blockers、support/permission三态、证据是否存在和条目数，不导出free-form label、
+权限原始对象或个人资料。拒绝重复capability、unknown action、空白label、backend
+没有实现的动作及非明确true的用户启用；reauth/readback/cancel/不重试沿用现有。
+保留旧controls boolean，新增backend_support说明软件endpoint不代表车辆权限。
+中英Options明确“当前仅启用选项不会开放硬件”，entity ID与旧Lock观察/拒绝engine
+行为不变，不增加误导性的永远不可用engine实体。
+
+完整离线282tests通过，combined branch coverage97.66%，capabilities100%；Ruff/
+format/mypy34源文件通过。精确main提交最低/稳定CI、Hassfest/HACS通过后发布b7，
+证据见evidence/v2x-b7-validation.json与release notes。新增云查询0、实车动作0、
+生产HA写入0；无dependency/最低HA/registry/storage schema变更。
+未交付权限位图解析与真实控制语义，待协议证据及具体动作授权；下一阶段继续
+Image缓存、安全URL/GPS及启用实体/内部模型依赖决定请求，不缩小主要目标。

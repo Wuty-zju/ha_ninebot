@@ -739,3 +739,22 @@ async def test_battery_signature_upgrade_preserves_generation_and_totals(coordin
     assert model.quality == "baseline_only"
     assert model.source.startswith("vehicle_soc:v2:")
     assert "out_step" not in model.values
+
+
+@pytest.mark.parametrize("coordinator", [True], indirect=True)
+async def test_control_diagnostics_and_execution_share_all_gates(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    assert co.control_decision("synthetic-one", "bell").allowed
+    co.backend.control_actions = frozenset()
+    denied = co.control_decision("synthetic-one", "bell")
+    assert denied.blockers == ("transport_unsupported",)
+    assert not co.controls_enabled("synthetic-one", "bell")
+    with pytest.raises(HomeAssistantError):
+        await co.async_control("synthetic-one", "bell")
+    co.client.async_control.assert_not_awaited()
+    assert "vehicle_not_present" in co.control_decision("missing", "bell").blockers
+    co._authenticated = False
+    assert "authentication_required" in co.control_decision("synthetic-one", "bell").blockers
+    await co.async_close()
+    assert "runtime_stopped" in co.control_decision("synthetic-one", "bell").blockers

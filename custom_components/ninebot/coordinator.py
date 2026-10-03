@@ -19,6 +19,7 @@ from homeassistant.util import dt as dt_util
 from . import adapters
 from .backend import BackendResult, NinebotBackend, NinecliBackend
 from .battery import battery_signature
+from .capabilities import CONTROL_ACTIONS, ControlDecision, VehicleCapabilities, decide_control
 from .client import NinecliClient
 from .const import (
     BUSINESS_TIMEZONE,
@@ -466,24 +467,35 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         finally:
             self._forced.pop(sn, None)
 
-    def controls_enabled(self, sn: str, action: str | None = None) -> bool:
-        """User consent AND fresh proven support/permission/semantics."""
+    def control_decision(self, sn: str, action: str) -> ControlDecision:
+        """Transport support alone does not grant a cloud/hardware permission."""
         snapshot = self.data.get(sn)
-        return bool(
-            self.config_entry
-            and self.config_entry.options.get(CONF_CONTROLS)
-            and sn in self.config_entry.options.get(CONF_CONTROL_VEHICLES, [])
-            and snapshot
-            and self.fresh(sn, "profile")
-            and self.fresh(sn, "status")
-            and snapshot.status_freshness.error is None
-            and self._list_freshness.error is None
-            and any(
-                snapshot.status.capabilities.allows(candidate)
-                for candidate in (
-                    (action,) if action else ("bell", "buck", "engine/start", "engine/stop")
-                )
-            )
+        options = self.config_entry.options if self.config_entry else {}
+        return decide_control(
+            action,
+            snapshot.status.capabilities if snapshot else VehicleCapabilities(),
+            (
+                ("runtime_stopped", not self._stopping),
+                ("authentication_required", self._authenticated),
+                ("consent_missing", options.get(CONF_CONTROLS) is True),
+                ("vehicle_not_allowlisted", sn in options.get(CONF_CONTROL_VEHICLES, [])),
+                ("vehicle_not_present", snapshot is not None and snapshot.present),
+                ("profile_stale", self.fresh(sn, "profile")),
+                ("status_stale", self.fresh(sn, "status")),
+                ("profile_query_failed", self._list_freshness.error is None),
+                (
+                    "status_query_failed",
+                    snapshot is not None and snapshot.status_freshness.error is None,
+                ),
+                ("transport_unsupported", action in self.backend.control_actions),
+            ),
+        )
+
+    def controls_enabled(self, sn: str, action: str | None = None) -> bool:
+        """Availability and the pre/post-queue execution guard use one policy."""
+        return any(
+            self.control_decision(sn, candidate).allowed
+            for candidate in ((action,) if action else CONTROL_ACTIONS)
         )
 
     def _manual_auth_failure(self) -> ConfigEntryAuthFailed:

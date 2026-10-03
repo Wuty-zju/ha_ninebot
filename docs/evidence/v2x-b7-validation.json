@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-04",
+  "source_baseline_commit": "c61dd2afed526b4aab45d345f644d401054b3363",
+  "version": "2.0.0b7",
+  "phases": ["7 Capabilities and shared control decision"],
+  "tests": {
+    "passed": 282,
+    "combined_branch_coverage_percent": 97.66,
+    "capability_policy_coverage_percent": 100,
+    "python": "3.13.16",
+    "ha": "2026.1.0"
+  },
+  "checks": {
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed, 34 source files",
+    "hassfest": "required on exact release commit via CI",
+    "hacs": "required on exact release commit via CI"
+  },
+  "production_permission_parser_verified": false,
+  "production_control_policy": "unknown capabilities denied, explicit evidence required",
+  "diagnostic_evidence_label_export": false,
+  "backend_support_is_vehicle_permission": false,
+  "new_cloud_requests": 0,
+  "real_controls": 0,
+  "production_ha_writes": 0,
+  "legacy_unique_id_changes": 0,
+  "storage_schema_changes": 0,
+  "pending": [
+    "nonempty upstream permission schema and reviewed field/bit semantics",
+    "per-model/shared-account support and permission contracts",
+    "hardware action semantics and completion evidence after specific authorization",
+    "Image/GPS and dependency-based scheduling",
+    "battery physical/component evidence remains unresolved"
+  ],
+  "release_evidence": "Exact-commit CI and merge SHA appear in prerelease notes."
+}
