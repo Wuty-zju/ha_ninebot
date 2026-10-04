@@ -30,8 +30,7 @@ class ModelNumber(NinebotEntity, NumberEntity):
         return getattr(self.entry.runtime_data.models.model(self.sn), self.field)
 
     async def async_set_native_value(self, value: float) -> None:
-        self.entry.runtime_data.models.model(self.sn).configure(self.field, value)
-        self.entry.runtime_data.models.schedule_save()
+        self.entry.runtime_data.models.configure(self.sn, {self.field: value})
         self.coordinator.async_set_updated_data(dict(self.coordinator.data))
 
 

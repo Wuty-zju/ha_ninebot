@@ -1,5 +1,6 @@
 """Versioned local SOC models; never imports v1 energy counters or raw state."""
 
+from copy import deepcopy
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -54,6 +55,22 @@ class ModelStorage:
 
     def model(self, sn: str) -> EnergyModel:
         return self.models.setdefault(sn, EnergyModel())
+
+    def configure(self, sn: str, values: dict[str, float]) -> None:
+        """Options and Number share one atomic in-memory configuration commit.
+
+        Validate on a copy before replacing the model. A batch voltage/capacity
+        change creates one generation, never half-applied configuration. The
+        existing HA Store owns persistence and unload flushes scheduled saves.
+        """
+        old = self.model(sn)
+        updated = deepcopy(old)
+        for key, value in values.items():
+            updated.configure(key, value)
+        if updated.generation != old.generation:
+            updated.generation = old.generation + 1
+        self.models[sn] = updated
+        self.schedule_save()
 
     def _data(self) -> dict[str, Any]:
         return {

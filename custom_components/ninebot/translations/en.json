@@ -6,7 +6,14 @@
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Account",
-          "password": "Password"
+          "password": "Password",
+          "debug_mode": "Debug mode",
+          "enable_estimation": "Enable SOC energy estimation",
+          "enable_coordinates": "Enable precise coordinates"
+        },
+        "data_description": {
+          "debug_mode": "Show a bounded diagnostic view without additional requests.",
+          "enable_estimation": "Then set nominal V and Ah in integration options or vehicle configuration entities; measured voltage is not a default."
         }
       },
       "reauth_confirm": {
@@ -54,9 +61,32 @@
           "enable_estimation": "Enable SOC energy estimation",
           "enable_coordinates": "Show cloud coordinates (reference unverified)",
           "enable_controls": "Enable vehicle controls",
-          "control_vehicles": "Vehicles allowed for control"
+          "control_vehicles": "Vehicles allowed for control",
+          "debug_mode": "Debug mode",
+          "configure_model": "Configure one vehicle’s model parameters"
+        },
+        "data_description": {
+          "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
+          "configure_model": "Next select a vehicle; parameters use the same local model storage as Number entities."
+        }
+      },
+      "model_vehicle": {
+        "title": "Choose model vehicle",
+        "data": {
+          "model_vehicle": "Vehicle"
+        }
+      },
+      "model_parameters": {
+        "title": "Nominal battery parameters",
+        "description": "Enter nominal voltage and rated capacity. Changes start a new model generation and preserve previous history.",
+        "data": {
+          "voltage": "Nominal voltage (V)",
+          "capacity": "Rated capacity (Ah)"
         }
       }
+    },
+    "abort": {
+      "model_unavailable": "Load the integration and confirm the vehicle still belongs to this account before configuring its model."
     }
   },
   "entity": {
@@ -240,20 +270,13 @@
         }
       },
       "raw_data_summary": {
-        "name": "Raw data summary",
-        "state_attributes": {
-          "schema_path_count": {
-            "name": "Known schema paths"
-          },
-          "unknown_field_count": {
-            "name": "Fields outside schema summary"
-          },
-          "redacted_field_count": {
-            "name": "Redacted field occurrences"
-          },
-          "retained_bytes": {
-            "name": "Cache budget bytes"
-          }
+        "name": "Parsed information",
+        "state": {
+          "debug_disabled": "Debug disabled",
+          "ok": "OK",
+          "partial": "Partially available",
+          "stale": "Stale",
+          "error": "Error"
         }
       },
       "activation_time_raw": {
@@ -834,6 +857,19 @@
       },
       "month_list_coverage": {
         "name": "Month ride list coverage"
+      },
+      "estimation_quality": {
+        "name": "Estimation quality",
+        "state": {
+          "unconfigured": "Not configured",
+          "baseline_reset": "Baseline reset",
+          "missing_soc": "SOC unavailable",
+          "duplicate_or_old": "Duplicate or old sample",
+          "source_changed": "Source changed",
+          "baseline_only": "Baseline only",
+          "implausible_jump": "Implausible jump",
+          "accepted": "Sample accepted"
+        }
       }
     },
     "binary_sensor": {

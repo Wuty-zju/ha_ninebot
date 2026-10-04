@@ -171,6 +171,9 @@
       },
       "month_list_coverage": {
         "default": "mdi:chart-donut"
+      },
+      "estimation_quality": {
+        "default": "mdi:check-decagram-outline"
       }
     },
     "event": {

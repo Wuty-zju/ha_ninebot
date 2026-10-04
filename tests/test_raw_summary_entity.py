@@ -42,10 +42,15 @@ async def test_raw_summary_default_and_enabled_state_are_small_private_and_local
     coordinator.async_update_listeners()
     await hass.async_block_till_done()
     state = hass.states.get(entity_id)
-    assert state.state.isdecimal()
+    assert state.state == "debug_disabled"
     assert state.attributes["unknown_field_count"] > 0
     # Icon translations are frontend metadata; HA need not put them in state.
     assert set(state.attributes) - {"icon"} == {
+        "format_version",
+        "debug_mode",
+        "record_count",
+        "options",
+        "device_class",
         "schema_path_count",
         "unknown_field_count",
         "redacted_field_count",
