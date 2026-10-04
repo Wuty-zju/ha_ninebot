@@ -85,3 +85,21 @@ GPS、事件、控制、估算和未确认单位的 raw 诊断仍需按用途启
 新版 client 的隔离只读RC验证两车电压/温度可解析；实体流程的 existing
 fixture 回归和真实 native loopback 路由回归通过。生产 HA 没有升级或改写，
 控制权限策略仍未调整。完整边界见[缓存契约](v2x-ninecli输入输出与车辆缓存契约.md)。
+
+## b12：控制表达与可解释性
+
+- 正常Button：bell/bucket原ID不变；engine_start/engine_stop新ID，不借用旧Lock历史。
+- enabled_default跟随显式controls+逐车allowlist；旧INTEGRATION禁用由公共registry
+  精确提升，USER禁用保留，未配置/未允许车辆不会提升。执行前后的严格门禁不变。
+- control_availability是本地ENUM Diagnostic，默认启用；值为认证需要/未启用/未允许/
+  数据不足/可用/未确认/拒绝/不支持。四个属性分别表示四条命令，只能是相同枚举。
+  部分动作可用时总状态表示至少有一个可用，具体动作需看四个属性。
+- 图标、名称、枚举和属性均中英翻译；仅依赖profile context，不新增后台请求。
+- 不把未知原始大对象塞进debug实体：现有RawStore/白名单schema Diagnostics保存
+  数据理解入口，小型控制枚举用于解释实际UI问题，轨迹/未知私密值不进入state。
+- native二进制全host loopback回归纠正缓存假设：REST控制无cache仍发送，BMS
+  需要cache；四条请求均为一次并以fake service error停止，不验证真实物理语义。
+
+366 passed、97.80%分支覆盖；Ruff/format/mypy通过，production writes=0、
+real controls=0。实际permissions仍null；本阶段没有自动放行未知权限，因此
+不能宣布真实控制已恢复。

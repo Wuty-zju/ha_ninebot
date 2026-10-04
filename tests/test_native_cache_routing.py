@@ -15,8 +15,18 @@ pytestmark = pytest.mark.usefixtures("socket_enabled")
 
 
 @pytest.mark.parametrize("cached", [False, True])
-async def test_native_battery_requires_cache_before_any_upstream_call(
-    tmp_path, monkeypatch, cached
+@pytest.mark.parametrize(
+    "action,path",
+    [
+        ("battery", "/v6/vehicle/battery-info"),
+        ("bell", "/devices/control/bell"),
+        ("buck", "/devices/control/open_buck"),
+        ("engine/start", "/devices/control/engine_start"),
+        ("engine/stop", "/devices/control/engine_stop"),
+    ],
+)
+async def test_native_routes_and_endpoint_specific_cache_requirements(
+    tmp_path, monkeypatch, cached, action, path
 ):
     paths = []
 
@@ -62,7 +72,7 @@ async def test_native_battery_requires_cache_before_any_upstream_call(
 
     async def spawn(*args, **kwargs):
         # Every upstream origin is explicitly loopback in this test. Production
-        # has no host override facility and sends no control requests here.
+        # has no host override facility. No real control is sent here.
         assert "serve" in args
         prefix, suffix = args[:5], args[5:]
         flags = tuple(
@@ -84,9 +94,15 @@ async def test_native_battery_requires_cache_before_any_upstream_call(
             client = NinecliClient(tmp_path, session, timeout=5)
             try:
                 with pytest.raises(NinebotError) as error:
-                    await client.async_get_battery("synthetic-vehicle")
-                assert error.value.kind is (ErrorKind.SERVICE if cached else ErrorKind.PROTOCOL)
-                assert paths == (["/v6/vehicle/battery-info"] if cached else [])
+                    if action == "battery":
+                        await client.async_get_battery("synthetic-vehicle")
+                    else:
+                        await client.async_control("synthetic-vehicle", action)
+                requires_cache = action == "battery" and not cached
+                assert error.value.kind is (
+                    ErrorKind.PROTOCOL if requires_cache else ErrorKind.SERVICE
+                )
+                assert paths == ([] if requires_cache else [path])
             finally:
                 await client.async_close()
             assert client._process is None

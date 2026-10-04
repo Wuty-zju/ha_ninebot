@@ -27,6 +27,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from .battery import current_battery, identified_battery
+from .capabilities import CONTROL_BUTTONS, CONTROL_STATES, control_state
 from .const import CONF_ESTIMATION
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
@@ -203,6 +204,34 @@ SENSORS = (
 )
 
 
+class ControlAvailabilitySensor(NinebotEntity, SensorEntity):
+    """Explain local gating, without claiming cloud permission or device state."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = list(CONTROL_STATES)
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
+        super().__init__(entry, sn, "control_availability", "sensor", "profile")
+
+    @property
+    def available(self) -> bool:
+        # Local policy remains useful when cloud measurements/auth are stale.
+        return bool(self.snapshot and self.snapshot.present and not self.coordinator._stopping)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        return {
+            key: control_state(self.coordinator.control_decision(self.sn, action))
+            for key, action in CONTROL_BUTTONS
+        }
+
+    @property
+    def native_value(self) -> str:
+        states = self.extra_state_attributes.values()
+        return next(state for state in CONTROL_STATES if state in states)
+
+
 class NinebotSensor(NinebotEntity, SensorEntity):
     entity_description: Description
 
@@ -353,6 +382,7 @@ async def async_setup_entry(
         yield from (
             NinebotSensor(entry, sn, d) for d in (*SENSORS, *battery_descriptions(snapshot))
         )
+        yield ControlAvailabilitySensor(entry, sn)
         if entry.options.get(CONF_ESTIMATION):
             generation = entry.runtime_data.models.model(sn).generation
             for key in (
