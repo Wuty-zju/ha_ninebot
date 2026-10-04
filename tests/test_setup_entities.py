@@ -652,6 +652,8 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
             "returned_pack_count",
             "month_ride_count",
             "month_duration",
+            "month_returned_rides",
+            "month_list_coverage",
             "last_battery_used_raw",
             "month_energy_raw",
             "last_energy_raw",

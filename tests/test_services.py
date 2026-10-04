@@ -83,12 +83,17 @@ async def test_list_reuses_poll_cache_local_pagination_and_safe_response(
         "limit": 3,
         "returned": 3,
         "available_in_response": 20,
-        "total_known": None,
+        "total_known": 128,
         "has_more": True,
-        "upstream_complete": "unknown",
+        "upstream_complete": False,
     }
     assert response["rides"][0]["ride_id"] == "fixture-ride-04"
-    assert response["month_energy_unit"] == "unknown"
+    assert response["month_energy_unit"] == "Wh"
+    assert response["coverage"]["fraction"] == 20 / 128
+    assert response["month_ride_count"] == 128
+    assert response["month_duration_s"] == 59934
+    assert response["daily_mileage"] == []
+    assert response["daily_mileage_status"] == "invalid"
     encoded = json.dumps(response, allow_nan=False)
     for private in (
         "SyntheticSN",

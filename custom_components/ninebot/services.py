@@ -17,11 +17,12 @@ from .compat import validation as vol
 from .const import CONF_COORDINATES, DOMAIN
 from .coordinator import NinebotCoordinator
 from .exceptions import ErrorKind, NinebotError
-from .parsing import number, payload, previous_month
+from .models import TravelMonth
+from .parsing import previous_month
 from .raw import Endpoint, RawRecord
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
-from .travel import MAX_TRACK_POINTS, merge_detail, opaque_id, parse_ride, parse_rides
+from .travel import MAX_TRACK_POINTS, merge_detail, opaque_id, parse_ride
 
 MAX_DETAIL_QUERIES = 5
 
@@ -124,6 +125,9 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
             None if "duration_time_difference" in ride.issues else ride.average_speed_m_s
         ),
         "energy_raw": ride.energy_raw,
+        "energy_wh": ride.energy_raw,
+        "energy_unit": "Wh",
+        "energy_unit_evidence": "maintainer_confirmed",
         "used_electricity_raw": ride.used_electricity_raw,
         "server_average_speed_raw": ride.server_average_speed_raw,
         "raw_units": "unknown",
@@ -156,10 +160,39 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
     return result
 
 
-def month_data(record: RawRecord) -> tuple[dict[str, Any], tuple[Ride, ...]]:
-    raw = payload(record.payload())
+def month_data(record: RawRecord) -> TravelMonth:
     assert record.query_month is not None
-    return raw, parse_rides(raw, record.query_month)
+    return adapters.travel(record.payload(), record.query_month)
+
+
+def month_response(travel: TravelMonth) -> dict[str, Any]:
+    """Small aggregates plus a bounded daily series, never historical state."""
+    summary = travel.summary
+    assert summary is not None
+    return {
+        "month_mileage_km": summary.mileage_km,
+        "month_energy_raw": summary.energy_wh,
+        "month_energy_wh": summary.energy_wh,
+        "month_energy_unit": "Wh",
+        "energy_unit_evidence": "maintainer_confirmed",
+        "month_ride_count": summary.ride_count,
+        "month_duration_s": summary.duration_s,
+        "daily_mileage": [
+            {"date": point.day.isoformat(), "distance_km": point.distance_km}
+            for point in summary.daily_mileage
+        ],
+        "daily_mileage_status": summary.chart_status,
+        "coverage": {
+            "reported_count": summary.ride_count,
+            "returned_count": summary.returned_count,
+            "unique_ride_count": summary.unique_ride_count,
+            "fraction": summary.coverage,
+            "list_complete": summary.list_complete,
+            "returned_distance_m": summary.returned_distance_m,
+            "returned_duration_s": summary.returned_duration_s,
+            "returned_energy_wh": summary.returned_energy_wh,
+        },
+    }
 
 
 async def detail_ride(
@@ -217,7 +250,8 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
         month = call.data.get("query_month", adapters.month_at(dt_util.utcnow()))
     try:
         record = await co.async_query_month(sn, month)
-        raw, rides = await hass.async_add_executor_job(month_data, record)
+        travel = await hass.async_add_executor_job(month_data, record)
+        rides = travel.rides
         if is_list:
             # Stable local order when verified times exist; retain original order
             # for rows without times rather than inventing server ordering.
@@ -243,25 +277,30 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
                     enriched.append((await detail_ride(hass, co, sn, summary, 500))[0])
                 selected = tuple(enriched)
             response = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "query_month": month,
                 "received_at": iso(record.received_at),
                 "source": "ninecli",
                 "backend_version": record.backend_version,
-                "month_mileage_km": number(raw.get("total_mileages"), 0),
-                "month_energy_raw": number(raw.get("ec"), 0),
-                "month_energy_unit": "unknown",
+                **month_response(travel),
                 "rides": [ride_response(ride, include_track) for ride in selected],
                 "pagination": {
                     "page": page,
                     "limit": limit,
                     "returned": len(selected),
                     "available_in_response": len(rides),
-                    "total_known": None,
+                    "total_known": travel.reported_ride_count,
                     "has_more": start + limit < len(rides),
-                    "upstream_complete": "unknown",
+                    "upstream_complete": (
+                        travel.summary.list_complete
+                        if travel.summary and travel.summary.list_complete is not None
+                        else "unknown"
+                    ),
                 },
-                "warnings": ["upstream_pagination_unverified"],
+                "warnings": [
+                    "upstream_pagination_unverified",
+                    *(travel.summary.warnings if travel.summary else ()),
+                ],
             }
         else:
             matches = [ride for ride in rides if ride.ride_id == call.data["ride_id"]]
@@ -271,7 +310,7 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
                 hass, co, sn, matches[0], call.data["max_points"]
             )
             response = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "query_month": month,
                 "received_at": iso(detail_record.received_at),
                 "source": "ninecli",

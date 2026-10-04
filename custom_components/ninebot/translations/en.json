@@ -828,6 +828,12 @@
             }
           }
         }
+      },
+      "month_returned_rides": {
+        "name": "Month returned rides"
+      },
+      "month_list_coverage": {
+        "name": "Month ride list coverage"
       }
     },
     "binary_sensor": {
