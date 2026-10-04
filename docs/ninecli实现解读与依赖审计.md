@@ -172,3 +172,11 @@ BMS响应的have_bms_cycle_support位于battery_list同级；先前单包字段�
 修正发生在该次新版云端查询之后，使用原始脱敏结构和合成冲突样本验证。
 Go源码、构建改动、依赖许可文本及可重复构建的限制仍成立，不能因runtime可运行
 而宣称完整供应链审查完成。详情和当前平台矩阵见预发布验收。
+
+## 11. b11 缓存契约修正
+
+后续独立会话查询发现：0.1.7 REST vehicles 不写 native `vehicles.json`；
+此前“全REST可用”证据没有覆盖缺失cache的全新会话，不能推广为该场景保证。
+b11 由原生 `--json vehicles` 同时发现车辆并准备真实业务线路cache，其余I/O
+仍采用随机Bearer loopback REST，密码body规则不变。
+原生静态类型及实际无cache/有cache测试、两车RC只读结果见[输入输出与缓存契约](v2x-ninecli输入输出与车辆缓存契约.md)。

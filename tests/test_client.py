@@ -157,7 +157,7 @@ async def test_actual_proxy_startup_auth_and_unload(tmp_path):
         client = NinecliClient(tmp_path, session, timeout=5)
         try:
             with pytest.raises(NinebotError) as error:
-                await client.async_list_vehicles()
+                await client.async_get_status("synthetic-no-session")
             assert error.value.kind == ErrorKind.AUTH
             process = client._process
             assert process and process.returncode is None
@@ -321,7 +321,7 @@ async def test_transport_failure_does_not_leak_request_details_in_traceback(tmp_
     client._start = AsyncMock()
     client._stop = AsyncMock()
     with pytest.raises(NinebotError) as caught:
-        await client.async_list_vehicles()
+        await client.async_get_status("synthetic")
     assert caught.value.kind is ErrorKind.CONNECTION
     rendered = "".join(traceback.format_exception(caught.value))
     assert "synthetic-secret-in-error" not in rendered
@@ -348,7 +348,7 @@ async def test_startup_deadline_or_cancellation_reaps_child(tmp_path, cancelled)
     with patch(
         "custom_components.ninebot.client.asyncio.create_subprocess_exec", return_value=process
     ):
-        task = asyncio.create_task(client.async_list_vehicles())
+        task = asyncio.create_task(client.async_get_status("synthetic"))
         await started.wait()
         if cancelled:
             task.cancel()

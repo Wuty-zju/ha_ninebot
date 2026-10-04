@@ -26,7 +26,7 @@ async def main() -> None:
             process = None
             try:
                 try:
-                    await client.async_list_vehicles()
+                    await client.async_get_status("synthetic-no-session")
                 except NinebotAuthError as error:
                     assert error.kind is ErrorKind.AUTH
                 else:

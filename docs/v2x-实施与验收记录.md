@@ -339,3 +339,12 @@ Phase8首次beta CI发现3处Probatio/voluptuous静态Schema类型不匹配（ru
 - 339 passed / 97.84% 分支覆盖；registry 100%；Ruff/format/mypy 通过。
 - 本地 HA 仅只读。真实查询只用于原始契约研究，未执行控制；当前权限仍 null，
   b10 未修正控制策略。准确 main CI 与 prerelease 以 GitHub release notes 为准。
+
+## b11：native 车辆发现与业务线路缓存
+
+- 使用原生JSON vehicles操作准备native cache，解决REST发现不写缓存导致BMS的no_cache。
+- REST/CLI共享有界串行队列、输出/时间限额、取消回收；native更新前停止旧serve，不猜业务line，不将密码放argv。
+- CLI非零退出通过REST whoami明确认证，未知stderr不泄漏、不猜auth；成功路径无额外whoami或重复列表。
+- 353 passed / 97.77% 分支覆盖及静态检查通过；真实native stub全host loopback，只验证缓存路由，不执行控制。
+- 新client在隔离生产会话副本上做一次vehicles和每车一次battery，两车BMS可解析；源文件哈希不变、cache 0600、production writes/control/image downloads均0。
+- 准确main CI/发布以GitHub release notes为准。控制策略与native engine入口尚需继续。
