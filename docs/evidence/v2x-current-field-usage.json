@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-10-04",
-  "implementation_version": "2.0.0b13",
-  "implementation_base_commit": "19b51deb20c9f38082c346df58503bf1accc2c7e",
+  "implementation_version": "2.0.0b14",
+  "implementation_base_commit": "2135b62bfe267c306bf23d5982661a077dac9bca",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [
@@ -1397,13 +1397,14 @@
           "state_class": "—",
           "entity_category": "—",
           "compatibility": "C0",
-          "evidence": "R/S",
+          "evidence": "R/S/F：两车已有记录关联复核；源码守卫及离线负例；不保证全车型",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/status-01.json",
-            "tests/fixtures/ninecli/0.1.7/status-02.json"
+            "tests/fixtures/ninecli/0.1.7/status-02.json",
+            "docs/v2x-原生控制加密与状态归属契约.md"
           ],
-          "current_use": "raw私有保留；当前status adapter不解析或校验此字段，所属车辆由请求路由决定，不能宣称返回SN已核验。"
+          "current_use": "b14状态身份守卫：明确sn必须匹配请求车辆；缺失/null允许但不声称身份已确认；错车/非法值不更新raw或telemetry。"
         },
         {
           "path": "$.v6_dark_img_url",

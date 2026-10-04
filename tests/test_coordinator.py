@@ -51,9 +51,9 @@ async def coordinator(tmp_path, request):
 
     normalize = adapters.status
 
-    def mock_verified_status(raw):
+    def mock_verified_status(raw, *, expected_sn=None):
         # Test-only reviewed capability: never inferred from a production mask.
-        value = normalize(raw)
+        value = normalize(raw, expected_sn=expected_sn)
         if getattr(request, "param", False) is True:
             return replace(
                 value,
@@ -145,6 +145,30 @@ async def test_manual_refresh_forces_status_and_coalesces(coordinator):
     await asyncio.gather(one, two)
     co.client.async_get_status.assert_awaited_once_with("synthetic-one")
     assert co.data["synthetic-one"].status.battery == 55
+
+
+async def test_wrong_status_identity_cannot_replace_telemetry_raw_or_success_time(coordinator):
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    await co._async_update_data()
+    before = co.data["synthetic-one"]
+    record = co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC))
+    co.client.async_get_status.return_value = {"sn": "synthetic-two", "dump_energy": 3}
+    await co.async_refresh_vehicle("synthetic-one")
+    after = co.data["synthetic-one"]
+    assert after.status == before.status
+    assert after.status_freshness.succeeded_at == before.status_freshness.succeeded_at
+    assert after.status_freshness.error is ErrorKind.PROTOCOL
+    # Preserve bounded cached-value freshness after a partial failure. The
+    # explicit query-error gate still prevents dispatching controls.
+    assert co.fresh("synthetic-one", "status")
+    assert co.fresh("synthetic-one", "battery")
+    assert co.fresh("synthetic-two", "status")
+    assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is record
+    assert co._authenticated
+    assert not co.controls_enabled("synthetic-one", "bell")
+    assert "status_query_failed" in co.control_decision("synthetic-one", "bell").blockers
 
 
 async def test_fields_disappear_and_stale_is_not_infinite(coordinator):

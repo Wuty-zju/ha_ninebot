@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b14
+
+- status明确返回的sn必须匹配请求车辆，错车/非法身份不覆盖raw、telemetry或成功时间；缺失/null仍允许，partial failure与TTL保持。
+- 新增instrumented临时binary的完整控制加密模拟测试：四种接受及一次拒绝，无真实云/车辆动作，原binary不变。
+- 明确recon参考公钥/DeriveKey、opaque cmd、native成功与物理效果之间的边界，补MIT测试许可和当前字段用途。
+- 376项测试通过（97.87%分支覆盖），Ruff/format/mypy通过；未知权限门禁不变。
+
 ## 2.0.0b13
 
 - 新增可选“原始数据摘要”诊断：按车辆显示有界缓存记录数及四个整数指标，无原始值/任意字段名/位置，不增加云轮询。

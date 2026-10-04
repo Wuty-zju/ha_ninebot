@@ -1,6 +1,8 @@
 # v2.x 当前字段利用与调试摘要
 
-> 2026-10-04，b13；实现基线 b12 main `19b51deb20c9f38082c346df58503bf1accc2c7e`。
+> b14后续更正：status明确返回的sn现已在raw/telemetry更新前检查请求归属；缺失/null不冒称已核验。原b13审计基线保留，当前机器用途列与[新契约](v2x-原生控制加密与状态归属契约.md)为准。
+
+> 2026-10-04，当前实现b14；实现基线 b13 main `2135b62bfe267c306bf23d5982661a077dac9bca`。
 > 本轮仅离线开发，不新增九号云查询，不执行真实控制，不修改生产 HA。
 
 ## 1. 当前清单与历史证据的关系
@@ -44,7 +46,7 @@ R=已有真实只读shape/关系；S=当前源码或固定ninecli显示契约；
 
 - 普通/AI续航、车型Image和六类最近行程已默认显示，raw/身份/循环/估算等按用途保持诊断或显式启用。
 - businessType/vehicle_type没有被用来推断业务线或控制权限；真实业务路由缓存由原生CLI产生。
-- status.sn目前不被adapter用作返回归属校验，不能再将“请求按车辆路由”写成“返回SN已验证”。未来需先核实其与wnumber语义，再加对应守卫。
+- b14检查明确返回的status.sn与请求车辆是否匹配；缺失/null仍不能宣称“返回SN已证明”。两车已有记录关系已核对，全车型语义仍需证据。
 - vehicle_name_zh目前不参与车型fallback；优先en再vehicle_name，不宣称按HA语言切换车型。
 - 所有行程详情只用于显式历史查询，不静默改变当前最近行程sensor或重新发事件。
 - 当前null权限不会自动允许控制；b12正常名称/图标/状态解释不是“实车控制已恢复”。
@@ -121,7 +123,7 @@ F=设备元数据，G=子设备候选元数据，H=私有runtime，I=安全schem
 | status | $.pwr | int | 车辆电源状态；不是功率 | A | binary_sensor.main_power |
 | status | $.remain_charge_time | str | 服务器剩余充电文字；保留原实体，不能当秒 | B | sensor.remaining_charge_time；服务器文字，不换算成秒 |
 | status | $.remain_charge_timestamp | int | 剩余充电时间候选；duration 或 deadline 不明确 | H/I | 有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。 |
-| status | $.sn | str | 状态所属车辆校验；不新增重复序列号实体 | H/J | raw私有保留；当前status adapter不解析或校验此字段，所属车辆由请求路由决定，不能宣称返回SN已核验。 |
+| status | $.sn | str | 状态所属车辆校验；不新增重复序列号实体 | H/J | b14明确sn必须匹配请求车辆；缺失/null允许但不冒称身份已确认；错车/非法值不更新raw或telemetry。 |
 | status | $.v6_dark_img_url | str | 车型图片备用来源；沿用 profile 图片策略，非独立新实体 | J/I | status adapter未使用；图片来自profile；raw移除URL值，不增加图片下载。 |
 | status | $.v6_light_img_url | str | 车型图片备用来源；沿用 profile 图片策略，非独立新实体 | J/I | status adapter未使用；图片来自profile；raw移除URL值，不增加图片下载。 |
 | battery | $ | dict | 结构容器；仅记录 shape，不创建 Entity | H/I | 有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。 |

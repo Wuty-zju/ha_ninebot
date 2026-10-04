@@ -1,0 +1,45 @@
+{
+  "stage": "b14-status-identity-and-encrypted-native-contract",
+  "base_main_sha": "2135b62bfe267c306bf23d5982661a077dac9bca",
+  "version": "2.0.0b14",
+  "local_validation": {
+    "tests_passed": 376,
+    "branch_coverage_percent": 97.87,
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed"
+  },
+  "status_identity": {
+    "explicit_identity": "must match requested vehicle before raw/telemetry update",
+    "absent_or_null": "allowed by request routing, no returned-identity claim",
+    "invalid_or_mismatched": "per-group protocol error; old bounded valid cache and successful timestamp retained; query error still denies controls",
+    "verified_real_scope": "two previously saved vehicles, no new queries"
+  },
+  "native_control_test": {
+    "instrumented_copy": true,
+    "changed_assets": "temporary public key and macOS adhoc signature; original instructions/file unchanged",
+    "reply_vectors": [
+      0,
+      403
+    ],
+    "cases": 5,
+    "transport_success": "not physical success",
+    "denial_kind": "service, not reauth",
+    "synthetic_field": "data.accepted is a test marker, not observed cloud schema",
+    "original_binary_unchanged": true,
+    "production_backend_changed": false
+  },
+  "privacy": {
+    "new_cloud_queries": 0,
+    "real_controls": 0,
+    "production_writes": 0,
+    "control_execution_policy": "unchanged; unknown capability/permission refused"
+  },
+  "remaining": [
+    "control policy clarification",
+    "real upstream permission and physical action semantics",
+    "unknown units, CRS, battery identity, history completeness",
+    "full goal completion audit"
+  ],
+  "remote_ci": "must verify exact merged main SHA and prerelease separately"
+}
