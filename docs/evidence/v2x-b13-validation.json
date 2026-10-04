@@ -1,0 +1,52 @@
+{
+  "stage": "b13-field-inventory-and-raw-summary",
+  "base_main_sha": "19b51deb20c9f38082c346df58503bf1accc2c7e",
+  "version": "2.0.0b13",
+  "local_validation": {
+    "tests_passed": 369,
+    "branch_coverage_percent": 97.81,
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed"
+  },
+  "inventory": {
+    "observed_paths": 136,
+    "non_container_fields": 122,
+    "business_endpoints": 5,
+    "sources": "recorded sanitized payloads and reviewed historical inventory; no new cloud requests",
+    "candidate_aliases": "not promoted to observations",
+    "proof": "test_field_inventory checks every fixture path/type has an explicit sourced disposition"
+  },
+  "debug_entity": {
+    "key": "raw_data_summary",
+    "category": "diagnostic",
+    "default_enabled": false,
+    "native_value": "vehicle-scoped cached record count",
+    "attributes": [
+      "schema_path_count",
+      "unknown_field_count",
+      "redacted_field_count",
+      "retained_bytes"
+    ],
+    "payload_values_exported": false,
+    "arbitrary_field_names_exported": false,
+    "new_polling_demand": false,
+    "account_discovery_included": false,
+    "cache_freshness_claimed": false
+  },
+  "security": {
+    "new_cloud_queries": 0,
+    "real_controls": 0,
+    "production_writes": 0,
+    "control_permission_policy": "unchanged; unknown refused"
+  },
+  "remaining": [
+    "user control policy clarification",
+    "verified upstream capability semantics",
+    "physical action acceptance after specific authorization",
+    "battery stable identity and child eligibility",
+    "unknown physical units and CRS",
+    "completion audit"
+  ],
+  "release": "exact main CI and tag must be verified separately in release notes"
+}

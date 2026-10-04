@@ -232,6 +232,30 @@ class ControlAvailabilitySensor(NinebotEntity, SensorEntity):
         return next(state for state in CONTROL_STATES if state in states)
 
 
+class RawDataSummarySensor(NinebotEntity, SensorEntity):
+    """Optional debug overview, without exposing raw data to state/recorder."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
+        super().__init__(entry, sn, "raw_data_summary", "sensor", "profile")
+
+    @property
+    def available(self) -> bool:
+        return bool(self.snapshot and self.snapshot.present and not self.coordinator._stopping)
+
+    @property
+    def native_value(self) -> int:
+        return self.coordinator.raw.vehicle_summary(self.sn, dt_util.utcnow())["record_count"]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int]:
+        summary = self.coordinator.raw.vehicle_summary(self.sn, dt_util.utcnow())
+        summary.pop("record_count")
+        return summary
+
+
 class NinebotSensor(NinebotEntity, SensorEntity):
     entity_description: Description
 
@@ -383,6 +407,7 @@ async def async_setup_entry(
             NinebotSensor(entry, sn, d) for d in (*SENSORS, *battery_descriptions(snapshot))
         )
         yield ControlAvailabilitySensor(entry, sn)
+        yield RawDataSummarySensor(entry, sn)
         if entry.options.get(CONF_ESTIMATION):
             generation = entry.runtime_data.models.model(sn).generation
             for key in (

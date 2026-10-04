@@ -359,3 +359,15 @@ Phase8首次beta CI发现3处Probatio/voluptuous静态Schema类型不匹配（ru
 - 366 passed / 97.80%分支覆盖，静态检查通过。仅fake已验证capability可调用
   HA Button.press并回读状态，未知真实权限仍拒绝；实车控制和生产写入均0。
 - 准确main CI/发布以GitHubrelease notes为准，真实控制策略未完成。
+### b13：当前字段清单与安全调试摘要
+
+在b12精确main `19b51deb20c9f38082c346df58503bf1accc2c7e`之后，合并五个业务
+endpoint的136条已观察路径（122非容器字段），逐项记录当前用途/来源/单位/分类；
+旧97路径历史清单保留，新候选不自动建实体。新增默认关闭的raw_data_summary诊断，
+状态是此车缓存记录数，四个属性只为整数预算/字段计数，不含payload、任意key或
+精确GPS，账户级列表不计入该车。PROFILE context不增加任何遥测需求。
+
+新增三项有效检查覆盖录制fixture字段清单不遗漏、跨车辆隔离/TTL/删除、实际HA
+state隐私/启用默认/无额外API。完整本地369 passed、97.81%分支覆盖；Ruff/format/
+mypy通过。没有新增云查询、生产写入或真实控制。精确main CI及发布以release
+notes为准；本记录不冒称全部目标完成，未知权限和其它语义门槛仍待解决。

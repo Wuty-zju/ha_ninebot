@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b12 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b12)
+**2.0.0b13 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b13)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -252,3 +252,16 @@ Native loopback tests verify four REST command paths and one attempt per action.
 They also establish that REST controls dispatch without a vehicle cache, unlike
 BMS and CLI cache-based routing. The tests deliberately return service errors;
 no real cloud command or physical outcome is claimed.
+
+## Raw data review in 2.0.0b13
+
+The optional diagnostic **Raw data summary** reports only a vehicle's bounded
+cache record count and four integer metadata counters. It excludes account-wide
+discovery, raw values, arbitrary field names, identities and locations, and adds
+no polling demand. Cached records do not imply fresh or complete cloud data.
+Detailed approved schema information remains in downloadable diagnostics.
+
+The [current field review](docs/v2x-当前字段利用与调试摘要.md) consolidates 136 observed
+paths across five business endpoints, including nonempty trips and details.
+It distinguishes implemented representations, private runtime data and unknown
+semantics; source aliases and candidates are not presented as observed fields.

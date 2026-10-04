@@ -220,6 +220,23 @@
             }
           }
         }
+      },
+      "raw_data_summary": {
+        "name": "原始数据摘要",
+        "state_attributes": {
+          "schema_path_count": {
+            "name": "已知结构路径数"
+          },
+          "unknown_field_count": {
+            "name": "结构摘要外字段次数"
+          },
+          "redacted_field_count": {
+            "name": "已移除敏感字段次数"
+          },
+          "retained_bytes": {
+            "name": "缓存预算字节数"
+          }
+        }
       }
     },
     "binary_sensor": {
