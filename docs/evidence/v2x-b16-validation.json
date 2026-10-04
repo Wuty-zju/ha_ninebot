@@ -1,0 +1,64 @@
+{
+  "stage": "b16-control-reconciliation-and-bounded-outcome-diagnostics",
+  "base_main_sha": "afcb037b021ec000790b3f6c1a8da0ae899ac998",
+  "version": "2.0.0b16",
+  "original_regression": {
+    "test": "test_control_cannot_claim_readback_when_vehicle_disappeared",
+    "before_fix": "DID NOT RAISE HomeAssistantError",
+    "source_state": "b15 skipped status query while allowing normal control return"
+  },
+  "local_validation": {
+    "tests_passed": 391,
+    "branch_coverage_percent": 97.7,
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed",
+    "source_files": 37,
+    "full_suite_runs_after_final_runtime_change": 1
+  },
+  "semantics": {
+    "no_command_retries": true,
+    "non_auth_uncertain_command": "one status reconciliation if scope/auth/runtime remain valid; original uncertainty retained",
+    "authentication_failure": "reauth, no further request",
+    "completed_manual_task": "not reused as post-command evidence",
+    "skipped_readback": "not success",
+    "late_completion": "cannot overwrite newer slot",
+    "cancellation": "command/readback phases separated, no extra I/O"
+  },
+  "diagnostics": {
+    "per_vehicle_action_latest": true,
+    "global_record_limit": 64,
+    "persistence": false,
+    "cleared_on_unload": true,
+    "raw_responses": false,
+    "error_text": false,
+    "identities_exported": false,
+    "physical_outcome_verified": false,
+    "entity_attributes_added": false,
+    "new_polling_demand": false
+  },
+  "translations": {
+    "leaf_key_count": 178,
+    "key_parity": true,
+    "strings_equal_en": true,
+    "experimental_word_occurrences": 0
+  },
+  "privacy": {
+    "new_cloud_queries": 0,
+    "real_controls": 0,
+    "production_writes": 0,
+    "entity_ids_changed": false
+  },
+  "versions": {
+    "ninecli_pin": "ninecli==0.1.7",
+    "ha_minimum": "2026.1.0",
+    "stable_rechecked": "2026.9.4",
+    "beta_rechecked": "2026.10.0b0"
+  },
+  "remaining": [
+    "b15 real command physical effects remain unverified",
+    "production integration not upgraded",
+    "unknown units, CRS, stable battery identity and upstream history completeness"
+  ],
+  "remote_ci": "Verify exact merged main SHA and prerelease separately"
+}

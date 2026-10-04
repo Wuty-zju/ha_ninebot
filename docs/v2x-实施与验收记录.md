@@ -406,3 +406,27 @@ verified能力注入；已知拒绝、排队期间变化和USER禁用仍覆盖�
 本地382项完整套件（97.76%分支覆盖）及随后仅新增的2项已知拒绝测试通过；
 共384项不同测试，不重复整套。Ruff/format/mypy通过，中英178叶子key一致、
 strings=en、界面experimental/实验零出现。精确main CI与prerelease尚需发布核实。
+
+
+### b16：控制后状态协调与有界结果诊断
+
+先在b15源码上离线复现“车辆在命令返回后消失，但回读跳过仍正常返回”：
+原回归DID NOT RAISE。修复以实际查询attempt bool及最新snapshot/error判断回读，
+已完成manual任务不再复用，finally仅清理自己的任务。等待中的有效同车读取
+仍coalesce，原分组freshness/backoff与identity守卫保持。
+
+非认证命令错误后最多协调一次status；无论GET是否成功，原命令仍返回uncertain，
+原命令与回读错误分列。认证直接reauth不追加I/O，取消/卸载不重发，接口接受
+但readback失败/跳过返回中英control_readback_failed，不把旧状态当作完成证据。
+
+control_results.py缓存仅内存每车每动作最近backend调用，全局64条、卸载清空。
+导出固定枚举/时间/ErrorKind及physical_outcome_verified=false，没有真实索引、
+响应、位置、凭据或异常原文；旧调用晚结束不覆盖新槽位。无新Entity/Store/周期请求。
+
+针对性测试覆盖原失败、manual/command竞态、超时后的双错误、认证跳过、两种
+取消阶段、cache淘汰/晚结束/隐私。阶段真实控制=0、新云查询=0、生产修改=0。
+最终验收见evidence/v2x-b16-validation.json，精确main CI/prerelease另查实际发布。
+
+391项完整套件通过（97.70%分支覆盖），Ruff/format及37源文件mypy通过；
+67文件格式检查通过，中英178叶子路径一致、strings=en、界面实验字样零出现。
+原缺陷在修改前真实离线失败，当前回归与竞态/取消/隐私/边界一起通过。

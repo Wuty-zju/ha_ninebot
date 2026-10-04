@@ -307,7 +307,7 @@
       "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
     },
     "control_readback_failed": {
-      "message": "The control request returned successfully, but status readback failed."
+      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
       "message": "The request queue is full; try again later."

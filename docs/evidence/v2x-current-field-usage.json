@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-10-04",
-  "implementation_version": "2.0.0b15",
-  "implementation_base_commit": "4d5efe6a9c8f4df820415fae3f5aa7da81e4f8b0",
+  "implementation_version": "2.0.0b16",
+  "implementation_base_commit": "afcb037b021ec000790b3f6c1a8da0ae899ac998",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [
@@ -2972,7 +2972,11 @@
       "sources": [
         "tests/fixtures/ninecli/0.1.7/control-accepted.json",
         "tests/fixtures/ninecli/0.1.7/metadata.json",
-        "docs/evidence/v2x-b15-live-controls.json"
+        "docs/evidence/v2x-b15-live-controls.json",
+        "custom_components/ninebot/client.py",
+        "custom_components/ninebot/coordinator.py",
+        "custom_components/ninebot/control_results.py",
+        "custom_components/ninebot/diagnostics.py"
       ],
       "fields": [
         {
@@ -2999,7 +3003,7 @@
           "container": false,
           "meaning": "本机代理接受处理的信号；不证明车辆实际完成动作",
           "classification": "H",
-          "current_use": "与 HTTP200/data 同时由 response_data 验证；Button 完成调用不 optimistic 改写车辆 state。",
+          "current_use": "与HTTP200/data同时由response_data验证；接口接受事实仅进入有界control_results诊断，不乐观改写车辆state，也不证明物理完成。",
           "unit": "—",
           "enabled": "—",
           "device_class": "—",
@@ -3033,7 +3037,11 @@
       "sources": [
         "tests/fixtures/ninecli/0.1.7/control-accepted.json",
         "tests/fixtures/ninecli/0.1.7/metadata.json",
-        "docs/evidence/v2x-b15-live-controls.json"
+        "docs/evidence/v2x-b15-live-controls.json",
+        "custom_components/ninebot/client.py",
+        "custom_components/ninebot/coordinator.py",
+        "custom_components/ninebot/control_results.py",
+        "custom_components/ninebot/diagnostics.py"
       ],
       "fields": [
         {
@@ -3060,7 +3068,7 @@
           "container": false,
           "meaning": "本机代理接受处理的信号；不证明车辆实际完成动作",
           "classification": "H",
-          "current_use": "与 HTTP200/data 同时由 response_data 验证；Button 完成调用不 optimistic 改写车辆 state。",
+          "current_use": "与HTTP200/data同时由response_data验证；接口接受事实仅进入有界control_results诊断，不乐观改写车辆state，也不证明物理完成。",
           "unit": "—",
           "enabled": "—",
           "device_class": "—",
@@ -3094,7 +3102,11 @@
       "sources": [
         "tests/fixtures/ninecli/0.1.7/control-accepted.json",
         "tests/fixtures/ninecli/0.1.7/metadata.json",
-        "docs/evidence/v2x-b15-live-controls.json"
+        "docs/evidence/v2x-b15-live-controls.json",
+        "custom_components/ninebot/client.py",
+        "custom_components/ninebot/coordinator.py",
+        "custom_components/ninebot/control_results.py",
+        "custom_components/ninebot/diagnostics.py"
       ],
       "fields": [
         {
@@ -3121,7 +3133,7 @@
           "container": false,
           "meaning": "本机代理接受处理的信号；不证明车辆实际完成动作",
           "classification": "H",
-          "current_use": "与 HTTP200/data 同时由 response_data 验证；Button 完成调用不 optimistic 改写车辆 state。",
+          "current_use": "与HTTP200/data同时由response_data验证；接口接受事实仅进入有界control_results诊断，不乐观改写车辆state，也不证明物理完成。",
           "unit": "—",
           "enabled": "—",
           "device_class": "—",
@@ -3155,7 +3167,11 @@
       "sources": [
         "tests/fixtures/ninecli/0.1.7/control-accepted.json",
         "tests/fixtures/ninecli/0.1.7/metadata.json",
-        "docs/evidence/v2x-b15-live-controls.json"
+        "docs/evidence/v2x-b15-live-controls.json",
+        "custom_components/ninebot/client.py",
+        "custom_components/ninebot/coordinator.py",
+        "custom_components/ninebot/control_results.py",
+        "custom_components/ninebot/diagnostics.py"
       ],
       "fields": [
         {
@@ -3182,7 +3198,7 @@
           "container": false,
           "meaning": "本机代理接受处理的信号；不证明车辆实际完成动作",
           "classification": "H",
-          "current_use": "与 HTTP200/data 同时由 response_data 验证；Button 完成调用不 optimistic 改写车辆 state。",
+          "current_use": "与HTTP200/data同时由response_data验证；接口接受事实仅进入有界control_results诊断，不乐观改写车辆state，也不证明物理完成。",
           "unit": "—",
           "enabled": "—",
           "device_class": "—",
