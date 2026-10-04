@@ -5,6 +5,7 @@ from datetime import datetime
 
 from .capabilities import VehicleCapabilities
 from .exceptions import ErrorKind
+from .month_summary import MonthSummary
 from .parsing import JsonScalar
 from .ride_models import Ride
 
@@ -72,6 +73,7 @@ class TravelMonth:
     rides: tuple[Ride, ...] = ()
     reported_ride_count: int | None = None
     reported_duration_s: float | None = None
+    summary: MonthSummary | None = None
 
 
 @dataclass(frozen=True)

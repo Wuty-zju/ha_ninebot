@@ -828,6 +828,12 @@
             }
           }
         }
+      },
+      "month_returned_rides": {
+        "name": "本月已返回行程数"
+      },
+      "month_list_coverage": {
+        "name": "本月行程明细覆盖率"
       }
     },
     "binary_sensor": {

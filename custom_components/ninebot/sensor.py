@@ -219,6 +219,29 @@ SENSORS = (
         value=lambda s: s.travel.reported_duration_s if s.travel else None,
     ),
     Description(
+        key="month_returned_rides",
+        group="travel",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value=lambda s: s.travel.summary.returned_count if s.travel and s.travel.summary else None,
+    ),
+    Description(
+        key="month_list_coverage",
+        group="travel",
+        native_unit_of_measurement=PERCENTAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value=lambda s: (
+            100 * s.travel.summary.coverage
+            if s.travel and s.travel.summary and s.travel.summary.coverage is not None
+            else None
+        ),
+        attributes=lambda s: {
+            "scope": "returned_month_list",
+            "list_complete": s.travel.summary.list_complete
+            if s.travel and s.travel.summary
+            else None,
+        },
+    ),
+    Description(
         key="returned_pack_count",
         group="battery",
         entity_category=EntityCategory.DIAGNOSTIC,

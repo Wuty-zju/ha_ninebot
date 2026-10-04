@@ -8,6 +8,7 @@ from .const import BUSINESS_TIMEZONE
 from .exceptions import ErrorKind, NinebotError
 from .image_urls import public_image_url
 from .models import Battery, BatteryInfo, LastRide, TravelMonth, VehicleProfile, VehicleStatus
+from .month_summary import summarize_month
 from .observations import scalar_observations
 from .parsing import boolean as boolean
 from .parsing import integer, raw_scalar
@@ -180,4 +181,5 @@ def travel(raw: object, query_month: str) -> TravelMonth:
         rides,
         integer(item.get("times")),
         number(item.get("duration"), 0, 2678400),
+        summarize_month(item, query_month, rides),
     )

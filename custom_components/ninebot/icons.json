@@ -165,6 +165,12 @@
       },
       "last_battery_used_raw": {
         "default": "mdi:battery-minus"
+      },
+      "month_returned_rides": {
+        "default": "mdi:format-list-numbered"
+      },
+      "month_list_coverage": {
+        "default": "mdi:chart-donut"
       }
     },
     "event": {
