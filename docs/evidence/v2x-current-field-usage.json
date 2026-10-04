@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-10-04",
-  "implementation_version": "2.0.0b17",
-  "implementation_base_commit": "e8a2b846f3fa909d2442f748be2df5ee9059ae2d",
+  "implementation_version": "2.0.0b18",
+  "implementation_base_commit": "63b50ecdd5a60f7239338a935e6475ab8a5ad6b2",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [

@@ -83,7 +83,9 @@ async def test_native_discovery_returns_raw_and_discards_old_serve(tmp_path, nat
         await client.async_close()
 
 
-@pytest.mark.parametrize("raw", ["not-json", "{}", '{"ok":true,"data":[]}'])
+@pytest.mark.parametrize(
+    "raw", ["not-json", "{}", '{"ok":true,"data":[]}', '[{"device_name":"no identity"}]']
+)
 async def test_native_output_requires_json_list(tmp_path, native, raw):
     install, children, _, started = native
     install(f"print({raw!r})")
@@ -94,6 +96,26 @@ async def test_native_output_requires_json_list(tmp_path, native, raw):
         assert error.value.kind is ErrorKind.PROTOCOL
         assert children[0].returncode is not None and client._process is None
         assert not client._lock.locked() and client._pending == 0
+
+
+async def test_invalid_profile_cannot_commit_native_cache(tmp_path, native):
+    install, children, _, _ = native
+    old = b'{"vehicles":[{"wnumber":"synthetic-old","business_line":"ebike"}]}'
+    (tmp_path / "vehicles.json").write_bytes(old)
+    install(
+        f"from pathlib import Path;"
+        f"Path({str(tmp_path / 'vehicles.json')!r}).write_text('{{\"vehicles\":null}}');"
+        'print(\'[{"device_name":"no identity"}]\')'
+    )
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        with pytest.raises(NinebotError) as error:
+            await client.async_list_vehicles()
+        assert error.value.kind is ErrorKind.PROTOCOL
+        assert (tmp_path / "vehicles.json").read_bytes() == old
+        assert client.vehicle_discovery_complete is False
+        assert children[0].returncode == 0 and client._process is None
+        await client.async_close()
 
 
 async def test_native_output_limit_kills_child_without_waiting_for_eof(tmp_path, native):

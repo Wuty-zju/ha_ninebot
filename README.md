@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b17 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b17)
+**2.0.0b18 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b18)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -140,6 +140,13 @@ both the pre-upgrade integration version and the matching HA configuration/stora
 backup. Never downgrade storage by editing recorder or token JSON manually.
 
 ## Development and evidence
+
+Small prereleases use targeted offline regression tests and applicable static checks.
+Routine PR/main CI runs Ruff, format, Hassfest and HACS validation; a green routine
+Checks run does not certify the full suite. Major feature/schema/migration updates
+run the complete pinned three-version matrix via Checks → Run workflow on the
+exact candidate commit. The commands below describe that fuller validation.
+See [validation policy](docs/v2x-分级测试与预发布策略.md).
 
 ```sh
 python -m pip install pytest-homeassistant-custom-component==0.13.305 ninecli==0.1.7 ruff==0.16.10 mypy==2.4.0
