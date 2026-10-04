@@ -17,6 +17,7 @@ class BackendResult:
     query_month: str | None = None
     backend_version: str = BACKEND_VERSION
     endpoint_version: str | None = None
+    vehicles_complete: bool = True
 
 
 class NinebotBackend(Protocol):
@@ -45,7 +46,12 @@ class NinecliBackend:
 
     async def async_vehicles(self) -> BackendResult:
         payload = await self.client.async_list_vehicles()
-        return BackendResult(payload, Endpoint.VEHICLES, datetime.now(UTC))
+        return BackendResult(
+            payload,
+            Endpoint.VEHICLES,
+            datetime.now(UTC),
+            vehicles_complete=self.client.vehicle_discovery_complete is True,
+        )
 
     async def async_status(self, vehicle: str) -> BackendResult:
         payload = await self.client.async_get_status(vehicle)

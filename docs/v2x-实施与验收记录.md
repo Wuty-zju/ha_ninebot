@@ -430,3 +430,29 @@ control_results.py缓存仅内存每车每动作最近backend调用，全局64�
 391项完整套件通过（97.70%分支覆盖），Ruff/format及37源文件mypy通过；
 67文件格式检查通过，中英178叶子路径一致、strings=en、界面实验字样零出现。
 原缺陷在修改前真实离线失败，当前回归与竞态/取消/隐私/边界一起通过。
+
+
+## b17：不完整发现与原生cache保护
+
+起始main e8a2b846f3fa909d2442f748be2df5ee9059ae2d。只读核实生产已安装b15、
+controls启用且allowlist两车；已登记启用不等于运行可用。Recorder多类最新
+状态为unavailable，native cache为vehicles=null且改写时间相符。原生loopback
+模拟确证两列表业务失败仍exit0/空列表，旧实现会误认解绑；生产当时stderr缺失，
+不宣称根因已确证。
+
+新client有界并发读取两管道，partial positive更新实际观察车辆并合并native
+已知路由；total failure/非法/超限/取消回收child后恢复cache，不回滚有效token
+刷新。每车profile freshness独立，不完整缺席不续期/不确认解绑，阻止该车控制；
+其它实际返回车辆仍可按既有条件使用。诊断增加批次质量和每车身份时间/错误，
+没有新实体、UI key、定期请求或权限猜测。
+
+最终402 passed（97.43%分支覆盖），Ruff/69文件format/mypy38文件通过；受影响
+回归与一次最终全量通过后未重复。此前一次全量399通过，随后因取消/隐私/明确
+完整性改动再做最终验收，不假称本阶段只跑一次。7个显式真实只读逻辑操作，
+RC一次发现+两车status/BMS各一次成功，partial false-completeness标记正确；
+临时copy/child回收、生产session哈希相同，real controls=0、production writes=0。
+
+见[发现契约](v2x-不完整车辆发现与缓存恢复契约.md)、
+[验收证据](evidence/v2x-b17-validation.json)与
+[只读元数据](evidence/v2x-b17-live-readonly.json)。精确main CI/合并/发布以GitHub
+release实际核实为准，未部署生产或验证物理效果。

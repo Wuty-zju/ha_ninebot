@@ -72,7 +72,7 @@ async def test_native_discovery_returns_raw_and_discards_old_serve(tmp_path, nat
         )
         assert not any(key.startswith("NINEBOT_") for key in options["env"])
         assert options["stdin"] is asyncio.subprocess.DEVNULL
-        assert options["stderr"] is asyncio.subprocess.DEVNULL
+        assert options["stderr"] is asyncio.subprocess.PIPE
         assert client._pending == 0 and not client._lock.locked()
         # REST starts lazily using the newly written native cache/token files.
         client._request_locked = AsyncMock(return_value={"battery_list": []})
@@ -173,3 +173,87 @@ async def test_native_spawn_failure_is_sanitized(tmp_path, monkeypatch):
         assert error.value.kind is ErrorKind.PLATFORM
         assert "synthetic-secret" not in "".join(traceback.format_exception(error.value))
         assert client._process is None and client._pending == 0
+
+
+async def test_partial_discovery_preserves_missing_native_routes(tmp_path, native):
+    install, children, _, _ = native
+    old = {"vehicles": [{"wnumber": "synthetic-motor", "business_line": "motor"}]}
+    new = {"vehicles": [{"wnumber": "synthetic-ebike", "business_line": "ebike"}]}
+    (tmp_path / "vehicles.json").write_text(json.dumps(old))
+    install(
+        f"import sys;from pathlib import Path;"
+        f"Path({str(tmp_path / 'vehicles.json')!r}).write_text({json.dumps(new)!r});"
+        f"sys.stderr.write('synthetic-private-discovery-warning');"
+        f'print(\'[{{"wnumber":"synthetic-ebike"}}]\')'
+    )
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        assert await client.async_list_vehicles() == [{"wnumber": "synthetic-ebike"}]
+        assert client.vehicle_discovery_complete is False
+        assert json.loads((tmp_path / "vehicles.json").read_text())["vehicles"] == (
+            new["vehicles"] + old["vehicles"]
+        )
+        assert (tmp_path / "vehicles.json").stat().st_mode & 0o777 == 0o600
+        assert children[0].returncode == 0
+        await client.async_close()
+
+
+@pytest.mark.parametrize("mode", ["empty_warning", "malformed", "oversized_stderr", "cancel"])
+async def test_failed_discovery_restores_cache_not_tokens(tmp_path, native, mode):
+    install, children, _, started = native
+    old = b'{"vehicles":[{"wnumber":"synthetic-old","business_line":"ebike"}]}'
+    (tmp_path / "vehicles.json").write_bytes(old)
+    prefix = (
+        "import sys,time;from pathlib import Path;"
+        f"Path({str(tmp_path / 'vehicles.json')!r}).write_text('{{\"vehicles\":null}}');"
+        f"Path({str(tmp_path / 'tokens.json')!r}).write_text('synthetic-refreshed');"
+    )
+    programs = {
+        "empty_warning": "sys.stderr.write('synthetic-private-warning');print('[]')",
+        "malformed": "print('{}')",
+        "oversized_stderr": (
+            f"sys.stderr.write('x'*{MAX_RESPONSE_BYTES + 1});sys.stderr.flush();time.sleep(30)"
+        ),
+        "cancel": "print('[]',flush=True);time.sleep(30)",
+    }
+    install(prefix + programs[mode])
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session, timeout=5)
+        task = asyncio.create_task(client.async_list_vehicles())
+        await started.wait()
+        if mode == "cancel":
+            # Wait for the synthetic child to overwrite its cache before cancel.
+            for _ in range(100):
+                if (tmp_path / "tokens.json").exists():
+                    break
+                await asyncio.sleep(0.01)
+            assert (tmp_path / "tokens.json").exists()
+            task.cancel()
+        with pytest.raises(asyncio.CancelledError if mode == "cancel" else NinebotError) as error:
+            await task
+        if mode != "cancel":
+            assert error.value.kind is (
+                ErrorKind.SERVICE if mode == "empty_warning" else ErrorKind.PROTOCOL
+            )
+            assert "synthetic-private" not in "".join(traceback.format_exception(error.value))
+        assert (tmp_path / "vehicles.json").read_bytes() == old
+        assert (tmp_path / "tokens.json").read_text() == "synthetic-refreshed"
+        assert client.vehicle_discovery_complete is False
+        assert children[0].returncode is not None and client._process is None
+        assert not client._lock.locked() and client._pending == 0
+        await client.async_close()
+
+
+async def test_clean_empty_account_is_complete_and_keeps_native_removal(tmp_path, native):
+    install, _, _, _ = native
+    (tmp_path / "vehicles.json").write_text('{"vehicles":[{"wnumber":"synthetic-old"}]}')
+    install(
+        f"from pathlib import Path;"
+        f"Path({str(tmp_path / 'vehicles.json')!r}).write_text('{{\"vehicles\":null}}');print('[]')"
+    )
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        assert await client.async_list_vehicles() == []
+        assert client.vehicle_discovery_complete is True
+        assert json.loads((tmp_path / "vehicles.json").read_text())["vehicles"] is None
+        await client.async_close()

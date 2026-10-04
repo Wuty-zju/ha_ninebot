@@ -88,3 +88,4 @@ class VehicleSnapshot:
     battery_freshness: Freshness = field(default_factory=Freshness)
     travel_freshness: Freshness = field(default_factory=Freshness)
     present: bool = True
+    profile_freshness: Freshness = field(default_factory=Freshness)
