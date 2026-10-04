@@ -1,0 +1,33 @@
+{
+  "installed_version": "2.0.0b8",
+  "entity_count": 56,
+  "platform_counts": {
+    "sensor": 36,
+    "binary_sensor": 6,
+    "device_tracker": 2,
+    "image": 2,
+    "lock": 2,
+    "button": 6,
+    "event": 2
+  },
+  "disabled_by": {
+    "enabled": 26,
+    "integration": 30
+  },
+  "logs": [
+    {
+      "file": "home-assistant.log",
+      "bounded_tail_bytes": 131072,
+      "ninebot_levels": {
+        "WARNING": 1
+      }
+    },
+    {
+      "file": "home-assistant.log.1",
+      "bounded_tail_bytes": 131072,
+      "ninebot_levels": {
+        "WARNING": 3
+      }
+    }
+  ]
+}

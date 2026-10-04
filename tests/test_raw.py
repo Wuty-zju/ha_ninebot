@@ -157,3 +157,40 @@ def test_sanitized_recorded_fixtures_replay_and_provenance():
             ride = parse_ride(payload, "202609", source=endpoint)
             assert len(ride.track_points) == 5
             assert all(point.latitude >= 30 for point in ride.track_points)
+
+
+def test_vehicle_debug_summary_is_scoped_value_free_and_expires_details():
+    store = RawStore(detail_ttl=5)
+    private = build_record(
+        Endpoint.STATUS,
+        {"dump_energy": 73, "password": "private-token", "private-person-key": "private-value"},
+        NOW,
+    )
+    detail = build_record(Endpoint.TRIP_DETAIL, {"duration": 12, "trail": "private-gps"}, NOW)
+    store.put(private, "vehicle-a")
+    store.put(private, "vehicle-b")
+    store.put(build_record(Endpoint.VEHICLES, [{"score": 2}], NOW))
+    store.put(
+        detail,
+        "vehicle-a",
+        "ride-one",
+    )
+    store.put(
+        detail,
+        "vehicle-a",
+        "ride-two",
+    )
+    summary = store.vehicle_summary("vehicle-a", NOW)
+    assert summary == {
+        "record_count": 3,
+        "schema_path_count": 3,
+        "unknown_field_count": 1,
+        "redacted_field_count": 1,
+        "retained_bytes": private.retained_bytes + 2 * detail.retained_bytes,
+    }
+    assert all(type(value) is int for value in summary.values())
+    assert store.vehicle_summary("vehicle-b", NOW)["record_count"] == 1
+    assert store.vehicle_summary("absent", NOW)["record_count"] == 0
+    assert store.vehicle_summary("vehicle-a", NOW + timedelta(seconds=5))["record_count"] == 1
+    store.discard_vehicle("vehicle-a")
+    assert store.vehicle_summary("vehicle-a", NOW)["record_count"] == 0

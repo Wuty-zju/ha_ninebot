@@ -309,6 +309,25 @@ class RawStore:
             if key[1] == vehicle:
                 self._records.pop(key)
 
+    def vehicle_summary(self, vehicle: str, now: datetime) -> dict[str, int]:
+        """Only bounded numeric metadata, never schema keys or payload values.
+
+        Account-wide vehicle discovery is excluded. Path counts are distinct
+        per endpoint across retained records; unknown/redacted counts are field
+        occurrences. A nonzero cache count is not proof of fresh cloud data.
+        """
+        self.expire(now)
+        records = [record for key, record in self._records.items() if key[1] == vehicle]
+        return {
+            "record_count": len(records),
+            "schema_path_count": len(
+                {(record.endpoint, field.path) for record in records for field in record.schema}
+            ),
+            "unknown_field_count": sum(record.unknown_fields for record in records),
+            "redacted_field_count": sum(record.redacted_fields for record in records),
+            "retained_bytes": sum(record.retained_bytes for record in records),
+        }
+
     def diagnostics(self, now: datetime) -> dict[str, Any]:
         self.expire(now)
         return {

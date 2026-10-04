@@ -57,6 +57,9 @@
       },
       "control_availability": {
         "default": "mdi:shield-car"
+      },
+      "raw_data_summary": {
+        "default": "mdi:database-eye"
       }
     },
     "event": {

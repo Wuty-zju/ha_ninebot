@@ -220,6 +220,23 @@
             }
           }
         }
+      },
+      "raw_data_summary": {
+        "name": "Raw data summary",
+        "state_attributes": {
+          "schema_path_count": {
+            "name": "Known schema paths"
+          },
+          "unknown_field_count": {
+            "name": "Fields outside schema summary"
+          },
+          "redacted_field_count": {
+            "name": "Redacted field occurrences"
+          },
+          "retained_bytes": {
+            "name": "Cache budget bytes"
+          }
+        }
       }
     },
     "binary_sensor": {
