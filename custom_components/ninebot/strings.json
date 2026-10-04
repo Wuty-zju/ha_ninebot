@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "Options",
-        "description": "Estimation needs explicit nominal voltage/capacity. Coordinate reference is unverified. Controls require opt-in, an allowed vehicle, fresh data and verified upstream support, permission and action semantics. This version has no verified cloud permission parser, so enabling controls alone does not activate hardware actions. Diagnostics explains the blocking conditions.",
+        "description": "Estimation needs explicit nominal voltage/capacity. Coordinate reference is unverified. Controls require opt-in, an allowed vehicle, fresh data and verified upstream support, permission and action semantics. This version has no verified cloud permission parser, so enabling controls alone does not activate hardware actions. Diagnostics explains the blocking conditions. Configured control buttons appear automatically; user-disabled buttons stay disabled. Vehicle control status explains the current gate.",
         "data": {
           "poll_interval": "Status polling interval (seconds)",
           "enable_estimation": "Enable SOC energy estimation",
@@ -153,6 +153,73 @@
       },
       "last_ride_average_speed": {
         "name": "Last ride average speed"
+      },
+      "control_availability": {
+        "name": "Vehicle control status",
+        "state": {
+          "authentication_required": "Authentication required",
+          "disabled": "Controls disabled",
+          "vehicle_not_allowed": "Vehicle not allowed",
+          "data_unavailable": "Fresh data unavailable",
+          "ready": "Control available",
+          "unverified": "Upstream capability unverified",
+          "denied": "Upstream permission denied",
+          "unsupported": "Command unsupported"
+        },
+        "state_attributes": {
+          "bell": {
+            "name": "Find vehicle",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Control available",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream permission denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "bucket": {
+            "name": "Seat compartment",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Control available",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream permission denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "engine_start": {
+            "name": "Remote start",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Control available",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream permission denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "engine_stop": {
+            "name": "Remote stop",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Control available",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream permission denied",
+              "unsupported": "Command unsupported"
+            }
+          }
+        }
       }
     },
     "binary_sensor": {
@@ -175,6 +242,12 @@
       },
       "bucket": {
         "name": "Open seat compartment"
+      },
+      "engine_start": {
+        "name": "Remote start"
+      },
+      "engine_stop": {
+        "name": "Remote stop"
       }
     },
     "image": {

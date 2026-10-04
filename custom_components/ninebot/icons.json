@@ -54,6 +54,9 @@
       },
       "bms_cycles": {
         "default": "mdi:counter"
+      },
+      "control_availability": {
+        "default": "mdi:shield-car"
       }
     },
     "event": {
@@ -70,6 +73,12 @@
       },
       "bucket": {
         "default": "mdi:package-variant"
+      },
+      "engine_start": {
+        "default": "mdi:power-on"
+      },
+      "engine_stop": {
+        "default": "mdi:power-off"
       }
     },
     "number": {

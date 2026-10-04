@@ -541,7 +541,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 self._active.discard(task)
 
     async def _control(self, sn: str, action: str) -> None:
-        """Experimental controls need explicit consent and a present vehicle."""
+        """Controls need explicit consent and a present, authorized vehicle."""
         if (
             self._stopping
             or not self.config_entry

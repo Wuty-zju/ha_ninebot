@@ -74,3 +74,28 @@ raw schema diagnostics 的 vehicles source_endpoint 来源模板改为真实原�
 
 下阶段继续原生控制入口、权限策略和安全 debug 表达。缓存成功只证明路由
 前置条件被满足，不等于控制权限允许或物理动作完成。
+
+## 6. b12：REST 控制与缓存的区别
+
+新增固定 binary 回归覆盖cache存在/缺失两种情况、battery加四种控制。
+**已由原生模拟上游确认 S/F：** battery无cache返回no_cache且不上游；
+四种REST控制在无cache时仍向ebike控制路径发送一次POST。因此第2节若
+将CLI的缓存要求推及全部REST控制是不准确的：CLI缓存路由、REST BMS路由、
+REST控制是不同实现路径。b11的client说明已修正；b11发布说明另补事实校正，
+不重写tag或声称旧版已完成这些控制回归。
+
+| HA命令 | REST路径 | 本机模拟器观察的native上游路径 |
+|---|---|---|
+| bell | POST /vehicles/{sn}/bell | POST /devices/control/bell |
+| buck | POST /vehicles/{sn}/buck | POST /devices/control/open_buck |
+| engine/start | POST /vehicles/{sn}/engine/start | POST /devices/control/engine_start |
+| engine/stop | POST /vehicles/{sn}/engine/stop | POST /devices/control/engine_stop |
+
+全部host显式改到测试专用loopback，上游stub主动返回503业务错误；请求
+加密外层key观察为d/h/k/p/t。没有保存真实token/密文，没有真实云调用或车辆
+动作。它确认native编码/路由路径，不证明内部RSA cmd解密内容、真实权限、
+其他业务线/车型或物理动作完成。当前集成仍需scope/freshness/权限门禁。
+
+b12补回正常命名的远程启动/关闭按钮，同时增加小型本地控制状态枚举实体。
+启用按钮注册与允许动作执行明确分离，未知capability仍不允许。控制策略
+变更尚待澄清，不能因为按钮已创建或模拟路由通过就宣称灰色问题全部解决。

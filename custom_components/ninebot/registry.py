@@ -10,8 +10,9 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from .capabilities import CONTROL_BUTTONS
 from .compat import device_entry_ids
-from .const import DOMAIN
+from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, DOMAIN
 from .runtime import NinebotConfigEntry
 
 OBSOLETE_KEYS = {
@@ -109,6 +110,28 @@ def async_enable_standard_entities(hass: HomeAssistant, entry: NinebotConfigEntr
             and snapshot is not None
             and snapshot.present
             and _matches(row, sn, VISIBLE_KEYS)
+        ):
+            registry.async_update_entity(row.entity_id, disabled_by=None)
+            enabled += 1
+    return enabled
+
+
+@callback
+def async_enable_configured_controls(hass: HomeAssistant, entry: NinebotConfigEntry) -> int:
+    """Entity registration is separate from the execution permission gate."""
+    if entry.options.get(CONF_CONTROLS) is not True:
+        return 0
+    keys = {"button": frozenset(key for key, _ in CONTROL_BUTTONS)}
+    registry = er.async_get(hass)
+    enabled = 0
+    for row, sn in _owned_entities(hass, entry):
+        snapshot = entry.runtime_data.coordinator.data.get(sn)
+        if (
+            sn in entry.options.get(CONF_CONTROL_VEHICLES, [])
+            and row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+            and snapshot is not None
+            and snapshot.present
+            and _matches(row, sn, keys)
         ):
             registry.async_update_entity(row.entity_id, disabled_by=None)
             enabled += 1

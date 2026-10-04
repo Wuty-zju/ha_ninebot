@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "选项",
-        "description": "估算需要明确的标称电压和容量；坐标系尚未验证。控制需要启用、车辆白名单、新鲜数据及经验证的上游支持、权限和动作语义。此版本尚无已验证的云端权限解析器，仅勾选启用不会开放硬件控制；诊断会列出拒绝原因。",
+        "description": "估算需要明确的标称电压和容量；坐标系尚未验证。控制需要启用、车辆白名单、新鲜数据及经验证的上游支持、权限和动作语义。此版本尚无已验证的云端权限解析器，仅勾选启用不会开放硬件控制；诊断会列出拒绝原因。 已配置的控制按钮会自动显示；用户手动禁用的按钮保持禁用。车辆控制状态实体说明当前限制。",
         "data": {
           "poll_interval": "状态轮询间隔（秒）",
           "enable_estimation": "启用SOC能量估算",
@@ -153,6 +153,73 @@
       },
       "last_ride_average_speed": {
         "name": "最近行程总平均速度"
+      },
+      "control_availability": {
+        "name": "车辆控制状态",
+        "state": {
+          "authentication_required": "需要重新认证",
+          "disabled": "未启用车辆控制",
+          "vehicle_not_allowed": "车辆未获允许",
+          "data_unavailable": "缺少新鲜数据",
+          "ready": "控制可用",
+          "unverified": "上游能力尚未确认",
+          "denied": "上游权限拒绝",
+          "unsupported": "不支持此命令"
+        },
+        "state_attributes": {
+          "bell": {
+            "name": "鸣笛寻车",
+            "state": {
+              "authentication_required": "需要重新认证",
+              "disabled": "未启用车辆控制",
+              "vehicle_not_allowed": "车辆未获允许",
+              "data_unavailable": "缺少新鲜数据",
+              "ready": "控制可用",
+              "unverified": "上游能力尚未确认",
+              "denied": "上游权限拒绝",
+              "unsupported": "不支持此命令"
+            }
+          },
+          "bucket": {
+            "name": "打开座桶",
+            "state": {
+              "authentication_required": "需要重新认证",
+              "disabled": "未启用车辆控制",
+              "vehicle_not_allowed": "车辆未获允许",
+              "data_unavailable": "缺少新鲜数据",
+              "ready": "控制可用",
+              "unverified": "上游能力尚未确认",
+              "denied": "上游权限拒绝",
+              "unsupported": "不支持此命令"
+            }
+          },
+          "engine_start": {
+            "name": "远程启动",
+            "state": {
+              "authentication_required": "需要重新认证",
+              "disabled": "未启用车辆控制",
+              "vehicle_not_allowed": "车辆未获允许",
+              "data_unavailable": "缺少新鲜数据",
+              "ready": "控制可用",
+              "unverified": "上游能力尚未确认",
+              "denied": "上游权限拒绝",
+              "unsupported": "不支持此命令"
+            }
+          },
+          "engine_stop": {
+            "name": "远程关闭",
+            "state": {
+              "authentication_required": "需要重新认证",
+              "disabled": "未启用车辆控制",
+              "vehicle_not_allowed": "车辆未获允许",
+              "data_unavailable": "缺少新鲜数据",
+              "ready": "控制可用",
+              "unverified": "上游能力尚未确认",
+              "denied": "上游权限拒绝",
+              "unsupported": "不支持此命令"
+            }
+          }
+        }
       }
     },
     "binary_sensor": {
@@ -175,6 +242,12 @@
       },
       "bucket": {
         "name": "打开座桶"
+      },
+      "engine_start": {
+        "name": "远程启动"
+      },
+      "engine_stop": {
+        "name": "远程关闭"
       }
     },
     "image": {

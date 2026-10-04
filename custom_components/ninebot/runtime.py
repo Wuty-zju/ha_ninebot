@@ -20,6 +20,7 @@ class RuntimeData:
     identity_conflicts: set[str] = field(default_factory=set)
     obsolete_entities_removed: int = 0
     standard_entities_enabled: int = 0
+    configured_controls_enabled: int = 0
     events: RideEventPipeline | None = None
 
 

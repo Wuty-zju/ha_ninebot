@@ -348,3 +348,14 @@ Phase8首次beta CI发现3处Probatio/voluptuous静态Schema类型不匹配（ru
 - 353 passed / 97.77% 分支覆盖及静态检查通过；真实native stub全host loopback，只验证缓存路由，不执行控制。
 - 新client在隔离生产会话副本上做一次vehicles和每车一次battery，两车BMS可解析；源文件哈希不变、cache 0600、production writes/control/image downloads均0。
 - 准确main CI/发布以GitHub release notes为准。控制策略与native engine入口尚需继续。
+
+## b12：原生控制Button与小型诊断
+
+- 增加engine_start/engine_stop正常Button和control_availability本地ENUM Diagnostic，
+  不映射Lock；根据明确controls/allowlist提升INTEGRATION禁用，USER禁用保留。
+- 状态与四个动作属性完整中英翻译、标准图标，无raw大对象或新云轮询需求。
+- 固定native loopback测试四种控制，发现REST控制无cache仍发送，修正CLI/BMS
+  缓存契约不能泛化到REST控制的说明；不因此放行未知权限。
+- 366 passed / 97.80%分支覆盖，静态检查通过。仅fake已验证capability可调用
+  HA Button.press并回读状态，未知真实权限仍拒绝；实车控制和生产写入均0。
+- 准确main CI/发布以GitHubrelease notes为准，真实控制策略未完成。

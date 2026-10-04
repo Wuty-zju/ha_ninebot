@@ -245,8 +245,8 @@ class NinecliClient:
     async def async_list_vehicles(self) -> Any:
         """Discover vehicles and let native ninecli prepare its routing cache.
 
-        In 0.1.7 REST /vehicles does not write vehicles.json, but battery and
-        controls require it. CLI vehicles writes the verified business lines;
+        In 0.1.7 REST /vehicles does not write vehicles.json, but battery
+        routing requires it. CLI vehicles writes the verified business lines;
         inferring those lines from the merged REST response would be unsafe.
         Stop serve before native token/cache updates, then restart lazily with
         the new files. This operation contains no credentials in argv.

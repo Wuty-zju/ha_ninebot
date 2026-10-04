@@ -7,7 +7,23 @@ Until a reviewed parser contract supplies evidence, all actions fail closed.
 from dataclasses import dataclass
 from enum import StrEnum
 
-CONTROL_ACTIONS = frozenset({"bell", "buck", "engine/start", "engine/stop"})
+CONTROL_BUTTONS = (
+    ("bell", "bell"),
+    ("bucket", "buck"),
+    ("engine_start", "engine/start"),
+    ("engine_stop", "engine/stop"),
+)
+CONTROL_ACTIONS = frozenset(action for _, action in CONTROL_BUTTONS)
+CONTROL_STATES = (
+    "authentication_required",
+    "disabled",
+    "vehicle_not_allowed",
+    "data_unavailable",
+    "ready",
+    "unverified",
+    "denied",
+    "unsupported",
+)
 
 
 class CapabilityState(StrEnum):
@@ -73,6 +89,34 @@ class ControlDecision:
             "evidence_available": self.evidence_available,
             "matching_records": self.matching_records,
         }
+
+
+def control_state(decision: ControlDecision) -> str:
+    """Small public status; never exports evidence labels or upstream payloads."""
+    if decision.allowed:
+        return "ready"
+    blocked = set(decision.blockers)
+    for reasons, state in (
+        ({"authentication_required"}, "authentication_required"),
+        ({"consent_missing"}, "disabled"),
+        ({"vehicle_not_allowlisted"}, "vehicle_not_allowed"),
+        (
+            {
+                "runtime_stopped",
+                "vehicle_not_present",
+                "profile_stale",
+                "status_stale",
+                "profile_query_failed",
+                "status_query_failed",
+            },
+            "data_unavailable",
+        ),
+        ({"transport_unsupported", "unknown_action"}, "unsupported"),
+        ({"support_denied", "permission_denied"}, "denied"),
+    ):
+        if blocked & reasons:
+            return state
+    return "unverified"
 
 
 def decide_control(

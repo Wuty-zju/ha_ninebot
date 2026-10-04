@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b11 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b11)
+**2.0.0b12 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b12)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -234,3 +234,21 @@ The new client successfully read and normalized both vehicles' BMS data from an
 isolated session copy. This does not claim production HA was upgraded or any
 hardware action was executed. Controls remain subject to the existing permission
 policy. See the [native I/O and cache contract](docs/v2x-ninecli输入输出与车辆缓存契约.md).
+
+## Control representation in 2.0.0b12
+
+Remote start/stop are direct command buttons, never Lock entities. Enabling
+controls and allowing a vehicle enables integration-disabled button defaults
+for that vehicle; user-disabled buttons remain disabled. Registration does not
+bypass the execution gate: unknown permissions still refuse real commands.
+
+The normal diagnostic **Vehicle control status** sensor explains configuration,
+authentication, freshness, unverified capabilities and denial. Its four action
+attributes contain only fixed enum states, not raw payloads or identities; it
+adds no status/battery/trip polling demand. Large raw data remains in the bounded
+memory layer and schema diagnostics, outside entity state/recorder.
+
+Native loopback tests verify four REST command paths and one attempt per action.
+They also establish that REST controls dispatch without a vehicle cache, unlike
+BMS and CLI cache-based routing. The tests deliberately return service errors;
+no real cloud command or physical outcome is claimed.
