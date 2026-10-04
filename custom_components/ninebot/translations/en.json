@@ -53,8 +53,8 @@
           "poll_interval": "Status polling interval (seconds)",
           "enable_estimation": "Enable SOC energy estimation",
           "enable_coordinates": "Show cloud coordinates (reference unverified)",
-          "enable_controls": "Enable experimental controls (hardware unverified)",
-          "control_vehicles": "Vehicles explicitly allowed for experimental controls"
+          "enable_controls": "Enable vehicle controls",
+          "control_vehicles": "Vehicles allowed for control"
         }
       }
     }
@@ -108,9 +108,6 @@
       },
       "bms_cycles": {
         "name": "Battery cycles"
-      },
-      "legacy": {
-        "name": "Legacy value (unavailable)"
       },
       "estimated_nominal": {
         "name": "Estimated nominal energy"
@@ -174,15 +171,10 @@
         "name": "Refresh vehicle status"
       },
       "bell": {
-        "name": "Experimental bell"
+        "name": "Find vehicle"
       },
       "bucket": {
-        "name": "Experimental seat trunk"
-      }
-    },
-    "lock": {
-      "lock": {
-        "name": "Lock state"
+        "name": "Open seat compartment"
       }
     },
     "image": {
@@ -201,9 +193,6 @@
       },
       "battery_capacity": {
         "name": "Capacity (local model)"
-      },
-      "battery_max_range": {
-        "name": "Legacy full range (unused by energy model)"
       }
     },
     "event": {
@@ -238,9 +227,6 @@
     },
     "invalid_auth": {
       "message": "The session is invalid; reauthenticate through Devices & services."
-    },
-    "engine_lock_unverified": {
-      "message": "engine-start/stop are not verified equivalents of lock/unlock. This entity retains observed lock state and does not execute engine controls."
     },
     "query_unavailable": {
       "message": "Vehicle query unavailable: ensure the integration is loaded, the session is valid and the vehicle remains in a fresh account vehicle list."

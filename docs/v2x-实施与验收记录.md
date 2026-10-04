@@ -310,3 +310,23 @@ Phase8首次beta CI发现3处Probatio/voluptuous静态Schema类型不匹配（ru
 37162821409），未跳过或移除beta门槛。按官方公共alias规则在compat集中动态
 解析validation namespace，配置/Actions使用同一引擎；没有新runtime依赖。
 本地42项受影响测试通过，最终完整验收以修复后的精确提交三版本CI为准。
+
+## 2.0.0b9：无效实体清理与界面语义
+
+根据安装b8后的最新反馈，用户明确改变“无效旧实体永久占位”的要求。只读审计
+生产HA已安装b8/2026.10.0b0，一entry/two vehicles/56登记，其中30由integration
+默认禁用；options为空。有限日志无相关ERROR，不能把登记状态当作实时云查询。
+详见[问题审计](v2x-实体与控制问题审计及修正.md)。
+
+- registry.py精确废弃名单在成功首刷后、平台加载前执行，独占entry+单车辆
+  device identity+本集成platform限定，不删陌生/共享/模糊/有效model身份。
+- 删除无值LegacySensor、不可操作Lock平台、无用max_range number的创建路径。
+  保留二元锁状态、真实读数、有效旧alias和有意义模型历史，不直接编辑recorder。
+- 普通鸣笛/座桶与控制选项中英名称去实验前缀，补按钮/里程/diagnostic/参数icons；
+  diagnostics仅增加移除数量。当前门禁未改，后续直接engine buttons和控制策略
+  独立实施，不能把此阶段说成恢复了实车动作。
+- 本地338 tests，含分支覆盖97.83%，registry100%；Ruff/format、mypy36文件通过。
+  失败首刷不清理、幂等重载不重建Lock、跨entry/无device/template/未知ID守卫验证。
+  最低/稳定/beta+Hassfest/HACS准确提交通过后发布，真实结果见release notes。
+- 生产只读、真实云业务查询0、真实车辆控制0；升级时清理旧实体是明确授权的
+  行为变化，原自动化需改引用。开发过程中未将其应用到生产HA。

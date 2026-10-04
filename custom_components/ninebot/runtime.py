@@ -18,6 +18,7 @@ class RuntimeData:
     session: SessionManager
     models: ModelStorage
     identity_conflicts: set[str] = field(default_factory=set)
+    obsolete_entities_removed: int = 0
     events: RideEventPipeline | None = None
 
 

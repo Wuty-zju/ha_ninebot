@@ -15,11 +15,69 @@
       },
       "last_ride_average_speed": {
         "default": "mdi:speedometer-medium"
+      },
+      "range_estimated": {
+        "default": "mdi:map-marker-distance"
+      },
+      "range_ai": {
+        "default": "mdi:map-marker-distance"
+      },
+      "endurance": {
+        "default": "mdi:map-marker-distance"
+      },
+      "remaining_charge_time": {
+        "default": "mdi:battery-clock-outline"
+      },
+      "device_name": {
+        "default": "mdi:motorbike"
+      },
+      "sn": {
+        "default": "mdi:barcode"
+      },
+      "vehicle_lock_raw": {
+        "default": "mdi:lock-outline"
+      },
+      "month_mileage": {
+        "default": "mdi:map-marker-distance"
+      },
+      "last_mileage": {
+        "default": "mdi:map-marker-path"
+      },
+      "month_energy_raw": {
+        "default": "mdi:chart-box-outline"
+      },
+      "last_energy_raw": {
+        "default": "mdi:chart-box-outline"
+      },
+      "charging_power_raw": {
+        "default": "mdi:chart-box-outline"
+      },
+      "bms_cycles": {
+        "default": "mdi:counter"
       }
     },
     "event": {
       "ride": {
         "default": "mdi:motorbike"
+      }
+    },
+    "button": {
+      "refresh": {
+        "default": "mdi:refresh"
+      },
+      "bell": {
+        "default": "mdi:bullhorn"
+      },
+      "bucket": {
+        "default": "mdi:package-variant"
+      }
+    },
+    "number": {
+      "main_battery_voltage": {
+        "default": "mdi:flash"
+      },
+      "battery_capacity": {
+        "default": "mdi:battery"
       }
     }
   },

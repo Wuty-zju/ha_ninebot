@@ -1,4 +1,4 @@
-"""A per-vehicle refresh and explicitly gated experimental controls."""
+"""A per-vehicle refresh and explicitly gated vehicle controls."""
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant

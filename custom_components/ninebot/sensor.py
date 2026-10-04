@@ -210,30 +210,6 @@ SENSORS = (
     ),
 )
 
-# Old estimated energy identities cannot become v2 SOC-model identities.
-LEGACY_KEYS = {
-    "battery_calculated",
-    "gsm_csq",
-    "gsm_rssi",
-    "gsm_report_timestamp",
-    "gsm_report_time",
-    "location",
-    "battery_nominal_energy",
-    "battery_energy_delta",
-    "battery_outflow_energy_step",
-    "battery_inflow_energy_step",
-    "battery_outflow_power",
-    "battery_inflow_power",
-    "battery_outflow_energy_daily",
-    "battery_outflow_energy_monthly",
-    "battery_outflow_energy_total",
-    "battery_inflow_energy_daily",
-    "battery_inflow_energy_monthly",
-    "battery_inflow_energy_total",
-    "month_energy",
-    "last_energy",
-}
-
 
 class NinebotSensor(NinebotEntity, SensorEntity):
     entity_description: Description
@@ -261,24 +237,6 @@ class NinebotSensor(NinebotEntity, SensorEntity):
     @property
     def native_value(self) -> str | float | datetime | None:
         return self.entity_description.value(self.snapshot) if self.snapshot else None
-
-
-class LegacySensor(NinebotEntity, SensorEntity):
-    """Keep registry/history; missing sources are never represented as zero."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(self, entry: NinebotConfigEntry, sn: str, key: str, unique_id: str) -> None:
-        super().__init__(entry, sn, key, "sensor", "profile", unique_id=unique_id)
-        self._attr_translation_key = "legacy"
-
-    @property
-    def native_value(self) -> None:
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, str]:
-        return {"status": "deprecated", "reason": "no_equivalent_source_or_changed_model"}
 
 
 class EstimatedSensor(NinebotEntity, SensorEntity):
@@ -425,7 +383,7 @@ async def async_setup_entry(
         for description in SENSORS
         for key in (description.key, *description.aliases)
     }
-    known = LEGACY_KEYS | set(equivalent) | {"bms_voltage", "batt_temp", "bms_cycles"}
+    known = set(equivalent) | {"bms_voltage", "batt_temp", "bms_cycles"}
     existing: list[Entity] = []
     for sn, key, uid in legacy_rows(hass, entry, "sensor", known):
         if uid in seen:
@@ -437,7 +395,5 @@ async def async_setup_entry(
             existing.append(
                 NinebotSensor(entry, sn, legacy_battery_description(key), unique_id=uid)
             )
-        else:
-            existing.append(LegacySensor(entry, sn, key, uid))
     if existing:
         add(existing)

@@ -3,13 +3,12 @@
 from homeassistant.const import Platform
 
 DOMAIN = "ninebot"
-VERSION = "2.0.0b8"
+VERSION = "2.0.0b9"
 PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.DEVICE_TRACKER,
     Platform.IMAGE,
-    Platform.LOCK,
     Platform.BUTTON,
     Platform.NUMBER,
     Platform.EVENT,

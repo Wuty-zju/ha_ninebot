@@ -40,12 +40,11 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: NinebotConfigEntry, add: AddEntitiesCallback
 ) -> None:
     def factory(sn: str) -> Iterable[Entity]:
-        # Keep legacy parameters discoverable; new users opt into the model.
-        if entry.options.get(CONF_ESTIMATION) or entry.data.get("identity_scheme") == "open_v1":
+        # Model inputs appear only for an enabled model.
+        if entry.options.get(CONF_ESTIMATION):
             for key, field, unit, maximum in [
                 ("main_battery_voltage", "voltage", "V", 300),
                 ("battery_capacity", "capacity", "Ah", 500),
-                ("battery_max_range", "max_range", "km", 5000),
             ]:
                 yield ModelNumber(entry, sn, key, field, unit, maximum)
 

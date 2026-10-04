@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-04",
+  "version": "2.0.0b9",
+  "source_baseline_commit": "aa68b4134d8f72dc17e241351f740e2f4bf48b67",
+  "scope": "Obsolete identity cleanup and ordinary translated UI/icons; control dispatch unchanged",
+  "tests": {
+    "passed": 338,
+    "branch_coverage_percent": 97.83,
+    "registry_coverage_percent": 100,
+    "ha": "2026.1.0",
+    "python": "3.13.16"
+  },
+  "checks": {
+    "ruff": "passed",
+    "format": "passed, 59 files",
+    "mypy": "passed, 36 source files",
+    "minimum_stable_beta_hassfest_hacs": "Required on exact main release commit; actual run links in prerelease notes"
+  },
+  "production_read_only": {
+    "ha": "2026.10.0b0",
+    "installed_integration": "2.0.0b8",
+    "entries": 1,
+    "vehicles": 2,
+    "entity_registry_rows": 56,
+    "integration_disabled_rows": 30,
+    "options_empty": true,
+    "related_log_warning_lines": 4,
+    "related_log_error_lines": 0,
+    "not_proof_of_live_state": true
+  },
+  "new_cloud_rest_operations": 0,
+  "real_controls": 0,
+  "production_writes": 0,
+  "direct_sql_edits": 0,
+  "removal_policy": "Reviewed exact obsolete IDs on exclusively owned vehicle device only, after successful first refresh",
+  "pending": [
+    "native engine button design and working consent/cloud dispatch policy",
+    "reliable entity visibility defaults and integration-disabled migration",
+    "updated endpoint/schema review and safe unknown-field debug representation"
+  ],
+  "release_evidence": "Exact main SHA, PR and CI links in prerelease notes"
+}
