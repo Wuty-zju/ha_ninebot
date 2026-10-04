@@ -3,7 +3,7 @@
 2.0 使用固定版本 `ninecli==0.1.7` 的 App 协议，替换旧 OpenClaw 查询链。
 项目独立开发，与九号/Segway 官方没有隶属关系。
 
-**2.0.0b13 为测试版**，安装前请阅读升级说明、[发布说明](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b13)
+**2.0.0b14 为测试版**，安装前请阅读升级说明、[发布说明](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b14)
 和[实体迁移矩阵](docs/2.0-实体迁移矩阵.md)。
 
 在 HACS 添加自定义集成仓库 `Wuty-zju/ha_ninebot`，选择测试版；
@@ -170,3 +170,12 @@ REST控制在无车辆缓存时也会发请求，不同于BMS和CLI缓存路由�
 [当前字段利用表](docs/v2x-当前字段利用与调试摘要.md)汇总五个业务endpoint的
 136条已观察路径，补齐非空行程和详情；区分已实现表达、私有runtime和未知语义，
 候选别名不冒充真实已观察字段。
+
+## 2.0.0b14 状态归属与原生加密验收
+
+status明确返回的sn须匹配请求车辆，错误身份不会覆盖raw/telemetry/成功时间。
+缺失/null仍支持；错误局限于status组，不清除登录，旧有效值仍受原TTL限制。
+
+临时native测试副本使用一次性测试公钥，通过完整加密模拟验证控制接受/拒绝，
+全部上游loopback、原binary和生产HA不变。不是实车控制证明，不放宽未知权限
+门禁。见[新契约](docs/v2x-原生控制加密与状态归属契约.md)。

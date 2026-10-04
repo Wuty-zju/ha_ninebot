@@ -54,6 +54,17 @@ def test_real_soc_zero_ranges_and_reverse_lock():
     assert adapters.status({"dump_energy": 101, "loc": {"lat": 91, "lon": 2}}).latitude is None
 
 
+@pytest.mark.parametrize("reported", ["another-vehicle", "", True, 123])
+def test_explicit_status_identity_must_match_request(reported):
+    with pytest.raises(NinebotError):
+        adapters.status({"sn": reported, "dump_energy": 73}, expected_sn="vehicle-one")
+
+
+def test_status_identity_matching_and_optional_identity():
+    for raw in ({"sn": " vehicle-one "}, {"sn": None}, {}):
+        assert adapters.status({**raw, "dump_energy": 73}, expected_sn="vehicle-one").battery == 73
+
+
 def test_all_batteries_and_support_gate():
     result = adapters.batteries(
         {

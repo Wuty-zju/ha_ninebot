@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b13 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b13)
+**2.0.0b14 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b14)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -265,3 +265,15 @@ The [current field review](docs/v2x-当前字段利用与调试摘要.md) consol
 paths across five business endpoints, including nonempty trips and details.
 It distinguishes implemented representations, private runtime data and unknown
 semantics; source aliases and candidates are not presented as observed fields.
+
+## Status identity and native conformance in 2.0.0b14
+
+An explicit returned status `sn` must match the requested vehicle before raw
+cache or telemetry updates. Missing/null identity remains supported; a mismatch
+is a partial group error and does not clear authentication or replace successful
+timestamps. Existing valid cached values remain bounded by their original TTL.
+
+Test-only native copies with temporary public keys verify encrypted control
+acceptance and rejection against loopback upstreams. Original binaries and
+production HA remain unchanged. This does not verify physical controls or
+relax unknown-permission gating. See the [contract](docs/v2x-原生控制加密与状态归属契约.md).

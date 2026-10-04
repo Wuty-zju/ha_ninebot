@@ -371,3 +371,15 @@ endpoint的136条已观察路径（122非容器字段），逐项记录当前用
 state隐私/启用默认/无额外API。完整本地369 passed、97.81%分支覆盖；Ruff/format/
 mypy通过。没有新增云查询、生产写入或真实控制。精确main CI及发布以release
 notes为准；本记录不冒称全部目标完成，未知权限和其它语义门槛仍待解决。
+### b14：状态归属守卫与原生加密模拟
+
+基于已发布b13 main `2135b62bfe267c306bf23d5982661a077dac9bca`。已有两车私有
+记录只读复核status.sn均与profile.wnumber一致，未增加云查询。明确身份必须
+匹配请求车辆；缺失/null允许但不声称身份已证明；错车/非法值在raw更新前拒绝，
+保留旧成功时间/有界有效值、partial failure和query-error控制门禁。
+
+测试临时copy只改一次性公钥资产及macOS签名，不改原binary。通过recon参考
+加密响应证明四种动作接受、一次拒绝SERVICE分类；每用例一次本机模拟请求，
+不证明真实权限/物理效果，不执行实车控制。MIT notice在测试目录及NOTICE。
+完整376 passed、97.87%分支覆盖、Ruff/format/mypy通过。精确main CI及
+prerelease另核实release notes；整体目标与未知权限策略仍未完成。

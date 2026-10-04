@@ -225,8 +225,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         try:
             if group == "status":
                 result = await self.backend.async_status(sn)
+                status = adapters.status(result.payload, expected_sn=sn)
                 await self._capture(result, sn)
-                status = adapters.status(result.payload)
                 updated = replace(
                     snapshot, status=status, status_freshness=Freshness(now, dt_util.utcnow())
                 )

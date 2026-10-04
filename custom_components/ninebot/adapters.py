@@ -44,8 +44,13 @@ def profiles(raw: object) -> tuple[VehicleProfile, ...]:
     return tuple(result.values())
 
 
-def status(raw: object) -> VehicleStatus:
+def status(raw: object, *, expected_sn: str | None = None) -> VehicleStatus:
     item = payload(raw)
+    # Some models omit identity. An explicit returned identity must agree with
+    # the requested vehicle before either telemetry or its raw cache is updated.
+    if expected_sn is not None and item.get("sn") is not None:
+        if text(item["sn"]) != expected_sn:
+            raise NinebotError(ErrorKind.PROTOCOL)
     location = item.get("loc")
     loc: JsonObject = location if isinstance(location, dict) else {}
     lat, lon = number(loc.get("lat"), -90, 90), number(loc.get("lon"), -180, 180)

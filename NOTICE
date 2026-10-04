@@ -11,3 +11,8 @@ text or complete Go source. Source availability, build reproducibility and
 transitive Go licenses remain documented dependency audit limitations.
 See docs/ninecli实现解读与依赖审计.md. The integration license does not relicense
 ninecli, Home Assistant, vendor APIs or third-party assets.
+
+Test-only native encrypted-response conformance uses a public-key vector and
+key-derivation reference adapted from kxn/ninebot-recon a46124d (MIT, copyright
+2026 kxn). Full notice: tests/ninebot_recon_license.txt. It is not a runtime
+backend dependency; only temporary test binary copies are instrumented.
