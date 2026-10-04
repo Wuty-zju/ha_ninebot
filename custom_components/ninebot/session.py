@@ -1,15 +1,17 @@
 """Private candidate sessions with recoverable, same-filesystem commits."""
 
 import asyncio
+import hashlib
 import json
 import os
 import re
 import shutil
 import tempfile
+import time
 import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import aiohttp
@@ -68,6 +70,19 @@ class Candidate:
     uid: str
 
 
+SMS_COOLDOWN = 60
+SMS_LIFETIME = 600
+
+
+@dataclass
+class SmsChallenge:
+    path: Path
+    account: str = field(repr=False)
+    expires_at: float
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    consumed: bool = False
+
+
 class SessionManager:
     """Candidates are never allowed to replace sessions during validation."""
 
@@ -83,6 +98,109 @@ class SessionManager:
         self._lock = asyncio.Lock()
         self._transactions: dict[str, asyncio.Lock] = {}
         self._live_transactions: set[str] = set()
+        self._sms: dict[Path, SmsChallenge] = {}
+        self._sms_attempts: dict[str, float] = {}
+
+    async def async_cleanup_sms(self, *, shutdown: bool = False) -> None:
+        """Collect expired live challenges and old SMS-only crash remnants."""
+        for challenge in list(self._sms.values()):
+            if shutdown or time.monotonic() >= challenge.expires_at:
+                await self.async_discard_sms(challenge)
+
+        def collect() -> None:
+            if not self.root.is_dir() or self.root.is_symlink():
+                return
+            for directory in self.root.glob(".candidate-sms-*"):
+                if directory in self._sms or directory.is_symlink() or not directory.is_dir():
+                    continue
+                if time.time() - directory.stat().st_mtime >= SMS_LIFETIME:
+                    shutil.rmtree(directory, ignore_errors=True)
+
+        await finish_io(collect)
+
+    async def async_send_sms(
+        self, account: str, challenge: SmsChallenge | None = None
+    ) -> SmsChallenge:
+        """Exactly one explicit send. Cooldown covers unknown/failed delivery too."""
+        identity = hashlib.sha256(account.encode()).hexdigest()
+        stamp = time.monotonic()
+        if stamp - self._sms_attempts.get(identity, -SMS_COOLDOWN) < SMS_COOLDOWN:
+            raise NinebotError(ErrorKind.BUSY)
+        self._sms_attempts = {
+            key: value for key, value in self._sms_attempts.items() if stamp - value < SMS_COOLDOWN
+        }
+        self._sms_attempts[identity] = stamp
+        await self.async_cleanup_sms()
+        created = challenge is None
+        if challenge is None:
+            if len(self._sms) >= 8:
+                raise NinebotError(ErrorKind.BUSY)
+
+            def create() -> Path:
+                private_directory(self.root)
+                return Path(tempfile.mkdtemp(prefix=".candidate-sms-", dir=self.root))
+
+            task = asyncio.create_task(asyncio.to_thread(create))
+            try:
+                directory = await asyncio.shield(task)
+            except asyncio.CancelledError:
+                directory = await task
+                await finish_io(lambda: shutil.rmtree(directory, True))
+                raise
+            challenge = SmsChallenge(directory, account, stamp + SMS_LIFETIME)
+            self._sms[directory] = challenge
+        if (
+            self._sms.get(challenge.path) is not challenge
+            or challenge.account != account
+            or challenge.consumed
+        ):
+            raise NinebotError(ErrorKind.PROTOCOL)
+        try:
+            async with challenge.lock:
+                client = self._factory(challenge.path, self._session)
+                try:
+                    await client.async_send_login_code(account)
+                    await finish_io(lambda: secure_files(challenge.path))
+                    challenge.expires_at = time.monotonic() + SMS_LIFETIME
+                finally:
+                    await client.async_close()
+        except BaseException:
+            # A failed first send never leaves an ownerless candidate. Keep a
+            # prior challenge on failed explicit resend so the user can retry.
+            if created:
+                await self.async_discard_sms(challenge)
+            raise
+        return challenge
+
+    async def async_consume_sms(self, challenge: SmsChallenge, code: str) -> Candidate:
+        """Validate in the same private directory, never in the active session."""
+        if re.fullmatch(r"[0-9]{4,8}", code) is None:
+            raise NinebotError(ErrorKind.PROTOCOL)
+        async with challenge.lock:
+            if (
+                self._sms.get(challenge.path) is not challenge
+                or challenge.consumed
+                or time.monotonic() >= challenge.expires_at
+            ):
+                raise NinebotError(ErrorKind.AUTH)
+            client = self._factory(challenge.path, self._session)
+            try:
+                await client.async_consume_login_code(challenge.account, code)
+                profiles(await client.async_list_vehicles())
+                uid = await finish_io(lambda: session_uid(challenge.path))
+                await client.async_close()
+                await finish_io(lambda: secure_files(challenge.path))
+                challenge.consumed = True
+                self._sms.pop(challenge.path, None)
+                return Candidate(challenge.path, uid)
+            finally:
+                await client.async_close()
+
+    async def async_discard_sms(self, challenge: SmsChallenge) -> None:
+        async with challenge.lock:
+            self._sms.pop(challenge.path, None)
+            if not challenge.consumed:
+                await finish_io(lambda: shutil.rmtree(challenge.path, True))
 
     @asynccontextmanager
     async def transaction(self, key: str) -> AsyncIterator[None]:

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import issue_registry as ir
@@ -38,6 +39,15 @@ def manager_for(hass: HomeAssistant) -> SessionManager:
             Path(hass.config.path(".storage", SESSION_DIRECTORY)), async_get_clientsession(hass)
         )
     manager: SessionManager = hass.data[key]
+    lifecycle = f"{key}_lifecycle"
+    if lifecycle not in hass.data:
+        hass.data[lifecycle] = True
+        hass.async_create_task(manager.async_cleanup_sms())
+
+        async def cleanup(_: object) -> None:
+            await manager.async_cleanup_sms(shutdown=True)
+
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, cleanup)
     return manager
 
 

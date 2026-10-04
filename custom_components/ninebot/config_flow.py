@@ -1,5 +1,7 @@
 """Explicit credential entry, isolated validation and account-safe reauth."""
 
+import asyncio
+import re
 import uuid
 from typing import Any
 
@@ -8,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigEntryState, ConfigFl
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import callback
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.selector import (
     SelectOptionDict,
     SelectSelector,
@@ -34,7 +37,7 @@ from .const import (
 )
 from .exceptions import ErrorKind, NinebotError
 from .parsing import number
-from .session import SessionManager
+from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
 
 ERRORS = {
     ErrorKind.AUTH: "invalid_auth",
@@ -53,14 +56,32 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._entry: ConfigEntry | None = None
+        self._sms: SmsChallenge | None = None
+        self._sms_origin = "user"
+        self._sms_options: dict[str, Any] = {}
+        self._sms_timer: Any = None
+        self._sms_task: asyncio.Task[Any] | None = None
+        self._reloading = False
 
     def _manager(self) -> SessionManager:
         from . import manager_for
 
         return manager_for(self.hass)
 
-    async def _credentials(self, step: str, user_input: dict[str, Any] | None) -> ConfigFlowResult:
+    async def _credentials(
+        self,
+        step: str,
+        user_input: dict[str, Any] | None,
+        prepared: Candidate | None = None,
+    ) -> ConfigFlowResult:
         errors = {}
+        if user_input is not None and prepared is None:
+            if user_input.get("login_method") == "sms":
+                self._sms_origin = step
+                return await self._send_sms(user_input)
+            if not user_input.get(CONF_PASSWORD):
+                errors[CONF_PASSWORD] = "password_required"
+                user_input = None
         if user_input is not None:
             account = str(user_input[CONF_ACCOUNT]).strip()
             manager = self._manager()
@@ -79,7 +100,9 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         # The old runtime may still own this directory. Do not
                         # recover or replace it until HA can unload it safely.
                         raise NinebotError(ErrorKind.BUSY)
-                    candidate = await manager.async_prepare(account, str(user_input[CONF_PASSWORD]))
+                    candidate = prepared or await manager.async_prepare(
+                        account, str(user_input[CONF_PASSWORD])
+                    )
                     if self._entry:
                         expected = self._entry.data.get(CONF_BUSINESS_UID)
                         if (expected and candidate.uid != expected) or (
@@ -114,7 +137,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             self._entry, data=data, unique_id=candidate.uid
                         )
                         metadata_updated = True
-                        if not await self.hass.config_entries.async_reload(self._entry.entry_id):
+                        if not await self._reload_entry():
                             raise NinebotError(ErrorKind.CONNECTION)
                         await manager.async_finalize(key)
                         committed = False
@@ -186,7 +209,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         and not recovery_pending
                         and (metadata_updated or unloaded)
                     ):
-                        await self.hass.config_entries.async_reload(self._entry.entry_id)
+                        await self._reload_entry()
             if recovery_pending:
                 return self.async_abort(reason="session_recovery_pending")
             if (
@@ -208,7 +231,12 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_ACCOUNT, default=default): str,
-                    vol.Required(CONF_PASSWORD): TextSelector(
+                    vol.Optional("login_method", default="password"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=["password", "sms"], translation_key="login_method"
+                        )
+                    ),
+                    vol.Optional(CONF_PASSWORD): TextSelector(
                         TextSelectorConfig(type=TextSelectorType.PASSWORD)
                     ),
                     **(
@@ -219,6 +247,137 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         if self._entry is None
                         else {}
                     ),
+                }
+            ),
+        )
+
+    async def _reload_entry(self) -> bool:
+        assert self._entry is not None
+        self._reloading = True
+        try:
+            return await self.hass.config_entries.async_reload(self._entry.entry_id)
+        finally:
+            self._reloading = False
+
+    @callback
+    def _arm_sms_timer(self) -> None:
+        if self._sms_timer:
+            self._sms_timer()
+
+        @callback
+        def expire(_: Any) -> None:
+            if any(
+                flow["flow_id"] == self.flow_id
+                for flow in self.hass.config_entries.flow.async_progress()
+            ):
+                self.hass.config_entries.flow.async_abort(self.flow_id)
+
+        self._sms_timer = async_call_later(self.hass, SMS_LIFETIME, expire)
+
+    @callback
+    def async_remove(self) -> None:
+        if self._sms_timer:
+            self._sms_timer()
+            self._sms_timer = None
+        if self._sms_task and not self._reloading:
+            self._sms_task.cancel()
+        if self._sms:
+            challenge, self._sms = self._sms, None
+            self.hass.async_create_task(self._manager().async_discard_sms(challenge))
+        super().async_remove()
+
+    async def _send_sms(self, user_input: dict[str, Any]) -> ConfigFlowResult:
+        account = str(user_input[CONF_ACCOUNT]).strip()
+        if re.fullmatch(r"1[0-9]{10}", account) is None:
+            return self.async_show_form(
+                step_id="sms_account",
+                errors={"base": "invalid_account"},
+                data_schema=vol.Schema({vol.Required(CONF_ACCOUNT): str}),
+            )
+        self._sms_options = {
+            key: bool(user_input.get(key, self._sms_options.get(key, False)))
+            for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
+        }
+        self._sms_task = asyncio.current_task()
+        try:
+            self._sms = await self._manager().async_send_sms(account)
+        except NinebotError as err:
+            return self.async_show_form(
+                step_id="sms_account",
+                errors={"base": "sms_cooldown" if err.kind is ErrorKind.BUSY else ERRORS[err.kind]},
+                data_schema=vol.Schema({vol.Required(CONF_ACCOUNT, default=account): str}),
+            )
+        except OSError:
+            return self.async_abort(reason="storage_error")
+        finally:
+            self._sms_task = None
+        self._arm_sms_timer()
+        return await self.async_step_sms_code()
+
+    async def async_step_sms_account(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is None:
+            return self.async_show_form(
+                step_id="sms_account", data_schema=vol.Schema({vol.Required(CONF_ACCOUNT): str})
+            )
+        return await self._send_sms(user_input)
+
+    async def async_step_sms_code(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if self._sms is None:
+            return self.async_abort(reason="sms_expired")
+        errors = {}
+        if user_input is not None:
+            if user_input.get("resend"):
+                try:
+                    await self._manager().async_send_sms(self._sms.account, self._sms)
+                    self._arm_sms_timer()
+                except NinebotError as err:
+                    errors["base"] = (
+                        "sms_cooldown" if err.kind is ErrorKind.BUSY else ERRORS[err.kind]
+                    )
+                except OSError:
+                    errors["base"] = "storage_error"
+            elif re.fullmatch(r"[0-9]{4,8}", str(user_input.get("code", ""))) is None:
+                errors["code"] = "invalid_code"
+            else:
+                challenge = self._sms
+                self._sms_task = asyncio.current_task()
+                candidate = None
+                try:
+                    candidate = await self._manager().async_consume_sms(
+                        challenge, str(user_input["code"])
+                    )
+                    self._sms = None
+                    if self._sms_timer:
+                        self._sms_timer()
+                        self._sms_timer = None
+                    return await self._credentials(
+                        self._sms_origin,
+                        {CONF_ACCOUNT: challenge.account, **self._sms_options},
+                        candidate,
+                    )
+                except NinebotError as err:
+                    errors["base"] = (
+                        "invalid_code" if err.kind is ErrorKind.AUTH else ERRORS[err.kind]
+                    )
+                except OSError:
+                    errors["base"] = "storage_error"
+                finally:
+                    self._sms_task = None
+                    if candidate is not None:
+                        await self._manager().async_discard(candidate)
+        return self.async_show_form(
+            step_id="sms_code",
+            errors=errors,
+            data_schema=vol.Schema(
+                {
+                    vol.Optional("code"): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                    vol.Optional("resend", default=False): bool,
                 }
             ),
         )
