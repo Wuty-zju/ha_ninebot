@@ -14,7 +14,7 @@ from .capabilities import CONTROL_BUTTONS
 from .compat import device_entry_ids
 from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, CONF_ESTIMATION, DOMAIN
 from .runtime import NinebotConfigEntry
-from .sensor import SENSORS, battery_descriptions
+from .sensor import HISTORY_FIELDS, SENSORS, battery_descriptions
 
 OBSOLETE_KEYS = {
     "sensor": frozenset(
@@ -58,6 +58,7 @@ def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]
         for description in (*SENSORS, *battery_descriptions(snapshot))
         for key in (description.key, *description.aliases)
     } | {"control_availability", "raw_data_summary", "bms_voltage", "batt_temp", "bms_cycles"}
+    sensors.update(HISTORY_FIELDS)
     numbers: set[str] = set()
     if entry.options.get(CONF_ESTIMATION):
         sensors.add("estimation_quality")

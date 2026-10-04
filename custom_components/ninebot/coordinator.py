@@ -35,6 +35,7 @@ from .const import (
 from .control_results import CommandOutcome, ControlResult, ControlResults, ReadbackOutcome
 from .demand import Group, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
+from .history import HistoryStore
 from .models import Freshness, VehicleSnapshot
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
 from .storage import ModelStorage
@@ -57,6 +58,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.client = client
         self.backend: NinebotBackend = backend or NinecliBackend(client)
         self.raw = RawStore()
+        self.history = HistoryStore()
         self.control_results = ControlResults()
         self.models = models
         self.interval = max(
@@ -687,5 +689,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         await self.backend.async_close()
         await asyncio.gather(*tasks, return_exceptions=True)
         self.raw.clear()
+        self.history.clear()
         self.control_results.clear()
         await self.async_shutdown()

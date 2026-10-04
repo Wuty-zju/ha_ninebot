@@ -58,3 +58,41 @@ get_trip_detail:
       default: false
       selector:
         boolean:
+get_history:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: ninebot
+    start_month:
+      required: true
+      example: "202506"
+      selector:
+        text:
+    end_month:
+      required: true
+      example: "202610"
+      selector:
+        text:
+    cursor:
+      selector:
+        text:
+    max_months_per_call:
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 6
+          mode: box
+    limit:
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    include_daily_chart:
+      default: true
+      selector:
+        boolean:

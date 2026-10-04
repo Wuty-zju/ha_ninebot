@@ -1,5 +1,6 @@
 """Validated daily mileage and honest coverage of a returned month list."""
 
+import math
 from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date
@@ -38,7 +39,10 @@ class MonthSummary:
 def sum_rides(rides: tuple[Ride, ...], field: str) -> float | None:
     """Never silently add only the known values of incomplete records."""
     values = [getattr(ride, field) for ride in rides]
-    return None if any(value is None for value in values) else sum(values)
+    if any(value is None for value in values):
+        return None
+    total = sum(values)
+    return total if math.isfinite(total) else None
 
 
 def summarize_month(raw: dict[str, Any], month: str, rides: tuple[Ride, ...]) -> MonthSummary:

@@ -447,6 +447,51 @@ class EstimationQualitySensor(NinebotEntity, SensorEntity):
         return self.entry.runtime_data.models.model(self.sn).quality
 
 
+HISTORY_FIELDS = {
+    "history_scanned_months": ("scanned_months", None, None),
+    "history_indexed_rides": ("indexed_rides", None, None),
+    "history_mileage": ("mileage_km", UnitOfLength.KILOMETERS, SensorDeviceClass.DISTANCE),
+    "history_energy": ("energy_wh", UnitOfEnergy.WATT_HOUR, SensorDeviceClass.ENERGY),
+    "history_duration": ("duration_s", UnitOfTime.SECONDS, SensorDeviceClass.DURATION),
+}
+
+
+class HistorySummarySensor(NinebotEntity, SensorEntity):
+    """Latest explicitly queried scope, never a lifetime odometer or archive."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
+        super().__init__(entry, sn, key, "sensor", "profile")
+        self.field, self._attr_native_unit_of_measurement, self._attr_device_class = HISTORY_FIELDS[
+            key
+        ]
+
+    @property
+    def native_value(self) -> float | None:
+        summary = self.coordinator.history.summary.get(self.sn)
+        return getattr(summary, self.field) if summary else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        summary = self.coordinator.history.summary.get(self.sn)
+        return {
+            "basis": "server_month_summary",
+            "storage": "runtime_only",
+            **(
+                {
+                    "start_month": summary.start_month,
+                    "end_month": summary.end_month,
+                    "range_scan_complete": summary.range_complete,
+                    "all_rides_complete": summary.rides_complete,
+                    "incomplete_month_count": summary.incomplete_months,
+                }
+                if summary
+                else {}
+            ),
+        }
+
+
 def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
     result = []
     for battery in snapshot.battery.batteries:
@@ -554,6 +599,7 @@ async def async_setup_entry(
         )
         yield ControlAvailabilitySensor(entry, sn)
         yield RawDataSummarySensor(entry, sn)
+        yield from (HistorySummarySensor(entry, sn, key) for key in HISTORY_FIELDS)
         if entry.options.get(CONF_ESTIMATION):
             yield EstimationQualitySensor(entry, sn)
             generation = entry.runtime_data.models.model(sn).generation
