@@ -633,7 +633,17 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
             config_entry=entry,
             disabled_by=er.RegistryEntryDisabler.USER,
         )
-        for key in ("bms_voltage", "batt_temp", "month_mileage")
+        for key in (
+            "bms_voltage",
+            "batt_temp",
+            "month_mileage",
+            "last_mileage",
+            "last_ride_duration",
+            "last_ride_start",
+            "last_ride_end",
+            "last_ride_max_speed",
+            "last_ride_average_speed",
+        )
     ]
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
