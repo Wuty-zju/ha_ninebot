@@ -330,3 +330,12 @@ Phase8首次beta CI发现3处Probatio/voluptuous静态Schema类型不匹配（ru
   最低/稳定/beta+Hassfest/HACS准确提交通过后发布，真实结果见release notes。
 - 生产只读、真实云业务查询0、真实车辆控制0；升级时清理旧实体是明确授权的
   行为变化，原自动化需改引用。开发过程中未将其应用到生产HA。
+
+## b10：默认可见性修正
+
+- 提升已确认的两种续航、六类最近行程及 Image 默认；保留用户禁用和身份。
+- registry API 升级只对当前条目独占、仍存在的车辆，首刷失败不执行。
+- GPS/控制/事件/raw 诊断/估算不在提升名单；按实际 consumers 继续调度。
+- 339 passed / 97.84% 分支覆盖；registry 100%；Ruff/format/mypy 通过。
+- 本地 HA 仅只读。真实查询只用于原始契约研究，未执行控制；当前权限仍 null，
+  b10 未修正控制策略。准确 main CI 与 prerelease 以 GitHub release notes 为准。

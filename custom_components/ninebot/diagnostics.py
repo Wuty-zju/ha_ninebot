@@ -71,6 +71,7 @@ async def async_get_config_entry_diagnostics(
         "identity_scheme": entry.data.get("identity_scheme"),
         "identity_conflict_count": len(runtime.identity_conflicts),
         "obsolete_entities_removed": runtime.obsolete_entities_removed,
+        "standard_entities_enabled": runtime.standard_entities_enabled,
         "vehicles": vehicles,
         "raw_schema": runtime.coordinator.raw.diagnostics(dt_util.utcnow()),
         "ride_events": runtime.events.diagnostics() if runtime.events else None,

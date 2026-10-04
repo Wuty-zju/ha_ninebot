@@ -95,7 +95,6 @@ SENSORS = (
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         state_class=SensorStateClass.MEASUREMENT,
-        entity_registry_enabled_default=False,
         value=lambda s: s.status.range_estimated,
     ),
     Description(
@@ -104,7 +103,6 @@ SENSORS = (
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         state_class=SensorStateClass.MEASUREMENT,
-        entity_registry_enabled_default=False,
         value=lambda s: s.status.range_ai,
     ),
     Description(
@@ -146,7 +144,6 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
-        entity_registry_enabled_default=False,
         value=lambda s: s.travel.last_ride.mileage if s.travel and s.travel.last_ride else None,
     ),
     Description(
@@ -175,21 +172,18 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
-        entity_registry_enabled_default=False,
         value=lambda s: ride_value(s, "duration_s"),
     ),
     Description(
         key="last_ride_start",
         group="travel",
         device_class=SensorDeviceClass.TIMESTAMP,
-        entity_registry_enabled_default=False,
         value=lambda s: ride_value(s, "started_at"),
     ),
     Description(
         key="last_ride_end",
         group="travel",
         device_class=SensorDeviceClass.TIMESTAMP,
-        entity_registry_enabled_default=False,
         value=lambda s: ride_value(s, "ended_at"),
     ),
     Description(
@@ -197,7 +191,6 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.SPEED,
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
-        entity_registry_enabled_default=False,
         value=lambda s: ride_speed(s, "server_max_speed_m_s"),
     ),
     Description(
@@ -205,7 +198,6 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.SPEED,
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
-        entity_registry_enabled_default=False,
         value=lambda s: ride_speed(s, "average_speed_m_s"),
     ),
 )

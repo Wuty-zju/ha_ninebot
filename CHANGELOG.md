@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b10
+
+- 默认显示普通/AI续航、最近行程距离/时长/起止时间/速度及车型图片。
+- 成功首刷后按精确身份启用旧的 integration-disabled 默认，保留用户禁用、名称和历史身份；不启用 GPS、控制、事件、估算或 raw 诊断。
+- 新默认纳入按需求行程调度，不增加详情轮询；诊断仅记录迁移数量。
+- 339 项离线测试通过（97.84% 分支覆盖）；不包含真实控制或生产 HA 修改。
+
 ## 2.0.0b9 — 2026-10-04
 
 - Remove reviewed obsolete registry identities after successful first refresh;

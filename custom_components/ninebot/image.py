@@ -1,4 +1,4 @@
-"""Optional cloud vehicle image, updated with the vehicle profile."""
+"""Public cloud vehicle image, updated with the vehicle profile."""
 
 import logging
 
@@ -15,8 +15,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class NinebotImage(NinebotEntity, ImageEntity):
-    _attr_entity_registry_enabled_default = False
-
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         NinebotEntity.__init__(self, entry, sn, "vehicle_image", "image", "profile")
         ImageEntity.__init__(self, self.coordinator.hass, verify_ssl=True)

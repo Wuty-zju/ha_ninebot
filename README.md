@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b9 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b9)
+**2.0.0b10 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b10)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -48,8 +48,8 @@ expires or the business month changes, without extra cloud requests.
 
 Main entities include vehicle SOC, cloud precise range, charging, main power,
 unlocked state, battery voltage/temperature and current-month distance.
-Cloud estimated/AI ranges, last returned trip and raw energy/power diagnostics
-are disabled by default. Missing is unknown; valid zero remains zero. Unsupported
+Cloud estimated/AI ranges, latest ride measurements and the public vehicle image
+are enabled by default. Raw energy/power diagnostics remain disabled by default. Missing is unknown; valid zero remains zero. Unsupported
 BMS cycles are not published as real counts. HA lock binary sensors are on
 when unlocked; the App lock encoding is normalized before entity mapping.
 
@@ -63,7 +63,7 @@ Trip `ec` and `charging_power` units are not independently established, so raw
 diagnostics have no physical unit or statistics class. They are not Energy
 Dashboard meters. Timestamped rides are selected by valid end/start time, so
 server reordering does not select an older ride. Legacy payloads without valid
-timestamps retain the optional last-returned snapshot; ordering is unknown.
+timestamps retain the last-returned snapshot; ordering is unknown.
 Pagination/completeness remains unverified: an observed month returned 20 rows
 while its raw times field reported 128. Previous-month fallback updates only
 last-ride information, never current-month totals.
@@ -71,7 +71,7 @@ last-ride information, never current-month totals.
 Cloud coordinates are opt-in because the coordinate reference is unverified.
 No automatic GCJ/WGS conversion is claimed. Standard GPS trackers participate in
 HA Zones/Map; disabling coordinates removes their location attributes. Vehicle
-images are optional, use a reviewed public HTTPS origin without opaque signatures
+images are enabled by default, use a reviewed public HTTPS origin without opaque signatures
 or redirects, and retain the HA image cache while the URL stays the same.
 Unknown origins remain unavailable; not every model image has been verified.
 
@@ -208,3 +208,13 @@ development. Old automations referencing removed entities need updating.
 Vehicle controls have ordinary translated names and dedicated icons. This
 cleanup release does not yet change the control-dispatch policy or activate
 hardware actions; the next control stage addresses that independently.
+
+## Standard entity visibility in 2.0.0b10
+
+Confirmed estimated/AI range, latest ride distance/duration/timestamps/speeds and
+the vehicle image are normal features. Existing integration-disabled defaults
+are enabled through the public registry API after a successful first refresh,
+only for exact identities on exclusively owned, present vehicle devices. User
+disables, custom names and entity IDs are preserved. GPS, ride events, controls,
+estimation and raw diagnostics keep their explicit enable policies. Enabled ride
+entities share the existing travel schedule; they do not poll trip details.

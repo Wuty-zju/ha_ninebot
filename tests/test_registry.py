@@ -96,3 +96,52 @@ async def test_failed_first_refresh_does_not_cleanup_and_reload_never_recreates_
         row.domain == "lock" for row in er.async_entries_for_config_entry(registry, entry.entry_id)
     )
     app_client.async_control.assert_not_awaited()
+
+
+async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
+    hass, entry, app_client
+):
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={("ninebot", "SyntheticSN")}
+    )
+    registry = er.async_get(hass)
+
+    def row(domain, uid, disabled=er.RegistryEntryDisabler.INTEGRATION, owned=True):
+        return registry.async_get_or_create(
+            domain,
+            "ninebot",
+            uid,
+            config_entry=entry,
+            device_id=device.id if owned else None,
+            disabled_by=disabled,
+        )
+
+    promoted = [
+        row("sensor", "ninebot_syntheticsn_range_ai"),
+        row("sensor", "SyntheticSN_last_ride_end"),
+        row("image", "SyntheticSN_vehicle_image"),
+    ]
+    registry.async_update_entity(promoted[0].entity_id, name="My range")
+    retained = [
+        row("sensor", "SyntheticSN_last_ride_start", er.RegistryEntryDisabler.USER),
+        row("sensor", "SyntheticSN_month_energy_raw"),
+        row("device_tracker", "SyntheticSN_location"),
+        row("event", "SyntheticSN_ride"),
+        row("button", "SyntheticSN_bell"),
+        row("sensor", "unrecognized_range_estimated", owned=False),
+    ]
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.runtime_data.standard_entities_enabled == 3
+    assert all(registry.async_get(item.entity_id).disabled_by is None for item in promoted)
+    assert registry.async_get(promoted[0].entity_id).name == "My range"
+    assert all(
+        registry.async_get(item.entity_id).disabled_by == item.disabled_by for item in retained
+    )
+    # A user's later disable decision takes precedence on every future reload.
+    registry.async_update_entity(promoted[0].entity_id, disabled_by=er.RegistryEntryDisabler.USER)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.runtime_data.standard_entities_enabled == 0
+    assert registry.async_get(promoted[0].entity_id).disabled_by is er.RegistryEntryDisabler.USER
+    app_client.async_control.assert_not_awaited()

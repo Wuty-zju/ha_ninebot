@@ -21,7 +21,7 @@ KEYS = {
 }
 
 
-async def test_last_ride_native_values_classes_disabled_defaults_and_state_size(
+async def test_last_ride_native_values_classes_visible_defaults_and_state_size(
     hass, entry, app_client, freezer
 ):
     freezer.move_to(datetime(2026, 9, 26, tzinfo=UTC))
@@ -42,9 +42,9 @@ async def test_last_ride_native_values_classes_disabled_defaults_and_state_size(
         row = registry.async_get(
             registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
         )
-        assert row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+        assert row.disabled_by is None
         assert row.unit_of_measurement == unit and row.original_device_class == device_class
-        assert hass.states.get(row.entity_id) is None
+        assert hass.states.get(row.entity_id) is not None
         sensor = NinebotSensor(entry, "SyntheticSN", descriptions[key])
         assert sensor.available and sensor.has_entity_name
         assert (
