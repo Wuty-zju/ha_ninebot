@@ -474,3 +474,29 @@ cache，非法身份走既有回滚路径，不改变合法返回、实体、控
 无需新增翻译key。发布仍以精确main SHA的常规检查和prerelease核实。
 见[分级策略](v2x-分级测试与预发布策略.md)和
 [本次验证](evidence/v2x-b18-validation.json)。
+
+## b19–b23：A–F 连续开发完成记录
+
+2026-10-05补记：下面是已完成开发的版本索引，本次资料整理没有重跑开发测试。
+
+| 版本/阶段 | 已合并实现 | main merge SHA | 发布 |
+|---|---|---|---|
+| b19 / A | 当前字段观测、Wh/W、月次数/时长、默认可见与用户选择兼容 | `7cd936bc3a2afce566551e34c70a62b867495a5e` | [b19](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b19) |
+| b20 / B | 校验月每日图表、服务端聚合与明细覆盖说明 | `a89e7c77b063605c1517346ad8628084b1a0890e` | [b20](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b20) |
+| b21 / C | 按车辆估算参数、初始/Options调试开关与有界视图 | `646c0209f07f270fbee6665a6a7f2ea7d4135bd8` | [b21](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b21) |
+| b22 / D | 两步SMS、候选会话回收、reauth/reconfigure | `ebdbeed32efe2ab28014fda3e1359f587ba2dae7` | [b22](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b22) |
+| b23 / E–F | 有界跨月查询、续查游标、范围统计与综合回归 | `624e1293d90a0a814b483291d89848a7e023f48f` | [b23](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b23) |
+
+实际模块包括 `observations.py`、`month_summary.py`、`debug_view.py`、
+`config_flow.py` 的SMS/options路径、`history.py`、`history_actions.py`；
+详情结合[连续开发路线](v2x-全面数据适配与连续开发.md)及当前源码核对。
+
+小阶段执行针对性测试；最终b23本地综合回归 **462 passed，96.72%覆盖率**，
+Ruff/format、43源文件mypy通过；对应PR/main的HACS、Hassfest及日常Checks通过。
+未为每个prerelease重跑完整多HA版本矩阵，不能冒称这462项覆盖了每个支持版本。
+各版本已合入main并发布prerelease；本次索引整理另读取发布元数据确认b19–b23均为预发布。
+
+本轮开发真实云端查询、短信发送、车辆控制和生产HA写入均为0；测试使用已有
+脱敏fixture、合成边界和模拟接口。开发与发布不代表生产已部署或物理动作已验证。
+历史index仅runtime内存，重启/卸载后清空；月列表20条与服务端128次的缺口仍
+显式报告，不声称完整历史。剩余充电时间缺报、未知编码与score非SOH继续保留边界。
