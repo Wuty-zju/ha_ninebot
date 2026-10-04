@@ -43,3 +43,22 @@ def test_current_inventory_covers_all_recorded_paths_types_and_explains_each_use
     # Source/candidate aliases must not masquerade as real recorded fields.
     assert ("battery", "$.battery_list[].battery_sn") not in indexed
     assert ("trip_detail", "$.gps") not in indexed
+
+
+def test_recorded_command_shape_is_classified_separately_from_business_telemetry():
+    inventory = json.loads((ROOT / "docs/evidence/v2x-current-field-usage.json").read_text())
+    metadata = json.loads((FIXTURES / "metadata.json").read_text())
+    recorded = metadata["control_response_fixtures"][0]
+    paths = field_types(json.loads((FIXTURES / recorded["file"]).read_text()))
+    endpoints = inventory["observed_command_responses"]
+    assert {g["endpoint"] for g in endpoints} == set(recorded["endpoints"])
+    assert sum(len(g["fields"]) for g in endpoints) == inventory["command_response_path_count"]
+    for endpoint in endpoints:
+        assert endpoint["http_status"] == recorded["http_status"] == 200
+        assert endpoint["evidence"] and endpoint["sources"]
+        assert all((ROOT / path).is_file() for path in endpoint["sources"])
+        assert {row["path"]: set(row["types"]) for row in endpoint["fields"]} == paths
+        assert all(row["meaning"] and row["current_use"] for row in endpoint["fields"])
+        assert all(
+            set(row["classification"].split("/")) <= set("ABCDEFGHIJ") for row in endpoint["fields"]
+        )

@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b14 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b14)
+**2.0.0b15 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b15)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -84,13 +84,15 @@ generation has new entity identities; old model history is never rewritten.
 Daily/monthly samples are assigned to the receiving business day/month; sampling
 across a boundary is approximate. No instantaneous power is inferred from SOC.
 
-**Controls fail closed.** Options and a vehicle allowlist are necessary but do
-not prove upstream permission. The integration additionally requires fresh,
-verified support, permission and action semantics. Current opaque/null capability
-data does not meet this requirement, so hardware controls remain unavailable.
+**Controls are opt-in.** Enable controls and allow each vehicle explicitly.
+Authenticated, present vehicles with fresh profile/status data may send commands;
+known denials, query errors and ambiguous capabilities still block them. Unknown
+permission stays unknown: Ninebot decides final authorization and vehicle support.
+“Ready to send” does not mean the physical action completed. Commands are sent
+once, never retried automatically, then followed by a status readback.
 Lock state is exposed by the binary sensor. The nonfunctional Lock control
 entity is removed; engine commands are not represented as lock/unlock. Read-only refresh
-is unaffected. All development control tests use a fake verified backend contract.
+is unaffected. See the [current policy and authorized live test](docs/v2x-云端鉴权控制与实测契约.md).
 
 Raw business responses are retained only in bounded private memory, with secrets
 and personal profile fields removed. They are never entity attributes or persistent
@@ -100,8 +102,8 @@ replacements are explicitly synthetic. Nonempty travel/detail structure and
 Unix-second/China-time relationships were confirmed in a bounded read-only study.
 Ride distance and server maximum speed use ninecli's km/max-km/h display contract;
 App UI was not independently tested. Trail speed/delta units, coordinate system
-and energy meanings remain unverified. Five optional last-ride sensors now expose duration, UTC start/end, server
-maximum and total-trip average speed. Enable them individually in the entity UI.
+and energy meanings remain unverified. Five default-enabled last-ride sensors expose duration, UTC start/end, server
+maximum and total-trip average speed alongside last-ride distance. Disable them individually if unnecessary.
 They have no cumulative statistics class, large attributes or extra detail calls;
 ambiguous/future time or missing data stays unknown. Average speed is unknown if
 duration conflicts with the observed time span. Historical queries use the
@@ -183,10 +185,11 @@ Acknowledged disk storage precedes emission, so crash/cancellation may lose a
 notification. No exactly-once guarantee or historical catch-up is claimed.
 See [ride event behavior](docs/v2x-骑行事件契约.md).
 
-Control diagnostics separates software endpoint support from vehicle support,
-permission and verified action semantics, and lists each blocking condition.
-This version has no verified permission parser: enabling controls alone does
-not activate hardware actions. See the [policy contract](docs/v2x-权限门禁与能力证据契约.md).
+Control diagnostics separates local readiness from upstream support/permission
+evidence and physical completion, and lists each blocking condition. Explicit
+opt-in and an allowed vehicle permit cloud authorization without inventing a
+permission parser. See the [current policy](docs/v2x-云端鉴权控制与实测契约.md);
+older phase descriptions below preserve their historical behavior.
 
 Image/GPS privacy and per-vehicle request dependencies are documented in the
 [Phase 8 contract](docs/v2x-图片位置与请求依赖契约.md). No new entity identities or
@@ -277,3 +280,18 @@ Test-only native copies with temporary public keys verify encrypted control
 acceptance and rejection against loopback upstreams. Original binaries and
 production HA remain unchanged. This does not verify physical controls or
 relax unknown-permission gating. See the [contract](docs/v2x-原生控制加密与状态归属契约.md).
+
+## Cloud-authorized command dispatch in 2.0.0b15
+
+This supersedes the b7–b14 unknown-permission gate. Configured vehicles can send
+bell, seat-trunk, start and stop commands when local authentication/freshness
+checks pass. Reviewed denials still block; unknown permissions are not promoted
+to allowed. The translated control status now says “Ready to send”.
+
+After explicit user authorization, each command was sent once on one vehicle
+using an ephemeral copy of the production session. All four returned HTTP200,
+ok=true and empty data. Immediate readbacks succeeded but the selected power/lock
+state did not change, so no physical effect is claimed. Production HA files were
+not changed; the temporary child and session were removed. The empty-response
+fixture supports offline replay without repeating vehicle commands. Full scope
+and limits are in the [b15 contract](docs/v2x-云端鉴权控制与实测契约.md).

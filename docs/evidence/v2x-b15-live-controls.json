@@ -1,0 +1,173 @@
+{
+  "scope": "explicit user authorization in resumed goal; one selected vehicle",
+  "ninecli_version": "0.1.7",
+  "production_writes": 0,
+  "automatic_control_retries": 0,
+  "physical_outcome_verified": false,
+  "records": [
+    {
+      "operation": "preflight_vehicle_1",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 20,
+      "numeric_or_boolean_fields": {}
+    },
+    {
+      "operation": "bell",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 0,
+      "numeric_or_boolean_fields": {}
+    },
+    {
+      "operation": "bell_readback",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 20,
+      "numeric_or_boolean_fields": {}
+    },
+    {
+      "operation": "buck",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 0,
+      "numeric_or_boolean_fields": {}
+    },
+    {
+      "operation": "buck_readback",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 20,
+      "numeric_or_boolean_fields": {}
+    },
+    {
+      "operation": "engine/start",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 0,
+      "numeric_or_boolean_fields": {}
+    },
+    {
+      "operation": "engine/start_readback",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 20,
+      "numeric_or_boolean_fields": {}
+    },
+    {
+      "operation": "engine/stop",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 0,
+      "numeric_or_boolean_fields": {}
+    },
+    {
+      "operation": "engine/stop_readback",
+      "http_status": 200,
+      "response_type": "dict",
+      "ok": true,
+      "data_type": "dict",
+      "reviewed_data_fields": {},
+      "unreviewed_field_count": 20,
+      "numeric_or_boolean_fields": {}
+    }
+  ],
+  "vehicle_source": "read-only entry-owned production device registry",
+  "vehicle_count": 2,
+  "preflight": [
+    {
+      "powered": true,
+      "locked": true,
+      "charging": false,
+      "battery_present": true
+    }
+  ],
+  "selected_vehicle_index": 1,
+  "commands": [
+    {
+      "action": "bell",
+      "attempts": 1,
+      "physical_outcome_verified": false,
+      "result": "proxy_accepted",
+      "readback": {
+        "powered": true,
+        "locked": true,
+        "charging": false,
+        "battery_present": true
+      }
+    },
+    {
+      "action": "buck",
+      "attempts": 1,
+      "physical_outcome_verified": false,
+      "result": "proxy_accepted",
+      "readback": {
+        "powered": true,
+        "locked": true,
+        "charging": false,
+        "battery_present": true
+      }
+    },
+    {
+      "action": "engine/start",
+      "attempts": 1,
+      "physical_outcome_verified": false,
+      "result": "proxy_accepted",
+      "readback": {
+        "powered": true,
+        "locked": true,
+        "charging": false,
+        "battery_present": true
+      }
+    },
+    {
+      "action": "engine/stop",
+      "attempts": 1,
+      "physical_outcome_verified": false,
+      "result": "proxy_accepted",
+      "readback": {
+        "powered": true,
+        "locked": true,
+        "charging": false,
+        "battery_present": true
+      }
+    }
+  ],
+  "child_reaped": true,
+  "temporary_session_removed": true,
+  "production_session_files_unchanged": true,
+  "phase_operation_counts": {
+    "cli_vehicle_discoveries": 1,
+    "status_preflight_operations": 3,
+    "status_readback_operations": 4,
+    "control_operations": 4,
+    "logical_operations_total": 12,
+    "production_writes": 0,
+    "control_retries": 0,
+    "scope": "One initial two-vehicle read-only discovery/preflight, then one selected vehicle with four authorized commands and immediate readbacks. An intervening local registry shape check made no cloud calls. Native internal authentication/fanout is not counted."
+  }
+}

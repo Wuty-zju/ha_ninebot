@@ -44,13 +44,45 @@ def test_decision_reports_both_support_and_permission_without_leaking_evidence()
 
 
 @pytest.mark.parametrize("evidence", [None, "", " ", "\n\t"])
-def test_empty_evidence_never_opens_gate(evidence):
+def test_cloud_dispatch_does_not_invent_missing_evidence(evidence):
     from custom_components.ninebot.capabilities import decide_control
 
     capability = ControlCapability("bell", State.ALLOWED, State.ALLOWED, True, evidence)
     assert not capability.allowed
     result = decide_control("bell", VehicleCapabilities((capability,)), ())
-    assert result.blockers == ("evidence_missing",)
+    assert result.allowed
+    assert result.blockers == ()
+    assert result.diagnostics()["evidence_available"] is False
+    assert result.diagnostics()["dispatch_policy"] == "cloud_authorization"
+
+
+def test_unknown_capabilities_allow_dispatch_without_claiming_permission_or_semantics():
+    from custom_components.ninebot.capabilities import decide_control
+
+    capabilities = VehicleCapabilities()
+    decision = decide_control("bell", capabilities, ())
+    assert decision.allowed
+    assert not capabilities.allows("bell")
+    assert decision.support is decision.permission is State.UNKNOWN
+    assert decision.semantics_verified is False
+    assert decision.evidence_available is False
+
+
+@pytest.mark.parametrize(
+    "support,permission,reason",
+    [
+        (State.DENIED, State.UNKNOWN, "support_denied"),
+        (State.UNKNOWN, State.DENIED, "permission_denied"),
+    ],
+)
+def test_known_denial_blocks_cloud_dispatch_without_other_blockers(support, permission, reason):
+    from custom_components.ninebot.capabilities import decide_control
+
+    decision = decide_control(
+        "bell", VehicleCapabilities((ControlCapability("bell", support, permission),)), ()
+    )
+    assert not decision.allowed
+    assert decision.blockers == (reason,)
 
 
 def test_ambiguous_and_unknown_actions_cannot_be_authorized():

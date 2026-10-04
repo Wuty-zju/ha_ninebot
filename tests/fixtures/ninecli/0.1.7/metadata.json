@@ -110,5 +110,30 @@
     "controls": 0,
     "production_writes": 0,
     "authentication_internals_included": false
+  },
+  "control_response_fixtures": [
+    {
+      "file": "control-accepted.json",
+      "endpoints": [
+        "bell",
+        "buck",
+        "engine/start",
+        "engine/stop"
+      ],
+      "source_date": "2026-10-04",
+      "provenance": "recorded_selected_transport_shape",
+      "http_status": 200,
+      "scope": "Observed ok=true and exactly empty business data for each command, one real attempt on one vehicle. Selected proxy envelope, not direct encrypted cloud response or proof of physical completion. No identity or state values."
+    }
+  ],
+  "phase15_requests": {
+    "cli_vehicle_discoveries": 1,
+    "status_preflight_operations": 3,
+    "status_readback_operations": 4,
+    "control_operations": 4,
+    "logical_operations_total": 12,
+    "production_writes": 0,
+    "control_retries": 0,
+    "scope": "One initial two-vehicle read-only discovery/preflight, then one selected vehicle with four authorized commands and immediate readbacks. An intervening local registry shape check made no cloud calls. Native internal authentication/fanout is not counted."
   }
 }

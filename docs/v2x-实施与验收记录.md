@@ -383,3 +383,26 @@ notes为准；本记录不冒称全部目标完成，未知权限和其它语义
 不证明真实权限/物理效果，不执行实车控制。MIT notice在测试目录及NOTICE。
 完整376 passed、97.87%分支覆盖、Ruff/format/mypy通过。精确main CI及
 prerelease另核实release notes；整体目标与未知权限策略仍未完成。
+
+
+### b15：显式启用后的云端最终鉴权与真实单次命令
+
+新的明确用户授权覆盖历史UNKNOWN发送拒绝策略；本地dispatch与上游permission
+事实分开。controls+allowlist、存在/认证/fresh/error/backend support、明确DENIED
+及重复能力拒绝保留，空能力可以发送已实现命令，不伪造ALLOWED或语义证据。
+排队前后复检查、超时/取消/卸载、单次无重试和readback沿用现有流程。
+中英ready状态明确“可发送命令”，Options与拒绝说明同步；不改实体unique_id。
+
+一辆车bell/buck/engine-start/engine-stop各一次真实请求，均HTTP200/ok=true/空data；
+四次立即readback成功但选定状态未变化，不宣称物理效果。生产会话文件前后摘要
+一致、临时进程/目录清理，生产HASS仍未安装新版/重启/改写配置。12次逻辑研究
+操作的边界及字段见[实测契约](v2x-云端鉴权控制与实测契约.md)，未重复试车。
+
+选定代理fixture仅审核ok/data，命令12路径与业务136路径分开分类，不把合成
+accepted字段或空响应创造为实体。回归使用真实parser的空能力，去掉原来的假
+verified能力注入；已知拒绝、排队期间变化和USER禁用仍覆盖。
+最终本地验收见evidence/v2x-b15-validation.json；main精确CI/release须另查发布记录。
+
+本地382项完整套件（97.76%分支覆盖）及随后仅新增的2项已知拒绝测试通过；
+共384项不同测试，不重复整套。Ruff/format/mypy通过，中英178叶子key一致、
+strings=en、界面experimental/实验零出现。精确main CI与prerelease尚需发布核实。

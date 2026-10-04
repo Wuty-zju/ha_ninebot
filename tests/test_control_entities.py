@@ -32,20 +32,29 @@ async def test_direct_command_button_and_policy_status(hass, entry, app_client, 
         "sensor", "ninebot", "SyntheticSN_control_availability"
     )
     assert button.disabled_by is None
-    assert hass.states.get(button.entity_id).state == "unavailable"
-    assert hass.states.get(diagnostic).state == "unverified"
+    assert hass.states.get(button.entity_id).state != "unavailable"
+    assert hass.states.get(diagnostic).state == "ready"
     assert not any(
         row.domain == "lock" for row in er.async_entries_for_config_entry(registry, entry.entry_id)
     )
     app_client.async_control.assert_not_awaited()
 
-    # This is synthetic capability evidence, not a real permission parser or
-    # proof that any physical control has executed.
+    # Real parser output has no verified permission; the fake backend receives
+    # exactly one command and readback, without inventing cloud authorization.
     coordinator = entry.runtime_data.coordinator
-    snapshot = coordinator.data["SyntheticSN"]
-    record = ControlCapability(
-        action, CapabilityState.ALLOWED, CapabilityState.ALLOWED, True, "mock-reviewed"
+    decision = coordinator.control_decision("SyntheticSN", action)
+    assert decision.permission is CapabilityState.UNKNOWN
+    assert not decision.semantics_verified
+    assert not decision.evidence_available
+    await hass.services.async_call(
+        "button", "press", {"entity_id": button.entity_id}, blocking=True
     )
+    app_client.async_control.assert_awaited_once_with("SyntheticSN", action)
+    app_client.async_get_status.assert_awaited()
+
+    # A reviewed explicit denial disables that action, not every other command.
+    snapshot = coordinator.data["SyntheticSN"]
+    record = ControlCapability(action, permission=CapabilityState.DENIED)
     coordinator.async_set_updated_data(
         {
             "SyntheticSN": replace(
@@ -55,8 +64,9 @@ async def test_direct_command_button_and_policy_status(hass, entry, app_client, 
         }
     )
     await hass.async_block_till_done()
-    assert hass.states.get(diagnostic).state == "ready"
-    assert hass.states.get(diagnostic).attributes[key] == "ready"
+    assert hass.states.get(button.entity_id).state == "unavailable"
+    assert hass.states.get(diagnostic).attributes[key] == "denied"
+    assert hass.states.get(diagnostic).state == "ready"  # Other actions remain ready.
     assert (
         len(
             {
@@ -67,11 +77,6 @@ async def test_direct_command_button_and_policy_status(hass, entry, app_client, 
         )
         == 4
     )
-    await hass.services.async_call(
-        "button", "press", {"entity_id": button.entity_id}, blocking=True
-    )
-    app_client.async_control.assert_awaited_once_with("SyntheticSN", action)
-    app_client.async_get_status.assert_awaited()
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -109,7 +114,7 @@ async def test_configured_default_upgrade_preserves_user_disable_and_reports_loc
     assert entry.runtime_data.configured_controls_enabled == 3
     assert registry.async_get(rows[1].entity_id).disabled_by is er.RegistryEntryDisabler.USER
     assert all(registry.async_get(rows[i].entity_id).disabled_by is None for i in (0, 2, 3))
-    assert hass.states.get(diagnostic).state == "unverified"
+    assert hass.states.get(diagnostic).state == "ready"
     coordinator = entry.runtime_data.coordinator
     coordinator._authenticated = False
     coordinator.async_update_listeners()
