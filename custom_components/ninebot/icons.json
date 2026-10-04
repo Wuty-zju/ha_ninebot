@@ -174,6 +174,21 @@
       },
       "estimation_quality": {
         "default": "mdi:check-decagram-outline"
+      },
+      "history_scanned_months": {
+        "default": "mdi:calendar-search"
+      },
+      "history_indexed_rides": {
+        "default": "mdi:format-list-numbered"
+      },
+      "history_mileage": {
+        "default": "mdi:map-marker-distance"
+      },
+      "history_energy": {
+        "default": "mdi:lightning-bolt"
+      },
+      "history_duration": {
+        "default": "mdi:timer-outline"
       }
     },
     "event": {

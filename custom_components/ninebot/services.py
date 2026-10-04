@@ -326,6 +326,15 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
 @callback
 def async_register_actions(hass: HomeAssistant) -> None:
     """Actions remain available in editors when no account is loaded."""
+    from .history_actions import HISTORY_SCHEMA, async_history_query
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_history",
+        partial(async_history_query, hass),
+        schema=HISTORY_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
     for name, schema in (("get_trips", TRIPS_SCHEMA), ("get_trip_detail", DETAIL_SCHEMA)):
         hass.services.async_register(
             DOMAIN,

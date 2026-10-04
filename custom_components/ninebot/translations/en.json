@@ -901,6 +901,21 @@
           "implausible_jump": "Implausible jump",
           "accepted": "Sample accepted"
         }
+      },
+      "history_scanned_months": {
+        "name": "Scanned months"
+      },
+      "history_indexed_rides": {
+        "name": "Query indexed rides"
+      },
+      "history_mileage": {
+        "name": "Scanned months distance"
+      },
+      "history_energy": {
+        "name": "Scanned months energy"
+      },
+      "history_duration": {
+        "name": "Scanned months ride duration"
       }
     },
     "binary_sensor": {
@@ -1005,6 +1020,12 @@
     },
     "query_ride": {
       "message": "The ride does not have one verified detail mapping in this vehicle and month. Specify the correct month and use Get trips first."
+    },
+    "history_range": {
+      "message": "Choose an ordered month range of at most 360 months."
+    },
+    "history_cursor": {
+      "message": "The continuation expired, was evicted, or belongs to another vehicle/range. Start again."
     }
   },
   "issues": {
@@ -1087,6 +1108,33 @@
         "include_track": {
           "name": "Include track",
           "description": "Requires coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        }
+      }
+    },
+    "get_history": {
+      "name": "Query cross-month history",
+      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; indexing is memory-only, without automatic archiving or Recorder import.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "start_month": {
+          "name": "Start month (YYYYMM)"
+        },
+        "end_month": {
+          "name": "End month (YYYYMM)"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "max_months_per_call": {
+          "name": "Maximum months this call"
+        },
+        "limit": {
+          "name": "Maximum rides returned"
+        },
+        "include_daily_chart": {
+          "name": "Return daily mileage"
         }
       }
     }

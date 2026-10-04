@@ -901,6 +901,21 @@
           "implausible_jump": "电量跳变",
           "accepted": "采样有效"
         }
+      },
+      "history_scanned_months": {
+        "name": "已扫描月份数"
+      },
+      "history_indexed_rides": {
+        "name": "本次查询已索引行程数"
+      },
+      "history_mileage": {
+        "name": "已扫描月份里程"
+      },
+      "history_energy": {
+        "name": "已扫描月份能量"
+      },
+      "history_duration": {
+        "name": "已扫描月份骑行时长"
       }
     },
     "binary_sensor": {
@@ -1005,6 +1020,12 @@
     },
     "query_ride": {
       "message": "该车辆及月份中没有唯一、已确认的详情关联。请填写正确月份并先查询行程。"
+    },
+    "history_range": {
+      "message": "请选择正确起止月份，范围最多360个月。"
+    },
+    "history_cursor": {
+      "message": "续查游标过期、被缓存预算回收或不属于当前车辆和范围，请重新查询。"
     }
   },
   "issues": {
@@ -1087,6 +1108,33 @@
         "include_track": {
           "name": "包含轨迹",
           "description": "需要启用位置选项。精确位置可能保存在自动化跟踪或响应变量中。"
+        }
+      }
+    },
+    "get_history": {
+      "name": "查询跨月历史",
+      "description": "仅按需分批查询（默认3、最多6个月/次）。续查游标15分钟有效；明细缺页不会伪装完整。返回历史、图表和统计，仅内存索引，不自动归档或导入Recorder。",
+      "fields": {
+        "device_id": {
+          "name": "车辆"
+        },
+        "start_month": {
+          "name": "起始月份（YYYYMM）"
+        },
+        "end_month": {
+          "name": "结束月份（YYYYMM）"
+        },
+        "cursor": {
+          "name": "上一次返回的续查游标"
+        },
+        "max_months_per_call": {
+          "name": "本次最多扫描月份数"
+        },
+        "limit": {
+          "name": "本次最多返回行程数"
+        },
+        "include_daily_chart": {
+          "name": "返回每日里程"
         }
       }
     }
