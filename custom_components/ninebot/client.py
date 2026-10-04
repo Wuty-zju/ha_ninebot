@@ -12,6 +12,8 @@ import os
 import secrets
 import socket
 import sys
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -60,6 +62,13 @@ class NinecliClient:
         self._closed = False
         self._pending = 0
 
+    @staticmethod
+    def _environment() -> dict[str, str]:
+        """Both native modes use fixed hosts, never ambient CLI overrides."""
+        env = {key: value for key, value in os.environ.items() if not key.startswith("NINEBOT_")}
+        env["NO_PROXY"] = "127.0.0.1,localhost"
+        return env
+
     async def _start(self) -> None:
         if self._closed:
             raise NinebotError(ErrorKind.CLOSED)
@@ -72,10 +81,9 @@ class NinecliClient:
             port = sock.getsockname()[1]
         self._base = f"http://127.0.0.1:{port}"
         # Ignore ambient CLI overrides; production hosts are fixed by ninecli.
-        env = {key: value for key, value in os.environ.items() if not key.startswith("NINEBOT_")}
+        env = self._environment()
         env["NINEBOT_SERVE_TOKEN"] = self._bearer
         env["NINEBOT_SERVE_BIND"] = f"127.0.0.1:{port}"
-        env["NO_PROXY"] = "127.0.0.1,localhost"
         try:
             self._process = await asyncio.create_subprocess_exec(
                 sys.executable,
@@ -166,7 +174,9 @@ class NinecliClient:
         finally:
             self._bearer = ""
 
-    async def _request(self, method: str, path: str, body: dict[str, str] | None = None) -> Any:
+    @asynccontextmanager
+    async def _operation(self) -> AsyncIterator[None]:
+        """One queue/lock/lifecycle for REST requests and native cache refresh."""
         if self._closed:
             raise NinebotError(ErrorKind.CLOSED)
         if self._pending >= 8:
@@ -179,6 +189,23 @@ class NinecliClient:
             except TimeoutError:
                 raise NinebotError(ErrorKind.BUSY) from None
             acquired = True
+            if self._closed:
+                raise NinebotError(ErrorKind.CLOSED)
+            yield
+        except asyncio.CancelledError:
+            if acquired:
+                await self._stop()
+            raise
+        finally:
+            self._pending -= 1
+            if acquired:
+                self._lock.release()
+
+    async def _request_locked(
+        self, method: str, path: str, body: dict[str, str] | None = None
+    ) -> Any:
+        """Caller owns the session operation; raw errors never leave this layer."""
+        try:
             await self._start()
             async with asyncio.timeout(self._timeout):
                 async with self._session.request(
@@ -200,10 +227,6 @@ class NinecliClient:
                     except (ValueError, UnicodeError):
                         raise NinebotError(ErrorKind.PROTOCOL) from None
                     return response_data(response.status, raw)
-        except asyncio.CancelledError:
-            if acquired:
-                await self._stop()
-            raise
         except (aiohttp.ClientError, TimeoutError):
             await self._stop()
             raise NinebotError(ErrorKind.CONNECTION) from None
@@ -211,16 +234,72 @@ class NinecliClient:
             if err.kind == ErrorKind.PROTOCOL:
                 await self._stop()
             raise
-        finally:
-            self._pending -= 1
-            if acquired:
-                self._lock.release()
+
+    async def _request(self, method: str, path: str, body: dict[str, str] | None = None) -> Any:
+        async with self._operation():
+            return await self._request_locked(method, path, body)
 
     async def async_login(self, account: str, password: str) -> None:
         await self._request("POST", "/auth/login", {"account": account, "password": password})
 
     async def async_list_vehicles(self) -> Any:
-        return await self._request("GET", "/vehicles")
+        """Discover vehicles and let native ninecli prepare its routing cache.
+
+        In 0.1.7 REST /vehicles does not write vehicles.json, but battery and
+        controls require it. CLI vehicles writes the verified business lines;
+        inferring those lines from the merged REST response would be unsafe.
+        Stop serve before native token/cache updates, then restart lazily with
+        the new files. This operation contains no credentials in argv.
+        """
+        async with self._operation():
+            await self._stop()
+            try:
+                async with asyncio.timeout(self._timeout):
+                    self._process = await asyncio.create_subprocess_exec(
+                        sys.executable,
+                        "-m",
+                        "ninecli",
+                        "--config",
+                        str(self.config_dir),
+                        "--json",
+                        "vehicles",
+                        stdin=asyncio.subprocess.DEVNULL,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.DEVNULL,
+                        env=self._environment(),
+                    )
+                    process = self._process
+                    if self._closed:
+                        raise NinebotError(ErrorKind.CLOSED)
+                    assert process.stdout is not None
+                    data = bytearray()
+                    while chunk := await process.stdout.read(16384):
+                        data.extend(chunk)
+                        if len(data) > MAX_RESPONSE_BYTES:
+                            raise NinebotError(ErrorKind.PROTOCOL)
+                    code = await process.wait()
+                    await self._stop()
+                    if self._closed:
+                        raise NinebotError(ErrorKind.CLOSED)
+                    if code != 0:
+                        # The CLI has no reviewed structured error contract.
+                        # Use REST's explicit authentication evidence instead
+                        # of matching secrets-bearing stderr or exit strings.
+                        await self._request_locked("GET", "/whoami")
+                        raise NinebotError(ErrorKind.SERVICE)
+                    try:
+                        raw = json.loads(data)
+                    except (ValueError, UnicodeError):
+                        raise NinebotError(ErrorKind.PROTOCOL) from None
+                    if not isinstance(raw, list):
+                        raise NinebotError(ErrorKind.PROTOCOL)
+                    return raw
+            except TimeoutError:
+                raise NinebotError(ErrorKind.CONNECTION) from None
+            except OSError:
+                raise NinebotError(ErrorKind.PLATFORM) from None
+            finally:
+                await self._stop()
 
     async def async_get_status(self, sn: str) -> Any:
         return await self._request("GET", f"/vehicles/{quote(sn, safe='')}/status")

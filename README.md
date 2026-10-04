@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b10 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b10)
+**2.0.0b11 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b11)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -30,7 +30,8 @@ identity and token files are committed only after validation and duplicate
 checks. Passwords are not saved in ConfigEntry. Expired sessions have a UI
 reauthentication flow; reauth/reconfigure cannot switch to a different account.
 
-The integration starts its own authenticated loopback ninecli child. Passwords
+Vehicle discovery runs the pinned native JSON command to prepare ninecli's
+business-line cache; remaining I/O uses its authenticated loopback child. Passwords
 are sent in local HTTP bodies, not command-line arguments. Tokens live in a
 private per-entry directory under `.storage/ninebot_v2`; this is a same-user
 trust boundary, not protection against privileged or same-user inspection.
@@ -218,3 +219,18 @@ only for exact identities on exclusively owned, present vehicle devices. User
 disables, custom names and entity IDs are preserved. GPS, ride events, controls,
 estimation and raw diagnostics keep their explicit enable policies. Enabled ride
 entities share the existing travel schedule; they do not poll trip details.
+
+## Native vehicle cache in 2.0.0b11
+
+The native `vehicles --json` operation prepares `vehicles.json`, required by
+ninecli 0.1.7 battery/control routing. REST `/vehicles` alone does not prepare
+this cache. Discovery is a single operation, not a second periodic list request.
+REST and native discovery share one bounded queue and lock; discovery stops the
+old serve process before native cache/token updates, then REST restarts lazily.
+Passwords still travel only in authenticated local HTTP bodies. CLI stderr is
+discarded; unknown exit errors are not classified by matching text.
+
+The new client successfully read and normalized both vehicles' BMS data from an
+isolated session copy. This does not claim production HA was upgraded or any
+hardware action was executed. Controls remain subject to the existing permission
+policy. See the [native I/O and cache contract](docs/v2x-ninecli输入输出与车辆缓存契约.md).

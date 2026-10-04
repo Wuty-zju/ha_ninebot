@@ -76,3 +76,12 @@ GPS、事件、控制、估算和未确认单位的 raw 诊断仍需按用途启
 
 该阶段不宣称控制问题已解决。当前真实只读 status 再次返回 permissions=null；
 它不是允许证据，控制策略需要明确处理本地预验证与云端最终鉴权的边界。
+
+## b11：BMS 缺失的真实缓存根因
+
+只读核实 REST vehicles/status 可成功，battery 返回本地 proxy `no_cache`。
+原生 CLI 车辆命令写入 business_line cache 后，REST battery 成功。修复将
+发现和 native cache准备合为一次操作，不猜业务线路、不重复周期查询。
+新版 client 的隔离只读RC验证两车电压/温度可解析；实体流程的 existing
+fixture 回归和真实 native loopback 路由回归通过。生产 HA 没有升级或改写，
+控制权限策略仍未调整。完整边界见[缓存契约](v2x-ninecli输入输出与车辆缓存契约.md)。

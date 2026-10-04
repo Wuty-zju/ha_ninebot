@@ -51,7 +51,7 @@ class Endpoint(StrEnum):
 
 
 ENDPOINT_TEMPLATES = {
-    Endpoint.VEHICLES: "/vehicles",
+    Endpoint.VEHICLES: "ninecli --json vehicles",
     Endpoint.STATUS: "/vehicles/{sn}/status",
     Endpoint.BATTERY: "/vehicles/{sn}/battery",
     Endpoint.TRAVEL: "/vehicles/{sn}/travel?month={month}",
