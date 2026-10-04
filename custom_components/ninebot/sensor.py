@@ -29,7 +29,9 @@ from homeassistant.util import dt as dt_util
 
 from .battery import current_battery, identified_battery
 from .capabilities import CONTROL_BUTTONS, CONTROL_STATES, control_state
-from .const import CONF_ESTIMATION
+from .compat import unrecorded_attributes
+from .const import CONF_DEBUG, CONF_ESTIMATION
+from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
 from .observations import RAW_FIELDS, RawField
@@ -319,9 +321,12 @@ class ControlAvailabilitySensor(NinebotEntity, SensorEntity):
 
 
 class RawDataSummarySensor(NinebotEntity, SensorEntity):
-    """Optional debug overview, without exposing raw data to state/recorder."""
+    """Opt-in parsed view, reusing the historical summary identity."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = list(DEBUG_STATES)
+    _unrecorded_attributes = unrecorded_attributes(DEBUG_ATTRIBUTES)
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "raw_data_summary", "sensor", "profile")
@@ -330,15 +335,26 @@ class RawDataSummarySensor(NinebotEntity, SensorEntity):
     def available(self) -> bool:
         return bool(self.snapshot and self.snapshot.present and not self.coordinator._stopping)
 
-    @property
-    def native_value(self) -> int:
-        return self.coordinator.raw.vehicle_summary(self.sn, dt_util.utcnow())["record_count"]
+    def _view(self) -> tuple[str, dict[str, Any]]:
+        if not self.entry.options.get(CONF_DEBUG) or self.snapshot is None:
+            return "debug_disabled", {}
+        return debug_view(
+            self.snapshot, self.coordinator, self.entry.runtime_data.models.model(self.sn)
+        )
 
     @property
-    def extra_state_attributes(self) -> dict[str, int]:
+    def native_value(self) -> str:
+        return self._view()[0]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
         summary = self.coordinator.raw.vehicle_summary(self.sn, dt_util.utcnow())
-        summary.pop("record_count")
-        return summary
+        return {
+            "format_version": 1,
+            "debug_mode": bool(self.entry.options.get(CONF_DEBUG)),
+            **summary,
+            **self._view()[1],
+        }
 
 
 class NinebotSensor(NinebotEntity, SensorEntity):
@@ -407,6 +423,28 @@ class EstimatedSensor(NinebotEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         model = self.entry.runtime_data.models.model(self.sn)
         return {"model_version": 2, "generation": self.generation, "quality": model.quality}
+
+
+class EstimationQualitySensor(NinebotEntity, SensorEntity):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = [
+        "unconfigured",
+        "baseline_reset",
+        "missing_soc",
+        "duplicate_or_old",
+        "source_changed",
+        "baseline_only",
+        "implausible_jump",
+        "accepted",
+    ]
+
+    def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
+        super().__init__(entry, sn, "estimation_quality", "sensor", "profile")
+
+    @property
+    def native_value(self) -> str:
+        return self.entry.runtime_data.models.model(self.sn).quality
 
 
 def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
@@ -517,6 +555,7 @@ async def async_setup_entry(
         yield ControlAvailabilitySensor(entry, sn)
         yield RawDataSummarySensor(entry, sn)
         if entry.options.get(CONF_ESTIMATION):
+            yield EstimationQualitySensor(entry, sn)
             generation = entry.runtime_data.models.model(sn).generation
             for key in (
                 "nominal",

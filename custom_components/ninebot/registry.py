@@ -60,6 +60,7 @@ def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]
     } | {"control_availability", "raw_data_summary", "bms_voltage", "batt_temp", "bms_cycles"}
     numbers: set[str] = set()
     if entry.options.get(CONF_ESTIMATION):
+        sensors.add("estimation_quality")
         generation = entry.runtime_data.models.model(sn).generation
         sensors.update(
             f"estimated_{key}_v2_g{generation}"

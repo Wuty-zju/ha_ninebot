@@ -4,12 +4,18 @@ from importlib import import_module
 from types import ModuleType
 
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.entity import Entity
 
 # HA's documented startup alias resolves this public name to Probatio on new
 # Core, and to voluptuous on old Core. Dynamic resolution is confined here:
 # static module types disagree about Schema even though the runtime API matches.
 # Do not choose merely because probatio happens to be installed on an old HA.
 validation: ModuleType = import_module("voluptuous")
+
+
+def unrecorded_attributes(attributes: frozenset[str]) -> frozenset[str]:
+    """Progressively exclude debug views from Recorder; views remain bounded."""
+    return attributes if hasattr(Entity, "_unrecorded_attributes") else frozenset()
 
 
 def child_registry_api_available() -> bool:

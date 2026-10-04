@@ -6,7 +6,14 @@
         "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
           "account": "账号",
-          "password": "密码"
+          "password": "密码",
+          "debug_mode": "调试模式",
+          "enable_estimation": "启用SOC能量估算",
+          "enable_coordinates": "启用精确位置"
+        },
+        "data_description": {
+          "debug_mode": "在解析信息实体中显示有界诊断视图，不增加请求。",
+          "enable_estimation": "启用后，在集成选项或车辆的电压/容量配置实体中填写标称V和Ah；不使用实时电压自动填充。"
         }
       },
       "reauth_confirm": {
@@ -54,9 +61,32 @@
           "enable_estimation": "启用SOC能量估算",
           "enable_coordinates": "显示云端坐标（坐标系未核验）",
           "enable_controls": "启用车辆控制",
-          "control_vehicles": "允许控制的车辆"
+          "control_vehicles": "允许控制的车辆",
+          "debug_mode": "调试模式",
+          "configure_model": "配置一辆车的估算参数"
+        },
+        "data_description": {
+          "debug_mode": "只显示已取得快照的安全解析，不输出账号、位置或轨迹。",
+          "configure_model": "下一步选择车辆，参数只保存在本地模型存储，和Number实体共用。"
+        }
+      },
+      "model_vehicle": {
+        "title": "选择估算车辆",
+        "data": {
+          "model_vehicle": "车辆"
+        }
+      },
+      "model_parameters": {
+        "title": "标称电池参数",
+        "description": "填写真实的标称电压和额定容量。改变参数会创建新估算代际；保留旧历史。",
+        "data": {
+          "voltage": "标称电压（V）",
+          "capacity": "额定容量（Ah）"
         }
       }
+    },
+    "abort": {
+      "model_unavailable": "请先加载集成并确认所选车辆仍属于当前账户，再配置模型。"
     }
   },
   "entity": {
@@ -240,20 +270,13 @@
         }
       },
       "raw_data_summary": {
-        "name": "原始数据摘要",
-        "state_attributes": {
-          "schema_path_count": {
-            "name": "已知结构路径数"
-          },
-          "unknown_field_count": {
-            "name": "结构摘要外字段次数"
-          },
-          "redacted_field_count": {
-            "name": "已移除敏感字段次数"
-          },
-          "retained_bytes": {
-            "name": "缓存预算字节数"
-          }
+        "name": "解析信息",
+        "state": {
+          "debug_disabled": "调试已关闭",
+          "ok": "正常",
+          "partial": "部分可用",
+          "stale": "已过时",
+          "error": "错误"
         }
       },
       "activation_time_raw": {
@@ -834,6 +857,19 @@
       },
       "month_list_coverage": {
         "name": "本月行程明细覆盖率"
+      },
+      "estimation_quality": {
+        "name": "估算质量",
+        "state": {
+          "unconfigured": "参数未配置",
+          "baseline_reset": "基线重置",
+          "missing_soc": "电量缺报",
+          "duplicate_or_old": "重复或旧采样",
+          "source_changed": "数据源已变",
+          "baseline_only": "仅建立基线",
+          "implausible_jump": "电量跳变",
+          "accepted": "采样有效"
+        }
       }
     },
     "binary_sensor": {

@@ -24,6 +24,7 @@ from .const import (
     CONF_CONTROL_VEHICLES,
     CONF_CONTROLS,
     CONF_COORDINATES,
+    CONF_DEBUG,
     CONF_ESTIMATION,
     CONF_IDENTITY_SCHEME,
     CONF_POLL_INTERVAL,
@@ -32,6 +33,7 @@ from .const import (
     DOMAIN,
 )
 from .exceptions import ErrorKind, NinebotError
+from .parsing import number
 from .session import SessionManager
 
 ERRORS = {
@@ -122,7 +124,14 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             if step == "reauth_confirm"
                             else "reconfigure_successful"
                         )
-                    result = self.async_create_entry(title="Ninebot", data=data)
+                    result = self.async_create_entry(
+                        title="Ninebot",
+                        data=data,
+                        options={
+                            key: bool(user_input.get(key, False))
+                            for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
+                        },
+                    )
                     await manager.async_finalize(key)
                     committed = False
                     finished = True
@@ -202,6 +211,14 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_PASSWORD): TextSelector(
                         TextSelectorConfig(type=TextSelectorType.PASSWORD)
                     ),
+                    **(
+                        {
+                            vol.Optional(key, default=False): bool
+                            for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
+                        }
+                        if self._entry is None
+                        else {}
+                    ),
                 }
             ),
         )
@@ -231,9 +248,17 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class NinebotOptionsFlow(config_entries.OptionsFlow):
+    def __init__(self) -> None:
+        self._pending_options: dict[str, Any] = {}
+        self._model_vehicle: str | None = None
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            self._pending_options = dict(user_input)
+            configure_model = self._pending_options.pop("configure_model", False)
+            if configure_model:
+                return await self.async_step_model_vehicle()
+            return self.async_create_entry(title="", data=self._pending_options)
         options = self.config_entry.options
         runtime = getattr(self.config_entry, "runtime_data", None)
         vehicles = runtime.coordinator.data if runtime else {}
@@ -262,6 +287,8 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_COORDINATES, default=options.get(CONF_COORDINATES, False)
                     ): bool,
+                    vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
+                    vol.Optional("configure_model", default=False): bool,
                     vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
                     vol.Optional(
                         CONF_CONTROL_VEHICLES, default=options.get(CONF_CONTROL_VEHICLES, [])
@@ -269,3 +296,61 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 }
             ),
         )
+
+    async def async_step_model_vehicle(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        vehicles = runtime.coordinator.data if runtime else {}
+        choices = [
+            SelectOptionDict(value=sn, label=snapshot.profile.name)
+            for sn, snapshot in vehicles.items()
+            if snapshot.present
+        ]
+        if not choices:
+            return self.async_abort(reason="model_unavailable")
+        if user_input is not None:
+            sn = user_input["model_vehicle"]
+            if sn not in {choice["value"] for choice in choices}:
+                return self.async_abort(reason="model_unavailable")
+            self._model_vehicle = sn
+            return await self.async_step_model_parameters()
+        return self.async_show_form(
+            step_id="model_vehicle",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("model_vehicle"): SelectSelector(
+                        SelectSelectorConfig(options=choices)
+                    )
+                }
+            ),
+        )
+
+    async def async_step_model_parameters(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        sn = self._model_vehicle
+        if not runtime or sn is None or not runtime.coordinator.fresh(sn, "profile"):
+            return self.async_abort(reason="model_unavailable")
+        model = runtime.models.model(sn)
+        if user_input is not None:
+            runtime.models.configure(sn, user_input)
+            runtime.coordinator.async_set_updated_data(dict(runtime.coordinator.data))
+            return self.async_create_entry(title="", data=self._pending_options)
+        schema = {}
+        for key, maximum in (("voltage", 300), ("capacity", 500)):
+            value = getattr(model, key)
+            field = vol.Required(key) if value is None else vol.Required(key, default=value)
+            schema[field] = parameter_validator(maximum)
+        return self.async_show_form(step_id="model_parameters", data_schema=vol.Schema(schema))
+
+
+def parameter_validator(maximum: float) -> Any:
+    def validate(value: object) -> float:
+        result = number(value, 1, maximum)
+        if result is None:
+            raise vol.Invalid("Model parameter outside supported range")
+        return result
+
+    return validate
