@@ -456,3 +456,21 @@ RC一次发现+两车status/BMS各一次成功，partial false-completeness标�
 [验收证据](evidence/v2x-b17-validation.json)与
 [只读元数据](evidence/v2x-b17-live-readonly.json)。精确main CI/合并/发布以GitHub
 release实际核实为准，未部署生产或验证物理效果。
+
+
+## b18：分级验证与非法身份缓存回滚
+
+起始main 63b50ecdd5a60f7239338a935e6475ab8a5ad6b2（b17）。b17精确main的
+HA 2026.1.0/2026.9.4/2026.10.0b0完整套件均402通过；属于历史基线，
+不能替代本次新增代码的验证。
+
+按用户最新要求，小版本不重复全量套件。Checks日常只运行lint/format，
+完整三版本矩阵保留为workflow_dispatch；Hassfest/HACS仍照常验证。
+此次只为native车辆输出新增身份契约校验，先通过同一profiles解析器才提交
+cache，非法身份走既有回滚路径，不改变合法返回、实体、控制或轮询。
+
+20项native车辆针对性测试通过，mypy38个源文件通过，Ruff/format通过；
+完整套件运行0次，真实云查询0、车辆控制0、生产HA修改0。版本/文档变更
+无需新增翻译key。发布仍以精确main SHA的常规检查和prerelease核实。
+见[分级策略](v2x-分级测试与预发布策略.md)和
+[本次验证](evidence/v2x-b18-validation.json)。

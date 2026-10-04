@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b18
+
+- Validate vehicle identity before accepting the native routing-cache update; malformed profiles restore the previous cache.
+- Use targeted regressions for small prereleases; keep routine lint/Hassfest/HACS and run the full pinned compatibility matrix manually for major updates.
+- 20 targeted offline tests and type checks passed; no new cloud requests, vehicle actions or production changes.
+
 ## 2.0.0b17
 
 - Distinguish partial native vehicle discovery from complete account lists; exit 0 alone cannot confirm vehicle removal.

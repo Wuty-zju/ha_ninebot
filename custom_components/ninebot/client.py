@@ -20,6 +20,7 @@ from urllib.parse import quote
 
 import aiohttp
 
+from .adapters import profiles
 from .const import CLI_TIMEOUT, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .vehicle_cache import cache_io, merge_partial_cache, read_cache, restore_cache
@@ -294,6 +295,9 @@ class NinecliClient:
                         raise NinebotError(ErrorKind.PROTOCOL) from None
                     if not isinstance(raw, list):
                         raise NinebotError(ErrorKind.PROTOCOL)
+                    # The same identity contract used by the coordinator must
+                    # pass before accepting the native routing-cache update.
+                    profiles(raw)
                     # Native 0.1.7 returns exit 0 even if one or both business
                     # lists failed. Diagnostic output is opaque, not auth proof.
                     complete = not diagnostic.strip()
