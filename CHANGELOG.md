@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.0b9 — 2026-10-04
+
+- Remove reviewed obsolete registry identities after successful first refresh;
+  stop recreating legacy unavailable sensor placeholders, the nonfunctional Lock
+  platform and unused full-range model input. Keep real lock binary state and
+  valid current/estimated sensor identities. This supersedes placeholder retention.
+- Scope removal to exact known keys on exclusively owned vehicle devices; keep
+  unrelated/shared/ambiguous/unknown identities and preserve data on setup failure.
+- Remove experimental UI names, synchronize English/Chinese translations and add
+  function-specific button, range, trip, diagnostic and model-input icons.
+- Export only a cleanup count in diagnostics; no SQL edits or production changes.
+  Hardware dispatch remains unchanged pending the next control stage.
+
 ## 2.0.0b8 — 2026-10-04
 
 - Keep HA image cache and timestamp until the normalized model-image URL changes.

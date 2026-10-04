@@ -53,8 +53,8 @@
           "poll_interval": "状态轮询间隔（秒）",
           "enable_estimation": "启用SOC能量估算",
           "enable_coordinates": "显示云端坐标（坐标系未核验）",
-          "enable_controls": "启用实验车辆控制（未经实机验证）",
-          "control_vehicles": "允许实验控制的车辆"
+          "enable_controls": "启用车辆控制",
+          "control_vehicles": "允许控制的车辆"
         }
       }
     }
@@ -108,9 +108,6 @@
       },
       "bms_cycles": {
         "name": "电池循环次数"
-      },
-      "legacy": {
-        "name": "旧实体（无等价来源）"
       },
       "estimated_nominal": {
         "name": "估算标称电池能量"
@@ -174,15 +171,10 @@
         "name": "刷新车辆状态"
       },
       "bell": {
-        "name": "实验鸣笛"
+        "name": "鸣笛寻车"
       },
       "bucket": {
-        "name": "实验开座桶"
-      }
-    },
-    "lock": {
-      "lock": {
-        "name": "锁定状态"
+        "name": "打开座桶"
       }
     },
     "image": {
@@ -201,9 +193,6 @@
       },
       "battery_capacity": {
         "name": "容量（本地模型）"
-      },
-      "battery_max_range": {
-        "name": "旧满电续航参数（不用于能量模型）"
       }
     },
     "event": {
@@ -238,9 +227,6 @@
     },
     "invalid_auth": {
       "message": "会话已失效，请通过设备与服务重新认证。"
-    },
-    "engine_lock_unverified": {
-      "message": "engine-start/stop 与 lock/unlock 的等价关系尚未验证。此实体仅保留观测到的锁定状态，不执行发动机控制。"
     },
     "query_unavailable": {
       "message": "车辆查询不可用：请确保集成已加载、会话有效且车辆仍在最新账户列表中。"

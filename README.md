@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b8 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b8)
+**2.0.0b9 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b9)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -87,8 +87,8 @@ across a boundary is approximate. No instantaneous power is inferred from SOC.
 not prove upstream permission. The integration additionally requires fresh,
 verified support, permission and action semantics. Current opaque/null capability
 data does not meet this requirement, so hardware controls remain unavailable.
-The existing Lock entity retains observed state and identity; lock/unlock actions
-are rejected because engine start/stop equivalence is unverified. Read-only refresh
+Lock state is exposed by the binary sensor. The nonfunctional Lock control
+entity is removed; engine commands are not represented as lock/unlock. Read-only refresh
 is unaffected. All development control tests use a fake verified backend contract.
 
 Raw business responses are retained only in bounded private memory, with secrets
@@ -115,13 +115,14 @@ through the App login form. Migration does not perform background password login
 
 Existing entity identities, user names and disabled settings are preserved where
 the physical meaning is equivalent. Missing sources and changed estimate models
-keep their old registry/history instead of being reused for a different quantity.
+are removed from the registry when explicitly classified as obsolete, rather than
+being reused for a different quantity. Valid current and model identities stay intact.
 Cloud trip energy never replaces local estimated totals. Serial identity is never
 matched by vehicle nickname. No recorder SQL is edited.
 
-Legacy SOC-by-range, GSM/address/report-time and estimated-energy identities do
-not receive fabricated replacements. New SOC model entities have separate IDs.
-The legacy full-range parameter remains local and is not used as an energy source.
+Legacy SOC-by-range, GSM/address/report-time and estimated-energy identities are
+removed when covered by the reviewed obsolete identity list. New SOC model entities have separate IDs.
+The unused legacy full-range parameter is removed during obsolete identity cleanup.
 Legacy lock-code diagnostics retain 0=locked and 1=unlocked. The reversed App
 codes are normalized internally; lock/unlocked entities are preferred for automations.
 
@@ -189,3 +190,21 @@ not activate hardware actions. See the [policy contract](docs/v2x-权限门禁�
 Image/GPS privacy and per-vehicle request dependencies are documented in the
 [Phase 8 contract](docs/v2x-图片位置与请求依赖契约.md). No new entity identities or
 storage schema are introduced in this phase.
+
+## Obsolete entities in 2.0.0b9
+
+After a successful setup, the integration removes reviewed obsolete registry IDs
+owned exclusively by this entry's known vehicle device: legacy GSM/address/range
+SOC estimates and obsolete energy counters, the nonfunctional Lock control, and
+the unused full-range model input. These placeholders are no longer recreated.
+The lock binary sensor remains the observed state; it is not a vehicle control.
+
+This changes the earlier placeholder-retention policy at the user's request.
+Valid current sensors, custom names, opt-in model generations and unrelated
+entities stay intact; temporary missing values do not imply obsolescence. HA's
+registry API is used, without editing recorder SQL or production files during
+development. Old automations referencing removed entities need updating.
+
+Vehicle controls have ordinary translated names and dedicated icons. This
+cleanup release does not yet change the control-dispatch policy or activate
+hardware actions; the next control stage addresses that independently.

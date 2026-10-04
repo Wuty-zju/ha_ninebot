@@ -15,6 +15,7 @@ from .entity import async_audit_device_identities
 from .event_store import RideEventPipeline
 from .exceptions import NinebotError
 from .migration import async_migrate
+from .registry import async_remove_obsolete_entities
 from .runtime import NinebotConfigEntry, RuntimeData
 from .services import async_register_actions
 from .session import SessionManager, session_uid
@@ -60,6 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
     try:
         await store.async_load()
         await coordinator.async_config_entry_first_refresh()
+        entry.runtime_data.obsolete_entities_removed = async_remove_obsolete_entities(hass, entry)
         async_audit_device_identities(hass, entry)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except BaseException:

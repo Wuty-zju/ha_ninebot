@@ -90,7 +90,7 @@ async def test_full_setup_physical_values_and_unload(hass, entry, app_client):
     app_client.async_close.assert_awaited()
 
 
-async def test_preserve_custom_name_disabled_and_legacy_ids(hass, entry, app_client):
+async def test_preserve_valid_legacy_identity_and_remove_obsolete_identity(hass, entry, app_client):
     devices = dr.async_get(hass)
     device = devices.async_get_or_create(
         config_entry_id=entry.entry_id, identifiers={("ninebot", "SyntheticSN")}
@@ -117,7 +117,7 @@ async def test_preserve_custom_name_disabled_and_legacy_ids(hass, entry, app_cli
     await hass.async_block_till_done()
     assert float(hass.states.get(old.entity_id).state) == 80
     assert registry.async_get(old.entity_id).name == "My battery"
-    assert registry.async_get(deprecated.entity_id).disabled_by is er.RegistryEntryDisabler.USER
+    assert registry.async_get(deprecated.entity_id) is None
     assert registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_battery") is None
 
 
@@ -144,7 +144,6 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
     from custom_components.ninebot.button import NinebotButton
     from custom_components.ninebot.device_tracker import NinebotTracker
     from custom_components.ninebot.image import NinebotImage
-    from custom_components.ninebot.lock import NinebotLock
     from custom_components.ninebot.number import ModelNumber
     from custom_components.ninebot.sensor import EstimatedSensor
 
@@ -178,9 +177,6 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
     assert tracker.available
     assert tracker.latitude == tracker.longitude == 0
     assert tracker.entity_picture is None
-    lock = NinebotLock(entry, "SyntheticSN")
-    assert lock.is_locked is True
-    assert not lock.extra_state_attributes["experimental_controls_enabled"]
     from dataclasses import replace
 
     from homeassistant.exceptions import HomeAssistantError
@@ -191,10 +187,6 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
         VehicleCapabilities,
     )
 
-    for command in (lock.async_unlock, lock.async_lock):
-        with pytest.raises(HomeAssistantError) as error:
-            await command()
-        assert error.value.translation_key == "engine_lock_unverified"
     bell = NinebotButton(entry, "SyntheticSN", "bell", "bell")
     assert not bell.available
     with pytest.raises(HomeAssistantError):
@@ -262,20 +254,6 @@ def test_multiple_batteries_need_stable_identity():
     assert values == [72, 25, 10, 73, 26]
     unknown = VehicleSnapshot(identified.profile, battery=batteries({"battery_list": [{}, {}]}))
     assert battery_descriptions(unknown) == []
-
-
-async def test_legacy_unavailable_never_inherits_estimated_total(hass, entry, app_client):
-    from custom_components.ninebot.sensor import LegacySensor
-
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    sensor = LegacySensor(
-        entry,
-        "SyntheticSN",
-        "battery_outflow_energy_total",
-        "ninebot_syntheticsn_battery_outflow_energy_total",
-    )
-    assert sensor.native_value is None
-    assert sensor.extra_state_attributes["status"] == "deprecated"
 
 
 @pytest.mark.parametrize("invalid", ["missing", "wrong-identity"])
