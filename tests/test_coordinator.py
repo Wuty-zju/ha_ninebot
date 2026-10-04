@@ -38,6 +38,7 @@ async def coordinator(tmp_path, request):
         subentries_data=[],
     )
     client = AsyncMock()
+    client.vehicle_discovery_complete = True
     client.async_list_vehicles.return_value = [
         {"wnumber": "synthetic-one"},
         {"wnumber": "synthetic-two"},
@@ -76,6 +77,39 @@ async def test_one_vehicle_failure_leaves_other_groups_available(coordinator):
     assert co.fresh("synthetic-one", "battery")
     assert co.fresh("synthetic-two", "status")
     assert result["synthetic-two"].status.locked is False
+
+
+@pytest.mark.parametrize(
+    "coordinator",
+    [{"enable_controls": True, "control_vehicles": ["synthetic-one", "synthetic-two"]}],
+    indirect=True,
+)
+async def test_partial_discovery_is_positive_evidence_not_vehicle_removal(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    old = co.data["synthetic-two"].profile_freshness.succeeded_at
+    co.client.vehicle_discovery_complete = False
+    co.client.async_list_vehicles.return_value = [{"wnumber": "synthetic-one"}]
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    assert co.data["synthetic-two"].present
+    assert co.data["synthetic-two"].profile_freshness.succeeded_at == old
+    assert co.data["synthetic-two"].profile_freshness.error is ErrorKind.SERVICE
+    assert co.discovery_diagnostics()["complete"] is False
+    assert co.fresh("synthetic-one", "profile")
+    assert co.controls_enabled("synthetic-one", "bell")
+    assert not co.controls_enabled("synthetic-two", "bell")
+    assert "profile_query_failed" in co.control_decision("synthetic-two", "bell").blockers
+    with patch(
+        "custom_components.ninebot.coordinator.dt_util.utcnow",
+        return_value=old + timedelta(hours=4),
+    ):
+        assert not co.fresh("synthetic-two", "profile")
+    co.client.vehicle_discovery_complete = True
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    assert not co.data["synthetic-two"].present
+    assert co.discovery_diagnostics()["complete"] is True
 
 
 async def test_empty_month_preserved_while_last_ride_falls_back(coordinator):

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b17
+
+- Distinguish partial native vehicle discovery from complete account lists; exit 0 alone cannot confirm vehicle removal.
+- Preserve known native routing cache on failure, merge only verified native rows on partial success, and retain refreshed tokens.
+- Track profile freshness per vehicle so another vehicle's success cannot renew missing ownership or enable its controls.
+- Bound both CLI output pipes, finish cache I/O before releasing the operation, and add safe profile diagnostics without new entities or polling demand.
+
 ## 2.0.0b16
 
 - 修复车辆在命令后消失、回读跳过时仍正常返回的缺陷；已完成的命令前manual任务不再代替命令后读取，旧任务清理不覆盖新任务。

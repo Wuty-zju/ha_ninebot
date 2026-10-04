@@ -1,0 +1,94 @@
+{
+  "scope": "isolated session copies; whitelisted metadata only; no private payloads",
+  "reports": {
+    "whoami": {
+      "timestamp": "2026-10-04T11:35:33.558158+00:00",
+      "real_controls": 0,
+      "production_writes": 0,
+      "calls": [
+        "whoami"
+      ],
+      "responses": [
+        {
+          "operation": "whoami",
+          "http_status": 502,
+          "envelope_type": "dict",
+          "ok": false,
+          "data_type": "NoneType",
+          "error_code": "upstream_error"
+        }
+      ],
+      "failed_operation": "whoami",
+      "error_kind": "service",
+      "child_reaped": true,
+      "private_copy_files_changed": {
+        "tokens.json": false,
+        "vehicles.json": false
+      },
+      "temporary_session_removed": true,
+      "production_session_hashes_match": true
+    },
+    "baseline_discovery": {
+      "timestamp": "2026-10-04T11:40:02.282188+00:00",
+      "read_only_operations": 1,
+      "real_controls": 0,
+      "production_writes": 0,
+      "exit_code": 0,
+      "output_type": "list",
+      "vehicle_count": 2,
+      "stderr_present": true,
+      "stderr_bytes": 192,
+      "native_error_code_hints": [],
+      "child_reaped": true,
+      "temporary_copy_removed": true,
+      "production_session_hashes_match": true
+    },
+    "release_candidate": {
+      "timestamp": "2026-10-04T11:52:00.190498+00:00",
+      "real_controls": 0,
+      "production_writes": 0,
+      "calls": [
+        "vehicles",
+        "status_vehicle_1",
+        "battery_vehicle_1",
+        "status_vehicle_2",
+        "battery_vehicle_2"
+      ],
+      "vehicle_count": 2,
+      "discovery_complete": false,
+      "vehicles": [
+        {
+          "vehicle_index": 1,
+          "status": {
+            "battery_present": true,
+            "powered_present": true,
+            "locked_present": true,
+            "charging_present": true
+          },
+          "battery": {
+            "pack_count": 1,
+            "voltage_present": true,
+            "temperature_present": true
+          }
+        },
+        {
+          "vehicle_index": 2,
+          "status": {
+            "battery_present": true,
+            "powered_present": true,
+            "locked_present": true,
+            "charging_present": true
+          },
+          "battery": {
+            "pack_count": 1,
+            "voltage_present": true,
+            "temperature_present": true
+          }
+        }
+      ],
+      "child_reaped": true,
+      "temporary_copy_removed": true,
+      "production_session_hashes_match": true
+    }
+  }
+}

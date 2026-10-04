@@ -14,6 +14,69 @@ from custom_components.ninebot.exceptions import ErrorKind, NinebotError
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
 
+async def test_native_discovery_business_failures_are_not_successful_unbinding(
+    tmp_path, monkeypatch
+):
+    paths = []
+
+    async def upstream(request):
+        paths.append(request.path)
+        return web.json_response({"code": 503, "message": "synthetic-failure"})
+
+    application = web.Application()
+    application.router.add_route("*", "/{path:.*}", upstream)
+    runner = web.AppRunner(application)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    origin = f"http://127.0.0.1:{site._server.sockets[0].getsockname()[1]}"
+    (tmp_path / "tokens.json").write_text(
+        json.dumps(
+            {
+                "uuid": "synthetic-uuid",
+                "access_token": "synthetic-access",
+                "refresh_token": "synthetic-refresh",
+                "business_uid": "123",
+                "accessTokenValidity": "4102444800000",
+                "saved_at": 4100000000,
+            }
+        )
+    )
+    old = b'{"vehicles":[{"wnumber":"synthetic-old","business_line":"ebike"}]}'
+    (tmp_path / "vehicles.json").write_bytes(old)
+    execute = asyncio.create_subprocess_exec
+
+    async def spawn(*args, **kwargs):
+        flags = tuple(
+            item
+            for flag in (
+                "--passport-base",
+                "--biz-host",
+                "--ebike-host",
+                "--motor-host",
+                "--travel-host",
+            )
+            for item in (flag, origin)
+        )
+        return await execute(*args[:5], *flags, *args[5:], **kwargs)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
+    try:
+        async with aiohttp.ClientSession(trust_env=False) as session:
+            client = NinecliClient(tmp_path, session, timeout=5)
+            try:
+                with pytest.raises(NinebotError) as error:
+                    await client.async_list_vehicles()
+                assert error.value.kind is ErrorKind.SERVICE
+                assert paths == ["/vehicle/binding/my-vehicle"] * 2
+                assert (tmp_path / "vehicles.json").read_bytes() == old
+                assert client._process is None
+            finally:
+                await client.async_close()
+    finally:
+        await runner.cleanup()
+
+
 @pytest.mark.parametrize("cached", [False, True])
 @pytest.mark.parametrize(
     "action,path",

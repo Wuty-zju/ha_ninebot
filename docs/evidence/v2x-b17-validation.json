@@ -1,0 +1,66 @@
+{
+  "stage": "b17-incomplete-discovery-and-native-cache-integrity",
+  "base_main_sha": "e8a2b846f3fa909d2442f748be2df5ee9059ae2d",
+  "version": "2.0.0b17",
+  "local_validation": {
+    "tests_passed": 402,
+    "branch_coverage_percent": 97.43,
+    "ruff": "passed",
+    "format": "passed",
+    "mypy": "passed",
+    "source_files": 38,
+    "full_suite_runs": 2,
+    "second_full_suite_reason": "cancellation/error privacy and explicit completeness checks changed after the first run"
+  },
+  "confirmed_native_failure": {
+    "upstreams": "loopback only",
+    "business_responses": 503,
+    "requests": 2,
+    "cli_exit_code": 0,
+    "stdout": "empty list",
+    "stderr_present": true,
+    "before_fix": "could confirm false absence and overwrite routing cache"
+  },
+  "semantics": {
+    "partial_positive": "update returned vehicles; do not confirm absent vehicles",
+    "missing_identity": "retain success timestamp, record error, block controls",
+    "fully_failed": "typed service error, preserve cache and existing snapshots",
+    "complete_empty_account": "valid absence",
+    "partial_cache": "merge only native known business-line rows",
+    "token_refresh_rollback": false,
+    "partial_positive_list_cadence_seconds": 3600,
+    "new_periodic_requests": 0
+  },
+  "real_readonly": {
+    "logical_operations": 7,
+    "controls": 0,
+    "production_writes": 0,
+    "rc_vehicle_count": 2,
+    "rc_partial_discovery": true,
+    "rc_status_successes": 2,
+    "rc_battery_successes": 2,
+    "temporary_copies_removed": true,
+    "children_reaped": true,
+    "production_session_hashes_match": true
+  },
+  "translations": {
+    "leaf_keys": 178,
+    "key_parity": true,
+    "strings_equal_en": true,
+    "experimental_word_occurrences": 0,
+    "new_ui_keys": 0
+  },
+  "versions": {
+    "ninecli_pin": "ninecli==0.1.7",
+    "ha_minimum": "2026.1.0",
+    "stable_rechecked": "2026.9.4",
+    "beta_rechecked": "2026.10.0b0"
+  },
+  "remaining": [
+    "production HA still installed b15 at read-only inspection",
+    "production full-failure cause is correlated, not directly captured",
+    "real control physical outcomes remain unverified",
+    "unknown units, CRS, stable pack identity and history completeness"
+  ],
+  "remote_ci": "Verify exact merged main SHA and prerelease separately"
+}

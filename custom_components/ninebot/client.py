@@ -22,6 +22,7 @@ import aiohttp
 
 from .const import CLI_TIMEOUT, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
+from .vehicle_cache import cache_io, merge_partial_cache, read_cache, restore_cache
 
 
 def response_data(status: int, raw: object) -> Any:
@@ -61,6 +62,7 @@ class NinecliClient:
         self._bearer = ""
         self._closed = False
         self._pending = 0
+        self.vehicle_discovery_complete = False
 
     @staticmethod
     def _environment() -> dict[str, str]:
@@ -253,6 +255,9 @@ class NinecliClient:
         """
         async with self._operation():
             await self._stop()
+            previous_cache = await cache_io(read_cache, self.config_dir)
+            accepted = False
+            self.vehicle_discovery_complete = False
             try:
                 async with asyncio.timeout(self._timeout):
                     self._process = await asyncio.create_subprocess_exec(
@@ -265,18 +270,14 @@ class NinecliClient:
                         "vehicles",
                         stdin=asyncio.subprocess.DEVNULL,
                         stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.DEVNULL,
+                        stderr=asyncio.subprocess.PIPE,
                         env=self._environment(),
                     )
                     process = self._process
                     if self._closed:
                         raise NinebotError(ErrorKind.CLOSED)
-                    assert process.stdout is not None
-                    data = bytearray()
-                    while chunk := await process.stdout.read(16384):
-                        data.extend(chunk)
-                        if len(data) > MAX_RESPONSE_BYTES:
-                            raise NinebotError(ErrorKind.PROTOCOL)
+                    assert process.stdout is not None and process.stderr is not None
+                    data, diagnostic = await self._read_cli_output(process.stdout, process.stderr)
                     code = await process.wait()
                     await self._stop()
                     if self._closed:
@@ -293,13 +294,50 @@ class NinecliClient:
                         raise NinebotError(ErrorKind.PROTOCOL) from None
                     if not isinstance(raw, list):
                         raise NinebotError(ErrorKind.PROTOCOL)
+                    # Native 0.1.7 returns exit 0 even if one or both business
+                    # lists failed. Diagnostic output is opaque, not auth proof.
+                    complete = not diagnostic.strip()
+                    if not complete:
+                        if not raw:
+                            raise NinebotError(ErrorKind.SERVICE)
+                        await cache_io(merge_partial_cache, self.config_dir, previous_cache)
+                    self.vehicle_discovery_complete = complete
+                    accepted = True
                     return raw
             except TimeoutError:
                 raise NinebotError(ErrorKind.CONNECTION) from None
             except OSError:
                 raise NinebotError(ErrorKind.PLATFORM) from None
             finally:
-                await self._stop()
+                try:
+                    await self._stop()
+                finally:
+                    if not accepted:
+                        await cache_io(restore_cache, self.config_dir, previous_cache)
+
+    @staticmethod
+    async def _read_cli_output(
+        stdout: asyncio.StreamReader, stderr: asyncio.StreamReader
+    ) -> tuple[bytes, bytes]:
+        """Drain both pipes concurrently, bounded and never logged."""
+
+        async def read(stream: asyncio.StreamReader) -> bytes:
+            data = bytearray()
+            while chunk := await stream.read(16384):
+                data.extend(chunk)
+                if len(data) > MAX_RESPONSE_BYTES:
+                    raise NinebotError(ErrorKind.PROTOCOL)
+            return bytes(data)
+
+        tasks = [asyncio.create_task(read(stream)) for stream in (stdout, stderr)]
+        try:
+            data, diagnostic = await asyncio.gather(*tasks)
+            return data, diagnostic
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def async_get_status(self, sn: str) -> Any:
         return await self._request("GET", f"/vehicles/{quote(sn, safe='')}/status")

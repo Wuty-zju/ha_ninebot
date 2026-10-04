@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 @pytest.fixture
 def app_client():
     client = AsyncMock()
+    client.vehicle_discovery_complete = True
     client.async_list_vehicles.return_value = [
         {"wnumber": "SyntheticSN", "device_name": "Scooter", "vehicle_name": "Test"}
     ]

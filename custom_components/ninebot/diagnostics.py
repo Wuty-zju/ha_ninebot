@@ -22,7 +22,7 @@ async def async_get_config_entry_diagnostics(
     vehicles = []
     for snapshot in runtime.coordinator.data.values():
         groups = {}
-        for group in ("status", "battery", "travel"):
+        for group in ("profile", "status", "battery", "travel"):
             freshness = getattr(snapshot, f"{group}_freshness")
             groups[group] = {
                 "attempted_at": freshness.attempted_at.isoformat()
@@ -76,6 +76,7 @@ async def async_get_config_entry_diagnostics(
         "obsolete_entities_removed": runtime.obsolete_entities_removed,
         "standard_entities_enabled": runtime.standard_entities_enabled,
         "configured_controls_enabled": runtime.configured_controls_enabled,
+        "vehicle_discovery": runtime.coordinator.discovery_diagnostics(),
         "vehicles": vehicles,
         "raw_schema": runtime.coordinator.raw.diagnostics(dt_util.utcnow()),
         "ride_events": runtime.events.diagnostics() if runtime.events else None,

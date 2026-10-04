@@ -11,6 +11,7 @@ from custom_components.ninebot.raw import Endpoint
 
 async def test_backend_metadata_routes_and_no_extra_authentication():
     client = AsyncMock(spec=NinecliClient)
+    client.vehicle_discovery_complete = True
     backend = NinecliBackend(client)
     assert backend.endpoints == frozenset(Endpoint)
     results = [

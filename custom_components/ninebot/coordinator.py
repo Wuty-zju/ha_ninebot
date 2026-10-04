@@ -109,6 +109,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         (snapshot.status_freshness, max(3 * self.interval, 180)),
                         (snapshot.battery_freshness, 3 * DETAIL_INTERVAL),
                         (snapshot.travel_freshness, 3 * DETAIL_INTERVAL),
+                        (snapshot.profile_freshness, 3 * VEHICLE_INTERVAL),
                     ]
                 )
         for freshness, ttl in fresh:
@@ -143,7 +144,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return False
         now = dt_util.utcnow()
         if group == "profile":
-            return self._list_freshness.valid(now, 3 * VEHICLE_INTERVAL)
+            return snapshot.profile_freshness.valid(now, 3 * VEHICLE_INTERVAL)
         if group == "status":
             return snapshot.status_freshness.valid(now, max(3 * self.interval, 180))
         if group == "battery":
@@ -177,28 +178,50 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return
         try:
             result = await self.backend.async_vehicles()
-            await self._capture(result)
             found = adapters.profiles(result.payload)
+            if not found and not result.vehicles_complete:
+                raise NinebotError(ErrorKind.SERVICE)
+            await self._capture(result)
         except NinebotAuthError:
             raise
         except NinebotError as err:
             self._list_freshness = replace(self._list_freshness, attempted_at=now, error=err.kind)
+            self.data = {
+                sn: replace(
+                    snapshot,
+                    profile_freshness=replace(
+                        snapshot.profile_freshness, attempted_at=now, error=err.kind
+                    ),
+                )
+                for sn, snapshot in self.data.items()
+            }
             self._attempt_finished("", "profile", stamp, VEHICLE_INTERVAL, False)
             if self._list_freshness.succeeded_at is None:
                 raise UpdateFailed(err.kind.value) from err
             return
         sns = {profile.sn for profile in found}
-        for sn in self.data:
-            if sn not in sns:
+        retained = dict(self.data)
+        for sn, snapshot in self.data.items():
+            if sn in sns:
+                continue
+            if result.vehicles_complete:
                 self.raw.discard_vehicle(sn)
-        self.data = {
-            sn: snapshot if sn in sns else replace(snapshot, present=False)
-            for sn, snapshot in self.data.items()
-        }
+                retained[sn] = replace(snapshot, present=False)
+            else:
+                retained[sn] = replace(
+                    snapshot,
+                    profile_freshness=replace(
+                        snapshot.profile_freshness, attempted_at=now, error=ErrorKind.SERVICE
+                    ),
+                )
+        self.data = retained
+        observed = Freshness(now, dt_util.utcnow())
         for profile in found:
             old = self.data.get(profile.sn)
             self.data[profile.sn] = (
-                replace(old, profile=profile) if old and old.present else VehicleSnapshot(profile)
+                replace(old, profile=profile, profile_freshness=observed)
+                if old and old.present
+                else VehicleSnapshot(profile, profile_freshness=observed)
             )
             if old and not old.present:
                 # Reappearing ownership is a new observation interval. Do not
@@ -210,7 +233,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 if self.models:
                     self.models.model(profile.sn).reset_baseline()
         finished = dt_util.utcnow()
-        self._list_freshness = Freshness(now, finished)
+        self._list_freshness = Freshness(
+            now, finished, None if result.vehicles_complete else ErrorKind.SERVICE
+        )
         self._authenticated = True
         self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, True)
 
@@ -427,6 +452,16 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             now=dt_util.utcnow(),
         )
 
+    def discovery_diagnostics(self) -> dict[str, str | bool | None]:
+        """Batch quality is separate from each positively observed identity."""
+        freshness = self._list_freshness
+        return {
+            "complete": freshness.error is None if freshness.attempted_at else None,
+            "attempted_at": freshness.attempted_at.isoformat() if freshness.attempted_at else None,
+            "succeeded_at": freshness.succeeded_at.isoformat() if freshness.succeeded_at else None,
+            "error": freshness.error.value if freshness.error else None,
+        }
+
     async def _async_update_data(self) -> dict[str, VehicleSnapshot]:
         task = asyncio.current_task()
         if task:
@@ -503,7 +538,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 ("vehicle_not_present", snapshot is not None and snapshot.present),
                 ("profile_stale", self.fresh(sn, "profile")),
                 ("status_stale", self.fresh(sn, "status")),
-                ("profile_query_failed", self._list_freshness.error is None),
+                (
+                    "profile_query_failed",
+                    snapshot is not None and snapshot.profile_freshness.error is None,
+                ),
                 (
                     "status_query_failed",
                     snapshot is not None and snapshot.status_freshness.error is None,

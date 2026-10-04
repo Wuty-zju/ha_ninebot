@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b16 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b16)
+**2.0.0b17 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b17)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -36,6 +36,12 @@ are sent in local HTTP bodies, not command-line arguments. Tokens live in a
 private per-entry directory under `.storage/ninebot_v2`; this is a same-user
 trust boundary, not protection against privileged or same-user inspection.
 No service is exposed to the LAN and no binary is downloaded at runtime.
+
+Incomplete cloud discovery does not confirm that a vehicle was unbound. Returned
+vehicles remain usable; missing identities keep their previous observation time
+and cannot enable controls until observed again. Failed discovery preserves the
+native routing cache. Safe diagnostics separates batch quality from each vehicle's
+profile freshness. See the [discovery contract](docs/v2x-不完整车辆发现与缓存恢复契约.md).
 
 ## Data and options
 
@@ -296,7 +302,7 @@ not changed; the temporary child and session were removed. The empty-response
 fixture supports offline replay without repeating vehicle commands. Full scope
 and limits are in the [b15 contract](docs/v2x-云端鉴权控制与实测契约.md).
 
-## Control reconciliation in 2.0.0b16
+## Control reconciliation in 2.0.0b17
 
 A removed vehicle or a skipped readback cannot now pass as a successful status
 check. Completed manual queries from before the command are not reused as its
