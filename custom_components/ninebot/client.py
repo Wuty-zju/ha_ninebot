@@ -245,6 +245,12 @@ class NinecliClient:
     async def async_login(self, account: str, password: str) -> None:
         await self._request("POST", "/auth/login", {"account": account, "password": password})
 
+    async def async_send_login_code(self, account: str) -> None:
+        await self._request("POST", "/auth/login-code", {"account": account})
+
+    async def async_consume_login_code(self, account: str, code: str) -> None:
+        await self._request("POST", "/auth/login-code/consume", {"account": account, "code": code})
+
     async def async_list_vehicles(self) -> Any:
         """Discover vehicles and let native ninecli prepare its routing cache.
 

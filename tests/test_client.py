@@ -106,6 +106,21 @@ async def test_password_body_and_path_encoding(tmp_path, proxy):
         assert error.value.kind == ErrorKind.CLOSED
 
 
+async def test_sms_credentials_stay_in_local_http_body(tmp_path, proxy):
+    url, requests, _, _ = proxy
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        client._base = url
+        client._start = AsyncMock()
+        await client.async_send_login_code("19900000000")
+        await client.async_consume_login_code("19900000000", "123456")
+        assert requests == [
+            ("POST", "/auth/login-code", {"account": "19900000000"}),
+            ("POST", "/auth/login-code/consume", {"account": "19900000000", "code": "123456"}),
+        ]
+        await client.async_close()
+
+
 @pytest.mark.parametrize("action", ["bell", "buck", "engine/start", "engine/stop"])
 async def test_recorded_empty_control_acceptance_is_one_command_not_physical_state(
     tmp_path, proxy, action

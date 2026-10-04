@@ -9,11 +9,13 @@
           "password": "密码",
           "debug_mode": "调试模式",
           "enable_estimation": "启用SOC能量估算",
-          "enable_coordinates": "启用精确位置"
+          "enable_coordinates": "启用精确位置",
+          "login_method": "登录方式"
         },
         "data_description": {
           "debug_mode": "在解析信息实体中显示有界诊断视图，不增加请求。",
-          "enable_estimation": "启用后，在集成选项或车辆的电压/容量配置实体中填写标称V和Ah；不使用实时电压自动填充。"
+          "enable_estimation": "启用后，在集成选项或车辆的电压/容量配置实体中填写标称V和Ah；不使用实时电压自动填充。",
+          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
         }
       },
       "reauth_confirm": {
@@ -21,7 +23,11 @@
         "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
           "account": "账号",
-          "password": "密码"
+          "password": "密码",
+          "login_method": "登录方式"
+        },
+        "data_description": {
+          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
         }
       },
       "reconfigure": {
@@ -29,7 +35,26 @@
         "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
           "account": "账号",
-          "password": "密码"
+          "password": "密码",
+          "login_method": "登录方式"
+        },
+        "data_description": {
+          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
+        }
+      },
+      "sms_account": {
+        "title": "发送登录验证码",
+        "description": "提交手机号将发送一次短信；不会自动重试。",
+        "data": {
+          "account": "中国大陆手机号"
+        }
+      },
+      "sms_code": {
+        "title": "短信登录",
+        "description": "输入验证码，或明确选择重发。重发本地冷却60秒；等待界面10分钟后清理。它们不是上游验证码有效期承诺。",
+        "data": {
+          "code": "验证码",
+          "resend": "重新发送验证码"
         }
       }
     },
@@ -40,7 +65,11 @@
       "invalid_response": "返回数据格式不符合预期",
       "unsupported_platform": "ninecli 无法在当前平台启动",
       "busy": "会话正在使用，请稍后重试",
-      "storage_error": "无法安全保存会话，请检查存储空间和权限"
+      "storage_error": "无法安全保存会话，请检查存储空间和权限",
+      "password_required": "请填写密码或选择短信登录。",
+      "invalid_account": "短信登录暂支持11位中国大陆手机号。",
+      "invalid_code": "验证码无效，请重新输入。",
+      "sms_cooldown": "请等待本地60秒冷却后，再明确请求发送。"
     },
     "abort": {
       "already_configured": "账号已配置",
@@ -48,7 +77,9 @@
       "reauth_successful": "重认证成功",
       "reconfigure_successful": "重新配置成功",
       "session_update_failed": "会话更新未完成，已恢复旧会话。请重新开始认证。",
-      "session_recovery_pending": "会话恢复尚未完成，备份已保留。请查看“修复”提示并重启 HA 后重试。"
+      "session_recovery_pending": "会话恢复尚未完成，备份已保留。请查看“修复”提示并重启 HA 后重试。",
+      "sms_expired": "短信登录流程已过期，请重新开始。",
+      "storage_error": "本地会话保存失败，请检查存储后重试。"
     }
   },
   "options": {
@@ -1057,6 +1088,14 @@
           "name": "包含轨迹",
           "description": "需要启用位置选项。精确位置可能保存在自动化跟踪或响应变量中。"
         }
+      }
+    }
+  },
+  "selector": {
+    "login_method": {
+      "options": {
+        "password": "账号密码",
+        "sms": "短信验证码"
       }
     }
   }

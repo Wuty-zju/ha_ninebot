@@ -9,11 +9,13 @@
           "password": "Password",
           "debug_mode": "Debug mode",
           "enable_estimation": "Enable SOC energy estimation",
-          "enable_coordinates": "Enable precise coordinates"
+          "enable_coordinates": "Enable precise coordinates",
+          "login_method": "Login method"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
-          "enable_estimation": "Then set nominal V and Ah in integration options or vehicle configuration entities; measured voltage is not a default."
+          "enable_estimation": "Then set nominal V and Ah in integration options or vehicle configuration entities; measured voltage is not a default.",
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
         }
       },
       "reauth_confirm": {
@@ -21,7 +23,11 @@
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Account",
-          "password": "Password"
+          "password": "Password",
+          "login_method": "Login method"
+        },
+        "data_description": {
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
         }
       },
       "reconfigure": {
@@ -29,7 +35,26 @@
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Account",
-          "password": "Password"
+          "password": "Password",
+          "login_method": "Login method"
+        },
+        "data_description": {
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+        }
+      },
+      "sms_account": {
+        "title": "Send login code",
+        "description": "Submitting sends one SMS; delivery is never retried automatically.",
+        "data": {
+          "account": "Mainland China mobile number"
+        }
+      },
+      "sms_code": {
+        "title": "SMS login",
+        "description": "Enter the code or explicitly resend. Local resend cooldown is 60 seconds; this flow is cleaned up after 10 minutes. These are not upstream validity guarantees.",
+        "data": {
+          "code": "Verification code",
+          "resend": "Resend code"
         }
       }
     },
@@ -40,7 +65,11 @@
       "invalid_response": "Unexpected response format",
       "unsupported_platform": "ninecli cannot start on this platform",
       "busy": "Session is busy; try again later",
-      "storage_error": "Cannot save session; check storage and permissions"
+      "storage_error": "Cannot save session; check storage and permissions",
+      "password_required": "Enter a password or choose SMS login.",
+      "invalid_account": "SMS login currently requires an 11-digit mainland China mobile number.",
+      "invalid_code": "Invalid code. Enter it again.",
+      "sms_cooldown": "Wait for the local 60-second cooldown before explicitly sending again."
     },
     "abort": {
       "already_configured": "Account already configured",
@@ -48,7 +77,9 @@
       "reauth_successful": "Reauthentication successful",
       "reconfigure_successful": "Reconfiguration successful",
       "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
-      "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying."
+      "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
+      "sms_expired": "The SMS login flow expired. Start again.",
+      "storage_error": "Local session storage failed. Check storage and try again."
     }
   },
   "options": {
@@ -1057,6 +1088,14 @@
           "name": "Include track",
           "description": "Requires coordinates opt-in. Precise locations may persist in automation traces or response variables."
         }
+      }
+    }
+  },
+  "selector": {
+    "login_method": {
+      "options": {
+        "password": "Password",
+        "sms": "SMS code"
       }
     }
   }
