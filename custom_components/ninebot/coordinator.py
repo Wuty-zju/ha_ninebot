@@ -32,6 +32,7 @@ from .const import (
     DOMAIN,
     VEHICLE_INTERVAL,
 )
+from .control_results import CommandOutcome, ControlResult, ControlResults, ReadbackOutcome
 from .demand import Group, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .models import Freshness, VehicleSnapshot
@@ -56,6 +57,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.client = client
         self.backend: NinebotBackend = backend or NinecliBackend(client)
         self.raw = RawStore()
+        self.control_results = ControlResults()
         self.models = models
         self.interval = max(
             30, min(3600, int(entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)))
@@ -78,7 +80,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._control_pending = 0
         self._query_pending = 0
         self._active: set[asyncio.Task[Any]] = set()
-        self._forced: dict[str, asyncio.Task[None]] = {}
+        self._forced: dict[str, asyncio.Task[bool]] = {}
         self._shutdown_task: asyncio.Task[None] | None = None
         self._validity_cancel: Callable[[], None] | None = None
 
@@ -458,18 +460,17 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if task:
                 self._active.discard(task)
 
-    async def async_refresh_vehicle(self, sn: str) -> None:
-        """Coalesce simultaneous manual requests, force exactly this status."""
+    async def async_refresh_vehicle(self, sn: str) -> bool:
+        """Coalesce active requests; report whether this status was attempted."""
         if self._stopping:
-            return
-        if existing := self._forced.get(sn):
-            await asyncio.shield(existing)
-            return
+            return False
+        if (existing := self._forced.get(sn)) is not None and not existing.done():
+            return await asyncio.shield(existing)
 
-        async def refresh() -> None:
+        async def refresh() -> bool:
             async with self._mutex:
                 if sn not in self.data or not self.data[sn].present:
-                    return
+                    return False
                 try:
                     await self._group(sn, "status", force=True)
                 except NinebotAuthError as err:
@@ -477,13 +478,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 self._sample_model(sn)
                 self.async_set_updated_data(dict(self.data))
                 self._schedule_validity_check()
+                return True
 
         task = asyncio.create_task(refresh())
         self._forced[sn] = task
         try:
-            await task
+            return await task
         finally:
-            self._forced.pop(sn, None)
+            if self._forced.get(sn) is task:
+                self._forced.pop(sn)
 
     def control_decision(self, sn: str, action: str) -> ControlDecision:
         """Transport support alone does not grant a cloud/hardware permission."""
@@ -541,7 +544,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 self._active.discard(task)
 
     async def _control(self, sn: str, action: str) -> None:
-        """Controls need explicit consent and a present, authorized vehicle."""
+        """Send once, reconcile status, and retain only safe outcome metadata."""
         if (
             self._stopping
             or not self.config_entry
@@ -550,33 +553,79 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             or not self.data[sn].present
         ):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="controls_disabled")
-        async with self._mutex:
-            # Permission/freshness may change while a request waits in the queue.
-            if not self.controls_enabled(sn, action):
-                raise HomeAssistantError(
-                    translation_domain=DOMAIN, translation_key="controls_disabled"
-                )
-            try:
-                await self.backend.async_control(sn, action)
-            except NinebotAuthError:
-                self._manual_auth_failure()
-                raise HomeAssistantError(
-                    translation_domain=DOMAIN, translation_key="control_uncertain"
-                ) from None
-            except NinebotError as err:
-                # No automatic retry, even if the action's outcome is uncertain.
-                raise HomeAssistantError(
-                    translation_domain=DOMAIN, translation_key="control_uncertain"
-                ) from err
+        result = None
         try:
-            await self.async_refresh_vehicle(sn)
-            error = self.data[sn].status_freshness.error
-            if error is not None:
-                raise NinebotError(error)
-        except (ConfigEntryAuthFailed, NinebotError):
-            raise HomeAssistantError(
-                translation_domain=DOMAIN, translation_key="control_readback_failed"
-            ) from None
+            command_error = None
+            async with self._mutex:
+                # Permission/freshness may change while waiting in the queue.
+                if not self.controls_enabled(sn, action):
+                    raise HomeAssistantError(
+                        translation_domain=DOMAIN, translation_key="controls_disabled"
+                    )
+                result = self.control_results.start(sn, action, dt_util.utcnow())
+                try:
+                    await self.backend.async_control(sn, action)
+                    result.outcome = CommandOutcome.ACCEPTED
+                except NinebotAuthError:
+                    result.outcome = CommandOutcome.AUTH_REQUIRED
+                    result.error = ErrorKind.AUTH
+                    result.readback = ReadbackOutcome.SKIPPED
+                    self._manual_auth_failure()
+                    raise HomeAssistantError(
+                        translation_domain=DOMAIN, translation_key="control_uncertain"
+                    ) from None
+                except NinebotError as err:
+                    result.outcome = CommandOutcome.UNCERTAIN
+                    result.error = err.kind
+                    command_error = err
+            refreshed = await self._control_readback(sn, result)
+            if command_error is not None:
+                # A successful GET does not turn an uncertain POST into success.
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN, translation_key="control_uncertain"
+                ) from command_error
+            if not refreshed:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN, translation_key="control_readback_failed"
+                ) from None
+        except asyncio.CancelledError:
+            if result is not None:
+                if result.outcome is CommandOutcome.PENDING:
+                    result.outcome = CommandOutcome.CANCELLED
+                    result.readback = ReadbackOutcome.SKIPPED
+                elif result.readback is ReadbackOutcome.PENDING:
+                    result.readback = ReadbackOutcome.CANCELLED
+            raise
+        finally:
+            if result is not None:
+                result.finished_at = dt_util.utcnow()
+
+    async def _control_readback(self, sn: str, result: ControlResult) -> bool:
+        """One status reconciliation; never resend the command or mask its error."""
+        snapshot = self.data.get(sn)
+        if self._stopping or not self._authenticated or snapshot is None or not snapshot.present:
+            result.readback = ReadbackOutcome.SKIPPED
+            return False
+        result.readback = ReadbackOutcome.PENDING
+        try:
+            attempted = await self.async_refresh_vehicle(sn)
+        except ConfigEntryAuthFailed:
+            result.readback = ReadbackOutcome.FAILED
+            result.readback_error = ErrorKind.AUTH
+            return False
+        except NinebotError as err:
+            result.readback = ReadbackOutcome.FAILED
+            result.readback_error = err.kind
+            return False
+        snapshot = self.data.get(sn)
+        if not attempted or self._stopping or snapshot is None or not snapshot.present:
+            result.readback = ReadbackOutcome.SKIPPED
+            return False
+        result.readback_error = snapshot.status_freshness.error
+        result.readback = (
+            ReadbackOutcome.FAILED if result.readback_error else ReadbackOutcome.REFRESHED
+        )
+        return result.readback is ReadbackOutcome.REFRESHED
 
     async def async_close(self) -> None:
         self._stopping = True
@@ -600,4 +649,5 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         await self.backend.async_close()
         await asyncio.gather(*tasks, return_exceptions=True)
         self.raw.clear()
+        self.control_results.clear()
         await self.async_shutdown()

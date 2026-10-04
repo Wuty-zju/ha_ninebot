@@ -416,26 +416,138 @@ async def test_cancelled_raw_preparation_cannot_repopulate_unloaded_cache(coordi
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
-async def test_control_timeout_never_retried(coordinator):
+@pytest.mark.parametrize("readback_kind", [None, ErrorKind.SERVICE])
+async def test_control_timeout_never_retried(coordinator, readback_kind):
     co = coordinator
     await co._async_update_data()
+    co.client.async_get_status.reset_mock()
+    if readback_kind:
+        co.client.async_get_status.side_effect = NinebotError(readback_kind)
     co.client.async_control.side_effect = NinebotError(ErrorKind.CONNECTION)
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(HomeAssistantError) as error:
         await co.async_control("synthetic-one", "bell")
+    assert error.value.translation_key == "control_uncertain"
     co.client.async_control.assert_awaited_once()
+    co.client.async_get_status.assert_awaited_once_with("synthetic-one")
+    result = co.control_results.diagnostics("synthetic-one")["bell"]
+    assert result["outcome"] == "uncertain"
+    assert result["error"] == "connection"
+    assert result["readback"] == ("failed" if readback_kind else "refreshed")
+    assert result["readback_error"] == (readback_kind.value if readback_kind else None)
+    assert result["finished_at"] is not None
+    assert result["physical_outcome_verified"] is False
+    co.config_entry.async_start_reauth.assert_not_called()
+
+
+@pytest.mark.parametrize("coordinator", [True], indirect=True)
+async def test_control_cannot_claim_readback_when_vehicle_disappeared(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co.client.async_get_status.reset_mock()
+
+    async def disappear(sn, action):
+        co.data[sn] = replace(co.data[sn], present=False)
+
+    co.client.async_control.side_effect = disappear
+    with pytest.raises(HomeAssistantError) as error:
+        await co.async_control("synthetic-one", "bell")
+    assert error.value.translation_key == "control_readback_failed"
+    co.client.async_control.assert_awaited_once()
+    co.client.async_get_status.assert_not_awaited()
+    result = co.control_results.diagnostics("synthetic-one")["bell"]
+    assert result["outcome"] == "accepted"
+    assert result["readback"] == "skipped"
+    assert result["physical_outcome_verified"] is False
+
+
+@pytest.mark.parametrize("coordinator", [True], indirect=True)
+async def test_completed_manual_refresh_cannot_substitute_for_post_command_readback(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co.client.async_get_status.reset_mock()
+    first, second = asyncio.Event(), asyncio.Event()
+    release_first, release_second = asyncio.Event(), asyncio.Event()
+    requests = 0
+
+    async def status(sn):
+        nonlocal requests
+        requests += 1
+        if requests == 1:
+            first.set()
+            await release_first.wait()
+        else:
+            second.set()
+            await release_second.wait()
+        return {"dump_energy": 55}
+
+    co.client.async_get_status.side_effect = status
+    manual = asyncio.create_task(co.async_refresh_vehicle("synthetic-one"))
+    await first.wait()
+    command = asyncio.create_task(co.async_control("synthetic-one", "bell"))
+    try:
+        await asyncio.sleep(0)  # Command queues behind the active manual query.
+        release_first.set()
+        await asyncio.wait_for(second.wait(), 2)
+        assert await manual is True
+        assert not co._forced["synthetic-one"].done()
+        release_second.set()
+        await command
+        assert requests == 2
+        assert not co._forced
+        assert co.control_results.diagnostics("synthetic-one")["bell"]["readback"] == "refreshed"
+    finally:
+        release_first.set()
+        release_second.set()
+        await asyncio.gather(manual, command, return_exceptions=True)
+
+
+@pytest.mark.parametrize("coordinator", [True], indirect=True)
+@pytest.mark.parametrize("phase", ["command", "readback"])
+async def test_control_cancellation_keeps_phase_evidence_without_extra_io(coordinator, phase):
+    co = coordinator
+    await co._async_update_data()
+    co.client.async_get_status.reset_mock()
+    started = asyncio.Event()
+
+    async def blocked(*args):
+        started.set()
+        await asyncio.Event().wait()
+
+    if phase == "command":
+        co.client.async_control.side_effect = blocked
+    else:
+        co.client.async_get_status.side_effect = blocked
+    task = asyncio.create_task(co.async_control("synthetic-one", "bell"))
+    await started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    co.client.async_control.assert_awaited_once()
+    assert co.client.async_get_status.await_count == (phase == "readback")
+    result = co.control_results.diagnostics("synthetic-one")["bell"]
+    assert result["outcome"] == ("cancelled" if phase == "command" else "accepted")
+    assert result["readback"] == ("skipped" if phase == "command" else "cancelled")
+    assert result["finished_at"] is not None
+    assert not co._forced and not co._active and co._control_pending == 0
+    assert not co._mutex.locked()
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
 async def test_control_auth_error_starts_reauth_without_resending(coordinator):
     co = coordinator
     await co._async_update_data()
+    co.client.async_get_status.reset_mock()
     co.client.async_control.side_effect = NinebotAuthError()
     with pytest.raises(HomeAssistantError) as error:
         await co.async_control("synthetic-one", "bell")
     assert error.value.translation_key == "control_uncertain"
     co.config_entry.async_start_reauth.assert_called_once_with(co.hass)
     co.client.async_control.assert_awaited_once()
+    co.client.async_get_status.assert_not_awaited()
     assert not co.fresh("synthetic-one", "status")
+    result = co.control_results.diagnostics("synthetic-one")["bell"]
+    assert result["outcome"] == "authentication_required"
+    assert result["error"] == "auth" and result["readback"] == "skipped"
 
 
 async def test_list_failure_retries_initial_setup_but_preserves_prior_data(coordinator):
@@ -554,6 +666,10 @@ async def test_control_readback_failure_does_not_repeat_action(coordinator, auth
     assert error.value.translation_key == "control_readback_failed"
     co.client.async_control.assert_awaited_once_with("synthetic-one", "bell")
     assert co._control_pending == 0
+    result = co.control_results.diagnostics("synthetic-one")["bell"]
+    assert result["outcome"] == "accepted" and result["error"] is None
+    assert result["readback"] == "failed"
+    assert result["readback_error"] == ("auth" if auth else "connection")
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)

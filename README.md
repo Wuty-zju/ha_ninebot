@@ -6,8 +6,8 @@ Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
 list, status, battery and trip queries. It replaces the old OpenClaw backend.
 This is an independent, unofficial integration; vendor API availability can change.
 
-**2.0.0b15 is a beta release.** Review the upgrade instructions and limitations
-before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b15)
+**2.0.0b16 is a beta release.** Review the upgrade instructions and limitations
+before installing it. [Release notes](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0b16)
 and the [entity migration matrix](docs/2.0-实体迁移矩阵.md) describe the changes.
 
 ## Install and configure
@@ -295,3 +295,18 @@ state did not change, so no physical effect is claimed. Production HA files were
 not changed; the temporary child and session were removed. The empty-response
 fixture supports offline replay without repeating vehicle commands. Full scope
 and limits are in the [b15 contract](docs/v2x-云端鉴权控制与实测契约.md).
+
+## Control reconciliation in 2.0.0b16
+
+A removed vehicle or a skipped readback cannot now pass as a successful status
+check. Completed manual queries from before the command are not reused as its
+readback. Non-authentication command errors attempt one status reconciliation,
+without retrying the command or turning a successful GET into physical success.
+Authentication failures and cancellation stop additional I/O.
+
+Diagnostics retains only bounded local command classifications and timestamps:
+latest per vehicle/action, maximum 64 records, cleared on unload. It distinguishes
+acceptance, uncertain outcomes and readback failures without raw responses or
+private identifiers. No new state entity or polling demand is introduced. See
+the [reconciliation contract](docs/v2x-控制结果与状态回读契约.md). This phase is offline;
+the b15 physical-effect and production-installation limits still apply.

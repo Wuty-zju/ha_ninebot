@@ -53,6 +53,9 @@ async def async_get_config_entry_diagnostics(
                     ).diagnostics()
                     for action in sorted(CONTROL_ACTIONS)
                 },
+                "control_results": runtime.coordinator.control_results.diagnostics(
+                    snapshot.profile.sn
+                ),
             }
         )
     return {
