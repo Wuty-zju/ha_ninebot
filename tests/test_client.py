@@ -1,4 +1,6 @@
 import asyncio
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock
 
 import aiohttp
@@ -56,6 +58,17 @@ async def proxy():
             return web.Response(body=b"{bad")
         if request.path.endswith("/large/status"):
             return web.Response(body=b"x" * (MAX_RESPONSE_BYTES + 1))
+        if request.method == "POST" and any(
+            request.path.endswith(f"/{action}")
+            for action in ("bell", "buck", "engine/start", "engine/stop")
+        ):
+            return web.json_response(
+                json.loads(
+                    (
+                        Path(__file__).parent / "fixtures/ninecli/0.1.7/control-accepted.json"
+                    ).read_text()
+                )
+            )
         return web.json_response({"ok": True, "data": []})
 
     app = web.Application()
@@ -91,6 +104,20 @@ async def test_password_body_and_path_encoding(tmp_path, proxy):
         with pytest.raises(NinebotError) as error:
             await client.async_list_vehicles()
         assert error.value.kind == ErrorKind.CLOSED
+
+
+@pytest.mark.parametrize("action", ["bell", "buck", "engine/start", "engine/stop"])
+async def test_recorded_empty_control_acceptance_is_one_command_not_physical_state(
+    tmp_path, proxy, action
+):
+    url, requests, _, _ = proxy
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        client._base = url
+        client._start = AsyncMock()
+        assert await client.async_control("synthetic", action) is None
+        assert requests == [("POST", f"/vehicles/synthetic/{action}", None)]
+        await client.async_close()
 
 
 @pytest.mark.parametrize("vehicle", ["bad", "large"])

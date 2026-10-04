@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "Options",
-        "description": "Estimation needs explicit nominal voltage/capacity. Coordinate reference is unverified. Controls require opt-in, an allowed vehicle, fresh data and verified upstream support, permission and action semantics. This version has no verified cloud permission parser, so enabling controls alone does not activate hardware actions. Diagnostics explains the blocking conditions. Configured control buttons appear automatically; user-disabled buttons stay disabled. Vehicle control status explains the current gate.",
+        "description": "Estimation needs nominal voltage and capacity. The cloud coordinate reference is unverified. Enable controls and select allowed vehicles to send bell, seat-trunk, start and stop commands. Ninebot decides permission and vehicle support. Known denials, authentication failures or stale data prevent sending; failed commands are not retried automatically. Control status means ready to send, not that the vehicle completed an action. Configured buttons appear automatically; user-disabled buttons remain disabled.",
         "data": {
           "poll_interval": "Status polling interval (seconds)",
           "enable_estimation": "Enable SOC energy estimation",
@@ -161,9 +161,9 @@
           "disabled": "Controls disabled",
           "vehicle_not_allowed": "Vehicle not allowed",
           "data_unavailable": "Fresh data unavailable",
-          "ready": "Control available",
+          "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
-          "denied": "Upstream permission denied",
+          "denied": "Upstream explicitly denied",
           "unsupported": "Command unsupported"
         },
         "state_attributes": {
@@ -174,9 +174,9 @@
               "disabled": "Controls disabled",
               "vehicle_not_allowed": "Vehicle not allowed",
               "data_unavailable": "Fresh data unavailable",
-              "ready": "Control available",
+              "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
-              "denied": "Upstream permission denied",
+              "denied": "Upstream explicitly denied",
               "unsupported": "Command unsupported"
             }
           },
@@ -187,9 +187,9 @@
               "disabled": "Controls disabled",
               "vehicle_not_allowed": "Vehicle not allowed",
               "data_unavailable": "Fresh data unavailable",
-              "ready": "Control available",
+              "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
-              "denied": "Upstream permission denied",
+              "denied": "Upstream explicitly denied",
               "unsupported": "Command unsupported"
             }
           },
@@ -200,9 +200,9 @@
               "disabled": "Controls disabled",
               "vehicle_not_allowed": "Vehicle not allowed",
               "data_unavailable": "Fresh data unavailable",
-              "ready": "Control available",
+              "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
-              "denied": "Upstream permission denied",
+              "denied": "Upstream explicitly denied",
               "unsupported": "Command unsupported"
             }
           },
@@ -213,9 +213,9 @@
               "disabled": "Controls disabled",
               "vehicle_not_allowed": "Vehicle not allowed",
               "data_unavailable": "Fresh data unavailable",
-              "ready": "Control available",
+              "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
-              "denied": "Upstream permission denied",
+              "denied": "Upstream explicitly denied",
               "unsupported": "Command unsupported"
             }
           }
@@ -301,7 +301,7 @@
   },
   "exceptions": {
     "controls_disabled": {
-      "message": "Control refused: enable controls, allow this vehicle, and require fresh verified upstream support, permission and action semantics. Unknown permissions are denied."
+      "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
       "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."

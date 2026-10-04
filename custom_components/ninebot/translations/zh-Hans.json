@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "选项",
-        "description": "估算需要明确的标称电压和容量；坐标系尚未验证。控制需要启用、车辆白名单、新鲜数据及经验证的上游支持、权限和动作语义。此版本尚无已验证的云端权限解析器，仅勾选启用不会开放硬件控制；诊断会列出拒绝原因。 已配置的控制按钮会自动显示；用户手动禁用的按钮保持禁用。车辆控制状态实体说明当前限制。",
+        "description": "估算需要设置标称电压与容量。云端坐标系尚未确认。启用控制并选定允许车辆后，可发送鸣笛、开座桶、启动和关闭命令；实际权限与车辆支持由九号云端判定。已知拒绝、认证失败或数据过期时不发送，失败不自动重试。控制状态表示能否发送，不保证车辆动作完成。已选车辆的控制按钮自动显示，用户禁用的按钮保持禁用。",
         "data": {
           "poll_interval": "状态轮询间隔（秒）",
           "enable_estimation": "启用SOC能量估算",
@@ -161,9 +161,9 @@
           "disabled": "未启用车辆控制",
           "vehicle_not_allowed": "车辆未获允许",
           "data_unavailable": "缺少新鲜数据",
-          "ready": "控制可用",
+          "ready": "可发送命令",
           "unverified": "上游能力尚未确认",
-          "denied": "上游权限拒绝",
+          "denied": "上游已明确拒绝",
           "unsupported": "不支持此命令"
         },
         "state_attributes": {
@@ -174,9 +174,9 @@
               "disabled": "未启用车辆控制",
               "vehicle_not_allowed": "车辆未获允许",
               "data_unavailable": "缺少新鲜数据",
-              "ready": "控制可用",
+              "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
-              "denied": "上游权限拒绝",
+              "denied": "上游已明确拒绝",
               "unsupported": "不支持此命令"
             }
           },
@@ -187,9 +187,9 @@
               "disabled": "未启用车辆控制",
               "vehicle_not_allowed": "车辆未获允许",
               "data_unavailable": "缺少新鲜数据",
-              "ready": "控制可用",
+              "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
-              "denied": "上游权限拒绝",
+              "denied": "上游已明确拒绝",
               "unsupported": "不支持此命令"
             }
           },
@@ -200,9 +200,9 @@
               "disabled": "未启用车辆控制",
               "vehicle_not_allowed": "车辆未获允许",
               "data_unavailable": "缺少新鲜数据",
-              "ready": "控制可用",
+              "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
-              "denied": "上游权限拒绝",
+              "denied": "上游已明确拒绝",
               "unsupported": "不支持此命令"
             }
           },
@@ -213,9 +213,9 @@
               "disabled": "未启用车辆控制",
               "vehicle_not_allowed": "车辆未获允许",
               "data_unavailable": "缺少新鲜数据",
-              "ready": "控制可用",
+              "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
-              "denied": "上游权限拒绝",
+              "denied": "上游已明确拒绝",
               "unsupported": "不支持此命令"
             }
           }
@@ -301,7 +301,7 @@
   },
   "exceptions": {
     "controls_disabled": {
-      "message": "控制被拒绝：需要启用选项、车辆白名单、有效的新鲜数据，以及已验证的上游支持、权限和动作语义。未知权限默认拒绝。"
+      "message": "命令未发送：请启用控制、允许此车辆，并检查认证、数据有效性与已知拒绝条件。车辆控制状态显示当前阻止原因。"
     },
     "control_uncertain": {
       "message": "控制未确认；可能已执行，请检查车辆后再操作。"

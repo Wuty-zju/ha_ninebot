@@ -9,7 +9,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 
-from custom_components.ninebot import adapters
 from custom_components.ninebot.capabilities import (
     CapabilityState,
     ControlCapability,
@@ -49,35 +48,9 @@ async def coordinator(tmp_path, request):
     co = NinebotCoordinator(hass, entry, client)
     from custom_components.ninebot.demand import ConsumerContext, Need
 
-    normalize = adapters.status
-
-    def mock_verified_status(raw, *, expected_sn=None):
-        # Test-only reviewed capability: never inferred from a production mask.
-        value = normalize(raw, expected_sn=expected_sn)
-        if getattr(request, "param", False) is True:
-            return replace(
-                value,
-                capabilities=VehicleCapabilities(
-                    (
-                        ControlCapability(
-                            "bell",
-                            CapabilityState.ALLOWED,
-                            CapabilityState.ALLOWED,
-                            True,
-                            "mock-contract",
-                        ),
-                    )
-                ),
-            )
-        return value
-
     with (
         patch.object(co, "_schedule_refresh"),
         patch.object(entry, "async_start_reauth"),
-        patch(
-            "custom_components.ninebot.coordinator.adapters.status",
-            side_effect=mock_verified_status,
-        ),
     ):
         # These tests explicitly drive time/polls, not HA timer callbacks.
         for sn in ("synthetic-one", "synthetic-two"):
@@ -236,7 +209,7 @@ async def test_controls_disabled_without_explicit_option(coordinator):
 @pytest.mark.parametrize(
     "coordinator", [{"enable_controls": True, "control_vehicles": ["synthetic-one"]}], indirect=True
 )
-async def test_unknown_permissions_are_denied_even_with_user_consent(coordinator):
+async def test_unknown_permissions_reach_cloud_only_with_user_consent(coordinator):
     co = coordinator
     co.client.async_get_status.return_value = {
         "permissions": None,
@@ -245,11 +218,15 @@ async def test_unknown_permissions_are_denied_even_with_user_consent(coordinator
         "pwr": 1,
     }
     await co._async_update_data()
-    for action in ("bell", "buck", "engine/start", "engine/stop", "arbitrary"):
-        assert not co.controls_enabled("synthetic-one", action)
-        with pytest.raises(HomeAssistantError):
-            await co.async_control("synthetic-one", action)
-    co.client.async_control.assert_not_awaited()
+    for action in ("bell", "buck", "engine/start", "engine/stop"):
+        assert co.controls_enabled("synthetic-one", action)
+        assert co.control_decision("synthetic-one", action).permission is CapabilityState.UNKNOWN
+        await co.async_control("synthetic-one", action)
+    assert co.client.async_control.await_count == 4
+    assert not co.controls_enabled("synthetic-one", "arbitrary")
+    with pytest.raises(HomeAssistantError):
+        await co.async_control("synthetic-one", "arbitrary")
+    assert co.client.async_control.await_count == 4
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
@@ -257,14 +234,31 @@ async def test_gate_is_action_specific_and_rechecks_permission_after_queue_wait(
     co = coordinator
     await co._async_update_data()
     assert co.controls_enabled("synthetic-one", "bell")
-    assert not co.controls_enabled("synthetic-one", "buck")
     assert not co.controls_enabled("synthetic-two", "bell")
+    snapshot = co.data["synthetic-one"]
+    co.data["synthetic-one"] = replace(
+        snapshot,
+        status=replace(
+            snapshot.status,
+            capabilities=VehicleCapabilities(
+                (ControlCapability("buck", permission=CapabilityState.DENIED),)
+            ),
+        ),
+    )
+    assert not co.controls_enabled("synthetic-one", "buck")
+    assert co.controls_enabled("synthetic-one", "bell")
     await co._mutex.acquire()
     task = asyncio.create_task(co.async_control("synthetic-one", "bell"))
     await asyncio.sleep(0)
     snapshot = co.data["synthetic-one"]
     co.data["synthetic-one"] = replace(
-        snapshot, status=replace(snapshot.status, capabilities=VehicleCapabilities())
+        snapshot,
+        status=replace(
+            snapshot.status,
+            capabilities=VehicleCapabilities(
+                (ControlCapability("bell", permission=CapabilityState.DENIED),)
+            ),
+        ),
     )
     co._mutex.release()
     with pytest.raises(HomeAssistantError):

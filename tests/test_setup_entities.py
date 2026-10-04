@@ -188,10 +188,9 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
     )
 
     bell = NinebotButton(entry, "SyntheticSN", "bell", "bell")
-    assert not bell.available
-    with pytest.raises(HomeAssistantError):
-        await bell.async_press()
-    app_client.async_control.assert_not_awaited()
+    assert bell.available
+    await bell.async_press()
+    app_client.async_control.assert_awaited_once_with("SyntheticSN", "bell")
     co = entry.runtime_data.coordinator
     snapshot = co.data["SyntheticSN"]
     co.data["SyntheticSN"] = replace(
@@ -203,16 +202,15 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
                     ControlCapability(
                         "bell",
                         CapabilityState.ALLOWED,
-                        CapabilityState.ALLOWED,
-                        True,
-                        "mock-contract",
+                        CapabilityState.DENIED,
                     ),
                 )
             ),
         ),
     )
-    assert bell.available
-    await bell.async_press()
+    assert not bell.available
+    with pytest.raises(HomeAssistantError):
+        await bell.async_press()
     app_client.async_control.assert_awaited_once_with("SyntheticSN", "bell")
     image = NinebotImage(entry, "SyntheticSN")
     assert image.image_url is None

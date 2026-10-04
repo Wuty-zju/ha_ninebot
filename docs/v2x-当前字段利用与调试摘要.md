@@ -1,5 +1,10 @@
 # v2.x 当前字段利用与调试摘要
 
+> b15后续更正：新的明确授权允许本地检查通过后由云端最终鉴权，UNKNOWN
+> 不再阻止命令发送，也不变成ALLOWED。业务路径仍136条；另有四条命令的
+> 12条选定代理路径，分开计数与分类。实际接受为空data，不是b14合成accepted
+> 标记。见[控制实测契约](v2x-云端鉴权控制与实测契约.md)。
+
 > b14后续更正：status明确返回的sn现已在raw/telemetry更新前检查请求归属；缺失/null不冒称已核验。原b13审计基线保留，当前机器用途列与[新契约](v2x-原生控制加密与状态归属契约.md)为准。
 
 > 2026-10-04，当前实现b14；实现基线 b13 main `2135b62bfe267c306bf23d5982661a077dac9bca`。
@@ -75,7 +80,7 @@ F=设备元数据，G=子设备候选元数据，H=私有runtime，I=安全schem
 | vehicles | $[].blue_secret | str | 蓝牙凭据；禁止保存到新 raw cache/diagnostics，保留已遮蔽形状 | J/I | 有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。 |
 | vehicles | $[].businessType | int | 车型/业务枚举；路由和支持矩阵，不能转权限 | H/I | 只保留 raw/审核 shape；实际原生缓存业务线由 CLI 建立，不使用此数字推断路由/权限。 |
 | vehicles | $[].color | str | 颜色；稳定后可作 metadata，枚举含义待核 | H/I | 保留 raw；颜色枚举尚未映射到设备元数据。 |
-| vehicles | $[].common_user_permissions | NoneType,null | 共享用户权限；真实值 null，未知必须 fail closed | H/I | 有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。 |
+| vehicles | $[].common_user_permissions | NoneType,null | 真实 null；权限仍为未知，不推断允许或位图。显式启用后的命令交由云端最终鉴权。 | H/I | 保留审核 shape，隐私值不导出；不生成 permission=allowed。本地发送条件与云端授权分离，已知拒绝仍阻止。 |
 | vehicles | $[].common_user_vehicle_index | int | 共享列表索引；不能作稳定车辆 ID | J/I | 有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。 |
 | vehicles | $[].common_user_version | NoneType,null | 支持/版本候选；真实 null，禁止猜 bit mask | H/I | 有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。 |
 | vehicles | $[].device_name | str | 用户车辆名；Device name，诊断名实体保持 | F/C | DeviceInfo.name；sensor.device_name（诊断默认关闭）；原值不进入raw/schema diagnostics。 |
@@ -117,7 +122,7 @@ F=设备元数据，G=子设备候选元数据，H=私有runtime，I=安全schem
 | status | $.loc.lat | str | 车辆定位；精确值不进入 diagnostics/schema摘要 | B | device_tracker（双坐标有效且coordinates opt-in）；不做坐标转换 |
 | status | $.loc.lock | int | 锁当前状态，不能等同 engine 控制效果 | A/C | binary_sensor.unlocked + 反码诊断 sensor.vehicle_lock_raw（默认关闭） |
 | status | $.loc.lon | str | 车辆定位；精确值不进入 diagnostics/schema摘要 | B | device_tracker（双坐标有效且coordinates opt-in）；不做坐标转换 |
-| status | $.permissions | NoneType,null | 操作权限；真实 null，不能判为允许 | H/I | 有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。 |
+| status | $.permissions | NoneType,null | 真实 null；权限仍为未知，不推断允许或位图。显式启用后的命令交由云端最终鉴权。 | H/I | 保留审核 shape，隐私值不导出；不生成 permission=allowed。本地发送条件与云端授权分离，已知拒绝仍阻止。 |
 | status | $.precise_estimate_mileage | float | 精确续航；沿用 endurance/remaining_range aliases | A | sensor.endurance |
 | status | $.precise_mileage_user_choose | int | App 续航显示偏好/阈值候选；未知语义 | J/I | 有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。 |
 | status | $.pwr | int | 车辆电源状态；不是功率 | A | binary_sensor.main_power |

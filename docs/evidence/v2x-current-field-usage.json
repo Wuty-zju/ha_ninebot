@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-10-04",
-  "implementation_version": "2.0.0b14",
-  "implementation_base_commit": "2135b62bfe267c306bf23d5982661a077dac9bca",
+  "implementation_version": "2.0.0b15",
+  "implementation_base_commit": "4d5efe6a9c8f4df820415fae3f5aa7da81e4f8b0",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [
@@ -340,7 +340,7 @@
             "null"
           ],
           "container": false,
-          "meaning": "共享用户权限；真实值 null，未知必须 fail closed",
+          "meaning": "真实 null；权限仍为未知，不推断允许或位图。显式启用后的命令交由云端最终鉴权。",
           "unit": "—",
           "classification": "H/I",
           "enabled": "—",
@@ -353,7 +353,7 @@
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。"
+          "current_use": "保留审核 shape，隐私值不导出；不生成 permission=allowed。本地发送条件与云端授权分离，已知拒绝仍阻止。"
         },
         {
           "path": "$[].common_user_vehicle_index",
@@ -1257,7 +1257,7 @@
             "null"
           ],
           "container": false,
-          "meaning": "操作权限；真实 null，不能判为允许",
+          "meaning": "真实 null；权限仍为未知，不推断允许或位图。显式启用后的命令交由云端最终鉴权。",
           "unit": "—",
           "classification": "H/I",
           "enabled": "—",
@@ -1271,7 +1271,7 @@
             "tests/fixtures/ninecli/0.1.7/status-01.json",
             "tests/fixtures/ninecli/0.1.7/status-02.json"
           ],
-          "current_use": "有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。"
+          "current_use": "保留审核 shape，隐私值不导出；不生成 permission=allowed。本地发送条件与云端授权分离，已知拒绝仍阻止。"
         },
         {
           "path": "$.precise_estimate_mileage",
@@ -2962,5 +2962,252 @@
     "real_controls": 0,
     "production_writes": 0,
     "unknown_fields": "retain only in bounded private raw; counts can be summarized, arbitrary key names or values never exported to entity state."
-  }
+  },
+  "observed_command_responses": [
+    {
+      "endpoint": "bell",
+      "layer": "selected_authenticated_loopback_proxy_envelope",
+      "http_status": 200,
+      "evidence": "R：每类一条真实请求，同一车辆；物理效果 V",
+      "sources": [
+        "tests/fixtures/ninecli/0.1.7/control-accepted.json",
+        "tests/fixtures/ninecli/0.1.7/metadata.json",
+        "docs/evidence/v2x-b15-live-controls.json"
+      ],
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "ninecli 本机命令成功 envelope；不是直接九号云密文或物理动作报告",
+          "classification": "H/I",
+          "current_use": "client 验证代理结构后消耗；不放入实体属性或 RawStore 历史。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        },
+        {
+          "path": "$.ok",
+          "types": [
+            "bool"
+          ],
+          "container": false,
+          "meaning": "本机代理接受处理的信号；不证明车辆实际完成动作",
+          "classification": "H",
+          "current_use": "与 HTTP200/data 同时由 response_data 验证；Button 完成调用不 optimistic 改写车辆 state。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        },
+        {
+          "path": "$.data",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "四类实测命令均为空对象；没有经确认的物理完成字段",
+          "classification": "H/J",
+          "current_use": "正常接受空 data，Button 不返回原始 payload；没有值可创建实体。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        }
+      ]
+    },
+    {
+      "endpoint": "buck",
+      "layer": "selected_authenticated_loopback_proxy_envelope",
+      "http_status": 200,
+      "evidence": "R：每类一条真实请求，同一车辆；物理效果 V",
+      "sources": [
+        "tests/fixtures/ninecli/0.1.7/control-accepted.json",
+        "tests/fixtures/ninecli/0.1.7/metadata.json",
+        "docs/evidence/v2x-b15-live-controls.json"
+      ],
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "ninecli 本机命令成功 envelope；不是直接九号云密文或物理动作报告",
+          "classification": "H/I",
+          "current_use": "client 验证代理结构后消耗；不放入实体属性或 RawStore 历史。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        },
+        {
+          "path": "$.ok",
+          "types": [
+            "bool"
+          ],
+          "container": false,
+          "meaning": "本机代理接受处理的信号；不证明车辆实际完成动作",
+          "classification": "H",
+          "current_use": "与 HTTP200/data 同时由 response_data 验证；Button 完成调用不 optimistic 改写车辆 state。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        },
+        {
+          "path": "$.data",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "四类实测命令均为空对象；没有经确认的物理完成字段",
+          "classification": "H/J",
+          "current_use": "正常接受空 data，Button 不返回原始 payload；没有值可创建实体。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        }
+      ]
+    },
+    {
+      "endpoint": "engine/start",
+      "layer": "selected_authenticated_loopback_proxy_envelope",
+      "http_status": 200,
+      "evidence": "R：每类一条真实请求，同一车辆；物理效果 V",
+      "sources": [
+        "tests/fixtures/ninecli/0.1.7/control-accepted.json",
+        "tests/fixtures/ninecli/0.1.7/metadata.json",
+        "docs/evidence/v2x-b15-live-controls.json"
+      ],
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "ninecli 本机命令成功 envelope；不是直接九号云密文或物理动作报告",
+          "classification": "H/I",
+          "current_use": "client 验证代理结构后消耗；不放入实体属性或 RawStore 历史。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        },
+        {
+          "path": "$.ok",
+          "types": [
+            "bool"
+          ],
+          "container": false,
+          "meaning": "本机代理接受处理的信号；不证明车辆实际完成动作",
+          "classification": "H",
+          "current_use": "与 HTTP200/data 同时由 response_data 验证；Button 完成调用不 optimistic 改写车辆 state。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        },
+        {
+          "path": "$.data",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "四类实测命令均为空对象；没有经确认的物理完成字段",
+          "classification": "H/J",
+          "current_use": "正常接受空 data，Button 不返回原始 payload；没有值可创建实体。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        }
+      ]
+    },
+    {
+      "endpoint": "engine/stop",
+      "layer": "selected_authenticated_loopback_proxy_envelope",
+      "http_status": 200,
+      "evidence": "R：每类一条真实请求，同一车辆；物理效果 V",
+      "sources": [
+        "tests/fixtures/ninecli/0.1.7/control-accepted.json",
+        "tests/fixtures/ninecli/0.1.7/metadata.json",
+        "docs/evidence/v2x-b15-live-controls.json"
+      ],
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "ninecli 本机命令成功 envelope；不是直接九号云密文或物理动作报告",
+          "classification": "H/I",
+          "current_use": "client 验证代理结构后消耗；不放入实体属性或 RawStore 历史。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        },
+        {
+          "path": "$.ok",
+          "types": [
+            "bool"
+          ],
+          "container": false,
+          "meaning": "本机代理接受处理的信号；不证明车辆实际完成动作",
+          "classification": "H",
+          "current_use": "与 HTTP200/data 同时由 response_data 验证；Button 完成调用不 optimistic 改写车辆 state。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        },
+        {
+          "path": "$.data",
+          "types": [
+            "dict"
+          ],
+          "container": true,
+          "meaning": "四类实测命令均为空对象；没有经确认的物理完成字段",
+          "classification": "H/J",
+          "current_use": "正常接受空 data，Button 不返回原始 payload；没有值可创建实体。",
+          "unit": "—",
+          "enabled": "—",
+          "device_class": "—",
+          "state_class": "—",
+          "entity_category": "—",
+          "compatibility": "C0"
+        }
+      ]
+    }
+  ],
+  "command_response_path_count": 12
 }

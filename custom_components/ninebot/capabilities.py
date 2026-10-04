@@ -1,7 +1,7 @@
-"""Separate endpoint implementation from proven vehicle/control permission.
+"""Separate local command readiness from cloud authorization and physical effect.
 
-No permission bit masks are inferred from ninecli's null/opaque responses.
-Until a reviewed parser contract supplies evidence, all actions fail closed.
+Explicit opt-in permits known commands to reach the cloud for final authorization.
+Unknown permissions remain unknown; reviewed denials and ambiguous evidence block.
 """
 
 from dataclasses import dataclass
@@ -47,6 +47,7 @@ class ControlCapability:
 
     @property
     def allowed(self) -> bool:
+        """Fully reviewed capability evidence, distinct from dispatch readiness."""
         return (
             self.support is CapabilityState.ALLOWED
             and self.permission is CapabilityState.ALLOWED
@@ -66,7 +67,7 @@ class VehicleCapabilities:
 
 @dataclass(frozen=True)
 class ControlDecision:
-    """Whitelisted policy evidence shared by control execution and diagnostics."""
+    """Local dispatch policy shared by execution and diagnostics, not cloud consent."""
 
     blockers: tuple[str, ...]
     support: CapabilityState
@@ -77,11 +78,13 @@ class ControlDecision:
 
     @property
     def allowed(self) -> bool:
+        """The command may be sent once; the cloud still decides authorization."""
         return not self.blockers
 
     def diagnostics(self) -> dict[str, object]:
         return {
             "allowed": self.allowed,
+            "dispatch_policy": "cloud_authorization",
             "blockers": list(self.blockers),
             "support": self.support.value,
             "permission": self.permission.value,
@@ -124,7 +127,7 @@ def decide_control(
     capabilities: VehicleCapabilities,
     checks: tuple[tuple[str, bool], ...],
 ) -> ControlDecision:
-    """Reject unknown/duplicate capabilities without interpreting permission masks."""
+    """Permit cloud authorization after local checks; never override known denials."""
     matches = [record for record in capabilities.controls if record.action == action]
     record = matches[0] if len(matches) == 1 else ControlCapability(action)
     blockers = [reason for reason, passed in checks if not passed]
@@ -132,14 +135,10 @@ def decide_control(
         blockers.append("unknown_action")
     if len(matches) > 1:
         blockers.append("ambiguous_capability")
-    if record.support is not CapabilityState.ALLOWED:
-        blockers.append(f"support_{record.support.value}")
-    if record.permission is not CapabilityState.ALLOWED:
-        blockers.append(f"permission_{record.permission.value}")
-    if record.semantics_verified is not True:
-        blockers.append("semantics_unverified")
-    if not record.has_evidence:
-        blockers.append("evidence_missing")
+    if record.support is CapabilityState.DENIED:
+        blockers.append("support_denied")
+    if record.permission is CapabilityState.DENIED:
+        blockers.append("permission_denied")
     return ControlDecision(
         tuple(blockers),
         record.support,
