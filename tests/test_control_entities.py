@@ -106,12 +106,14 @@ async def test_configured_default_upgrade_preserves_user_disable_and_reports_loc
         "sensor", "ninebot", "SyntheticSN_control_availability"
     )
     assert hass.states.get(diagnostic).state == "disabled"
-    assert all(registry.async_get(row.entity_id).disabled_by == row.disabled_by for row in rows)
+    assert registry.async_get(rows[1].entity_id).disabled_by is er.RegistryEntryDisabler.USER
+    assert all(registry.async_get(rows[i].entity_id).disabled_by is None for i in (0, 2, 3))
+    assert all(hass.states.get(rows[i].entity_id).state == "unavailable" for i in (0, 2, 3))
     hass.config_entries.async_update_entry(
         entry, options={"enable_controls": True, "control_vehicles": ["SyntheticSN"]}
     )
     await hass.async_block_till_done()
-    assert entry.runtime_data.configured_controls_enabled == 3
+    assert entry.runtime_data.configured_controls_enabled == 0
     assert registry.async_get(rows[1].entity_id).disabled_by is er.RegistryEntryDisabler.USER
     assert all(registry.async_get(rows[i].entity_id).disabled_by is None for i in (0, 2, 3))
     assert hass.states.get(diagnostic).state == "ready"

@@ -10,7 +10,6 @@ from .runtime import NinebotConfigEntry
 
 
 class NinebotRideEvent(NinebotEntity, EventEntity):
-    _attr_entity_registry_enabled_default = False
     _attr_event_types = ["completed"]
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:

@@ -44,13 +44,13 @@
         "default": "mdi:map-marker-path"
       },
       "month_energy_raw": {
-        "default": "mdi:chart-box-outline"
+        "default": "mdi:lightning-bolt"
       },
       "last_energy_raw": {
-        "default": "mdi:chart-box-outline"
+        "default": "mdi:lightning-bolt"
       },
       "charging_power_raw": {
-        "default": "mdi:chart-box-outline"
+        "default": "mdi:flash"
       },
       "bms_cycles": {
         "default": "mdi:counter"
@@ -60,6 +60,111 @@
       },
       "raw_data_summary": {
         "default": "mdi:database-eye"
+      },
+      "activation_time_raw": {
+        "default": "mdi:calendar-clock"
+      },
+      "activation_status_raw": {
+        "default": "mdi:information-outline"
+      },
+      "business_type_raw": {
+        "default": "mdi:information-outline"
+      },
+      "vehicle_type_raw": {
+        "default": "mdi:motorbike"
+      },
+      "shared_vehicle_index_raw": {
+        "default": "mdi:counter"
+      },
+      "shared_version_raw": {
+        "default": "mdi:information-outline"
+      },
+      "shared_user_raw": {
+        "default": "mdi:account-multiple-outline"
+      },
+      "status_shared_user_raw": {
+        "default": "mdi:account-multiple-outline"
+      },
+      "special_image_raw": {
+        "default": "mdi:image-outline"
+      },
+      "location_delay_raw": {
+        "default": "mdi:timer-outline"
+      },
+      "support_raw": {
+        "default": "mdi:information-outline"
+      },
+      "latest_support_raw": {
+        "default": "mdi:information-outline"
+      },
+      "shared_permissions_raw": {
+        "default": "mdi:shield-outline"
+      },
+      "service_remaining_days_raw": {
+        "default": "mdi:calendar-clock"
+      },
+      "odometer_raw": {
+        "default": "mdi:counter"
+      },
+      "battery_present_raw": {
+        "default": "mdi:battery-check"
+      },
+      "seat_lock_raw": {
+        "default": "mdi:lock-outline"
+      },
+      "acc_raw": {
+        "default": "mdi:information-outline"
+      },
+      "service_expired_raw": {
+        "default": "mdi:calendar-alert"
+      },
+      "range_preference_raw": {
+        "default": "mdi:tune"
+      },
+      "precise_range_preference_raw": {
+        "default": "mdi:tune"
+      },
+      "permissions_raw": {
+        "default": "mdi:shield-outline"
+      },
+      "charge_timestamp_raw": {
+        "default": "mdi:clock-outline"
+      },
+      "battery_count_raw": {
+        "default": "mdi:battery-outline"
+      },
+      "battery_type_raw": {
+        "default": "mdi:battery-outline"
+      },
+      "main_electricity_raw": {
+        "default": "mdi:battery-outline"
+      },
+      "root_electricity_raw": {
+        "default": "mdi:battery-outline"
+      },
+      "charging_protection_raw": {
+        "default": "mdi:shield-outline"
+      },
+      "cycle_raw": {
+        "default": "mdi:counter"
+      },
+      "health_score": {
+        "default": "mdi:battery-heart"
+      },
+      "pack_electricity_raw": {
+        "default": "mdi:battery-outline"
+      },
+      "month_ride_count": {
+        "default": "mdi:counter"
+      },
+      "month_duration": {
+        "default": "mdi:timer-outline"
+      },
+      "returned_pack_count": {
+        "default": "mdi:counter"
+      },
+      "last_battery_used_raw": {
+        "default": "mdi:battery-minus"
       }
     },
     "event": {
@@ -90,6 +195,14 @@
       },
       "battery_capacity": {
         "default": "mdi:battery"
+      }
+    },
+    "binary_sensor": {
+      "cycle_support": {
+        "default": "mdi:check-circle-outline"
+      },
+      "battery_find_my_support": {
+        "default": "mdi:map-marker"
       }
     }
   },

@@ -11,7 +11,6 @@ from .runtime import NinebotConfigEntry
 
 class NinebotTracker(NinebotEntity, TrackerEntity):
     _attr_source_type = SourceType.GPS
-    _attr_entity_registry_enabled_default = False
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "location", "device_tracker", "status")

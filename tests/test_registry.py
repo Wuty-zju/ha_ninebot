@@ -120,19 +120,19 @@ async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
         row("sensor", "ninebot_syntheticsn_range_ai"),
         row("sensor", "SyntheticSN_last_ride_end"),
         row("image", "SyntheticSN_vehicle_image"),
-    ]
-    registry.async_update_entity(promoted[0].entity_id, name="My range")
-    retained = [
-        row("sensor", "SyntheticSN_last_ride_start", er.RegistryEntryDisabler.USER),
         row("sensor", "SyntheticSN_month_energy_raw"),
         row("device_tracker", "SyntheticSN_location"),
         row("event", "SyntheticSN_ride"),
         row("button", "SyntheticSN_bell"),
+    ]
+    registry.async_update_entity(promoted[0].entity_id, name="My range")
+    retained = [
+        row("sensor", "SyntheticSN_last_ride_start", er.RegistryEntryDisabler.USER),
         row("sensor", "unrecognized_range_estimated", owned=False),
     ]
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert entry.runtime_data.standard_entities_enabled == 3
+    assert entry.runtime_data.standard_entities_enabled == len(promoted)
     assert all(registry.async_get(item.entity_id).disabled_by is None for item in promoted)
     assert registry.async_get(promoted[0].entity_id).name == "My range"
     assert all(

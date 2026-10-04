@@ -7,6 +7,32 @@ from typing import Any
 from .exceptions import ErrorKind, NinebotError
 
 type JsonObject = dict[str, Any]
+type JsonScalar = str | int | float | bool | None
+
+
+def raw_scalar(value: object) -> JsonScalar:
+    """Keep audited scalar types without allowing large objects into HA state."""
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value if len(value) <= 255 and not any(ord(c) < 32 for c in value) else None
+    if type(value) is int:
+        return value if abs(value) <= 10**18 else None
+    if isinstance(value, float) and math.isfinite(value):
+        return value
+    return None
+
+
+def display_scalar(value: JsonScalar) -> str | int | float | None:
+    """Raw booleans are text, never a guessed binary sensor interpretation."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return None if value == "" else value
+
+
+def integer(value: object, low: int = 0, high: int = 10**9) -> int | None:
+    parsed = number(value, low, high)
+    return int(parsed) if parsed is not None and parsed.is_integer() else None
 
 
 def number(value: object, low: float = -math.inf, high: float = math.inf) -> float | None:

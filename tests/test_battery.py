@@ -32,7 +32,11 @@ def pack(identity, voltage=72, support=True):
 
 def test_vehicle_measurements_do_not_follow_a_primary_pack_into_multiple_rows():
     one = snapshot(pack("a"))
-    descriptions = battery_descriptions(one)
+    descriptions = [
+        d
+        for d in battery_descriptions(one)
+        if d.translation_key in {"bms_voltage", "batt_temp", "bms_cycles"}
+    ]
     assert [d.key for d in descriptions] == ["bms_voltage", "batt_temp", "bms_cycles"]
     for changed in (snapshot(pack("a"), pack("b")), snapshot(), snapshot({}, {})):
         assert all(d.value(changed) is None for d in descriptions)
@@ -50,12 +54,18 @@ def test_vehicle_measurements_do_not_follow_a_primary_pack_into_multiple_rows():
 
 def test_pack_entities_survive_reorder_but_not_replacement_or_identity_loss():
     original = snapshot(pack("slot_0"), pack("b", 73))
-    descriptions = battery_descriptions(original)
+    descriptions = [
+        d
+        for d in battery_descriptions(original)
+        if d.translation_key in {"bms_voltage", "batt_temp", "bms_cycles"}
+    ]
     first = descriptions[0]
     assert first.key == f"battery_{hashlib.sha256(b'slot_0').hexdigest()[:12]}_bms_voltage"
-    assert [d.key for d in battery_descriptions(snapshot(pack("b", 73), pack("slot_0")))] == [
-        d.key for d in descriptions[3:]
-    ] + [d.key for d in descriptions[:3]]
+    assert [
+        d.key
+        for d in battery_descriptions(snapshot(pack("b", 73), pack("slot_0")))
+        if d.translation_key in {"bms_voltage", "batt_temp", "bms_cycles"}
+    ] == [d.key for d in descriptions[3:]] + [d.key for d in descriptions[:3]]
     assert first.value(snapshot(pack("b", 73), pack("slot_0", 74))) == 74
     assert first.value(snapshot(pack("slot_0", 75))) == 75
     assert first.value(snapshot(pack("replacement"), pack("b"))) is None
@@ -64,7 +74,7 @@ def test_pack_entities_survive_reorder_but_not_replacement_or_identity_loss():
     # A genuine serial spelling a placeholder must coexist with an unknown row.
     mixed = snapshot({"bms_volt": 90}, pack("slot_0", 76))
     assert first.value(mixed) == 76
-    assert len(battery_descriptions(mixed)) == 3
+    assert len(battery_descriptions(mixed)) == 6
 
 
 def test_conflicting_identity_aliases_are_not_silently_attached_to_existing_history():

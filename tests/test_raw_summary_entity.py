@@ -18,11 +18,8 @@ async def test_raw_summary_default_and_enabled_state_are_small_private_and_local
     await hass.async_block_till_done()
     registry = er.async_get(hass)
     entity_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_raw_data_summary")
-    assert registry.async_get(entity_id).disabled_by is er.RegistryEntryDisabler.INTEGRATION
-    assert hass.states.get(entity_id) is None
-    registry.async_update_entity(entity_id, disabled_by=None)
-    assert await hass.config_entries.async_reload(entry.entry_id)
-    await hass.async_block_till_done()
+    assert registry.async_get(entity_id).disabled_by is None
+    assert hass.states.get(entity_id) is not None
     coordinator = entry.runtime_data.coordinator
     before = coordinator.demand("SyntheticSN")
     counts = [

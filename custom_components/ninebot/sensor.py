@@ -1,4 +1,4 @@
-"""Sensors with explicit physical meaning; unresolved energy units stay raw."""
+"""Current measurements and explicitly labelled, bounded scalar observations."""
 
 import hashlib
 from collections.abc import Callable, Iterable
@@ -17,6 +17,7 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfLength,
+    UnitOfPower,
     UnitOfSpeed,
     UnitOfTemperature,
     UnitOfTime,
@@ -31,6 +32,8 @@ from .capabilities import CONTROL_BUTTONS, CONTROL_STATES, control_state
 from .const import CONF_ESTIMATION
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
+from .observations import RAW_FIELDS, RawField
+from .parsing import display_scalar
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
 
@@ -40,6 +43,43 @@ class Description(SensorEntityDescription):
     group: str
     value: Callable[[VehicleSnapshot], str | float | datetime | None]
     aliases: tuple[str, ...] = ()
+    attributes: Callable[[VehicleSnapshot], dict[str, Any]] | None = None
+
+
+def raw_attributes(snapshot: VehicleSnapshot, field: RawField) -> dict[str, Any]:
+    values = getattr(snapshot, field.group).observations
+    value = values.get(field.path)
+    return {
+        "source": f"{field.group}.{field.path}",
+        "raw_type": type(value).__name__,
+        "interpretation": "unverified" if value is not None else "not_reported",
+    }
+
+
+def remaining_charge_attributes(snapshot: VehicleSnapshot) -> dict[str, Any]:
+    value = snapshot.status.observations.get("remain_charge_time")
+    return {
+        "source": "status.remain_charge_time",
+        "raw": value,
+        "interpretation": "unparsed" if value else "not_reported",
+        "battery_source_raw": snapshot.battery.observations.get("remain_charge_time"),
+    }
+
+
+def raw_description(field: RawField) -> Description:
+    def value(snapshot: VehicleSnapshot) -> str | float | None:
+        return display_scalar(getattr(snapshot, field.group).observations.get(field.path))
+
+    def attributes(snapshot: VehicleSnapshot) -> dict[str, Any]:
+        return raw_attributes(snapshot, field)
+
+    return Description(
+        key=field.key,
+        group=field.group,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value=value,
+        attributes=attributes,
+    )
 
 
 def last_timed_ride(snapshot: VehicleSnapshot) -> Ride | None:
@@ -110,28 +150,25 @@ SENSORS = (
         key="remaining_charge_time",
         group="status",
         value=lambda s: s.status.charge_remaining,
-        entity_registry_enabled_default=False,
+        attributes=remaining_charge_attributes,
     ),
     Description(
         key="device_name",
         group="profile",
         value=lambda s: s.profile.name,
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
     ),
     Description(
         key="sn",
         group="profile",
         value=lambda s: s.profile.sn,
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
     ),
     Description(
         key="vehicle_lock_raw",
         group="status",
         value=lambda s: int(not s.status.locked) if s.status.locked is not None else None,
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
     ),
     Description(
         key="month_mileage",
@@ -150,23 +187,48 @@ SENSORS = (
     Description(
         key="month_energy_raw",
         group="travel",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         value=lambda s: s.travel.energy_raw if s.travel else None,
     ),
     Description(
         key="last_energy_raw",
         group="travel",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         value=lambda s: s.travel.last_ride.energy_raw if s.travel and s.travel.last_ride else None,
     ),
     Description(
         key="charging_power_raw",
         group="battery",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
+        device_class=SensorDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        state_class=SensorStateClass.MEASUREMENT,
         value=lambda s: s.battery.charging_power_raw,
+    ),
+    Description(
+        key="month_ride_count",
+        group="travel",
+        value=lambda s: s.travel.reported_ride_count if s.travel else None,
+    ),
+    Description(
+        key="month_duration",
+        group="travel",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        value=lambda s: s.travel.reported_duration_s if s.travel else None,
+    ),
+    Description(
+        key="returned_pack_count",
+        group="battery",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value=lambda s: len(s.battery.batteries),
+    ),
+    Description(
+        key="last_battery_used_raw",
+        group="travel",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value=lambda s: ride_value(s, "used_electricity_raw"),
     ),
     Description(
         key="last_ride_duration",
@@ -201,6 +263,7 @@ SENSORS = (
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         value=lambda s: ride_speed(s, "average_speed_m_s"),
     ),
+    *(raw_description(field) for field in RAW_FIELDS),
 )
 
 
@@ -236,7 +299,6 @@ class RawDataSummarySensor(NinebotEntity, SensorEntity):
     """Optional debug overview, without exposing raw data to state/recorder."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_entity_registry_enabled_default = False
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "raw_data_summary", "sensor", "profile")
@@ -283,6 +345,12 @@ class NinebotSensor(NinebotEntity, SensorEntity):
     def native_value(self) -> str | float | datetime | None:
         return self.entity_description.value(self.snapshot) if self.snapshot else None
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        if self.snapshot and self.entity_description.attributes:
+            return self.entity_description.attributes(self.snapshot)
+        return None
+
 
 class EstimatedSensor(NinebotEntity, SensorEntity):
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str, generation: int) -> None:
@@ -294,7 +362,6 @@ class EstimatedSensor(NinebotEntity, SensorEntity):
         self._attr_device_class = SensorDeviceClass.ENERGY
         if key.endswith(("_daily", "_monthly", "_total")):
             self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_entity_registry_enabled_default = False
 
     @property
     def available(self) -> bool:
@@ -332,6 +399,9 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
             ("bms_voltage", "voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE),
             ("batt_temp", "temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
             ("bms_cycles", "cycles", None, None),
+            ("cycle_raw", "cycle_raw", None, None),
+            ("health_score", "score_raw", None, None),
+            ("pack_electricity_raw", "electricity_raw", None, None),
         ]:
             if key == "bms_cycles" and battery.cycle_supported is not True:
                 continue
@@ -342,7 +412,7 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                 field: str = field,
                 identity: str = identity,
                 primary: bool = not prefix,
-            ) -> float | None:
+            ) -> str | float | None:
                 found = (
                     current_battery(s.battery)
                     if primary
@@ -350,7 +420,23 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                 )
                 if found and field == "cycles" and found.cycle_supported is not True:
                     return None
-                return getattr(found, field) if found else None
+                return display_scalar(getattr(found, field)) if found else None
+
+            def attributes(
+                s: VehicleSnapshot,
+                field: str = field,
+                identity: str = identity,
+                primary: bool = not prefix,
+            ) -> dict[str, Any]:
+                found = (
+                    current_battery(s.battery)
+                    if primary
+                    else identified_battery(s.battery, identity)
+                )
+                return {
+                    "interpretation": "unverified",
+                    "cycle_supported": found.cycle_supported if found else None,
+                }
 
             result.append(
                 Description(
@@ -361,8 +447,8 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                     native_unit_of_measurement=unit,
                     device_class=device_class,
                     state_class=SensorStateClass.MEASUREMENT if device_class else None,
-                    entity_category=EntityCategory.DIAGNOSTIC if key == "bms_cycles" else None,
-                    entity_registry_enabled_default=key != "bms_cycles",
+                    entity_category=EntityCategory.DIAGNOSTIC if device_class is None else None,
+                    attributes=attributes if field.endswith("_raw") else None,
                 )
             )
     return result
@@ -394,7 +480,6 @@ def legacy_battery_description(key: str) -> Description:
         device_class=device_class,
         state_class=SensorStateClass.MEASUREMENT if device_class else None,
         entity_category=EntityCategory.DIAGNOSTIC if key == "bms_cycles" else None,
-        entity_registry_enabled_default=key != "bms_cycles",
     )
 
 

@@ -1,0 +1,26 @@
+{
+  "battery_count": "0",
+  "battery_find_my_support": false,
+  "battery_list": [
+    {
+      "bat_temp": "24",
+      "bms_cycle": "100",
+      "bms_volt": "79.6",
+      "electricity": "80",
+      "score": 0
+    }
+  ],
+  "battery_main": {
+    "electricity": "93"
+  },
+  "battery_type": "2",
+  "charging": 1,
+  "charging_power": 310,
+  "charging_protection": {
+    "status": 0,
+    "url": "https://example.invalid/protection"
+  },
+  "electricity": 80,
+  "have_bms_cycle_support": false,
+  "remain_charge_time": ""
+}

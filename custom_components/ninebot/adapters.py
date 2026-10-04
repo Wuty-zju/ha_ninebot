@@ -8,7 +8,9 @@ from .const import BUSINESS_TIMEZONE
 from .exceptions import ErrorKind, NinebotError
 from .image_urls import public_image_url
 from .models import Battery, BatteryInfo, LastRide, TravelMonth, VehicleProfile, VehicleStatus
+from .observations import scalar_observations
 from .parsing import boolean as boolean
+from .parsing import integer, raw_scalar
 from .parsing import number as number
 from .parsing import payload as payload
 from .parsing import previous_month as previous_month
@@ -36,10 +38,21 @@ def profiles(raw: object) -> tuple[VehicleProfile, ...]:
             text(item.get("device_name")) or text(item.get("ble_name")) or sn,
             text(item.get("vehicle_name_en")) or text(item.get("vehicle_name")) or "Ninebot",
             image,
+            scalar_observations(item, "profile"),
         )
         # CLI merges owned/shared business lists. Reject ambiguous duplicates.
-        if sn in result and result[sn] != profile:
-            raise NinebotError(ErrorKind.PROTOCOL)
+        if sn in result:
+            previous = result[sn]
+            if (previous.name, previous.model, previous.image_url) != (
+                profile.name,
+                profile.model,
+                profile.image_url,
+            ):
+                raise NinebotError(ErrorKind.PROTOCOL)
+            # Observational metadata is not an identity discriminator. Keep
+            # first-row provenance rather than rejecting owned/shared aliases
+            # solely because their support/raw flags differ.
+            continue
         result[sn] = profile
     return tuple(result.values())
 
@@ -67,6 +80,7 @@ def status(raw: object, *, expected_sn: str | None = None) -> VehicleStatus:
         charge_remaining=text(item.get("remain_charge_time")),
         latitude=lat,
         longitude=lon,
+        observations=scalar_observations(item, "status"),
     )
 
 
@@ -117,9 +131,16 @@ def batteries(raw: object) -> BatteryInfo:
                 if support is True and cycles is not None and cycles.is_integer()
                 else None,
                 support,
+                raw_scalar(value.get("bms_cycle")),
+                raw_scalar(value.get("score")),
+                raw_scalar(value.get("electricity")),
             )
         )
-    return BatteryInfo(tuple(result), number(item.get("charging_power"), 0, 100000))
+    return BatteryInfo(
+        tuple(result),
+        number(item.get("charging_power"), 0, 100000),
+        scalar_observations(item, "battery"),
+    )
 
 
 def month_at(now: datetime) -> str:
@@ -157,4 +178,6 @@ def travel(raw: object, query_month: str) -> TravelMonth:
         number(item.get("ec"), 0),
         last,
         rides,
+        integer(item.get("times")),
+        number(item.get("duration"), 0, 2678400),
     )
