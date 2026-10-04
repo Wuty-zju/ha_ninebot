@@ -5,6 +5,7 @@ from datetime import datetime
 
 from .capabilities import VehicleCapabilities
 from .exceptions import ErrorKind
+from .parsing import JsonScalar
 from .ride_models import Ride
 
 
@@ -14,6 +15,7 @@ class VehicleProfile:
     name: str
     model: str
     image_url: str | None = None
+    observations: dict[str, JsonScalar] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,7 @@ class VehicleStatus:
     latitude: float | None = None
     longitude: float | None = None
     capabilities: VehicleCapabilities = field(default_factory=VehicleCapabilities)
+    observations: dict[str, JsonScalar] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -39,12 +42,16 @@ class Battery:
     temperature: float | None
     cycles: int | None
     cycle_supported: bool | None
+    cycle_raw: JsonScalar = None
+    score_raw: JsonScalar = None
+    electricity_raw: JsonScalar = None
 
 
 @dataclass(frozen=True)
 class BatteryInfo:
     batteries: tuple[Battery, ...] = ()
     charging_power_raw: float | None = None
+    observations: dict[str, JsonScalar] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -63,6 +70,8 @@ class TravelMonth:
     energy_raw: float | None = None
     last_ride: LastRide | None = None
     rides: tuple[Ride, ...] = ()
+    reported_ride_count: int | None = None
+    reported_duration_s: float | None = None
 
 
 @dataclass(frozen=True)

@@ -31,6 +31,15 @@ async def pipeline(hass, entry, app_client, freezer, tmp_path):
     app_client.async_get_travel.return_value = json.loads(
         (FIXTURES / "travel-nonempty.json").read_text()
     )
+    # Tests of the pipeline itself subscribe explicitly. User disabling the
+    # default-enabled Event remains supported and prevents an implicit listener.
+    er.async_get(hass).async_get_or_create(
+        "event",
+        "ninebot",
+        "SyntheticSN_ride",
+        config_entry=entry,
+        disabled_by=er.RegistryEntryDisabler.USER,
+    )
     with patch.object(Store, "_async_write_data", REAL_WRITE):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -63,7 +72,7 @@ async def test_disabled_event_does_not_load_or_write_or_query_details(
 ):
     registry = er.async_get(hass)
     event_id = registry.async_get_entity_id("event", "ninebot", "SyntheticSN_ride")
-    assert registry.async_get(event_id).disabled_by is er.RegistryEntryDisabler.INTEGRATION
+    assert registry.async_get(event_id).disabled_by is er.RegistryEntryDisabler.USER
     assert hass.states.get(event_id) is None
     assert not pipeline._loaded and not pipeline._callbacks
     assert not await hass.async_add_executor_job(Path(pipeline._store.path).exists)

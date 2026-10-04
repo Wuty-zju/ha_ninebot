@@ -48,17 +48,30 @@ profile freshness. See the [discovery contract](docs/v2x-不完整车辆发现�
 Default status polling is 120 seconds, battery/trips 600 seconds and vehicle
 list 3600 seconds. After discovery, periodic groups follow enabled entities and
 internal dependencies: disabling BMS/travel entities stops their regular requests
-unless the SOC model or Ride event needs them. Empty/anonymous multi-pack inventory
+unless the SOC model or Ride event needs them. When all battery consumers are user-disabled, empty/anonymous multi-pack inventory
 keeps an hourly discovery probe; a failed initial BMS discovery uses group backoff. Polling is serialized per account. A failed car/group does
 not discard other successful results; a local timer notifies entities when data
 expires or the business month changes, without extra cloud requests.
 
 Main entities include vehicle SOC, cloud precise range, charging, main power,
-unlocked state, battery voltage/temperature and current-month distance.
+unlocked state, battery voltage/temperature, current-month distance, ride count
+and total duration. Current-month and last-ride energy use Wh; charging power
+uses W. These units were confirmed by the maintainer, with recorded charging
+and idle payloads replayed offline.
 Cloud estimated/AI ranges, latest ride measurements and the public vehicle image
-are enabled by default. Raw energy/power diagnostics remain disabled by default. Missing is unknown; valid zero remains zero. Unsupported
+are enabled by default. All created entities are enabled and not hidden by the
+integration. Existing integration-disabled defaults are promoted without changing
+IDs, names or user-disabled/hidden choices. Visibility does not authorize controls
+or coordinates. Missing is unknown; valid zero remains zero. Unsupported
 BMS cycles are not published as real counts. HA lock binary sensors are on
 when unlocked; the App lock encoding is normalized before entity mapping.
+
+Battery existence, seat-lock, ACC, service flags, layered battery readings and
+other audited scalar codes have labelled raw diagnostic entities while their
+semantics remain unverified. Health score is not SOH or a percentage. A cycle
+raw value is shown separately from the explicit cycle-support flag. Charging
+time may be absent even while charging: empty text and timestamp zero mean no
+usable estimate, not zero minutes or an epoch completion date.
 
 Battery measurements keep their existing IDs. Vehicle-level voltage/temperature
 are known only with one reported pack; multiple rows do not imply a primary pack.
@@ -66,9 +79,10 @@ Identified pack measurements follow their reported identity across reordering an
 become unknown when that identity disappears. All remain on the vehicle device;
 physical pack identity/composition is not yet verified for Child Devices.
 
-Trip `ec` and `charging_power` units are not independently established, so raw
-diagnostics have no physical unit or statistics class. They are not Energy
-Dashboard meters. Timestamped rides are selected by valid end/start time, so
+Wh/W metadata preserves existing energy/power unique IDs and numeric values;
+monthly and per-ride energy have no accumulating statistics class. They are not
+charger energy meters for the Energy Dashboard. `used_electricity`, health score
+and trail-node units remain raw until verified. Timestamped rides are selected by valid end/start time, so
 server reordering does not select an older ride. Legacy payloads without valid
 timestamps retain the last-returned snapshot; ordering is unknown.
 Pagination/completeness remains unverified: an observed month returned 20 rows
@@ -103,7 +117,7 @@ is unaffected. See the [current policy and authorized live test](docs/v2x-云端
 Raw business responses are retained only in bounded private memory, with secrets
 and personal profile fields removed. They are never entity attributes or persistent
 trip history. Diagnostics export approved schema names/types/counts, not raw values
-or arbitrary unknown keys. Nine sanitized recorded payloads plus a separately labeled selected image-shape fixture are replayable; identity, location and schedule
+or arbitrary unknown keys. Sanitized recorded payloads, including charging/idle samples, plus a separately labeled selected image-shape fixture are replayable; identity, location and schedule
 replacements are explicitly synthetic. Nonempty travel/detail structure and
 Unix-second/China-time relationships were confirmed in a bounded read-only study.
 Ride distance and server maximum speed use ninecli's km/max-km/h display contract;
@@ -143,9 +157,10 @@ backup. Never downgrade storage by editing recorder or token JSON manually.
 
 Small prereleases use targeted offline regression tests and applicable static checks.
 Routine PR/main CI runs Ruff, format, Hassfest and HACS validation; a green routine
-Checks run does not certify the full suite. Major feature/schema/migration updates
-run the complete pinned three-version matrix via Checks → Run workflow on the
-exact candidate commit. The commands below describe that fuller validation.
+Checks run does not certify the full suite. Important feature boundaries
+run a consolidated pinned three-version matrix via Checks → Run workflow on the
+exact candidate commit; adjacent A/B/C phases use targeted checks until the
+combined configuration/representation boundary is complete. The commands below describe that fuller validation.
 See [validation policy](docs/v2x-分级测试与预发布策略.md).
 
 ```sh

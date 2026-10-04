@@ -74,7 +74,25 @@
         "name": "Cloud AI range"
       },
       "remaining_charge_time": {
-        "name": "Remaining charge time"
+        "name": "Remaining charge time",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw": {
+            "name": "Original text"
+          },
+          "battery_source_raw": {
+            "name": "Battery endpoint text"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unparsed": "Unparsed",
+              "not_reported": "Not reported"
+            }
+          }
+        }
       },
       "device_name": {
         "name": "Device name"
@@ -92,13 +110,13 @@
         "name": "Last returned ride distance"
       },
       "month_energy_raw": {
-        "name": "Current month energy (unverified unit)"
+        "name": "Current month ride energy"
       },
       "last_energy_raw": {
-        "name": "Last ride energy (unverified unit)"
+        "name": "Last ride energy"
       },
       "charging_power_raw": {
-        "name": "Charging power (unverified unit)"
+        "name": "Charging power"
       },
       "bms_voltage": {
         "name": "Battery voltage"
@@ -237,6 +255,579 @@
             "name": "Cache budget bytes"
           }
         }
+      },
+      "activation_time_raw": {
+        "name": "Activation time raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "activation_status_raw": {
+        "name": "Activation status raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "business_type_raw": {
+        "name": "Business type raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "vehicle_type_raw": {
+        "name": "Vehicle type raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "shared_vehicle_index_raw": {
+        "name": "Shared vehicle index raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "shared_version_raw": {
+        "name": "Shared version raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "shared_user_raw": {
+        "name": "Shared user raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "status_shared_user_raw": {
+        "name": "Reported shared user raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "special_image_raw": {
+        "name": "Special image flag raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "location_delay_raw": {
+        "name": "Location delay raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "support_raw": {
+        "name": "Support flags raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "latest_support_raw": {
+        "name": "Latest support flags raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "shared_permissions_raw": {
+        "name": "Shared permissions raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "service_remaining_days_raw": {
+        "name": "Smart service days remaining raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "odometer_raw": {
+        "name": "Odometer raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "battery_present_raw": {
+        "name": "Battery presence raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "seat_lock_raw": {
+        "name": "Seat compartment lock raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "acc_raw": {
+        "name": "ACC raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "service_expired_raw": {
+        "name": "Smart service expiry raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "range_preference_raw": {
+        "name": "Range preference raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "precise_range_preference_raw": {
+        "name": "Precise range preference raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "permissions_raw": {
+        "name": "Reported permissions raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "charge_timestamp_raw": {
+        "name": "Charge timestamp raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "battery_count_raw": {
+        "name": "Reported battery count raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "battery_type_raw": {
+        "name": "Battery type raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "main_electricity_raw": {
+        "name": "Main electricity raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "root_electricity_raw": {
+        "name": "Root electricity raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "charging_protection_raw": {
+        "name": "Charging protection raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "cycle_raw": {
+        "name": "Battery cycle count raw",
+        "state_attributes": {
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified"
+            }
+          },
+          "cycle_supported": {
+            "name": "Cycle count supported"
+          }
+        }
+      },
+      "health_score": {
+        "name": "Battery health score",
+        "state_attributes": {
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified"
+            }
+          },
+          "cycle_supported": {
+            "name": "Cycle count supported"
+          }
+        }
+      },
+      "pack_electricity_raw": {
+        "name": "Battery pack electricity raw",
+        "state_attributes": {
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified"
+            }
+          },
+          "cycle_supported": {
+            "name": "Cycle count supported"
+          }
+        }
+      },
+      "month_ride_count": {
+        "name": "Current month ride count"
+      },
+      "month_duration": {
+        "name": "Current month ride duration"
+      },
+      "returned_pack_count": {
+        "name": "Returned battery pack count"
+      },
+      "last_battery_used_raw": {
+        "name": "Last ride electricity used raw",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
       }
     },
     "binary_sensor": {
@@ -248,6 +839,12 @@
       },
       "unlocked": {
         "name": "Unlocked"
+      },
+      "cycle_support": {
+        "name": "Cycle count support"
+      },
+      "battery_find_my_support": {
+        "name": "Battery find-my support"
       }
     },
     "button": {

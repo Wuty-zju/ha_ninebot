@@ -12,8 +12,9 @@ from homeassistant.helpers import entity_registry as er
 
 from .capabilities import CONTROL_BUTTONS
 from .compat import device_entry_ids
-from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, DOMAIN
+from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, CONF_ESTIMATION, DOMAIN
 from .runtime import NinebotConfigEntry
+from .sensor import SENSORS, battery_descriptions
 
 OBSOLETE_KEYS = {
     "sensor": frozenset(
@@ -44,24 +45,57 @@ OBSOLETE_KEYS = {
     "number": frozenset({"battery_max_range"}),
 }
 
-# Confirmed current-state measurements and the public vehicle image are normal
-# features. Raw diagnostics, GPS, events and hardware controls keep their own
-# explicit opt-in policies.
-VISIBLE_KEYS = {
-    "sensor": frozenset(
-        {
-            "range_estimated",
-            "range_ai",
-            "last_mileage",
-            "last_ride_duration",
-            "last_ride_start",
-            "last_ride_end",
-            "last_ride_max_speed",
-            "last_ride_average_speed",
-        }
-    ),
-    "image": frozenset({"vehicle_image"}),
-}
+
+def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]]:
+    """Only actual current factories/legacy aliases, not arbitrary UID suffixes.
+
+    Visibility is separate from the controls/coordinates execution opt-ins.
+    Neither revealing a button nor enabling a tracker grants access to data.
+    """
+    snapshot = entry.runtime_data.coordinator.data[sn]
+    sensors = {
+        key
+        for description in (*SENSORS, *battery_descriptions(snapshot))
+        for key in (description.key, *description.aliases)
+    } | {"control_availability", "raw_data_summary", "bms_voltage", "batt_temp", "bms_cycles"}
+    numbers: set[str] = set()
+    if entry.options.get(CONF_ESTIMATION):
+        generation = entry.runtime_data.models.model(sn).generation
+        sensors.update(
+            f"estimated_{key}_v2_g{generation}"
+            for key in (
+                "nominal",
+                "delta",
+                "out_step",
+                "in_step",
+                "out_daily",
+                "out_monthly",
+                "out_total",
+                "in_daily",
+                "in_monthly",
+                "in_total",
+            )
+        )
+        numbers.update(("main_battery_voltage", "battery_capacity"))
+    return {
+        "sensor": frozenset(sensors),
+        "number": frozenset(numbers),
+        "binary_sensor": frozenset(
+            {
+                "charging",
+                "power",
+                "main_power",
+                "unlocked",
+                "vehicle_lock",
+                "cycle_support",
+                "battery_find_my_support",
+            }
+        ),
+        "image": frozenset({"vehicle_image"}),
+        "device_tracker": frozenset({"location"}),
+        "event": frozenset({"ride"}),
+        "button": frozenset({"refresh", "info", *(key for key, _ in CONTROL_BUTTONS)}),
+    }
 
 
 def _owned_entities(
@@ -105,14 +139,16 @@ def async_enable_standard_entities(hass: HomeAssistant, entry: NinebotConfigEntr
     enabled = 0
     for row, sn in _owned_entities(hass, entry):
         snapshot = entry.runtime_data.coordinator.data.get(sn)
-        if (
-            row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
-            and snapshot is not None
-            and snapshot.present
-            and _matches(row, sn, VISIBLE_KEYS)
-        ):
-            registry.async_update_entity(row.entity_id, disabled_by=None)
-            enabled += 1
+        if snapshot is not None and snapshot.present and _matches(row, sn, visible_keys(entry, sn)):
+            disabled = row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+            hidden = row.hidden_by is er.RegistryEntryHider.INTEGRATION
+            if disabled or hidden:
+                registry.async_update_entity(
+                    row.entity_id,
+                    disabled_by=None if disabled else row.disabled_by,
+                    hidden_by=None if hidden else row.hidden_by,
+                )
+                enabled += 1
     return enabled
 
 

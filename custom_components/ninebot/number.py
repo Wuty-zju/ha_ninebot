@@ -14,7 +14,6 @@ from .runtime import NinebotConfigEntry
 
 class ModelNumber(NinebotEntity, NumberEntity):
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_entity_registry_enabled_default = False
     _attr_native_min_value = 1
     _attr_native_step = 1
 

@@ -72,9 +72,9 @@ async def test_full_setup_physical_values_and_unload(hass, entry, app_client):
         assert hass.states.get(entity_id).state == value
     assert registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_bms_cycles") is None
     raw_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_month_energy_raw")
-    assert registry.async_get(raw_id).disabled_by is er.RegistryEntryDisabler.INTEGRATION
-    assert registry.async_get(raw_id).unit_of_measurement is None
-    assert hass.states.get(raw_id) is None
+    assert registry.async_get(raw_id).disabled_by is None
+    assert registry.async_get(raw_id).unit_of_measurement == "Wh"
+    assert float(hass.states.get(raw_id).state) == 0
     diag = await async_get_config_entry_diagnostics(hass, entry)
     serialized = json.dumps(diag)
     for private in (
@@ -246,7 +246,11 @@ def test_multiple_batteries_need_stable_identity():
             }
         ),
     )
-    descriptions = battery_descriptions(identified)
+    descriptions = [
+        d
+        for d in battery_descriptions(identified)
+        if d.translation_key in {"bms_voltage", "batt_temp", "bms_cycles"}
+    ]
     assert len(descriptions) == 5
     values = [d.value(identified) for d in descriptions]
     assert values == [72, 25, 10, 73, 26]
@@ -641,8 +645,35 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
             "last_ride_end",
             "last_ride_max_speed",
             "last_ride_average_speed",
+            "cycle_raw",
+            "health_score",
+            "pack_electricity_raw",
+            "charging_power_raw",
+            "returned_pack_count",
+            "month_ride_count",
+            "month_duration",
+            "last_battery_used_raw",
+            "month_energy_raw",
+            "last_energy_raw",
+            "battery_count_raw",
+            "battery_type_raw",
+            "main_electricity_raw",
+            "root_electricity_raw",
+            "charging_protection_raw",
         )
     ]
+    for platform, key in (
+        ("event", "ride"),
+        ("binary_sensor", "cycle_support"),
+        ("binary_sensor", "battery_find_my_support"),
+    ):
+        registry.async_get_or_create(
+            platform,
+            "ninebot",
+            f"SyntheticSN_{key}",
+            config_entry=entry,
+            disabled_by=er.RegistryEntryDisabler.USER,
+        )
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     co = entry.runtime_data.coordinator

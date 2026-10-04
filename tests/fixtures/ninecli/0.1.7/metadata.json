@@ -67,6 +67,22 @@
       "ride_alias": "fixture-ride-01",
       "source_id_mapping": "travel_id sent to REST detail parameter; no detail_id in list",
       "source_date": "2026-10-04"
+    },
+    {
+      "file": "status-charging.json",
+      "endpoint": "status",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-charging",
+      "source_date": "2026-10-05",
+      "scope": "Existing private single-round charging observation; identity, location and URLs replaced. No new development-time cloud requests."
+    },
+    {
+      "file": "battery-charging.json",
+      "endpoint": "battery",
+      "provenance": "recorded_sanitized",
+      "vehicle_alias": "fixture-charging",
+      "source_date": "2026-10-05",
+      "scope": "Existing private single-round charging observation; identity, location and URLs replaced. No new development-time cloud requests."
     }
   ],
   "substitutions": [
@@ -88,11 +104,15 @@
       "coordinate system",
       "trail point speed unit",
       "distFromPrev unit/meaning",
-      "ec and used_electricity units",
+      "used_electricity units",
       "avg_speed semantics",
       "node arrays (null in sample)",
       "all-vehicle/general schema coverage"
-    ]
+    ],
+    "unit_confirmations": {
+      "energy_ec": "Wh, maintainer confirmed; semantics not inferred from used_electricity",
+      "charging_power": "W, maintainer confirmed; recorded nonzero charging value preserved, not a wall-meter calibration"
+    }
   },
   "selected_shape_fixtures": [
     {
@@ -135,5 +155,15 @@
     "production_writes": 0,
     "control_retries": 0,
     "scope": "One initial two-vehicle read-only discovery/preflight, then one selected vehicle with four authorized commands and immediate readbacks. An intervening local registry shape check made no cloud calls. Native internal authentication/fanout is not counted."
+  },
+  "charging_replay": {
+    "fixture_files": [
+      "status-charging.json",
+      "battery-charging.json"
+    ],
+    "new_development_cloud_requests": 0,
+    "real_controls": 0,
+    "production_writes": 0,
+    "charging_time_missing": true
   }
 }
