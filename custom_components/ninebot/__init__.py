@@ -64,7 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
     ir.async_delete_issue(hass, DOMAIN, f"session_recovery_{entry.entry_id}")
     client = NinecliClient(manager.path(key), async_get_clientsession(hass))
     store = ModelStorage(hass, entry.entry_id)
-    coordinator = NinebotCoordinator(hass, entry, client, models=store)
+    coordinator = NinebotCoordinator(hass, entry, client)
     entry.runtime_data = RuntimeData(
         client,
         coordinator,

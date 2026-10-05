@@ -23,10 +23,8 @@ def settled():
     )
 
 
-def demand(snapshot, *needs, estimation=False, now=NOW):
-    return polling_demand(
-        snapshot, [ConsumerContext("one", need) for need in needs], estimation=estimation, now=now
-    )
+def demand(snapshot, *needs, now=NOW):
+    return polling_demand(snapshot, [ConsumerContext("one", need) for need in needs], now=now)
 
 
 @pytest.mark.parametrize(
@@ -51,13 +49,11 @@ def test_discovery_listeners_and_other_vehicles_do_not_imply_endpoint_demand():
     result = polling_demand(
         settled(),
         [None, ("one", "ride"), ConsumerContext("other", Need.BATTERY)],
-        estimation=False,
         now=NOW,
     )
     assert not result.groups
     assert not result.last_ride
     assert "one" not in str(result.diagnostics())
-    assert demand(settled(), estimation=True).groups == {"status", "battery"}
 
 
 def test_bootstrap_battery_failure_and_hourly_inventory_probe_are_distinct():
@@ -85,7 +81,7 @@ def test_bootstrap_battery_failure_and_hourly_inventory_probe_are_distinct():
 
 
 def test_removed_vehicle_never_creates_demand_even_for_model_and_event():
-    result = demand(replace(settled(), present=False), Need.RIDE_EVENT, estimation=True)
+    result = demand(replace(settled(), present=False), Need.RIDE_EVENT)
     assert not result.groups and not result.last_ride
     assert result.reasons == ("vehicle_absent",)
 

@@ -18,14 +18,12 @@ from homeassistant.util import dt as dt_util
 
 from . import adapters
 from .backend import BackendResult, NinebotBackend, NinecliBackend
-from .battery import battery_signature
 from .capabilities import CONTROL_ACTIONS, ControlDecision, VehicleCapabilities, decide_control
 from .client import NinecliClient
 from .const import (
     BUSINESS_TIMEZONE,
     CONF_CONTROL_VEHICLES,
     CONF_CONTROLS,
-    CONF_ESTIMATION,
     CONF_POLL_INTERVAL,
     DEFAULT_POLL_INTERVAL,
     DETAIL_INTERVAL,
@@ -38,7 +36,6 @@ from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
 from .models import Freshness, VehicleSnapshot
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
-from .storage import ModelStorage
 
 LOGGER = logging.getLogger(__name__)
 
@@ -52,7 +49,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         entry: ConfigEntry,
         client: NinecliClient,
         *,
-        models: ModelStorage | None = None,
         backend: NinebotBackend | None = None,
     ) -> None:
         self.client = client
@@ -60,7 +56,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.raw = RawStore()
         self.history = HistoryStore()
         self.control_results = ControlResults()
-        self.models = models
         self.interval = max(
             30, min(3600, int(entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)))
         )
@@ -119,18 +114,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 expiry = freshness.succeeded_at + timedelta(seconds=ttl, milliseconds=1)
                 if expiry > now:
                     deadlines.append(expiry)
-        if self.models and self.config_entry and self.config_entry.options.get(CONF_ESTIMATION):
-            deadlines.append(
-                (local + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-            )
 
         @callback
         def notify(at: datetime) -> None:
             self._validity_cancel = None
-            if self.models:
-                for model in self.models.models.values():
-                    model.rollover(at)
-                self.models.schedule_save()
             self.async_update_listeners()
             self._schedule_validity_check()
 
@@ -232,8 +219,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     self._next_attempt.pop((profile.sn, group), None)
                     self._failures.pop((profile.sn, group), None)
                 self.raw.discard_vehicle(profile.sn)
-                if self.models:
-                    self.models.model(profile.sn).reset_baseline()
         finished = dt_util.utcnow()
         self._list_freshness = Freshness(
             now, finished, None if result.vehicles_complete else ErrorKind.SERVICE
@@ -412,45 +397,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if task:
                 self._active.discard(task)
 
-    def _sample_model(self, sn: str) -> None:
-        """Sample after due BMS data, so startup cannot pretend a pack changed."""
-        if not (
-            self.models and self.config_entry and self.config_entry.options.get(CONF_ESTIMATION)
-        ):
-            return
-        snapshot = self.data[sn]
-        now = snapshot.status_freshness.succeeded_at
-        if now is None or snapshot.status_freshness.error is not None:
-            return
-        model = self.models.model(sn)
-        if not self.fresh(sn, "battery"):
-            model.reset_baseline()
-            self.models.schedule_save()
-            return
-        if model.sampled_at is not None and now.timestamp() <= model.sampled_at:
-            return
-        batteries = battery_signature(snapshot.battery)
-        source = f"vehicle_soc:v2:{batteries}"
-        legacy_source = "vehicle_soc:" + ",".join(
-            sorted(b.key if b.identified else "unidentified" for b in snapshot.battery.batteries)
-        )
-        if model.source == legacy_source:
-            # Upgrade the encoding, not the entity/model identity. Never bridge
-            # the old ambiguous signature's interval or discard its totals.
-            model.reset_baseline()
-            model.source = source
-        model.sample(snapshot.status.battery, now, source)
-        self.models.schedule_save()
-
     def demand(self, sn: str) -> PollingDemand:
         return polling_demand(
             self.data[sn],
             self.async_contexts(),
-            estimation=bool(
-                self.models
-                and self.config_entry
-                and self.config_entry.options.get(CONF_ESTIMATION) is True
-            ),
             now=dt_util.utcnow(),
         )
 
@@ -473,9 +423,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 if self._stopping:
                     return self.data
                 now = dt_util.utcnow()
-                if self.models:
-                    for model in self.models.models.values():
-                        model.rollover(now)
                 await self._list(now)
                 sns = [sn for sn, value in self.data.items() if value.present]
                 demands = {sn: self.demand(sn) for sn in sns}
@@ -488,7 +435,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         await self._group(sn, "battery")
                     if "travel" in demands[sn].groups:
                         await self._group(sn, "travel", include_last_ride=demands[sn].last_ride)
-                    self._sample_model(sn)
                 return dict(self.data)
         except NinebotAuthError as err:
             self._authenticated = False
@@ -512,7 +458,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     await self._group(sn, "status", force=True)
                 except NinebotAuthError as err:
                     raise self._manual_auth_failure() from err
-                self._sample_model(sn)
                 self.async_set_updated_data(dict(self.data))
                 self._schedule_validity_check()
                 return True

@@ -9,9 +9,12 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState, ConfigFlowResult
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import callback
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.selector import (
+    DeviceSelector,
+    DeviceSelectorConfig,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -37,6 +40,7 @@ from .const import (
 )
 from .exceptions import ErrorKind, NinebotError
 from .parsing import number
+from .services import resolve_vehicle
 from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
 
 ERRORS = {
@@ -466,20 +470,31 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
             for sn, snapshot in vehicles.items()
             if snapshot.present
         ]
-        if not choices:
+        if not runtime or not choices:
             return self.async_abort(reason="model_unavailable")
+        errors: dict[str, str] = {}
         if user_input is not None:
-            sn = user_input["model_vehicle"]
-            if sn not in {choice["value"] for choice in choices}:
-                return self.async_abort(reason="model_unavailable")
-            self._model_vehicle = sn
-            return await self.async_step_model_parameters()
+            selection = user_input["model_vehicle"]
+            # Accept strictly known legacy SN submissions, never a display name.
+            sn = selection if selection in {choice["value"] for choice in choices} else None
+            if sn is None:
+                try:
+                    owner, resolved = resolve_vehicle(self.hass, selection)
+                    if owner.entry_id == self.config_entry.entry_id:
+                        sn = resolved
+                except ServiceValidationError:
+                    pass
+            if sn is not None and runtime.coordinator.fresh(sn, "profile"):
+                self._model_vehicle = sn
+                return await self.async_step_model_parameters()
+            errors["model_vehicle"] = "model_unavailable"
         return self.async_show_form(
             step_id="model_vehicle",
+            errors=errors,
             data_schema=vol.Schema(
                 {
-                    vol.Required("model_vehicle"): SelectSelector(
-                        SelectSelectorConfig(options=choices)
+                    vol.Required("model_vehicle"): DeviceSelector(
+                        DeviceSelectorConfig(filter={"integration": DOMAIN})
                     )
                 }
             ),
@@ -493,16 +508,23 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
         if not runtime or sn is None or not runtime.coordinator.fresh(sn, "profile"):
             return self.async_abort(reason="model_unavailable")
         model = runtime.models.model(sn)
+        errors = {}
         if user_input is not None:
-            runtime.models.configure(sn, user_input)
-            runtime.coordinator.async_set_updated_data(dict(runtime.coordinator.data))
-            return self.async_create_entry(title="", data=self._pending_options)
+            try:
+                runtime.models.configure(sn, user_input)
+            except ValueError:
+                errors["base"] = "model_storage_invalid"
+            else:
+                runtime.coordinator.async_set_updated_data(dict(runtime.coordinator.data))
+                return self.async_create_entry(title="", data=self._pending_options)
         schema = {}
         for key, maximum in (("voltage", 300), ("capacity", 500)):
             value = getattr(model, key)
             field = vol.Required(key) if value is None else vol.Required(key, default=value)
             schema[field] = parameter_validator(maximum)
-        return self.async_show_form(step_id="model_parameters", data_schema=vol.Schema(schema))
+        return self.async_show_form(
+            step_id="model_parameters", data_schema=vol.Schema(schema), errors=errors
+        )
 
 
 def parameter_validator(maximum: float) -> Any:

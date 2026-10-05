@@ -34,7 +34,6 @@ async def test_cleanup_removes_only_exact_obsolete_rows_on_owned_vehicle(hass, e
     retained = [
         row("sensor", "ninebot", "ninebot_syntheticsn_battery"),
         row("sensor", "ninebot", "SyntheticSN_month_energy_raw"),
-        row("sensor", "ninebot", "SyntheticSN_estimated_out_total_v2_g0"),
         row("binary_sensor", "ninebot", "SyntheticSN_unlocked"),
         row("sensor", "ninebot", "unknown_gsm_csq"),
         row("sensor", "template", "SyntheticSN_gsm_csq"),
@@ -117,7 +116,7 @@ async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
         )
 
     promoted = [
-        row("sensor", "ninebot_syntheticsn_range_ai"),
+        row("sensor", "ninebot_syntheticsn_endurance"),
         row("sensor", "SyntheticSN_last_ride_end"),
         row("image", "SyntheticSN_vehicle_image"),
         row("sensor", "SyntheticSN_month_energy_raw"),

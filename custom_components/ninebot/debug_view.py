@@ -8,8 +8,8 @@ from .observations import RAW_FIELDS
 from .parsing import JsonScalar, raw_scalar
 
 if TYPE_CHECKING:
+    from .battery_parameters import BatteryParameters
     from .coordinator import NinebotCoordinator
-    from .estimation import EnergyModel
 
 DEBUG_STATES = ("debug_disabled", "ok", "partial", "stale", "error")
 DEBUG_ATTRIBUTES = frozenset({"groups", "parsed", "observations", "issues", "formatted"})
@@ -25,7 +25,7 @@ def numeric_observation(raw: object) -> JsonScalar:
 
 
 def debug_view(
-    snapshot: VehicleSnapshot, co: "NinebotCoordinator", model: "EnergyModel"
+    snapshot: VehicleSnapshot, co: "NinebotCoordinator", model: "BatteryParameters"
 ) -> tuple[str, dict[str, Any]]:
     """Never deserialize raw payloads, identifiers, GPS, trails or unknown keys."""
     groups = {}
@@ -87,11 +87,10 @@ def debug_view(
             "list_complete": month.summary.list_complete if month and month.summary else None,
             "chart_status": month.summary.chart_status if month and month.summary else None,
         },
-        "estimation": {
-            "quality": model.quality,
-            "generation": model.generation,
+        "rated_battery": {
             "nominal_voltage_v": model.voltage,
             "capacity_ah": model.capacity,
+            "energy_kwh": model.nominal,
         },
     }
     # Only scalar numeric codes from audited paths; arbitrary text and long

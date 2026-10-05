@@ -85,6 +85,7 @@ class NinebotEntity(CoordinatorEntity[NinebotCoordinator]):
             manufacturer=MANUFACTURER,
             name=profile.name if profile else self.sn,
             model=profile.model if profile else "Ninebot",
+            serial_number=self.sn,
         )
 
 
@@ -93,18 +94,26 @@ def async_setup_dynamic(
     entry: NinebotConfigEntry,
     add: AddEntitiesCallback,
     factory: Callable[[str], Iterable[Entity]],
+    *,
+    signature: Callable[[VehicleSnapshot], object] | None = None,
 ) -> set[str]:
-    """Discover entities for new vehicles/batteries/model generations."""
+    """Construct only when vehicle/entity topology changes, not every poll."""
     seen: set[str] = set()
+    versions: dict[str, object] = {}
 
     @callback
     def discover() -> None:
         entities = []
         for sn in entry.runtime_data.coordinator.data:
+            snapshot = entry.runtime_data.coordinator.data[sn]
+            version = signature(snapshot) if signature else sn
+            if sn in versions and versions[sn] == version:
+                continue
             for entity in factory(sn):
                 if entity.unique_id and entity.unique_id not in seen:
                     seen.add(entity.unique_id)
                     entities.append(entity)
+            versions[sn] = version
         if entities:
             add(entities)
 

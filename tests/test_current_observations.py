@@ -10,7 +10,7 @@ from homeassistant.helpers import entity_registry as er
 
 from custom_components.ninebot import adapters
 from custom_components.ninebot.models import VehicleProfile, VehicleSnapshot
-from custom_components.ninebot.observations import RAW_FIELDS, scalar_observations
+from custom_components.ninebot.observations import ENTITY_FIELDS, scalar_observations
 from custom_components.ninebot.parsing import display_scalar, integer, raw_scalar
 from custom_components.ninebot.sensor import SENSORS, battery_descriptions
 
@@ -41,9 +41,6 @@ def test_charging_replay_keeps_empty_estimate_and_conflicting_layered_values():
     for key, expected, unit, device_class, state_class in [
         ("charging_power_raw", 310, "W", "power", "measurement"),
         ("health_score", 0, None, None, None),
-        ("cycle_raw", "100", None, None, None),
-        ("main_electricity_raw", "93", None, None, None),
-        ("battery_count_raw", "0", None, None, None),
         ("returned_pack_count", 1, None, None, None),
     ]:
         d = descriptions[key]
@@ -58,7 +55,7 @@ def test_charging_replay_keeps_empty_estimate_and_conflicting_layered_values():
         descriptions["remaining_charge_time"].attributes(snapshot)["interpretation"]
         == "not_reported"
     )
-    assert descriptions["cycle_raw"].attributes(snapshot)["cycle_supported"] is False
+    assert descriptions["bms_cycles"].attributes(snapshot)["cycle_supported"] is False
 
 
 def test_month_aggregates_and_energy_identity_do_not_use_partial_ride_sums():
@@ -128,7 +125,7 @@ def test_scalar_types_absent_null_and_privacy_are_preserved_deliberately():
     )
     assert len(aliases) == 1 and aliases[0].observations["support"] == 1
     snapshot = VehicleSnapshot(profile)
-    for field in RAW_FIELDS:
+    for field in ENTITY_FIELDS:
         d = next(d for d in SENSORS if d.key == field.key)
         assert d.value(snapshot) is None
         assert d.attributes(snapshot)["interpretation"] == "not_reported"

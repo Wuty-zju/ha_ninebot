@@ -1,5 +1,8 @@
 # Ninebot for Home Assistant
 
+b24 removes redundant SOC estimates and protocol-only entities, fixes the vehicle parameter selector, and adds localized entity/settings/action names in 21 languages. See the [cleanup and migration contract](docs/v2x-实体精简与额定参数迁移.md). Some non-English long help/error messages use English fallback.
+
+
 [中文说明](README_zh.md)
 
 Version 2 uses the pinned **ninecli 0.1.7** App protocol backend for vehicle
@@ -48,30 +51,31 @@ profile freshness. See the [discovery contract](docs/v2x-不完整车辆发现�
 Default status polling is 120 seconds, battery/trips 600 seconds and vehicle
 list 3600 seconds. After discovery, periodic groups follow enabled entities and
 internal dependencies: disabling BMS/travel entities stops their regular requests
-unless the SOC model or Ride event needs them. When all battery consumers are user-disabled, empty/anonymous multi-pack inventory
+unless a Ride event needs travel data. When all battery consumers are user-disabled, empty/anonymous multi-pack inventory
 keeps an hourly discovery probe; a failed initial BMS discovery uses group backoff. Polling is serialized per account. A failed car/group does
 not discard other successful results; a local timer notifies entities when data
 expires or the business month changes, without extra cloud requests.
 
-Main entities include vehicle SOC, cloud precise range, charging, main power,
+Main entities include vehicle SOC, remaining range, charging, main power,
 unlocked state, battery voltage/temperature, current-month distance, ride count
 and total duration. Current-month and last-ride energy use Wh; charging power
 uses W. These units were confirmed by the maintainer, with recorded charging
 and idle payloads replayed offline.
-Cloud estimated/AI ranges, latest ride measurements and the public vehicle image
-are enabled by default. All created entities are enabled and not hidden by the
+Remaining range prefers the precise cloud value, then estimated, then AI, and
+reports its source. The three inputs remain in debug data, with one range entity.
+Latest ride measurements and the public vehicle image are enabled by default. All created entities are enabled and not hidden by the
 integration. Existing integration-disabled defaults are promoted without changing
 IDs, names or user-disabled/hidden choices. Visibility does not authorize controls
 or coordinates. Missing is unknown; valid zero remains zero. Unsupported
 BMS cycles are not published as real counts. HA lock binary sensors are on
 when unlocked; the App lock encoding is normalized before entity mapping.
 
-Battery existence, seat-lock, ACC, service flags, layered battery readings and
-other audited scalar codes have labelled raw diagnostic entities while their
-semantics remain unverified. Health score is not SOH or a percentage. A cycle
-raw value is shown separately from the explicit cycle-support flag. Charging
-time may be absent even while charging: empty text and timestamp zero mean no
-usable estimate, not zero minutes or an epoch completion date.
+Battery presence, seat-lock, ACC and service observations have normal translated
+names; unverified codes remain labelled in attributes. Duplicate protocol flags
+and layered readings live in the optional safe parsed view, not separate entities.
+Health score is not SOH. Unsupported cycles show unknown with the reported count
+and support flag in attributes. Empty charge time/zero timestamp is not a countdown.
+
 
 Battery measurements keep their existing IDs. Vehicle-level voltage/temperature
 are known only with one reported pack; multiple rows do not imply a primary pack.
@@ -140,11 +144,11 @@ Existing entity identities, user names and disabled settings are preserved where
 the physical meaning is equivalent. Missing sources and changed estimate models
 are removed from the registry when explicitly classified as obsolete, rather than
 being reused for a different quantity. Valid current and model identities stay intact.
-Cloud trip energy never replaces local estimated totals. Serial identity is never
+Cloud trip energy keeps its own reported measurement; retired SOC totals are not reused. Serial identity is never
 matched by vehicle nickname. No recorder SQL is edited.
 
 Legacy SOC-by-range, GSM/address/report-time and estimated-energy identities are
-removed when covered by the reviewed obsolete identity list. New SOC model entities have separate IDs.
+removed when covered by the reviewed obsolete identity list. Retired SOC model generations are cleaned up on confirmed setup.
 The unused legacy full-range parameter is removed during obsolete identity cleanup.
 Legacy lock-code diagnostics retain 0=locked and 1=unlocked. The reversed App
 codes are normalized internally; lock/unlocked entities are preferred for automations.
@@ -184,9 +188,12 @@ refresh recovery, all hardware controls and additional platforms require separat
 verification. Complete Go source/reproducible builds are not available from the
 reviewed wheels; the dependency audit states that limitation explicitly.
 
-Restarting or re-enabling estimation preserves totals while rebuilding the sample
-baseline; disabled intervals are not counted. Unknown estimation storage versions
-stop setup with a Repair issue rather than overwriting saved data. A failed session
+SOC-based cumulative estimation has been removed in b24. Optional rated battery
+voltage/capacity produce one fixed-identity nominal energy specification, not an
+energy meter. Older parameter storage imports V/Ah only; unsupported/corrupt
+optional storage raises a Repair and blocks parameter writes while telemetry
+continues. No generation entities, midnight resets or extra model polling remain.
+A failed session
 rollback that cannot unload the runtime retains its journal/backup and requests a
 user-managed restart through Repairs.
 
@@ -232,7 +239,7 @@ the unused full-range model input. These placeholders are no longer recreated.
 The lock binary sensor remains the observed state; it is not a vehicle control.
 
 This changes the earlier placeholder-retention policy at the user's request.
-Valid current sensors, custom names, opt-in model generations and unrelated
+Valid current sensors, custom names, opt-in rated parameters and unrelated
 entities stay intact; temporary missing values do not imply obsolescence. HA's
 registry API is used, without editing recorder SQL or production files during
 development. Old automations referencing removed entities need updating.

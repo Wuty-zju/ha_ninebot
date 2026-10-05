@@ -34,7 +34,7 @@ from .const import CONF_DEBUG, CONF_ESTIMATION
 from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
-from .observations import RAW_FIELDS, RawField
+from .observations import ENTITY_FIELDS, RawField
 from .parsing import display_scalar
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
@@ -114,6 +114,24 @@ def ride_speed(snapshot: VehicleSnapshot, field: str) -> float | None:
     return value * 3.6 if value is not None else None
 
 
+def remaining_range(snapshot: VehicleSnapshot) -> float | None:
+    for value in (
+        snapshot.status.range_precise,
+        snapshot.status.range_estimated,
+        snapshot.status.range_ai,
+    ):
+        if value is not None:
+            return value
+    return None
+
+
+def range_source(snapshot: VehicleSnapshot) -> str | None:
+    for key in ("range_precise", "range_estimated", "range_ai"):
+        if getattr(snapshot.status, key) is not None:
+            return key
+    return None
+
+
 SENSORS = (
     Description(
         key="battery",
@@ -130,47 +148,14 @@ SENSORS = (
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         state_class=SensorStateClass.MEASUREMENT,
         aliases=("remaining_range",),
-        value=lambda s: s.status.range_precise,
-    ),
-    Description(
-        key="range_estimated",
-        group="status",
-        device_class=SensorDeviceClass.DISTANCE,
-        native_unit_of_measurement=UnitOfLength.KILOMETERS,
-        state_class=SensorStateClass.MEASUREMENT,
-        value=lambda s: s.status.range_estimated,
-    ),
-    Description(
-        key="range_ai",
-        group="status",
-        device_class=SensorDeviceClass.DISTANCE,
-        native_unit_of_measurement=UnitOfLength.KILOMETERS,
-        state_class=SensorStateClass.MEASUREMENT,
-        value=lambda s: s.status.range_ai,
+        value=remaining_range,
+        attributes=lambda s: {"source": range_source(s)},
     ),
     Description(
         key="remaining_charge_time",
         group="status",
         value=lambda s: s.status.charge_remaining,
         attributes=remaining_charge_attributes,
-    ),
-    Description(
-        key="device_name",
-        group="profile",
-        value=lambda s: s.profile.name,
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    Description(
-        key="sn",
-        group="profile",
-        value=lambda s: s.profile.sn,
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    Description(
-        key="vehicle_lock_raw",
-        group="status",
-        value=lambda s: int(not s.status.locked) if s.status.locked is not None else None,
-        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     Description(
         key="month_mileage",
@@ -221,12 +206,6 @@ SENSORS = (
         value=lambda s: s.travel.reported_duration_s if s.travel else None,
     ),
     Description(
-        key="month_returned_rides",
-        group="travel",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value=lambda s: s.travel.summary.returned_count if s.travel and s.travel.summary else None,
-    ),
-    Description(
         key="month_list_coverage",
         group="travel",
         native_unit_of_measurement=PERCENTAGE,
@@ -238,6 +217,9 @@ SENSORS = (
         ),
         attributes=lambda s: {
             "scope": "returned_month_list",
+            "returned_rides": s.travel.summary.returned_count
+            if s.travel and s.travel.summary
+            else None,
             "list_complete": s.travel.summary.list_complete
             if s.travel and s.travel.summary
             else None,
@@ -248,12 +230,7 @@ SENSORS = (
         group="battery",
         entity_category=EntityCategory.DIAGNOSTIC,
         value=lambda s: len(s.battery.batteries),
-    ),
-    Description(
-        key="last_battery_used_raw",
-        group="travel",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value=lambda s: ride_value(s, "used_electricity_raw"),
+        attributes=lambda s: {"reported_pack_count": s.battery.observations.get("battery_count")},
     ),
     Description(
         key="last_ride_duration",
@@ -288,7 +265,7 @@ SENSORS = (
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         value=lambda s: ride_speed(s, "average_speed_m_s"),
     ),
-    *(raw_description(field) for field in RAW_FIELDS),
+    *(raw_description(field) for field in ENTITY_FIELDS),
 )
 
 
@@ -391,60 +368,23 @@ class NinebotSensor(NinebotEntity, SensorEntity):
         return None
 
 
-class EstimatedSensor(NinebotEntity, SensorEntity):
-    def __init__(self, entry: NinebotConfigEntry, sn: str, key: str, generation: int) -> None:
-        super().__init__(entry, sn, f"estimated_{key}_v2_g{generation}", "sensor", "status")
-        self._attr_translation_key = f"estimated_{key}"
-        self.key = key
-        self.generation = generation
-        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        if key.endswith(("_daily", "_monthly", "_total")):
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+class RatedEnergySensor(NinebotEntity, SensorEntity):
+    """One fixed identity for user-supplied nominal specifications."""
 
-    @property
-    def available(self) -> bool:
-        model = self.entry.runtime_data.models.model(self.sn)
-        return (
-            super().available
-            and model.nominal is not None
-            and model.generation == self.generation
-            and bool(self.entry.options.get(CONF_ESTIMATION))
-        )
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
+        super().__init__(entry, sn, "battery_rated_energy", "sensor", "profile")
 
     @property
     def native_value(self) -> float | None:
-        model = self.entry.runtime_data.models.model(self.sn)
-        if self.key == "nominal":
-            return model.nominal
-        return model.values.get(self.key)
+        return self.entry.runtime_data.models.model(self.sn).nominal
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        model = self.entry.runtime_data.models.model(self.sn)
-        return {"model_version": 2, "generation": self.generation, "quality": model.quality}
-
-
-class EstimationQualitySensor(NinebotEntity, SensorEntity):
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = [
-        "unconfigured",
-        "baseline_reset",
-        "missing_soc",
-        "duplicate_or_old",
-        "source_changed",
-        "baseline_only",
-        "implausible_jump",
-        "accepted",
-    ]
-
-    def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
-        super().__init__(entry, sn, "estimation_quality", "sensor", "profile")
-
-    @property
-    def native_value(self) -> str:
-        return self.entry.runtime_data.models.model(self.sn).quality
+        return {"basis": "user_rated_voltage_capacity", "measured": False}
 
 
 HISTORY_FIELDS = {
@@ -505,12 +445,8 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
             ("bms_voltage", "voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE),
             ("batt_temp", "temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
             ("bms_cycles", "cycles", None, None),
-            ("cycle_raw", "cycle_raw", None, None),
             ("health_score", "score_raw", None, None),
-            ("pack_electricity_raw", "electricity_raw", None, None),
         ]:
-            if key == "bms_cycles" and battery.cycle_supported is not True:
-                continue
             identity = battery.key
 
             def value(
@@ -542,6 +478,7 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                 return {
                     "interpretation": "unverified",
                     "cycle_supported": found.cycle_supported if found else None,
+                    "reported_cycles": display_scalar(found.cycle_raw) if found else None,
                 }
 
             result.append(
@@ -554,7 +491,9 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                     device_class=device_class,
                     state_class=SensorStateClass.MEASUREMENT if device_class else None,
                     entity_category=EntityCategory.DIAGNOSTIC if device_class is None else None,
-                    attributes=attributes if field.endswith("_raw") else None,
+                    attributes=attributes
+                    if field.endswith("_raw") or key == "bms_cycles"
+                    else None,
                 )
             )
     return result
@@ -601,23 +540,15 @@ async def async_setup_entry(
         yield RawDataSummarySensor(entry, sn)
         yield from (HistorySummarySensor(entry, sn, key) for key in HISTORY_FIELDS)
         if entry.options.get(CONF_ESTIMATION):
-            yield EstimationQualitySensor(entry, sn)
-            generation = entry.runtime_data.models.model(sn).generation
-            for key in (
-                "nominal",
-                "delta",
-                "out_step",
-                "in_step",
-                "out_daily",
-                "out_monthly",
-                "out_total",
-                "in_daily",
-                "in_monthly",
-                "in_total",
-            ):
-                yield EstimatedSensor(entry, sn, key, generation)
+            yield RatedEnergySensor(entry, sn)
 
-    seen = async_setup_dynamic(hass, entry, add, factory)
+    seen = async_setup_dynamic(
+        hass,
+        entry,
+        add,
+        factory,
+        signature=lambda s: tuple((b.key, b.identified) for b in s.battery.batteries),
+    )
     equivalent = {
         key: description
         for description in SENSORS

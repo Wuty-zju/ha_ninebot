@@ -57,6 +57,22 @@ EXTRA_PATHS = {
     "profile": ("color", "vehicle_name_zh"),
 }
 
+# A scalar inventory is not a mandate to create one entity for every code.
+# Protocol flags and duplicate readings remain available in the debug view.
+ENTITY_FIELDS = tuple(
+    field
+    for field in RAW_FIELDS
+    if field.key
+    in {
+        "battery_present_raw",
+        "seat_lock_raw",
+        "acc_raw",
+        "service_expired_raw",
+        "service_remaining_days_raw",
+        "odometer_raw",
+    }
+)
+
 
 def scalar_observations(raw: JsonObject, group: ObservationGroup) -> dict[str, JsonScalar]:
     """Preserve null/absent distinction, but neither arbitrary paths nor secrets."""

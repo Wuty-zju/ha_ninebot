@@ -4,6 +4,7 @@ This runs after a successful first refresh, through HA's public registry API.
 Transiently missing data and unrecognized identities never imply obsolescence.
 """
 
+import re
 from collections.abc import Iterator
 
 from homeassistant.core import HomeAssistant, callback
@@ -13,6 +14,7 @@ from homeassistant.helpers import entity_registry as er
 from .capabilities import CONTROL_BUTTONS
 from .compat import device_entry_ids
 from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, CONF_ESTIMATION, DOMAIN
+from .observations import ENTITY_FIELDS, RAW_FIELDS
 from .runtime import NinebotConfigEntry
 from .sensor import HISTORY_FIELDS, SENSORS, battery_descriptions
 
@@ -39,6 +41,17 @@ OBSOLETE_KEYS = {
             "last_energy",
             "location",
             "month_energy",
+            "range_estimated",
+            "range_ai",
+            "device_name",
+            "sn",
+            "vehicle_lock_raw",
+            "month_returned_rides",
+            "last_battery_used_raw",
+            "cycle_raw",
+            "pack_electricity_raw",
+            "estimation_quality",
+            *(field.key for field in RAW_FIELDS if field not in ENTITY_FIELDS),
         ]
     ),
     "lock": frozenset({"lock", "vehicle_lock_control"}),
@@ -61,23 +74,7 @@ def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]
     sensors.update(HISTORY_FIELDS)
     numbers: set[str] = set()
     if entry.options.get(CONF_ESTIMATION):
-        sensors.add("estimation_quality")
-        generation = entry.runtime_data.models.model(sn).generation
-        sensors.update(
-            f"estimated_{key}_v2_g{generation}"
-            for key in (
-                "nominal",
-                "delta",
-                "out_step",
-                "in_step",
-                "out_daily",
-                "out_monthly",
-                "out_total",
-                "in_daily",
-                "in_monthly",
-                "in_total",
-            )
-        )
+        sensors.add("battery_rated_energy")
         numbers.update(("main_battery_voltage", "battery_capacity"))
     return {
         "sensor": frozenset(sensors),
@@ -122,13 +119,27 @@ def _matches(row: er.RegistryEntry, sn: str, keys: dict[str, frozenset[str]]) ->
     )
 
 
+def _obsolete_generated(row: er.RegistryEntry, sn: str) -> bool:
+    """Full identities from our retired factories, not arbitrary prefix deletion."""
+    if row.domain != "sensor":
+        return False
+    suffix = (
+        r"(?:estimated_(?:nominal|delta|(?:in|out)_(?:step|daily|monthly|total))_v2_g[0-9]{1,7}"
+        r"|battery_[0-9a-f]{12}_(?:cycle_raw|pack_electricity_raw))"
+    )
+    return any(
+        re.fullmatch(re.escape(prefix) + suffix, row.unique_id) is not None
+        for prefix in (f"{sn}_", f"ninebot_{sn}_".lower())
+    )
+
+
 @callback
 def async_remove_obsolete_entities(hass: HomeAssistant, entry: NinebotConfigEntry) -> int:
     """Do not remove unrelated entries, shared devices or user-created sensors."""
     registry = er.async_get(hass)
     removed = 0
     for row, sn in _owned_entities(hass, entry):
-        if _matches(row, sn, OBSOLETE_KEYS):
+        if _matches(row, sn, OBSOLETE_KEYS) or _obsolete_generated(row, sn):
             registry.async_remove(row.entity_id)
             removed += 1
     return removed

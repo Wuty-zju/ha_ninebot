@@ -8,13 +8,13 @@
           "account": "账号",
           "password": "密码",
           "debug_mode": "调试模式",
-          "enable_estimation": "启用SOC能量估算",
+          "enable_estimation": "启用电池额定参数",
           "enable_coordinates": "启用精确位置",
           "login_method": "登录方式"
         },
         "data_description": {
           "debug_mode": "在解析信息实体中显示有界诊断视图，不增加请求。",
-          "enable_estimation": "启用后，在集成选项或车辆的电压/容量配置实体中填写标称V和Ah；不使用实时电压自动填充。",
+          "enable_estimation": "可选额定电压与容量，不再从SOC变化推算充放电量。",
           "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
         }
       },
@@ -86,30 +86,30 @@
     "step": {
       "init": {
         "title": "选项",
-        "description": "估算需要设置标称电压与容量。云端坐标系尚未确认。启用控制并选定允许车辆后，可发送鸣笛、开座桶、启动和关闭命令；实际权限与车辆支持由九号云端判定。已知拒绝、认证失败或数据过期时不发送，失败不自动重试。控制状态表示能否发送，不保证车辆动作完成。已选车辆的控制按钮自动显示，用户禁用的按钮保持禁用。",
+        "description": "额定参数并非实测容量。位置与控制须显式开启，云端接受不代表动作完成。",
         "data": {
           "poll_interval": "状态轮询间隔（秒）",
-          "enable_estimation": "启用SOC能量估算",
+          "enable_estimation": "启用电池额定参数",
           "enable_coordinates": "显示云端坐标（坐标系未核验）",
           "enable_controls": "启用车辆控制",
           "control_vehicles": "允许控制的车辆",
           "debug_mode": "调试模式",
-          "configure_model": "配置一辆车的估算参数"
+          "configure_model": "配置电池额定参数"
         },
         "data_description": {
           "debug_mode": "只显示已取得快照的安全解析，不输出账号、位置或轨迹。",
-          "configure_model": "下一步选择车辆，参数只保存在本地模型存储，和Number实体共用。"
+          "configure_model": "选择HA中的车辆设备；与车辆的两个额定参数配置实体共用存储。"
         }
       },
       "model_vehicle": {
-        "title": "选择估算车辆",
+        "title": "选择车辆",
         "data": {
           "model_vehicle": "车辆"
         }
       },
       "model_parameters": {
         "title": "标称电池参数",
-        "description": "填写真实的标称电压和额定容量。改变参数会创建新估算代际；保留旧历史。",
+        "description": "填写额定电压与容量。修改参数更新同一个实体；此数值不代表实测容量或电池健康度。",
         "data": {
           "voltage": "标称电压（V）",
           "capacity": "额定容量（Ah）"
@@ -117,7 +117,11 @@
       }
     },
     "abort": {
-      "model_unavailable": "请先加载集成并确认所选车辆仍属于当前账户，再配置模型。"
+      "model_unavailable": "请先加载集成，再选择当前账户的车辆配置额定参数。"
+    },
+    "error": {
+      "model_unavailable": "请选择当前集成账户下可用的车辆设备。",
+      "model_storage_invalid": "电池参数存储不可写，请先处理修复提示。"
     }
   },
   "entity": {
@@ -126,13 +130,7 @@
         "name": "电量"
       },
       "endurance": {
-        "name": "云端精准续航"
-      },
-      "range_estimated": {
-        "name": "云端估算续航"
-      },
-      "range_ai": {
-        "name": "云端AI续航"
+        "name": "剩余续航"
       },
       "remaining_charge_time": {
         "name": "剩余充电时间",
@@ -154,15 +152,6 @@
             }
           }
         }
-      },
-      "device_name": {
-        "name": "设备名称"
-      },
-      "sn": {
-        "name": "序列号"
-      },
-      "vehicle_lock_raw": {
-        "name": "规范化锁编码（0为锁定）"
       },
       "month_mileage": {
         "name": "本月里程"
@@ -187,36 +176,6 @@
       },
       "bms_cycles": {
         "name": "电池循环次数"
-      },
-      "estimated_nominal": {
-        "name": "估算标称电池能量"
-      },
-      "estimated_delta": {
-        "name": "估算能量变化"
-      },
-      "estimated_out_step": {
-        "name": "估算单次放电能量"
-      },
-      "estimated_in_step": {
-        "name": "估算单次充入能量"
-      },
-      "estimated_out_daily": {
-        "name": "估算每日放电能量"
-      },
-      "estimated_out_monthly": {
-        "name": "估算每月放电能量"
-      },
-      "estimated_out_total": {
-        "name": "估算累计放电能量"
-      },
-      "estimated_in_daily": {
-        "name": "估算每日充入能量"
-      },
-      "estimated_in_monthly": {
-        "name": "估算每月充入能量"
-      },
-      "estimated_in_total": {
-        "name": "估算累计充入能量"
       },
       "last_ride_duration": {
         "name": "最近行程时长"
@@ -301,7 +260,7 @@
         }
       },
       "raw_data_summary": {
-        "name": "解析信息",
+        "name": "车辆信息",
         "state": {
           "debug_disabled": "调试已关闭",
           "ok": "正常",
@@ -310,242 +269,8 @@
           "error": "错误"
         }
       },
-      "activation_time_raw": {
-        "name": "车辆激活时间原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "activation_status_raw": {
-        "name": "车辆激活状态原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "business_type_raw": {
-        "name": "车辆业务类型原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "vehicle_type_raw": {
-        "name": "车辆类型原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "shared_vehicle_index_raw": {
-        "name": "共享车辆索引原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "shared_version_raw": {
-        "name": "共享协议版本原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "shared_user_raw": {
-        "name": "车辆共享标志原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "status_shared_user_raw": {
-        "name": "状态共享标志原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "special_image_raw": {
-        "name": "车型图片标志原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "location_delay_raw": {
-        "name": "位置延迟原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "support_raw": {
-        "name": "车辆支持能力原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "latest_support_raw": {
-        "name": "最新支持能力原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "shared_permissions_raw": {
-        "name": "共享车辆权限原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
       "service_remaining_days_raw": {
-        "name": "智能服务剩余天数原值",
+        "name": "智能服务剩余天数",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -563,7 +288,7 @@
         }
       },
       "odometer_raw": {
-        "name": "车辆总里程原值",
+        "name": "总里程",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -581,7 +306,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "电池存在原值",
+        "name": "电池安装状态",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -599,7 +324,7 @@
         }
       },
       "seat_lock_raw": {
-        "name": "座桶锁原值",
+        "name": "座桶锁状态",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -617,7 +342,7 @@
         }
       },
       "acc_raw": {
-        "name": "ACC原值",
+        "name": "ACC状态",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -635,7 +360,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "智能服务到期标志原值",
+        "name": "智能服务状态",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -649,201 +374,11 @@
               "unverified": "语义待验证",
               "not_reported": "未上报"
             }
-          }
-        }
-      },
-      "range_preference_raw": {
-        "name": "续航显示选项原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "precise_range_preference_raw": {
-        "name": "精准续航选项原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "permissions_raw": {
-        "name": "车辆权限原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "charge_timestamp_raw": {
-        "name": "充电时间戳原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "battery_count_raw": {
-        "name": "电池计数原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "battery_type_raw": {
-        "name": "电池类型原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "main_electricity_raw": {
-        "name": "电池主字段电量原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "root_electricity_raw": {
-        "name": "电池总字段电量原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "charging_protection_raw": {
-        "name": "充电保护原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "cycle_raw": {
-        "name": "电池循环计数原值",
-        "state_attributes": {
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证"
-            }
-          },
-          "cycle_supported": {
-            "name": "循环计数支持"
           }
         }
       },
       "health_score": {
         "name": "电池健康评分",
-        "state_attributes": {
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证"
-            }
-          },
-          "cycle_supported": {
-            "name": "循环计数支持"
-          }
-        }
-      },
-      "pack_electricity_raw": {
-        "name": "电池包电量原值",
         "state_attributes": {
           "interpretation": {
             "name": "解析状态",
@@ -863,44 +398,10 @@
         "name": "本月骑行总时长"
       },
       "returned_pack_count": {
-        "name": "已返回电池包数量"
-      },
-      "last_battery_used_raw": {
-        "name": "最近行程电量消耗原值",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报"
-            }
-          }
-        }
-      },
-      "month_returned_rides": {
-        "name": "本月已返回行程数"
+        "name": "电池数量"
       },
       "month_list_coverage": {
         "name": "本月行程明细覆盖率"
-      },
-      "estimation_quality": {
-        "name": "估算质量",
-        "state": {
-          "unconfigured": "参数未配置",
-          "baseline_reset": "基线重置",
-          "missing_soc": "电量缺报",
-          "duplicate_or_old": "重复或旧采样",
-          "source_changed": "数据源已变",
-          "baseline_only": "仅建立基线",
-          "implausible_jump": "电量跳变",
-          "accepted": "采样有效"
-        }
       },
       "history_scanned_months": {
         "name": "已扫描月份数"
@@ -916,6 +417,9 @@
       },
       "history_duration": {
         "name": "已扫描月份骑行时长"
+      },
+      "battery_rated_energy": {
+        "name": "电池额定能量"
       }
     },
     "binary_sensor": {
@@ -964,10 +468,10 @@
     },
     "number": {
       "main_battery_voltage": {
-        "name": "标称电压（本地模型）"
+        "name": "电池额定电压"
       },
       "battery_capacity": {
-        "name": "容量（本地模型）"
+        "name": "电池额定容量"
       }
     },
     "event": {
@@ -998,7 +502,7 @@
       "message": "请求队列已满，请稍后重试。"
     },
     "model_storage_invalid": {
-      "message": "无法识别估算存储，请查看“修复”提示；原数据已保留。"
+      "message": "电池参数存储不可写，请先处理修复提示。"
     },
     "invalid_auth": {
       "message": "会话已失效，请通过设备与服务重新认证。"
@@ -1046,8 +550,8 @@
       "description": "会话更新失败后，HA 无法卸载仍在使用新会话的运行实例，因此未替换其文件。事务记录和旧会话备份已保留。请先备份 HA 配置，再自行重启 HA；启动时会恢复原会话。若问题持续，请保留备份并检查存储权限，勿手动删除会话目录。"
     },
     "model_storage_invalid": {
-      "title": "估算存储版本无法识别",
-      "description": "估算存储格式或版本无法识别，集成已停止加载且未覆盖该数据。请保留备份，使用与存储匹配的集成版本，或通过完整升级前备份回滚；不要手动修改模型版本字段。"
+      "title": "电池参数存储不可用",
+      "description": "遥测继续运行，参数文件暂不可写且未被覆盖。请恢复兼容备份后重试。"
     },
     "ride_event_storage_invalid": {
       "title": "骑行事件存储不可用",

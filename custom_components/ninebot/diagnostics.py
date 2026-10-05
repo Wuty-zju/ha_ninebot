@@ -73,6 +73,7 @@ async def async_get_config_entry_diagnostics(
         },
         "identity_scheme": entry.data.get("identity_scheme"),
         "identity_conflict_count": len(runtime.identity_conflicts),
+        "rated_parameters_writable": runtime.models.writable,
         "obsolete_entities_removed": runtime.obsolete_entities_removed,
         "standard_entities_enabled": runtime.standard_entities_enabled,
         "configured_controls_enabled": runtime.configured_controls_enabled,

@@ -63,7 +63,6 @@ def polling_demand(
     snapshot: VehicleSnapshot,
     contexts: Iterable[object],
     *,
-    estimation: bool,
     now: datetime,
 ) -> PollingDemand:
     """Discovery/audit listeners without typed contexts do not imply all groups.
@@ -87,9 +86,6 @@ def polling_demand(
     last_ride = bool(needs & {Need.LAST_RIDE, Need.RIDE_EVENT})
     if last_ride or Need.MONTH in needs:
         groups.add("travel")
-    if estimation:
-        groups.update(("status", "battery"))
-        reasons.add("soc_model")
     if snapshot.status_freshness.attempted_at is None:
         groups.add("status")
         reasons.add("status_bootstrap")

@@ -773,58 +773,6 @@ async def test_shutdown_cancels_active_poll_and_manual_refresh(coordinator):
     assert not co._mutex.locked()
 
 
-@pytest.mark.parametrize("coordinator", [{"enable_estimation": True}], indirect=True)
-async def test_estimation_waits_for_battery_then_rebaselines_without_fake_energy(coordinator):
-    from types import SimpleNamespace
-    from unittest.mock import MagicMock
-
-    from custom_components.ninebot.estimation import EnergyModel
-
-    co = coordinator
-    models = {sn: EnergyModel(72, 20) for sn in ("synthetic-one", "synthetic-two")}
-    co.models = SimpleNamespace(models=models, model=models.__getitem__, schedule_save=MagicMock())
-    co.client.async_get_battery.side_effect = NinebotError(ErrorKind.CONNECTION)
-    start = datetime(2026, 10, 3, tzinfo=UTC)
-    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=start):
-        await co._async_update_data()
-    model = models["synthetic-one"]
-    assert model.baseline_soc is None
-    assert "out_total" not in model.values
-    co.client.async_get_battery.side_effect = None
-    co.client.async_get_battery.return_value = {"battery_list": [{"sn": "fake-pack"}]}
-    later = start + timedelta(seconds=120)
-    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=later):
-        await co._async_update_data()
-    assert model.baseline_soc == 80
-    generation = model.generation
-    source = model.source
-    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=later):
-        await co._async_update_data()
-    assert model.quality == "baseline_only"
-    co.client.async_get_status.return_value = {"dump_energy": 79}
-    with patch(
-        "custom_components.ninebot.coordinator.dt_util.utcnow",
-        return_value=later + timedelta(seconds=120),
-    ):
-        await co.async_refresh_vehicle("synthetic-one")
-    assert model.values["out_total"] == pytest.approx(0.0144)
-    assert model.generation == generation
-    assert model.source == source
-    co.data["synthetic-one"] = replace(
-        co.data["synthetic-one"],
-        battery_freshness=__import__(
-            "custom_components.ninebot.models", fromlist=["Freshness"]
-        ).Freshness(),
-    )
-    with patch(
-        "custom_components.ninebot.coordinator.dt_util.utcnow",
-        return_value=later + timedelta(seconds=240),
-    ):
-        await co.async_refresh_vehicle("synthetic-one")
-    assert model.baseline_soc is None
-    assert model.values["out_total"] == pytest.approx(0.0144)
-
-
 async def test_freshness_measures_actual_request_completion_and_retry_is_bounded(coordinator):
     from unittest.mock import MagicMock
 
@@ -850,70 +798,6 @@ async def test_freshness_measures_actual_request_completion_and_retry_is_bounded
     for _ in range(20):
         co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
     assert co._next_attempt[("synthetic-one", "status")] <= start.timestamp() + 120
-
-
-@pytest.mark.parametrize("coordinator", [{"enable_estimation": True}], indirect=True)
-async def test_local_month_boundary_expires_travel_and_resets_model_buckets(coordinator):
-    from types import SimpleNamespace
-    from unittest.mock import MagicMock
-
-    from custom_components.ninebot.estimation import EnergyModel
-
-    co = coordinator
-    before = datetime(2026, 9, 30, 15, 59, 59, tzinfo=UTC)
-    model = EnergyModel(72, 20)
-    model.rollover(before)
-    model.values.update(out_daily=1, out_monthly=2, out_total=3)
-    models = SimpleNamespace(models={"synthetic-one": model}, schedule_save=MagicMock())
-    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=before):
-        await co._async_update_data()
-        co.models = models
-        with patch("custom_components.ninebot.coordinator.async_track_point_in_utc_time") as timer:
-            co._schedule_validity_check()
-            notify, deadline = timer.call_args.args[1:]
-            assert deadline == before + timedelta(seconds=1)
-            co.client.reset_mock()
-            with patch(
-                "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
-            ):
-                notify(deadline)
-                assert not co.fresh("synthetic-one", "travel")
-            assert model.values["out_daily"] == model.values["out_monthly"] == 0
-            assert model.values["out_total"] == 3
-            models.schedule_save.assert_called_once()
-            co.client.async_get_status.assert_not_awaited()
-            co.client.async_get_travel.assert_not_awaited()
-
-
-@pytest.mark.parametrize("coordinator", [{"enable_estimation": True}], indirect=True)
-async def test_battery_signature_upgrade_preserves_generation_and_totals(coordinator):
-    from types import SimpleNamespace
-    from unittest.mock import MagicMock
-
-    from custom_components.ninebot.estimation import EnergyModel
-
-    co = coordinator
-    models = {sn: EnergyModel(72, 20) for sn in ("synthetic-one", "synthetic-two")}
-    co.models = SimpleNamespace(models=models, model=models.__getitem__, schedule_save=MagicMock())
-    co.client.async_get_battery.return_value = {"battery_list": [{}]}
-    now = datetime(2026, 10, 4, tzinfo=UTC)
-    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=now):
-        await co._async_update_data()
-    model = models["synthetic-one"]
-    model.source = "vehicle_soc:unidentified"
-    model.values["out_total"] = 0.5
-    generation = model.generation
-    co.client.async_get_status.return_value = {"dump_energy": 79}
-    with patch(
-        "custom_components.ninebot.coordinator.dt_util.utcnow",
-        return_value=now + timedelta(seconds=120),
-    ):
-        await co.async_refresh_vehicle("synthetic-one")
-    assert model.generation == generation
-    assert model.values["out_total"] == 0.5
-    assert model.quality == "baseline_only"
-    assert model.source.startswith("vehicle_soc:v2:")
-    assert "out_step" not in model.values
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
@@ -977,34 +861,6 @@ async def test_contexts_skip_unneeded_groups_and_scope_month_fallback(coordinato
     ]
 
 
-@pytest.mark.parametrize("coordinator", [{"enable_estimation": True}], indirect=True)
-async def test_internal_model_keeps_battery_and_status_without_enabled_entities(coordinator):
-    from types import SimpleNamespace
-    from unittest.mock import MagicMock
-
-    from custom_components.ninebot.estimation import EnergyModel
-
-    co = coordinator
-    models = {sn: EnergyModel(72, 20) for sn in ("synthetic-one", "synthetic-two")}
-    co.models = SimpleNamespace(models=models, model=models.__getitem__, schedule_save=MagicMock())
-    co.client.async_get_battery.return_value = {"battery_list": [{}]}
-    await co._async_update_data()
-    for sn in co.data:
-        for group in ("status", "battery", "travel"):
-            co._next_attempt[(sn, group)] = 0
-    for method in (
-        co.client.async_get_status,
-        co.client.async_get_battery,
-        co.client.async_get_travel,
-    ):
-        method.reset_mock()
-    with patch.object(co, "async_contexts", return_value=()):
-        await co._async_update_data()
-    assert co.client.async_get_status.await_count == co.client.async_get_battery.await_count == 2
-    co.client.async_get_travel.assert_not_awaited()
-    assert all(model.baseline_soc == 80 for model in models.values())
-
-
 async def test_new_vehicle_and_failed_battery_discovery_do_not_need_existing_entities(
     coordinator, freezer
 ):
@@ -1034,3 +890,38 @@ async def test_new_vehicle_and_failed_battery_discovery_do_not_need_existing_ent
     co.client.async_get_status.assert_awaited_once_with("new-vehicle")
     co.client.async_get_battery.assert_awaited_once_with("new-vehicle")
     assert co.client.async_get_travel.await_count == 2
+
+
+@pytest.mark.parametrize("coordinator", [{"enable_estimation": True}], indirect=True)
+async def test_retired_soc_model_does_not_force_endpoint_requests(coordinator):
+    co = coordinator
+    co.client.async_get_battery.return_value = {"battery_list": [{}]}
+    await co._async_update_data()
+    for sn in co.data:
+        for group in ("status", "battery", "travel"):
+            co._next_attempt[(sn, group)] = 0
+    co.client.reset_mock()
+    with patch.object(co, "async_contexts", return_value=()):
+        await co._async_update_data()
+    co.client.async_get_status.assert_not_awaited()
+    co.client.async_get_battery.assert_not_awaited()
+    co.client.async_get_travel.assert_not_awaited()
+
+
+async def test_local_month_boundary_expires_travel_without_cloud_io(coordinator):
+    co = coordinator
+    before = datetime(2026, 9, 30, 15, 59, 59, tzinfo=UTC)
+    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=before):
+        await co._async_update_data()
+        with patch("custom_components.ninebot.coordinator.async_track_point_in_utc_time") as timer:
+            co._schedule_validity_check()
+            notify, deadline = timer.call_args.args[1:]
+            assert deadline == before + timedelta(seconds=1)
+            co.client.reset_mock()
+            with patch(
+                "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+            ):
+                notify(deadline)
+                assert not co.fresh("synthetic-one", "travel")
+            co.client.async_get_status.assert_not_awaited()
+            co.client.async_get_travel.assert_not_awaited()
