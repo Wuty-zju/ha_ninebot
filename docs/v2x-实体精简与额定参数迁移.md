@@ -91,3 +91,6 @@ tr、ar、hi、id、vi、th、uk。所有实体展示名和主要设置/查询�
 旧返回计数实体的断言未更新，修正到新的实体/属性契约后最终全部通过。
 真实云查询/SMS/控制/生产写入为0；未重跑多HA版本矩阵。CI发布检查另以实际结果为准，
 不把本地测试冒充HACS/Hassfest。见[验证记录](evidence/v2x-b24-validation.json)。
+
+PR源码提交9bb62f3的Checks lint、Hassfest、HACS均实际通过，完整链接记录在验证JSON；
+单独翻译模块5项通过，已消除测试收集顺序依赖。合并后main发布检查仍以对应提交为准。
