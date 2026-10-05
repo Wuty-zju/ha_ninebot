@@ -1,6 +1,6 @@
 # Ninebot 九号 Home Assistant 集成
 
-[English](README.md) · [发布版本](https://github.com/Wuty-zju/ha_ninebot/releases) · [开发入口](docs/agent/START_HERE.md)
+[English](README.md) · [发布版本](https://github.com/Wuty-zju/ha_ninebot/releases) · [开发入口](docs/README.md)
 
 独立、非官方集成。v2使用固定 `ninecli==0.1.7` 的App协议替换OpenClaw；当前b24代码为预发布。
 后端面向中国区App服务，其他地区未验证；云端API可用性由厂商决定。
@@ -15,7 +15,7 @@ HACS添加自定义集成仓库 `Wuty-zju/ha_ninebot`，选择测试版；也可
 短信已离线验证，真实发送/验证码流程待验证。reauth/reconfigure保持同一账户。
 每条目独立私有token/config目录；同权限/高权限进程仍属于本地信任边界。
 受管理serve只监听loopback并使用随机Bearer；native车辆发现命令负责准备业务路由缓存。
-细节见[Backend与认证契约](docs/contracts/BACKEND_AUTH.md)。
+细节见[Backend与认证契约](docs/README.md)。
 
 ## 当前功能与选项
 
@@ -34,11 +34,11 @@ HACS添加自定义集成仓库 `Wuty-zju/ha_ninebot`，选择测试版；也可
 
 默认status120秒、battery/travel600秒、profile3600秒；按车/组freshness、退避、需求context及partial failure调度，账户backend串行。
 禁用全部BMS/行程消费者会停止常规对应查询，bootstrap/空匿名inventory稀疏发现及Event需求为有界例外。
-不完整车辆列表不证明解绑，不给缺席车辆续期身份。详见[车辆/实体/刷新契约](docs/contracts/VEHICLES_ENTITIES.md)。
+不完整车辆列表不证明解绑，不给缺席车辆续期身份。详见[车辆/实体/刷新契约](docs/README.md)。
 
 GPS需双坐标有效与opt-in；坐标系未确认不转换。图片使用审核过的匿名来源及HA缓存。
 调试视图从已有snapshot有界派生，不额外拉云数据；diagnostics不含凭据、身份、精确位置或轨迹。
-详见[Raw/诊断契约](docs/contracts/RAW_DATA.md)。
+详见[Raw/诊断契约](docs/README.md)。
 
 ## 历史查询、事件与控制
 
@@ -47,19 +47,17 @@ GPS需双坐标有效与opt-in；坐标系未确认不转换。图片使用审�
 跨月cursor仅有界内存，重启清空；轨迹同时需要coordinates与include_track，automation trace可能保存响应位置。
 服务端最高速度与distance/duration总平均分开，逐点speed/delta单位仍待验证。
 Event启动/re-enable建立baseline，不重放历史；分页/上传延迟可能漏报，不能保证exactly-once。
-参数与示例见[行程/历史/事件契约](docs/contracts/TRAVEL.md)。
+参数与示例见[行程/历史/事件契约](docs/README.md)。
 
 控制必须显式开启、车辆allowlist、认证及身份/状态fresh；明确DENIED或歧义阻止。
 UNKNOWN仍未知，满足本地条件后交云端最终鉴权。bell/buck/engine-start/engine-stop Button仅发一次，
 随后有界status回读，不自动重发或乐观更新状态；engine不等于lock/unlock，接口接受不证明物理动作。
-详见[控制契约](docs/contracts/CONTROLS.md)。开发期间不把这些说明当成测试授权。
+详见[控制契约](docs/README.md)。开发期间不把这些说明当成测试授权。
 
 ## 升级与开发
 
 升级前备份匹配的HA配置/storage；精确移除已审阅旧估算/重复ID，保留有意义ID、用户名称和Recorder历史。
 被移除ID的自动化需要调整。回滚须同时恢复对应旧配置/参数Store，不能只换代码或手改数据库。
-初次迁移依据见[历史迁移矩阵](docs/archive/baselines/2.0-实体迁移矩阵.md)。
+初次迁移依据见[历史迁移矩阵](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md)。
 
-开发先读[START_HERE](docs/agent/START_HERE.md)；当前契约按主题更新，不逐版本追加整份手册。
-[PROGRESS](docs/development/PROGRESS.md)记录问题、决定、实现、真实检查与限制；[CHANGELOG](CHANGELOG.md)保存发布变化。
-小改相关离线回归，大阶段一次综合兼容检查；不把旧绿色结果当新测试。流程见[WORKFLOW](docs/agent/WORKFLOW.md)。
+开发先读[集成说明](docs/README.md)和[产品约束](AGENTS.md)，再核对相关源码、测试及fixture来源。详细私有开发资料在本地独立工作区维护，不进入产品PR或安装包；[CHANGELOG](CHANGELOG.md)保存发布变化。小改做相关离线回归，重大功能边界再做综合兼容检查；旧绿色结果不代表本轮验收。

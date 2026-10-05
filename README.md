@@ -1,6 +1,6 @@
 # Ninebot for Home Assistant
 
-[中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/agent/START_HERE.md)
+[中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/README.md)
 
 An independent, unofficial Ninebot vehicle integration using pinned `ninecli==0.1.7`.
 Version 2 replaces the OpenClaw backend. The current b24 code is a prerelease;
@@ -19,7 +19,7 @@ by offline tests, with live verification pending. Reauth/reconfigure retain the 
 Per-entry token/config directories are private local storage; same-user/privileged processes remain
 inside the trust boundary. A managed random-Bearer loopback serve child handles requests.
 Vehicle discovery uses a controlled native command to initialize the business routing cache.
-See [backend/auth contract](docs/contracts/BACKEND_AUTH.md).
+See [backend/auth contract](docs/README.md).
 
 ## Current data and options
 
@@ -39,12 +39,12 @@ Default status/battery-travel/profile intervals are 120/600/3600 seconds. Per-ve
 backoff, partial failures and typed consumer contexts govern requests; each account backend is serialized.
 Disabled BMS/travel consumers stop regular queries except bounded initial/sparse discovery and ride-event demand.
 Incomplete vehicle discovery does not prove unbinding or refresh missing vehicles' identities.
-See [vehicles/entities/polling](docs/contracts/VEHICLES_ENTITIES.md).
+See [vehicles/entities/polling](docs/README.md).
 
 GPS requires two valid coordinates and opt-in; its coordinate system is unverified and never auto-converted.
 Image URLs use reviewed anonymous origins and HA caching. Diagnostics contain safe schema/metadata,
 not raw values, credentials, identity, precise locations or trails. Debug views are bounded and do not request extra data.
-See [raw/diagnostics contract](docs/contracts/RAW_DATA.md).
+See [raw/diagnostics contract](docs/README.md).
 
 ## History, events and controls
 
@@ -54,13 +54,13 @@ reported monthly totals can exceed the returned list. History cursors are bounde
 Tracks require coordinates opt-in plus `include_track`; automation traces may retain response locations.
 Server maximum speed and distance/duration average remain distinct; point-speed/delta units are unverified.
 Ride events establish a startup baseline and suppress duplicates; cloud timing/pagination can cause missed events.
-See [travel/actions/event contract and example](docs/contracts/TRAVEL.md).
+See [travel/actions/event contract and example](docs/README.md).
 
 Controls require explicit enablement, an allowed vehicle, authentication and fresh ownership/status.
 Known denials or ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization.
 Buttons send bell/buck/engine-start/engine-stop once, with bounded status reconciliation, no automatic retry
 and no optimistic physical-state update. Engine commands are not lock/unlock. Acceptance does not verify a physical effect.
-See [control contract](docs/contracts/CONTROLS.md).
+See [control contract](docs/README.md).
 
 ## Upgrade and development
 
@@ -68,10 +68,10 @@ Back up matching HA configuration/storage before upgrading. Meaningful IDs, user
 are preserved; reviewed obsolete estimates/duplicates are removed only for confirmed exclusive ownership.
 Automations using removed IDs need adjustment. Downgrading requires matching pre-upgrade storage,
 including parameter Store backups; code-only rollback does not reverse migrations.
-[Historical migration matrix](docs/archive/baselines/2.0-实体迁移矩阵.md) records the initial v2 transition.
+[Historical migration matrix](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md) records the initial v2 transition.
 
-Developers start with [START_HERE](docs/agent/START_HERE.md), then the relevant topic contract.
-[PROGRESS](docs/development/PROGRESS.md) records decisions/actual checks; [CHANGELOG](CHANGELOG.md) is release history.
-Update existing contracts instead of appending a new version chapter to every guide.
+Developers start with [product documentation](docs/README.md) and [product constraints](AGENTS.md), then the relevant code/tests/fixture provenance.
+[CHANGELOG](CHANGELOG.md) is release history.
+Maintain local developer handbooks outside the product repository instead of adding a report for every beta.
 Small changes use targeted offline regression; major boundaries use the pinned compatibility suite.
-Exact CI execution/skip scope and physical verification are separate facts; see [WORKFLOW](docs/agent/WORKFLOW.md).
+Exact CI execution/skip scope and physical verification are separate facts; see [development constraints](AGENTS.md).

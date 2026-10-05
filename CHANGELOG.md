@@ -12,7 +12,7 @@
 
 ## 2.0.0b19–b23
 
-- Completed current-field adaptation, month chart/coverage, model options/debug, SMS login and bounded cross-month history. See docs/archive/development/v2x-实施与验收记录.md for the release-specific record.
+- Completed current-field adaptation, month chart/coverage, model options/debug, SMS login and bounded cross-month history. See the [release-specific record](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/v2x-实施与验收记录.md).
 
 ## 2.0.0b18
 
@@ -262,4 +262,4 @@ Complete Go source/build modifications/reproducible builds are unavailable.
 Before upgrading, back up HA configuration/storage/database and the old integration.
 Code-only rollback cannot reverse a ConfigEntry schema upgrade: restore the matching
 pre-upgrade HA backup and integration version. See the bilingual README,
-[entity matrix](docs/archive/baselines/2.0-实体迁移矩阵.md) and [audit](docs/archive/baselines/2.0-预发布验收.md).
+[entity matrix](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md) and [audit](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-预发布验收.md).

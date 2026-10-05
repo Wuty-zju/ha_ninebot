@@ -1,18 +1,25 @@
-# 开发资料
+# Ninebot integration behavior
 
-先读[START_HERE](agent/START_HERE.md)与[CURRENT_STATE](agent/CURRENT_STATE.md)，只加载本任务相关契约。
+This page describes the b24 user-facing contract. Developer investigations and local raw samples belong in a separate private workspace; they are not required to install or run this integration.
 
-| 唯一维护位置 | 内容 |
-|---|---|
-| [BACKEND_AUTH](contracts/BACKEND_AUTH.md) | serve、native发现/cache、密码/SMS、账户与reauth |
-| [RAW_DATA](contracts/RAW_DATA.md) | RawStore、未知字段、debug、diagnostics与证据门槛 |
-| [TRAVEL](contracts/TRAVEL.md) | Ride/轨迹/单位、月日表、历史Actions与Event |
-| [VEHICLES_ENTITIES](contracts/VEHICLES_ENTITIES.md) | 身份/精简/规格/BMS/GPS/Image、请求需求图 |
-| [CONTROLS](contracts/CONTROLS.md) | 权限三态、门禁、一次发送/状态协调、物理结果边界 |
-| [FIELD_INVENTORY](reference/FIELD_INVENTORY.md) | 唯一136路径全字段用途表；按字段查，不默认全文读 |
-| [PROGRESS](development/PROGRESS.md) | 阶段的问题→决定→结果→实际证据，及待实施NR门槛 |
-| [WORKFLOW](agent/WORKFLOW.md) | 测试/发布/交接/并行与文档维护规则 |
+## Authentication
 
-research保留独立[NinePlus专项](research/NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md)及[ninecli依赖审计](research/ninecli实现解读与依赖审计.md)，按具体章节取证。
-archive是历史基线，不是待执行goal。完整角色/旧路径迁移见[catalog](agent/catalog.json)，证据定位见[evidence-index](agent/evidence-index.json)。
-公共文档只引用仓库内相对文件或固定来源链接；原始敏感证据留本机private。
+Pinned ninecli==0.1.7 runs through a managed authenticated loopback server. Passwords travel in the local request body, not argv or ConfigEntry storage. Each entry has isolated sessions and reauth. Vehicle discovery has a controlled native cache initialization exception. SMS flow is implemented and covered offline; live SMS verification remains pending.
+
+## Entities
+
+Created entities are enabled and visible by default; user choices are preserved. Location, controls and debug views require their options. The range sensor prefers precise, then estimated, then AI. b24 removes low-confidence SOC cumulative estimates and duplicate ranges. Nominal V/Ah define rated energy, not measured capacity or SOH. Existing meaningful IDs and Recorder history remain stable.
+
+BMS voltage/temperature/cycles require valid data and support. Energy ec is Wh and charging_power is W according to maintainer confirmation. Health score is not SOH. Unknown enums and missing reports remain unknown. GPS needs two valid coordinates; the coordinate system is unverified and is never automatically converted.
+
+## History
+
+get_trips, get_trip_detail and get_history return bounded response data. Local pagination covers only received rows; it does not prove all upstream rides were returned. Server maximum speed and distance/duration average are distinct. Point-speed/distance units remain unverified. Tracks require coordinate opt-in and include_track; automation traces may retain response locations. Events establish a baseline and suppress duplicates; cloud timing or incomplete lists can cause missed events.
+
+## Controls
+
+Controls require explicit enablement, allowlist and fresh ownership/status. Known denial and ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization. Each command is sent once with bounded state reconciliation, without automatic replay or optimistic state updates. Engine commands are not lock/unlock; acceptance does not prove physical completion.
+
+## Development
+
+Product constraints are in [AGENTS](../AGENTS.md). Use targeted offline tests for small changes and the pinned compatibility suite at major boundaries. Record what ran and what was skipped; old mock/CI results do not prove current cloud or vehicle behavior. Runtime files must remain inside custom_components/ninebot. Private captures, developer plans and workspace tools must not be added to a release or integration runtime.

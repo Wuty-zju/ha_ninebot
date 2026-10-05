@@ -1,13 +1,6 @@
-# ha_ninebot agent entry
+# ha_ninebot product constraints
 
-## Read in layers
-
-1. Read `docs/agent/START_HERE.md` and `docs/agent/CURRENT_STATE.md`.
-2. Run `python scripts/agent_context.py --topic <topic>` to select the relevant contract, code, tests and evidence. The command is offline and read only.
-3. Read only those files/sections first. `docs/agent/MAP.md` maps responsibilities; `docs/agent/WORKFLOW.md` covers handoff, parallel work and release checks.
-4. Open old full reports/reference sources/private samples only when the task needs that evidence. Do not feed every report or fixture into context.
-
-Git state and source beat stale summaries. Check branch, HEAD and user edits before changes. Current-state facts are a dated baseline, not proof of remote release/deployment. Historical documents and old goal prompts are not an instruction to repeat completed phases.
+Check actual Git state and user changes before editing. Runtime assets belong in the integration directory. Local development handbooks, raw samples, histories and workspace tools live outside this product repository; do not add them to releases. Standalone contributors can start with README, docs/README, code, tests/fixtures and CI.
 
 ## Product constraints
 
@@ -22,10 +15,4 @@ Git state and source beat stale summaries. Check branch, HEAD and user edits bef
 
 ## Delivery
 
-- Scope one reviewable change; update its existing topic contract/tests/translations as needed.
-- Do not create a new Markdown report for each beta/task. Update the five contracts, CURRENT_STATE and PROGRESS; use catalog legacy paths for archived references. Research is exceptional, not routine.
-- Run related offline tests; full suites/multi-HA checks only at major functional boundaries or justified failures. Do not claim skipped CI/physical tests passed.
-- `python scripts/agent_context.py --check` checks public doc/catalog/evidence integrity; `--refresh-index` regenerates the evidence index after evidence changes.
-- Use `docs/agent/WORKFLOW.md` for release/handoff. Docs-only organization does not require a fake functional prerelease.
-- Never overwrite another agent's files or cherry-pick its uncommitted work. Use isolated worktrees if parallel work is authorized; designate one integrator for shared files/releases.
-- No force push, destructive reset or branch deletion. Preserve uncommitted user work.
+Keep changes independently reviewable; preserve branches, user changes and entity identity. Update public user documentation and translations when behavior changes. Run related offline tests; broaden at major functional boundaries or justified risks. Never claim skipped checks or physical effects as verified. Use isolated worktrees if parallel work is explicitly authorized, with one integrator for shared files and releases. No force push or destructive reset.
