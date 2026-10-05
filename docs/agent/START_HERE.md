@@ -5,7 +5,7 @@
 1. 核对 `git status --short --branch`、`git log -3 --oneline`。有用户修改先理解，不能覆盖。
 2. 读[当前状态](CURRENT_STATE.md)，区分已发布代码、仅本地文档、已完成阶段和待验证数据。
 3. 用 `python scripts/agent_context.py --topic travel` 等获取该主题的最小阅读清单；不传topic只显示短启动信息。
-4. 读对应contract→code→相关tests→所需evidence。只在结论不足时回溯[历史目录](catalog.json)。
+4. 先读一个现行contract→相关code/tests→必要evidence片段；不能把topic全部证据文件自动全文输入。仅结论不足再回溯[历史目录](catalog.json)。
 5. 继续长期工作前查看本任务交接记录；新任务按[工作流](WORKFLOW.md)建立一份小记录，避免把整个聊天复制进手册。
 
 | 问题 | 命令topic | 先解决什么 |
@@ -20,7 +20,7 @@
 | 新版本发布/测试选择 | release | 看实际检查范围，不为小版本重跑大矩阵 |
 | 工作区、资料、并行协作 | workspace | 单一状态源、责任边界、handoff |
 
-完整路由见[代码/证据地图](MAP.md)。机器目录[资料目录](catalog.json)、[证据目录](evidence-index.json)用于定位，**不需要在每个会话全部加载**。
+完整路由见[代码/证据地图](MAP.md)。[PROGRESS](../development/PROGRESS.md)追踪决定/进度，`--resolve docs/旧稿.md`恢复旧路径。机器[资料目录](catalog.json)、[证据目录](evidence-index.json)用于定位，**不需要在每个会话全部加载**。
 
 证据顺序：自有真实recorded fixture/既有采集关系 → recon有取证支持的协议 → server命令/透传 → NinePlus parser行为 → 字段名猜测。
 合成fixture、mock通过和旧发布CI分别证明不同事项；不相互替代。

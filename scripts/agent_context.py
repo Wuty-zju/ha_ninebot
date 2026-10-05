@@ -103,14 +103,24 @@ def check(root: Path) -> list[str]:
         for replacement in row.get("overridden_by", []):
             if replacement not in documented:
                 errors.append(f"Override document not classified: {replacement}")
+    for old, redirect in catalog.get("legacy_paths", {}).items():
+        if Path(old).is_absolute() or ".." in Path(old).parts:
+            errors.append(f"Invalid legacy path: {old}")
+        for value in redirect.values():
+            try:
+                repository_file(root, value)
+            except ValueError:
+                errors.append(f"Invalid legacy target: {value}")
+            if value not in documented:
+                errors.append(f"Legacy document not classified: {value}")
     for name, topic in catalog["topics"].items():
-        for group in ("docs", "code", "tests", "evidence"):
+        for group in ("docs", "deep_docs", "code", "tests", "evidence"):
             for value in topic.get(group, []):
                 try:
                     repository_file(root, value)
                 except ValueError:
                     errors.append(f"Invalid {name}/{group} target: {value}")
-        for value in topic.get("docs", []):
+        for value in [*topic.get("docs", []), *topic.get("deep_docs", [])]:
             if value not in documented:
                 errors.append(f"Topic document not classified: {value}")
     for path in (root / "docs").rglob("*.md"):
@@ -127,6 +137,16 @@ def check(root: Path) -> list[str]:
     if indexed != build_evidence_index(root):
         errors.append("Evidence index stale: run --refresh-index")
     return errors
+
+
+def resolve_document(root: Path, value: str) -> dict[str, str]:
+    """Resolve historical locators without opening archived/private contents."""
+    if Path(value).is_absolute() or ".." in Path(value).parts:
+        raise ValueError("Repository-relative document required")
+    redirect = load_catalog(root).get("legacy_paths", {}).get(value, {"path": value})
+    for target in redirect.values():
+        repository_file(root, target)
+    return {"requested": value, **redirect}
 
 
 def git_value(root: Path, *args: str) -> str:
@@ -172,8 +192,11 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--refresh-index", action="store_true")
+    mode.add_argument("--resolve", metavar="OLD_REPO_PATH")
     args = parser.parse_args()
-    if args.refresh_index:
+    if args.resolve is not None:
+        print(json.dumps(resolve_document(ROOT, args.resolve), ensure_ascii=False, indent=2))
+    elif args.refresh_index:
         (ROOT / EVIDENCE_INDEX).write_text(
             json.dumps(build_evidence_index(ROOT), ensure_ascii=False, indent=2) + "\n"
         )

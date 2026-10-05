@@ -17,7 +17,7 @@
 get_trips/get_trip_detail/get_history、baseline防重复Event、Image/GPS opt-in、SMS、包身份及compat能力检测。
 历史仅有界内存；月128次而返回20rows等缺页证据仍在，不能宣称全量历史。
 
-最新行为见[b24契约](../v2x-实体精简与额定参数迁移.md)：
+现行行为见[实体契约](../contracts/VEHICLES_ENTITIES.md)；b24取证留历史归档：
 
 - 删除SOC采样充放电累计/质量/generation及冗余实体；保留固定ID的V/Ah额定能量，非SOH/电表。
 - 续航统一precise>estimated>AI，三量仍可调试；不恢复三份重复实体。
@@ -28,10 +28,10 @@ get_trips/get_trip_detail/get_history、baseline防重复Event、Image/GPS opt-i
 服务器speed=最高速度；总平均=distance/duration。used_electricity、avg_speed真实含义、逐点速度/距离单位、CRS、非空remaining仍待验证。
 本次NinePlus研究只读核对既有日表：30/31数字项、和匹配月总、9月20/20行匹配结束日day_total；支持条件性today，不代表全车型/App实测。
 
-控制策略以[b15后续契约](../v2x-云端鉴权控制与实测契约.md)及当前源码为准：明确DENIED/歧义阻止；UNKNOWN保留未知，在显式用户配置/allowlist及fresh归属条件下交云最终鉴权。
+控制策略以[CONTROLS](../contracts/CONTROLS.md)及当前源码为准：明确DENIED/歧义阻止；UNKNOWN保留未知，在显式用户配置/allowlist及fresh归属条件下交云最终鉴权。
 旧“未知全部fail closed”的报告不是当前策略；也不是本次整理允许实车控制。
 
-后续候选顺序：[NinePlus NR路线](../NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md#19-按收益风险和证据重新排序的路线)的raw溯源/安全drift→RideDetail/merge→Wh/km统计与valid今日里程。
+进度、决定与后续门槛只在[PROGRESS](../development/PROGRESS.md)维护；候选为raw溯源/安全drift→RideDetail/merge→Wh/km统计与valid今日里程。
 充电时间、非nullnodes/权限、多包、CRS等守证据门槛；NativeBackend/预测仍是长期选题，不因本页自动启动开发。
 
 最近验证是不同批次：
@@ -40,7 +40,7 @@ get_trips/get_trip_detail/get_history、baseline防重复Event、Image/GPS opt-i
 |---|---|
 | [b24](../evidence/v2x-b24-validation.json) | 464项/96.66%附近coverage及静态/CI记录；多HA矩阵未重跑 |
 | [NinePlus审阅](../evidence/nineplus-source-review.json) | server9项mock +产品78项相关离线；无新云/SMS/控制/生产写入 |
-| [本次工作区整理](../evidence/agent-workspace-validation.json) | 4项工具检查、目录/引用/hash通过；未重跑产品测试 |
+| [工作区整理](../evidence/agent-workspace-validation.json) | 首轮及本轮整理检查分开记录；未重跑产品测试 |
 
 更新规则：发生实现、发布、证据状态改变时更新本页及相应contract/evidence，不覆盖历史测试数或旧raw。
 使用 `git show main:custom_components/ninebot/manifest.json` 和实际Release/CI核实发布；发布授权与生产部署授权分开。

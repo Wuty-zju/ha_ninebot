@@ -1,21 +1,18 @@
-# 开发资料入口
+# 开发资料
 
-新会话先读 [Agent快速入口](agent/START_HERE.md) → [当前状态](agent/CURRENT_STATE.md)，
-再按主题定位。不要默认把所有历史报告加载到上下文。
+先读[START_HERE](agent/START_HERE.md)与[CURRENT_STATE](agent/CURRENT_STATE.md)，只加载本任务相关契约。
 
-| 用途 | 入口 |
+| 唯一维护位置 | 内容 |
 |---|---|
-| 当前实现、发布基线、待验证项 | [CURRENT_STATE](agent/CURRENT_STATE.md)（唯一当前摘要） |
-| 最小代码/测试/证据阅读集合 | [MAP](agent/MAP.md)，`python scripts/agent_context.py --topic travel` |
-| 连续开发、测试、并行与交接 | [WORKFLOW](agent/WORKFLOW.md)、[工作区维护](agent/WORKSPACE_ORGANIZATION.md) |
-| 全部文档的角色/覆盖关系 | [catalog](agent/catalog.json)（需要追溯时读取） |
-| 公开证据来源/hash | [evidence-index](agent/evidence-index.json)；原证据仍在evidence，fixture来源在metadata |
-| 最新实体精简约束 | [b24实体精简与迁移](v2x-实体精简与额定参数迁移.md) |
-| 最新源码参考研究/增量路线 | [NinePlus生态专项](NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md) |
-| 已观察字段统一表 | [字段清单](v2x-当前字段利用与调试摘要.md#4-原始字段到当前ha用途)、[机器清单](evidence/v2x-current-field-usage.json) |
-| 历次执行与真实检查范围 | [v2.x实施记录](v2x-实施与验收记录.md)、[2.0初始记录](2.0-实施记录.md) |
+| [BACKEND_AUTH](contracts/BACKEND_AUTH.md) | serve、native发现/cache、密码/SMS、账户与reauth |
+| [RAW_DATA](contracts/RAW_DATA.md) | RawStore、未知字段、debug、diagnostics与证据门槛 |
+| [TRAVEL](contracts/TRAVEL.md) | Ride/轨迹/单位、月日表、历史Actions与Event |
+| [VEHICLES_ENTITIES](contracts/VEHICLES_ENTITIES.md) | 身份/精简/规格/BMS/GPS/Image、请求需求图 |
+| [CONTROLS](contracts/CONTROLS.md) | 权限三态、门禁、一次发送/状态协调、物理结果边界 |
+| [FIELD_INVENTORY](reference/FIELD_INVENTORY.md) | 唯一136路径全字段用途表；按字段查，不默认全文读 |
+| [PROGRESS](development/PROGRESS.md) | 阶段的问题→决定→结果→实际证据，及待实施NR门槛 |
+| [WORKFLOW](agent/WORKFLOW.md) | 测试/发布/交接/并行与文档维护规则 |
 
-旧报告保留原文件名与日期，按catalog逻辑归档；“尚未实施”“默认关闭”等以当时版本为准。
-具体主题契约可仍然适用，但控制策略以b15之后、实体与估算以b24之后的代码和契约核对。
-公共文档不链接个人目录，不包含未脱敏raw，不依赖仓库外运行文件。
-归档原则见[长期资料规则](长期开发索引与归档规则.md)。
+research保留独立[NinePlus专项](research/NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md)及[ninecli依赖审计](research/ninecli实现解读与依赖审计.md)，按具体章节取证。
+archive是历史基线，不是待执行goal。完整角色/旧路径迁移见[catalog](agent/catalog.json)，证据定位见[evidence-index](agent/evidence-index.json)。
+公共文档只引用仓库内相对文件或固定来源链接；原始敏感证据留本机private。

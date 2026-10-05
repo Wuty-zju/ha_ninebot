@@ -22,7 +22,8 @@ Git state and source beat stale summaries. Check branch, HEAD and user edits bef
 
 ## Delivery
 
-- Scope one reviewable change; update its contract/tests/translations as needed.
+- Scope one reviewable change; update its existing topic contract/tests/translations as needed.
+- Do not create a new Markdown report for each beta/task. Update the five contracts, CURRENT_STATE and PROGRESS; use catalog legacy paths for archived references. Research is exceptional, not routine.
 - Run related offline tests; full suites/multi-HA checks only at major functional boundaries or justified failures. Do not claim skipped CI/physical tests passed.
 - `python scripts/agent_context.py --check` checks public doc/catalog/evidence integrity; `--refresh-index` regenerates the evidence index after evidence changes.
 - Use `docs/agent/WORKFLOW.md` for release/handoff. Docs-only organization does not require a fake functional prerelease.

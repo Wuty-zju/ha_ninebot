@@ -5,7 +5,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.agent_context import build_evidence_index, check, context, repository_file
+from scripts.agent_context import (
+    build_evidence_index,
+    check,
+    context,
+    repository_file,
+    resolve_document,
+)
 
 
 class AgentContextTests(unittest.TestCase):
@@ -71,6 +77,23 @@ class AgentContextTests(unittest.TestCase):
         self.assertNotIn("private-marker", output)
         with self.assertRaises(ValueError):
             context(self.root, "unknown")
+
+    def test_legacy_locator_is_validated_and_never_reads_payload(self) -> None:
+        path = self.root / "docs/agent/catalog.json"
+        catalog = json.loads(path.read_text())
+        catalog["legacy_paths"] = {
+            "docs/old.md": {"path": "docs/example.md", "current_contract": "docs/example.md"}
+        }
+        path.write_text(json.dumps(catalog))
+        self.assertEqual(resolve_document(self.root, "docs/old.md")["path"], "docs/example.md")
+        self.assertEqual(check(self.root), [])
+        with self.assertRaises(ValueError):
+            resolve_document(self.root, "../private.md")
+        catalog["legacy_paths"]["docs/old.md"]["path"] = "../private.md"
+        path.write_text(json.dumps(catalog))
+        with self.assertRaises(ValueError):
+            resolve_document(self.root, "docs/old.md")
+        self.assertTrue(any("Invalid legacy target" in error for error in check(self.root)))
 
 
 if __name__ == "__main__":

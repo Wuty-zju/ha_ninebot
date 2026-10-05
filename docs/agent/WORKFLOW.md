@@ -1,62 +1,71 @@
-# 连续开发、交接与并行工作流
+# 连续开发与工作区维护
 
-## 一轮工作的边界
+## 默认阅读与一轮增量
 
-先核对分支/用户修改和[当前状态](CURRENT_STATE.md)，用topic选资料。把当前用户要求写成一个可review/revert增量：目标、约束、触及文件、验收、证据来源。
-不把历次会话粘成新总手册；不依据旧goal自动开始已完成Phase、采集、控制或自动化。
+START_HERE → CURRENT_STATE → `python scripts/agent_context.py --topic <topic>` → 一个现行contract → 相关code/tests → 必要证据。
+不要启动时遍历全部docs、fixtures、references、private或venv。大字段表用rg定位路径，研究报告读指定章节。
+旧goal、未脱敏手册、版本报告是上下文，不是重复开发已完成阶段/采集/控制的指令。
+目标以当前用户要求为准；先核对branch/HEAD/用户修改，再做可独立review/revert增量。
 
-修改代码时保留稳定架构/identity；修改文档时保持历史日期与未验证项。证据变更后刷新index并检查引用。
-结束时交接只写结论、准确Git状态、改动/检查、未决项、下一步；不能把“建议下一步”写成已授权行动。
+## 文档预算：更新优先，不按版本新建
 
-## 跨会话恢复
+| 信息 | 唯一位置 | 更新规则 |
+|---|---|---|
+| 当前发布/实现/未决事实 | CURRENT_STATE | 重大事实变化更新，保持短 |
+| 实现契约/语义 | contracts的5个主题文件 | 修相关节；不新增bXX专项契约或重复全文 |
+| 问题→决定→进度→验收 | development/PROGRESS | 重大阶段一行，小修更新已有行；运行限制明确 |
+| 用户发布变化 | 根CHANGELOG | 每release一条短变化与限制，不复制设计报告 |
+| 全字段用途 | reference/FIELD_INVENTORY +已有机器清单 | 单一维护位置，避免每报告重印136表 |
+| 测试/调查证据 | 已有evidence + fixture metadata | 新测试摘要优先更新组织/验收账本，不每小阶段建Markdown；新raw/schema才独立样本 |
+| 新协议/架构研究 | research | 仅现有主题无法承载的独立研究；标commit/许可/证据，不混同实现 |
+| 已失效版本稿 | archive | 冻结适用版本、指出现行contract，不继续追加 |
+| 任务dirty/owner/交接 | 本地private/sessions | 不进入产品设计，50行左右，不存raw/密码 |
 
-本机任务记录放工作区`private/sessions/<task-id>/HANDOFF.md`，采用仓库[handoff模板](templates/HANDOFF.md)；只放非敏感进度，不复制密码/账号/raw/位置。
-它是任务状态，不是第二份产品手册。任务完成移到sessions/archive并保留索引；不塞进业务fixtures。
-换会话先读handoff约百行，再核对Git与当前代码；不能将前一会话test输出当成修改后的新结果。
+新增文档先判断上述位置能否承载；不能承载才新建，并登记catalog角色/范围/来源。
+同一事实出现多处改为链接。检验指标是默认阅读集合大小，而不是盲目删除历史证据。
+原报告路径在catalog.legacy_paths映射；`--resolve docs/旧稿.md`查新路径/现行contract。内部引用已修正，不建大量跳转Markdown。
+历史Git提交保留原稿；当前archive只用于特定追溯，不能把其中“默认关闭/未来”当当前需求。
 
-本机session路径仅工作区README索引，公共docs不建立私有链接。云端/他人clone可在其工作区建同类本地目录，不能运行时依赖此目录。
+## 本地布局与兼容入口
 
-## 仅在用户授权并行时
+工作区名称ha_ninebot-workspace，不是Git仓库；repos/ha_ninebot是产品；worktrees/<task-id>是任务checkout。
+references放固定上游；private/samples放不可改写的敏感批次；private/archive放旧稿/临时草稿/工具/验证输出。
+private/planning只做规划导航，已完成A–F私有手册归档，不维护第二份最新计划。
+private/indexes只存本机路径/hash/引用索引；coverage/Release原输出归archive/validation。
+environments可重建，不纳入全文检索；tools只作离线目录维护，runtime不依赖workspace根。
+用户要求归拢的订阅模板位于private/archive/adjuncts，不是Ninebot实现/SDK，不能部署或混入产品。
+旧工作区/旧review/旧Documents/旧模板位置仅兼容symlink；新资料不放旧入口或临时目录。
+公共文件不包含本机私有链接；历史metadata中的原路径只作证据不反向改写采集hash。
 
-1. 一位integrator确定base SHA、任务界限、各分支/worktree及预期接口。调用实际agent工具前遵守用户授权；此文不强制自动spawn。
-2. 每位worker使用独立worktree/branch，按[TASK模板](templates/TASK.md)领任务。共享本机目录的agent不能假定隔离。
-3. 先分开parser/model、HA表示、fixtures/证据审阅等可独立任务。翻译总表、manifest、CURRENT_STATE、公共registry/coordinator接口、发布由指定integrator统一协调。
-4. 不通过文件锁占用整项目；通过OWNERS.md记录“任务→路径→owner→状态”。变更跨边界先约定接口，不覆盖另一任务文件。
-5. worker交付已提交SHA、针对性结果与限制；integrator审阅干净提交后顺序整合。不要复制未提交工作或在同checkout并行切分支/commit/release。
-6. 整合后对受影响交界做一次回归，避免每个worker重复完整HA矩阵；独立任务合并冲突必须审语义。
+## 并行与交接
 
-工作树：本机统一`worktrees/<task-id>`；inactive位于worktrees/archive，不能当作最新源。
-已有旧branch/worktree不自动删除；确认干净再用Git worktree move/受管理工具迁移，不手改.git，不reset丢内容。
-worktree最好分别安装测试环境；共享venv仅复用已验证依赖，不能并行pip修改环境。
+只有用户授权并行后才spawn agents。integrator确定base SHA、接口、owner/path/worktree，用[TASK](templates/TASK.md)记录。
+每worker独立branch/worktree，禁止共享checkout切分支/commit；没有实际隔离不能假定工具自动隔离。
+manifest、translations总表、CURRENT_STATE、registry/coordinator接口和发布指定单owner；跨边界先约定接口。
+worker交付干净提交SHA与实际针对性结果；integrator顺序整合、审语义冲突、只回归受影响交界。
+共享venv只能复用已验证依赖，不能并行pip；需要不同依赖用独立环境。
+任务交接用[HANDOFF](templates/HANDOFF.md)只记目标、Git/dirty、结果/skip、未决与下一步建议；完成归sessions/archive。
+旧branch/worktree保留，移动用Git worktree move/repair；不force-push、reset-hard或删除用户branch。
 
 ## 测试与发布
 
-| 改动 | 满足要求的检查 |
+| 改动 | 必要检查 |
 |---|---|
-| 文档/组织 | agent_context --check；涉及本机路径再运行workspace audit；新工具的相关离线契约检查 |
-| 小runtime修复 | Ruff/format、必要mypy、相关pytest/fixture replay；修改到的translations/schema/migration回归 |
-| 重大功能边界 | 一次综合pytest/coverage及必要兼容矩阵，实际Hassfest/HACS/CI；不为每个小prerelease重复整个矩阵 |
-| schema/endpoint不确定 | 先现有样本/fixture/取证；必要真实只读只在明确任务范围内单轮，控制另需具体授权 |
+| 文档/组织/导航工具 | `agent_context --check`、相关标准库工具测试；本机迁移才workspace audit/hash |
+| 小runtime修复 | Ruff/format、必要mypy、相关pytest/fixture replay及翻译/迁移边界 |
+| 重大功能/兼容边界 | 一次综合pytest/coverage及必要多HA矩阵、实际Hassfest/HACS/CI |
+| schema疑点 | 先既有资料/fixture/mock；当前任务明确要求才极少量真实只读；控制须具体授权 |
 
-现有本机工具环境从workspace README定位；仓库CI约束看pyproject与workflows，不在新脚本隐含安装依赖。
-Checks完整矩阵当前仅workflow_dispatch；日常lint新增4项标准库导航检查与公开索引校验，无HA安装或全套pytest。检查未运行不能写“全部通过”。
-用户既定runtime开发发布：一个增量完成后合main、推送并发下一prerelease，记录精确SHA/真实检查与skip。
-docs-only不改变manifest、不伪造功能版本；组织任务不自动push/merge/deploy。发布与生产HA安装分开。
+Checks日常lint/format+轻量导航检查；完整HA矩阵仅workflow_dispatch，未运行不冒称全部通过。
+同一提交通过后不重复全测，除非实质改动/失败/风险要求。
+已有runtime发布要求：完成增量合main、推送下一prerelease，核实main/tag/CI实际范围；组织docs-only不虚构功能版本、不自动push/部署。
+生产HA只读；没有修改配置/registry/数据库/生产custom_components或重启的授权。
 
-## 资料生命周期
+## 引用与证据检查
 
-唯一当前摘要= CURRENT_STATE；主题事实=contract；设计理由=研究；过去执行=实施记录/版本evidence；原始证据=fixture或私有采集批次。
-[catalog](catalog.json)定义用途/覆盖关系；名字含“当前”的旧报告仍受其中日期/适用范围限制。
-新文档只为新主题/新证据建立，更新catalog而不是再复制旧矩阵。
-大附录按需链接；旧GitHub文档路径保留，逻辑归档不等于删除源码历史。
-
-证据文件新增/修正后：`python scripts/agent_context.py --refresh-index`，再`--check`；index可重建，不修改证据正文或原采集hash。
-private原始采集不去重；重复工具/发布草稿可用相对symlink归一，必须hash验证并记处理记录。Git仓库运行必需的strings/en即使相同也都保留。
-
-## 何时维护索引
-
-- 实现/发布改变：CURRENT_STATE +相关contract+实际evidence。
-- 新设计/协议结论：catalog +研究文档 +来源证据，标verified/推测/待验证。
-- 会话结束/切换：本任务handoff，精确branch/HEAD/dirty/检查与未决项。
-- 路径迁移：公开相对链接 +本机根索引/迁移hash；核验老入口仍可读。
-- 没有实质变化：不为每条聊天追加文档、复制全文或重建全部历史。
+公共相对文件链接必须留在仓库内；外部源码尽量固定commit，动态官方资料标核实日期。
+单位/alias/枚举标签区分源码、fixture、真实请求、推测/待验证；synthetic数值不证明实车语义。
+`python scripts/agent_context.py --check`校验所有docs角色、topic/旧路径目标、公共本地引用与evidence元数据一致。
+evidence改变后显式`--refresh-index`再检查；启动/topic只读路径，不加载私有值。
+本机tools/audit_layout.py只在目录/引用变化时运行，输出索引留private；不要每个coding回合扫全部目录。
+原样本/ZIP/fixtures不按相同字节删；相同归档工具/草稿可hash确认后symlink归一，保留出处。
