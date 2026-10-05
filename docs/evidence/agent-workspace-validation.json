@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-05",
+  "kind": "workspace_organization_only",
+  "base_commit": "5eee90745f8deea272d4732a9733e27f67782d8f",
+  "scope": "Documentation, offline navigation tooling and local workspace organization; no runtime changes or new source/API research.",
+  "checks": {
+    "ruff_check": "passed: custom_components tests scripts",
+    "ruff_format": "passed: 83 files",
+    "isolated_navigation_unittest": {
+      "passed": 4,
+      "scope": "Temporary synthetic workspace only; no HA/native/cloud"
+    },
+    "public_catalog_and_evidence_index": "passed",
+    "git_diff_check": "passed",
+    "classified_markdown_documents": 35,
+    "topics": 9,
+    "local_markdown_links": {
+      "checked": 370,
+      "broken": 0,
+      "public_links_outside_repository": 0,
+      "stale_active_paths": 0
+    },
+    "immutable_original_sample_json": {
+      "checked": 62,
+      "matching_existing_manifest": 62
+    },
+    "organization_backups_and_moves": {
+      "checked": 9,
+      "matching_hashes": 9
+    },
+    "sealed_zip_members": {
+      "checked": 62,
+      "matching_original_hashes": 62
+    }
+  },
+  "changes": {
+    "shared_field_inventory_paths": 136,
+    "repeated_nineplus_appendix": "Replaced by shared inventory links and source-review errata; original available at base commit.",
+    "inactive_git_worktree": "Relocated through git worktree move; original HEAD/branch retained and old path alias preserved.",
+    "duplicate_archived_tool": "Identical bytes verified before replacing duplicate with relative symlink."
+  },
+  "skipped": [
+    "Runtime pytest/coverage",
+    "Runtime mypy",
+    "Multi-HA compatibility matrix",
+    "Remote GitHub CI / Hassfest / HACS",
+    "New cloud/HA/SMS/control requests"
+  ],
+  "invariants": [
+    "Product manifest/runtime/fixtures unchanged",
+    "No production HA changes",
+    "No raw samples modified/uploaded",
+    "No push, main merge, release or deployment"
+  ]
+}

@@ -1,0 +1,514 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-10-05",
+  "scope": "Navigation only; dated documents retain original evidence. No private payloads.",
+  "documents": [
+    {
+      "path": "docs/2.0-实体迁移矩阵.md",
+      "role": "historical_baseline",
+      "topics": [
+        "entities"
+      ],
+      "read_when": "旧迁移/依赖取证/设计理由；不代表当前实现"
+    },
+    {
+      "path": "docs/2.0-实施记录.md",
+      "role": "version_chronicle",
+      "topics": [],
+      "read_when": "需要某版本实际实现/验证范围时按版本定位"
+    },
+    {
+      "path": "docs/2.0-预发布验收.md",
+      "role": "historical_baseline",
+      "topics": [],
+      "read_when": "旧迁移/依赖取证/设计理由；不代表当前实现"
+    },
+    {
+      "path": "docs/NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md",
+      "role": "research",
+      "topics": [
+        "raw",
+        "travel"
+      ],
+      "read_when": "增量设计或证据不充分时读相应节；不是完整待执行清单"
+    },
+    {
+      "path": "docs/README.md",
+      "role": "current_guide",
+      "topics": [],
+      "read_when": "导航/资料维护；不要复制当前实现事实"
+    },
+    {
+      "path": "docs/agent/CURRENT_STATE.md",
+      "role": "current_state",
+      "topics": [],
+      "read_when": "每次新会话先核对Git后阅读"
+    },
+    {
+      "path": "docs/agent/MAP.md",
+      "role": "current_guide",
+      "topics": [],
+      "read_when": "导航/资料维护；不要复制当前实现事实"
+    },
+    {
+      "path": "docs/agent/START_HERE.md",
+      "role": "current_guide",
+      "topics": [],
+      "read_when": "导航/资料维护；不要复制当前实现事实"
+    },
+    {
+      "path": "docs/agent/WORKFLOW.md",
+      "role": "current_guide",
+      "topics": [
+        "release",
+        "workspace"
+      ],
+      "read_when": "导航/资料维护；不要复制当前实现事实"
+    },
+    {
+      "path": "docs/agent/WORKSPACE_ORGANIZATION.md",
+      "role": "current_guide",
+      "topics": [
+        "workspace"
+      ],
+      "read_when": "导航/资料维护；不要复制当前实现事实"
+    },
+    {
+      "path": "docs/agent/templates/HANDOFF.md",
+      "role": "template",
+      "topics": [],
+      "read_when": "需要建立任务/交接时；不是任务事实"
+    },
+    {
+      "path": "docs/agent/templates/TASK.md",
+      "role": "template",
+      "topics": [],
+      "read_when": "需要建立任务/交接时；不是任务事实"
+    },
+    {
+      "path": "docs/ninecli原始数据完整利用与后续逐级开发方案.md",
+      "role": "research",
+      "topics": [],
+      "read_when": "增量设计或证据不充分时读相应节；不是完整待执行清单",
+      "overridden_by": [
+        "docs/agent/CURRENT_STATE.md",
+        "docs/v2x-实体精简与额定参数迁移.md",
+        "docs/v2x-云端鉴权控制与实测契约.md"
+      ]
+    },
+    {
+      "path": "docs/ninecli实现解读与依赖审计.md",
+      "role": "historical_baseline",
+      "topics": [
+        "auth"
+      ],
+      "read_when": "旧迁移/依赖取证/设计理由；不代表当前实现"
+    },
+    {
+      "path": "docs/v2x-ninecli输入输出与车辆缓存契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "raw",
+        "auth"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-不完整车辆发现与缓存恢复契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "polling"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-主要阶段需求核验.md",
+      "role": "historical_baseline",
+      "topics": [],
+      "read_when": "旧迁移/依赖取证/设计理由；不代表当前实现"
+    },
+    {
+      "path": "docs/v2x-云端鉴权控制与实测契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "controls"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-全面数据适配与连续开发.md",
+      "role": "dated_contract",
+      "topics": [
+        "auth"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码",
+      "overridden_by": [
+        "docs/v2x-实体精简与额定参数迁移.md"
+      ]
+    },
+    {
+      "path": "docs/v2x-分级测试与预发布策略.md",
+      "role": "dated_contract",
+      "topics": [
+        "release"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-历史查询Actions契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "travel"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-原生控制加密与状态归属契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "controls"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-图片位置与请求依赖契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "polling"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-实体与控制问题审计及修正.md",
+      "role": "historical_baseline",
+      "topics": [],
+      "read_when": "旧迁移/依赖取证/设计理由；不代表当前实现",
+      "overridden_by": [
+        "docs/v2x-实体精简与额定参数迁移.md",
+        "docs/v2x-云端鉴权控制与实测契约.md"
+      ]
+    },
+    {
+      "path": "docs/v2x-实体精简与额定参数迁移.md",
+      "role": "dated_contract",
+      "topics": [
+        "battery",
+        "entities"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-实施与验收记录.md",
+      "role": "version_chronicle",
+      "topics": [
+        "release"
+      ],
+      "read_when": "需要某版本实际实现/验证范围时按版本定位"
+    },
+    {
+      "path": "docs/v2x-当前字段利用与调试摘要.md",
+      "role": "dated_contract",
+      "topics": [
+        "raw",
+        "entities"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码",
+      "overridden_by": [
+        "docs/v2x-实体精简与额定参数迁移.md",
+        "docs/NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md"
+      ]
+    },
+    {
+      "path": "docs/v2x-控制结果与状态回读契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "controls"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-权限门禁与能力证据契约.md",
+      "role": "dated_contract",
+      "topics": [],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码",
+      "overridden_by": [
+        "docs/v2x-云端鉴权控制与实测契约.md",
+        "docs/v2x-控制结果与状态回读契约.md"
+      ]
+    },
+    {
+      "path": "docs/v2x-电池身份与设备模型契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "battery"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/v2x-行程字段与解析契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "travel"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码",
+      "overridden_by": [
+        "docs/v2x-全面数据适配与连续开发.md",
+        "docs/NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md"
+      ]
+    },
+    {
+      "path": "docs/v2x-骑行事件契约.md",
+      "role": "dated_contract",
+      "topics": [
+        "travel"
+      ],
+      "read_when": "涉及该主题时；核对覆盖关系与当前源码"
+    },
+    {
+      "path": "docs/完全重构与开发报告.md",
+      "role": "historical_baseline",
+      "topics": [],
+      "read_when": "旧迁移/依赖取证/设计理由；不代表当前实现"
+    },
+    {
+      "path": "docs/接口与实体逻辑对照开发文档.md",
+      "role": "historical_baseline",
+      "topics": [],
+      "read_when": "旧迁移/依赖取证/设计理由；不代表当前实现"
+    },
+    {
+      "path": "docs/长期开发索引与归档规则.md",
+      "role": "current_guide",
+      "topics": [
+        "workspace"
+      ],
+      "read_when": "导航/资料维护；不要复制当前实现事实"
+    }
+  ],
+  "topics": {
+    "raw": {
+      "focus": "已有RawStore；读NinePlus第9/16/19节，不重建Phase1；大字段表按需定位。",
+      "docs": [
+        "docs/NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md",
+        "docs/v2x-当前字段利用与调试摘要.md",
+        "docs/v2x-ninecli输入输出与车辆缓存契约.md"
+      ],
+      "code": [
+        "custom_components/ninebot/backend.py",
+        "custom_components/ninebot/client.py",
+        "custom_components/ninebot/raw.py",
+        "custom_components/ninebot/diagnostics.py",
+        "custom_components/ninebot/debug_view.py",
+        "custom_components/ninebot/coordinator.py"
+      ],
+      "tests": [
+        "tests/test_raw.py",
+        "tests/test_raw_summary_entity.py",
+        "tests/test_field_inventory.py"
+      ],
+      "evidence": [
+        "docs/evidence/nineplus-source-review.json",
+        "docs/evidence/v2x-current-field-usage.json"
+      ]
+    },
+    "travel": {
+      "focus": "NinePlus第8/10/11/19节；max/avg分离、daily证据覆盖旧说法；历史只按需。",
+      "docs": [
+        "docs/v2x-行程字段与解析契约.md",
+        "docs/v2x-历史查询Actions契约.md",
+        "docs/v2x-骑行事件契约.md",
+        "docs/NinePlus生态源码审阅与ha_ninebot数据解析应用方案.md"
+      ],
+      "code": [
+        "custom_components/ninebot/travel.py",
+        "custom_components/ninebot/ride_models.py",
+        "custom_components/ninebot/month_summary.py",
+        "custom_components/ninebot/history_actions.py",
+        "custom_components/ninebot/history.py",
+        "custom_components/ninebot/ride_events.py",
+        "custom_components/ninebot/event_store.py"
+      ],
+      "tests": [
+        "tests/test_travel.py",
+        "tests/test_month_summary.py",
+        "tests/test_history_actions.py",
+        "tests/test_ride_entities.py",
+        "tests/test_ride_events.py",
+        "tests/test_event_pipeline.py"
+      ],
+      "evidence": [
+        "docs/evidence/v2x-travel-schema.json",
+        "docs/evidence/nineplus-source-review.json",
+        "docs/evidence/v2x-current-field-usage.json"
+      ]
+    },
+    "battery": {
+      "focus": "包稳定身份/compat与b24唯一额定模型；不恢复SOC累计估算。",
+      "docs": [
+        "docs/v2x-电池身份与设备模型契约.md",
+        "docs/v2x-实体精简与额定参数迁移.md"
+      ],
+      "code": [
+        "custom_components/ninebot/battery.py",
+        "custom_components/ninebot/adapters.py",
+        "custom_components/ninebot/battery_parameters.py",
+        "custom_components/ninebot/compat.py",
+        "custom_components/ninebot/entity.py",
+        "custom_components/ninebot/registry.py",
+        "custom_components/ninebot/storage.py"
+      ],
+      "tests": [
+        "tests/test_battery.py",
+        "tests/test_entity_simplification.py",
+        "tests/test_registry.py",
+        "tests/test_migration.py"
+      ],
+      "evidence": [
+        "docs/evidence/v2x-battery-field-review.json",
+        "docs/evidence/v2x-b24-validation.json"
+      ]
+    },
+    "auth": {
+      "focus": "全面适配D/SMS、reauth/reconfigure和native会话隔离；已有功能不再重做。",
+      "docs": [
+        "docs/v2x-全面数据适配与连续开发.md",
+        "docs/v2x-ninecli输入输出与车辆缓存契约.md",
+        "docs/ninecli实现解读与依赖审计.md"
+      ],
+      "code": [
+        "custom_components/ninebot/config_flow.py",
+        "custom_components/ninebot/session.py",
+        "custom_components/ninebot/client.py",
+        "custom_components/ninebot/runtime.py",
+        "custom_components/ninebot/storage.py"
+      ],
+      "tests": [
+        "tests/test_sms_login.py",
+        "tests/test_config_flow.py",
+        "tests/test_session.py",
+        "tests/test_client.py"
+      ],
+      "evidence": [
+        "docs/evidence/v2x-b11-validation.json"
+      ]
+    },
+    "controls": {
+      "focus": "b15云最终鉴权、b16接受/结果未知/回读；旧Phase7 UNKNOWN拒绝不是现行规则。",
+      "docs": [
+        "docs/v2x-云端鉴权控制与实测契约.md",
+        "docs/v2x-控制结果与状态回读契约.md",
+        "docs/v2x-原生控制加密与状态归属契约.md"
+      ],
+      "code": [
+        "custom_components/ninebot/capabilities.py",
+        "custom_components/ninebot/control_results.py",
+        "custom_components/ninebot/button.py",
+        "custom_components/ninebot/services.py",
+        "custom_components/ninebot/client.py",
+        "custom_components/ninebot/coordinator.py"
+      ],
+      "tests": [
+        "tests/test_capabilities.py",
+        "tests/test_control_results.py",
+        "tests/test_control_entities.py",
+        "tests/test_native_encrypted_controls.py",
+        "tests/test_coordinator.py"
+      ],
+      "evidence": [
+        "docs/evidence/v2x-b15-live-controls.json",
+        "docs/evidence/v2x-native-control-envelope.json",
+        "docs/evidence/v2x-b16-validation.json"
+      ]
+    },
+    "entities": {
+      "focus": "b24移除低质量估算/重复续航，旧ID/Recorder连续性；主要语言名称/图标。",
+      "docs": [
+        "docs/v2x-实体精简与额定参数迁移.md",
+        "docs/2.0-实体迁移矩阵.md",
+        "docs/v2x-当前字段利用与调试摘要.md"
+      ],
+      "code": [
+        "custom_components/ninebot/entity.py",
+        "custom_components/ninebot/migration.py",
+        "custom_components/ninebot/registry.py",
+        "custom_components/ninebot/sensor.py",
+        "custom_components/ninebot/binary_sensor.py",
+        "custom_components/ninebot/number.py",
+        "custom_components/ninebot/strings.json",
+        "custom_components/ninebot/icons.json",
+        "scripts/build_translations.py",
+        "scripts/localization_labels.json"
+      ],
+      "tests": [
+        "tests/test_entity_simplification.py",
+        "tests/test_migration.py",
+        "tests/test_translations.py",
+        "tests/test_debug_and_model_options.py"
+      ],
+      "evidence": [
+        "docs/evidence/v2x-b24-validation.json",
+        "docs/evidence/v2x-current-field-usage.json"
+      ]
+    },
+    "polling": {
+      "focus": "opt-in GPS/Image、freshness、功能需求graph；数据源不是App刷新间隔。",
+      "docs": [
+        "docs/v2x-图片位置与请求依赖契约.md",
+        "docs/v2x-不完整车辆发现与缓存恢复契约.md"
+      ],
+      "code": [
+        "custom_components/ninebot/demand.py",
+        "custom_components/ninebot/coordinator.py",
+        "custom_components/ninebot/image.py",
+        "custom_components/ninebot/image_urls.py",
+        "custom_components/ninebot/device_tracker.py",
+        "custom_components/ninebot/vehicle_cache.py"
+      ],
+      "tests": [
+        "tests/test_demand.py",
+        "tests/test_coordinator.py",
+        "tests/test_image_urls.py",
+        "tests/test_current_observations.py",
+        "tests/test_vehicle_cache.py"
+      ],
+      "evidence": [
+        "docs/evidence/v2x-image-origin.json",
+        "docs/evidence/v2x-b17-validation.json"
+      ]
+    },
+    "release": {
+      "focus": "仅实际代码增量发版本；小版本相关回归，大阶段矩阵；准确记录执行/skip。",
+      "docs": [
+        "docs/v2x-分级测试与预发布策略.md",
+        "docs/v2x-实施与验收记录.md",
+        "docs/agent/WORKFLOW.md"
+      ],
+      "code": [
+        "custom_components/ninebot/manifest.json",
+        "hacs.json",
+        "pyproject.toml",
+        ".github/workflows/checks.yaml",
+        ".github/workflows/hacs.yaml",
+        ".github/workflows/hassfest.yaml"
+      ],
+      "tests": [],
+      "evidence": [
+        "docs/evidence/v2x-b24-validation.json"
+      ]
+    },
+    "workspace": {
+      "focus": "短入口→单状态→最小topic→证据；独立worktree/owner/handoff，不重复全文。",
+      "docs": [
+        "docs/agent/WORKSPACE_ORGANIZATION.md",
+        "docs/agent/WORKFLOW.md",
+        "docs/长期开发索引与归档规则.md"
+      ],
+      "code": [
+        "AGENTS.md",
+        "scripts/agent_context.py"
+      ],
+      "tests": [],
+      "evidence": []
+    }
+  }
+}
