@@ -113,10 +113,11 @@ async def test_action_returns_chart_from_same_cached_month_without_new_queries(
         if ("ninebot", "SyntheticSN") in d.identifiers
     )
     registry = er.async_get(hass)
-    for key, value in [("month_returned_rides", 20), ("month_list_coverage", 15.625)]:
+    for key, value in [("month_list_coverage", 15.625)]:
         row_id = registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
         assert registry.async_get(row_id).disabled_by is None
         assert float(hass.states.get(row_id).state) == value
+        assert hass.states.get(row_id).attributes["returned_rides"] == 20
     app_client.async_get_travel.reset_mock()
     response = await hass.services.async_call(
         "ninebot",

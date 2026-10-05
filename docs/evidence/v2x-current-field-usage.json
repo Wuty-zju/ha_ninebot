@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-10-05",
-  "implementation_version": "2.0.0b19",
-  "implementation_base_commit": "f8a04d53c799bec18cd23d9f6742ff5278bfea83",
+  "implementation_version": "2.0.0b24",
+  "implementation_base_commit": "624e1293d90a0a814b483291d89848a7e023f48f",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [
@@ -930,7 +930,7 @@
           "container": false,
           "meaning": "普通/AI 续航，分别表达",
           "unit": "km",
-          "classification": "A",
+          "classification": "A/H",
           "enabled": "是",
           "device_class": "distance",
           "state_class": "measurement",
@@ -943,7 +943,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "sensor.range_ai"
+          "current_use": "单一endurance续航实体按precise/estimated/AI优先并报告来源；三值仍保留调试视图"
         },
         {
           "path": "$.barrel_lock_status",
@@ -1068,7 +1068,7 @@
           "container": false,
           "meaning": "普通/AI 续航，分别表达",
           "unit": "km",
-          "classification": "A",
+          "classification": "A/H",
           "enabled": "是",
           "device_class": "distance",
           "state_class": "measurement",
@@ -1081,7 +1081,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "sensor.range_estimated"
+          "current_use": "单一endurance续航实体按precise/estimated/AI优先并报告来源；三值仍保留调试视图"
         },
         {
           "path": "$.is_common_user",
@@ -1091,7 +1091,7 @@
           "container": false,
           "meaning": "共享账户标记；不能推出 owner 或控制权",
           "unit": "—",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1104,7 +1104,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：status_shared_user_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.is_smart_service_expired",
@@ -1137,7 +1137,7 @@
           "container": false,
           "meaning": "App 续航显示偏好/阈值候选；未知语义",
           "unit": "—",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1150,7 +1150,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：range_preference_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.loc",
@@ -1276,7 +1276,7 @@
           "container": false,
           "meaning": "真实 null；权限仍为未知，不推断允许或位图。显式启用后的命令交由云端最终鉴权。",
           "unit": "—",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1289,7 +1289,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：permissions_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.precise_estimate_mileage",
@@ -1299,7 +1299,7 @@
           "container": false,
           "meaning": "精确续航；沿用 endurance/remaining_range aliases",
           "unit": "km",
-          "classification": "A",
+          "classification": "A/H",
           "enabled": "是",
           "device_class": "distance",
           "state_class": "measurement",
@@ -1312,7 +1312,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "sensor.endurance"
+          "current_use": "单一endurance续航实体按precise/estimated/AI优先并报告来源；三值仍保留调试视图"
         },
         {
           "path": "$.precise_mileage_user_choose",
@@ -1322,7 +1322,7 @@
           "container": false,
           "meaning": "App 续航显示偏好/阈值候选；未知语义",
           "unit": "—",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1335,7 +1335,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：precise_range_preference_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.pwr",
@@ -1391,7 +1391,7 @@
           "container": false,
           "meaning": "剩余充电时间候选；duration 或 deadline 不明确",
           "unit": "待验证",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1404,7 +1404,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：charge_timestamp_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.sn",
@@ -1512,7 +1512,7 @@
           "container": false,
           "meaning": "服务端 count；历史为字符串，曾与数组长度不符；只作 schema",
           "unit": "—",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1525,7 +1525,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：battery_count_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.battery_find_my_support",
@@ -1640,7 +1640,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用单包/有身份分包评分或原值；score不是SOH/%，循环原值不绕过support；旧正式循环计数保留支持门禁。"
+          "current_use": "循环次数支持门禁及reported_cycles属性，或分层电量调试观测；不创建重复raw实体"
         },
         {
           "path": "$.battery_list[].bms_volt",
@@ -1686,7 +1686,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用单包/有身份分包评分或原值；score不是SOH/%，循环原值不绕过support；旧正式循环计数保留支持门禁。"
+          "current_use": "循环次数支持门禁及reported_cycles属性，或分层电量调试观测；不创建重复raw实体"
         },
         {
           "path": "$.battery_list[].score",
@@ -1742,7 +1742,7 @@
           "container": false,
           "meaning": "主电池量；与外层及车辆 SOC 数值不同，不自动归并",
           "unit": "待验证",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1755,7 +1755,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：main_electricity_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.battery_type",
@@ -1765,7 +1765,7 @@
           "container": false,
           "meaning": "电池类型编码；核实枚举后 metadata",
           "unit": "—",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1778,7 +1778,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：battery_type_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.charging",
@@ -1855,7 +1855,7 @@
           "container": false,
           "meaning": "充电保护标志；枚举未知，不直接套 Problem class",
           "unit": "—",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1867,7 +1867,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：charging_protection_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.charging_protection.url",
@@ -1899,7 +1899,7 @@
           "container": false,
           "meaning": "电池外层量；与 status/main 分开，未知更新时间",
           "unit": "待验证",
-          "classification": "C",
+          "classification": "H/I",
           "enabled": true,
           "device_class": "—",
           "state_class": "—",
@@ -1912,7 +1912,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：root_electricity_raw；不猜单位/枚举/权限。"
+          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
         },
         {
           "path": "$.have_bms_cycle_support",
@@ -3272,5 +3272,7 @@
       ]
     }
   ],
-  "command_response_path_count": 12
+  "command_response_path_count": 12,
+  "previous_inventory": "docs/evidence/archive/v2x-b19-field-usage.json",
+  "representation_contract": "docs/v2x-实体精简与额定参数迁移.md"
 }

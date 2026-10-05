@@ -1,0 +1,654 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "data": {
+          "account": "Hesap",
+          "password": "Parola",
+          "debug_mode": "Hata ayıklama modu",
+          "enable_estimation": "Nominal parametreleri etkinleştir",
+          "enable_coordinates": "Kesin konumu göster",
+          "login_method": "Giriş yöntemi"
+        },
+        "data_description": {
+          "debug_mode": "Show a bounded diagnostic view without additional requests.",
+          "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "data": {
+          "account": "Hesap",
+          "password": "Parola",
+          "login_method": "Giriş yöntemi"
+        },
+        "data_description": {
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+        }
+      },
+      "reconfigure": {
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "data": {
+          "account": "Hesap",
+          "password": "Parola",
+          "login_method": "Giriş yöntemi"
+        },
+        "data_description": {
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+        }
+      },
+      "sms_account": {
+        "title": "Send login code",
+        "description": "Submitting sends one SMS; delivery is never retried automatically.",
+        "data": {
+          "account": "Hesap"
+        }
+      },
+      "sms_code": {
+        "title": "SMS login",
+        "description": "Enter the code or explicitly resend. Local resend cooldown is 60 seconds; this flow is cleaned up after 10 minutes. These are not upstream validity guarantees.",
+        "data": {
+          "code": "Doğrulama kodu",
+          "resend": "Yeniden gönder"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Session or credentials are invalid",
+      "cannot_connect": "Cannot connect; try again later",
+      "upstream_error": "Ninebot service returned an error; try later",
+      "invalid_response": "Unexpected response format",
+      "unsupported_platform": "ninecli cannot start on this platform",
+      "busy": "Session is busy; try again later",
+      "storage_error": "Cannot save session; check storage and permissions",
+      "password_required": "Enter a password or choose SMS login.",
+      "invalid_account": "SMS login currently requires an 11-digit mainland China mobile number.",
+      "invalid_code": "Invalid code. Enter it again.",
+      "sms_cooldown": "Wait for the local 60-second cooldown before explicitly sending again."
+    },
+    "abort": {
+      "already_configured": "Account already configured",
+      "wrong_account": "Reauthenticate with the same account",
+      "reauth_successful": "Reauthentication successful",
+      "reconfigure_successful": "Reconfiguration successful",
+      "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
+      "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
+      "sms_expired": "The SMS login flow expired. Start again.",
+      "storage_error": "Local session storage failed. Check storage and try again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Seçenekler",
+        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "data": {
+          "poll_interval": "Durum yenileme aralığı (saniye)",
+          "enable_estimation": "Nominal parametreleri etkinleştir",
+          "enable_coordinates": "Kesin konumu göster",
+          "enable_controls": "Araç kontrolünü etkinleştir",
+          "control_vehicles": "İzin verilen araçlar",
+          "debug_mode": "Hata ayıklama modu",
+          "configure_model": "Nominal parametreleri ayarla"
+        },
+        "data_description": {
+          "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+        }
+      },
+      "model_vehicle": {
+        "title": "Araç",
+        "data": {
+          "model_vehicle": "Araç"
+        }
+      },
+      "model_parameters": {
+        "title": "Nominal parametreleri ayarla",
+        "description": "Enter rated voltage and capacity. Changes update the same entity; these are not measured capacity or battery health.",
+        "data": {
+          "voltage": "Nominal voltaj (V)",
+          "capacity": "Nominal kapasite (Ah)"
+        }
+      }
+    },
+    "abort": {
+      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters."
+    },
+    "error": {
+      "model_unavailable": "Choose a current vehicle belonging to this integration account.",
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "Pil seviyesi"
+      },
+      "endurance": {
+        "name": "Kalan menzil"
+      },
+      "remaining_charge_time": {
+        "name": "Kalan şarj süresi",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw": {
+            "name": "Original text"
+          },
+          "battery_source_raw": {
+            "name": "Battery endpoint text"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unparsed": "Unparsed",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "month_mileage": {
+        "name": "Bu ay: Mesafe"
+      },
+      "last_mileage": {
+        "name": "Son sürüş: Mesafe"
+      },
+      "month_energy_raw": {
+        "name": "Bu ay: Enerji"
+      },
+      "last_energy_raw": {
+        "name": "Son sürüş: Enerji"
+      },
+      "charging_power_raw": {
+        "name": "Şarj gücü"
+      },
+      "bms_voltage": {
+        "name": "Pil voltajı"
+      },
+      "batt_temp": {
+        "name": "Pil sıcaklığı"
+      },
+      "bms_cycles": {
+        "name": "Şarj döngüsü"
+      },
+      "last_ride_duration": {
+        "name": "Son sürüş: Sürüş süresi"
+      },
+      "last_ride_start": {
+        "name": "Son sürüş: Başlangıç zamanı"
+      },
+      "last_ride_end": {
+        "name": "Son sürüş: Bitiş zamanı"
+      },
+      "last_ride_max_speed": {
+        "name": "Son sürüş: En yüksek hız"
+      },
+      "last_ride_average_speed": {
+        "name": "Son sürüş: Ortalama hız"
+      },
+      "control_availability": {
+        "name": "Araç kontrol durumu",
+        "state": {
+          "authentication_required": "Authentication required",
+          "disabled": "Controls disabled",
+          "vehicle_not_allowed": "Vehicle not allowed",
+          "data_unavailable": "Fresh data unavailable",
+          "ready": "Ready to send",
+          "unverified": "Upstream capability unverified",
+          "denied": "Upstream explicitly denied",
+          "unsupported": "Command unsupported"
+        },
+        "state_attributes": {
+          "bell": {
+            "name": "Find vehicle",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Ready to send",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream explicitly denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "bucket": {
+            "name": "Seat compartment",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Ready to send",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream explicitly denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "engine_start": {
+            "name": "Remote start",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Ready to send",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream explicitly denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "engine_stop": {
+            "name": "Remote stop",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Ready to send",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream explicitly denied",
+              "unsupported": "Command unsupported"
+            }
+          }
+        }
+      },
+      "raw_data_summary": {
+        "name": "Araç bilgileri",
+        "state": {
+          "debug_disabled": "Debug disabled",
+          "ok": "OK",
+          "partial": "Partially available",
+          "stale": "Stale",
+          "error": "Error"
+        }
+      },
+      "service_remaining_days_raw": {
+        "name": "Kalan hizmet günleri",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "odometer_raw": {
+        "name": "Toplam kilometre",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "battery_present_raw": {
+        "name": "Pil varlığı",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "seat_lock_raw": {
+        "name": "Sele bölmesi kilidi",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "acc_raw": {
+        "name": "ACC durumu",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "service_expired_raw": {
+        "name": "Hizmet durumu",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "health_score": {
+        "name": "Pil sağlık puanı",
+        "state_attributes": {
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified"
+            }
+          },
+          "cycle_supported": {
+            "name": "Cycle count supported"
+          }
+        }
+      },
+      "month_ride_count": {
+        "name": "Bu ay: Sürüş sayısı"
+      },
+      "month_duration": {
+        "name": "Bu ay: Sürüş süresi"
+      },
+      "returned_pack_count": {
+        "name": "Pil sayısı"
+      },
+      "month_list_coverage": {
+        "name": "Bu ay: Sürüş kaydı kapsamı"
+      },
+      "history_scanned_months": {
+        "name": "Sorgu aralığı: Sorgulanan aylar"
+      },
+      "history_indexed_rides": {
+        "name": "Sorgu aralığı: Alınan sürüşler"
+      },
+      "history_mileage": {
+        "name": "Sorgu aralığı: Mesafe"
+      },
+      "history_energy": {
+        "name": "Sorgu aralığı: Enerji"
+      },
+      "history_duration": {
+        "name": "Sorgu aralığı: Sürüş süresi"
+      },
+      "battery_rated_energy": {
+        "name": "Pil nominal enerjisi"
+      }
+    },
+    "binary_sensor": {
+      "charging": {
+        "name": "Şarj oluyor"
+      },
+      "power": {
+        "name": "Ana güç"
+      },
+      "unlocked": {
+        "name": "Kilit açık"
+      },
+      "cycle_support": {
+        "name": "Döngü sayacı desteği"
+      },
+      "battery_find_my_support": {
+        "name": "Pil bulma desteği"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Araç durumunu yenile"
+      },
+      "bell": {
+        "name": "Aracı bul"
+      },
+      "bucket": {
+        "name": "Sele bölmesini aç"
+      },
+      "engine_start": {
+        "name": "Uzaktan başlat"
+      },
+      "engine_stop": {
+        "name": "Uzaktan durdur"
+      }
+    },
+    "image": {
+      "vehicle_image": {
+        "name": "Araç resmi"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Araç konumu"
+      }
+    },
+    "number": {
+      "main_battery_voltage": {
+        "name": "Nominal voltaj"
+      },
+      "battery_capacity": {
+        "name": "Nominal kapasite"
+      }
+    },
+    "event": {
+      "ride": {
+        "name": "Sürüş olayı",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "completed": "Completed"
+            }
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "controls_disabled": {
+      "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
+    },
+    "control_uncertain": {
+      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+    },
+    "control_readback_failed": {
+      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+    },
+    "busy": {
+      "message": "The request queue is full; try again later."
+    },
+    "model_storage_invalid": {
+      "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+    },
+    "invalid_auth": {
+      "message": "The session is invalid; reauthenticate through Devices & services."
+    },
+    "query_unavailable": {
+      "message": "Vehicle query unavailable: ensure the integration is loaded, the session is valid and the vehicle remains in a fresh account vehicle list."
+    },
+    "query_device": {
+      "message": "Select one unambiguous Ninebot vehicle device belonging to this integration."
+    },
+    "query_coordinates": {
+      "message": "Enable coordinates in integration options before requesting a trip track."
+    },
+    "query_detail_limit": {
+      "message": "When including details, set the page size to five or less."
+    },
+    "query_track_detail": {
+      "message": "A trip track requires include_detail."
+    },
+    "query_ride": {
+      "message": "The ride does not have one verified detail mapping in this vehicle and month. Specify the correct month and use Get trips first."
+    },
+    "history_range": {
+      "message": "Choose an ordered month range of at most 360 months."
+    },
+    "history_cursor": {
+      "message": "The continuation expired, was evicted, or belongs to another vehicle/range. Start again."
+    }
+  },
+  "issues": {
+    "entity_identity_conflict": {
+      "title": "Duplicate legacy entity identities",
+      "description": "Multiple legacy entities represent the same function. Their identities and history are preserved; equivalent sensors continue to receive values. No entries were deleted. Review automations and user settings before deciding which entities to retain through the HA UI."
+    },
+    "migration_identity_invalid": {
+      "title": "Legacy account identity is invalid",
+      "description": "Migration stopped because the legacy business identity is invalid. Existing configuration and sessions were preserved. Check the backup and confirm the account identity before retrying; do not merge accounts by vehicle nickname."
+    },
+    "legacy_device_unmatched": {
+      "title": "Legacy device identity is unmatched",
+      "description": "An existing device identity is absent from the current account vehicle list. The vehicle may have been removed or use a different interface identity. Entities and history are preserved; no nickname-based merge was attempted. Check the backup and current identities before making changes through the HA UI."
+    },
+    "session_recovery_pending": {
+      "title": "Session recovery needs a restart",
+      "description": "After a failed session update, HA could not unload the runtime using the replacement session. Its files were not replaced; the transaction journal and previous session backup remain. Back up HA configuration and restart HA to recover the previous session at startup. If recovery fails, retain the backup and check storage permissions; do not manually delete session directories."
+    },
+    "model_storage_invalid": {
+      "title": "Battery parameter storage unavailable",
+      "description": "Cloud telemetry continues, but the optional battery parameter file is invalid or uses an unsupported version. The file has not been overwritten. Restore a compatible backup before changing parameters."
+    },
+    "ride_event_storage_invalid": {
+      "title": "Ride event storage unavailable",
+      "description": "The event cursor store is unreadable, incompatible or cannot be safely written. Event emission is suspended. Retain configuration/storage backups and check storage permissions and the integration version. Do not edit or delete the cursor file as a repair attempt. Other vehicle state and queries remain available."
+    }
+  },
+  "services": {
+    "get_trips": {
+      "name": "Sürüşleri al",
+      "description": "Query a vehicle month with local pagination. Cloud completeness is unknown. Detail requests require a limit of five or less.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select the vehicle device, not a battery component."
+        },
+        "month": {
+          "name": "Month",
+          "description": "Business month YYYYMM, for example 202609. Future months are rejected."
+        },
+        "page": {
+          "name": "Page",
+          "description": "Page within the rows returned by ninecli, not cloud pagination."
+        },
+        "limit": {
+          "name": "Page size",
+          "description": "Maximum 100; maximum five when including details."
+        },
+        "include_detail": {
+          "name": "Include details",
+          "description": "Read at most five trip details in this call."
+        },
+        "include_track": {
+          "name": "Include track",
+          "description": "Requires details and coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        }
+      }
+    },
+    "get_trip_detail": {
+      "name": "Sürüş ayrıntılarını al",
+      "description": "Query one trip verified in the selected vehicle and month. No history scan or vehicle control.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select the vehicle device, not a battery component."
+        },
+        "ride_id": {
+          "name": "Ride ID",
+          "description": "Use the ride_id returned by Get trips for this vehicle and month."
+        },
+        "query_month": {
+          "name": "Query month",
+          "description": "YYYYMM; defaults to the current month in Asia/Shanghai. Specify it for older trips."
+        },
+        "max_points": {
+          "name": "Point limit",
+          "description": "Maximum 2000; defaults to 500. Also bounds speed samples."
+        },
+        "include_track": {
+          "name": "Include track",
+          "description": "Requires coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        }
+      }
+    },
+    "get_history": {
+      "name": "Geçmişi al",
+      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; indexing is memory-only, without automatic archiving or Recorder import.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "start_month": {
+          "name": "Start month (YYYYMM)"
+        },
+        "end_month": {
+          "name": "End month (YYYYMM)"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "max_months_per_call": {
+          "name": "Maximum months this call"
+        },
+        "limit": {
+          "name": "Maximum rides returned"
+        },
+        "include_daily_chart": {
+          "name": "Return daily mileage"
+        }
+      }
+    }
+  },
+  "selector": {
+    "login_method": {
+      "options": {
+        "password": "Parolayla giriş",
+        "sms": "SMS ile giriş"
+      }
+    }
+  }
+}

@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from custom_components.ninebot.adapters import batteries
-from custom_components.ninebot.battery import battery_signature, battery_summary
+from custom_components.ninebot.battery import battery_summary
 from custom_components.ninebot.compat import child_registry_api_available
 from custom_components.ninebot.exceptions import NinebotError
 from custom_components.ninebot.models import VehicleProfile, VehicleSnapshot
@@ -74,28 +74,13 @@ def test_pack_entities_survive_reorder_but_not_replacement_or_identity_loss():
     # A genuine serial spelling a placeholder must coexist with an unknown row.
     mixed = snapshot({"bms_volt": 90}, pack("slot_0", 76))
     assert first.value(mixed) == 76
-    assert len(battery_descriptions(mixed)) == 6
+    assert len(battery_descriptions(mixed)) == 4
 
 
 def test_conflicting_identity_aliases_are_not_silently_attached_to_existing_history():
     with pytest.raises(NinebotError):
         snapshot({"battery_sn": "a", "sn": "b"})
     assert snapshot({"battery_sn": "a", "sn": " a "}).battery.batteries[0].key == "a"
-
-
-def test_signature_separates_namespaces_and_delimiters_and_ignores_order():
-    one = snapshot(pack("a,b"), pack("c")).battery
-    two = snapshot(pack("a"), pack("b,c")).battery
-    assert battery_signature(one) != battery_signature(two)
-    assert battery_signature(one) == battery_signature(snapshot(pack("c"), pack("a,b")).battery)
-    assert battery_signature(snapshot({}).battery) != battery_signature(
-        snapshot(pack("unidentified")).battery
-    )
-    assert battery_signature(snapshot({}).battery) != battery_signature(snapshot({}, {}).battery)
-    # Unknown same-count replacements cannot be detected: do not claim otherwise.
-    assert battery_signature(snapshot({"bms_volt": 70}).battery) == battery_signature(
-        snapshot({"bms_volt": 80}).battery
-    )
 
 
 def test_battery_diagnostics_include_shape_and_policy_without_identity_or_measurements():

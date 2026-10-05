@@ -10,9 +10,9 @@ import voluptuous as vol
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.ninebot import compat
+from custom_components.ninebot.battery_parameters import BatteryParameters
 from custom_components.ninebot.config_flow import parameter_validator
 from custom_components.ninebot.debug_view import DEBUG_ATTRIBUTES, debug_view, numeric_observation
-from custom_components.ninebot.estimation import EnergyModel
 from custom_components.ninebot.exceptions import ErrorKind
 from custom_components.ninebot.models import Battery, BatteryInfo, Freshness, VehicleProfile
 from custom_components.ninebot.storage import ModelStorage
@@ -85,14 +85,12 @@ async def test_debug_opt_in_reuses_identity_and_never_adds_query_demand(hass, en
     assert er.async_get(hass).async_get(row_id).unique_id == "SyntheticSN_raw_data_summary"
 
 
-async def test_options_and_number_share_storage_and_single_batch_generation(
-    hass, entry, app_client
-):
+async def test_options_and_number_share_rated_parameters(hass, entry, app_client):
     hass.config_entries.async_update_entry(entry, options={"enable_estimation": True})
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     model = entry.runtime_data.models.model("SyntheticSN")
-    old_generation = model.generation
+    assert model.nominal is None
     form = await hass.config_entries.options.async_init(entry.entry_id)
     form = await hass.config_entries.options.async_configure(
         form["flow_id"],
@@ -114,7 +112,6 @@ async def test_options_and_number_share_storage_and_single_batch_generation(
     assert result["type"].value == "create_entry"
     await hass.async_block_till_done()
     store = entry.runtime_data.models
-    assert store.model("SyntheticSN").generation == old_generation + 1
     assert store.model("SyntheticSN").nominal == 1.44
     assert "voltage" not in entry.options and "capacity" not in entry.options
     assert "configure_model" not in entry.options
@@ -124,23 +121,25 @@ async def test_options_and_number_share_storage_and_single_batch_generation(
         "number", "set_value", {"entity_id": number_id, "value": 30}, blocking=True
     )
     assert store.model("SyntheticSN").capacity == 30
-    assert store.model("SyntheticSN").generation == old_generation + 2
-    quality_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_estimation_quality")
-    assert registry.async_get(quality_id).disabled_by is None
-    assert hass.states.get(quality_id).state == "baseline_reset"
+    assert (
+        registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_estimation_quality") is None
+    )
 
 
 async def test_model_transaction_rejects_partial_configuration(hass):
     store = ModelStorage(hass, "synthetic")
     store.schedule_save = MagicMock()
     old = store.model("car")
-    old.configure("voltage", 72)
+    await store.async_load()
+    store.configure("car", {"voltage": 72})
+    store.schedule_save.reset_mock()
+    old = store.model("car")
     with pytest.raises(ValueError):
         store.configure("car", {"voltage": 60, "capacity": -1})
     assert store.model("car") is old and old.voltage == 72
     store.schedule_save.assert_not_called()
     store.configure("car", {"voltage": 72})
-    assert store.model("car").generation == old.generation
+    assert store.model("car") is old
 
 
 @pytest.mark.parametrize("value", [True, "NaN", {}, -1, 301])
@@ -166,8 +165,8 @@ async def test_debug_health_states_follow_group_freshness(hass, entry, app_clien
     co = entry.runtime_data.coordinator
     snapshot = co.data["SyntheticSN"]
     with patch.object(co, "fresh", side_effect=lambda sn, group: group == "status"):
-        assert debug_view(snapshot, co, EnergyModel())[0] == "partial"
+        assert debug_view(snapshot, co, BatteryParameters())[0] == "partial"
     with patch.object(co, "fresh", return_value=False):
-        assert debug_view(snapshot, co, EnergyModel())[0] == "stale"
+        assert debug_view(snapshot, co, BatteryParameters())[0] == "stale"
         broken = replace(snapshot, status_freshness=Freshness(error=ErrorKind.CONNECTION))
-        assert debug_view(broken, co, EnergyModel())[0] == "error"
+        assert debug_view(broken, co, BatteryParameters())[0] == "error"

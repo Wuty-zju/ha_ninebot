@@ -1,0 +1,49 @@
+{
+  "version": "2.0.0b24",
+  "base_main_sha": "624e1293d90a0a814b483291d89848a7e023f48f",
+  "branch": "refactor/b24-entity-simplification",
+  "local_environment": {
+    "homeassistant": "2026.1.0",
+    "python": "3.13.16"
+  },
+  "pytest": {
+    "passed": 464,
+    "coverage_percent": 96.6576707494291,
+    "duration_seconds": 10.71,
+    "compatibility_matrix_rerun": false
+  },
+  "checks": {
+    "ruff": "passed",
+    "ruff_format": "passed",
+    "mypy_source_files": 43,
+    "hassfest": "pending CI",
+    "hacs": "pending CI"
+  },
+  "privacy": {
+    "new_vehicle_requests": 0,
+    "real_SMS": 0,
+    "controls": 0,
+    "production_HA_writes": 0
+  },
+  "entity_scope": {
+    "single_anonymous_pack_cycle_unsupported": "synthetic standard fixture, not live inventory",
+    "default_before": 77,
+    "default_after": 47,
+    "rated_parameters_before": 90,
+    "rated_parameters_after": 50
+  },
+  "localization": {
+    "locale_count": 21,
+    "entity_names_and_main_labels": "localized",
+    "complete_baselines": [
+      "en",
+      "zh-Hans"
+    ],
+    "other_long_help_errors": "English fallback"
+  },
+  "limitations": [
+    "Removed entities require automation updates; Recorder is not rewritten.",
+    "Parameter model_version=3 rollback to b23 requires the old parameter backup.",
+    "No real SMS/control or multi-HA matrix claimed."
+  ]
+}

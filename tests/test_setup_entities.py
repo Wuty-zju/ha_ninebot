@@ -70,7 +70,8 @@ async def test_full_setup_physical_values_and_unload(hass, entry, app_client):
     for key, value in [("charging", "off"), ("power", "on"), ("unlocked", "off")]:
         entity_id = registry.async_get_entity_id("binary_sensor", "ninebot", f"SyntheticSN_{key}")
         assert hass.states.get(entity_id).state == value
-    assert registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_bms_cycles") is None
+    cycle_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_bms_cycles")
+    assert hass.states.get(cycle_id).state == "unknown"
     raw_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_month_energy_raw")
     assert registry.async_get(raw_id).disabled_by is None
     assert registry.async_get(raw_id).unit_of_measurement == "Wh"
@@ -145,7 +146,7 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
     from custom_components.ninebot.device_tracker import NinebotTracker
     from custom_components.ninebot.image import NinebotImage
     from custom_components.ninebot.number import ModelNumber
-    from custom_components.ninebot.sensor import EstimatedSensor
+    from custom_components.ninebot.sensor import RatedEnergySensor
 
     hass.config_entries.async_update_entry(
         entry,
@@ -164,15 +165,10 @@ async def test_optional_entities_explicit_models_and_mock_controls(hass, entry, 
     await voltage.async_set_native_value(72)
     await capacity.async_set_native_value(20)
     assert voltage.native_value == 72
-    model = entry.runtime_data.models.model("SyntheticSN")
-    estimated = EstimatedSensor(entry, "SyntheticSN", "nominal", model.generation)
-    assert estimated.available
-    assert estimated.native_value == 1.44
-    assert estimated.extra_state_attributes["model_version"] == 2
-    total = EstimatedSensor(entry, "SyntheticSN", "out_total", model.generation)
-    assert total.native_value is None
-    old = EstimatedSensor(entry, "SyntheticSN", "out_total", model.generation - 1)
-    assert not old.available
+    rated = RatedEnergySensor(entry, "SyntheticSN")
+    assert rated.available
+    assert rated.native_value == 1.44
+    assert rated.extra_state_attributes["measured"] is False
     tracker = NinebotTracker(entry, "SyntheticSN")
     assert tracker.available
     assert tracker.latitude == tracker.longitude == 0
@@ -251,9 +247,9 @@ def test_multiple_batteries_need_stable_identity():
         for d in battery_descriptions(identified)
         if d.translation_key in {"bms_voltage", "batt_temp", "bms_cycles"}
     ]
-    assert len(descriptions) == 5
+    assert len(descriptions) == 6
     values = [d.value(identified) for d in descriptions]
-    assert values == [72, 25, 10, 73, 26]
+    assert values == [72, 25, 10, 73, 26, None]
     unknown = VehicleSnapshot(identified.profile, battery=batteries({"battery_list": [{}, {}]}))
     assert battery_descriptions(unknown) == []
 
@@ -355,46 +351,6 @@ async def test_unknown_binary_state_never_becomes_unlocked(hass, entry, app_clie
     assert await hass.config_entries.async_setup(entry.entry_id)
     entity = NinebotBinarySensor(entry, "SyntheticSN", DESCRIPTIONS[2])
     assert entity.is_on is None
-
-
-async def test_restart_preserves_model_totals_but_does_not_bridge_disabled_interval(
-    hass, entry, app_client
-):
-    from datetime import UTC, datetime, timedelta
-
-    hass.config_entries.async_update_entry(entry, options={"enable_estimation": True})
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    store = entry.runtime_data.models
-    model = store.model("SyntheticSN")
-    model.configure("voltage", 72)
-    model.configure("capacity", 20)
-    now = datetime.now(UTC)
-    model.sample(80, now - timedelta(seconds=120), "vehicle_soc:unidentified")
-    model.sample(79, now - timedelta(seconds=60), "vehicle_soc:unidentified")
-    generation = model.generation
-    before = model.values["out_total"]
-    assert await hass.config_entries.async_unload(entry.entry_id)
-    app_client.async_get_status.return_value = {"dump_energy": 60}
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    restored = entry.runtime_data.models.model("SyntheticSN")
-    assert restored.generation == generation
-    assert restored.values["out_total"] == before
-    assert restored.baseline_soc == 60
-    assert restored.quality == "baseline_only"
-
-
-async def test_legacy_lock_code_keeps_original_semantics(hass, entry, app_client):
-    from custom_components.ninebot.sensor import SENSORS, NinebotSensor
-
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    description = next(item for item in SENSORS if item.key == "vehicle_lock_raw")
-    entity = NinebotSensor(entry, "SyntheticSN", description)
-    assert entity.native_value == 0
-    app_client.async_get_status.return_value = {"loc": {"lock": 0}}
-    await entry.runtime_data.coordinator.async_refresh_vehicle("SyntheticSN")
-    assert entity.native_value == 1
 
 
 async def test_unmatched_device_keeps_identity_and_repairs_clear_after_confirmed_discovery(
@@ -638,6 +594,7 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
         for key in (
             "bms_voltage",
             "batt_temp",
+            "bms_cycles",
             "month_mileage",
             "last_mileage",
             "last_ride_duration",
@@ -645,9 +602,7 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
             "last_ride_end",
             "last_ride_max_speed",
             "last_ride_average_speed",
-            "cycle_raw",
             "health_score",
-            "pack_electricity_raw",
             "charging_power_raw",
             "returned_pack_count",
             "month_ride_count",

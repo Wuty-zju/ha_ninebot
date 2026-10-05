@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.0b24
+
+- Remove SOC-derived sample/daily/monthly/total energy and quality entities; retain optional rated specifications with one stable nominal-energy ID.
+- Merge range display and remove redundant protocol/battery/lock metadata entities; preserve safe debug observations and meaningful IDs.
+- Replace the model vehicle enum with an HA device selector and account/freshness validation.
+- Read legacy V/Ah only; invalid optional parameter storage does not block telemetry or overwrite its file.
+- Cache entity topology, remove model-driven polling/midnight writes, and provide 21-language entity/settings/action labels.
+- Simplified Chinese and English are complete baselines; other locales use English fallback for some long help/errors.
+- Upgrade removes reviewed obsolete identities; automations using retired entities require adjustment. Recorder data is not rewritten.
+
+## 2.0.0b19–b23
+
+- Completed current-field adaptation, month chart/coverage, model options/debug, SMS login and bounded cross-month history. See docs/v2x-实施与验收记录.md for the release-specific record.
+
 ## 2.0.0b18
 
 - Validate vehicle identity before accepting the native routing-cache update; malformed profiles restore the previous cache.

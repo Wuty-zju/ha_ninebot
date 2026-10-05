@@ -52,7 +52,7 @@ async def test_open_migration_preserves_id_parameters_but_not_counters(hass, tmp
     await store.async_load()
     model = store.model("SyntheticSN")
     assert model.nominal == 1.44
-    assert not model.values
+    assert model.dump() == {"voltage": 72, "capacity": 20}
     snapshot = dict(entry.data)
     assert await async_migrate_entry(hass, entry)
     assert dict(entry.data) == snapshot

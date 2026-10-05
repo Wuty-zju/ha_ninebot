@@ -4,10 +4,11 @@ from collections.abc import Iterable
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import Entity, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_ESTIMATION
+from .const import CONF_ESTIMATION, DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .runtime import NinebotConfigEntry
 
@@ -30,7 +31,12 @@ class ModelNumber(NinebotEntity, NumberEntity):
         return getattr(self.entry.runtime_data.models.model(self.sn), self.field)
 
     async def async_set_native_value(self, value: float) -> None:
-        self.entry.runtime_data.models.configure(self.sn, {self.field: value})
+        try:
+            self.entry.runtime_data.models.configure(self.sn, {self.field: value})
+        except ValueError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="model_storage_invalid"
+            ) from err
         self.coordinator.async_set_updated_data(dict(self.coordinator.data))
 
 

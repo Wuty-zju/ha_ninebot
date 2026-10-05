@@ -1,0 +1,654 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "data": {
+          "account": "Cuenta",
+          "password": "Contraseña",
+          "debug_mode": "Modo de depuración",
+          "enable_estimation": "Activar parámetros nominales",
+          "enable_coordinates": "Mostrar ubicación precisa",
+          "login_method": "Método de acceso"
+        },
+        "data_description": {
+          "debug_mode": "Show a bounded diagnostic view without additional requests.",
+          "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "data": {
+          "account": "Cuenta",
+          "password": "Contraseña",
+          "login_method": "Método de acceso"
+        },
+        "data_description": {
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+        }
+      },
+      "reconfigure": {
+        "title": "Ninebot",
+        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "data": {
+          "account": "Cuenta",
+          "password": "Contraseña",
+          "login_method": "Método de acceso"
+        },
+        "data_description": {
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+        }
+      },
+      "sms_account": {
+        "title": "Send login code",
+        "description": "Submitting sends one SMS; delivery is never retried automatically.",
+        "data": {
+          "account": "Cuenta"
+        }
+      },
+      "sms_code": {
+        "title": "SMS login",
+        "description": "Enter the code or explicitly resend. Local resend cooldown is 60 seconds; this flow is cleaned up after 10 minutes. These are not upstream validity guarantees.",
+        "data": {
+          "code": "Código de verificación",
+          "resend": "Reenviar"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Session or credentials are invalid",
+      "cannot_connect": "Cannot connect; try again later",
+      "upstream_error": "Ninebot service returned an error; try later",
+      "invalid_response": "Unexpected response format",
+      "unsupported_platform": "ninecli cannot start on this platform",
+      "busy": "Session is busy; try again later",
+      "storage_error": "Cannot save session; check storage and permissions",
+      "password_required": "Enter a password or choose SMS login.",
+      "invalid_account": "SMS login currently requires an 11-digit mainland China mobile number.",
+      "invalid_code": "Invalid code. Enter it again.",
+      "sms_cooldown": "Wait for the local 60-second cooldown before explicitly sending again."
+    },
+    "abort": {
+      "already_configured": "Account already configured",
+      "wrong_account": "Reauthenticate with the same account",
+      "reauth_successful": "Reauthentication successful",
+      "reconfigure_successful": "Reconfiguration successful",
+      "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
+      "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
+      "sms_expired": "The SMS login flow expired. Start again.",
+      "storage_error": "Local session storage failed. Check storage and try again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones",
+        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "data": {
+          "poll_interval": "Intervalo de actualización (segundos)",
+          "enable_estimation": "Activar parámetros nominales",
+          "enable_coordinates": "Mostrar ubicación precisa",
+          "enable_controls": "Activar controles",
+          "control_vehicles": "Vehículos autorizados",
+          "debug_mode": "Modo de depuración",
+          "configure_model": "Configurar parámetros nominales"
+        },
+        "data_description": {
+          "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+        }
+      },
+      "model_vehicle": {
+        "title": "Vehículo",
+        "data": {
+          "model_vehicle": "Vehículo"
+        }
+      },
+      "model_parameters": {
+        "title": "Configurar parámetros nominales",
+        "description": "Enter rated voltage and capacity. Changes update the same entity; these are not measured capacity or battery health.",
+        "data": {
+          "voltage": "Voltaje nominal (V)",
+          "capacity": "Capacidad nominal (Ah)"
+        }
+      }
+    },
+    "abort": {
+      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters."
+    },
+    "error": {
+      "model_unavailable": "Choose a current vehicle belonging to this integration account.",
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "Carga de batería"
+      },
+      "endurance": {
+        "name": "Autonomía restante"
+      },
+      "remaining_charge_time": {
+        "name": "Tiempo de carga restante",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw": {
+            "name": "Original text"
+          },
+          "battery_source_raw": {
+            "name": "Battery endpoint text"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unparsed": "Unparsed",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "month_mileage": {
+        "name": "Este mes: Distancia"
+      },
+      "last_mileage": {
+        "name": "Último viaje: Distancia"
+      },
+      "month_energy_raw": {
+        "name": "Este mes: Energía"
+      },
+      "last_energy_raw": {
+        "name": "Último viaje: Energía"
+      },
+      "charging_power_raw": {
+        "name": "Potencia de carga"
+      },
+      "bms_voltage": {
+        "name": "Voltaje de batería"
+      },
+      "batt_temp": {
+        "name": "Temperatura de batería"
+      },
+      "bms_cycles": {
+        "name": "Ciclos de carga"
+      },
+      "last_ride_duration": {
+        "name": "Último viaje: Duración de viajes"
+      },
+      "last_ride_start": {
+        "name": "Último viaje: Hora de inicio"
+      },
+      "last_ride_end": {
+        "name": "Último viaje: Hora de fin"
+      },
+      "last_ride_max_speed": {
+        "name": "Último viaje: Velocidad máxima"
+      },
+      "last_ride_average_speed": {
+        "name": "Último viaje: Velocidad media"
+      },
+      "control_availability": {
+        "name": "Control del vehículo",
+        "state": {
+          "authentication_required": "Authentication required",
+          "disabled": "Controls disabled",
+          "vehicle_not_allowed": "Vehicle not allowed",
+          "data_unavailable": "Fresh data unavailable",
+          "ready": "Ready to send",
+          "unverified": "Upstream capability unverified",
+          "denied": "Upstream explicitly denied",
+          "unsupported": "Command unsupported"
+        },
+        "state_attributes": {
+          "bell": {
+            "name": "Find vehicle",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Ready to send",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream explicitly denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "bucket": {
+            "name": "Seat compartment",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Ready to send",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream explicitly denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "engine_start": {
+            "name": "Remote start",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Ready to send",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream explicitly denied",
+              "unsupported": "Command unsupported"
+            }
+          },
+          "engine_stop": {
+            "name": "Remote stop",
+            "state": {
+              "authentication_required": "Authentication required",
+              "disabled": "Controls disabled",
+              "vehicle_not_allowed": "Vehicle not allowed",
+              "data_unavailable": "Fresh data unavailable",
+              "ready": "Ready to send",
+              "unverified": "Upstream capability unverified",
+              "denied": "Upstream explicitly denied",
+              "unsupported": "Command unsupported"
+            }
+          }
+        }
+      },
+      "raw_data_summary": {
+        "name": "Información del vehículo",
+        "state": {
+          "debug_disabled": "Debug disabled",
+          "ok": "OK",
+          "partial": "Partially available",
+          "stale": "Stale",
+          "error": "Error"
+        }
+      },
+      "service_remaining_days_raw": {
+        "name": "Días de servicio restantes",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "odometer_raw": {
+        "name": "Kilometraje total",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "battery_present_raw": {
+        "name": "Presencia de batería",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "seat_lock_raw": {
+        "name": "Cerradura del asiento",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "acc_raw": {
+        "name": "Estado ACC",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "service_expired_raw": {
+        "name": "Estado del servicio",
+        "state_attributes": {
+          "source": {
+            "name": "Source field"
+          },
+          "raw_type": {
+            "name": "Original type"
+          },
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified",
+              "not_reported": "Not reported"
+            }
+          }
+        }
+      },
+      "health_score": {
+        "name": "Puntuación de salud de batería",
+        "state_attributes": {
+          "interpretation": {
+            "name": "Interpretation",
+            "state": {
+              "unverified": "Unverified"
+            }
+          },
+          "cycle_supported": {
+            "name": "Cycle count supported"
+          }
+        }
+      },
+      "month_ride_count": {
+        "name": "Este mes: Viajes"
+      },
+      "month_duration": {
+        "name": "Este mes: Duración de viajes"
+      },
+      "returned_pack_count": {
+        "name": "Número de baterías"
+      },
+      "month_list_coverage": {
+        "name": "Este mes: Cobertura de viajes"
+      },
+      "history_scanned_months": {
+        "name": "Período consultado: Meses consultados"
+      },
+      "history_indexed_rides": {
+        "name": "Período consultado: Viajes obtenidos"
+      },
+      "history_mileage": {
+        "name": "Período consultado: Distancia"
+      },
+      "history_energy": {
+        "name": "Período consultado: Energía"
+      },
+      "history_duration": {
+        "name": "Período consultado: Duración de viajes"
+      },
+      "battery_rated_energy": {
+        "name": "Energía nominal de batería"
+      }
+    },
+    "binary_sensor": {
+      "charging": {
+        "name": "Cargando"
+      },
+      "power": {
+        "name": "Alimentación principal"
+      },
+      "unlocked": {
+        "name": "Desbloqueado"
+      },
+      "cycle_support": {
+        "name": "Recuento de ciclos compatible"
+      },
+      "battery_find_my_support": {
+        "name": "Búsqueda de batería compatible"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Actualizar el vehículo"
+      },
+      "bell": {
+        "name": "Buscar el vehículo"
+      },
+      "bucket": {
+        "name": "Abrir el asiento"
+      },
+      "engine_start": {
+        "name": "Arranque remoto"
+      },
+      "engine_stop": {
+        "name": "Parada remota"
+      }
+    },
+    "image": {
+      "vehicle_image": {
+        "name": "Imagen del vehículo"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Ubicación del vehículo"
+      }
+    },
+    "number": {
+      "main_battery_voltage": {
+        "name": "Voltaje nominal"
+      },
+      "battery_capacity": {
+        "name": "Capacidad nominal"
+      }
+    },
+    "event": {
+      "ride": {
+        "name": "Evento de viaje",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "completed": "Completed"
+            }
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "controls_disabled": {
+      "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
+    },
+    "control_uncertain": {
+      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+    },
+    "control_readback_failed": {
+      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+    },
+    "busy": {
+      "message": "The request queue is full; try again later."
+    },
+    "model_storage_invalid": {
+      "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+    },
+    "invalid_auth": {
+      "message": "The session is invalid; reauthenticate through Devices & services."
+    },
+    "query_unavailable": {
+      "message": "Vehicle query unavailable: ensure the integration is loaded, the session is valid and the vehicle remains in a fresh account vehicle list."
+    },
+    "query_device": {
+      "message": "Select one unambiguous Ninebot vehicle device belonging to this integration."
+    },
+    "query_coordinates": {
+      "message": "Enable coordinates in integration options before requesting a trip track."
+    },
+    "query_detail_limit": {
+      "message": "When including details, set the page size to five or less."
+    },
+    "query_track_detail": {
+      "message": "A trip track requires include_detail."
+    },
+    "query_ride": {
+      "message": "The ride does not have one verified detail mapping in this vehicle and month. Specify the correct month and use Get trips first."
+    },
+    "history_range": {
+      "message": "Choose an ordered month range of at most 360 months."
+    },
+    "history_cursor": {
+      "message": "The continuation expired, was evicted, or belongs to another vehicle/range. Start again."
+    }
+  },
+  "issues": {
+    "entity_identity_conflict": {
+      "title": "Duplicate legacy entity identities",
+      "description": "Multiple legacy entities represent the same function. Their identities and history are preserved; equivalent sensors continue to receive values. No entries were deleted. Review automations and user settings before deciding which entities to retain through the HA UI."
+    },
+    "migration_identity_invalid": {
+      "title": "Legacy account identity is invalid",
+      "description": "Migration stopped because the legacy business identity is invalid. Existing configuration and sessions were preserved. Check the backup and confirm the account identity before retrying; do not merge accounts by vehicle nickname."
+    },
+    "legacy_device_unmatched": {
+      "title": "Legacy device identity is unmatched",
+      "description": "An existing device identity is absent from the current account vehicle list. The vehicle may have been removed or use a different interface identity. Entities and history are preserved; no nickname-based merge was attempted. Check the backup and current identities before making changes through the HA UI."
+    },
+    "session_recovery_pending": {
+      "title": "Session recovery needs a restart",
+      "description": "After a failed session update, HA could not unload the runtime using the replacement session. Its files were not replaced; the transaction journal and previous session backup remain. Back up HA configuration and restart HA to recover the previous session at startup. If recovery fails, retain the backup and check storage permissions; do not manually delete session directories."
+    },
+    "model_storage_invalid": {
+      "title": "Battery parameter storage unavailable",
+      "description": "Cloud telemetry continues, but the optional battery parameter file is invalid or uses an unsupported version. The file has not been overwritten. Restore a compatible backup before changing parameters."
+    },
+    "ride_event_storage_invalid": {
+      "title": "Ride event storage unavailable",
+      "description": "The event cursor store is unreadable, incompatible or cannot be safely written. Event emission is suspended. Retain configuration/storage backups and check storage permissions and the integration version. Do not edit or delete the cursor file as a repair attempt. Other vehicle state and queries remain available."
+    }
+  },
+  "services": {
+    "get_trips": {
+      "name": "Obtener viajes",
+      "description": "Query a vehicle month with local pagination. Cloud completeness is unknown. Detail requests require a limit of five or less.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select the vehicle device, not a battery component."
+        },
+        "month": {
+          "name": "Month",
+          "description": "Business month YYYYMM, for example 202609. Future months are rejected."
+        },
+        "page": {
+          "name": "Page",
+          "description": "Page within the rows returned by ninecli, not cloud pagination."
+        },
+        "limit": {
+          "name": "Page size",
+          "description": "Maximum 100; maximum five when including details."
+        },
+        "include_detail": {
+          "name": "Include details",
+          "description": "Read at most five trip details in this call."
+        },
+        "include_track": {
+          "name": "Include track",
+          "description": "Requires details and coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        }
+      }
+    },
+    "get_trip_detail": {
+      "name": "Obtener detalles del viaje",
+      "description": "Query one trip verified in the selected vehicle and month. No history scan or vehicle control.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select the vehicle device, not a battery component."
+        },
+        "ride_id": {
+          "name": "Ride ID",
+          "description": "Use the ride_id returned by Get trips for this vehicle and month."
+        },
+        "query_month": {
+          "name": "Query month",
+          "description": "YYYYMM; defaults to the current month in Asia/Shanghai. Specify it for older trips."
+        },
+        "max_points": {
+          "name": "Point limit",
+          "description": "Maximum 2000; defaults to 500. Also bounds speed samples."
+        },
+        "include_track": {
+          "name": "Include track",
+          "description": "Requires coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        }
+      }
+    },
+    "get_history": {
+      "name": "Obtener historial",
+      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; indexing is memory-only, without automatic archiving or Recorder import.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "start_month": {
+          "name": "Start month (YYYYMM)"
+        },
+        "end_month": {
+          "name": "End month (YYYYMM)"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "max_months_per_call": {
+          "name": "Maximum months this call"
+        },
+        "limit": {
+          "name": "Maximum rides returned"
+        },
+        "include_daily_chart": {
+          "name": "Return daily mileage"
+        }
+      }
+    }
+  },
+  "selector": {
+    "login_method": {
+      "options": {
+        "password": "Acceso con contraseña",
+        "sms": "Acceso por SMS"
+      }
+    }
+  }
+}

@@ -45,7 +45,6 @@ def legacy_parameters(path: Path) -> dict[str, dict[str, float]]:
         for key, source, low, high in [
             ("voltage", "main_battery_voltage", 1, 300),
             ("capacity", "battery_capacity", 1, 500),
-            ("max_range", "battery_max_range_km", 1, 5000),
         ]:
             value = number(row.get(source), low, high)
             if value is not None:
@@ -103,11 +102,12 @@ async def async_migrate(hass: HomeAssistant, entry: ConfigEntry, manager: Sessio
         )
         store = ModelStorage(hass, entry.entry_id)
         await store.async_load()
-        for sn, values in parameters.items():
-            model = store.model(sn)
-            for key, value in values.items():
-                if getattr(model, key) is None:
-                    model.configure(key, value)
+        if store.writable:
+            for sn, values in parameters.items():
+                model = store.model(sn)
+                store.configure(
+                    sn, {key: value for key, value in values.items() if getattr(model, key) is None}
+                )
         await store.async_save()
     old_interval = entry.options.get(
         CONF_POLL_INTERVAL, entry.data.get("default_scan_interval", DEFAULT_POLL_INTERVAL)
