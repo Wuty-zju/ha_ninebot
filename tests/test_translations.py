@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 from homeassistant.helpers.translation import async_get_translations
 
+from custom_components.ninebot.const import DOMAIN
+
 DIRECTORY = Path(__file__).parents[1] / "custom_components/ninebot"
 
 
@@ -52,5 +54,5 @@ def test_translation_resources_have_matching_structure_and_placeholders():
     ],
 )
 async def test_real_ha_loads_localized_entity_resources(hass, language, expected):
-    result = await async_get_translations(hass, language, "entity", {"ninebot"})
+    result = await async_get_translations(hass, language, "entity", {DOMAIN})
     assert result["component.ninebot.entity.sensor.endurance.name"] == expected
