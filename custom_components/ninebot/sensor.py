@@ -5,6 +5,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -30,7 +31,7 @@ from homeassistant.util import dt as dt_util
 from .battery import current_battery, identified_battery
 from .capabilities import CONTROL_BUTTONS, CONTROL_STATES, control_state
 from .compat import unrecorded_attributes
-from .const import CONF_DEBUG, CONF_ESTIMATION
+from .const import BUSINESS_TIMEZONE, CONF_DEBUG, CONF_ESTIMATION, DETAIL_INTERVAL
 from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
@@ -46,6 +47,29 @@ class Description(SensorEntityDescription):
     value: Callable[[VehicleSnapshot], str | float | datetime | None]
     aliases: tuple[str, ...] = ()
     attributes: Callable[[VehicleSnapshot], dict[str, Any]] | None = None
+
+
+def today_mileage(snapshot: VehicleSnapshot, now: datetime) -> float | None:
+    """Project only a validated chart sampled on the current business day."""
+    local = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE))
+    travel = snapshot.travel
+    succeeded = snapshot.travel_freshness.succeeded_at
+    if (
+        not snapshot.present
+        or travel is None
+        or travel.summary is None
+        or travel.month != local.strftime("%Y%m")
+        or travel.summary.month != travel.month
+        or travel.summary.chart_status != "valid"
+        or not snapshot.travel_freshness.valid(now, 3 * DETAIL_INTERVAL)
+        or succeeded is None
+        or succeeded.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date() != local.date()
+    ):
+        return None
+    return next(
+        (point.distance_km for point in travel.summary.daily_mileage if point.day == local.date()),
+        None,
+    )
 
 
 def raw_attributes(snapshot: VehicleSnapshot, field: RawField) -> dict[str, Any]:
@@ -156,6 +180,18 @@ SENSORS = (
         group="status",
         value=lambda s: s.status.charge_remaining,
         attributes=remaining_charge_attributes,
+    ),
+    Description(
+        key="today_mileage",
+        group="travel",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        value=lambda s: today_mileage(s, dt_util.utcnow()),
+        attributes=lambda s: {
+            "source": "travel.detail",
+            "business_timezone": BUSINESS_TIMEZONE,
+            "query_month": s.travel.month if s.travel else None,
+        },
     ),
     Description(
         key="month_mileage",

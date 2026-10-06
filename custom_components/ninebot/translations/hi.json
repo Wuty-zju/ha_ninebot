@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "बैटरी की निर्धारित ऊर्जा"
+      },
+      "today_mileage": {
+        "name": "आज की दूरी"
       }
     },
     "binary_sensor": {

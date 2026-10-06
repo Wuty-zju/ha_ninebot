@@ -96,6 +96,9 @@
       },
       "battery_rated_energy": {
         "default": "mdi:battery-high"
+      },
+      "today_mileage": {
+        "default": "mdi:map-marker-distance"
       }
     },
     "event": {

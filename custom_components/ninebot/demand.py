@@ -49,7 +49,7 @@ def entity_context(vehicle: str, platform: str, key: str, group: str) -> Consume
     elif platform == "button" and key != "refresh":
         need = Need.CONTROL
     elif group == "travel":
-        need = Need.MONTH if key.startswith("month_") else Need.LAST_RIDE
+        need = Need.MONTH if key.startswith("month_") or key == "today_mileage" else Need.LAST_RIDE
     elif group == "status":
         need = Need.STATUS
     elif group == "battery":

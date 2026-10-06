@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "배터리 정격 에너지"
+      },
+      "today_mileage": {
+        "name": "오늘 주행 거리"
       }
     },
     "binary_sensor": {

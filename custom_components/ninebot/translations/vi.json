@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "Năng lượng định mức pin"
+      },
+      "today_mileage": {
+        "name": "Quãng đường hôm nay"
       }
     },
     "binary_sensor": {

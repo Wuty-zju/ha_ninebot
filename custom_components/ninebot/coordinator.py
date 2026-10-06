@@ -84,7 +84,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     @callback
     def _schedule_validity_check(self) -> None:
-        """Notify local expiry/month changes without waiting for a cloud poll."""
+        """Notify local expiry/day/month changes without waiting for a cloud poll."""
         if self._validity_cancel:
             self._validity_cancel()
             self._validity_cancel = None
@@ -98,7 +98,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             1,
             tzinfo=local.tzinfo,
         )
-        deadlines = [next_month]
+        next_day = local.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        deadlines = [next_month, next_day]
         fresh = [(self._list_freshness, 3 * VEHICLE_INTERVAL)]
         for snapshot in self.data.values():
             if snapshot.present:

@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "Energia nominale batteria"
+      },
+      "today_mileage": {
+        "name": "Distanza di oggi"
       }
     },
     "binary_sensor": {

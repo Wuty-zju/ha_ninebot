@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "电池额定能量"
+      },
+      "today_mileage": {
+        "name": "今日里程"
       }
     },
     "binary_sensor": {

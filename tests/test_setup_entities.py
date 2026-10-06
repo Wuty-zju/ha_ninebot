@@ -596,6 +596,7 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
             "batt_temp",
             "bms_cycles",
             "month_mileage",
+            "today_mileage",
             "last_mileage",
             "last_ride_duration",
             "last_ride_start",

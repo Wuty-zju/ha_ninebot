@@ -61,3 +61,8 @@ UNKNOWN仍未知，满足本地条件后交云端最终鉴权。bell/buck/engine
 初次迁移依据见[历史迁移矩阵](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md)。
 
 开发先读[集成说明](docs/README.md)和[产品约束](AGENTS.md)，再核对相关源码、测试及fixture来源。详细私有开发资料在本地独立工作区维护，不进入产品PR或安装包；[CHANGELOG](CHANGELOG.md)保存发布变化。小改做相关离线回归，重大功能边界再做综合兼容检查；旧绿色结果不代表本轮验收。
+
+
+“今日里程”从校验通过的月日表投影，按上海业务日期和 travel 新鲜度显示。
+必须有当日成功查询；跨午夜旧缓存、缺报或日表不一致时显示 unknown。
+实体默认启用，用户禁用选择保留，不新增历史或详情轮询。

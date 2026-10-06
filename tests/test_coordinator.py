@@ -947,3 +947,21 @@ async def test_raw_capture_propagates_metadata_without_discarding_valid_telemetr
     assert await co._capture(bad, "synthetic-one") is None
     assert co.raw.diagnostics(datetime.now(UTC))["rejection_reasons"] == {"size": 1}
     assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is record
+
+
+async def test_local_day_boundary_notifies_without_cloud_requests(coordinator):
+    co = coordinator
+    before = datetime(2026, 9, 25, 15, 59, 59, tzinfo=UTC)
+    with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=before):
+        await co._async_update_data()
+        with patch("custom_components.ninebot.coordinator.async_track_point_in_utc_time") as timer:
+            co._schedule_validity_check()
+            notify, deadline = timer.call_args.args[1:]
+            assert deadline == before + timedelta(seconds=1)
+            co.client.reset_mock()
+            with patch(
+                "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+            ):
+                notify(deadline)
+            co.client.async_get_travel.assert_not_awaited()
+            co.client.async_get_status.assert_not_awaited()
