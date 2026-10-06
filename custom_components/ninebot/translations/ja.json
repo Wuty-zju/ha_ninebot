@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "バッテリー定格電力量"
+      },
+      "today_mileage": {
+        "name": "今日の走行距離"
       }
     },
     "binary_sensor": {

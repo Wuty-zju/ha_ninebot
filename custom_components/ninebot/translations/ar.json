@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "طاقة البطارية الاسمية"
+      },
+      "today_mileage": {
+        "name": "المسافة اليوم"
       }
     },
     "binary_sensor": {

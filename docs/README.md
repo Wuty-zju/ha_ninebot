@@ -44,3 +44,11 @@ conflicting/missing IDs, zero distance and nonfinite calculations produce unknow
 intensity. Cursor continuation keeps indexed totals across pages; the response
 page is only a slice. Coverage remains explicit: scanning every month does not
 prove every ride was obtained. No extra requests or per-ride entities are added.
+
+
+Today distance is a current-state projection of the validated monthly daily chart.
+It uses Asia/Shanghai, and requires a successful travel sample on that business
+day within the travel freshness limit. Yesterday's cached chart becomes unknown
+at local midnight; a prefilled zero is not treated as a new measurement. Missing
+or inconsistent charts stay unknown. The sensor is visible by default and uses
+km/distance; no total-increasing statistics or extra history/detail polling.

@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "Номінальна енергія батареї"
+      },
+      "today_mileage": {
+        "name": "Відстань за сьогодні"
       }
     },
     "binary_sensor": {

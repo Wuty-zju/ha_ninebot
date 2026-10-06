@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b28
+
+- Add a visible-by-default Today distance sensor from the validated monthly daily chart. It requires the current Asia/Shanghai business date and a fresh successful travel sample from that day; missing, inconsistent or yesterday-only data remains unknown.
+- Notify local midnight changes without a cloud call. Today distance requests only the month group, not last-ride fallback/detail/history polling.
+- Add a native distance unit/class, icon and names in all 21 shipped languages. Existing entity IDs and user-disabled choices remain unchanged; no cumulative statistics class is assumed.
+
+
 ## 2.0.0b27
 
 - Add scope-matched Wh/km to ride, month and cross-month history Action responses. Server summary and indexed/returned ride statistics are separate, with explicit basis and coverage.

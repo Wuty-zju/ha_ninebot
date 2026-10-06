@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "Batterienennenergie"
+      },
+      "today_mileage": {
+        "name": "Heutige Strecke"
       }
     },
     "binary_sensor": {

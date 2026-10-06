@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "พลังงานพิกัดแบตเตอรี่"
+      },
+      "today_mileage": {
+        "name": "ระยะทางวันนี้"
       }
     },
     "binary_sensor": {

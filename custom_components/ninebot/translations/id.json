@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "Energi nominal baterai"
+      },
+      "today_mileage": {
+        "name": "Jarak hari ini"
       }
     },
     "binary_sensor": {

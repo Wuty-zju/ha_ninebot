@@ -420,6 +420,9 @@
       },
       "battery_rated_energy": {
         "name": "Pil nominal enerjisi"
+      },
+      "today_mileage": {
+        "name": "Bugünkü mesafe"
       }
     },
     "binary_sensor": {
