@@ -8,7 +8,7 @@ import pytest
 from custom_components.ninebot import adapters
 from custom_components.ninebot.exceptions import NinebotError
 from custom_components.ninebot.raw import Endpoint
-from custom_components.ninebot.ride_models import Ride, SpeedSample
+from custom_components.ninebot.ride_models import FieldState, Ride, SpeedSample
 from custom_components.ninebot.travel import (
     latest_ride,
     merge_detail,
@@ -178,3 +178,103 @@ def test_empty_and_start_time_only_ordering():
     one = parse_ride({"start_time": 1790000000, "travel_id": "one"}, "202609")
     two = parse_ride({"start_time": 1790000001, "travel_id": "two"}, "202609")
     assert latest_ride((two, one)).ride_id == "two"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ({}, FieldState.MISSING),
+        ({"ec": None}, FieldState.NULL),
+        ({"ec": False}, FieldState.INVALID),
+        ({"ec": -1}, FieldState.INVALID),
+        ({"ec": 0}, FieldState.VALID),
+    ],
+)
+def test_explicit_field_states_and_partial_metric_provenance(raw, expected):
+    summary = parse_ride({"travel_id": "a", "ec": 10, "speed": 20, "avg_speed": 3}, "202609")
+    detail = parse_ride(raw, "202609", source=Endpoint.TRIP_DETAIL)
+    assert dict(detail.field_states)["energy_raw"] is expected
+    merged = merge_detail(summary, detail)
+    assert dict(merged.detail_field_states)["energy_raw"] is expected
+    assert merged.energy_raw == (0 if expected is FieldState.VALID else 10)
+    assert merged.server_max_speed_m_s == pytest.approx(20 / 3.6)
+    assert merged.server_average_speed_raw == 3
+    assert dict(merged.field_sources)["energy_raw"] == (
+        "trip_detail" if expected is FieldState.VALID else "travel"
+    )
+    assert dict(merged.field_provenance)["energy_raw"] == "ec:Wh:maintainer-confirmed"
+    empty_summary = parse_ride({}, "202609")
+    assert dict(merge_detail(empty_summary, detail).field_states)["energy_raw"] is expected
+
+
+@pytest.mark.parametrize("raw", [{}, {"trail": None}, {"trail": []}, {"trail": "wrong"}])
+def test_missing_null_invalid_trail_does_not_erase_previous_track(raw):
+    previous = parse_ride({"trail": "120,30,1,5"}, "202609", source=Endpoint.TRIP_DETAIL)
+    detail = parse_ride(raw, "202609", source=Endpoint.TRIP_DETAIL)
+    merged = merge_detail(previous, detail)
+    assert merged.track_points == previous.track_points
+    assert merged.speed_samples == previous.speed_samples
+    assert merged.total_track_points == 1
+    assert dict(merged.field_provenance)["track_points"].startswith("trail:")
+    if not raw or raw.get("trail") is None:
+        assert detail.total_track_points is None
+
+
+def test_verified_empty_track_clears_explicitly_and_partial_track_stays_marked():
+    previous = parse_ride({"trail": "120,30,1,5"}, "202609", source=Endpoint.TRIP_DETAIL)
+    cleared = merge_detail(
+        previous, parse_ride({"trail": ""}, "202609", source=Endpoint.TRIP_DETAIL)
+    )
+    assert cleared.track_points == cleared.speed_samples == ()
+    assert cleared.total_track_points == 0 and not cleared.track_truncated
+    assert dict(cleared.field_states)["track_points"] is FieldState.EMPTY
+    partial = merge_detail(
+        previous, parse_ride({"trail": "bad;121,31,2,6"}, "202609", source=Endpoint.TRIP_DETAIL)
+    )
+    assert partial.track_points[0].sequence == 1
+    assert partial.total_track_points == 2 and "invalid_track_points" in partial.issues
+
+
+def test_detail_scope_id_conflict_and_combined_timestamps_cannot_cross():
+    summary = parse_ride({"travel_id": "a", "end_time": 1790000000}, "202609")
+    for detail in (
+        replace(summary, query_month="202608"),
+        replace(summary, detail_id="other"),
+        parse_ride({"travel_id": "a", "id": "other"}, "202609"),
+        parse_ride({"start_time": 1790000001}, "202609"),
+    ):
+        with pytest.raises(NinebotError):
+            merge_detail(summary, detail)
+
+
+def test_partial_time_merge_revalidates_average_and_removes_stale_provenance():
+    summary = parse_ride(
+        {"start_time": 1790000000, "end_time": 1790000010, "duration": 20, "mileages": 1}, "202609"
+    )
+    corrected = merge_detail(
+        summary, parse_ride({"duration": 10}, "202609", source=Endpoint.TRIP_DETAIL)
+    )
+    assert "duration_time_difference" not in corrected.issues
+    assert dict(corrected.field_sources)["duration_s"] == "trip_detail"
+    assert dict(corrected.field_sources)["distance_m"] == "travel"
+    manual = replace(
+        corrected, duration_s=30, field_provenance=(), field_sources=(), field_states=()
+    )
+    result = merge_detail(corrected, manual)
+    assert "duration_s" not in dict(result.field_provenance)
+    assert "duration_time_difference" in result.issues
+    missing = parse_ride({}, "202609")
+    assert dict(merge_detail(missing, missing).field_states)["track_points"] is FieldState.MISSING
+
+
+def test_presence_and_provenance_are_charged_to_history_budget():
+    from custom_components.ninebot.history import HISTORY_BUDGET, HistoryState, HistoryStore
+
+    ride = parse_ride({"travel_id": "a", "mileages": 1, "duration": 10}, "202609")
+    state = HistoryState("entry", "vehicle", "202609", "202609", None, pending=(ride,) * 5000)
+    bare = replace(
+        state,
+        pending=(replace(ride, field_states=(), field_sources=(), field_provenance=()),) * 5000,
+    )
+    assert bare.retained_cost < HISTORY_BUDGET < state.retained_cost
+    assert HistoryStore().put(state, datetime(2026, 9, 26, tzinfo=UTC)) is None

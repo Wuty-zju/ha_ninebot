@@ -25,3 +25,13 @@ Controls require explicit enablement, allowlist and fresh ownership/status. Know
 Product constraints are in [AGENTS](../AGENTS.md). Use targeted offline tests for small changes and the pinned compatibility suite at major boundaries. Record what ran and what was skipped; old mock/CI results do not prove current cloud or vehicle behavior. Runtime files must remain inside custom_components/ninebot. Private captures, developer plans and workspace tools must not be added to a release or integration runtime.
 
 Raw diagnostics include measured backend metadata, fixed rejection reasons and value-free schema transition counts. Unknown key names/values and anonymous fingerprints are not exported. Cache references are memory-only and become invalid when records are replaced, expired, evicted or unloaded; this does not change entities or add cloud requests.
+
+
+Ride detail queries preserve list values when the detail omits or invalidates them.
+Action schema 2 retains its existing keys and additionally exposes `field_states`,
+`detail_field_states` and `field_sources` on the ride, plus `detail_context` on
+`get_trip_detail`. The first describes the effective model; the second describes
+what the detail actually reported. Missing or null is not zero, and an explicit
+empty verified trail differs from an absent trail. Raw references remain internal.
+Maximum speed is the server-reported maximum; overall average is distance/duration,
+not a mean of samples. Unverified sample units and coordinate systems stay unknown.

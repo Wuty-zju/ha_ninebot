@@ -49,7 +49,17 @@ class HistoryState:
         # a month response), identity signatures, dictionaries and small ledgers.
         return (
             4096
-            + len(self.pending) * 2048
+            + sum(
+                2048
+                + 128
+                * (
+                    len(ride.field_states)
+                    + len(ride.field_sources)
+                    + len(ride.field_provenance)
+                    + len(ride.detail_field_states)
+                )
+                for ride in self.pending
+            )
             + sum(len(key.encode()) + len(value) + 256 for key, value in self.seen.items())
             + len(self.scanned_months) * 512
         )

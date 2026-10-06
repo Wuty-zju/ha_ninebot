@@ -15,7 +15,7 @@ from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotError
 from .parsing import number, payload, previous_month, text
 from .raw import Endpoint
-from .ride_models import Ride, RideTrackPoint, SpeedSample
+from .ride_models import FieldState, Ride, RideTrackPoint, SpeedSample
 
 MAX_RIDES = 1000
 MAX_TRACK_POINTS = 2000
@@ -82,6 +82,18 @@ def parse_track(
     return tuple(result), len(rows), ("invalid_track_points",) if invalid else ()
 
 
+def field_state(item: dict[str, Any], keys: tuple[str, ...], value: object) -> FieldState:
+    """Classify only verified protocol paths, without retaining arbitrary keys."""
+    if value is not None:
+        return FieldState.VALID
+    present = [item[key] for key in keys if key in item]
+    if not present:
+        return FieldState.MISSING
+    if all(value is None for value in present):
+        return FieldState.NULL
+    return FieldState.INVALID
+
+
 def parse_ride(
     raw: object, month: str, *, source: Endpoint = Endpoint.TRAVEL, max_points: int = 500
 ) -> Ride:
@@ -125,6 +137,8 @@ def parse_ride(
             end = value
     if start and end and end < start:
         start = end = None
+        provenance.pop("started_at", None)
+        provenance.pop("ended_at", None)
         issues.append("reversed_timestamps")
     distance = number(item.get("mileages"), 0, 100000)
     duration = number(item.get("duration"), 0, 2678400)
@@ -148,6 +162,46 @@ def parse_ride(
         for point in track
         if point.speed_raw is not None
     )
+    energy = number(item.get("ec"), 0)
+    used = number(item.get("used_electricity"), 0)
+    average = number(item.get("avg_speed"), 0)
+    for name, metric_value, path in (
+        ("energy_raw", energy, "ec:Wh:maintainer-confirmed"),
+        ("used_electricity_raw", used, "used_electricity:unit-unknown"),
+        ("speed_raw", maximum, "speed:max-km/h:ninecli-display-contract"),
+        ("server_average_speed_raw", average, "avg_speed:semantics-unknown"),
+    ):
+        if metric_value is not None:
+            provenance[name] = path
+    states = {
+        name: field_state(item, paths, value)
+        for name, paths, value in (
+            ("started_at", ("start_time", "start_time_format"), start),
+            ("ended_at", ("end_time", "end_time_format"), end),
+            ("distance_m", ("mileages",), distance),
+            ("duration_s", ("duration",), duration),
+            ("energy_raw", ("ec",), energy),
+            ("used_electricity_raw", ("used_electricity",), used),
+            ("speed_raw", ("speed",), maximum),
+            ("server_max_speed_m_s", ("speed",), maximum),
+            ("server_average_speed_raw", ("avg_speed",), average),
+        )
+    }
+    # Absent/null trail is unknown, not a proven empty route. Malformed points
+    # can still yield a bounded partial track; issues carry its incompleteness.
+    trail_state = field_state(item, ("trail",), None)
+    if source is Endpoint.TRIP_DETAIL and "trail" in item and item["trail"] is not None:
+        if item["trail"] == "":
+            trail_state = FieldState.EMPTY
+        elif track:
+            trail_state = FieldState.VALID
+        else:
+            trail_state = FieldState.INVALID
+    states["track_points"] = trail_state
+    if trail_state in (FieldState.VALID, FieldState.EMPTY):
+        provenance["track_points"] = "trail:lon-lat-speedRaw-deltaRaw:four-column-string"
+    if trail_state in (FieldState.MISSING, FieldState.NULL):
+        total = None
     return Ride(
         month,
         source,
@@ -157,17 +211,19 @@ def parse_ride(
         end,
         distance * 1000 if distance is not None else None,
         duration,
-        number(item.get("ec"), 0),
-        number(item.get("used_electricity"), 0),
+        energy,
+        used,
         maximum,
         maximum / 3.6 if maximum is not None else None,
-        number(item.get("avg_speed"), 0),
+        average,
         samples,
         track,
         total,
         total is not None and total > max_points,
         tuple(sorted(set(issues))),
         tuple(sorted(provenance.items())),
+        field_states=tuple(sorted(states.items())),
+        field_sources=tuple((name, source.value) for name in sorted(provenance)),
     )
 
 
@@ -196,8 +252,14 @@ def latest_ride(rides: tuple[Ride, ...]) -> Ride | None:
 
 
 def merge_detail(summary: Ride, detail: Ride) -> Ride:
-    """Detail supplements list; both provenance and corrections stay visible."""
+    """Supplement known values; missing/null/invalid detail cannot erase them."""
+    if summary.query_month != detail.query_month:
+        raise NinebotError(ErrorKind.PROTOCOL)
     if summary.ride_id and detail.ride_id and summary.ride_id != detail.ride_id:
+        raise NinebotError(ErrorKind.PROTOCOL)
+    if summary.detail_id and detail.detail_id and summary.detail_id != detail.detail_id:
+        raise NinebotError(ErrorKind.PROTOCOL)
+    if {"conflicting_ride_ids", "conflicting_detail_ids"} & set(detail.issues):
         raise NinebotError(ErrorKind.PROTOCOL)
     fields = (
         "started_at",
@@ -208,26 +270,59 @@ def merge_detail(summary: Ride, detail: Ride) -> Ride:
         "used_electricity_raw",
         "speed_raw",
         "server_max_speed_m_s",
+        "server_average_speed_raw",
     )
     updates: dict[str, Any] = {}
     issues = set(summary.issues) | set(detail.issues)
+    provenance = dict(summary.field_provenance)
+    sources = dict(summary.field_sources)
+    states = dict(summary.field_states)
+    detail_states = dict(detail.field_states)
+    detail_provenance = dict(detail.field_provenance)
+
+    def accept(field: str) -> None:
+        if field in detail_provenance:
+            provenance[field] = detail_provenance[field]
+        else:
+            provenance.pop(field, None)
+        sources[field] = detail.source.value
+        states[field] = detail_states.get(field, FieldState.VALID)
+
     for field in fields:
         before, after = getattr(summary, field), getattr(detail, field)
         if after is not None:
             updates[field] = after
+            accept(field)
             if before is not None and before != after:
                 issues.add(f"detail_corrected_{field}")
-    return replace(
+        elif before is None:
+            states[field] = detail_states.get(field, FieldState.MISSING)
+    track_state = detail_states.get("track_points")
+    # Explicit empty is valid only for a parsed, verified trail string. Manual
+    # models retain legacy nonempty supplementation, never implicit clearing.
+    if detail.track_points or track_state is FieldState.EMPTY:
+        for field in ("track_points", "speed_samples", "total_track_points", "track_truncated"):
+            updates[field] = getattr(detail, field)
+        accept("track_points")
+    elif not summary.track_points:
+        states["track_points"] = track_state or FieldState.MISSING
+    merged = replace(
         summary,
         source=Endpoint.TRIP_DETAIL,
         **updates,
-        server_average_speed_raw=detail.server_average_speed_raw,
-        speed_samples=detail.speed_samples,
-        track_points=detail.track_points,
-        total_track_points=detail.total_track_points,
-        track_truncated=detail.track_truncated,
         issues=tuple(sorted(issues)),
-        field_provenance=tuple(
-            sorted({**dict(summary.field_provenance), **dict(detail.field_provenance)}.items())
-        ),
+        field_provenance=tuple(sorted(provenance.items())),
+        field_states=tuple(sorted(states.items())),
+        field_sources=tuple(sorted(sources.items())),
+        detail_field_states=detail.field_states,
     )
+    if merged.started_at and merged.ended_at:
+        if merged.ended_at < merged.started_at:
+            raise NinebotError(ErrorKind.PROTOCOL)
+        issues.discard("duration_time_difference")
+        if (
+            merged.duration_s is not None
+            and abs((merged.ended_at - merged.started_at).total_seconds() - merged.duration_s) > 1
+        ):
+            issues.add("duration_time_difference")
+    return replace(merged, issues=tuple(sorted(issues)))

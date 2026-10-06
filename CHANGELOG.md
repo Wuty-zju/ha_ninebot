@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b26
+
+- Preserve known ride metrics, averages and tracks when a partial detail response omits, nulls or invalidates fields. Verified empty trail is distinguished from missing data.
+- Add a scoped RideDetail domain result and per-field presence/source metadata to existing history Actions without changing schema 2 keys or entity identity.
+- Reject cross-month/ID detail merges and revalidate combined timestamps/duration. Maximum speed remains separate from distance/duration average; unknown track units and coordinates remain unchanged.
+
+
 ## 2.0.0b25
 
 - Preserve the measured installed ninecli version and trusted endpoint metadata through backend results into raw records; unknown metadata stays unknown.
