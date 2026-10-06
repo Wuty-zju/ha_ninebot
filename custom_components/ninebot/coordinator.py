@@ -6,6 +6,7 @@ import random
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -333,14 +334,19 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         """Raw policy failure cannot discard otherwise valid normalized data."""
         try:
             record = await self.hass.async_add_executor_job(
-                build_record,
-                result.endpoint,
-                result.payload,
-                result.received_at,
-                result.query_month,
+                partial(
+                    build_record,
+                    result.endpoint,
+                    result.payload,
+                    result.received_at,
+                    result.query_month,
+                    backend_version=result.backend_version,
+                    endpoint_version=result.endpoint_version,
+                    schema_salt=self.raw.schema_salt,
+                ),
             )
-        except RawLimitError:
-            self.raw.rejected += 1
+        except RawLimitError as err:
+            self.raw.reject(err.reason)
             return None
         if not self._stopping:
             scope = (result.query_month or "") if result.endpoint is Endpoint.TRAVEL else detail_id

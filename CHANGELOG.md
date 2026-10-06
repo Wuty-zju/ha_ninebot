@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0b25
+
+- Preserve the measured installed ninecli version and trusted endpoint metadata through backend results into raw records; unknown metadata stays unknown.
+- Add bounded, value-free schema-change diagnostics, entry-local anonymous unknown-field structure comparisons, and fixed raw rejection reasons.
+- Add opaque raw references that expire on replacement, eviction, detail TTL, ownership removal and unload; keep existing byte/count budgets and entity identities.
+- Separate local development material from the product repository; retain standalone public test inputs and user-facing documentation.
+- Validation: 83 targeted offline tests, Ruff/format and mypy. No vehicle/cloud/control/production tests; full compatibility testing is deferred to the P1–P2 foundation milestone.
+
 ## 2.0.0b24
 
 - Remove SOC-derived sample/daily/monthly/total energy and quality entities; retain optional rated specifications with one stable nominal-energy ID.

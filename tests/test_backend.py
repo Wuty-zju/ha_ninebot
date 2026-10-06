@@ -1,5 +1,5 @@
 from datetime import UTC
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -47,3 +47,16 @@ async def test_trip_detail_route_encodes_opaque_parameters(tmp_path):
     client._request.assert_awaited_once_with(
         "GET", "/vehicles/vehicle%2Fother%3F/travel/opaque%2Fid%3F%23"
     )
+
+
+async def test_backend_measures_installed_version_once_and_unknown_stays_unknown():
+    from importlib.metadata import PackageNotFoundError
+
+    client = AsyncMock(spec=NinecliClient)
+    with patch("custom_components.ninebot.backend.version", return_value="0.1.8") as measure:
+        backend = NinecliBackend(client)
+        assert (await backend.async_status("vehicle")).backend_version == "0.1.8"
+        assert (await backend.async_battery("vehicle")).backend_version == "0.1.8"
+        measure.assert_called_once_with("ninecli")
+    with patch("custom_components.ninebot.backend.version", side_effect=PackageNotFoundError):
+        assert (await NinecliBackend(client).async_status("vehicle")).backend_version is None

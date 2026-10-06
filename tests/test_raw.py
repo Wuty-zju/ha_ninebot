@@ -194,3 +194,86 @@ def test_vehicle_debug_summary_is_scoped_value_free_and_expires_details():
     assert store.vehicle_summary("vehicle-a", NOW + timedelta(seconds=5))["record_count"] == 1
     store.discard_vehicle("vehicle-a")
     assert store.vehicle_summary("vehicle-a", NOW)["record_count"] == 0
+
+
+def test_metadata_validation_and_anonymous_drift_never_export_unknown_keys_or_values():
+    store = RawStore()
+
+    def record(payload):
+        return build_record(
+            Endpoint.STATUS,
+            payload,
+            NOW,
+            schema_salt=store.schema_salt,
+            backend_version="0.1.8",
+            endpoint_version="v5",
+        )
+
+    first = record({"dump_energy": 80, "private-user-name": {"unknown": 1}})
+    second = record({"dump_energy": 79, "private-user-name": {"unknown": 2}})
+    third = record({"dump_energy": "79", "another-private-user": {"unknown": 2}})
+    store.put(first, "secret-vehicle")
+    store.put(second, "secret-vehicle")
+    drift = store.diagnostics(NOW)["records"][0]["schema_drift"]
+    assert drift["change_count"] == 0
+    store.put(third, "secret-vehicle")
+    drift = store.diagnostics(NOW)["records"][0]["schema_drift"]
+    assert drift["change_count"] == drift["approved_types_changed"] == 1
+    assert drift["unknown_structure_changed"] is True
+    assert first.backend_version == "0.1.8" and first.endpoint_version == "v5"
+    diagnostics = json.dumps(store.diagnostics(NOW))
+    for forbidden in (
+        "private-user-name",
+        "another-private-user",
+        "secret-vehicle",
+        first.unknown_schema_fingerprint,
+        third.unknown_schema_fingerprint,
+    ):
+        assert forbidden not in diagnostics
+    invalid = build_record(
+        Endpoint.STATUS,
+        {},
+        NOW,
+        backend_version="personal-version",
+        endpoint_version="https://private/token",
+    )
+    assert invalid.backend_version is invalid.endpoint_version is None
+    other = RawStore()
+    assert (
+        build_record(
+            Endpoint.STATUS, first.payload(), NOW, schema_salt=other.schema_salt
+        ).unknown_schema_fingerprint
+        != first.unknown_schema_fingerprint
+    )
+    large = record({f"unknown-{index}": 1 for index in range(257)})
+    assert not large.unknown_schema_complete and large.unknown_schema_fingerprint is None
+    store.put(large, "secret-vehicle")
+    assert store.diagnostics(NOW)["records"][0]["schema_drift"]["unknown_structure_changed"] is None
+
+
+def test_opaque_references_expire_on_replacement_eviction_clear_or_wrong_entry():
+    store = RawStore(max_records=2, detail_ttl=5)
+    for month in ("202609", "202610"):
+        detail = build_record(Endpoint.TRIP_DETAIL, {"duration": 1}, NOW, month)
+        store.put(detail, "a", "ride")
+    september = store.reference(Endpoint.TRIP_DETAIL, "a", "ride", now=NOW, query_month="202609")
+    october = store.reference(Endpoint.TRIP_DETAIL, "a", "ride", now=NOW, query_month="202610")
+    assert store.resolve(september, now=NOW).query_month == "202609"
+    assert store.resolve(october, now=NOW).query_month == "202610"
+    assert RawStore().resolve(september, now=NOW) is None
+    assert "ride" not in repr(september)
+    store.put(build_record(Endpoint.STATUS, {"dump_energy": 10}, NOW), "b")
+    assert store.resolve(september, now=NOW) is None
+    assert store.resolve(october, now=NOW + timedelta(seconds=5)) is None
+    status_ref = store.reference(Endpoint.STATUS, "b", now=NOW)
+    store.put(build_record(Endpoint.STATUS, {"dump_energy": 11}, NOW), "b")
+    assert store.resolve(status_ref, now=NOW) is None
+    status_ref = store.reference(Endpoint.STATUS, "b", now=NOW)
+    store.discard_vehicle("b")
+    assert store.resolve(status_ref, now=NOW) is None
+    store.put(build_record(Endpoint.STATUS, {}, NOW), "c")
+    ref = store.reference(Endpoint.STATUS, "c", now=NOW)
+    store.clear()
+    assert store.resolve(ref, now=NOW) is None
+    assert store.reference(Endpoint.STATUS, "absent", now=NOW) is None
+    assert store.diagnostics(NOW)["records"] == []
