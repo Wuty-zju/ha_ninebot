@@ -77,6 +77,9 @@ async def test_bounded_scan_drains_pages_truthful_totals_and_visible_entities(
     assert response["coverage"]["indexed_unique_count"] == 6
     assert response["scanned_months_totals"]["mileage_km"] == 200
     assert not response["coverage"]["range_scan_complete"]
+    assert response["statistics"]["server_scanned_months"]["energy_intensity_wh_per_km"] == 10
+    assert response["statistics"]["indexed_rides"]["energy_intensity_wh_per_km"] == 20
+    assert response["statistics"]["indexed_rides"]["energy_wh"] == 60
     seen = {ride["ride_id"] for ride in response["rides"]}
     calls = app_client.async_get_travel.await_count
     response = await call(
@@ -101,6 +104,12 @@ async def test_bounded_scan_drains_pages_truthful_totals_and_visible_entities(
         "duration_s": 2000,
         "basis": "server_month_summary",
     }
+    assert response["statistics"]["server_scanned_months"]["distance_km"] == 500
+    assert response["statistics"]["indexed_rides"]["distance_km"] == 7.5
+    assert response["statistics"]["indexed_rides"]["energy_wh"] == 150
+    assert response["statistics"]["indexed_rides"]["energy_intensity_wh_per_km"] == 20
+    assert response["statistics"]["indexed_rides"]["coverage_fraction"] == 15 / 20
+    assert response["statistics"]["indexed_rides"]["all_rides_complete"] is False
     assert app_client.async_get_travel.await_count == 5
     assert co.data["SyntheticSN"] is current
     assert len(seen) == 15

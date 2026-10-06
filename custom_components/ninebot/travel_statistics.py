@@ -16,14 +16,7 @@ def energy_statistics(
     distance_km = number(distance_km, 0)
     energy_wh = number(energy_wh, 0)
     intensity = None
-    if (
-        distance_km is not None
-        and energy_wh is not None
-        and math.isfinite(distance_km)
-        and math.isfinite(energy_wh)
-        and distance_km > 0
-        and energy_wh >= 0
-    ):
+    if distance_km is not None and energy_wh is not None and distance_km > 0:
         value = energy_wh / distance_km
         if math.isfinite(value):
             intensity = value
