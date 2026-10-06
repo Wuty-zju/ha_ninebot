@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b27
+
+- Add scope-matched Wh/km to ride, month and cross-month history Action responses. Server summary and indexed/returned ride statistics are separate, with explicit basis and coverage.
+- Deduplicate identical returned ride IDs; conflicting or missing identity prevents misleading subset totals. Missing energy/distance and zero-distance intensity remain unknown.
+- Preserve accumulated indexed statistics across history cursors; calculate weighted aggregate intensity from sums rather than averaging ride ratios. No new entities or cloud requests.
+
+
 ## 2.0.0b26
 
 - Preserve known ride metrics, averages and tracks when a partial detail response omits, nulls or invalidates fields. Verified empty trail is distinguished from missing data.

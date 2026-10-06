@@ -35,3 +35,12 @@ what the detail actually reported. Missing or null is not zero, and an explicit
 empty verified trail differs from an absent trail. Raw references remain internal.
 Maximum speed is the server-reported maximum; overall average is distance/duration,
 not a mean of samples. Unverified sample units and coordinate systems stay unknown.
+
+
+History Actions also return `statistics`: server month/scanned-month aggregates
+and returned/indexed unique ride subsets use separate `basis` values. Wh/km is
+sum(Wh)/sum(km) for the same dataset, not the mean of ride ratios. Missing values,
+conflicting/missing IDs, zero distance and nonfinite calculations produce unknown
+intensity. Cursor continuation keeps indexed totals across pages; the response
+page is only a slice. Coverage remains explicit: scanning every month does not
+prove every ride was obtained. No extra requests or per-ride entities are added.

@@ -1,7 +1,5 @@
 """Explicit cross-month queries with bounded continuations and truthful scope."""
 
-import hashlib
-import json
 import math
 import re
 from dataclasses import replace
@@ -28,6 +26,7 @@ from .services import (
     ride_response,
     validation_error,
 )
+from .travel_statistics import energy_statistics, ride_signature
 
 
 def cursor_value(value: object) -> str:
@@ -57,24 +56,17 @@ def merge_month(state: HistoryState, travel: TravelMonth) -> HistoryState:
     pending = list(state.pending)
     warnings = set(state.warnings)
     stopped = None
+    indexed_totals = state.indexed_totals
+    identity_complete = state.indexed_identity_complete
     for ride in travel.rides:
         if ride.ride_id is None:
+            identity_complete = False
             warnings.add("ride_identity_incomplete")
             continue
-        fingerprint = hashlib.sha256(
-            json.dumps(
-                [
-                    iso(ride.started_at),
-                    iso(ride.ended_at),
-                    ride.distance_m,
-                    ride.duration_s,
-                    ride.energy_raw,
-                    ride.server_max_speed_m_s,
-                ]
-            ).encode()
-        ).hexdigest()
+        fingerprint = ride_signature(ride)
         if ride.ride_id in seen:
             if seen[ride.ride_id] != fingerprint:
+                identity_complete = False
                 warnings.add("conflicting_ride_id")
             continue
         if len(seen) >= MAX_HISTORY_IDS:
@@ -83,6 +75,11 @@ def merge_month(state: HistoryState, travel: TravelMonth) -> HistoryState:
             break
         seen[ride.ride_id] = fingerprint
         pending.append(ride)
+        distance_sum, energy_sum = (
+            a + b if a is not None and b is not None and math.isfinite(a + b) else None
+            for a, b in zip(indexed_totals, (ride.distance_m, ride.energy_raw), strict=True)
+        )
+        indexed_totals = distance_sum, energy_sum
     incoming = (summary.mileage_km, summary.energy_wh, summary.ride_count, summary.duration_s)
     totals = tuple(
         a + b if a is not None and b is not None and math.isfinite(a + b) else None
@@ -106,6 +103,8 @@ def merge_month(state: HistoryState, travel: TravelMonth) -> HistoryState:
         pending=tuple(pending),
         warnings=tuple(sorted(warnings)),
         stopped_reason=stopped,
+        indexed_totals=indexed_totals,
+        indexed_identity_complete=identity_complete,
     )
 
 
@@ -203,6 +202,42 @@ async def async_history_query(hass: HomeAssistant, call: ServiceCall) -> dict[st
             "reported_ride_count": state.totals[2] if state.scanned_months else None,
             "duration_s": state.totals[3] if state.scanned_months else None,
             "basis": "server_month_summary",
+        },
+        "statistics": {
+            "server_scanned_months": {
+                **energy_statistics(
+                    state.totals[0] if state.scanned_months else None,
+                    state.totals[1] if state.scanned_months else None,
+                    basis="server_scanned_month_summaries",
+                ),
+                "scanned_month_count": len(state.scanned_months),
+                "range_scan_complete": state.scan_complete,
+            },
+            "indexed_rides": {
+                **energy_statistics(
+                    state.indexed_totals[0] / 1000
+                    if state.scanned_months
+                    and state.indexed_identity_complete
+                    and state.indexed_totals[0] is not None
+                    else None,
+                    state.indexed_totals[1]
+                    if state.scanned_months and state.indexed_identity_complete
+                    else None,
+                    basis="indexed_unique_rides",
+                ),
+                "unique_ride_count": len(state.seen),
+                "identity_complete": state.indexed_identity_complete,
+                "all_rides_complete": state.rides_complete,
+                "reported_ride_count": state.totals[2] if state.scanned_months else None,
+                "coverage_fraction": (
+                    len(state.seen) / state.totals[2]
+                    if state.indexed_identity_complete
+                    and state.totals[2] is not None
+                    and state.totals[2] > 0
+                    and len(state.seen) <= state.totals[2]
+                    else None
+                ),
+            },
         },
         "warnings": list(state.warnings),
         "stopped_reason": state.stopped_reason,

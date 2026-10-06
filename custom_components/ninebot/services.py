@@ -23,6 +23,7 @@ from .raw import Endpoint, RawRecord
 from .ride_models import Ride, RideDetail
 from .runtime import NinebotConfigEntry
 from .travel import MAX_TRACK_POINTS, merge_detail, opaque_id, parse_ride
+from .travel_statistics import energy_statistics, returned_statistics
 
 MAX_DETAIL_QUERIES = 5
 
@@ -126,6 +127,11 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
         ),
         "energy_raw": ride.energy_raw,
         "energy_wh": ride.energy_raw,
+        "energy_intensity_wh_per_km": energy_statistics(
+            ride.distance_m / 1000 if ride.distance_m is not None else None,
+            ride.energy_raw,
+            basis="ride_metrics",
+        )["energy_intensity_wh_per_km"],
         "energy_unit": "Wh",
         "energy_unit_evidence": "maintainer_confirmed",
         "used_electricity_raw": ride.used_electricity_raw,
@@ -185,6 +191,12 @@ def month_response(travel: TravelMonth) -> dict[str, Any]:
             for point in summary.daily_mileage
         ],
         "daily_mileage_status": summary.chart_status,
+        "statistics": {
+            "server_month": energy_statistics(
+                summary.mileage_km, summary.energy_wh, basis="server_month_summary"
+            ),
+            "returned_rides": returned_statistics(travel.rides),
+        },
         "coverage": {
             "reported_count": summary.ride_count,
             "returned_count": summary.returned_count,
