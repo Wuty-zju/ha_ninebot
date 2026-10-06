@@ -28,6 +28,8 @@ class HistoryState:
     pending: tuple[Ride, ...] = ()
     warnings: tuple[str, ...] = ()
     stopped_reason: str | None = None
+    indexed_totals: tuple[float | None, float | None] = (0, 0)
+    indexed_identity_complete: bool = True
 
     @property
     def scan_complete(self) -> bool:
