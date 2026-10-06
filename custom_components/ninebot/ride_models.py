@@ -2,8 +2,19 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
-from .raw import Endpoint
+from .raw import Endpoint, RawReference
+
+
+class FieldState(StrEnum):
+    """Protocol presence, separate from normalized value and freshness."""
+
+    MISSING = "missing"
+    NULL = "null"
+    INVALID = "invalid"
+    VALID = "valid"
+    EMPTY = "empty"
 
 
 @dataclass(frozen=True)
@@ -52,6 +63,9 @@ class Ride:
     issues: tuple[str, ...] = ()
     field_provenance: tuple[tuple[str, str], ...] = ()
     parser_contract: str = "ninecli-0.1.7-travel-v1"
+    field_states: tuple[tuple[str, FieldState], ...] = ()
+    field_sources: tuple[tuple[str, str], ...] = ()
+    detail_field_states: tuple[tuple[str, FieldState], ...] = ()
 
     @property
     def average_speed_m_s(self) -> float | None:
@@ -81,3 +95,16 @@ class Ride:
     @property
     def end_location(self) -> RideTrackPoint | None:
         return self.track_points[-1] if self.track_points else None
+
+
+@dataclass(frozen=True)
+class RideDetail:
+    """One scoped detail result, with no second copy of the raw payload."""
+
+    requested_detail_id: str
+    query_month: str
+    received_at: datetime
+    ride: Ride
+    backend_version: str | None = None
+    endpoint_version: str | None = None
+    raw_reference: RawReference | None = None

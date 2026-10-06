@@ -20,7 +20,7 @@ from .exceptions import ErrorKind, NinebotError
 from .models import TravelMonth
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord
-from .ride_models import Ride
+from .ride_models import Ride, RideDetail
 from .runtime import NinebotConfigEntry
 from .travel import MAX_TRACK_POINTS, merge_detail, opaque_id, parse_ride
 
@@ -133,6 +133,9 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
         "raw_units": "unknown",
         "parser_contract": ride.parser_contract,
         "field_provenance": dict(ride.field_provenance),
+        "field_states": {name: state.value for name, state in ride.field_states},
+        "field_sources": dict(ride.field_sources),
+        "detail_field_states": {name: state.value for name, state in ride.detail_field_states},
         "warnings": list(ride.issues),
         "speed_samples": [
             {"sequence": sample.sequence, "speed_raw": sample.raw, "unit": "unknown"}
@@ -197,16 +200,35 @@ def month_response(travel: TravelMonth) -> dict[str, Any]:
 
 async def detail_ride(
     hass: HomeAssistant, co: NinebotCoordinator, sn: str, summary: Ride, max_points: int
-) -> tuple[Ride, RawRecord]:
+) -> tuple[RideDetail, RawRecord]:
     if summary.detail_id is None:
         raise validation_error("query_ride")
     record = await co.async_query_detail(sn, summary.detail_id, summary.query_month)
-    detail = await hass.async_add_executor_job(detail_data, record, summary, max_points)
-    return detail, record
+    reference = co.raw.reference(
+        Endpoint.TRIP_DETAIL,
+        sn,
+        summary.detail_id,
+        now=dt_util.utcnow(),
+        query_month=summary.query_month,
+    )
+    ride = await hass.async_add_executor_job(detail_data, record, summary, max_points)
+    if reference is not None and co.raw.resolve(reference, now=dt_util.utcnow()) is not record:
+        reference = None
+    return RideDetail(
+        summary.detail_id,
+        summary.query_month,
+        record.received_at,
+        ride,
+        record.backend_version,
+        record.endpoint_version,
+        reference,
+    ), record
 
 
 def detail_data(record: RawRecord, summary: Ride, max_points: int) -> Ride:
     """Decode and normalize bounded raw JSON away from the event loop."""
+    if record.endpoint is not Endpoint.TRIP_DETAIL or record.query_month != summary.query_month:
+        raise NinebotError(ErrorKind.PROTOCOL)
     detail = parse_ride(
         record.payload(), summary.query_month, source=Endpoint.TRIP_DETAIL, max_points=max_points
     )
@@ -274,7 +296,7 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
                         or sum(ride.ride_id == summary.ride_id for ride in rides) != 1
                     ):
                         raise validation_error("query_ride")
-                    enriched.append((await detail_ride(hass, co, sn, summary, 500))[0])
+                    enriched.append((await detail_ride(hass, co, sn, summary, 500))[0].ride)
                 selected = tuple(enriched)
             response = {
                 "schema_version": 2,
@@ -306,7 +328,7 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
             matches = [ride for ride in rides if ride.ride_id == call.data["ride_id"]]
             if len(matches) != 1:
                 raise validation_error("query_ride")
-            ride, detail_record = await detail_ride(
+            detail, detail_record = await detail_ride(
                 hass, co, sn, matches[0], call.data["max_points"]
             )
             response = {
@@ -315,7 +337,14 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
                 "received_at": iso(detail_record.received_at),
                 "source": "ninecli",
                 "backend_version": detail_record.backend_version,
-                "ride": ride_response(ride, include_track),
+                "ride": ride_response(detail.ride, include_track),
+                "detail_context": {
+                    "requested_detail_id": detail.requested_detail_id,
+                    "query_month": detail.query_month,
+                    "received_at": iso(detail.received_at),
+                    "backend_version": detail.backend_version,
+                    "endpoint_version": detail.endpoint_version,
+                },
             }
     except NinebotError as err:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key=err.kind.value) from err

@@ -18,7 +18,15 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.ninebot import async_setup
 from custom_components.ninebot.compat import device_entry_ids, is_child_device
 from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
-from custom_components.ninebot.services import DETAIL_SCHEMA, TRIPS_SCHEMA, resolve_vehicle
+from custom_components.ninebot.raw import Endpoint, build_record
+from custom_components.ninebot.services import (
+    DETAIL_SCHEMA,
+    TRIPS_SCHEMA,
+    detail_data,
+    detail_ride,
+    resolve_vehicle,
+)
+from custom_components.ninebot.travel import parse_ride
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 FIXTURES = Path(__file__).parent / "fixtures/ninecli/0.1.7"
@@ -322,3 +330,61 @@ async def test_ownership_rechecked_after_executor_await(hass, entry, app_client,
         release.set()
         with pytest.raises(HomeAssistantError, match="Vehicle query unavailable"):
             await task
+
+
+async def test_detail_domain_is_scoped_bounded_and_reference_expires(hass, entry, query_device):
+    co = entry.runtime_data.coordinator
+    last = co.data["SyntheticSN"].travel.last_ride
+    assert last is not None and last.ride is not None
+    summary = last.ride
+    detail, record = await detail_ride(hass, co, "SyntheticSN", summary, 2)
+    assert detail.requested_detail_id == summary.detail_id
+    assert detail.query_month == summary.query_month
+    assert detail.received_at == record.received_at
+    assert len(detail.ride.track_points) == 2
+    assert detail.raw_reference is not None
+    assert co.raw.resolve(detail.raw_reference, now=record.received_at) is record
+    response = await call(
+        hass,
+        "get_trip_detail",
+        {"device_id": query_device, "query_month": "202609", "ride_id": summary.ride_id},
+    )
+    assert response["detail_context"]["requested_detail_id"] == summary.detail_id
+    assert "raw_reference" not in json.dumps(response)
+    assert response["ride"]["field_sources"]["distance_m"] == "trip_detail"
+    assert response["ride"]["detail_field_states"]["distance_m"] == "valid"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert co.raw.resolve(detail.raw_reference, now=record.received_at) is None
+
+
+@pytest.mark.parametrize(
+    "endpoint,month", [(Endpoint.TRAVEL, "202609"), (Endpoint.TRIP_DETAIL, "202608")]
+)
+def test_detail_record_wrong_scope_rejected(endpoint, month):
+    summary = parse_ride({"travel_id": "a", "duration": 10}, "202609")
+    record = build_record(
+        endpoint, {"duration": 10}, datetime(2026, 9, 26, tzinfo=UTC), query_month=month
+    )
+    with pytest.raises(NinebotError):
+        detail_data(record, summary, 10)
+
+
+async def test_replaced_raw_reference_is_not_attached_to_normalized_detail(
+    hass, entry, query_device
+):
+    co = entry.runtime_data.coordinator
+    summary = co.data["SyntheticSN"].travel.rides[0]
+    with patch.object(co.raw, "resolve", return_value=None):
+        detail, _ = await detail_ride(hass, co, "SyntheticSN", summary, 2)
+    assert detail.raw_reference is None
+    assert detail.ride.ride_id == summary.ride_id
+
+
+@pytest.mark.parametrize("payload", [{}, {"start_time": 1790000001}])
+def test_unbound_or_conflicting_detail_cannot_enrich_summary(payload):
+    summary = parse_ride({"travel_id": "a", "start_time": 1790000000}, "202609")
+    record = build_record(
+        Endpoint.TRIP_DETAIL, payload, datetime(2026, 9, 26, tzinfo=UTC), query_month="202609"
+    )
+    with pytest.raises(NinebotError):
+        detail_data(record, summary, 10)

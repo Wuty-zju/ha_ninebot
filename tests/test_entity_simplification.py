@@ -28,7 +28,11 @@ async def test_device_selector_accepts_device_id_and_rejects_labels_without_nati
 ):
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    device = dr.async_get(hass).async_get_device(identifiers={("ninebot", "SyntheticSN")})
+    device = next(
+        device
+        for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+        if ("ninebot", "SyntheticSN") in device.identifiers
+    )
     form = await open_parameters(hass, entry)
     field = next(iter(form["data_schema"].schema.values()))
     assert field.selector_type == "device"
