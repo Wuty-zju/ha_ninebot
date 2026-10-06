@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0b25
+
+- Preserve the measured installed ninecli version and trusted endpoint metadata through backend results into raw records; unknown metadata stays unknown.
+- Add bounded, value-free schema-change diagnostics, entry-local anonymous unknown-field structure comparisons, and fixed raw rejection reasons.
+- Add opaque raw references that expire on replacement, eviction, detail TTL, ownership removal and unload; keep existing byte/count budgets and entity identities.
+- Separate local development material from the product repository; retain standalone public test inputs and user-facing documentation.
+- Validation: 83 targeted offline tests, Ruff/format and mypy. No vehicle/cloud/control/production tests; full compatibility testing is deferred to the P1–P2 foundation milestone.
+
 ## 2.0.0b24
 
 - Remove SOC-derived sample/daily/monthly/total energy and quality entities; retain optional rated specifications with one stable nominal-energy ID.
@@ -12,7 +20,7 @@
 
 ## 2.0.0b19–b23
 
-- Completed current-field adaptation, month chart/coverage, model options/debug, SMS login and bounded cross-month history. See docs/v2x-实施与验收记录.md for the release-specific record.
+- Completed current-field adaptation, month chart/coverage, model options/debug, SMS login and bounded cross-month history. See the [release-specific record](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/v2x-实施与验收记录.md).
 
 ## 2.0.0b18
 
@@ -262,4 +270,4 @@ Complete Go source/build modifications/reproducible builds are unavailable.
 Before upgrading, back up HA configuration/storage/database and the old integration.
 Code-only rollback cannot reverse a ConfigEntry schema upgrade: restore the matching
 pre-upgrade HA backup and integration version. See the bilingual README,
-[entity matrix](docs/2.0-实体迁移矩阵.md) and [audit](docs/2.0-预发布验收.md).
+[entity matrix](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md) and [audit](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-预发布验收.md).

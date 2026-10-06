@@ -429,10 +429,10 @@ async def test_cancelled_raw_preparation_cannot_repopulate_unloaded_cache(coordi
     await co._async_update_data()
     started, release, finished = threading.Event(), threading.Event(), threading.Event()
 
-    def slow_prepare(*args):
+    def slow_prepare(*args, **kwargs):
         started.set()
         release.wait(2)
-        record = build_record(*args)
+        record = build_record(*args, **kwargs)
         finished.set()
         return record
 
@@ -925,3 +925,25 @@ async def test_local_month_boundary_expires_travel_without_cloud_io(coordinator)
                 assert not co.fresh("synthetic-one", "travel")
             co.client.async_get_status.assert_not_awaited()
             co.client.async_get_travel.assert_not_awaited()
+
+
+async def test_raw_capture_propagates_metadata_without_discarding_valid_telemetry(coordinator):
+    from custom_components.ninebot.backend import BackendResult
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    result = BackendResult(
+        {"dump_energy": 80},
+        Endpoint.STATUS,
+        datetime.now(UTC),
+        backend_version="0.1.8",
+        endpoint_version="v5",
+    )
+    record = await co._capture(result, "synthetic-one")
+    assert record.backend_version == "0.1.8"
+    assert record.endpoint_version == "v5"
+    assert record.unknown_schema_complete
+    bad = replace(result, payload={"dump_energy": 80, "unknown": "a" * 1048577})
+    assert await co._capture(bad, "synthetic-one") is None
+    assert co.raw.diagnostics(datetime.now(UTC))["rejection_reasons"] == {"size": 1}
+    assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is record

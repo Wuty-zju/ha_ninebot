@@ -1,62 +1,27 @@
-[b24实体精简与额定参数迁移](v2x-实体精简与额定参数迁移.md)为最新增量契约；删除SOC累计估算，合并重复实体，修复设备选择器并更新命名/多语言。
+# Ninebot integration behavior
 
-[长期开发索引与归档规则](长期开发索引与归档规则.md)是当前阅读入口，区分现行契约、实施记录和固定历史基线。
+This page describes the b24 user-facing contract. Developer investigations and local raw samples belong in a separate private workspace; they are not required to install or run this integration.
 
-当前代码基线为 **2.0.0b24**；[全面数据适配与连续开发](v2x-全面数据适配与连续开发.md)
-的 A–F 已完成本轮实现，实际范围与限制见[实施与验收记录](v2x-实施与验收记录.md)。
-旧报告中的“尚未实施”“默认禁用”等描述仅代表其标注版本，不应当作当前任务清单。
+## Authentication
 
-# 重构开发文档
+Pinned ninecli==0.1.7 runs through a managed authenticated loopback server. Passwords travel in the local request body, not argv or ConfigEntry storage. Each entry has isolated sessions and reauth. Vehicle discovery has a controlled native cache initialization exception. SMS flow is implemented and covered offline; live SMS verification remains pending.
 
-[b18分级测试与预发布策略](v2x-分级测试与预发布策略.md)执行最新开发节奏：
-小版本针对性回归并推送，重大功能集中完整验证；日常Checks不代表三版本套件已运行。
+## Entities
 
-[b17不完整车辆发现与缓存恢复](v2x-不完整车辆发现与缓存恢复契约.md)处理原生
-CLI退出0却只返回部分/空结果，区分正向观察与解绑证据，保护路由缓存和每车身份时效。
+Created entities are enabled and visible by default; user choices are preserved. Location, controls and debug views require their options. The range sensor prefers precise, then estimated, then AI. b24 removes low-confidence SOC cumulative estimates and duplicate ranges. Nominal V/Ah define rated energy, not measured capacity or SOH. Existing meaningful IDs and Recorder history remain stable.
 
-[b16控制结果与状态回读契约](v2x-控制结果与状态回读契约.md)区分接口接受、
-结果未知与读取失败，修复命令后的跳过/旧任务复用，并提供有界安全诊断。
+BMS voltage/temperature/cycles require valid data and support. Energy ec is Wh and charging_power is W according to maintainer confirmation. Health score is not SOH. Unknown enums and missing reports remain unknown. GPS needs two valid coordinates; the coordinate system is unverified and is never automatically converted.
 
-当前控制策略见[b15云端鉴权控制与实测契约](v2x-云端鉴权控制与实测契约.md)：
-新的明确授权覆盖历史未知权限发送拒绝规则；保留所有本地条件与已知拒绝，
-不伪造权限或物理成功。旧契约/报告保持其日期基线，不能当成最新执行政策。
+## History
 
-本目录保留2026-10-03固定基线的审阅报告与证据，并记录后续重构。2.0实现与验证见实施记录和预发布验收；固定基线报告不代表当前源码状态。
+get_trips, get_trip_detail and get_history return bounded response data. Local pagination covers only received rows; it does not prove all upstream rides were returned. Server maximum speed and distance/duration average are distinct. Point-speed/distance units remain unverified. Tracks require coordinate opt-in and include_track; automation traces may retain response locations. Events establish a baseline and suppress duplicates; cloud timing or incomplete lists can cause missed events.
 
-| 文档 | 用途 |
-|---|---|
-| [ninecli原始数据完整利用与后续逐级开发方案](ninecli原始数据完整利用与后续逐级开发方案.md) | 2026-10-04长期设计基线：架构、全字段、Ride/轨迹、Actions/Event/设备兼容、Phase 0–10；当时仅设计，当前完成程度另见实施记录 |
-| [2.0预发布验收](2.0-预发布验收.md) | 原始要求核验、真实新版查询、支持矩阵、迁移/回滚与限制 |
-| [2.0实体迁移矩阵](2.0-实体迁移矩阵.md) | 49类旧实体的实际处置、来源、单位/统计、默认与身份迁移 |
-| [2.0实施记录](2.0-实施记录.md) | 当前实现、设计调整、测试结果和发布核验入口 |
-| [完全重构与开发报告](完全重构与开发报告.md) | 总体决策，33类自研/16类fork实体去留，架构、会话、迁移、HA/HACS规范、测试与发布 |
-| [ninecli实现解读与依赖审计](ninecli实现解读与依赖审计.md) | Python源码、Go函数核验边界、鉴权加密、发布平台与依赖透明性 |
-| [接口与实体逻辑对照](接口与实体逻辑对照开发文档.md) | 两仓库固定基线的逐实体公式、原始字段、属性与可用性；公开摘要在evidence，本地完整证据另行私有归档 |
-| [审计摘要](evidence/reconstruction-audit.json) | 可随文档保存的脱敏机器摘要：49类清单、13项离线检查、mutex复现和公共wheel核验 |
+## Controls
 
-规划v2.x时先读新逐级开发方案；核对当前实现时先读实施记录/迁移矩阵/预发布验收，再查固定基线整体报告与ninecli附录。新方案修正了旧报告将Go相邻字符串误读为`travel-infostream`的问题，实际静态路径为`travel-info`。详细原始data、反汇编和HA文件前后核验保存在本地审阅目录，未将私有会话或车辆位置收入本目录；公开字段清单只保存路径/类型/设计分类，不能冒充recorded replay fixtures。
+Controls require explicit enablement, allowlist and fresh ownership/status. Known denial and ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization. Each command is sent once with bounded state reconciliation, without automatic replay or optimistic state updates. Engine commands are not lock/unlock; acceptance does not prove physical completion.
 
-[v2.x实施与验收记录](v2x-实施与验收记录.md)记录逐阶段实际实现；设计中的未来项不代表已实现。
+## Development
 
-[v2.x行程字段与解析契约](v2x-行程字段与解析契约.md)补充非空month/detail真实shape与待验证单位。
+Product constraints are in [AGENTS](../AGENTS.md). Use targeted offline tests for small changes and the pinned compatibility suite at major boundaries. Record what ran and what was skipped; old mock/CI results do not prove current cloud or vehicle behavior. Runtime files must remain inside custom_components/ninebot. Private captures, developer plans and workspace tools must not be added to a release or integration runtime.
 
-[v2.x电池身份与设备模型契约](v2x-电池身份与设备模型契约.md)记录Phase 6身份边界、全BMS字段处置与暂不创建child的证据门槛。
-
-[v2.x权限门禁与能力证据契约](v2x-权限门禁与能力证据契约.md)记录Phase 7软件支持、三态权限、统一拒绝原因与待验证的控制语义。
-
-[v2.x图片位置与请求依赖契约](v2x-图片位置与请求依赖契约.md)记录Phase 8图片来源/缓存、GPS与按功能请求图；实际结果见实施记录与精确提交发布证据。
-
-[v2.x主要阶段需求核验](v2x-主要阶段需求核验.md)按Phase 0–8与安全/兼容不变量列出直接证据和延期门槛；发布完成须另核实精确main SHA的CI与prerelease。
-
-[v2.x实体与控制问题审计及修正](v2x-实体与控制问题审计及修正.md)是用户安装b8后的新一轮问题修正入口；b9删除明确废弃占位/Lock，后续控制与可见性仍需继续。
-
-[v2.x ninecli输入输出与车辆缓存契约](v2x-ninecli输入输出与车辆缓存契约.md)记录 REST/CLI 缓存差异、BMS真实失败根因、b11修复、能力表达与隔离验收。
-
-[v2.x当前字段利用与调试摘要](v2x-当前字段利用与调试摘要.md)与
-[当前机器清单](evidence/v2x-current-field-usage.json)合并136条真实已观察shape路径，
-给出当前实现用途；不改写旧97路径基线、不把候选提升成真实字段。b13提供可选
-小型raw缓存摘要，不将原始payload放入state。
-
-[v2.x原生控制加密与状态归属契约](v2x-原生控制加密与状态归属契约.md)记录
-instrumented临时公钥测试的边界、控制加密接受/拒绝分类，以及b14新增的
-status.sn归属守卫；不冒称真实权限或实车动作已经验证。
+Raw diagnostics include measured backend metadata, fixed rejection reasons and value-free schema transition counts. Unknown key names/values and anonymous fingerprints are not exported. Cache references are memory-only and become invalid when records are replaced, expired, evicted or unloaded; this does not change entities or add cloud requests.

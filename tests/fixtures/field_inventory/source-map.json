@@ -1,0 +1,23 @@
+{
+  "scope": "Immutable public source snapshots for standalone field-inventory tests, not active developer handbooks or new live tests. Markdown source is stored as historical text with its original locators.",
+  "sources": {
+    "docs/evidence/v2x-b15-live-controls.json": {
+      "file": "sources/b15-live-controls.json",
+      "sha256": "8746a506a2f6dc06bed1148138ad9ccb3258f6e77ea5c114779137d622098774",
+      "source_commit": "3071fb9b9441be05f3bb0fdb829afb7fe12c7a61",
+      "source_path": "docs/evidence/v2x-b15-live-controls.json"
+    },
+    "docs/evidence/v2x-field-inventory.json": {
+      "file": "sources/field-inventory.json",
+      "sha256": "5b132ddaf3dd1d27a02cf655dc955086da1c6efa131c9bcb3d17728c430b868e",
+      "source_commit": "3071fb9b9441be05f3bb0fdb829afb7fe12c7a61",
+      "source_path": "docs/evidence/v2x-field-inventory.json"
+    },
+    "docs/v2x-原生控制加密与状态归属契约.md": {
+      "file": "sources/native-control-contract.txt",
+      "sha256": "cd8462cd7535c2ed0e3c209a3d76211152711722e5b68bda1aaa75e3a89fd072",
+      "source_commit": "3071fb9b9441be05f3bb0fdb829afb7fe12c7a61",
+      "source_path": "docs/archive/contracts/v2x-原生控制加密与状态归属契约.md"
+    }
+  }
+}

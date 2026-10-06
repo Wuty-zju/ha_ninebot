@@ -1,12 +1,14 @@
 """Backend contract independent of HA representations and protocol encryption."""
 
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Protocol
 
 from .capabilities import CONTROL_ACTIONS
 from .client import NinecliClient
-from .raw import BACKEND_VERSION, Endpoint
+from .raw import Endpoint, version_metadata
 
 
 @dataclass(frozen=True)
@@ -15,7 +17,7 @@ class BackendResult:
     endpoint: Endpoint
     received_at: datetime
     query_month: str | None = None
-    backend_version: str = BACKEND_VERSION
+    backend_version: str | None = None
     endpoint_version: str | None = None
     vehicles_complete: bool = True
 
@@ -43,6 +45,21 @@ class NinecliBackend:
 
     def __init__(self, client: NinecliClient) -> None:
         self.client = client
+        self._metadata_loaded = False
+        self._backend_version: str | None = None
+        self._metadata_lock = asyncio.Lock()
+
+    async def _version(self) -> str | None:
+        async with self._metadata_lock:
+            if not self._metadata_loaded:
+                try:
+                    self._backend_version = version_metadata(
+                        await asyncio.to_thread(version, "ninecli")
+                    )
+                except PackageNotFoundError:
+                    self._backend_version = None
+                self._metadata_loaded = True
+        return self._backend_version
 
     async def async_vehicles(self) -> BackendResult:
         payload = await self.client.async_list_vehicles()
@@ -50,24 +67,37 @@ class NinecliBackend:
             payload,
             Endpoint.VEHICLES,
             datetime.now(UTC),
+            backend_version=await self._version(),
             vehicles_complete=self.client.vehicle_discovery_complete is True,
         )
 
     async def async_status(self, vehicle: str) -> BackendResult:
         payload = await self.client.async_get_status(vehicle)
-        return BackendResult(payload, Endpoint.STATUS, datetime.now(UTC))
+        return BackendResult(
+            payload, Endpoint.STATUS, datetime.now(UTC), backend_version=await self._version()
+        )
 
     async def async_battery(self, vehicle: str) -> BackendResult:
         payload = await self.client.async_get_battery(vehicle)
-        return BackendResult(payload, Endpoint.BATTERY, datetime.now(UTC))
+        return BackendResult(
+            payload, Endpoint.BATTERY, datetime.now(UTC), backend_version=await self._version()
+        )
 
     async def async_travel_month(self, vehicle: str, month: str) -> BackendResult:
         payload = await self.client.async_get_travel(vehicle, month)
-        return BackendResult(payload, Endpoint.TRAVEL, datetime.now(UTC), month)
+        return BackendResult(
+            payload,
+            Endpoint.TRAVEL,
+            datetime.now(UTC),
+            month,
+            backend_version=await self._version(),
+        )
 
     async def async_trip_detail(self, vehicle: str, detail_id: str) -> BackendResult:
         payload = await self.client.async_get_trip_detail(vehicle, detail_id)
-        return BackendResult(payload, Endpoint.TRIP_DETAIL, datetime.now(UTC))
+        return BackendResult(
+            payload, Endpoint.TRIP_DETAIL, datetime.now(UTC), backend_version=await self._version()
+        )
 
     async def async_control(self, vehicle: str, action: str) -> None:
         await self.client.async_control(vehicle, action)

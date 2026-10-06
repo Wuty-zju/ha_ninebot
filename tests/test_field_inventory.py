@@ -1,10 +1,26 @@
 """Every recorded business shape must have an explicit reviewed disposition."""
 
+import hashlib
 import json
 from pathlib import Path
 
 FIXTURES = Path(__file__).parent / "fixtures/ninecli/0.1.7"
 ROOT = Path(__file__).parents[1]
+INVENTORY_FIXTURES = ROOT / "tests/fixtures/field_inventory"
+SOURCE_MAP = json.loads((INVENTORY_FIXTURES / "source-map.json").read_text())["sources"]
+
+
+def source_available(value):
+    if (ROOT / value).is_file():
+        return True
+    archived = SOURCE_MAP.get(value)
+    if archived is None:
+        return False
+    snapshot = INVENTORY_FIXTURES / archived["file"]
+    return (
+        snapshot.is_file()
+        and hashlib.sha256(snapshot.read_bytes()).hexdigest() == archived["sha256"]
+    )
 
 
 def field_types(value, path="$", observed=None):
@@ -21,7 +37,9 @@ def field_types(value, path="$", observed=None):
 
 
 def test_current_inventory_covers_all_recorded_paths_types_and_explains_each_use():
-    inventory = json.loads((ROOT / "docs/evidence/v2x-current-field-usage.json").read_text())
+    inventory = json.loads(
+        (ROOT / "tests/fixtures/field_inventory/current-field-usage.json").read_text()
+    )
     indexed = {}
     for group in inventory["observed_endpoints"]:
         for row in group["fields"]:
@@ -31,7 +49,7 @@ def test_current_inventory_covers_all_recorded_paths_types_and_explains_each_use
             assert set(row["classification"].split("/")) <= set("ABCDEFGHIJ")
             assert all(row[key] for key in ("meaning", "current_use", "unit", "evidence"))
             assert row["sources"]
-            assert all((ROOT / source).is_file() for source in row["sources"])
+            assert all(source_available(source) for source in row["sources"])
     assert len(indexed) == inventory["field_path_count"]
     metadata = json.loads((FIXTURES / "metadata.json").read_text())
     for record in metadata["records"] + metadata["selected_shape_fixtures"]:
@@ -46,7 +64,9 @@ def test_current_inventory_covers_all_recorded_paths_types_and_explains_each_use
 
 
 def test_recorded_command_shape_is_classified_separately_from_business_telemetry():
-    inventory = json.loads((ROOT / "docs/evidence/v2x-current-field-usage.json").read_text())
+    inventory = json.loads(
+        (ROOT / "tests/fixtures/field_inventory/current-field-usage.json").read_text()
+    )
     metadata = json.loads((FIXTURES / "metadata.json").read_text())
     recorded = metadata["control_response_fixtures"][0]
     paths = field_types(json.loads((FIXTURES / recorded["file"]).read_text()))
@@ -56,7 +76,7 @@ def test_recorded_command_shape_is_classified_separately_from_business_telemetry
     for endpoint in endpoints:
         assert endpoint["http_status"] == recorded["http_status"] == 200
         assert endpoint["evidence"] and endpoint["sources"]
-        assert all((ROOT / path).is_file() for path in endpoint["sources"])
+        assert all(source_available(path) for path in endpoint["sources"])
         assert {row["path"]: set(row["types"]) for row in endpoint["fields"]} == paths
         assert all(row["meaning"] and row["current_use"] for row in endpoint["fields"])
         assert all(
