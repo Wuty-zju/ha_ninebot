@@ -14,6 +14,7 @@ from homeassistant.helpers import entity_registry as er
 from .capabilities import CONTROL_BUTTONS
 from .compat import device_entry_ids
 from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, CONF_ESTIMATION, DOMAIN
+from .identity import device_sn, legacy_uids, scoped_uid
 from .observations import ENTITY_FIELDS, RAW_FIELDS
 from .runtime import NinebotConfigEntry
 from .sensor import DAY_FIELDS, SENSORS, battery_descriptions
@@ -112,14 +113,15 @@ def _owned_entities(
         device = devices.async_get(row.device_id)
         if device is None or device_entry_ids(device) != frozenset({entry.entry_id}):
             continue
-        identifiers = [sn for domain, sn in device.identifiers if domain == DOMAIN]
-        if len(identifiers) == 1:
-            yield row, identifiers[0]
+        if (sn := device_sn(entry, device)) is not None:
+            yield row, sn
 
 
-def _matches(row: er.RegistryEntry, sn: str, keys: dict[str, frozenset[str]]) -> bool:
+def _matches(
+    row: er.RegistryEntry, sn: str, keys: dict[str, frozenset[str]], entry: NinebotConfigEntry
+) -> bool:
     return any(
-        row.unique_id in {f"{sn}_{key}", f"ninebot_{sn}_{key}".lower()}
+        row.unique_id in {*legacy_uids(sn, key), scoped_uid(entry, sn, key)}
         for key in keys.get(row.domain, ())
     )
 
@@ -144,7 +146,7 @@ def async_remove_obsolete_entities(hass: HomeAssistant, entry: NinebotConfigEntr
     registry = er.async_get(hass)
     removed = 0
     for row, sn in _owned_entities(hass, entry):
-        if _matches(row, sn, OBSOLETE_KEYS) or _obsolete_generated(row, sn):
+        if _matches(row, sn, OBSOLETE_KEYS, entry) or _obsolete_generated(row, sn):
             registry.async_remove(row.entity_id)
             removed += 1
     return removed
@@ -157,7 +159,11 @@ def async_enable_standard_entities(hass: HomeAssistant, entry: NinebotConfigEntr
     enabled = 0
     for row, sn in _owned_entities(hass, entry):
         snapshot = entry.runtime_data.coordinator.data.get(sn)
-        if snapshot is not None and snapshot.present and _matches(row, sn, visible_keys(entry, sn)):
+        if (
+            snapshot is not None
+            and snapshot.present
+            and _matches(row, sn, visible_keys(entry, sn), entry)
+        ):
             disabled = row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
             hidden = row.hidden_by is er.RegistryEntryHider.INTEGRATION
             if disabled or hidden:
@@ -185,8 +191,30 @@ def async_enable_configured_controls(hass: HomeAssistant, entry: NinebotConfigEn
             and row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
             and snapshot is not None
             and snapshot.present
-            and _matches(row, sn, keys)
+            and _matches(row, sn, keys, entry)
         ):
             registry.async_update_entity(row.entity_id, disabled_by=None)
             enabled += 1
     return enabled
+
+
+async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    identities = entry.runtime_data.identities
+    if identities is None:
+        return
+    candidates = []
+    aliases = {
+        "main_power": "power",
+        "vehicle_lock": "unlocked",
+        "remaining_range": "endurance",
+        "info": "refresh",
+    }
+    for row, sn in _owned_entities(hass, entry):
+        if sn not in entry.runtime_data.coordinator.data or sn not in identities.seeds:
+            continue
+        keys = visible_keys(entry, sn).get(row.domain, frozenset())
+        for key in keys:
+            if row.unique_id in {*legacy_uids(sn, key), scoped_uid(entry, sn, key)}:
+                candidates.append((row, sn, aliases.get(key, key)))
+                break
+    await identities.async_migrate(candidates)

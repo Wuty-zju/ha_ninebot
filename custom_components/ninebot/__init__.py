@@ -15,10 +15,12 @@ from .coordinator import NinebotCoordinator
 from .entity import async_audit_device_identities
 from .event_store import RideEventPipeline
 from .exceptions import NinebotError
+from .identity import IdentityStore
 from .migration import async_migrate
 from .registry import (
     async_enable_configured_controls,
     async_enable_standard_entities,
+    async_migrate_entity_ids,
     async_remove_obsolete_entities,
 )
 from .runtime import NinebotConfigEntry, RuntimeData
@@ -72,16 +74,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         manager,
         store,
         events=RideEventPipeline(hass, entry.entry_id, coordinator),
+        identities=IdentityStore(hass, entry),
     )
     try:
         await store.async_load()
         await coordinator.statistics.async_load()
+        assert entry.runtime_data.identities is not None
+        await entry.runtime_data.identities.async_load()
         await coordinator.async_config_entry_first_refresh()
+        await entry.runtime_data.identities.async_prepare(
+            s.profile for s in coordinator.data.values()
+        )
         entry.runtime_data.obsolete_entities_removed = async_remove_obsolete_entities(hass, entry)
         entry.runtime_data.standard_entities_enabled = async_enable_standard_entities(hass, entry)
         entry.runtime_data.configured_controls_enabled = async_enable_configured_controls(
             hass, entry
         )
+        await async_migrate_entity_ids(hass, entry)
         async_audit_device_identities(hass, entry)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except BaseException:
@@ -116,3 +125,4 @@ async def async_migrate_entry(hass: HomeAssistant, entry: NinebotConfigEntry) ->
 
 async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
     await TravelStatisticsStore(hass, entry.entry_id).async_remove()
+    await IdentityStore(hass, entry).async_remove()

@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from .client import NinecliClient
 from .coordinator import NinebotCoordinator
 from .event_store import RideEventPipeline
+from .identity import IdentityStore
 from .session import SessionManager
 from .storage import ModelStorage
 
@@ -25,6 +26,7 @@ class RuntimeData:
     events: RideEventPipeline | None = None
     statistics_import_lock: Lock = field(default_factory=Lock)
     statistics_import_pending: int = 0
+    identities: IdentityStore | None = None
 
 
 type NinebotConfigEntry = ConfigEntry[RuntimeData]

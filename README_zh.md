@@ -2,7 +2,7 @@
 
 [English](README.md) · [发布版本](https://github.com/Wuty-zju/ha_ninebot/releases) · [开发入口](docs/README.md)
 
-独立、非官方集成。v2使用固定 `ninecli==0.1.7` 的App协议替换OpenClaw；当前b35代码为预发布。
+独立、非官方集成。v2使用固定 `ninecli==0.1.7` 的App协议替换OpenClaw；当前b36代码为预发布。
 后端面向中国区App服务，其他地区未验证；云端API可用性由厂商决定。
 
 ## 安装与登录
@@ -59,7 +59,7 @@ UNKNOWN仍未知，满足本地条件后交云端最终鉴权。bell/buck/engine
 ## 升级与开发
 
 升级前备份匹配的HA配置/storage；精确移除已审阅旧估算/重复ID，保留有意义ID、用户名称和Recorder历史。
-被移除ID的自动化需要调整。回滚须同时恢复对应旧配置/参数Store，不能只换代码或手改数据库。
+b36引入规范生成ID，详见[迁移指南](docs/README.md#canonical-entity-ids-and-upgrade)。自定义或无法确认来源的ID保留；使用改名/移除ID的自动化需要调整。回滚须同时恢复对应旧配置/参数Store，不能只换代码或手改数据库。
 初次迁移依据见[历史迁移矩阵](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md)。
 
 开发先读[集成说明](docs/README.md)和[产品约束](AGENTS.md)，再核对相关源码、测试及fixture来源。详细私有开发资料在本地独立工作区维护，不进入产品PR或安装包；[CHANGELOG](CHANGELOG.md)保存发布变化。小改做相关离线回归，重大功能边界再做综合兼容检查；旧绿色结果不代表本轮验收。

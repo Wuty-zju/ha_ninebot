@@ -22,6 +22,7 @@ pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 FIXTURES = Path(__file__).parent / "fixtures/ninecli/0.1.7"
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 REAL_WRITE = Store._async_write_data
+REAL_LOAD = Store._async_load
 
 
 @pytest.fixture
@@ -48,6 +49,7 @@ async def pipeline(hass, entry, app_client, freezer, tmp_path):
     # Polling/demand scheduling is covered by the coordinator tests.
     with (
         patch.object(Store, "_async_write_data", REAL_WRITE),
+        patch.object(Store, "_async_load", REAL_LOAD),
         patch("custom_components.ninebot.coordinator.NinebotCoordinator._schedule_refresh"),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -138,6 +140,7 @@ async def test_real_event_entity_baseline_small_attributes_and_restart(
 ):
     registry = er.async_get(hass)
     event_id = registry.async_get_entity_id("event", "ninebot", "SyntheticSN_ride")
+    registry_id = registry.async_get(event_id).id
     registry.async_update_entity(event_id, disabled_by=None)
     await hass.async_block_till_done()
     # Let HA's 30-second registry enable debounce perform its own reload. A
@@ -146,6 +149,10 @@ async def test_real_event_entity_baseline_small_attributes_and_restart(
     freezer.move_to(enabled_at)
     async_fire_time_changed(hass, enabled_at)
     await hass.async_block_till_done()
+    # Reload may perform the canonical rename. Identity, not the old label,
+    # anchors this lifecycle regression.
+    event_id = registry.async_get_entity_id("event", "ninebot", "SyntheticSN_ride")
+    assert registry.async_get(event_id).id == registry_id
     event = hass.states.get(event_id)
     assert event.state == "unknown" and event.attributes["event_types"] == ["completed"]
     active = entry.runtime_data.events

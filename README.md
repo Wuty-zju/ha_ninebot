@@ -72,7 +72,7 @@ See [control contract](docs/README.md).
 
 Back up matching HA configuration/storage before upgrading. Meaningful IDs, user names and Recorder history
 are preserved; reviewed obsolete estimates/duplicates are removed only for confirmed exclusive ownership.
-Automations using removed IDs need adjustment. Downgrading requires matching pre-upgrade storage,
+b36 introduces canonical generated entity IDs; see the [migration guide](docs/README.md#canonical-entity-ids-and-upgrade). Custom/unverifiable IDs stay unchanged; automations using renamed or removed IDs need adjustment. Downgrading requires matching pre-upgrade storage,
 including parameter Store backups; code-only rollback does not reverse migrations.
 [Historical migration matrix](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md) records the initial v2 transition.
 

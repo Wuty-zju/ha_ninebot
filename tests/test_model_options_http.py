@@ -78,6 +78,7 @@ async def test_options_cancel_keeps_other_options_and_rated_parameters(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert await async_setup_component(hass, "config", {})
+    before_options = dict(entry.options)
     client = await hass_client()
     initial = await (
         await client.post(
@@ -96,7 +97,7 @@ async def test_options_cancel_keeps_other_options_and_rated_parameters(
     before = entry.runtime_data.models.model("SyntheticSN")
     response = await client.delete(url)
     assert response.status == 200
-    assert entry.options == {"poll_interval": 300}
+    assert entry.options == before_options
     assert entry.runtime_data.models.model("SyntheticSN") == before
 
 
@@ -107,6 +108,7 @@ async def test_empty_or_wrong_type_vehicle_is_field_scoped_not_an_option_enum(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert await async_setup_component(hass, "config", {})
+    before_options = dict(entry.options)
     client = await hass_client()
     initial = await (
         await client.post(
@@ -125,4 +127,4 @@ async def test_empty_or_wrong_type_vehicle_is_field_scoped_not_an_option_enum(
         assert data["errors"]["model_vehicle"] == "expected str"
         assert "not a valid option" not in data["errors"]["model_vehicle"]
     assert entry.runtime_data.models.model("SyntheticSN").nominal is None
-    assert entry.options == {}
+    assert entry.options == before_options

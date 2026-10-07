@@ -17,6 +17,7 @@ from .compat import validation as vol
 from .const import CONF_COORDINATES, DEFAULT_COORDINATES, DOMAIN
 from .coordinator import NinebotCoordinator
 from .exceptions import ErrorKind, NinebotError
+from .identity import device_sn
 from .models import TravelMonth
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord
@@ -90,7 +91,6 @@ def resolve_vehicle(hass: HomeAssistant, device_id: str) -> tuple[NinebotConfigE
     identifiers = {identifier for domain, identifier in device.identifiers if domain == DOMAIN}
     if len(identifiers) != 1:
         raise validation_error("query_device")
-    sn = next(iter(identifiers))
     owners = [
         entry
         for owner in device_entry_ids(device)
@@ -99,6 +99,9 @@ def resolve_vehicle(hass: HomeAssistant, device_id: str) -> tuple[NinebotConfigE
     if len(owners) != 1:
         raise validation_error("query_device")
     entry = cast(NinebotConfigEntry, owners[0])
+    sn = device_sn(entry, device)
+    if sn is None:
+        raise validation_error("query_device")
     if entry.state is not ConfigEntryState.LOADED or not entry.runtime_data.coordinator.fresh(
         sn, "profile"
     ):
@@ -364,12 +367,28 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     return response
 
 
+async def async_entity_migration(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    entry, sn = resolve_vehicle(hass, call.data["device_id"])
+    identities = entry.runtime_data.identities
+    if identities is None:
+        raise validation_error("query_unavailable")
+    return identities.export(sn)
+
+
 @callback
 def async_register_actions(hass: HomeAssistant) -> None:
     """Actions remain available in editors when no account is loaded."""
     from .history_actions import HISTORY_SCHEMA, async_history_query
     from .statistics_actions import STATISTICS_SCHEMA, async_statistics_query
     from .statistics_export import IMPORT_SCHEMA, async_import_statistics
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_entity_migration",
+        partial(async_entity_migration, hass),
+        schema=vol.Schema({vol.Required("device_id"): cv.string}),
+        supports_response=SupportsResponse.ONLY,
+    )
 
     hass.services.async_register(
         DOMAIN,

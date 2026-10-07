@@ -142,3 +142,11 @@ import_statistics:
       default: true
       selector:
         boolean:
+
+get_entity_migration:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: ninebot
