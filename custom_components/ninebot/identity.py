@@ -194,6 +194,9 @@ class IdentityStore:
         except asyncio.CancelledError:
             await task
             raise
+        except OSError:
+            self._repair("entity_id_storage_invalid")
+            raise
 
     def _repair(self, key: str = "entity_id_migration_conflict") -> None:
         ir.async_create_issue(
