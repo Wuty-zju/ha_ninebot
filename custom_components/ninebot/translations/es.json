@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "Añadir cuenta"
-    },
-    "entry_type": "Cuenta"
+    }
   },
   "options": {
     "step": {

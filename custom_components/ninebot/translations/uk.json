@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "Додати обліковий запис"
-    },
-    "entry_type": "Обліковий запис"
+    }
   },
   "options": {
     "step": {

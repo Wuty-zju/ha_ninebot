@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "Account toevoegen"
-    },
-    "entry_type": "Account"
+    }
   },
   "options": {
     "step": {

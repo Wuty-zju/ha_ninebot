@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "添加账号"
-    },
-    "entry_type": "账号"
+    }
   },
   "options": {
     "step": {

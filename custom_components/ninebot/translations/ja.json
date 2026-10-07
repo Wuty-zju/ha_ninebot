@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "アカウントを追加"
-    },
-    "entry_type": "アカウント"
+    }
   },
   "options": {
     "step": {

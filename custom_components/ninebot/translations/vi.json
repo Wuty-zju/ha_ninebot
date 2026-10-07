@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "Thêm tài khoản"
-    },
-    "entry_type": "Tài khoản"
+    }
   },
   "options": {
     "step": {

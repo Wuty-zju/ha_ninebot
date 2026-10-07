@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "계정 추가"
-    },
-    "entry_type": "계정"
+    }
   },
   "options": {
     "step": {

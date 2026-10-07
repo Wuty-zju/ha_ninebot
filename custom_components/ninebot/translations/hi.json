@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "खाता जोड़ें"
-    },
-    "entry_type": "खाता"
+    }
   },
   "options": {
     "step": {

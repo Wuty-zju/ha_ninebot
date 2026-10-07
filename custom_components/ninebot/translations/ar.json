@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "إضافة حساب"
-    },
-    "entry_type": "الحساب"
+    }
   },
   "options": {
     "step": {

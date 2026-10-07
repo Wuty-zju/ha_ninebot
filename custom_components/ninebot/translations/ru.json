@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "Добавить аккаунт"
-    },
-    "entry_type": "Аккаунт"
+    }
   },
   "options": {
     "step": {

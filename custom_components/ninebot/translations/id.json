@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "Tambah akun"
-    },
-    "entry_type": "Akun"
+    }
   },
   "options": {
     "step": {

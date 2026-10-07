@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "เพิ่มบัญชี"
-    },
-    "entry_type": "บัญชี"
+    }
   },
   "options": {
     "step": {

@@ -84,8 +84,7 @@
     },
     "initiate_flow": {
       "user": "Hesap ekle"
-    },
-    "entry_type": "Hesap"
+    }
   },
   "options": {
     "step": {
