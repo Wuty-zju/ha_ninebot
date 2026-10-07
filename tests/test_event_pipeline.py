@@ -42,7 +42,14 @@ async def pipeline(hass, entry, app_client, freezer, tmp_path):
         config_entry=entry,
         disabled_by=er.RegistryEntryDisabler.USER,
     )
-    with patch.object(Store, "_async_write_data", REAL_WRITE):
+    # This fixture drives every sample explicitly through _group. Disable the
+    # coordinator's separate periodic timer so a virtual clock jump cannot
+    # concurrently race that unguarded test-only path or reset our sample time.
+    # Polling/demand scheduling is covered by the coordinator tests.
+    with (
+        patch.object(Store, "_async_write_data", REAL_WRITE),
+        patch("custom_components.ninebot.coordinator.NinebotCoordinator._schedule_refresh"),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         yield entry.runtime_data.events
@@ -170,6 +177,11 @@ async def test_real_event_entity_baseline_small_attributes_and_restart(
     assert hass.states.get(event_id).state == before
     await new_report(hass, entry, app_client, freezer, key="next-ride", seconds=840)
     await settled_report(hass, entry, freezer, seconds=1440)
+    co = entry.runtime_data.coordinator
+    assert co.ride_lifecycles["SyntheticSN"].phase(co.data["SyntheticSN"].travel.rides[0]) == (
+        "finalized_by_policy"
+    )
+    assert entry.runtime_data.events._processed["SyntheticSN"] == NOW + timedelta(seconds=1440)
     assert hass.states.get(event_id).attributes["ride_id"] == "next-ride"
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
