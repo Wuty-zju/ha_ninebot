@@ -545,6 +545,12 @@
     },
     "history_cursor": {
       "message": "续查游标过期、被缓存预算回收或不属于当前车辆和范围，请重新查询。"
+    },
+    "statistics_range": {
+      "message": "每次请选择1至6个月，且开始月份不得晚于结束月份。"
+    },
+    "statistics_unavailable": {
+      "message": "统计存储不可用，请先处理修复提示；车辆遥测可继续。"
     }
   },
   "issues": {
@@ -658,6 +664,32 @@
         },
         "include_daily_chart": {
           "name": "返回每日里程"
+        }
+      }
+    },
+    "get_statistics": {
+      "name": "获取范围统计",
+      "description": "返回最多6个月及对应业务日的已存统计。默认不查询云；刷新受原有缓存限制。缺报不是零，不代表全量历史。",
+      "fields": {
+        "device_id": {
+          "name": "车辆",
+          "description": "当前账户的车辆设备。"
+        },
+        "start_month": {
+          "name": "开始月份",
+          "description": "YYYYMM，范围最多6个月。"
+        },
+        "end_month": {
+          "name": "结束月份",
+          "description": "YYYYMM，不得晚于本月。"
+        },
+        "include_daily": {
+          "name": "包含日统计",
+          "description": "缺日保留为空，不将月能耗分摊到每天。"
+        },
+        "refresh": {
+          "name": "查询上游月份",
+          "description": "显式查询所选月份，已有新鲜缓存可复用，不读取轨迹。"
         }
       }
     }

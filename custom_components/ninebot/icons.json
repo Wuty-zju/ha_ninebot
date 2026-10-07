@@ -158,6 +158,9 @@
     },
     "get_trip_detail": {
       "service": "mdi:routes"
+    },
+    "get_statistics": {
+      "service": "mdi:chart-box-outline"
     }
   }
 }

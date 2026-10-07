@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b33
+
+- Add device-scoped get_statistics response data for one to six months, with separate monthly server aggregates and daily projections. Include real source timestamps, revisions, coverage, field availability, period-end observation and scope-matched Wh/km. Missing days remain null; future chart padding is omitted.
+- Read the persisted ledger without cloud requests by default. Explicit refresh shares the existing cache/queue and updates only the ledger, not current-month telemetry or ride events. Recheck account ownership after processing; no tracks or per-ride entities are introduced.
+- Expose adjacent-month provenance and an explicit missing-adjacent-month reason for first-day ride attribution. Add localized Action names and a script response-variable example, validated in isolated HA. Recorder trend imports remain a separate H4 increment.
+
 ## 2.0.0b32
 
 - Add visible Yesterday distance and Today/Yesterday ride count, duration and energy sensors from the bounded statistics ledger. Preserve real source timestamps, field availability and window completeness; missing reports are gaps, never fabricated zeros. Server daily distance remains separate from end-date ride attribution.

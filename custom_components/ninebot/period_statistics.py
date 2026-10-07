@@ -26,6 +26,8 @@ class DaySummary:
     availability: tuple[tuple[str, str], ...] = ()
     distance_basis: str = "server_daily_chart"
     rides_complete: bool = False
+    adjacent_received_at: str | None = None
+    adjacent_revision: int | None = None
 
     def reason(self, metric: DayMetric) -> str:
         return dict(self.availability).get(metric, "available")
@@ -61,17 +63,21 @@ def day_summary(store: TravelStatisticsStore, sn: str, day: date, now: datetime)
         "distance_km": "available" if distance is not None else "missing_daily_chart"
     }
     rows, complete = store.month_rides(sn, record.month)
+    previous_record = None
+    adjacent_missing = False
     if day.day == 1:
         # The chosen end-date policy needs the adjacent month at rollover;
         # don't assume upstream month filtering uses an end date too.
         previous_rows, previous_complete = store.month_rides(sn, previous_month(record.month))
         previous_record = store.month(sn, previous_month(record.month))
-        complete = bool(
-            complete
-            and previous_complete
+        previous_observed = bool(
+            previous_complete
             and previous_record
+            and timestamp(previous_record.received_at) <= now
             and timestamp(previous_record.received_at).astimezone(zone).date() >= day
         )
+        adjacent_missing = complete and not previous_observed
+        complete = complete and previous_observed
         unique = {row.ride_id: row for row in (*previous_rows, *rows)}
         rows = tuple(unique.values())
     selected = []
@@ -122,7 +128,13 @@ def day_summary(store: TravelStatisticsStore, sn: str, day: date, now: datetime)
         reasons[field] = (
             "available"
             if value is not None
-            else ("incomplete_month_list" if not complete else "missing_metric")
+            else (
+                "adjacent_month_not_observed"
+                if adjacent_missing
+                else "incomplete_month_list"
+                if not complete
+                else "missing_metric"
+            )
         )
     return DaySummary(
         day,
@@ -135,4 +147,6 @@ def day_summary(store: TravelStatisticsStore, sn: str, day: date, now: datetime)
         tuple(reasons.items()),
         basis,
         complete,
+        previous_record.received_at if previous_record else None,
+        previous_record.revision if previous_record else None,
     )

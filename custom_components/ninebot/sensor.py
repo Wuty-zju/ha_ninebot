@@ -533,6 +533,8 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
             else "ride_end_business_date",
             "received_at": summary.received_at,
             "revision": summary.revision,
+            "adjacent_received_at": summary.adjacent_received_at,
+            "adjacent_revision": summary.adjacent_revision,
             "ride_window_complete": summary.rides_complete,
             "availability_reason": summary.reason(self.field),
             "storage": "bounded_statistics",

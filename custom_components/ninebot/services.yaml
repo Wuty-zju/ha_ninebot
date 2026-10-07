@@ -96,3 +96,28 @@ get_history:
       default: true
       selector:
         boolean:
+get_statistics:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: ninebot
+    start_month:
+      required: true
+      example: "202605"
+      selector:
+        text:
+    end_month:
+      required: true
+      example: "202610"
+      selector:
+        text:
+    include_daily:
+      default: true
+      selector:
+        boolean:
+    refresh:
+      default: false
+      selector:
+        boolean:

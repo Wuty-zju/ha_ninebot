@@ -108,3 +108,55 @@ ride totals are not proof of physical completion. Month/last-ride consumption pe
 distance sensors use the matching Wh/km ratio, not charging electricity. Missing
 energy and zero distance produce unknown; no total-increasing state class is
 assigned to resetting daily/monthly totals.
+
+
+## Period statistics Action
+
+`ninebot.get_statistics` accepts `device_id`, `start_month`, `end_month`,
+`include_daily` (default true) and `refresh` (default false). One response covers
+one to six months. The default reads the existing bounded ledger and sends no
+cloud request. Use the existing `get_history` continuations to fill a longer
+history, then query it in six-month windows; this Action is not a second scan
+or full-history archive. Explicit refresh makes at most one cached/queued month
+query per requested month, without fetching details or controls.
+
+`months` contains server-reported totals; `days` contains business-day distance
+and conditional ride count/duration/Wh. Each field has an availability reason.
+A month total does not imply a complete ride list or a completed month.
+`summary.complete_by_metric` means that every requested month reported that
+metric, while `observed_after_all_period_ends` separately indicates reports
+sampled after the selected month ends. Missing months make the corresponding
+summary unknown, not a subset total presented as complete. Server day distance
+and whole-ride end-date attribution can differ. First-day ride totals need a
+verified adjacent-month report; its timestamp/revision is included.
+
+Future padded days are omitted; actual zero and unknown remain distinct. Stored
+source timestamps are preserved, including after reload. No ride IDs, raw JSON,
+GPS trails or arbitrary attributes enter this response. Historical Recorder
+trend import and graph examples are still a separate H4 increment; an Action
+response alone does not automatically become a dashboard data source.
+
+This script returns the same response to a calling automation or Developer Tools
+Action call. Replace the vehicle device ID and choose valid months. The
+`response_variable` and `stop` contract is exercised in isolated HA tests.
+
+```yaml
+script:
+  ninebot_period_statistics:
+    alias: Ninebot period statistics
+    mode: single
+    sequence:
+      - action: ninebot.get_statistics
+        data:
+          device_id: your_vehicle_device_id
+          start_month: "202609"
+          end_month: "202610"
+          refresh: false
+        response_variable: period
+      - stop: Return period statistics
+        response_variable: period
+```
+
+Calling it from another script with `response_variable: result` exposes
+`result.months`, `result.days`, `result.summary` and `result.scope`. Large
+response objects belong in response variables, not template-sensor attributes.

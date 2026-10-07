@@ -545,6 +545,12 @@
     },
     "history_cursor": {
       "message": "The continuation expired, was evicted, or belongs to another vehicle/range. Start again."
+    },
+    "statistics_range": {
+      "message": "Select a range of one to six months with the start no later than the end."
+    },
+    "statistics_unavailable": {
+      "message": "Statistics storage is unavailable. Resolve its Repair; vehicle telemetry can continue."
     }
   },
   "issues": {
@@ -658,6 +664,32 @@
         },
         "include_daily_chart": {
           "name": "Return daily mileage"
+        }
+      }
+    },
+    "get_statistics": {
+      "name": "기간 통계 가져오기",
+      "description": "Return up to six months and their business-day statistics. Reads stored data by default; refresh uses the existing query cache. Missing data is not zero or proof of full history.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Vehicle device belonging to a loaded account."
+        },
+        "start_month": {
+          "name": "Start month",
+          "description": "YYYYMM; at most six months per response."
+        },
+        "end_month": {
+          "name": "End month",
+          "description": "YYYYMM, no later than the current business month."
+        },
+        "include_daily": {
+          "name": "Include daily statistics",
+          "description": "Keep missing days null; never distribute monthly energy across days."
+        },
+        "refresh": {
+          "name": "Query upstream months",
+          "description": "Explicitly query the selected months, reusing fresh cache; never fetch tracks."
         }
       }
     }
