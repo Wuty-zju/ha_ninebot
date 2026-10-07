@@ -59,3 +59,15 @@ fields with V/Ah units. If a previously opened form still rejects a vehicle, clo
 and reopen it after the updated integration has been loaded. A file version alone
 does not prove a running options flow has loaded that version; follow HACS restart
 guidance when required. The integration never restarts Home Assistant itself.
+
+Ride completion events use a conservative local stability policy: at least two
+independent successful travel samples must report unchanged start/end, distance,
+duration, energy and maximum speed over a ten-minute window. Cache rereads do not
+count. This delays events and cannot guarantee an upstream final report; a later
+correction updates telemetry but never emits the same ride again. Startup and
+re-enabling establish a baseline, so historical rides are not replayed.
+
+The original completed-event timestamp is retained through an unavailable state
+for display on reload. This restoration never triggers automations. Old restore
+data without a saved timestamp remains unknown rather than inventing one from
+the ride's end time. No additional cloud polling or ride-detail requests are used.
