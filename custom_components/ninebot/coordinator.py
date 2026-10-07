@@ -234,7 +234,13 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, True)
 
     async def _group(
-        self, sn: str, group: Group, *, force: bool = False, include_last_ride: bool = True
+        self,
+        sn: str,
+        group: Group,
+        *,
+        force: bool = False,
+        include_last_ride: bool = True,
+        include_previous_month: bool = False,
     ) -> None:
         now = dt_util.utcnow()
         stamp = now.timestamp()
@@ -285,7 +291,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     adapters.travel, result.payload, month
                 )
                 travel_version = result.backend_version
-                if include_last_ride and travel.last_ride is None:
+                # A slower adjacent-month query must not renew the actual
+                # receipt of this month's payload or count as its fresh sample.
+                cached_success = result.received_at
+                if (include_last_ride and travel.last_ride is None) or (
+                    include_previous_month and now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).day <= 2
+                ):
                     previous = adapters.previous_month(month)
                     try:
                         fallback_record = self.raw.get(Endpoint.TRAVEL, sn, previous, now=now)
@@ -310,7 +321,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         await self.statistics.async_record(
                             sn, fallback, result.received_at, result.backend_version
                         )
-                        travel = replace(travel, last_ride=fallback.last_ride)
+                        if include_last_ride and travel.last_ride is None:
+                            travel = replace(travel, last_ride=fallback.last_ride)
                     except NinebotAuthError:
                         raise
                     except NinebotError:
@@ -475,7 +487,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     if "battery" in demands[sn].groups:
                         await self._group(sn, "battery")
                     if "travel" in demands[sn].groups:
-                        await self._group(sn, "travel", include_last_ride=demands[sn].last_ride)
+                        await self._group(
+                            sn,
+                            "travel",
+                            include_last_ride=demands[sn].last_ride,
+                            include_previous_month=demands[sn].previous_month,
+                        )
                 return dict(self.data)
         except NinebotAuthError as err:
             self._authenticated = False

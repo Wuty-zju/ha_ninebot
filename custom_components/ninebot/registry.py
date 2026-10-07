@@ -16,7 +16,7 @@ from .compat import device_entry_ids
 from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, CONF_ESTIMATION, DOMAIN
 from .observations import ENTITY_FIELDS, RAW_FIELDS
 from .runtime import NinebotConfigEntry
-from .sensor import HISTORY_FIELDS, SENSORS, battery_descriptions
+from .sensor import DAY_FIELDS, SENSORS, battery_descriptions
 
 OBSOLETE_KEYS = {
     "sensor": frozenset(
@@ -51,6 +51,11 @@ OBSOLETE_KEYS = {
             "cycle_raw",
             "pack_electricity_raw",
             "estimation_quality",
+            "history_scanned_months",
+            "history_indexed_rides",
+            "history_mileage",
+            "history_energy",
+            "history_duration",
             *(field.key for field in RAW_FIELDS if field not in ENTITY_FIELDS),
         ]
     ),
@@ -71,7 +76,7 @@ def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]
         for description in (*SENSORS, *battery_descriptions(snapshot))
         for key in (description.key, *description.aliases)
     } | {"control_availability", "raw_data_summary", "bms_voltage", "batt_temp", "bms_cycles"}
-    sensors.update(HISTORY_FIELDS)
+    sensors.update(DAY_FIELDS)
     numbers: set[str] = set()
     if entry.options.get(CONF_ESTIMATION):
         sensors.add("battery_rated_energy")

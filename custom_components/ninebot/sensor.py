@@ -3,7 +3,7 @@
 import hashlib
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -17,6 +17,7 @@ from homeassistant.const import (
     PERCENTAGE,
     UnitOfElectricPotential,
     UnitOfEnergy,
+    UnitOfEnergyDistance,
     UnitOfLength,
     UnitOfPower,
     UnitOfSpeed,
@@ -37,8 +38,10 @@ from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
 from .observations import ENTITY_FIELDS, RawField
 from .parsing import display_scalar
+from .period_statistics import DayMetric, DaySummary, day_summary
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
+from .travel_statistics import energy_statistics
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -156,6 +159,20 @@ def range_source(snapshot: VehicleSnapshot) -> str | None:
     return None
 
 
+def energy_intensity(snapshot: VehicleSnapshot, *, last: bool = False) -> float | None:
+    travel = snapshot.travel
+    if last:
+        ride = last_timed_ride(snapshot)
+        distance = ride.distance_m / 1000 if ride and ride.distance_m is not None else None
+        energy = ride.energy_raw if ride else None
+    else:
+        distance = travel.mileage if travel else None
+        energy = travel.energy_raw if travel else None
+    return energy_statistics(
+        distance, energy, basis="last_ride" if last else "server_month_summary"
+    )["energy_intensity_wh_per_km"]
+
+
 SENSORS = (
     Description(
         key="battery",
@@ -260,6 +277,24 @@ SENSORS = (
             if s.travel and s.travel.summary
             else None,
         },
+    ),
+    Description(
+        key="month_energy_intensity",
+        group="travel",
+        device_class=SensorDeviceClass.ENERGY_DISTANCE,
+        native_unit_of_measurement=UnitOfEnergyDistance.WATT_HOUR_PER_KM,
+        state_class=SensorStateClass.MEASUREMENT,
+        value=energy_intensity,
+        attributes=lambda s: {"basis": "server_month_summary", "method": "Wh/km"},
+    ),
+    Description(
+        key="last_energy_intensity",
+        group="travel",
+        device_class=SensorDeviceClass.ENERGY_DISTANCE,
+        native_unit_of_measurement=UnitOfEnergyDistance.WATT_HOUR_PER_KM,
+        state_class=SensorStateClass.MEASUREMENT,
+        value=lambda s: energy_intensity(s, last=True),
+        attributes=lambda s: {"basis": "last_reported_ride", "method": "Wh/km"},
     ),
     Description(
         key="returned_pack_count",
@@ -399,9 +434,32 @@ class NinebotSensor(NinebotEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        if self.snapshot and self.entity_description.attributes:
-            return self.entity_description.attributes(self.snapshot)
-        return None
+        snapshot = self.snapshot
+        if snapshot is None:
+            return None
+        attributes = (
+            self.entity_description.attributes(snapshot)
+            if self.entity_description.attributes
+            else {}
+        )
+        if self._data_group == "travel":
+            received = snapshot.travel_freshness.succeeded_at
+            attributes.update(
+                query_month=snapshot.travel.month if snapshot.travel else None,
+                received_at=received.isoformat() if received else None,
+            )
+            if self.entity_description.key.startswith("last_"):
+                last = snapshot.travel.last_ride if snapshot.travel else None
+                ride = last.ride if last else None
+                lifecycle = self.coordinator.ride_lifecycles.get(self.sn)
+                phase = lifecycle.phase(ride) if lifecycle and ride else "reported"
+                attributes.update(
+                    ride_phase=phase,
+                    completion_basis="stable_successful_samples"
+                    if phase == "finalized_by_policy"
+                    else None,
+                )
+        return attributes or None
 
 
 class RatedEnergySensor(NinebotEntity, SensorEntity):
@@ -423,48 +481,61 @@ class RatedEnergySensor(NinebotEntity, SensorEntity):
         return {"basis": "user_rated_voltage_capacity", "measured": False}
 
 
-HISTORY_FIELDS = {
-    "history_scanned_months": ("scanned_months", None, None),
-    "history_indexed_rides": ("indexed_rides", None, None),
-    "history_mileage": ("mileage_km", UnitOfLength.KILOMETERS, SensorDeviceClass.DISTANCE),
-    "history_energy": ("energy_wh", UnitOfEnergy.WATT_HOUR, SensorDeviceClass.ENERGY),
-    "history_duration": ("duration_s", UnitOfTime.SECONDS, SensorDeviceClass.DURATION),
+DAY_FIELDS: dict[str, tuple[DayMetric, int, str | None, SensorDeviceClass | None]] = {
+    "yesterday_mileage": ("distance_km", 1, UnitOfLength.KILOMETERS, SensorDeviceClass.DISTANCE),
+    "today_ride_count": ("ride_count", 0, None, None),
+    "yesterday_ride_count": ("ride_count", 1, None, None),
+    "today_ride_duration": ("duration_s", 0, UnitOfTime.SECONDS, SensorDeviceClass.DURATION),
+    "yesterday_ride_duration": ("duration_s", 1, UnitOfTime.SECONDS, SensorDeviceClass.DURATION),
+    "today_ride_energy": ("energy_wh", 0, UnitOfEnergy.WATT_HOUR, SensorDeviceClass.ENERGY),
+    "yesterday_ride_energy": ("energy_wh", 1, UnitOfEnergy.WATT_HOUR, SensorDeviceClass.ENERGY),
 }
 
 
-class HistorySummarySensor(NinebotEntity, SensorEntity):
-    """Latest explicitly queried scope, never a lifetime odometer or archive."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
+class DayStatisticsSensor(NinebotEntity, SensorEntity):
+    """Small daily projection; missing windows never become zero-valued rides."""
 
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
-        super().__init__(entry, sn, key, "sensor", "profile")
-        self.field, self._attr_native_unit_of_measurement, self._attr_device_class = HISTORY_FIELDS[
-            key
-        ]
+        super().__init__(entry, sn, key, "sensor", "travel")
+        (
+            self.field,
+            self.days_ago,
+            self._attr_native_unit_of_measurement,
+            self._attr_device_class,
+        ) = DAY_FIELDS[key]
+
+    def _summary(self) -> DaySummary:
+        now = dt_util.utcnow()
+        day = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date() - timedelta(days=self.days_ago)
+        return day_summary(self.coordinator.statistics, self.sn, day, now)
+
+    @property
+    def available(self) -> bool:
+        # Historical data keeps its actual received timestamp; a failed live
+        # travel request must not hide a previously verified yesterday window.
+        return self.coordinator.fresh(self.sn, "profile") and self.coordinator.statistics.available
 
     @property
     def native_value(self) -> float | None:
-        summary = self.coordinator.history.summary.get(self.sn)
-        return getattr(summary, self.field) if summary else None
+        return getattr(self._summary(), self.field)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        summary = self.coordinator.history.summary.get(self.sn)
+        summary = self._summary()
         return {
-            "basis": "server_month_summary",
-            "storage": "runtime_only",
-            **(
-                {
-                    "start_month": summary.start_month,
-                    "end_month": summary.end_month,
-                    "range_scan_complete": summary.range_complete,
-                    "all_rides_complete": summary.rides_complete,
-                    "incomplete_month_count": summary.incomplete_months,
-                }
-                if summary
-                else {}
-            ),
+            "date": summary.day.isoformat(),
+            "business_timezone": BUSINESS_TIMEZONE,
+            "basis": summary.distance_basis
+            if self.field == "distance_km"
+            else "returned_unique_rides",
+            "date_assignment": "server_chart_day"
+            if self.field == "distance_km" and summary.distance_basis == "server_daily_chart"
+            else "ride_end_business_date",
+            "received_at": summary.received_at,
+            "revision": summary.revision,
+            "ride_window_complete": summary.rides_complete,
+            "availability_reason": summary.reason(self.field),
+            "storage": "bounded_statistics",
         }
 
 
@@ -574,7 +645,7 @@ async def async_setup_entry(
         )
         yield ControlAvailabilitySensor(entry, sn)
         yield RawDataSummarySensor(entry, sn)
-        yield from (HistorySummarySensor(entry, sn, key) for key in HISTORY_FIELDS)
+        yield from (DayStatisticsSensor(entry, sn, key) for key in DAY_FIELDS)
         if entry.options.get(CONF_ESTIMATION):
             yield RatedEnergySensor(entry, sn)
 

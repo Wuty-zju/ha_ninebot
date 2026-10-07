@@ -112,7 +112,7 @@ async def test_partial_discovery_is_positive_evidence_not_vehicle_removal(coordi
     assert co.discovery_diagnostics()["complete"] is True
 
 
-async def test_empty_month_preserved_while_last_ride_falls_back(coordinator):
+async def test_empty_month_preserved_while_last_ride_falls_back(coordinator, freezer):
     co = coordinator
 
     async def travel(sn, month):
@@ -121,6 +121,7 @@ async def test_empty_month_preserved_while_last_ride_falls_back(coordinator):
         return {"total_mileages": "303.9", "ec": 7210, "list": [{"mileages": 0.3, "ec": 5}]}
 
     co.client.async_get_travel.side_effect = travel
+    freezer.move_to(datetime(2026, 10, 3, tzinfo=UTC))
     with patch(
         "custom_components.ninebot.coordinator.dt_util.utcnow",
         return_value=datetime(2026, 10, 3, tzinfo=UTC),
@@ -650,7 +651,9 @@ async def test_detail_auth_failure_triggers_account_reauth(coordinator, group):
 
 
 @pytest.mark.parametrize("auth", [False, True])
-async def test_optional_previous_month_failure_cannot_change_current_totals(coordinator, auth):
+async def test_optional_previous_month_failure_cannot_change_current_totals(
+    coordinator, auth, freezer
+):
     co = coordinator
 
     async def travel(sn, month):
@@ -659,6 +662,7 @@ async def test_optional_previous_month_failure_cannot_change_current_totals(coor
         raise NinebotAuthError() if auth else NinebotError(ErrorKind.CONNECTION)
 
     co.client.async_get_travel.side_effect = travel
+    freezer.move_to(datetime(2026, 10, 3, tzinfo=UTC))
     with patch(
         "custom_components.ninebot.coordinator.dt_util.utcnow",
         return_value=datetime(2026, 10, 3, tzinfo=UTC),
@@ -965,3 +969,45 @@ async def test_local_day_boundary_notifies_without_cloud_requests(coordinator):
                 notify(deadline)
             co.client.async_get_travel.assert_not_awaited()
             co.client.async_get_status.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "day,expected", [(1, ["202610", "202609"]), (2, ["202610", "202609"]), (3, ["202610"])]
+)
+async def test_day_demand_rollover_is_bounded_cached_and_keeps_current_totals(
+    coordinator, freezer, day, expected
+):
+    co = coordinator
+    freezer.move_to(datetime(2026, 10, day, 4, tzinfo=UTC))
+    co.client.async_get_travel.return_value = {"total_mileages": 10, "times": 0, "list": []}
+    await co._list(datetime.now(UTC))
+    await co._group("synthetic-one", "travel", include_last_ride=False, include_previous_month=True)
+    assert [call.args[1] for call in co.client.async_get_travel.await_args_list] == expected
+    assert co.data["synthetic-one"].travel.month == "202610"
+    assert co.data["synthetic-one"].travel.last_ride is None
+    co.client.async_get_travel.reset_mock()
+    await co._group("synthetic-one", "travel", include_last_ride=False, include_previous_month=True)
+    co.client.async_get_travel.assert_not_awaited()
+    co.client.async_get_trip_detail.assert_not_awaited()
+    co.client.async_control.assert_not_awaited()
+
+
+async def test_adjacent_query_latency_does_not_renew_current_month_receipt(coordinator, freezer):
+    co = coordinator
+    now = datetime(2026, 10, 1, 4, tzinfo=UTC)
+    freezer.move_to(now)
+    await co._list(now)
+
+    async def delayed_previous(sn, month):
+        if month == "202609":
+            freezer.tick(timedelta(seconds=30))
+        return {"times": 0, "list": [], "total_mileages": 0}
+
+    co.client.async_get_travel.side_effect = delayed_previous
+    await co._group("synthetic-one", "travel", include_last_ride=False, include_previous_month=True)
+    assert co.data["synthetic-one"].travel_freshness.succeeded_at == now
+    assert co.statistics.month("synthetic-one", "202610").received_at == now.isoformat()
+    assert (
+        co.statistics.month("synthetic-one", "202609").received_at
+        == (now + timedelta(seconds=30)).isoformat()
+    )

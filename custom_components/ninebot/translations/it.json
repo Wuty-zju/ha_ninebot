@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Questo mese: Copertura dei viaggi"
       },
-      "history_scanned_months": {
-        "name": "Periodo interrogato: Mesi interrogati"
-      },
-      "history_indexed_rides": {
-        "name": "Periodo interrogato: Viaggi acquisiti"
-      },
-      "history_mileage": {
-        "name": "Periodo interrogato: Distanza"
-      },
-      "history_energy": {
-        "name": "Periodo interrogato: Energia"
-      },
-      "history_duration": {
-        "name": "Periodo interrogato: Durata dei viaggi"
-      },
       "battery_rated_energy": {
         "name": "Energia nominale batteria"
       },
       "today_mileage": {
         "name": "Distanza di oggi"
+      },
+      "yesterday_mileage": {
+        "name": "Ieri: Distanza"
+      },
+      "today_ride_count": {
+        "name": "Oggi: Viaggi"
+      },
+      "yesterday_ride_count": {
+        "name": "Ieri: Viaggi"
+      },
+      "today_ride_duration": {
+        "name": "Oggi: Durata dei viaggi"
+      },
+      "yesterday_ride_duration": {
+        "name": "Ieri: Durata dei viaggi"
+      },
+      "today_ride_energy": {
+        "name": "Oggi: Energia"
+      },
+      "yesterday_ride_energy": {
+        "name": "Ieri: Energia"
+      },
+      "month_energy_intensity": {
+        "name": "Questo mese: Consumo per distanza"
+      },
+      "last_energy_intensity": {
+        "name": "Ultimo viaggio: Consumo per distanza"
       }
     },
     "binary_sensor": {

@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Ce mois: Couverture des trajets"
       },
-      "history_scanned_months": {
-        "name": "Période interrogée: Mois interrogés"
-      },
-      "history_indexed_rides": {
-        "name": "Période interrogée: Trajets récupérés"
-      },
-      "history_mileage": {
-        "name": "Période interrogée: Distance"
-      },
-      "history_energy": {
-        "name": "Période interrogée: Énergie"
-      },
-      "history_duration": {
-        "name": "Période interrogée: Durée des trajets"
-      },
       "battery_rated_energy": {
         "name": "Énergie nominale de batterie"
       },
       "today_mileage": {
         "name": "Distance aujourd’hui"
+      },
+      "yesterday_mileage": {
+        "name": "Hier: Distance"
+      },
+      "today_ride_count": {
+        "name": "Aujourd’hui: Trajets"
+      },
+      "yesterday_ride_count": {
+        "name": "Hier: Trajets"
+      },
+      "today_ride_duration": {
+        "name": "Aujourd’hui: Durée des trajets"
+      },
+      "yesterday_ride_duration": {
+        "name": "Hier: Durée des trajets"
+      },
+      "today_ride_energy": {
+        "name": "Aujourd’hui: Énergie"
+      },
+      "yesterday_ride_energy": {
+        "name": "Hier: Énergie"
+      },
+      "month_energy_intensity": {
+        "name": "Ce mois: Consommation par distance"
+      },
+      "last_energy_intensity": {
+        "name": "Dernier trajet: Consommation par distance"
       }
     },
     "binary_sensor": {

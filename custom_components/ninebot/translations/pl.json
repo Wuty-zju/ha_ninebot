@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Ten miesiąc: Kompletność listy przejazdów"
       },
-      "history_scanned_months": {
-        "name": "Zakres zapytania: Sprawdzone miesiące"
-      },
-      "history_indexed_rides": {
-        "name": "Zakres zapytania: Pobrane przejazdy"
-      },
-      "history_mileage": {
-        "name": "Zakres zapytania: Dystans"
-      },
-      "history_energy": {
-        "name": "Zakres zapytania: Energia"
-      },
-      "history_duration": {
-        "name": "Zakres zapytania: Czas przejazdów"
-      },
       "battery_rated_energy": {
         "name": "Energia znamionowa baterii"
       },
       "today_mileage": {
         "name": "Dzisiejszy dystans"
+      },
+      "yesterday_mileage": {
+        "name": "Wczoraj: Dystans"
+      },
+      "today_ride_count": {
+        "name": "Dzisiaj: Przejazdy"
+      },
+      "yesterday_ride_count": {
+        "name": "Wczoraj: Przejazdy"
+      },
+      "today_ride_duration": {
+        "name": "Dzisiaj: Czas przejazdów"
+      },
+      "yesterday_ride_duration": {
+        "name": "Wczoraj: Czas przejazdów"
+      },
+      "today_ride_energy": {
+        "name": "Dzisiaj: Energia"
+      },
+      "yesterday_ride_energy": {
+        "name": "Wczoraj: Energia"
+      },
+      "month_energy_intensity": {
+        "name": "Ten miesiąc: Zużycie energii na dystans"
+      },
+      "last_energy_intensity": {
+        "name": "Ostatni przejazd: Zużycie energii na dystans"
       }
     },
     "binary_sensor": {

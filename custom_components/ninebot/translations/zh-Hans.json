@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "本月行程明细覆盖率"
       },
-      "history_scanned_months": {
-        "name": "已扫描月份数"
-      },
-      "history_indexed_rides": {
-        "name": "本次查询已索引行程数"
-      },
-      "history_mileage": {
-        "name": "已扫描月份里程"
-      },
-      "history_energy": {
-        "name": "已扫描月份能量"
-      },
-      "history_duration": {
-        "name": "已扫描月份骑行时长"
-      },
       "battery_rated_energy": {
         "name": "电池额定能量"
       },
       "today_mileage": {
         "name": "今日里程"
+      },
+      "yesterday_mileage": {
+        "name": "昨日里程"
+      },
+      "today_ride_count": {
+        "name": "今日骑行次数"
+      },
+      "yesterday_ride_count": {
+        "name": "昨日骑行次数"
+      },
+      "today_ride_duration": {
+        "name": "今日骑行时长"
+      },
+      "yesterday_ride_duration": {
+        "name": "昨日骑行时长"
+      },
+      "today_ride_energy": {
+        "name": "今日骑行能耗"
+      },
+      "yesterday_ride_energy": {
+        "name": "昨日骑行能耗"
+      },
+      "month_energy_intensity": {
+        "name": "本月单位里程能耗"
+      },
+      "last_energy_intensity": {
+        "name": "最近行程单位里程能耗"
       }
     },
     "binary_sensor": {

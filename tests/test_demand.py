@@ -34,6 +34,7 @@ def demand(snapshot, *needs, now=NOW):
         (Need.STATUS, {"status"}, False),
         (Need.BATTERY, {"battery"}, False),
         (Need.MONTH, {"travel"}, False),
+        (Need.DAY, {"travel"}, False),
         (Need.LAST_RIDE, {"travel"}, True),
         (Need.RIDE_EVENT, {"travel"}, True),
         (Need.CONTROL, {"status"}, False),
@@ -43,6 +44,7 @@ def test_each_consumer_requires_only_its_dependencies(need, groups, last):
     result = demand(settled(), need)
     assert result.groups == groups
     assert result.last_ride is last
+    assert result.previous_month is (need is Need.DAY)
 
 
 def test_discovery_listeners_and_other_vehicles_do_not_imply_endpoint_demand():
@@ -90,6 +92,10 @@ def test_removed_vehicle_never_creates_demand_even_for_model_and_event():
     "platform,key,group,need",
     [
         ("sensor", "month_mileage", "travel", Need.MONTH),
+        ("sensor", "month_energy_intensity", "travel", Need.MONTH),
+        ("sensor", "last_energy_intensity", "travel", Need.LAST_RIDE),
+        ("sensor", "yesterday_mileage", "travel", Need.DAY),
+        ("sensor", "today_ride_energy", "travel", Need.DAY),
         ("sensor", "last_mileage", "travel", Need.LAST_RIDE),
         ("event", "ride", "travel", Need.RIDE_EVENT),
         ("button", "bucket", "profile", Need.CONTROL),

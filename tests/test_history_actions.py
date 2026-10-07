@@ -117,20 +117,15 @@ async def test_bounded_scan_drains_pages_truthful_totals_and_visible_entities(
     app_client.async_control.assert_not_awaited()
     registry = er.async_get(hass)
     await hass.async_block_till_done()
-    for key, value in [
-        ("history_scanned_months", 5),
-        ("history_indexed_rides", 15),
-        ("history_mileage", 500),
-        ("history_energy", 5000),
-        ("history_duration", 2000),
-    ]:
-        entity_id = registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
-        assert registry.async_get(entity_id).disabled_by is None
-        state = hass.states.get(entity_id)
-        assert float(state.state) == value
-        assert "state_class" not in state.attributes
-        assert state.attributes["range_scan_complete"] is True
-        assert len(json.dumps(dict(state.attributes))) < 1000
+    # Query scope remains in the response, not five runtime-only entities.
+    for key in (
+        "history_scanned_months",
+        "history_indexed_rides",
+        "history_mileage",
+        "history_energy",
+        "history_duration",
+    ):
+        assert registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}") is None
     encoded = json.dumps(response, allow_nan=False)
     assert len(encoded.encode()) < 1024 * 1024
     assert not any(

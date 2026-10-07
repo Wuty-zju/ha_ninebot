@@ -29,9 +29,6 @@
       "parsed": "車輛資訊",
       "month": "本月",
       "last": "上次行程",
-      "history": "查詢範圍",
-      "scanned": "已查詢月份",
-      "indexed": "已取得行程",
       "rated": "電池額定能量",
       "charging": "充電",
       "main_power": "主電源",
@@ -47,7 +44,10 @@
       "capacity": "額定容量",
       "event": "騎行事件",
       "image": "車輛圖片",
-      "location": "車輛位置"
+      "location": "車輛位置",
+      "today": "今日",
+      "yesterday": "昨日",
+      "intensity": "單位里程能耗"
     },
     "ui": {
       "account": "帳號",
@@ -101,9 +101,6 @@
       "parsed": "Fahrzeuginformationen",
       "month": "Diesen Monat",
       "last": "Letzte Fahrt",
-      "history": "Abfragezeitraum",
-      "scanned": "Abgefragte Monate",
-      "indexed": "Erfasste Fahrten",
       "rated": "Batterienennenergie",
       "charging": "Laden",
       "main_power": "Hauptstromversorgung",
@@ -119,7 +116,10 @@
       "capacity": "Nennkapazität",
       "event": "Fahrtereignis",
       "image": "Fahrzeugbild",
-      "location": "Fahrzeugposition"
+      "location": "Fahrzeugposition",
+      "today": "Heute",
+      "yesterday": "Gestern",
+      "intensity": "Energieverbrauch pro Strecke"
     },
     "ui": {
       "account": "Konto",
@@ -173,9 +173,6 @@
       "parsed": "Informations du véhicule",
       "month": "Ce mois",
       "last": "Dernier trajet",
-      "history": "Période interrogée",
-      "scanned": "Mois interrogés",
-      "indexed": "Trajets récupérés",
       "rated": "Énergie nominale de batterie",
       "charging": "En charge",
       "main_power": "Alimentation principale",
@@ -191,7 +188,10 @@
       "capacity": "Capacité nominale",
       "event": "Événement de trajet",
       "image": "Image du véhicule",
-      "location": "Position du véhicule"
+      "location": "Position du véhicule",
+      "today": "Aujourd’hui",
+      "yesterday": "Hier",
+      "intensity": "Consommation par distance"
     },
     "ui": {
       "account": "Compte",
@@ -245,9 +245,6 @@
       "parsed": "Información del vehículo",
       "month": "Este mes",
       "last": "Último viaje",
-      "history": "Período consultado",
-      "scanned": "Meses consultados",
-      "indexed": "Viajes obtenidos",
       "rated": "Energía nominal de batería",
       "charging": "Cargando",
       "main_power": "Alimentación principal",
@@ -263,7 +260,10 @@
       "capacity": "Capacidad nominal",
       "event": "Evento de viaje",
       "image": "Imagen del vehículo",
-      "location": "Ubicación del vehículo"
+      "location": "Ubicación del vehículo",
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "intensity": "Consumo por distancia"
     },
     "ui": {
       "account": "Cuenta",
@@ -317,9 +317,6 @@
       "parsed": "Informazioni del veicolo",
       "month": "Questo mese",
       "last": "Ultimo viaggio",
-      "history": "Periodo interrogato",
-      "scanned": "Mesi interrogati",
-      "indexed": "Viaggi acquisiti",
       "rated": "Energia nominale batteria",
       "charging": "In carica",
       "main_power": "Alimentazione principale",
@@ -335,7 +332,10 @@
       "capacity": "Capacità nominale",
       "event": "Evento di viaggio",
       "image": "Immagine del veicolo",
-      "location": "Posizione del veicolo"
+      "location": "Posizione del veicolo",
+      "today": "Oggi",
+      "yesterday": "Ieri",
+      "intensity": "Consumo per distanza"
     },
     "ui": {
       "account": "Account",
@@ -389,9 +389,6 @@
       "parsed": "Informações do veículo",
       "month": "Este mês",
       "last": "Última viagem",
-      "history": "Período consultado",
-      "scanned": "Meses consultados",
-      "indexed": "Viagens obtidas",
       "rated": "Energia nominal da bateria",
       "charging": "A carregar",
       "main_power": "Alimentação principal",
@@ -407,7 +404,10 @@
       "capacity": "Capacidade nominal",
       "event": "Evento de viagem",
       "image": "Imagem do veículo",
-      "location": "Localização do veículo"
+      "location": "Localização do veículo",
+      "today": "Hoje",
+      "yesterday": "Ontem",
+      "intensity": "Consumo por distância"
     },
     "ui": {
       "account": "Conta",
@@ -461,9 +461,6 @@
       "parsed": "Информация о транспорте",
       "month": "Этот месяц",
       "last": "Последняя поездка",
-      "history": "Период запроса",
-      "scanned": "Запрошенные месяцы",
-      "indexed": "Полученные поездки",
       "rated": "Номинальная энергия батареи",
       "charging": "Зарядка",
       "main_power": "Основное питание",
@@ -479,7 +476,10 @@
       "capacity": "Номинальная ёмкость",
       "event": "Событие поездки",
       "image": "Изображение транспорта",
-      "location": "Местоположение транспорта"
+      "location": "Местоположение транспорта",
+      "today": "Сегодня",
+      "yesterday": "Вчера",
+      "intensity": "Расход энергии на расстояние"
     },
     "ui": {
       "account": "Аккаунт",
@@ -533,9 +533,6 @@
       "parsed": "車両情報",
       "month": "今月",
       "last": "前回の走行",
-      "history": "検索期間",
-      "scanned": "検索済み月数",
-      "indexed": "取得済み走行数",
       "rated": "バッテリー定格電力量",
       "charging": "充電中",
       "main_power": "主電源",
@@ -551,7 +548,10 @@
       "capacity": "定格容量",
       "event": "走行イベント",
       "image": "車両画像",
-      "location": "車両位置"
+      "location": "車両位置",
+      "today": "今日",
+      "yesterday": "昨日",
+      "intensity": "距離あたりの消費電力"
     },
     "ui": {
       "account": "アカウント",
@@ -605,9 +605,6 @@
       "parsed": "차량 정보",
       "month": "이번 달",
       "last": "최근 주행",
-      "history": "조회 기간",
-      "scanned": "조회한 개월 수",
-      "indexed": "확보한 주행 기록",
       "rated": "배터리 정격 에너지",
       "charging": "충전 중",
       "main_power": "주 전원",
@@ -623,7 +620,10 @@
       "capacity": "정격 용량",
       "event": "주행 이벤트",
       "image": "차량 이미지",
-      "location": "차량 위치"
+      "location": "차량 위치",
+      "today": "오늘",
+      "yesterday": "어제",
+      "intensity": "거리당 에너지 소비"
     },
     "ui": {
       "account": "계정",
@@ -677,9 +677,6 @@
       "parsed": "Voertuiginformatie",
       "month": "Deze maand",
       "last": "Laatste rit",
-      "history": "Opgevraagde periode",
-      "scanned": "Opgevraagde maanden",
-      "indexed": "Opgehaalde ritten",
       "rated": "Nominale batterijenergie",
       "charging": "Opladen",
       "main_power": "Hoofdvoeding",
@@ -695,7 +692,10 @@
       "capacity": "Nominale capaciteit",
       "event": "Ritgebeurtenis",
       "image": "Voertuigafbeelding",
-      "location": "Voertuiglocatie"
+      "location": "Voertuiglocatie",
+      "today": "Vandaag",
+      "yesterday": "Gisteren",
+      "intensity": "Energieverbruik per afstand"
     },
     "ui": {
       "account": "Account",
@@ -749,9 +749,6 @@
       "parsed": "Informacje o pojeździe",
       "month": "Ten miesiąc",
       "last": "Ostatni przejazd",
-      "history": "Zakres zapytania",
-      "scanned": "Sprawdzone miesiące",
-      "indexed": "Pobrane przejazdy",
       "rated": "Energia znamionowa baterii",
       "charging": "Ładowanie",
       "main_power": "Główne zasilanie",
@@ -767,7 +764,10 @@
       "capacity": "Pojemność znamionowa",
       "event": "Zdarzenie przejazdu",
       "image": "Zdjęcie pojazdu",
-      "location": "Pozycja pojazdu"
+      "location": "Pozycja pojazdu",
+      "today": "Dzisiaj",
+      "yesterday": "Wczoraj",
+      "intensity": "Zużycie energii na dystans"
     },
     "ui": {
       "account": "Konto",
@@ -821,9 +821,6 @@
       "parsed": "Araç bilgileri",
       "month": "Bu ay",
       "last": "Son sürüş",
-      "history": "Sorgu aralığı",
-      "scanned": "Sorgulanan aylar",
-      "indexed": "Alınan sürüşler",
       "rated": "Pil nominal enerjisi",
       "charging": "Şarj oluyor",
       "main_power": "Ana güç",
@@ -839,7 +836,10 @@
       "capacity": "Nominal kapasite",
       "event": "Sürüş olayı",
       "image": "Araç resmi",
-      "location": "Araç konumu"
+      "location": "Araç konumu",
+      "today": "Bugün",
+      "yesterday": "Dün",
+      "intensity": "Mesafe başına enerji tüketimi"
     },
     "ui": {
       "account": "Hesap",
@@ -893,9 +893,6 @@
       "parsed": "معلومات المركبة",
       "month": "هذا الشهر",
       "last": "آخر رحلة",
-      "history": "نطاق الاستعلام",
-      "scanned": "الأشهر المستعلم عنها",
-      "indexed": "الرحلات المسترجعة",
       "rated": "طاقة البطارية الاسمية",
       "charging": "جارٍ الشحن",
       "main_power": "الطاقة الرئيسية",
@@ -911,7 +908,10 @@
       "capacity": "السعة الاسمية",
       "event": "حدث رحلة",
       "image": "صورة المركبة",
-      "location": "موقع المركبة"
+      "location": "موقع المركبة",
+      "today": "اليوم",
+      "yesterday": "أمس",
+      "intensity": "استهلاك الطاقة لكل مسافة"
     },
     "ui": {
       "account": "الحساب",
@@ -965,9 +965,6 @@
       "parsed": "वाहन की जानकारी",
       "month": "इस महीने",
       "last": "पिछली यात्रा",
-      "history": "क्वेरी अवधि",
-      "scanned": "जाँचे गए महीने",
-      "indexed": "प्राप्त यात्राएँ",
       "rated": "बैटरी की निर्धारित ऊर्जा",
       "charging": "चार्ज हो रहा है",
       "main_power": "मुख्य पावर",
@@ -983,7 +980,10 @@
       "capacity": "निर्धारित क्षमता",
       "event": "यात्रा घटना",
       "image": "वाहन की तस्वीर",
-      "location": "वाहन स्थान"
+      "location": "वाहन स्थान",
+      "today": "आज",
+      "yesterday": "कल",
+      "intensity": "प्रति दूरी ऊर्जा खपत"
     },
     "ui": {
       "account": "खाता",
@@ -1037,9 +1037,6 @@
       "parsed": "Informasi kendaraan",
       "month": "Bulan ini",
       "last": "Perjalanan terakhir",
-      "history": "Rentang kueri",
-      "scanned": "Bulan yang diperiksa",
-      "indexed": "Perjalanan yang diperoleh",
       "rated": "Energi nominal baterai",
       "charging": "Mengisi daya",
       "main_power": "Daya utama",
@@ -1055,7 +1052,10 @@
       "capacity": "Kapasitas nominal",
       "event": "Peristiwa perjalanan",
       "image": "Gambar kendaraan",
-      "location": "Lokasi kendaraan"
+      "location": "Lokasi kendaraan",
+      "today": "Hari ini",
+      "yesterday": "Kemarin",
+      "intensity": "Konsumsi energi per jarak"
     },
     "ui": {
       "account": "Akun",
@@ -1109,9 +1109,6 @@
       "parsed": "Thông tin xe",
       "month": "Tháng này",
       "last": "Chuyến gần nhất",
-      "history": "Phạm vi truy vấn",
-      "scanned": "Số tháng đã truy vấn",
-      "indexed": "Số chuyến đã lấy",
       "rated": "Năng lượng định mức pin",
       "charging": "Đang sạc",
       "main_power": "Nguồn chính",
@@ -1127,7 +1124,10 @@
       "capacity": "Dung lượng định mức",
       "event": "Sự kiện chuyến đi",
       "image": "Hình ảnh xe",
-      "location": "Vị trí xe"
+      "location": "Vị trí xe",
+      "today": "Hôm nay",
+      "yesterday": "Hôm qua",
+      "intensity": "Năng lượng tiêu thụ trên quãng đường"
     },
     "ui": {
       "account": "Tài khoản",
@@ -1181,9 +1181,6 @@
       "parsed": "ข้อมูลรถ",
       "month": "เดือนนี้",
       "last": "การเดินทางล่าสุด",
-      "history": "ช่วงที่ค้นหา",
-      "scanned": "เดือนที่ค้นหาแล้ว",
-      "indexed": "รายการเดินทางที่ได้รับ",
       "rated": "พลังงานพิกัดแบตเตอรี่",
       "charging": "กำลังชาร์จ",
       "main_power": "ไฟหลัก",
@@ -1199,7 +1196,10 @@
       "capacity": "ความจุพิกัด",
       "event": "เหตุการณ์เดินทาง",
       "image": "รูปรถ",
-      "location": "ตำแหน่งรถ"
+      "location": "ตำแหน่งรถ",
+      "today": "วันนี้",
+      "yesterday": "เมื่อวาน",
+      "intensity": "การใช้พลังงานต่อระยะทาง"
     },
     "ui": {
       "account": "บัญชี",
@@ -1253,9 +1253,6 @@
       "parsed": "Інформація про транспорт",
       "month": "Цей місяць",
       "last": "Остання поїздка",
-      "history": "Період запиту",
-      "scanned": "Перевірені місяці",
-      "indexed": "Отримані поїздки",
       "rated": "Номінальна енергія батареї",
       "charging": "Заряджання",
       "main_power": "Основне живлення",
@@ -1271,7 +1268,10 @@
       "capacity": "Номінальна ємність",
       "event": "Подія поїздки",
       "image": "Зображення транспорту",
-      "location": "Місцезнаходження транспорту"
+      "location": "Місцезнаходження транспорту",
+      "today": "Сьогодні",
+      "yesterday": "Вчора",
+      "intensity": "Витрата енергії на відстань"
     },
     "ui": {
       "account": "Обліковий запис",
@@ -1325,9 +1325,6 @@
       "parsed": "Informações do veículo",
       "month": "Este mês",
       "last": "Última viagem",
-      "history": "Período consultado",
-      "scanned": "Meses consultados",
-      "indexed": "Viagens obtidas",
       "rated": "Energia nominal da bateria",
       "charging": "Carregando",
       "main_power": "Alimentação principal",
@@ -1343,7 +1340,10 @@
       "capacity": "Capacidade nominal",
       "event": "Evento de viagem",
       "image": "Imagem do veículo",
-      "location": "Localização do veículo"
+      "location": "Localização do veículo",
+      "today": "Hoje",
+      "yesterday": "Ontem",
+      "intensity": "Consumo por distância"
     },
     "ui": {
       "account": "Conta",

@@ -17,6 +17,7 @@ class Need(StrEnum):
     STATUS = "status"
     BATTERY = "battery"
     MONTH = "month"
+    DAY = "day"
     LAST_RIDE = "last_ride"
     RIDE_EVENT = "ride_event"
     CONTROL = "control"
@@ -33,6 +34,7 @@ class PollingDemand:
     groups: frozenset[Group]
     last_ride: bool
     reasons: tuple[str, ...]
+    previous_month: bool = False
 
     def diagnostics(self) -> dict[str, object]:
         return {
@@ -49,7 +51,12 @@ def entity_context(vehicle: str, platform: str, key: str, group: str) -> Consume
     elif platform == "button" and key != "refresh":
         need = Need.CONTROL
     elif group == "travel":
-        need = Need.MONTH if key.startswith("month_") or key == "today_mileage" else Need.LAST_RIDE
+        if key.startswith("yesterday_") or key.startswith("today_ride_"):
+            need = Need.DAY
+        else:
+            need = (
+                Need.MONTH if key.startswith("month_") or key == "today_mileage" else Need.LAST_RIDE
+            )
     elif group == "status":
         need = Need.STATUS
     elif group == "battery":
@@ -84,7 +91,7 @@ def polling_demand(
     if Need.BATTERY in needs:
         groups.add("battery")
     last_ride = bool(needs & {Need.LAST_RIDE, Need.RIDE_EVENT})
-    if last_ride or Need.MONTH in needs:
+    if last_ride or needs & {Need.MONTH, Need.DAY}:
         groups.add("travel")
     if snapshot.status_freshness.attempted_at is None:
         groups.add("status")
@@ -108,4 +115,4 @@ def polling_demand(
         reasons.add("battery_discovery")
     if not snapshot.present:
         return PollingDemand(frozenset(), False, ("vehicle_absent",))
-    return PollingDemand(frozenset(groups), last_ride, tuple(sorted(reasons)))
+    return PollingDemand(frozenset(groups), last_ride, tuple(sorted(reasons)), Need.DAY in needs)

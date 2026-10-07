@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Bu ay: Sürüş kaydı kapsamı"
       },
-      "history_scanned_months": {
-        "name": "Sorgu aralığı: Sorgulanan aylar"
-      },
-      "history_indexed_rides": {
-        "name": "Sorgu aralığı: Alınan sürüşler"
-      },
-      "history_mileage": {
-        "name": "Sorgu aralığı: Mesafe"
-      },
-      "history_energy": {
-        "name": "Sorgu aralığı: Enerji"
-      },
-      "history_duration": {
-        "name": "Sorgu aralığı: Sürüş süresi"
-      },
       "battery_rated_energy": {
         "name": "Pil nominal enerjisi"
       },
       "today_mileage": {
         "name": "Bugünkü mesafe"
+      },
+      "yesterday_mileage": {
+        "name": "Dün: Mesafe"
+      },
+      "today_ride_count": {
+        "name": "Bugün: Sürüş sayısı"
+      },
+      "yesterday_ride_count": {
+        "name": "Dün: Sürüş sayısı"
+      },
+      "today_ride_duration": {
+        "name": "Bugün: Sürüş süresi"
+      },
+      "yesterday_ride_duration": {
+        "name": "Dün: Sürüş süresi"
+      },
+      "today_ride_energy": {
+        "name": "Bugün: Enerji"
+      },
+      "yesterday_ride_energy": {
+        "name": "Dün: Enerji"
+      },
+      "month_energy_intensity": {
+        "name": "Bu ay: Mesafe başına enerji tüketimi"
+      },
+      "last_energy_intensity": {
+        "name": "Son sürüş: Mesafe başına enerji tüketimi"
       }
     },
     "binary_sensor": {
