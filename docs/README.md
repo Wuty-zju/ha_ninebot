@@ -52,3 +52,10 @@ day within the travel freshness limit. Yesterday's cached chart becomes unknown
 at local midnight; a prefilled zero is not treated as a new measurement. Missing
 or inconsistent charts stay unknown. The sensor is visible by default and uses
 km/distance; no total-increasing statistics or extra history/detail polling.
+
+
+Rated battery parameter configuration uses vehicle registry IDs and native number
+fields with V/Ah units. If a previously opened form still rejects a vehicle, close
+and reopen it after the updated integration has been loaded. A file version alone
+does not prove a running options flow has loaded that version; follow HACS restart
+guidance when required. The integration never restarts Home Assistant itself.

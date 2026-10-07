@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0b29
+
+- Fix the rated battery parameter form failing with HTTP 500 after selecting a valid vehicle: use serializable native number selectors with V/Ah units, retaining strict finite/range validation.
+- Verify the actual HTTP options flow, including renamed/same-name vehicles, foreign-account rejection and invalid parameters. Existing device selector IDs, parameter storage and entity IDs remain unchanged.
+
 ## 2.0.0b28
 
 - Add a visible-by-default Today distance sensor from the validated monthly daily chart. It requires the current Asia/Shanghai business date and a fresh successful travel sample from that day; missing, inconsistent or yesterday-only data remains unknown.

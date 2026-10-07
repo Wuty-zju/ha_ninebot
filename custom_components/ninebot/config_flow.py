@@ -15,6 +15,9 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.selector import (
     DeviceSelector,
     DeviceSelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -518,20 +521,36 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 runtime.coordinator.async_set_updated_data(dict(runtime.coordinator.data))
                 return self.async_create_entry(title="", data=self._pending_options)
         schema = {}
-        for key, maximum in (("voltage", 300), ("capacity", 500)):
+        for key, maximum, unit in (("voltage", 300, "V"), ("capacity", 500, "Ah")):
             value = getattr(model, key)
             field = vol.Required(key) if value is None else vol.Required(key, default=value)
-            schema[field] = parameter_validator(maximum)
+            schema[field] = parameter_validator(maximum, unit)
         return self.async_show_form(
             step_id="model_parameters", data_schema=vol.Schema(schema), errors=errors
         )
 
 
-def parameter_validator(maximum: float) -> Any:
-    def validate(value: object) -> float:
-        result = number(value, 1, maximum)
+class RatedParameterSelector(NumberSelector):
+    """Serialize a standard number field while retaining strict finite validation."""
+
+    def __init__(self, maximum: float, unit: str) -> None:
+        self._maximum = maximum
+        super().__init__(
+            NumberSelectorConfig(
+                min=1,
+                max=maximum,
+                step="any",
+                mode=NumberSelectorMode.BOX,
+                unit_of_measurement=unit,
+            )
+        )
+
+    def __call__(self, value: Any) -> float:
+        result = number(value, 1, self._maximum)
         if result is None:
             raise vol.Invalid("Model parameter outside supported range")
         return result
 
-    return validate
+
+def parameter_validator(maximum: float, unit: str = "") -> RatedParameterSelector:
+    return RatedParameterSelector(maximum, unit)
