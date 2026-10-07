@@ -551,6 +551,15 @@
     },
     "statistics_unavailable": {
       "message": "Statistics storage is unavailable. Resolve its Repair; vehicle telemetry can continue."
+    },
+    "statistics_recorder": {
+      "message": "Recorder must be running to import native statistics. Period query Actions still work without it."
+    },
+    "statistics_timezone": {
+      "message": "Native period charts currently require the Home Assistant time zone Asia/Shanghai. Query responses remain available in other time zones."
+    },
+    "statistics_import_data": {
+      "message": "Existing statistics have incompatible units, shape or period values, or exceed the import budget. Nothing in this batch was queued. Review the statistics before retrying."
     }
   },
   "issues": {
@@ -690,6 +699,28 @@
         "refresh": {
           "name": "Query upstream months",
           "description": "Explicitly query the selected months, reusing fresh cache; never fetch tracks."
+        }
+      }
+    },
+    "import_statistics": {
+      "name": "Importa statistiche storiche",
+      "description": "Explicitly write valid closed day/month periods from the ledger to Recorder. Up to six months; no cloud request, hourly distribution or missing-data padding.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Vehicle device belonging to a loaded account."
+        },
+        "start_month": {
+          "name": "Start month",
+          "description": "YYYYMM; at most six months per response."
+        },
+        "end_month": {
+          "name": "End month",
+          "description": "YYYYMM, no later than the current business month."
+        },
+        "include_daily": {
+          "name": "Include daily statistics",
+          "description": "Also import verified daily statistics; disable to import closed months only."
         }
       }
     }

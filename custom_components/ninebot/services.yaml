@@ -121,3 +121,24 @@ get_statistics:
       default: false
       selector:
         boolean:
+import_statistics:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: ninebot
+    start_month:
+      required: true
+      example: "202605"
+      selector:
+        text:
+    end_month:
+      required: true
+      example: "202609"
+      selector:
+        text:
+    include_daily:
+      default: true
+      selector:
+        boolean:

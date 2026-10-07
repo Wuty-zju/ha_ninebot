@@ -75,3 +75,5 @@ Developers start with [product documentation](docs/README.md) and [product const
 Maintain local developer handbooks outside the product repository instead of adding a report for every beta.
 Small changes use targeted offline regression; major boundaries use the pinned compatibility suite.
 Exact CI execution/skip scope and physical verification are separate facts; see [development constraints](AGENTS.md).
+
+Native historical day/month trends are available through the explicit `ninebot.import_statistics` Action, with ready-to-copy standard statistics graph cards. See the [history and visualization guide](docs/README.md#native-historical-trend-graphs); imports read the existing ledger and do not query the cloud.

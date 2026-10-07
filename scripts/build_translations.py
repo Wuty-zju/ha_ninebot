@@ -189,6 +189,11 @@ def main() -> None:
         words = vocabulary["labels"]
         ui = vocabulary["ui"]
         data = deepcopy(en)
+        previous = json.loads((DIRECTORY / "translations" / f"{locale}.json").read_text())
+        # Keep curated Repair translations instead of replacing them with English.
+        for key in data["issues"]:
+            if key in previous.get("issues", {}):
+                data["issues"][key] = previous["issues"][key]
         for key, word in SENSOR_WORDS.items():
             data["entity"]["sensor"][key]["name"] = words[word]
         for key, (prefix, word) in COMPOSITE.items():
@@ -251,7 +256,17 @@ def main() -> None:
             "voltage": f"{words['nominal']} (V)",
             "capacity": f"{words['capacity']} (Ah)",
         }
-        for action in ("get_trips", "get_trip_detail", "get_history", "get_statistics"):
+        if "today_mileage" in previous.get("entity", {}).get("sensor", {}):
+            data["entity"]["sensor"]["today_mileage"] = previous["entity"]["sensor"][
+                "today_mileage"
+            ]
+        for action in (
+            "get_trips",
+            "get_trip_detail",
+            "get_history",
+            "get_statistics",
+            "import_statistics",
+        ):
             data["services"][action]["name"] = ui[action]
         save(DIRECTORY / "translations" / f"{locale}.json", data)
 

@@ -369,6 +369,15 @@ def async_register_actions(hass: HomeAssistant) -> None:
     """Actions remain available in editors when no account is loaded."""
     from .history_actions import HISTORY_SCHEMA, async_history_query
     from .statistics_actions import STATISTICS_SCHEMA, async_statistics_query
+    from .statistics_export import IMPORT_SCHEMA, async_import_statistics
+
+    hass.services.async_register(
+        DOMAIN,
+        "import_statistics",
+        partial(async_import_statistics, hass),
+        schema=IMPORT_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
 
     hass.services.async_register(
         DOMAIN,
