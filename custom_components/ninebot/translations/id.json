@@ -559,6 +559,10 @@
     "ride_event_storage_invalid": {
       "title": "Ride event storage unavailable",
       "description": "The event cursor store is unreadable, incompatible or cannot be safely written. Event emission is suspended. Retain configuration/storage backups and check storage permissions and the integration version. Do not edit or delete the cursor file as a repair attempt. Other vehicle state and queries remain available."
+    },
+    "travel_statistics_storage": {
+      "title": "Travel statistics storage unavailable",
+      "description": "The private history statistics file is invalid or uses an unsupported version. It has not been overwritten. Current vehicle telemetry continues. Keep configuration backups and check storage permissions and the integration version before restoring a compatible backup."
     }
   },
   "services": {

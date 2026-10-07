@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b31
+
+- Persist bounded, versioned normalized travel statistics separately from raw data, Action continuations and event cursors. Current and explicitly queried historical months share replace/upsert records with actual source timestamps, revisions, backend version and list coverage.
+- Retain known fields through partial same-ID corrections while recording which fields were actually present in the new report. Restore does not refresh telemetry or replay events; metadata eviction cannot imply complete rides.
+- Limit each account ledger to 360 month records, 500 ride metadata records and 2 MiB. Never store raw responses, GPS trails, tokens or account names; malformed/future storage is preserved and pauses only this optional ledger with a Repair. Flush on unload and remove the ledger when its account entry is explicitly removed.
+- Correct diagnostics integration version to match the release. Existing entities and history Action contracts remain unchanged; additional day statistics and visualization follow in the next phase.
+
 ## 2.0.0b30
 
 - Require distinct successful travel samples with unchanged ride metrics over a ten-minute quiet window before emitting a completed event. Growing end reports and cache rereads cannot establish completion; this is a conservative local policy.
