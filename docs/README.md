@@ -182,7 +182,10 @@ response_variable: imported
 
 One call covers one to six months. `refresh: true` is rejected. Recorder must
 already be running and HA's time zone must be `Asia/Shanghai`; in other time
-zones use the query response until a safe chart mapping is supported.
+zones use the query response until a safe chart mapping is supported. Native
+statistics graph cards also require HA's `history` integration (normally included
+by `default_config`). If a card reports that History is disabled, enable that
+HA integration; importing statistics alone does not enable it.
 
 The response lists up to eight `series`: day and month distance (km), energy
 (Wh), ride count and duration (s), with stable `statistic_id`, source/skipped
@@ -234,5 +237,6 @@ Imports serialize per account with at most two active/waiting callers, and
 revalidate device ownership before writing. Only normalized aggregates enter
 Recorder; no rides, coordinates, trails or raw JSON. Normal entity IDs, names
 and their recorded history remain unchanged. Offline SQLite and the real
-statistics WebSocket contract are tested; no production dashboard or vehicle
-control was exercised.
+statistics WebSocket contract are tested. Native day/month cards also rendered
+in an isolated HA 2026.1 frontend using synthetic data; no production dashboard
+or vehicle control was exercised.
