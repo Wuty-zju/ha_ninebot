@@ -368,6 +368,15 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
 def async_register_actions(hass: HomeAssistant) -> None:
     """Actions remain available in editors when no account is loaded."""
     from .history_actions import HISTORY_SCHEMA, async_history_query
+    from .statistics_actions import STATISTICS_SCHEMA, async_statistics_query
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_statistics",
+        partial(async_statistics_query, hass),
+        schema=STATISTICS_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
 
     hass.services.async_register(
         DOMAIN,

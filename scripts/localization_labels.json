@@ -68,7 +68,8 @@
       "method": "登入方式",
       "get_trips": "取得行程",
       "get_trip_detail": "取得行程詳情",
-      "get_history": "取得歷史行程"
+      "get_history": "取得歷史行程",
+      "get_statistics": "取得範圍統計"
     }
   },
   "de": {
@@ -140,7 +141,8 @@
       "method": "Anmeldemethode",
       "get_trips": "Fahrten abrufen",
       "get_trip_detail": "Fahrtdetails abrufen",
-      "get_history": "Fahrtenhistorie abrufen"
+      "get_history": "Fahrtenhistorie abrufen",
+      "get_statistics": "Zeitraumstatistiken abrufen"
     }
   },
   "fr": {
@@ -212,7 +214,8 @@
       "method": "Méthode de connexion",
       "get_trips": "Obtenir les trajets",
       "get_trip_detail": "Obtenir les détails du trajet",
-      "get_history": "Obtenir l’historique"
+      "get_history": "Obtenir l’historique",
+      "get_statistics": "Obtenir les statistiques de période"
     }
   },
   "es": {
@@ -284,7 +287,8 @@
       "method": "Método de acceso",
       "get_trips": "Obtener viajes",
       "get_trip_detail": "Obtener detalles del viaje",
-      "get_history": "Obtener historial"
+      "get_history": "Obtener historial",
+      "get_statistics": "Obtener estadísticas del período"
     }
   },
   "it": {
@@ -356,7 +360,8 @@
       "method": "Metodo di accesso",
       "get_trips": "Ottieni viaggi",
       "get_trip_detail": "Ottieni dettagli del viaggio",
-      "get_history": "Ottieni cronologia"
+      "get_history": "Ottieni cronologia",
+      "get_statistics": "Ottieni statistiche del periodo"
     }
   },
   "pt": {
@@ -428,7 +433,8 @@
       "method": "Método de início de sessão",
       "get_trips": "Obter viagens",
       "get_trip_detail": "Obter detalhes da viagem",
-      "get_history": "Obter histórico"
+      "get_history": "Obter histórico",
+      "get_statistics": "Obter estatísticas do período"
     }
   },
   "ru": {
@@ -500,7 +506,8 @@
       "method": "Способ входа",
       "get_trips": "Получить поездки",
       "get_trip_detail": "Получить сведения о поездке",
-      "get_history": "Получить историю"
+      "get_history": "Получить историю",
+      "get_statistics": "Получить статистику периода"
     }
   },
   "ja": {
@@ -572,7 +579,8 @@
       "method": "ログイン方法",
       "get_trips": "走行記録を取得",
       "get_trip_detail": "走行詳細を取得",
-      "get_history": "走行履歴を取得"
+      "get_history": "走行履歴を取得",
+      "get_statistics": "期間統計を取得"
     }
   },
   "ko": {
@@ -644,7 +652,8 @@
       "method": "로그인 방법",
       "get_trips": "주행 목록 가져오기",
       "get_trip_detail": "주행 상세 가져오기",
-      "get_history": "주행 이력 가져오기"
+      "get_history": "주행 이력 가져오기",
+      "get_statistics": "기간 통계 가져오기"
     }
   },
   "nl": {
@@ -716,7 +725,8 @@
       "method": "Inlogmethode",
       "get_trips": "Ritten ophalen",
       "get_trip_detail": "Ritdetails ophalen",
-      "get_history": "Ritgeschiedenis ophalen"
+      "get_history": "Ritgeschiedenis ophalen",
+      "get_statistics": "Periodestatistieken ophalen"
     }
   },
   "pl": {
@@ -788,7 +798,8 @@
       "method": "Metoda logowania",
       "get_trips": "Pobierz przejazdy",
       "get_trip_detail": "Pobierz szczegóły przejazdu",
-      "get_history": "Pobierz historię"
+      "get_history": "Pobierz historię",
+      "get_statistics": "Pobierz statystyki okresu"
     }
   },
   "tr": {
@@ -860,7 +871,8 @@
       "method": "Giriş yöntemi",
       "get_trips": "Sürüşleri al",
       "get_trip_detail": "Sürüş ayrıntılarını al",
-      "get_history": "Geçmişi al"
+      "get_history": "Geçmişi al",
+      "get_statistics": "Dönem istatistiklerini al"
     }
   },
   "ar": {
@@ -932,7 +944,8 @@
       "method": "طريقة الدخول",
       "get_trips": "جلب الرحلات",
       "get_trip_detail": "جلب تفاصيل الرحلة",
-      "get_history": "جلب السجل"
+      "get_history": "جلب السجل",
+      "get_statistics": "الحصول على إحصاءات الفترة"
     }
   },
   "hi": {
@@ -1004,7 +1017,8 @@
       "method": "लॉगिन विधि",
       "get_trips": "यात्राएँ प्राप्त करें",
       "get_trip_detail": "यात्रा विवरण प्राप्त करें",
-      "get_history": "इतिहास प्राप्त करें"
+      "get_history": "इतिहास प्राप्त करें",
+      "get_statistics": "अवधि के आँकड़े प्राप्त करें"
     }
   },
   "id": {
@@ -1076,7 +1090,8 @@
       "method": "Metode masuk",
       "get_trips": "Ambil perjalanan",
       "get_trip_detail": "Ambil detail perjalanan",
-      "get_history": "Ambil riwayat"
+      "get_history": "Ambil riwayat",
+      "get_statistics": "Ambil statistik periode"
     }
   },
   "vi": {
@@ -1148,7 +1163,8 @@
       "method": "Cách đăng nhập",
       "get_trips": "Lấy danh sách chuyến đi",
       "get_trip_detail": "Lấy chi tiết chuyến đi",
-      "get_history": "Lấy lịch sử"
+      "get_history": "Lấy lịch sử",
+      "get_statistics": "Lấy thống kê theo kỳ"
     }
   },
   "th": {
@@ -1220,7 +1236,8 @@
       "method": "วิธีเข้าสู่ระบบ",
       "get_trips": "รับรายการเดินทาง",
       "get_trip_detail": "รับรายละเอียดการเดินทาง",
-      "get_history": "รับประวัติการเดินทาง"
+      "get_history": "รับประวัติการเดินทาง",
+      "get_statistics": "รับสถิติช่วงเวลา"
     }
   },
   "uk": {
@@ -1292,7 +1309,8 @@
       "method": "Спосіб входу",
       "get_trips": "Отримати поїздки",
       "get_trip_detail": "Отримати деталі поїздки",
-      "get_history": "Отримати історію"
+      "get_history": "Отримати історію",
+      "get_statistics": "Отримати статистику періоду"
     }
   },
   "pt-BR": {
@@ -1364,7 +1382,8 @@
       "method": "Método de início de sessão",
       "get_trips": "Obter viagens",
       "get_trip_detail": "Obter detalhes da viagem",
-      "get_history": "Obter histórico"
+      "get_history": "Obter histórico",
+      "get_statistics": "Obter estatísticas do período"
     }
   }
 }

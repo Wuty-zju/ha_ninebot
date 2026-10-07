@@ -238,3 +238,14 @@ def test_all_new_fields_have_names_and_icons_and_no_history_placeholders():
         assert not any(key.startswith("history_") for key in sensors)
     icons = json.loads((root / "icons.json").read_text())["entity"]["sensor"]
     assert all(icons[key]["default"] for key in keys)
+
+
+def test_future_adjacent_receipt_cannot_prove_a_closed_window(hass):
+    now = datetime(2026, 10, 2, 3, tzinfo=UTC)
+    store = TravelStatisticsStore(hass, "entry")
+    empty = {"times": 0, "list": [], "total_mileages": 0}
+    store.update("one", travel(empty, "202610"), now)
+    store.update("one", travel(empty, "202609"), now + timedelta(hours=1))
+    result = day_summary(store, "one", date(2026, 10, 1), now)
+    assert result.ride_count is None
+    assert result.reason("ride_count") == "adjacent_month_not_observed"

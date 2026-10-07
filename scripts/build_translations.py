@@ -251,7 +251,7 @@ def main() -> None:
             "voltage": f"{words['nominal']} (V)",
             "capacity": f"{words['capacity']} (Ah)",
         }
-        for action in ("get_trips", "get_trip_detail", "get_history"):
+        for action in ("get_trips", "get_trip_detail", "get_history", "get_statistics"):
             data["services"][action]["name"] = ui[action]
         save(DIRECTORY / "translations" / f"{locale}.json", data)
 
