@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "本月: 行程覆蓋率"
       },
-      "history_scanned_months": {
-        "name": "查詢範圍: 已查詢月份"
-      },
-      "history_indexed_rides": {
-        "name": "查詢範圍: 已取得行程"
-      },
-      "history_mileage": {
-        "name": "查詢範圍: 距離"
-      },
-      "history_energy": {
-        "name": "查詢範圍: 能耗"
-      },
-      "history_duration": {
-        "name": "查詢範圍: 騎行時長"
-      },
       "battery_rated_energy": {
         "name": "電池額定能量"
       },
       "today_mileage": {
         "name": "今日里程"
+      },
+      "yesterday_mileage": {
+        "name": "昨日: 距離"
+      },
+      "today_ride_count": {
+        "name": "今日: 騎行次數"
+      },
+      "yesterday_ride_count": {
+        "name": "昨日: 騎行次數"
+      },
+      "today_ride_duration": {
+        "name": "今日: 騎行時長"
+      },
+      "yesterday_ride_duration": {
+        "name": "昨日: 騎行時長"
+      },
+      "today_ride_energy": {
+        "name": "今日: 能耗"
+      },
+      "yesterday_ride_energy": {
+        "name": "昨日: 能耗"
+      },
+      "month_energy_intensity": {
+        "name": "本月: 單位里程能耗"
+      },
+      "last_energy_intensity": {
+        "name": "上次行程: 單位里程能耗"
       }
     },
     "binary_sensor": {

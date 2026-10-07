@@ -1,6 +1,6 @@
 # Ninebot integration behavior
 
-This page describes the b24 user-facing contract. Developer investigations and local raw samples belong in a separate private workspace; they are not required to install or run this integration.
+This page describes the current user-facing contract. Developer investigations and local raw samples belong in a separate private workspace; they are not required to install or run this integration.
 
 ## Authentication
 
@@ -85,6 +85,26 @@ stored there, but ride IDs/timestamps are private history: protect your Home
 Assistant backups. Removing the account integration also removes this ledger.
 
 An unreadable/unsupported file is preserved and only statistics storage is paused,
-with a Repair explaining recovery. Vehicle telemetry continues. This storage
-release does not yet change the five manual-history summary sensors or import
-Recorder history; those are separate upcoming changes.
+with a Repair explaining recovery. Vehicle telemetry continues. The five manual-history progress/summary entities are retired; query scope and
+progress remain in get_history response data. This does not delete Recorder rows
+or reuse those identities for different statistics. Historical Recorder imports
+and trend examples are a separate upcoming change.
+
+Yesterday distance uses the validated daily chart. Today/Yesterday ride count,
+duration and energy require a complete retained monthly list, known end times
+and current-report metric fields. Missing/evicted/partial lists stay unknown,
+with a small availability reason; proven empty windows return zero. Historical
+days require a report received after that day ended, rather than a partial
+snapshot taken during it. Rides are assigned as a whole to their Asia/Shanghai
+end date; no invented midnight split or proportional energy allocation is made.
+Cross-month attribution needs both relevant month reports, which can still be
+incomplete if the cloud duplicates or limits rows. Yesterday data keeps its
+actual timestamp even if live travel temporarily fails.
+
+Daily consumers add a cached, bounded adjacent-month query on the first two
+business days only. Disabling every travel consumer stops regular travel polling.
+Last-ride completion attributes describe the local stability policy; reported
+ride totals are not proof of physical completion. Month/last-ride consumption per
+distance sensors use the matching Wh/km ratio, not charging electricity. Missing
+energy and zero distance produce unknown; no total-increasing state class is
+assigned to resetting daily/monthly totals.

@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "เดือนนี้: ความครบถ้วนของประวัติ"
       },
-      "history_scanned_months": {
-        "name": "ช่วงที่ค้นหา: เดือนที่ค้นหาแล้ว"
-      },
-      "history_indexed_rides": {
-        "name": "ช่วงที่ค้นหา: รายการเดินทางที่ได้รับ"
-      },
-      "history_mileage": {
-        "name": "ช่วงที่ค้นหา: ระยะทาง"
-      },
-      "history_energy": {
-        "name": "ช่วงที่ค้นหา: พลังงาน"
-      },
-      "history_duration": {
-        "name": "ช่วงที่ค้นหา: ระยะเวลาเดินทาง"
-      },
       "battery_rated_energy": {
         "name": "พลังงานพิกัดแบตเตอรี่"
       },
       "today_mileage": {
         "name": "ระยะทางวันนี้"
+      },
+      "yesterday_mileage": {
+        "name": "เมื่อวาน: ระยะทาง"
+      },
+      "today_ride_count": {
+        "name": "วันนี้: จำนวนการเดินทาง"
+      },
+      "yesterday_ride_count": {
+        "name": "เมื่อวาน: จำนวนการเดินทาง"
+      },
+      "today_ride_duration": {
+        "name": "วันนี้: ระยะเวลาเดินทาง"
+      },
+      "yesterday_ride_duration": {
+        "name": "เมื่อวาน: ระยะเวลาเดินทาง"
+      },
+      "today_ride_energy": {
+        "name": "วันนี้: พลังงาน"
+      },
+      "yesterday_ride_energy": {
+        "name": "เมื่อวาน: พลังงาน"
+      },
+      "month_energy_intensity": {
+        "name": "เดือนนี้: การใช้พลังงานต่อระยะทาง"
+      },
+      "last_energy_intensity": {
+        "name": "การเดินทางล่าสุด: การใช้พลังงานต่อระยะทาง"
       }
     },
     "binary_sensor": {

@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Bulan ini: Cakupan catatan perjalanan"
       },
-      "history_scanned_months": {
-        "name": "Rentang kueri: Bulan yang diperiksa"
-      },
-      "history_indexed_rides": {
-        "name": "Rentang kueri: Perjalanan yang diperoleh"
-      },
-      "history_mileage": {
-        "name": "Rentang kueri: Jarak"
-      },
-      "history_energy": {
-        "name": "Rentang kueri: Energi"
-      },
-      "history_duration": {
-        "name": "Rentang kueri: Durasi perjalanan"
-      },
       "battery_rated_energy": {
         "name": "Energi nominal baterai"
       },
       "today_mileage": {
         "name": "Jarak hari ini"
+      },
+      "yesterday_mileage": {
+        "name": "Kemarin: Jarak"
+      },
+      "today_ride_count": {
+        "name": "Hari ini: Perjalanan"
+      },
+      "yesterday_ride_count": {
+        "name": "Kemarin: Perjalanan"
+      },
+      "today_ride_duration": {
+        "name": "Hari ini: Durasi perjalanan"
+      },
+      "yesterday_ride_duration": {
+        "name": "Kemarin: Durasi perjalanan"
+      },
+      "today_ride_energy": {
+        "name": "Hari ini: Energi"
+      },
+      "yesterday_ride_energy": {
+        "name": "Kemarin: Energi"
+      },
+      "month_energy_intensity": {
+        "name": "Bulan ini: Konsumsi energi per jarak"
+      },
+      "last_energy_intensity": {
+        "name": "Perjalanan terakhir: Konsumsi energi per jarak"
       }
     },
     "binary_sensor": {

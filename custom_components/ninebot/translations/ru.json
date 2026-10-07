@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Этот месяц: Полнота списка поездок"
       },
-      "history_scanned_months": {
-        "name": "Период запроса: Запрошенные месяцы"
-      },
-      "history_indexed_rides": {
-        "name": "Период запроса: Полученные поездки"
-      },
-      "history_mileage": {
-        "name": "Период запроса: Расстояние"
-      },
-      "history_energy": {
-        "name": "Период запроса: Энергия"
-      },
-      "history_duration": {
-        "name": "Период запроса: Продолжительность поездок"
-      },
       "battery_rated_energy": {
         "name": "Номинальная энергия батареи"
       },
       "today_mileage": {
         "name": "Расстояние за сегодня"
+      },
+      "yesterday_mileage": {
+        "name": "Вчера: Расстояние"
+      },
+      "today_ride_count": {
+        "name": "Сегодня: Поездки"
+      },
+      "yesterday_ride_count": {
+        "name": "Вчера: Поездки"
+      },
+      "today_ride_duration": {
+        "name": "Сегодня: Продолжительность поездок"
+      },
+      "yesterday_ride_duration": {
+        "name": "Вчера: Продолжительность поездок"
+      },
+      "today_ride_energy": {
+        "name": "Сегодня: Энергия"
+      },
+      "yesterday_ride_energy": {
+        "name": "Вчера: Энергия"
+      },
+      "month_energy_intensity": {
+        "name": "Этот месяц: Расход энергии на расстояние"
+      },
+      "last_energy_intensity": {
+        "name": "Последняя поездка: Расход энергии на расстояние"
       }
     },
     "binary_sensor": {

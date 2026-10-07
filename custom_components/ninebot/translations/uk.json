@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Цей місяць: Повнота списку поїздок"
       },
-      "history_scanned_months": {
-        "name": "Період запиту: Перевірені місяці"
-      },
-      "history_indexed_rides": {
-        "name": "Період запиту: Отримані поїздки"
-      },
-      "history_mileage": {
-        "name": "Період запиту: Відстань"
-      },
-      "history_energy": {
-        "name": "Період запиту: Енергія"
-      },
-      "history_duration": {
-        "name": "Період запиту: Тривалість поїздок"
-      },
       "battery_rated_energy": {
         "name": "Номінальна енергія батареї"
       },
       "today_mileage": {
         "name": "Відстань за сьогодні"
+      },
+      "yesterday_mileage": {
+        "name": "Вчора: Відстань"
+      },
+      "today_ride_count": {
+        "name": "Сьогодні: Поїздки"
+      },
+      "yesterday_ride_count": {
+        "name": "Вчора: Поїздки"
+      },
+      "today_ride_duration": {
+        "name": "Сьогодні: Тривалість поїздок"
+      },
+      "yesterday_ride_duration": {
+        "name": "Вчора: Тривалість поїздок"
+      },
+      "today_ride_energy": {
+        "name": "Сьогодні: Енергія"
+      },
+      "yesterday_ride_energy": {
+        "name": "Вчора: Енергія"
+      },
+      "month_energy_intensity": {
+        "name": "Цей місяць: Витрата енергії на відстань"
+      },
+      "last_energy_intensity": {
+        "name": "Остання поїздка: Витрата енергії на відстань"
       }
     },
     "binary_sensor": {

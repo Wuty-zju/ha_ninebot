@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "이번 달: 주행 기록 확보율"
       },
-      "history_scanned_months": {
-        "name": "조회 기간: 조회한 개월 수"
-      },
-      "history_indexed_rides": {
-        "name": "조회 기간: 확보한 주행 기록"
-      },
-      "history_mileage": {
-        "name": "조회 기간: 거리"
-      },
-      "history_energy": {
-        "name": "조회 기간: 에너지"
-      },
-      "history_duration": {
-        "name": "조회 기간: 주행 시간"
-      },
       "battery_rated_energy": {
         "name": "배터리 정격 에너지"
       },
       "today_mileage": {
         "name": "오늘 주행 거리"
+      },
+      "yesterday_mileage": {
+        "name": "어제: 거리"
+      },
+      "today_ride_count": {
+        "name": "오늘: 주행 횟수"
+      },
+      "yesterday_ride_count": {
+        "name": "어제: 주행 횟수"
+      },
+      "today_ride_duration": {
+        "name": "오늘: 주행 시간"
+      },
+      "yesterday_ride_duration": {
+        "name": "어제: 주행 시간"
+      },
+      "today_ride_energy": {
+        "name": "오늘: 에너지"
+      },
+      "yesterday_ride_energy": {
+        "name": "어제: 에너지"
+      },
+      "month_energy_intensity": {
+        "name": "이번 달: 거리당 에너지 소비"
+      },
+      "last_energy_intensity": {
+        "name": "최근 주행: 거리당 에너지 소비"
       }
     },
     "binary_sensor": {

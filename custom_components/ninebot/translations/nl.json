@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Deze maand: Dekking rittenlijst"
       },
-      "history_scanned_months": {
-        "name": "Opgevraagde periode: Opgevraagde maanden"
-      },
-      "history_indexed_rides": {
-        "name": "Opgevraagde periode: Opgehaalde ritten"
-      },
-      "history_mileage": {
-        "name": "Opgevraagde periode: Afstand"
-      },
-      "history_energy": {
-        "name": "Opgevraagde periode: Energie"
-      },
-      "history_duration": {
-        "name": "Opgevraagde periode: Ritduur"
-      },
       "battery_rated_energy": {
         "name": "Nominale batterijenergie"
       },
       "today_mileage": {
         "name": "Afstand vandaag"
+      },
+      "yesterday_mileage": {
+        "name": "Gisteren: Afstand"
+      },
+      "today_ride_count": {
+        "name": "Vandaag: Ritten"
+      },
+      "yesterday_ride_count": {
+        "name": "Gisteren: Ritten"
+      },
+      "today_ride_duration": {
+        "name": "Vandaag: Ritduur"
+      },
+      "yesterday_ride_duration": {
+        "name": "Gisteren: Ritduur"
+      },
+      "today_ride_energy": {
+        "name": "Vandaag: Energie"
+      },
+      "yesterday_ride_energy": {
+        "name": "Gisteren: Energie"
+      },
+      "month_energy_intensity": {
+        "name": "Deze maand: Energieverbruik per afstand"
+      },
+      "last_energy_intensity": {
+        "name": "Laatste rit: Energieverbruik per afstand"
       }
     },
     "binary_sensor": {

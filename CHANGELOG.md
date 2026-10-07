@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b32
+
+- Add visible Yesterday distance and Today/Yesterday ride count, duration and energy sensors from the bounded statistics ledger. Preserve real source timestamps, field availability and window completeness; missing reports are gaps, never fabricated zeros. Server daily distance remains separate from end-date ride attribution.
+- Add native Wh/km sensors for this month and the last reported ride using matching distance/energy scopes. Retain meaningful existing IDs, user names, disabled choices and Recorder history; last-ride attributes distinguish reported/stabilizing/revised/local-policy completion.
+- Retire five runtime-only manual-history placeholders. Query progress and historical scope remain in Action responses. Registry cleanup is limited to exact reviewed identities on this account's unambiguously owned vehicle; Recorder history is not deleted.
+- Fetch the adjacent month only when daily consumers need the rollover window (the first two business days), with existing cache/rate budgets. A slower adjacent query cannot renew the current month's received timestamp. Update names/icons in all shipped languages.
+
 ## 2.0.0b31
 
 - Persist bounded, versioned normalized travel statistics separately from raw data, Action continuations and event cursors. Current and explicitly queried historical months share replace/upsert records with actual source timestamps, revisions, backend version and list coverage.

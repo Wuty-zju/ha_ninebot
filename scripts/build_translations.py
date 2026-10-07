@@ -47,11 +47,16 @@ COMPOSITE = {
     "last_ride_end": ("last", "end"),
     "last_ride_max_speed": ("last", "max_speed"),
     "last_ride_average_speed": ("last", "avg_speed"),
-    "history_scanned_months": ("history", "scanned"),
-    "history_indexed_rides": ("history", "indexed"),
-    "history_mileage": ("history", "distance"),
-    "history_energy": ("history", "energy"),
-    "history_duration": ("history", "duration"),
+    "today_mileage": ("today", "distance"),
+    "yesterday_mileage": ("yesterday", "distance"),
+    "today_ride_count": ("today", "rides"),
+    "yesterday_ride_count": ("yesterday", "rides"),
+    "today_ride_duration": ("today", "duration"),
+    "yesterday_ride_duration": ("yesterday", "duration"),
+    "today_ride_energy": ("today", "energy"),
+    "yesterday_ride_energy": ("yesterday", "energy"),
+    "month_energy_intensity": ("month", "intensity"),
+    "last_energy_intensity": ("last", "intensity"),
 }
 
 

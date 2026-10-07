@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "इस महीने: यात्रा रिकॉर्ड कवरेज"
       },
-      "history_scanned_months": {
-        "name": "क्वेरी अवधि: जाँचे गए महीने"
-      },
-      "history_indexed_rides": {
-        "name": "क्वेरी अवधि: प्राप्त यात्राएँ"
-      },
-      "history_mileage": {
-        "name": "क्वेरी अवधि: दूरी"
-      },
-      "history_energy": {
-        "name": "क्वेरी अवधि: ऊर्जा"
-      },
-      "history_duration": {
-        "name": "क्वेरी अवधि: यात्रा अवधि"
-      },
       "battery_rated_energy": {
         "name": "बैटरी की निर्धारित ऊर्जा"
       },
       "today_mileage": {
         "name": "आज की दूरी"
+      },
+      "yesterday_mileage": {
+        "name": "कल: दूरी"
+      },
+      "today_ride_count": {
+        "name": "आज: यात्राएँ"
+      },
+      "yesterday_ride_count": {
+        "name": "कल: यात्राएँ"
+      },
+      "today_ride_duration": {
+        "name": "आज: यात्रा अवधि"
+      },
+      "yesterday_ride_duration": {
+        "name": "कल: यात्रा अवधि"
+      },
+      "today_ride_energy": {
+        "name": "आज: ऊर्जा"
+      },
+      "yesterday_ride_energy": {
+        "name": "कल: ऊर्जा"
+      },
+      "month_energy_intensity": {
+        "name": "इस महीने: प्रति दूरी ऊर्जा खपत"
+      },
+      "last_energy_intensity": {
+        "name": "पिछली यात्रा: प्रति दूरी ऊर्जा खपत"
       }
     },
     "binary_sensor": {

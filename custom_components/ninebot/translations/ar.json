@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "هذا الشهر: تغطية سجل الرحلات"
       },
-      "history_scanned_months": {
-        "name": "نطاق الاستعلام: الأشهر المستعلم عنها"
-      },
-      "history_indexed_rides": {
-        "name": "نطاق الاستعلام: الرحلات المسترجعة"
-      },
-      "history_mileage": {
-        "name": "نطاق الاستعلام: المسافة"
-      },
-      "history_energy": {
-        "name": "نطاق الاستعلام: الطاقة"
-      },
-      "history_duration": {
-        "name": "نطاق الاستعلام: مدة الرحلات"
-      },
       "battery_rated_energy": {
         "name": "طاقة البطارية الاسمية"
       },
       "today_mileage": {
         "name": "المسافة اليوم"
+      },
+      "yesterday_mileage": {
+        "name": "أمس: المسافة"
+      },
+      "today_ride_count": {
+        "name": "اليوم: الرحلات"
+      },
+      "yesterday_ride_count": {
+        "name": "أمس: الرحلات"
+      },
+      "today_ride_duration": {
+        "name": "اليوم: مدة الرحلات"
+      },
+      "yesterday_ride_duration": {
+        "name": "أمس: مدة الرحلات"
+      },
+      "today_ride_energy": {
+        "name": "اليوم: الطاقة"
+      },
+      "yesterday_ride_energy": {
+        "name": "أمس: الطاقة"
+      },
+      "month_energy_intensity": {
+        "name": "هذا الشهر: استهلاك الطاقة لكل مسافة"
+      },
+      "last_energy_intensity": {
+        "name": "آخر رحلة: استهلاك الطاقة لكل مسافة"
       }
     },
     "binary_sensor": {

@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "今月: 走行記録の取得率"
       },
-      "history_scanned_months": {
-        "name": "検索期間: 検索済み月数"
-      },
-      "history_indexed_rides": {
-        "name": "検索期間: 取得済み走行数"
-      },
-      "history_mileage": {
-        "name": "検索期間: 距離"
-      },
-      "history_energy": {
-        "name": "検索期間: 電力量"
-      },
-      "history_duration": {
-        "name": "検索期間: 走行時間"
-      },
       "battery_rated_energy": {
         "name": "バッテリー定格電力量"
       },
       "today_mileage": {
         "name": "今日の走行距離"
+      },
+      "yesterday_mileage": {
+        "name": "昨日: 距離"
+      },
+      "today_ride_count": {
+        "name": "今日: 走行回数"
+      },
+      "yesterday_ride_count": {
+        "name": "昨日: 走行回数"
+      },
+      "today_ride_duration": {
+        "name": "今日: 走行時間"
+      },
+      "yesterday_ride_duration": {
+        "name": "昨日: 走行時間"
+      },
+      "today_ride_energy": {
+        "name": "今日: 電力量"
+      },
+      "yesterday_ride_energy": {
+        "name": "昨日: 電力量"
+      },
+      "month_energy_intensity": {
+        "name": "今月: 距離あたりの消費電力"
+      },
+      "last_energy_intensity": {
+        "name": "前回の走行: 距離あたりの消費電力"
       }
     },
     "binary_sensor": {

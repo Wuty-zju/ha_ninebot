@@ -358,6 +358,11 @@ class TravelStatisticsStore:
                         ("energy_wh", ride.energy_raw),
                     )
                     if value is not None
+                    and not (
+                        name in {"started_at", "ended_at"}
+                        and {"reversed_timestamps", "conflicting_time_representations"}
+                        & set(ride.issues)
+                    )
                 ),
             )
             if prior is not None:

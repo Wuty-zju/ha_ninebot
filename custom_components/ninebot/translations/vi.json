@@ -403,26 +403,38 @@
       "month_list_coverage": {
         "name": "Tháng này: Mức đầy đủ lịch sử"
       },
-      "history_scanned_months": {
-        "name": "Phạm vi truy vấn: Số tháng đã truy vấn"
-      },
-      "history_indexed_rides": {
-        "name": "Phạm vi truy vấn: Số chuyến đã lấy"
-      },
-      "history_mileage": {
-        "name": "Phạm vi truy vấn: Quãng đường"
-      },
-      "history_energy": {
-        "name": "Phạm vi truy vấn: Năng lượng"
-      },
-      "history_duration": {
-        "name": "Phạm vi truy vấn: Thời gian di chuyển"
-      },
       "battery_rated_energy": {
         "name": "Năng lượng định mức pin"
       },
       "today_mileage": {
         "name": "Quãng đường hôm nay"
+      },
+      "yesterday_mileage": {
+        "name": "Hôm qua: Quãng đường"
+      },
+      "today_ride_count": {
+        "name": "Hôm nay: Số chuyến"
+      },
+      "yesterday_ride_count": {
+        "name": "Hôm qua: Số chuyến"
+      },
+      "today_ride_duration": {
+        "name": "Hôm nay: Thời gian di chuyển"
+      },
+      "yesterday_ride_duration": {
+        "name": "Hôm qua: Thời gian di chuyển"
+      },
+      "today_ride_energy": {
+        "name": "Hôm nay: Năng lượng"
+      },
+      "yesterday_ride_energy": {
+        "name": "Hôm qua: Năng lượng"
+      },
+      "month_energy_intensity": {
+        "name": "Tháng này: Năng lượng tiêu thụ trên quãng đường"
+      },
+      "last_energy_intensity": {
+        "name": "Chuyến gần nhất: Năng lượng tiêu thụ trên quãng đường"
       }
     },
     "binary_sensor": {
