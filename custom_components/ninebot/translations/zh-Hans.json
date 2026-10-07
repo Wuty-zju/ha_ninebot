@@ -608,6 +608,9 @@
     },
     "statistics_import_data": {
       "message": "已有统计的单位、结构或周期数值不兼容，或超出导入预算；本批次未入队。请检查统计后重试。"
+    },
+    "entity_id_storage_invalid": {
+      "message": "实体身份存储不可用，请检查修复提示。"
     }
   },
   "issues": {
@@ -638,6 +641,14 @@
     "travel_statistics_storage": {
       "title": "行程统计存储不可用",
       "description": "私有历史统计文件无效或版本不受支持，原文件未被覆盖，当前车辆遥测仍可使用。请保留配置备份，检查存储权限和集成版本，再恢复兼容的备份。"
+    },
+    "entity_id_migration_conflict": {
+      "title": "实体地址迁移冲突",
+      "description": "规范地址已被占用。原实体保留，请读取实体迁移结果，检查冲突和自动化引用，不要删除历史记录。"
+    },
+    "entity_id_storage_invalid": {
+      "title": "实体身份存储不可用",
+      "description": "身份种子或迁移记录无法读取。为防止重复实体，本账号暂停启动。请恢复匹配的身份存储备份，勿直接编辑注册表。"
     }
   },
   "services": {
@@ -769,6 +780,16 @@
         "include_daily": {
           "name": "包含日统计",
           "description": "同时导入已确认的日统计；关闭时仅导入完整月。"
+        }
+      }
+    },
+    "get_entity_migration": {
+      "name": "实体迁移结果",
+      "description": "本地读取本车辆的旧实体地址、规范地址与迁移状态；请检查自动化和面板引用。",
+      "fields": {
+        "device_id": {
+          "name": "车辆",
+          "description": "选择本账号的车辆设备。"
         }
       }
     }

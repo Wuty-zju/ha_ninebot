@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b36
+
+- Freeze canonical account/model/serial entity ID seeds in a private, versioned store. New accounts use business-identity-scoped unique IDs and devices, including the same vehicle visible to multiple accounts; existing meaningful unique IDs remain unchanged. Names and model changes do not rename entities.
+- Rename only recognizable generated IDs through the public entity registry API, preserving registry identity, user settings and same-domain Recorder metadata. Preflight occupied targets; preserve custom or unverifiable IDs and ambiguous devices. Journal intent before mutation, stop on storage failure and recover interrupted migrations.
+- Add local response-only get_entity_migration for per-vehicle old/new IDs and outcomes. Review YAML, templates and external dashboard references after upgrading; they are not automatically rewritten. Back up matching HA storage before upgrade/rollback. Lock platform changes remain a separate phase.
+
 ## 2.0.0b35
 
 - Add account entry labels and reviewed username/region titles after explicit login. Preserve custom titles, isolated password/SMS sessions and offline migrations; optional display metadata failures do not prevent a validated login.

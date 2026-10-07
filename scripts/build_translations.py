@@ -266,6 +266,7 @@ def main() -> None:
             "get_history",
             "get_statistics",
             "import_statistics",
+            "get_entity_migration",
         ):
             data["services"][action]["name"] = ui[action]
         save(DIRECTORY / "translations" / f"{locale}.json", data)

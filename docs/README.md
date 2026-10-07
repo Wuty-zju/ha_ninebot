@@ -240,3 +240,53 @@ and their recorded history remain unchanged. Offline SQLite and the real
 statistics WebSocket contract are tested. Native day/month cards also rendered
 in an isolated HA 2026.1 frontend using synthetic data; no production dashboard
 or vehicle control was exercised.
+
+
+## Canonical entity IDs and upgrade
+
+Starting with b36, new entities use:
+
+```text
+<platform>.<account_slug>_<vehicle_model_slug>_<serial_slug>_<stable_key>
+```
+
+ASCII model tokens are preferred over translated vehicle nicknames. Non-ASCII,
+lossy punctuation and long inputs use a deterministic hash suffix; no arbitrary
+`_2` is chosen to resolve an occupied target. Naming seeds are saved once per
+account/vehicle, so nickname, account-label and model changes do not alter IDs.
+Entity names remain translated and independent of these IDs. New accounts have
+business-identity-scoped unique IDs/device identifiers; separate accounts can
+own separate HA representations of the same serial number.
+
+Upgrade preserves existing meaningful unique IDs and registry row IDs. Only
+recognizable generated IDs on an exclusively owned vehicle are renamed in place
+through HA's entity registry API. Custom/unverifiable IDs remain unchanged.
+Conflicts create a Repair and retain the original row; the integration does not
+claim another entity or use a generated numeric suffix. A private versioned
+identity store contains frozen seeds and an old/new migration journal. Intent
+is committed before registry mutation; reload reconciles interrupted renames.
+Missing/corrupt established identity storage pauses setup rather than silently
+creating fresh identities. Back up the entire matching HA configuration/storage;
+restoring only integration code does not undo this migration.
+
+Inspect the local mapping using a response-capable script or Developer Tools:
+
+```yaml
+action: ninebot.get_entity_migration
+data:
+  device_id: REPLACE_WITH_HA_VEHICLE_DEVICE_ID
+response_variable: identity_mapping
+```
+
+The response contains `object_prefix`, `migrations[]` (registry ID, unique ID,
+old/new entity ID, status and reason) and a reference warning. It makes no cloud
+request. It contains local identity information; keep it private. Update YAML,
+templates and external dashboards using renamed IDs. Automatic rewriting of
+all references is not promised. Diagnostics contain migration counts/statuses,
+not account, serial or ID mapping values.
+
+HA Recorder handles same-domain rename metadata; isolated regression tests
+verify state history and native statistic metadata identity. This does not
+merge unrelated histories already stored under the target ID or move sensor
+history into a future lock platform. Lock conversion and physical-state
+confirmation are delivered separately; this release changes no controls.

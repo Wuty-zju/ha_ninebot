@@ -70,7 +70,8 @@
       "get_trip_detail": "取得行程詳情",
       "get_history": "取得歷史行程",
       "get_statistics": "取得範圍統計",
-      "import_statistics": "匯入歷史趨勢統計"
+      "import_statistics": "匯入歷史趨勢統計",
+      "get_entity_migration": "實體遷移結果"
     }
   },
   "de": {
@@ -144,7 +145,8 @@
       "get_trip_detail": "Fahrtdetails abrufen",
       "get_history": "Fahrtenhistorie abrufen",
       "get_statistics": "Zeitraumstatistiken abrufen",
-      "import_statistics": "Verlaufsstatistiken importieren"
+      "import_statistics": "Verlaufsstatistiken importieren",
+      "get_entity_migration": "Ergebnisse der Entitätsmigration"
     }
   },
   "fr": {
@@ -218,7 +220,8 @@
       "get_trip_detail": "Obtenir les détails du trajet",
       "get_history": "Obtenir l’historique",
       "get_statistics": "Obtenir les statistiques de période",
-      "import_statistics": "Importer les statistiques historiques"
+      "import_statistics": "Importer les statistiques historiques",
+      "get_entity_migration": "Résultats de migration des entités"
     }
   },
   "es": {
@@ -292,7 +295,8 @@
       "get_trip_detail": "Obtener detalles del viaje",
       "get_history": "Obtener historial",
       "get_statistics": "Obtener estadísticas del período",
-      "import_statistics": "Importar estadísticas históricas"
+      "import_statistics": "Importar estadísticas históricas",
+      "get_entity_migration": "Resultados de migración de entidades"
     }
   },
   "it": {
@@ -366,7 +370,8 @@
       "get_trip_detail": "Ottieni dettagli del viaggio",
       "get_history": "Ottieni cronologia",
       "get_statistics": "Ottieni statistiche del periodo",
-      "import_statistics": "Importa statistiche storiche"
+      "import_statistics": "Importa statistiche storiche",
+      "get_entity_migration": "Risultati della migrazione delle entità"
     }
   },
   "pt": {
@@ -440,7 +445,8 @@
       "get_trip_detail": "Obter detalhes da viagem",
       "get_history": "Obter histórico",
       "get_statistics": "Obter estatísticas do período",
-      "import_statistics": "Importar estatísticas históricas"
+      "import_statistics": "Importar estatísticas históricas",
+      "get_entity_migration": "Resultados da migração de entidades"
     }
   },
   "ru": {
@@ -514,7 +520,8 @@
       "get_trip_detail": "Получить сведения о поездке",
       "get_history": "Получить историю",
       "get_statistics": "Получить статистику периода",
-      "import_statistics": "Импортировать историческую статистику"
+      "import_statistics": "Импортировать историческую статистику",
+      "get_entity_migration": "Результаты миграции сущностей"
     }
   },
   "ja": {
@@ -588,7 +595,8 @@
       "get_trip_detail": "走行詳細を取得",
       "get_history": "走行履歴を取得",
       "get_statistics": "期間統計を取得",
-      "import_statistics": "履歴統計をインポート"
+      "import_statistics": "履歴統計をインポート",
+      "get_entity_migration": "エンティティ移行結果"
     }
   },
   "ko": {
@@ -662,7 +670,8 @@
       "get_trip_detail": "주행 상세 가져오기",
       "get_history": "주행 이력 가져오기",
       "get_statistics": "기간 통계 가져오기",
-      "import_statistics": "기록 통계 가져오기"
+      "import_statistics": "기록 통계 가져오기",
+      "get_entity_migration": "엔티티 마이그레이션 결과"
     }
   },
   "nl": {
@@ -736,7 +745,8 @@
       "get_trip_detail": "Ritdetails ophalen",
       "get_history": "Ritgeschiedenis ophalen",
       "get_statistics": "Periodestatistieken ophalen",
-      "import_statistics": "Historische statistieken importeren"
+      "import_statistics": "Historische statistieken importeren",
+      "get_entity_migration": "Resultaten van entiteitsmigratie"
     }
   },
   "pl": {
@@ -810,7 +820,8 @@
       "get_trip_detail": "Pobierz szczegóły przejazdu",
       "get_history": "Pobierz historię",
       "get_statistics": "Pobierz statystyki okresu",
-      "import_statistics": "Importuj statystyki historyczne"
+      "import_statistics": "Importuj statystyki historyczne",
+      "get_entity_migration": "Wyniki migracji encji"
     }
   },
   "tr": {
@@ -884,7 +895,8 @@
       "get_trip_detail": "Sürüş ayrıntılarını al",
       "get_history": "Geçmişi al",
       "get_statistics": "Dönem istatistiklerini al",
-      "import_statistics": "Geçmiş istatistikleri içe aktar"
+      "import_statistics": "Geçmiş istatistikleri içe aktar",
+      "get_entity_migration": "Varlık geçiş sonuçları"
     }
   },
   "ar": {
@@ -958,7 +970,8 @@
       "get_trip_detail": "جلب تفاصيل الرحلة",
       "get_history": "جلب السجل",
       "get_statistics": "الحصول على إحصاءات الفترة",
-      "import_statistics": "استيراد الإحصاءات التاريخية"
+      "import_statistics": "استيراد الإحصاءات التاريخية",
+      "get_entity_migration": "نتائج ترحيل الكيانات"
     }
   },
   "hi": {
@@ -1032,7 +1045,8 @@
       "get_trip_detail": "यात्रा विवरण प्राप्त करें",
       "get_history": "इतिहास प्राप्त करें",
       "get_statistics": "अवधि के आँकड़े प्राप्त करें",
-      "import_statistics": "ऐतिहासिक आँकड़े आयात करें"
+      "import_statistics": "ऐतिहासिक आँकड़े आयात करें",
+      "get_entity_migration": "इकाई माइग्रेशन के परिणाम"
     }
   },
   "id": {
@@ -1106,7 +1120,8 @@
       "get_trip_detail": "Ambil detail perjalanan",
       "get_history": "Ambil riwayat",
       "get_statistics": "Ambil statistik periode",
-      "import_statistics": "Impor statistik historis"
+      "import_statistics": "Impor statistik historis",
+      "get_entity_migration": "Hasil migrasi entitas"
     }
   },
   "vi": {
@@ -1180,7 +1195,8 @@
       "get_trip_detail": "Lấy chi tiết chuyến đi",
       "get_history": "Lấy lịch sử",
       "get_statistics": "Lấy thống kê theo kỳ",
-      "import_statistics": "Nhập thống kê lịch sử"
+      "import_statistics": "Nhập thống kê lịch sử",
+      "get_entity_migration": "Kết quả chuyển đổi thực thể"
     }
   },
   "th": {
@@ -1254,7 +1270,8 @@
       "get_trip_detail": "รับรายละเอียดการเดินทาง",
       "get_history": "รับประวัติการเดินทาง",
       "get_statistics": "รับสถิติช่วงเวลา",
-      "import_statistics": "นำเข้าสถิติย้อนหลัง"
+      "import_statistics": "นำเข้าสถิติย้อนหลัง",
+      "get_entity_migration": "ผลการย้ายเอนทิตี"
     }
   },
   "uk": {
@@ -1328,7 +1345,8 @@
       "get_trip_detail": "Отримати деталі поїздки",
       "get_history": "Отримати історію",
       "get_statistics": "Отримати статистику періоду",
-      "import_statistics": "Імпортувати історичну статистику"
+      "import_statistics": "Імпортувати історичну статистику",
+      "get_entity_migration": "Результати міграції сутностей"
     }
   },
   "pt-BR": {
@@ -1402,7 +1420,8 @@
       "get_trip_detail": "Obter detalhes da viagem",
       "get_history": "Obter histórico",
       "get_statistics": "Obter estatísticas do período",
-      "import_statistics": "Importar estatísticas históricas"
+      "import_statistics": "Importar estatísticas históricas",
+      "get_entity_migration": "Resultados da migração de entidades"
     }
   }
 }

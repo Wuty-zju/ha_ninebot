@@ -44,6 +44,7 @@ from .const import (
     DOMAIN,
 )
 from .exceptions import ErrorKind, NinebotError
+from .identity import IDENTITY_VERSION
 from .parsing import number
 from .services import resolve_vehicle
 from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
@@ -135,6 +136,8 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     await manager.async_commit(candidate, key)
                     committed = True
                     data = {
+                        **(old_data or {}),
+                        IDENTITY_VERSION: old_data.get(IDENTITY_VERSION, 0) if old_data else 1,
                         CONF_ACCOUNT: account,
                         CONF_BUSINESS_UID: candidate.uid,
                         CONF_SESSION_KEY: key,

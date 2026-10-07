@@ -608,6 +608,9 @@
     },
     "statistics_import_data": {
       "message": "Existing statistics have incompatible units, shape or period values, or exceed the import budget. Nothing in this batch was queued. Review the statistics before retrying."
+    },
+    "entity_id_storage_invalid": {
+      "message": "Entity identity storage unavailable; check Repairs."
     }
   },
   "issues": {
@@ -638,6 +641,14 @@
     "travel_statistics_storage": {
       "title": "Travel statistics storage unavailable",
       "description": "The private history statistics file is invalid or uses an unsupported version. It has not been overwritten. Current vehicle telemetry continues. Keep configuration backups and check storage permissions and the integration version before restoring a compatible backup."
+    },
+    "entity_id_migration_conflict": {
+      "title": "Entity ID migration conflict",
+      "description": "A canonical ID is occupied. Existing entities are preserved. Read entity migration results and review conflicting IDs and automation references; retain historical records."
+    },
+    "entity_id_storage_invalid": {
+      "title": "Entity identity storage unavailable",
+      "description": "Frozen identity seeds or migration records cannot be read. This account pauses setup to prevent duplicates. Restore a matching identity storage backup; do not edit registries directly."
     }
   },
   "services": {
@@ -769,6 +780,16 @@
         "include_daily": {
           "name": "Include daily statistics",
           "description": "Also import verified daily statistics; disable to import closed months only."
+        }
+      }
+    },
+    "get_entity_migration": {
+      "name": "Результаты миграции сущностей",
+      "description": "Read local old/new entity IDs and migration outcomes for this vehicle. Review automation and dashboard references.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select the vehicle device owned by this account."
         }
       }
     }

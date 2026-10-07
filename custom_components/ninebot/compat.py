@@ -49,3 +49,16 @@ def device_entry_ids(device: object) -> frozenset[str]:
 def is_child_device(device: object) -> bool:
     """Child components cannot be used as cloud vehicle identifiers."""
     return getattr(device, "parent_device_id", None) is not None
+
+
+def device_by_identifier(
+    registry: dr.DeviceRegistry, entry_id: str, identifier: str
+) -> object | None:
+    """New HA matches identifiers inside the owner; old HA has a global index."""
+    from inspect import signature
+    from typing import Any, Callable, cast
+
+    lookup = cast(Callable[..., Any], registry.async_get_device)
+    if "config_entry_id" in signature(lookup).parameters:
+        return lookup(identifiers={("ninebot", identifier)}, config_entry_id=entry_id)
+    return lookup(identifiers={("ninebot", identifier)})
