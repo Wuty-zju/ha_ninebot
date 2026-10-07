@@ -1,5 +1,6 @@
 """Isolated persistence/replay, corrected reports and incomplete metadata."""
 
+import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -118,6 +119,43 @@ async def test_explicit_removal_cancels_delayed_write_and_failed_ack_pauses_only
     await store.async_remove()
     assert not store.months and not store.rides
     assert not await hass.async_add_executor_job(Path(store._store.path).exists)
+
+
+async def test_concurrent_candidates_preserve_both_vehicles_and_owner_guard(hass):
+    store = TravelStatisticsStore(hass, "entry")
+    started, release = asyncio.Event(), asyncio.Event()
+    original = hass.async_add_executor_job
+    allowed = True
+
+    async def paused(target, *args):
+        if getattr(target, "__name__", "") == "update":
+            started.set()
+            await release.wait()
+        return await original(target, *args)
+
+    with patch.object(hass, "async_add_executor_job", side_effect=paused):
+        first = asyncio.create_task(store.async_record("one", sample(), NOW))
+        await started.wait()
+        second = asyncio.create_task(store.async_record("two", sample(distance=7), NOW))
+        await asyncio.sleep(0)
+        release.set()
+        await asyncio.gather(first, second)
+        assert store.month("one", "202609").distance_km == 14.8
+        assert store.month("two", "202609").distance_km == 7
+        started.clear()
+        release.clear()
+        stale = asyncio.create_task(
+            store.async_record(
+                "one", sample(distance=999), NOW + timedelta(seconds=1), guard=lambda: allowed
+            )
+        )
+        await started.wait()
+        allowed = False
+        release.set()
+        await stale
+        await store.async_record("three", sample(), NOW, guard=lambda: allowed)
+        assert store.month("one", "202609").distance_km == 14.8
+        assert store.month("three", "202609") is None
 
 
 def test_same_id_partial_correction_retains_values_with_explicit_field_provenance(hass):

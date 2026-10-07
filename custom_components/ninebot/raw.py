@@ -175,6 +175,8 @@ class RawRecord:
     endpoint_version: str | None = None
     unknown_schema_complete: bool = False
     unknown_schema_fingerprint: str | None = field(default=None, repr=False)
+    content_fingerprint: bytes = field(default=b"", repr=False)
+    request_revision: int = 0
 
     @property
     def retained_bytes(self) -> int:
@@ -323,6 +325,7 @@ def build_record(
             if unknown_complete
             else None
         ),
+        content_fingerprint=hashlib.sha256(encoded).digest(),
     )
 
 

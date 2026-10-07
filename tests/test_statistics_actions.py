@@ -1,6 +1,7 @@
 """Real isolated response Actions, bounded periods and no implicit polling."""
 
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -11,6 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 
+from custom_components.ninebot.models import Freshness
 from custom_components.ninebot.statistics_actions import months_between
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -138,6 +140,33 @@ async def test_scope_storage_unload_and_parameter_failures(
     with pytest.raises(HomeAssistantError) as exc:
         await call(hass, "foreign-device")
     assert exc.value.translation_key == "query_device"
+
+
+async def test_local_history_remains_readable_when_live_profile_expires_or_auth_fails(
+    hass, entry, app_client, statistics_device
+):
+    co = entry.runtime_data.coordinator
+    co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], profile_freshness=Freshness())
+    app_client.reset_mock()
+    for authenticated in (True, False):
+        co._authenticated = authenticated
+        assert (await call(hass, statistics_device))["months"][1]["distance_km"] == 14.8
+        co.async_update_listeners()
+        await hass.async_block_till_done()
+        yesterday = next(
+            item
+            for item in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+            if item.unique_id.endswith("yesterday_mileage")
+        )
+        assert hass.states.get(yesterday.entity_id).state not in {"unknown", "unavailable"}
+        with pytest.raises(HomeAssistantError) as caught:
+            await call(hass, statistics_device, refresh=True)
+        assert caught.value.translation_key == "query_unavailable"
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_get_status.assert_not_awaited()
+    co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], present=False)
+    with pytest.raises(HomeAssistantError):
+        await call(hass, statistics_device)
 
 
 def test_month_boundaries_are_six_and_not_implicit_full_history():

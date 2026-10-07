@@ -20,6 +20,8 @@ class BackendResult:
     backend_version: str | None = None
     endpoint_version: str | None = None
     vehicles_complete: bool = True
+    started_at: datetime | None = None
+    request_revision: int = 0
 
 
 class NinebotBackend(Protocol):

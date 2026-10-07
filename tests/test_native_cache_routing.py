@@ -165,7 +165,10 @@ async def test_native_routes_and_endpoint_specific_cache_requirements(
                 assert error.value.kind is (
                     ErrorKind.PROTOCOL if requires_cache else ErrorKind.SERVICE
                 )
-                assert paths == ([] if requires_cache else [path])
+                # One bounded retry for a read-side 5xx, never for controls or
+                # a missing native routing cache (a protocol error).
+                expected_attempts = 2 if action == "battery" else 1
+                assert paths == ([] if requires_cache else [path] * expected_attempts)
             finally:
                 await client.async_close()
             assert client._process is None

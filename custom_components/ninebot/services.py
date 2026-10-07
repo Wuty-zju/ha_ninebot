@@ -83,7 +83,9 @@ def validation_error(key: str) -> ServiceValidationError:
 
 
 @callback
-def resolve_vehicle(hass: HomeAssistant, device_id: str) -> tuple[NinebotConfigEntry, str]:
+def resolve_vehicle(
+    hass: HomeAssistant, device_id: str, *, require_live: bool = True
+) -> tuple[NinebotConfigEntry, str]:
     """Resolve only one loaded account's current, present vehicle, not an entity."""
     device = dr.async_get(hass).async_get(device_id)
     if device is None or is_child_device(device) or device.disabled_by is not None:
@@ -102,8 +104,10 @@ def resolve_vehicle(hass: HomeAssistant, device_id: str) -> tuple[NinebotConfigE
     sn = device_sn(entry, device)
     if sn is None:
         raise validation_error("query_device")
-    if entry.state is not ConfigEntryState.LOADED or not entry.runtime_data.coordinator.fresh(
-        sn, "profile"
+    if entry.state is not ConfigEntryState.LOADED or not (
+        entry.runtime_data.coordinator.fresh(sn, "profile")
+        if require_live
+        else entry.runtime_data.coordinator.local_vehicle_available(sn)
     ):
         raise validation_error("query_unavailable")
     return entry, sn
@@ -260,10 +264,16 @@ def detail_data(record: RawRecord, summary: Ride, max_points: int) -> Ride:
 
 @callback
 def assert_query_scope(
-    hass: HomeAssistant, device_id: str, entry_id: str, sn: str, include_track: bool
+    hass: HomeAssistant,
+    device_id: str,
+    entry_id: str,
+    sn: str,
+    include_track: bool,
+    *,
+    require_live: bool = True,
 ) -> None:
     """Do not return in-flight data after unload, device removal or ownership change."""
-    entry, current_sn = resolve_vehicle(hass, device_id)
+    entry, current_sn = resolve_vehicle(hass, device_id, require_live=require_live)
     if entry.entry_id != entry_id or current_sn != sn:
         raise validation_error("query_device")
     if include_track and entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES) is not True:
@@ -368,7 +378,7 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
 
 
 async def async_entity_migration(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
-    entry, sn = resolve_vehicle(hass, call.data["device_id"])
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
     identities = entry.runtime_data.identities
     if identities is None:
         raise validation_error("query_unavailable")

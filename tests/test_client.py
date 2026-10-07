@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -7,11 +8,120 @@ import aiohttp
 import pytest
 from aiohttp import web
 
-from custom_components.ninebot.client import NinecliClient, response_data
+from custom_components.ninebot.client import NinecliClient, response_data, retry_after_seconds
 from custom_components.ninebot.const import MAX_RESPONSE_BYTES
 from custom_components.ninebot.exceptions import ErrorKind, NinebotError
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
+
+
+@pytest.mark.parametrize(
+    "header,expected",
+    [
+        (None, None),
+        ("7", 7),
+        ("0", 0),
+        ("9999", 900),
+        ("-1", None),
+        ("nan", None),
+        ("inf", None),
+        ("bad date", None),
+        ("x" * 129, None),
+        ("Thu, 08 Oct 2026 00:00:07 GMT", 7),
+        ("Wed, 07 Oct 2026 00:00:00 GMT", None),
+    ],
+)
+def test_retry_after_only_uses_bounded_transport_metadata(header, expected):
+    assert retry_after_seconds(header, datetime(2026, 10, 8, tzinfo=UTC)) == expected
+
+
+@pytest.mark.parametrize(
+    "method,status,body,header,expected_calls,kind,retry_after",
+    [
+        ("GET", 503, {"ok": False, "error": {"code": "upstream_error"}}, None, 2, None, None),
+        (
+            "POST",
+            503,
+            {"ok": False, "error": {"code": "upstream_error"}},
+            None,
+            1,
+            ErrorKind.SERVICE,
+            None,
+        ),
+        (
+            "GET",
+            401,
+            {"ok": False, "error": {"code": "unauthorized"}},
+            None,
+            1,
+            ErrorKind.AUTH,
+            None,
+        ),
+        ("GET", 503, {}, None, 1, ErrorKind.PROTOCOL, None),
+        (
+            "GET",
+            429,
+            {"ok": False, "error": {"code": "upstream_error"}},
+            "7",
+            1,
+            ErrorKind.SERVICE,
+            7,
+        ),
+        (
+            "GET",
+            429,
+            {"ok": False, "error": {"code": "upstream_error"}},
+            "0",
+            1,
+            ErrorKind.SERVICE,
+            0,
+        ),
+        (
+            "GET",
+            429,
+            {"ok": False, "error": {"code": "upstream_error"}},
+            "bad",
+            1,
+            ErrorKind.SERVICE,
+            60,
+        ),
+    ],
+)
+async def test_http_retry_and_rate_limit_contract(
+    tmp_path, method, status, body, header, expected_calls, kind, retry_after
+):
+    calls = 0
+
+    async def handler(request):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return web.json_response(
+                body, status=status, headers={"Retry-After": header} if header else {}
+            )
+        return web.json_response({"ok": True, "data": {"recovered": True}})
+
+    app = web.Application()
+    app.router.add_route("*", "/{path:.*}", handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    try:
+        async with aiohttp.ClientSession() as session:
+            client = NinecliClient(tmp_path, session, timeout=1)
+            client._base = f"http://127.0.0.1:{site._server.sockets[0].getsockname()[1]}"
+            client._start = AsyncMock()
+            if kind is None:
+                assert await client._request(method, "/synthetic") == {"recovered": True}
+            else:
+                with pytest.raises(NinebotError) as caught:
+                    await client._request(method, "/synthetic")
+                assert caught.value.kind is kind and caught.value.retry_after == retry_after
+            assert calls == expected_calls
+            await client.async_close()
+    finally:
+        await runner.cleanup()
 
 
 @pytest.mark.parametrize(

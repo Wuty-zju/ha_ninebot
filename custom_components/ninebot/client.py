@@ -8,12 +8,15 @@ as a user setting. No response/error body is logged.
 
 import asyncio
 import json
+import math
 import os
 import secrets
 import socket
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -45,7 +48,26 @@ def response_data(status: int, raw: object) -> Any:
         raise NinebotAuthError()
     if status == 400:
         raise NinebotError(ErrorKind.PROTOCOL)
-    raise NinebotError(ErrorKind.SERVICE)
+    raise NinebotError(ErrorKind.SERVICE, retryable=500 <= status <= 599)
+
+
+def retry_after_seconds(value: str | None, now: datetime) -> float | None:
+    """Only a bounded transport header; no guessing from upstream error prose."""
+    if value is None or len(value) > 128:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        try:
+            stamp = parsedate_to_datetime(value)
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=UTC)
+            seconds = (stamp - now).total_seconds()
+        except (ValueError, TypeError, OverflowError):
+            return None
+    if not math.isfinite(seconds) or seconds < 0:
+        return None
+    return min(900, seconds)
 
 
 class NinecliClient:
@@ -63,6 +85,7 @@ class NinecliClient:
         self._bearer = ""
         self._closed = False
         self._pending = 0
+        self._request_ready = False
         self.vehicle_discovery_complete = False
 
     @staticmethod
@@ -209,7 +232,9 @@ class NinecliClient:
     ) -> Any:
         """Caller owns the session operation; raw errors never leave this layer."""
         try:
+            self._request_ready = False
             await self._start()
+            self._request_ready = True
             async with asyncio.timeout(self._timeout):
                 async with self._session.request(
                     method,
@@ -226,13 +251,22 @@ class NinecliClient:
                         if len(data) > MAX_RESPONSE_BYTES:
                             raise NinebotError(ErrorKind.PROTOCOL)
                     try:
-                        raw = json.loads(data)
+                        raw = await asyncio.to_thread(json.loads, data)
                     except (ValueError, UnicodeError):
                         raise NinebotError(ErrorKind.PROTOCOL) from None
-                    return response_data(response.status, raw)
+                    try:
+                        return response_data(response.status, raw)
+                    except NinebotError as err:
+                        if response.status == 429 and err.kind is ErrorKind.SERVICE:
+                            delay = retry_after_seconds(
+                                response.headers.get("Retry-After"), datetime.now(UTC)
+                            )
+                            err.retry_after = delay if delay is not None else 60
+                            err.retryable = False
+                        raise
         except (aiohttp.ClientError, TimeoutError):
             await self._stop()
-            raise NinebotError(ErrorKind.CONNECTION) from None
+            raise NinebotError(ErrorKind.CONNECTION, retryable=True) from None
         except NinebotError as err:
             if err.kind == ErrorKind.PROTOCOL:
                 await self._stop()
@@ -240,7 +274,27 @@ class NinecliClient:
 
     async def _request(self, method: str, path: str, body: dict[str, str] | None = None) -> Any:
         async with self._operation():
-            return await self._request_locked(method, path, body)
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + self._timeout
+            try:
+                async with asyncio.timeout(self._timeout):
+                    for attempt in range(2):
+                        try:
+                            return await self._request_locked(method, path, body)
+                        except NinebotError as err:
+                            if (
+                                method != "GET"
+                                or attempt
+                                or not err.retryable
+                                or deadline - loop.time() < 0.1
+                            ):
+                                raise
+                            await asyncio.sleep(0.1)
+            except TimeoutError:
+                kind = ErrorKind.CONNECTION if self._request_ready else ErrorKind.PLATFORM
+                await self._stop()
+                raise NinebotError(kind) from None
+            raise AssertionError("unreachable request retry")
 
     async def async_login(self, account: str, password: str) -> None:
         await self._request("POST", "/auth/login", {"account": account, "password": password})
@@ -300,7 +354,7 @@ class NinecliClient:
                         await self._request_locked("GET", "/whoami")
                         raise NinebotError(ErrorKind.SERVICE)
                     try:
-                        raw = json.loads(data)
+                        raw = await asyncio.to_thread(json.loads, data)
                     except (ValueError, UnicodeError):
                         raise NinebotError(ErrorKind.PROTOCOL) from None
                     if not isinstance(raw, list):

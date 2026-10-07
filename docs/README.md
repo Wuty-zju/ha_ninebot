@@ -6,6 +6,16 @@ This page describes the current user-facing contract. Developer investigations a
 
 Pinned ninecli==0.1.7 runs through a managed authenticated loopback server. Passwords travel in the local request body, not argv or ConfigEntry storage. Each entry has isolated sessions and reauth. Vehicle discovery has a controlled native cache initialization exception. SMS flow is implemented and covered offline; live SMS verification remains pending.
 
+## Scheduling and retained data
+
+b37 shares identical in-flight reads through a bounded broker, including failures. One account owns one wire transaction; two accounts can progress concurrently through a global gate. Each account admits at most 16 active/queued operations (12 reads, 4 commands), 64 readers overall and 32 on one shared read. Status is prioritized with bounded background turns and vehicle fairness. Commands are distinct single attempts; authentication and native routing transactions remain serialized.
+
+Executor parsing retains the original request start/receipt times and monotonic revision. Cache rereads do not renew freshness, and stale generation/ownership responses cannot overwrite telemetry or the historical ledger. Concurrent ledger preparations commit in order. Transient GET failures can retry once within the same deadline; authentication/schema failures and controls are not retried. Only an actual transport Retry-After is honored, with bounded shared-transport recovery cooldown and existing per-group backoff. Diagnostics expose counters, not request keys, identities or payloads.
+
+For a loaded account and still-known vehicle, retained daily statistics, get_statistics without refresh, import_statistics and entity migration reports remain usable after live profile expiry or authentication failure. Explicit cloud refresh and live telemetry still use their freshness/authentication checks. Removed/foreign vehicles and unloaded entries remain rejected. Cold-start offline initialization and a full persistent ride archive are separate future features; retained data does not prove all upstream history was returned.
+
+A command attempt establishes a new status request barrier, so an earlier in-flight GET cannot substitute for reconciliation. Current reconciliation still means a successful status read, not target lock-state confirmation. Lock semantics, stopped/P gating and finite target confirmation remain a separate development stage.
+
 ## Entities
 
 Created entities are enabled and visible by default; user choices are preserved. Location display defaults on and preserves any explicit off choice; controls and debug views require opt-in. The range sensor prefers precise, then estimated, then AI. b24 removes low-confidence SOC cumulative estimates and duplicate ranges. Nominal V/Ah define rated energy, not measured capacity or SOH. Existing meaningful IDs and Recorder history remain stable.
