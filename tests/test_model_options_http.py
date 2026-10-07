@@ -69,3 +69,60 @@ async def test_model_device_selection_through_http(hass, entry, app_client, hass
     assert entry.runtime_data.models.model("SyntheticSN").nominal == 1.44
     assert entry.options["poll_interval"] == 120
     assert "model_vehicle" not in entry.options
+
+
+async def test_options_cancel_keeps_other_options_and_rated_parameters(
+    hass, entry, app_client, hass_client
+):
+    hass.config_entries.async_update_entry(entry, options={"poll_interval": 300})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert await async_setup_component(hass, "config", {})
+    client = await hass_client()
+    initial = await (
+        await client.post(
+            "/api/config/config_entries/options/flow", json={"handler": entry.entry_id}
+        )
+    ).json()
+    url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
+    await client.post(url, json={"poll_interval": 90, "configure_model": True})
+    device = next(
+        device
+        for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+        if ("ninebot", "SyntheticSN") in device.identifiers
+    )
+    response = await client.post(url, json={"model_vehicle": device.id})
+    assert response.status == 200 and (await response.json())["step_id"] == "model_parameters"
+    before = entry.runtime_data.models.model("SyntheticSN")
+    response = await client.delete(url)
+    assert response.status == 200
+    assert entry.options == {"poll_interval": 300}
+    assert entry.runtime_data.models.model("SyntheticSN") == before
+
+
+@pytest.mark.parametrize("value", ["", None, [], {}, True, 42])
+async def test_empty_or_wrong_type_vehicle_is_field_scoped_not_an_option_enum(
+    hass, entry, app_client, hass_client, value
+):
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert await async_setup_component(hass, "config", {})
+    client = await hass_client()
+    initial = await (
+        await client.post(
+            "/api/config/config_entries/options/flow", json={"handler": entry.entry_id}
+        )
+    ).json()
+    url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
+    await client.post(url, json={"poll_interval": 120, "configure_model": True})
+    response = await client.post(url, json={"model_vehicle": value})
+    data = await response.json()
+    if value == "":
+        assert response.status == 200 and data["errors"] == {"model_vehicle": "model_unavailable"}
+    else:
+        assert response.status == 400
+        assert "model_vehicle" in data["errors"]
+        assert data["errors"]["model_vehicle"] == "expected str"
+        assert "not a valid option" not in data["errors"]["model_vehicle"]
+    assert entry.runtime_data.models.model("SyntheticSN").nominal is None
+    assert entry.options == {}
