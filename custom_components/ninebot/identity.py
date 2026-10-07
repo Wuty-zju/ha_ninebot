@@ -110,7 +110,14 @@ class IdentityStore:
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
-        self.store = IdentityStorage(hass, 1, f"ninebot.{entry.entry_id}.identity", private=True)
+        self.store = IdentityStorage(
+            hass,
+            1,
+            f"ninebot.{entry.entry_id}.identity",
+            private=True,
+            atomic_writes=True,
+            serialize_in_event_loop=False,
+        )
         self.seeds: dict[str, IdentitySeed] = {}
         self.migrations: dict[str, dict[str, str]] = {}
         self._lock = asyncio.Lock()
