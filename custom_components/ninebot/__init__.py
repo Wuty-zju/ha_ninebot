@@ -24,6 +24,7 @@ from .registry import (
 from .runtime import NinebotConfigEntry, RuntimeData
 from .services import async_register_actions
 from .session import SessionManager, session_uid
+from .statistics_store import TravelStatisticsStore
 from .storage import ModelStorage
 
 
@@ -74,6 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
     )
     try:
         await store.async_load()
+        await coordinator.statistics.async_load()
         await coordinator.async_config_entry_first_refresh()
         entry.runtime_data.obsolete_entities_removed = async_remove_obsolete_entities(hass, entry)
         entry.runtime_data.standard_entities_enabled = async_enable_standard_entities(hass, entry)
@@ -110,3 +112,7 @@ async def async_update_options(hass: HomeAssistant, entry: NinebotConfigEntry) -
 
 async def async_migrate_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> bool:
     return await async_migrate(hass, entry, manager_for(hass))
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    await TravelStatisticsStore(hass, entry.entry_id).async_remove()

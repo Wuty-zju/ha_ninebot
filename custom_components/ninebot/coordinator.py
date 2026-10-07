@@ -38,6 +38,7 @@ from .history import HistoryStore
 from .models import Freshness, VehicleSnapshot
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
 from .ride_lifecycle import RideLifecycle
+from .statistics_store import TravelStatisticsStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.raw = RawStore()
         self.history = HistoryStore()
         self.ride_lifecycles: dict[str, RideLifecycle] = {}
+        self.statistics = TravelStatisticsStore(hass, entry.entry_id)
         self.control_results = ControlResults()
         self.interval = max(
             30, min(3600, int(entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)))
@@ -269,7 +271,11 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     # An explicit current-month action already fetched newer data.
                     # Reuse it without extending its actual success timestamp.
                     result = BackendResult(
-                        cached.payload(), Endpoint.TRAVEL, cached.received_at, month
+                        cached.payload(),
+                        Endpoint.TRAVEL,
+                        cached.received_at,
+                        month,
+                        backend_version=cached.backend_version,
                     )
                     cached_success = cached.received_at
                 else:
@@ -278,6 +284,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 travel = await self.hass.async_add_executor_job(
                     adapters.travel, result.payload, month
                 )
+                travel_version = result.backend_version
                 if include_last_ride and travel.last_ride is None:
                     previous = adapters.previous_month(month)
                     try:
@@ -292,12 +299,16 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                                 Endpoint.TRAVEL,
                                 fallback_record.received_at,
                                 previous,
+                                backend_version=fallback_record.backend_version,
                             )
                         else:
                             result = await self.backend.async_travel_month(sn, previous)
                             await self._capture(result, sn)
                         fallback = await self.hass.async_add_executor_job(
                             adapters.travel, result.payload, previous
+                        )
+                        await self.statistics.async_record(
+                            sn, fallback, result.received_at, result.backend_version
                         )
                         travel = replace(travel, last_ride=fallback.last_ride)
                     except NinebotAuthError:
@@ -312,6 +323,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 )
                 observed = updated.travel_freshness.succeeded_at
                 assert observed is not None
+                await self.statistics.async_record(sn, travel, observed, travel_version)
                 lifecycle = self.ride_lifecycles.setdefault(sn, RideLifecycle())
                 lifecycle.observe(travel.rides, observed)
                 if (
@@ -411,6 +423,13 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     record = await self._capture(result, sn, scope)
                     if record is None:
                         raise NinebotError(ErrorKind.PROTOCOL)
+                    if endpoint is Endpoint.TRAVEL:
+                        normalized = await self.hass.async_add_executor_job(
+                            adapters.travel, result.payload, month
+                        )
+                        await self.statistics.async_record(
+                            sn, normalized, result.received_at, result.backend_version
+                        )
                     return record
                 except NinebotAuthError as err:
                     raise self._manual_auth_failure() from err
@@ -655,6 +674,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         """Finish cleanup before propagating cancellation of the unload caller."""
         await self.backend.async_close()
         await asyncio.gather(*tasks, return_exceptions=True)
+        await self.statistics.async_save()
         self.raw.clear()
         self.history.clear()
         self.ride_lifecycles.clear()

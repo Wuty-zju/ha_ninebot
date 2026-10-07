@@ -71,3 +71,20 @@ The original completed-event timestamp is retained through an unavailable state
 for display on reload. This restoration never triggers automations. Old restore
 data without a saved timestamp remains unknown rather than inventing one from
 the ride's end time. No additional cloud polling or ride-detail requests are used.
+
+Normalized month summaries and small ride metadata are now retained in an
+account-specific Home Assistant storage file. Ordinary travel polling and explicit
+history queries update the same ledger; this does not start a full-history scan or
+add requests. Restoration is cached data, not a new successful cloud sample.
+
+The ledger is bounded to 360 month summaries, 500 ride records and 2 MiB per
+account. Monthly server totals remain separate from returned-list coverage;
+evicted/missing ride rows cannot prove complete daily totals. Corrections replace
+records instead of accumulating them again. Raw JSON and location trails are not
+stored there, but ride IDs/timestamps are private history: protect your Home
+Assistant backups. Removing the account integration also removes this ledger.
+
+An unreadable/unsupported file is preserved and only statistics storage is paused,
+with a Repair explaining recovery. Vehicle telemetry continues. This storage
+release does not yet change the five manual-history summary sensors or import
+Recorder history; those are separate upcoming changes.
