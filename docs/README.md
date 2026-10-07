@@ -87,8 +87,7 @@ Assistant backups. Removing the account integration also removes this ledger.
 An unreadable/unsupported file is preserved and only statistics storage is paused,
 with a Repair explaining recovery. Vehicle telemetry continues. The five manual-history progress/summary entities are retired; query scope and
 progress remain in get_history response data. This does not delete Recorder rows
-or reuse those identities for different statistics. Historical Recorder imports
-and trend examples are a separate upcoming change.
+or reuse those identities for different statistics. Native historical Recorder imports and trend examples are described below.
 
 Yesterday distance uses the validated daily chart. Today/Yesterday ride count,
 duration and energy require a complete retained monthly list, known end times
