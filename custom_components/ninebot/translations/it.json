@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Richiede arresto e P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Richiede arresto e P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Richiede arresto e P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Sblocca da remoto",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Richiede arresto e P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Blocca da remoto",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Richiede arresto e P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Presente",
           "absent": "Assente",
-          "unrecognized": "Non riconosciuto"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Serratura del vano sella",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Bloccato",
-          "unlocked": "Sbloccato",
           "unrecognized": "Non riconosciuto"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Alimentazione principale"
       },
-      "unlocked": {
-        "name": "Sbloccato"
-      },
       "cycle_support": {
         "name": "Supporto conteggio cicli",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Apri sottosella"
       },
       "engine_start": {
-        "name": "Avvio remoto"
+        "name": "Sblocca da remoto"
       },
       "engine_stop": {
-        "name": "Arresto remoto"
+        "name": "Blocca da remoto"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Serratura del veicolo",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Chiusura remota",
+            "state": {
+              "manual": "Solo chiusura manuale",
+              "guarded": "Richiede arresto e P"
+            }
+          },
+          "last_operation": {
+            "name": "Ultima operazione"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Serratura sottosella",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Chiusura remota",
+            "state": {
+              "manual": "Solo chiusura manuale",
+              "guarded": "Richiede arresto e P"
+            }
+          },
+          "last_operation": {
+            "name": "Ultima operazione"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Un’operazione del veicolo è in corso o è stato raggiunto il limite di controllo dell’account. Riprova al termine."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Arresto e P non confermati. Comando di chiusura non inviato."
+    },
+    "seat_lock_manual": {
+      "message": "Il vano sottosella si chiude solo manualmente."
+    },
+    "control_target_not_observed": {
+      "message": "Comando accettato, ma stato richiesto non osservato. Controllare il veicolo prima di riprovare."
     }
   },
   "issues": {

@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Stillstand und P erforderlich"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Stillstand und P erforderlich"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Stillstand und P erforderlich"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Aus der Ferne entriegeln",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Stillstand und P erforderlich"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Aus der Ferne verriegeln",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Stillstand und P erforderlich"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Vorhanden",
           "absent": "Nicht vorhanden",
-          "unrecognized": "Nicht erkannt"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Sitzfachschloss",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Verriegelt",
-          "unlocked": "Entriegelt",
           "unrecognized": "Nicht erkannt"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Hauptstromversorgung"
       },
-      "unlocked": {
-        "name": "Entriegelt"
-      },
       "cycle_support": {
         "name": "Zyklenzählung unterstützt",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Sitzfach öffnen"
       },
       "engine_start": {
-        "name": "Fernstart"
+        "name": "Aus der Ferne entriegeln"
       },
       "engine_stop": {
-        "name": "Fernstopp"
+        "name": "Aus der Ferne verriegeln"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Fahrzeugschloss",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Fernverriegelung",
+            "state": {
+              "manual": "Nur manuell verriegeln",
+              "guarded": "Stillstand und P erforderlich"
+            }
+          },
+          "last_operation": {
+            "name": "Letzter Vorgang"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Sitzfachschloss",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Fernverriegelung",
+            "state": {
+              "manual": "Nur manuell verriegeln",
+              "guarded": "Stillstand und P erforderlich"
+            }
+          },
+          "last_operation": {
+            "name": "Letzter Vorgang"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Ein Fahrzeugvorgang läuft bereits oder das Steuerungslimit des Kontos ist erreicht. Danach erneut versuchen."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Stillstand und P nicht bestätigt. Verriegelungsbefehl nicht gesendet."
+    },
+    "seat_lock_manual": {
+      "message": "Das Sitzfach kann nur manuell verriegelt werden."
+    },
+    "control_target_not_observed": {
+      "message": "Befehl angenommen, gewünschter Schlosszustand nicht beobachtet. Fahrzeug vor erneutem Versuch prüfen."
     }
   },
   "issues": {

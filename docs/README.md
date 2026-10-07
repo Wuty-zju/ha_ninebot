@@ -14,13 +14,13 @@ Executor parsing retains the original request start/receipt times and monotonic 
 
 For a loaded account and still-known vehicle, retained daily statistics, get_statistics without refresh, import_statistics and entity migration reports remain usable after live profile expiry or authentication failure. Explicit cloud refresh and live telemetry still use their freshness/authentication checks. Removed/foreign vehicles and unloaded entries remain rejected. Cold-start offline initialization and a full persistent ride archive are separate future features; retained data does not prove all upstream history was returned.
 
-A command attempt establishes a new status request barrier, so an earlier in-flight GET cannot substitute for reconciliation. Current reconciliation still means a successful status read, not target lock-state confirmation. Lock semantics, stopped/P gating and finite target confirmation remain a separate development stage.
+A command attempt establishes a new status request barrier. b38 lock confirmation uses separate single-attempt status reads, so pre-command requests and ordinary auto-retried polling cannot substitute for the command confirmation budget.
 
 ## Entities
 
 Created entities are enabled and visible by default; user choices are preserved. Location display defaults on and preserves any explicit off choice; controls and debug views require opt-in. The range sensor prefers precise, then estimated, then AI. b24 removes low-confidence SOC cumulative estimates and duplicate ranges. Nominal V/Ah define rated energy, not measured capacity or SOH. Existing meaningful IDs and Recorder history remain stable.
 
-BMS voltage/temperature/cycles require valid data and support. Energy ec is Wh and charging_power is W according to maintainer confirmation. Health score is not SOH. Emergency battery SOC uses battery_main.electricity (integer %); battery_type 1 is lithium and 2 lead acid (maintainer-confirmed). ACC 0/1 is off/on, seat 0/1 locked/unlocked, battery presence 0/1 absent/present, service expiry 0/1 active/expired. These existing observation sensors retain their identities until a separate platform migration. Unfamiliar valid codes are unrecognized, missing/invalid reports stay unknown. Apple Find My and cycle-support binary states mean supported/not supported. GPS needs two valid coordinates; the coordinate system is unverified and is never automatically converted.
+BMS voltage/temperature/cycles require valid data and support. Energy ec is Wh and charging_power is W according to maintainer confirmation. Health score is not SOH. Emergency battery SOC uses battery_main.electricity (integer %); battery_type 1 is lithium and 2 lead acid (maintainer-confirmed). ACC 0/1 is off/on, seat 0/1 locked/unlocked, battery presence 0/1 absent/present, service expiry 0/1 active/expired. ACC, battery presence and service expiry retain their existing sensor identities. Seat lock and vehicle lock use the native Lock platform; their cross-domain upgrade is described below. Unfamiliar valid codes are unrecognized, missing/invalid reports stay unknown. Apple Find My and cycle-support binary states mean supported/not supported. GPS needs two valid coordinates; the coordinate system is unverified and is never automatically converted.
 
 ## History
 
@@ -28,7 +28,15 @@ get_trips, get_trip_detail and get_history return bounded response data. Local p
 
 ## Controls
 
-Controls require explicit enablement, allowlist and fresh ownership/status. Known denial and ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization. Each command is sent once with bounded state reconciliation, without automatic replay or optimistic state updates. The maintainer confirms start unlocks and stop locks the vehicle. Dedicated Lock integration and stopped/P-gear safety guards follow separately; this release retains the existing buttons. Acceptance does not prove physical completion.
+Controls require explicit enablement, allowlist and fresh ownership/status. Known denial and ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization. Vehicle unlock maps to engine/start, lock to engine/stop. Stop additionally requires reviewed real-time stopped-and-P evidence; no current ninecli field is mapped to this safety model, so remote locking is currently refused. ACC, power, historical speed and stationary GPS never substitute for that evidence.
+
+Seat unlock maps to buck; locking is manual only. Calling lock.lock on the seat entity raises a translated manual-locking error without sending a command. The entity exposes remote_lock_mode and last_operation, and follows the next cloud status after local closing. It does not infer whether the lid is open. HA has no unlock-only feature flag; its generic Lock dialog may show a lock action that reports this limitation.
+
+The original start/stop/seat/bell buttons remain. Locks and buttons use the same per-physical-vehicle lease across accounts, with independent credentials and observations. A competing action returns busy instead of waiting to run later; different vehicles may progress through the existing bounded broker. Pending locking/unlocking represents a request, never an optimistic change to is_locked.
+
+Lock actions send at most one POST. Confirmation performs at most three single-attempt status GETs at approximately 0/2/5 seconds, within an absolute ten-second window including queue and parsing. Rate limits, authentication failures, cancellation and unload stop further work. Fresh target observations confirm cloud state only; a failed/uncertain POST remains uncertain even when a subsequent GET shows the target. Accepted commands whose target never appears return an error. A recently observed target may require no POST, after normal authorization/safety checks. Bell retains its one-read reconciliation because no lock target applies.
+
+last_operation contains only a bounded last result: request/readback outcome, target/observed lock state, confirmation and timestamps. It is excluded from Recorder when supported. There are no action-history entities, raw payloads, locations, automatic command replay or permanent high-frequency polling. No real controls were performed during development.
 
 ## Development
 
@@ -298,5 +306,6 @@ not account, serial or ID mapping values.
 HA Recorder handles same-domain rename metadata; isolated regression tests
 verify state history and native statistic metadata identity. This does not
 merge unrelated histories already stored under the target ID or move sensor
-history into a future lock platform. Lock conversion and physical-state
-confirmation are delivered separately; this release changes no controls.
+history into the lock platform. Starting with b38, conversion of reviewed unlocked/vehicle_lock binary sensors and seat_lock_raw sensors is journaled before public registry changes. Exactly one owned old identity is replaced; the UID string, custom name/icon/area/labels/aliases and user disabled/hidden choices are retained. Ambiguous identities, occupied targets and concurrent user changes are preserved with a Repair. No numeric suffix is invented.
+
+The old binary/sensor registry ID cannot become a Lock registry ID. Recorder rows remain queryable under the old entity ID; new Lock states use locked/unlocked and start separate history. get_entity_migration includes conversion mappings and this boundary. Update YAML/templates/dashboard references and on/off conditions explicitly. Full configuration/storage backup is required for rollback: older versions cannot read the new conversion journal statuses. No production registry or database was edited during development.

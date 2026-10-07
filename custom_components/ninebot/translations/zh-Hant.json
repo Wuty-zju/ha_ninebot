@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "需停車且掛P檔"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "需停車且掛P檔"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "需停車且掛P檔"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "遠端開啟",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "需停車且掛P檔"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "遠端關閉",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "需停車且掛P檔"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "存在",
           "absent": "不存在",
-          "unrecognized": "未識別"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "座桶鎖",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "鎖定",
-          "unlocked": "解鎖",
           "unrecognized": "未識別"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "主電源"
       },
-      "unlocked": {
-        "name": "已解鎖"
-      },
       "cycle_support": {
         "name": "循環計數支援",
         "state": {
@@ -513,7 +491,7 @@
         "name": "開啟座桶"
       },
       "engine_start": {
-        "name": "遠端啟動"
+        "name": "遠端開啟"
       },
       "engine_stop": {
         "name": "遠端關閉"
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "車輛鎖",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "遠端上鎖",
+            "state": {
+              "manual": "僅手動上鎖",
+              "guarded": "需停車且掛P檔"
+            }
+          },
+          "last_operation": {
+            "name": "最近操作"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "座桶鎖",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "遠端上鎖",
+            "state": {
+              "manual": "僅手動上鎖",
+              "guarded": "需停車且掛P檔"
+            }
+          },
+          "last_operation": {
+            "name": "最近操作"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "已有車輛操作正在進行，或帳號控制數量已達上限。請等待結束後重試。"
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "無法確認車輛已停止並掛入P檔，上鎖命令未傳送。"
+    },
+    "seat_lock_manual": {
+      "message": "座桶只能手動上鎖。"
+    },
+    "control_target_not_observed": {
+      "message": "命令已被介面接受，但未觀察到目標鎖狀態；請檢查車輛後再操作。"
     }
   },
   "issues": {

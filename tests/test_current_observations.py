@@ -128,6 +128,9 @@ def test_scalar_types_absent_null_and_privacy_are_preserved_deliberately():
     assert len(aliases) == 1 and aliases[0].observations["support"] == 1
     snapshot = VehicleSnapshot(profile)
     for field in ENTITY_FIELDS:
+        if field.key == "seat_lock_raw":
+            assert not any(d.key == field.key for d in SENSORS)  # Now a native Lock.
+            continue
         d = next(d for d in SENSORS if d.key == field.key)
         assert d.value(snapshot) is None
         assert d.attributes(snapshot)["interpretation"] == "not_reported"

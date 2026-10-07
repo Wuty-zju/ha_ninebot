@@ -263,6 +263,10 @@ class QueryBroker:
             "errors": dict(self._errors),
         }
 
+    @property
+    def cooling_down(self) -> bool:
+        return self._cooldown_until > asyncio.get_running_loop().time()
+
     async def async_close(self) -> None:
         self._closed = True
         for job in [*self._jobs, *([self._active] if self._active else [])]:

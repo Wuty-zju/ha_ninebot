@@ -423,7 +423,7 @@ async def test_auth_is_account_failure_service_error_is_not(coordinator):
     co.client.async_get_status.side_effect = NinebotAuthError()
     with pytest.raises(ConfigEntryAuthFailed):
         await co._async_update_data()
-    assert not co._mutex.locked()
+    assert not co._control_leases
 
 
 async def test_removed_vehicle_kept_and_new_vehicle_discovered(coordinator):
@@ -480,15 +480,24 @@ async def test_unknown_permissions_reach_cloud_only_with_user_consent(coordinato
         "pwr": 1,
     }
     await co._async_update_data()
-    for action in ("bell", "buck", "engine/start", "engine/stop"):
+    co.client.async_get_status_once.return_value = {"loc": {"lock": 0}, "barrel_lock_status": 1}
+    for action in ("bell", "buck", "engine/start"):
+        co.client.async_get_status_once.return_value = {
+            "loc": {"lock": 0 if action == "engine/start" else 1},
+            "barrel_lock_status": 1,
+        }
         assert co.controls_enabled("synthetic-one", action)
         assert co.control_decision("synthetic-one", action).permission is CapabilityState.UNKNOWN
         await co.async_control("synthetic-one", action)
-    assert co.client.async_control.await_count == 4
+    assert co.client.async_control.await_count == 3
+    assert not co.controls_enabled("synthetic-one", "engine/stop")
+    with pytest.raises(HomeAssistantError) as err:
+        await co.async_control("synthetic-one", "engine/stop")
+    assert err.value.translation_key == "parking_unverified"
     assert not co.controls_enabled("synthetic-one", "arbitrary")
     with pytest.raises(HomeAssistantError):
         await co.async_control("synthetic-one", "arbitrary")
-    assert co.client.async_control.await_count == 4
+    assert co.client.async_control.await_count == 3
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
@@ -509,7 +518,8 @@ async def test_gate_is_action_specific_and_rechecks_permission_after_queue_wait(
     )
     assert not co.controls_enabled("synthetic-one", "buck")
     assert co.controls_enabled("synthetic-one", "bell")
-    await co._mutex.acquire()
+    await co.broker._wire_gate.acquire()
+    await co.broker._wire_gate.acquire()
     task = asyncio.create_task(co.async_control("synthetic-one", "bell"))
     await asyncio.sleep(0)
     snapshot = co.data["synthetic-one"]
@@ -522,7 +532,8 @@ async def test_gate_is_action_specific_and_rechecks_permission_after_queue_wait(
             ),
         ),
     )
-    co._mutex.release()
+    co.broker._wire_gate.release()
+    co.broker._wire_gate.release()
     with pytest.raises(HomeAssistantError):
         await task
     co.client.async_control.assert_not_awaited()
@@ -797,7 +808,7 @@ async def test_control_cancellation_keeps_phase_evidence_without_extra_io(coordi
     assert result["readback"] == ("skipped" if phase == "command" else "cancelled")
     assert result["finished_at"] is not None
     assert not co._forced and not co._active and co._control_pending == 0
-    assert not co._mutex.locked()
+    assert not co._control_leases
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
@@ -947,14 +958,22 @@ async def test_control_readback_failure_does_not_repeat_action(coordinator, auth
 async def test_control_queue_bounded_and_unload_cancels_queued_actions(coordinator):
     co = coordinator
     await co._async_update_data()
-    await co._mutex.acquire()
-    tasks = [asyncio.create_task(co.async_control("synthetic-one", "bell")) for _ in range(4)]
+    await co.broker._wire_gate.acquire()
+    await co.broker._wire_gate.acquire()
+    sns = [f"queued-{i}" for i in range(4)]
+    original = co.data["synthetic-one"]
+    for sn in sns:
+        co.data[sn] = replace(original, profile=replace(original.profile, sn=sn))
+    with patch.object(co, "controls_enabled", return_value=True):
+        tasks = [asyncio.create_task(co.async_control(sn, "bell")) for sn in sns]
+        await asyncio.sleep(0)
     await asyncio.sleep(0)
     with pytest.raises(HomeAssistantError) as error:
         await co.async_control("synthetic-one", "bell")
     assert error.value.translation_key == "busy"
     await co.async_close()
-    co._mutex.release()
+    co.broker._wire_gate.release()
+    co.broker._wire_gate.release()
     results = await asyncio.gather(*tasks, return_exceptions=True)
     assert all(isinstance(result, asyncio.CancelledError) for result in results)
     co.client.async_control.assert_not_awaited()
@@ -1007,7 +1026,7 @@ async def test_shutdown_cancels_active_poll_and_manual_refresh(coordinator):
     results = await asyncio.gather(polling, manual, return_exceptions=True)
     assert all(isinstance(result, asyncio.CancelledError) for result in results)
     assert not co._active and not co._forced
-    assert not co._mutex.locked()
+    assert not co._control_leases
 
 
 async def test_freshness_measures_actual_request_completion_and_retry_is_bounded(coordinator):

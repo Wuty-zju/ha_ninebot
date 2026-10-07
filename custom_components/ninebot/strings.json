@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Requires stopped vehicle and P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requires stopped vehicle and P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requires stopped vehicle and P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Remote unlock",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requires stopped vehicle and P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Remote lock",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requires stopped vehicle and P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Present",
           "absent": "Absent",
-          "unrecognized": "Unrecognized"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Seat lock",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Locked",
-          "unlocked": "Unlocked",
           "unrecognized": "Unrecognized"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Main power"
       },
-      "unlocked": {
-        "name": "Unlocked"
-      },
       "cycle_support": {
         "name": "Cycle count support",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Open seat compartment"
       },
       "engine_start": {
-        "name": "Remote start"
+        "name": "Remote unlock"
       },
       "engine_stop": {
-        "name": "Remote stop"
+        "name": "Remote lock"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Vehicle lock",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Remote locking",
+            "state": {
+              "manual": "Manual locking only",
+              "guarded": "Requires stopped vehicle and P"
+            }
+          },
+          "last_operation": {
+            "name": "Last operation"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Seat compartment lock",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Remote locking",
+            "state": {
+              "manual": "Manual locking only",
+              "guarded": "Requires stopped vehicle and P"
+            }
+          },
+          "last_operation": {
+            "name": "Last operation"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Another vehicle operation is pending or the account control limit has been reached. Retry after it finishes."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Cannot confirm the vehicle is stopped and in P. Lock command not sent."
+    },
+    "seat_lock_manual": {
+      "message": "The seat compartment can only be locked manually."
+    },
+    "control_target_not_observed": {
+      "message": "The command was accepted, but the requested lock state was not observed. Check the vehicle before retrying."
     }
   },
   "issues": {

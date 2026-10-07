@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Requer paragem e P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requer paragem e P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requer paragem e P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Destrancar remotamente",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requer paragem e P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Trancar remotamente",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requer paragem e P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Presente",
           "absent": "Ausente",
-          "unrecognized": "Não reconhecido"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Fechadura do banco",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Trancado",
-          "unlocked": "Destrancado",
           "unrecognized": "Não reconhecido"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Alimentação principal"
       },
-      "unlocked": {
-        "name": "Desbloqueado"
-      },
       "cycle_support": {
         "name": "Suporte à contagem de ciclos",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Abrir assento"
       },
       "engine_start": {
-        "name": "Arranque remoto"
+        "name": "Destrancar remotamente"
       },
       "engine_stop": {
-        "name": "Paragem remota"
+        "name": "Trancar remotamente"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Fechadura do veículo",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Fecho remoto",
+            "state": {
+              "manual": "Apenas fecho manual",
+              "guarded": "Requer paragem e P"
+            }
+          },
+          "last_operation": {
+            "name": "Última operação"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Fechadura do compartimento do banco",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Fecho remoto",
+            "state": {
+              "manual": "Apenas fecho manual",
+              "guarded": "Requer paragem e P"
+            }
+          },
+          "last_operation": {
+            "name": "Última operação"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Existe uma operação do veículo em curso ou foi atingido o limite de controlo da conta. Tente novamente após terminar."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Paragem e P não confirmados. Comando de fecho não enviado."
+    },
+    "seat_lock_manual": {
+      "message": "O compartimento do banco só pode ser fechado manualmente."
+    },
+    "control_target_not_observed": {
+      "message": "Comando aceite, mas estado solicitado não observado. Verifique o veículo antes de tentar novamente."
     }
   },
   "issues": {

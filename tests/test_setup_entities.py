@@ -67,9 +67,11 @@ async def test_full_setup_physical_values_and_unload(hass, entry, app_client):
         assert entity_id.startswith(f"{platform}.")
         state = hass.states.get(entity_id)
         assert state and float(state.state) == expected
-    for key, value in [("charging", "off"), ("power", "on"), ("unlocked", "off")]:
+    for key, value in [("charging", "off"), ("power", "on")]:
         entity_id = registry.async_get_entity_id("binary_sensor", "ninebot", f"SyntheticSN_{key}")
         assert hass.states.get(entity_id).state == value
+    lock_id = registry.async_get_entity_id("lock", "ninebot", "SyntheticSN_vehicle_lock")
+    assert hass.states.get(lock_id).state == "locked"
     cycle_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_bms_cycles")
     assert hass.states.get(cycle_id).state == "unknown"
     raw_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_month_energy_raw")
@@ -344,13 +346,13 @@ async def test_duplicate_sensor_identities_preserve_values_and_repair(hass, entr
     assert ("ninebot", conflict) not in ir.async_get(hass).issues
 
 
-async def test_unknown_binary_state_never_becomes_unlocked(hass, entry, app_client):
-    from custom_components.ninebot.binary_sensor import DESCRIPTIONS, NinebotBinarySensor
+async def test_unknown_lock_state_never_becomes_unlocked(hass, entry, app_client):
+    from custom_components.ninebot.lock import NinebotLock
 
     app_client.async_get_status.return_value = {"loc": {"lock": "invalid"}}
     assert await hass.config_entries.async_setup(entry.entry_id)
-    entity = NinebotBinarySensor(entry, "SyntheticSN", DESCRIPTIONS[2])
-    assert entity.is_on is None
+    entity = NinebotLock(entry, "SyntheticSN", "vehicle_lock")
+    assert entity.is_locked is None
 
 
 async def test_unmatched_device_keeps_identity_and_repairs_clear_after_confirmed_discovery(

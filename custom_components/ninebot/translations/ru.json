@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Требуются остановка и P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Требуются остановка и P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Требуются остановка и P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Разблокировать удалённо",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Требуются остановка и P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Заблокировать удалённо",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Требуются остановка и P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Есть",
           "absent": "Нет",
-          "unrecognized": "Не распознано"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Замок подседельного отсека",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Заблокировано",
-          "unlocked": "Разблокировано",
           "unrecognized": "Не распознано"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Основное питание"
       },
-      "unlocked": {
-        "name": "Разблокировано"
-      },
       "cycle_support": {
         "name": "Поддержка счётчика циклов",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Открыть отсек"
       },
       "engine_start": {
-        "name": "Дистанционный запуск"
+        "name": "Разблокировать удалённо"
       },
       "engine_stop": {
-        "name": "Дистанционная остановка"
+        "name": "Заблокировать удалённо"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Замок транспорта",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Дистанционное запирание",
+            "state": {
+              "manual": "Только ручное запирание",
+              "guarded": "Требуются остановка и P"
+            }
+          },
+          "last_operation": {
+            "name": "Последняя операция"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Замок отсека сиденья",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Дистанционное запирание",
+            "state": {
+              "manual": "Только ручное запирание",
+              "guarded": "Требуются остановка и P"
+            }
+          },
+          "last_operation": {
+            "name": "Последняя операция"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Операция с транспортным средством выполняется или достигнут лимит управления аккаунта. Повторите после завершения."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Остановка и P не подтверждены. Команда запирания не отправлена."
+    },
+    "seat_lock_manual": {
+      "message": "Отсек сиденья запирается только вручную."
+    },
+    "control_target_not_observed": {
+      "message": "Команда принята, но нужное состояние не получено. Проверьте транспорт перед повтором."
     }
   },
   "issues": {

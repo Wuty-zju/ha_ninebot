@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Harus berhenti dan P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Harus berhenti dan P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Harus berhenti dan P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Buka kunci jarak jauh",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Harus berhenti dan P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Kunci jarak jauh",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Harus berhenti dan P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Ada",
           "absent": "Tidak ada",
-          "unrecognized": "Tidak dikenali"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Kunci jok",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Terkunci",
-          "unlocked": "Terbuka",
           "unrecognized": "Tidak dikenali"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Daya utama"
       },
-      "unlocked": {
-        "name": "Tidak terkunci"
-      },
       "cycle_support": {
         "name": "Dukungan penghitung siklus",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Buka bagasi jok"
       },
       "engine_start": {
-        "name": "Nyalakan jarak jauh"
+        "name": "Buka kunci jarak jauh"
       },
       "engine_stop": {
-        "name": "Matikan jarak jauh"
+        "name": "Kunci jarak jauh"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Kunci kendaraan",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Penguncian jarak jauh",
+            "state": {
+              "manual": "Hanya penguncian manual",
+              "guarded": "Harus berhenti dan P"
+            }
+          },
+          "last_operation": {
+            "name": "Operasi terakhir"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Kunci kompartemen jok",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Penguncian jarak jauh",
+            "state": {
+              "manual": "Hanya penguncian manual",
+              "guarded": "Harus berhenti dan P"
+            }
+          },
+          "last_operation": {
+            "name": "Operasi terakhir"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Operasi kendaraan sedang berlangsung atau batas kontrol akun telah tercapai. Coba lagi setelah selesai."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Berhenti dan P belum dikonfirmasi. Perintah penguncian tidak dikirim."
+    },
+    "seat_lock_manual": {
+      "message": "Kompartemen jok hanya dapat dikunci secara manual."
+    },
+    "control_target_not_observed": {
+      "message": "Perintah diterima tetapi status kunci yang diminta belum terlihat. Periksa kendaraan sebelum mencoba lagi."
     }
   },
   "issues": {

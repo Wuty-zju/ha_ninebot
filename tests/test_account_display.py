@@ -91,7 +91,6 @@ def test_existing_observation_identities_have_translated_finite_states():
     assert snapshot.status.powered is True
     for key, expected in [
         ("acc_raw", "off"),
-        ("seat_lock_raw", "locked"),
         ("battery_present_raw", "present"),
         ("service_expired_raw", "active"),
     ]:

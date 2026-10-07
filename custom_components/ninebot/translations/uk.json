@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Потрібні зупинка та P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Потрібні зупинка та P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Потрібні зупинка та P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Розблокувати дистанційно",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Потрібні зупинка та P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Заблокувати дистанційно",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Потрібні зупинка та P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Є",
           "absent": "Немає",
-          "unrecognized": "Не розпізнано"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Замок відсіку під сидінням",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Заблоковано",
-          "unlocked": "Розблоковано",
           "unrecognized": "Не розпізнано"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Основне живлення"
       },
-      "unlocked": {
-        "name": "Розблоковано"
-      },
       "cycle_support": {
         "name": "Підтримка лічильника циклів",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Відкрити відсік"
       },
       "engine_start": {
-        "name": "Дистанційний запуск"
+        "name": "Розблокувати дистанційно"
       },
       "engine_stop": {
-        "name": "Дистанційна зупинка"
+        "name": "Заблокувати дистанційно"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Замок транспорту",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Дистанційне замикання",
+            "state": {
+              "manual": "Лише ручне замикання",
+              "guarded": "Потрібні зупинка та P"
+            }
+          },
+          "last_operation": {
+            "name": "Остання операція"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Замок відсіку сидіння",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Дистанційне замикання",
+            "state": {
+              "manual": "Лише ручне замикання",
+              "guarded": "Потрібні зупинка та P"
+            }
+          },
+          "last_operation": {
+            "name": "Остання операція"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Операція з транспортним засобом триває або досягнуто ліміту керування облікового запису. Повторіть після завершення."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Зупинку та P не підтверджено. Команду замикання не надіслано."
+    },
+    "seat_lock_manual": {
+      "message": "Відсік сидіння замикається лише вручну."
+    },
+    "control_target_not_observed": {
+      "message": "Команду прийнято, але потрібний стан не отримано. Перевірте транспорт перед повтором."
     }
   },
   "issues": {

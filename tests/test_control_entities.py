@@ -32,10 +32,14 @@ async def test_direct_command_button_and_policy_status(hass, entry, app_client, 
         "sensor", "ninebot", "SyntheticSN_control_availability"
     )
     assert button.disabled_by is None
-    assert hass.states.get(button.entity_id).state != "unavailable"
+    assert (hass.states.get(button.entity_id).state == "unavailable") == (action == "engine/stop")
     assert hass.states.get(diagnostic).state == "ready"
-    assert not any(
-        row.domain == "lock" for row in er.async_entries_for_config_entry(registry, entry.entry_id)
+    assert (
+        sum(
+            row.domain == "lock"
+            for row in er.async_entries_for_config_entry(registry, entry.entry_id)
+        )
+        == 2
     )
     app_client.async_control.assert_not_awaited()
 
@@ -46,11 +50,30 @@ async def test_direct_command_button_and_policy_status(hass, entry, app_client, 
     assert decision.permission is CapabilityState.UNKNOWN
     assert not decision.semantics_verified
     assert not decision.evidence_available
-    await hass.services.async_call(
-        "button", "press", {"entity_id": button.entity_id}, blocking=True
-    )
-    app_client.async_control.assert_awaited_once_with("SyntheticSN", action)
-    app_client.async_get_status.assert_awaited()
+    app_client.async_get_status_once.return_value = {"loc": {"lock": 0}, "barrel_lock_status": 1}
+    if action == "engine/stop":
+        from homeassistant.exceptions import HomeAssistantError
+
+        # HA skips unavailable button targets. Direct invocation must also
+        # enforce the same guard, never rely on the frontend being disabled.
+        await hass.services.async_call(
+            "button", "press", {"entity_id": button.entity_id}, blocking=True
+        )
+        from custom_components.ninebot.button import NinebotButton
+
+        with pytest.raises(HomeAssistantError) as err:
+            await NinebotButton(entry, "SyntheticSN", key, action).async_press()
+        assert err.value.translation_key == "parking_unverified"
+        app_client.async_control.assert_not_awaited()
+        assert "parking_unverified" in decision.blockers
+    else:
+        await hass.services.async_call(
+            "button", "press", {"entity_id": button.entity_id}, blocking=True
+        )
+        app_client.async_control.assert_awaited_once_with("SyntheticSN", action)
+        (
+            app_client.async_get_status if action == "bell" else app_client.async_get_status_once
+        ).assert_awaited()
 
     # A reviewed explicit denial disables that action, not every other command.
     snapshot = coordinator.data["SyntheticSN"]

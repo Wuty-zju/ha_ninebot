@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Requiere parada y P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requiere parada y P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requiere parada y P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Desbloquear a distancia",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requiere parada y P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Bloquear a distancia",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Requiere parada y P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Presente",
           "absent": "Ausente",
-          "unrecognized": "No reconocido"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Cerradura del asiento",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Bloqueado",
-          "unlocked": "Desbloqueado",
           "unrecognized": "No reconocido"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Alimentación principal"
       },
-      "unlocked": {
-        "name": "Desbloqueado"
-      },
       "cycle_support": {
         "name": "Compatibilidad con recuento de ciclos",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Abrir el asiento"
       },
       "engine_start": {
-        "name": "Arranque remoto"
+        "name": "Desbloquear a distancia"
       },
       "engine_stop": {
-        "name": "Parada remota"
+        "name": "Bloquear a distancia"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Cerradura del vehículo",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Cierre remoto",
+            "state": {
+              "manual": "Solo cierre manual",
+              "guarded": "Requiere parada y P"
+            }
+          },
+          "last_operation": {
+            "name": "Última operación"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Cerradura del asiento",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Cierre remoto",
+            "state": {
+              "manual": "Solo cierre manual",
+              "guarded": "Requiere parada y P"
+            }
+          },
+          "last_operation": {
+            "name": "Última operación"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Hay una operación del vehículo pendiente o se alcanzó el límite de control de la cuenta. Vuelve a intentarlo cuando termine."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "No se confirmó parada y P. No se envió la orden de cierre."
+    },
+    "seat_lock_manual": {
+      "message": "El compartimento del asiento solo se cierra manualmente."
+    },
+    "control_target_not_observed": {
+      "message": "Orden aceptada, pero no se observó el estado solicitado. Compruebe el vehículo antes de reintentar."
     }
   },
   "issues": {

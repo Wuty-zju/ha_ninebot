@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "ต้องหยุดรถและอยู่ใน P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "ต้องหยุดรถและอยู่ใน P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "ต้องหยุดรถและอยู่ใน P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "ปลดล็อกจากระยะไกล",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "ต้องหยุดรถและอยู่ใน P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "ล็อกจากระยะไกล",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "ต้องหยุดรถและอยู่ใน P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "มี",
           "absent": "ไม่มี",
-          "unrecognized": "ไม่รู้จัก"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "ล็อกเบาะ",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "ล็อก",
-          "unlocked": "ปลดล็อก",
           "unrecognized": "ไม่รู้จัก"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "ไฟหลัก"
       },
-      "unlocked": {
-        "name": "ปลดล็อกแล้ว"
-      },
       "cycle_support": {
         "name": "รองรับการนับรอบ",
         "state": {
@@ -513,10 +491,10 @@
         "name": "เปิดช่องใต้เบาะ"
       },
       "engine_start": {
-        "name": "สตาร์ตระยะไกล"
+        "name": "ปลดล็อกจากระยะไกล"
       },
       "engine_stop": {
-        "name": "หยุดระยะไกล"
+        "name": "ล็อกจากระยะไกล"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "ล็อกรถ",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "ล็อกระยะไกล",
+            "state": {
+              "manual": "ล็อกด้วยมือเท่านั้น",
+              "guarded": "ต้องหยุดรถและอยู่ใน P"
+            }
+          },
+          "last_operation": {
+            "name": "การทำงานล่าสุด"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "ล็อกช่องใต้เบาะ",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "ล็อกระยะไกล",
+            "state": {
+              "manual": "ล็อกด้วยมือเท่านั้น",
+              "guarded": "ต้องหยุดรถและอยู่ใน P"
+            }
+          },
+          "last_operation": {
+            "name": "การทำงานล่าสุด"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "มีการดำเนินการของรถอยู่หรือถึงขีดจำกัดการควบคุมบัญชีแล้ว โปรดลองอีกครั้งเมื่อเสร็จสิ้น"
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,15 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "ยังไม่ยืนยันว่ารถหยุดและอยู่ใน P จึงไม่ได้ส่งคำสั่งล็อก"
+    },
+    "seat_lock_manual": {
+      "message": "ช่องใต้เบาะล็อกได้ด้วยมือเท่านั้น"
+    },
+    "control_target_not_observed": {
+      "message": "คำสั่งได้รับการยอมรับ แต่ยังไม่พบสถานะล็อกที่ต้องการ โปรดตรวจสอบรถก่อนลองอีกครั้ง"
     }
   },
   "issues": {

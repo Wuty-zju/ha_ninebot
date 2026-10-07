@@ -23,6 +23,7 @@ CONTROL_STATES = (
     "unverified",
     "denied",
     "unsupported",
+    "parking_unverified",
 )
 
 
@@ -116,6 +117,7 @@ def control_state(decision: ControlDecision) -> str:
         ),
         ({"transport_unsupported", "unknown_action"}, "unsupported"),
         ({"support_denied", "permission_denied"}, "denied"),
+        ({"parking_unverified"}, "parking_unverified"),
     ):
         if blocked & reasons:
             return state
