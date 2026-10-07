@@ -16,7 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import NinebotCoordinator
-from .ride_events import SEEN_LIMIT, InvalidRideCursor, RideCursor, discover_rides
+from .ride_events import SEEN_LIMIT, InvalidRideCursor, RideCursor, RideDiscovery, discover_rides
 from .ride_models import Ride
 
 LOGGER = logging.getLogger(__name__)
@@ -201,7 +201,20 @@ class RideEventPipeline:
         key = self._vehicle_key(sn)
         previous = self._cursors.get(key, RideCursor())
         now = dt_util.utcnow()
+        if not baseline:
+            lifecycle = self.coordinator.ride_lifecycles.get(sn)
+            rides = lifecycle.stable_rides(rides) if lifecycle else ()
         result = discover_rides(previous, rides, now, baseline=baseline)
+        if (
+            result.reason == "awaiting_baseline"
+            and not rides
+            and snapshot.travel.summary is not None
+            and snapshot.travel.summary.list_complete is True
+            and snapshot.travel.summary.ride_count == 0
+        ):
+            # A verified empty month is a live baseline; missing/failed lists
+            # are not. Otherwise the first actual ride would be swallowed.
+            result = RideDiscovery(RideCursor(now, now), reason="baseline_empty")
         if key not in self._cursors and len(self._cursors) >= MAX_EVENT_VEHICLES:
             # Evict an inactive vehicle cursor, never a current subscription.
             active = {self._vehicle_key(vehicle) for vehicle in self._callbacks}

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b30
+
+- Require distinct successful travel samples with unchanged ride metrics over a ten-minute quiet window before emitting a completed event. Growing end reports and cache rereads cannot establish completion; this is a conservative local policy.
+- Keep stable identity separate from mutable metrics: later corrections never replay a completed event. Conflicting duplicate IDs and non-finite metrics fail closed; observations remain bounded and are cleared on unload or ownership loss.
+- Restore the original event display timestamp after an unavailable state using Home Assistant restore data, without triggering an event or synthesizing a timestamp for older stored data. Existing entity IDs and cursor storage remain compatible.
+
 ## 2.0.0b29
 
 - Fix the rated battery parameter form failing with HTTP 500 after selecting a valid vehicle: use serializable native number selectors with V/Ah units, retaining strict finite/range validation.

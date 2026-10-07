@@ -33,8 +33,8 @@ jobs:
             test-plugin: '0.13.367'
             ha: '2026.9.4'
           - python: '3.14'
-            test-plugin: '0.13.368'
-            ha: '2026.10.0b0'
+            test-plugin: '0.13.369'
+            ha: '2026.10.0b2'
     env:
       LITELLM_LOCAL_MODEL_COST_MAP: 'True'
     steps:

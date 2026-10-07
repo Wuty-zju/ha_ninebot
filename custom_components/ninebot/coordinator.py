@@ -37,6 +37,7 @@ from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
 from .models import Freshness, VehicleSnapshot
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
+from .ride_lifecycle import RideLifecycle
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.backend: NinebotBackend = backend or NinecliBackend(client)
         self.raw = RawStore()
         self.history = HistoryStore()
+        self.ride_lifecycles: dict[str, RideLifecycle] = {}
         self.control_results = ControlResults()
         self.interval = max(
             30, min(3600, int(entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)))
@@ -197,6 +199,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 continue
             if result.vehicles_complete:
                 self.raw.discard_vehicle(sn)
+                self.ride_lifecycles.pop(sn, None)
                 retained[sn] = replace(snapshot, present=False)
             else:
                 retained[sn] = replace(
@@ -307,6 +310,18 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     travel=travel,
                     travel_freshness=Freshness(now, cached_success or dt_util.utcnow()),
                 )
+                observed = updated.travel_freshness.succeeded_at
+                assert observed is not None
+                lifecycle = self.ride_lifecycles.setdefault(sn, RideLifecycle())
+                lifecycle.observe(travel.rides, observed)
+                if (
+                    travel.last_ride
+                    and (last := travel.last_ride.ride)
+                    and last.query_month != travel.month
+                    and (record := self.raw.get(Endpoint.TRAVEL, sn, last.query_month, now=now))
+                ):
+                    # Reusing a previous-month cache is not a new observation.
+                    lifecycle.observe((last,), record.received_at)
             self.data[sn] = updated
             success = True
         except NinebotAuthError:
@@ -642,5 +657,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         await asyncio.gather(*tasks, return_exceptions=True)
         self.raw.clear()
         self.history.clear()
+        self.ride_lifecycles.clear()
         self.control_results.clear()
         await self.async_shutdown()

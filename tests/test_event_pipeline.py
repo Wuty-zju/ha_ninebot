@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
@@ -14,6 +15,7 @@ from homeassistant.helpers.storage import Store
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.ninebot.event_store import MAX_CURSOR_BYTES, read_cursor_file
+from custom_components.ninebot.models import Freshness
 from custom_components.ninebot.ride_events import InvalidRideCursor
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -40,7 +42,14 @@ async def pipeline(hass, entry, app_client, freezer, tmp_path):
         config_entry=entry,
         disabled_by=er.RegistryEntryDisabler.USER,
     )
-    with patch.object(Store, "_async_write_data", REAL_WRITE):
+    # This fixture drives every sample explicitly through _group. Disable the
+    # coordinator's separate periodic timer so a virtual clock jump cannot
+    # concurrently race that unguarded test-only path or reset our sample time.
+    # Polling/demand scheduling is covered by the coordinator tests.
+    with (
+        patch.object(Store, "_async_write_data", REAL_WRITE),
+        patch("custom_components.ninebot.coordinator.NinebotCoordinator._schedule_refresh"),
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         yield entry.runtime_data.events
@@ -67,6 +76,15 @@ async def new_report(hass, entry, app_client, freezer, *, key="new-ride", second
     await hass.async_block_till_done()
 
 
+async def settled_report(hass, entry, freezer, *, seconds=720):
+    """A separate successful query of the same payload, not a cache reread."""
+    freezer.move_to(NOW + timedelta(seconds=seconds))
+    co = entry.runtime_data.coordinator
+    await co._group("SyntheticSN", "travel", force=True)
+    co.async_set_updated_data(dict(co.data))
+    await hass.async_block_till_done()
+
+
 async def test_disabled_event_does_not_load_or_write_or_query_details(
     hass, entry, app_client, pipeline
 ):
@@ -86,12 +104,14 @@ async def test_cursor_commit_precedes_callback_and_duplicate_observation_does_no
 
     def event(ride, late):
         key = pipeline._vehicle_key("SyntheticSN")
-        assert pipeline._cursors[key].observed_at == NOW + timedelta(seconds=120)
+        assert pipeline._cursors[key].observed_at == NOW + timedelta(seconds=720)
         emitted.append((ride.ride_id, late))
 
     unsubscribe = await pipeline.async_subscribe("SyntheticSN", event)
     assert not emitted and pipeline.available
     await new_report(hass, entry, app_client, freezer)
+    assert not emitted
+    await settled_report(hass, entry, freezer)
     assert emitted == [("new-ride", False)]
     pipeline._schedule()
     await hass.async_block_till_done()
@@ -131,19 +151,37 @@ async def test_real_event_entity_baseline_small_attributes_and_restart(
     active = entry.runtime_data.events
     assert active._callbacks and active._cursors
     await new_report(hass, entry, app_client, freezer)
+    assert hass.states.get(event_id).state == "unknown"
+    await settled_report(hass, entry, freezer)
+    co = entry.runtime_data.coordinator
+    last = co.data["SyntheticSN"].travel.rides[0]
+    assert co.ride_lifecycles["SyntheticSN"].phase(last) == "finalized_by_policy"
+    assert co.fresh("SyntheticSN", "profile")
+    assert active.available
     event = hass.states.get(event_id)
-    assert event.state.startswith("2026-09-26T00:02:00")
+    assert event.state.startswith("2026-09-26T00:12:00")
     assert event.attributes["event_type"] == "completed"
     assert event.attributes["ride_id"] == "new-ride"
     assert event.attributes["average_speed_m_s"] == 5
     for large in ("raw", "track", "speed_samples", "latitude", "longitude"):
         assert large not in event.attributes
     before = event.state
+    co = entry.runtime_data.coordinator
+    co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], travel_freshness=Freshness())
+    co.async_set_updated_data(dict(co.data))
+    await hass.async_block_till_done()
+    assert hass.states.get(event_id).state == "unavailable"
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     # RestoreEvent may retain the old visible event, but startup does not emit it again.
     assert hass.states.get(event_id).state == before
-    await new_report(hass, entry, app_client, freezer, key="next-ride", seconds=240)
+    await new_report(hass, entry, app_client, freezer, key="next-ride", seconds=840)
+    await settled_report(hass, entry, freezer, seconds=1440)
+    co = entry.runtime_data.coordinator
+    assert co.ride_lifecycles["SyntheticSN"].phase(co.data["SyntheticSN"].travel.rides[0]) == (
+        "finalized_by_policy"
+    )
+    assert entry.runtime_data.events._processed["SyntheticSN"] == NOW + timedelta(seconds=1440)
     assert hass.states.get(event_id).attributes["ride_id"] == "next-ride"
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
@@ -161,6 +199,22 @@ async def test_silent_store_write_failure_is_not_acknowledged_or_emitted(
     assert await hass.async_add_executor_job(Path(pipeline._store.path).read_bytes) == before
     assert ir.async_get(hass).async_get_issue("ninebot", f"ride_events_{entry.entry_id}")
     assert entry.runtime_data.coordinator.fresh("SyntheticSN", "status")
+
+
+async def test_verified_empty_month_baselines_then_emits_first_stable_ride(
+    hass, entry, app_client, freezer, pipeline
+):
+    app_client.async_get_travel.return_value = {"times": 0, "list": []}
+    co = entry.runtime_data.coordinator
+    await co._group("SyntheticSN", "travel", force=True)
+    co.async_set_updated_data(dict(co.data))
+    emitted = []
+    await pipeline.async_subscribe("SyntheticSN", lambda ride, late: emitted.append(ride))
+    assert pipeline._cursors[pipeline._vehicle_key("SyntheticSN")].baseline_at == NOW
+    await new_report(hass, entry, app_client, freezer)
+    assert not emitted
+    await settled_report(hass, entry, freezer)
+    assert [ride.ride_id for ride in emitted] == ["new-ride"]
 
 
 async def test_cancelled_save_and_closed_subscriptions_never_emit(

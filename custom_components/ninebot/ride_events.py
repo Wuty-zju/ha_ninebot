@@ -27,7 +27,7 @@ def ride_key(ride_id: str) -> str:
 
 
 def completed_report(ride: Ride, now: datetime) -> bool:
-    """Require identity, reliable past start/end and a consistent positive duration."""
+    """Validate an end report; physical completion additionally needs stability."""
     return bool(
         ride.ride_id
         and opaque_id(ride.ride_id) == ride.ride_id
