@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Polecenie przyjęte, ale nie zaobserwowano żądanego stanu. Sprawdź pojazd przed ponowną próbą."
+    },
+    "control_not_sent": {
+      "message": "Polecenie nie zostało wysłane: komunikacja jest chwilowo niedostępna. Spróbuj później."
     }
   },
   "issues": {

@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Komut kabul edildi ancak hedef kilit durumu görülmedi. Yeniden denemeden önce aracı kontrol edin."
+    },
+    "control_not_sent": {
+      "message": "Komut gönderilmedi: iletişim geçici olarak kullanılamıyor. Daha sonra tekrar deneyin."
     }
   },
   "issues": {

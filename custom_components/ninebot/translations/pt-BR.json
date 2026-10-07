@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Comando aceito, mas estado solicitado não observado. Verifique o veículo antes de tentar novamente."
+    },
+    "control_not_sent": {
+      "message": "Comando não enviado: a comunicação está temporariamente indisponível. Tente novamente mais tarde."
     }
   },
   "issues": {

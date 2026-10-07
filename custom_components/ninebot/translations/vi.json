@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Lệnh đã được chấp nhận nhưng chưa thấy trạng thái khóa yêu cầu. Kiểm tra xe trước khi thử lại."
+    },
+    "control_not_sent": {
+      "message": "Lệnh chưa được gửi: giao tiếp tạm thời không khả dụng. Hãy thử lại sau."
     }
   },
   "issues": {

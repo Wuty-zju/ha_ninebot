@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "The command was accepted, but the requested lock state was not observed. Check the vehicle before retrying."
+    },
+    "control_not_sent": {
+      "message": "Command not sent: communication is temporarily unavailable. Retry later."
     }
   },
   "issues": {

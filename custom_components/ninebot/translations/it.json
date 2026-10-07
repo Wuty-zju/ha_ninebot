@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Comando accettato, ma stato richiesto non osservato. Controllare il veicolo prima di riprovare."
+    },
+    "control_not_sent": {
+      "message": "Comando non inviato: la comunicazione è temporaneamente non disponibile. Riprova più tardi."
     }
   },
   "issues": {

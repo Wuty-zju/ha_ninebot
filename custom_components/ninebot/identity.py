@@ -456,7 +456,7 @@ class IdentityStore:
                         icon=old.icon,
                         area_id=old.area_id,
                         labels=set(old.labels),
-                        aliases=set(old.aliases),
+                        aliases=old.aliases.copy(),
                         categories=dict(old.categories),
                     )
                 if old is not None:

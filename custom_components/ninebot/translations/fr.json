@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Commande acceptée, mais état demandé non observé. Vérifiez le véhicule avant de réessayer."
+    },
+    "control_not_sent": {
+      "message": "Commande non envoyée : la communication est temporairement indisponible. Réessayez plus tard."
     }
   },
   "issues": {

@@ -1046,19 +1046,21 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 command_error = err
             finally:
                 self._barriers[sn] = self._barriers.get(sn, 0) + 1
-            if (
-                command_error is not None
-                and command_error.kind is ErrorKind.CLOSED
-                and not command_revision
-            ):
+            if command_error is not None and not command_revision:
+                # Broker admission/guard/cooldown rejected before the operation.
+                # No wire invocation occurred, so do not reconcile or imply it did.
                 result.outcome = CommandOutcome.REJECTED
                 result.readback = ReadbackOutcome.SKIPPED
-                result.confirmation = Confirmation.UNKNOWN if target else Confirmation.NOT_REQUESTED
+                result.confirmation = Confirmation.NOT_REQUESTED
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
-                    translation_key="parking_unverified"
+                    translation_key="busy"
+                    if command_error.kind is ErrorKind.BUSY
+                    else "parking_unverified"
                     if "parking_unverified" in self.control_decision(sn, action).blockers
-                    else "controls_disabled",
+                    else "controls_disabled"
+                    if command_error.kind is ErrorKind.CLOSED
+                    else "control_not_sent",
                 ) from None
             if target:
                 refreshed = await self._confirm_lock(sn, result, target[0], owner, command_revision)

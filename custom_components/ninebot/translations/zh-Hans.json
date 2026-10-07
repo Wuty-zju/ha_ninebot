@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "命令已被接口接受，但未观察到目标锁状态；请检查车辆后再操作。"
+    },
+    "control_not_sent": {
+      "message": "操作未发送：通信暂不可用，请稍后重试。"
     }
   },
   "issues": {

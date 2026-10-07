@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Opdracht geaccepteerd, gewenste slotstand niet waargenomen. Controleer het voertuig voor een nieuwe poging."
+    },
+    "control_not_sent": {
+      "message": "Opdracht niet verzonden: communicatie is tijdelijk niet beschikbaar. Probeer het later opnieuw."
     }
   },
   "issues": {

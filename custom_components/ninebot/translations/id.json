@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Perintah diterima tetapi status kunci yang diminta belum terlihat. Periksa kendaraan sebelum mencoba lagi."
+    },
+    "control_not_sent": {
+      "message": "Perintah tidak dikirim: komunikasi sementara tidak tersedia. Coba lagi nanti."
     }
   },
   "issues": {

@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "명령은 수락되었지만 목표 잠금 상태를 확인하지 못했습니다. 재시도 전에 차량을 확인하세요."
+    },
+    "control_not_sent": {
+      "message": "명령이 전송되지 않았습니다. 통신을 일시적으로 사용할 수 없습니다. 나중에 다시 시도하세요."
     }
   },
   "issues": {

@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "Befehl angenommen, gewünschter Schlosszustand nicht beobachtet. Fahrzeug vor erneutem Versuch prüfen."
+    },
+    "control_not_sent": {
+      "message": "Befehl nicht gesendet: Die Kommunikation ist vorübergehend nicht verfügbar. Später erneut versuchen."
     }
   },
   "issues": {

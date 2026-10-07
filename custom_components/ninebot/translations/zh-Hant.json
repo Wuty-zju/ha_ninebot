@@ -630,6 +630,9 @@
     },
     "control_target_not_observed": {
       "message": "命令已被介面接受，但未觀察到目標鎖狀態；請檢查車輛後再操作。"
+    },
+    "control_not_sent": {
+      "message": "操作未送出：通訊暫時無法使用，請稍後重試。"
     }
   },
   "issues": {

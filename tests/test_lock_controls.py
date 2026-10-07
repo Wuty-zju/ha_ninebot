@@ -314,3 +314,24 @@ async def test_confirmation_rate_limit_stops_and_never_replays_post(controls):
     co.client.async_control.assert_awaited_once()
     co.client.async_get_status_once.assert_awaited_once()
     assert co.broker.cooling_down and not co.pending_controls
+
+
+@pytest.mark.parametrize("reason", ["budget", "cooldown"])
+async def test_broker_rejects_before_wire_without_readback_or_uncertain_claim(controls, reason):
+    co = controls
+    if reason == "budget":
+        co.broker._command_limit = 0
+        expected = "busy"
+    else:
+        co.broker._cooldown_until = asyncio.get_running_loop().time() + 60
+        expected = "control_not_sent"
+    with pytest.raises(HomeAssistantError) as err:
+        await co.async_control("SyntheticSN", "engine/start")
+    assert err.value.translation_key == expected
+    co.client.async_control.assert_not_awaited()
+    co.client.async_get_status_once.assert_not_awaited()
+    result = co.control_results.diagnostics("SyntheticSN")["engine/start"]
+    assert result["outcome"] == "rejected"
+    assert result["confirmation"] == "not_requested" and result["read_attempts"] == 0
+    assert result["readback"] == "skipped"
+    assert not co.pending_controls and not co._control_leases

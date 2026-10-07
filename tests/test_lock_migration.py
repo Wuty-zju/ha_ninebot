@@ -48,7 +48,7 @@ async def test_conversion_preserves_uid_and_user_choices_without_duplicate(
         icon="mdi:lock",
         disabled_by=er.RegistryEntryDisabler.USER,
         hidden_by=er.RegistryEntryHider.USER,
-        aliases={"My lock"},
+        aliases=type(old.aliases)(["My lock"]),
         labels={"personal"},
     )
     store = await prepare(hass, entry)
