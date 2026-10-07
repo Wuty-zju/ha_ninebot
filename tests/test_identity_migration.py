@@ -46,10 +46,12 @@ def row(hass, entry, key="battery", custom=None):
         device_id=device.id,
         original_name=name,
         has_entity_name=True,
-        calculated_object_id=f"Scooter {name}",
     )
-    if custom:
-        registered = registry.async_update_entity(registered.entity_id, new_entity_id=custom)
+    # calculated_object_id was removed in recent Core. Use the same public
+    # rename API as a user/old registry snapshot to prepare a generated ID.
+    registered = registry.async_update_entity(
+        registered.entity_id, new_entity_id=custom or f"sensor.scooter_{key}"
+    )
     return registered
 
 
