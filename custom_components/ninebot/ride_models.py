@@ -66,6 +66,7 @@ class Ride:
     field_states: tuple[tuple[str, FieldState], ...] = ()
     field_sources: tuple[tuple[str, str], ...] = ()
     detail_field_states: tuple[tuple[str, FieldState], ...] = ()
+    precision: tuple[tuple[str, int], ...] = ()
 
     @property
     def average_speed_m_s(self) -> float | None:

@@ -462,3 +462,39 @@ async def test_recover_accepted_destination_cleans_prejournal_backup(tmp_path):
         await SessionManager(root, http).async_recover(key)
     assert session_uid(root / key) == "accepted"
     assert not (root / f".backup-{key}").exists()
+
+
+@pytest.mark.parametrize(
+    "failure", [None, ErrorKind.CONNECTION, ErrorKind.PROTOCOL, ErrorKind.AUTH]
+)
+async def test_account_display_read_is_optional_except_auth_and_isolated(tmp_path, failure):
+    client = AsyncMock()
+    client.async_list_vehicles.return_value = []
+    client.async_get_account.return_value = {
+        "username": "Rider",
+        "region": "bj",
+        "phone": "private",
+        "token": "secret",
+    }
+    if failure:
+        client.async_get_account.side_effect = NinebotError(failure)
+
+    def factory(path, session):
+        write(path)
+        return client
+
+    async with aiohttp.ClientSession() as http:
+        manager = SessionManager(tmp_path / "private", http, factory)
+        if failure is ErrorKind.AUTH:
+            with pytest.raises(NinebotError):
+                await manager.async_prepare("test-account", "synthetic")
+            assert not list(manager.root.glob(".candidate-*"))
+            client.async_list_vehicles.assert_not_awaited()
+        else:
+            candidate = await manager.async_prepare("test-account", "synthetic")
+            assert candidate.display.as_dict() == (
+                {} if failure else {"username": "Rider", "region": "bj"}
+            )
+            await manager.async_discard(candidate)
+        client.async_get_account.assert_awaited_once()
+        client.async_close.assert_awaited()

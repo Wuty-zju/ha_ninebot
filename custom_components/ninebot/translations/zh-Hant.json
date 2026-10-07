@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "新增帳號",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "帳號",
           "password": "密碼",
           "debug_mode": "調試模式",
           "enable_estimation": "啟用電池額定參數",
-          "enable_coordinates": "顯示精確位置",
+          "enable_coordinates": "顯示車輛位置",
           "login_method": "登入方式"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
           "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,20 @@
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
       "storage_error": "Local session storage failed. Check storage and try again."
+    },
+    "initiate_flow": {
+      "user": "新增帳號"
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "選項",
-        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
         "data": {
           "poll_interval": "狀態刷新間隔（秒）",
           "enable_estimation": "啟用電池額定參數",
-          "enable_coordinates": "顯示精確位置",
+          "enable_coordinates": "顯示車輛位置",
           "enable_controls": "啟用車輛控制",
           "control_vehicles": "允許控制的車輛",
           "debug_mode": "調試模式",
@@ -98,7 +102,8 @@
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "model_vehicle": {
@@ -306,7 +311,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "電池安裝狀態",
+        "name": "電池存在",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -318,13 +323,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "present": "存在",
+          "absent": "不存在",
+          "unrecognized": "未識別"
         }
       },
       "seat_lock_raw": {
-        "name": "座桶鎖狀態",
+        "name": "座桶鎖",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -336,13 +347,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "locked": "鎖定",
+          "unlocked": "解鎖",
+          "unrecognized": "未識別"
         }
       },
       "acc_raw": {
-        "name": "ACC狀態",
+        "name": "電門狀態（ACC）",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -354,13 +371,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "on": "開啟",
+          "off": "關閉",
+          "unrecognized": "未識別"
         }
       },
       "service_expired_raw": {
-        "name": "智能服務狀態",
+        "name": "智慧服務到期",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -372,9 +395,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "active": "有效",
+          "expired": "已到期",
+          "unrecognized": "未識別"
         }
       },
       "health_score": {
@@ -435,6 +464,17 @@
       },
       "last_energy_intensity": {
         "name": "上次行程: 單位里程能耗"
+      },
+      "emergency_battery": {
+        "name": "應急通訊電池電量"
+      },
+      "main_battery_type": {
+        "name": "主電池類型",
+        "state": {
+          "lithium": "鋰電池",
+          "lead_acid": "鉛酸電池",
+          "unrecognized": "未識別"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +488,18 @@
         "name": "已解鎖"
       },
       "cycle_support": {
-        "name": "支援循環計數"
+        "name": "循環計數支援",
+        "state": {
+          "on": "支援",
+          "off": "不支援"
+        }
       },
       "battery_find_my_support": {
-        "name": "支援電池尋找"
+        "name": "Apple 尋找支援",
+        "state": {
+          "on": "支援",
+          "off": "不支援"
+        }
       }
     },
     "button": {

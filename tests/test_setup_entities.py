@@ -615,6 +615,8 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
             "health_score",
             "charging_power_raw",
             "returned_pack_count",
+            "emergency_battery",
+            "main_battery_type",
             "month_ride_count",
             "month_duration",
             "month_returned_rides",

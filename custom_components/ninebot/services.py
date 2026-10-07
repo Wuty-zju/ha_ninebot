@@ -14,7 +14,7 @@ from homeassistant.util import dt as dt_util
 from . import adapters
 from .compat import device_entry_ids, is_child_device
 from .compat import validation as vol
-from .const import CONF_COORDINATES, DOMAIN
+from .const import CONF_COORDINATES, DEFAULT_COORDINATES, DOMAIN
 from .coordinator import NinebotCoordinator
 from .exceptions import ErrorKind, NinebotError
 from .models import TravelMonth
@@ -263,7 +263,7 @@ def assert_query_scope(
     entry, current_sn = resolve_vehicle(hass, device_id)
     if entry.entry_id != entry_id or current_sn != sn:
         raise validation_error("query_device")
-    if include_track and not entry.options.get(CONF_COORDINATES, False):
+    if include_track and entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES) is not True:
         raise validation_error("query_coordinates")
 
 
@@ -271,7 +271,7 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     entry, sn = resolve_vehicle(hass, call.data["device_id"])
     co = entry.runtime_data.coordinator
     include_track = call.data["include_track"]
-    if include_track and not entry.options.get(CONF_COORDINATES, False):
+    if include_track and entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES) is not True:
         raise validation_error("query_coordinates")
     is_list = call.service == "get_trips"
     if is_list:

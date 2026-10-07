@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "Adicionar conta",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Conta",
           "password": "Palavra-passe",
           "debug_mode": "Modo de depuração",
           "enable_estimation": "Ativar parâmetros nominais",
-          "enable_coordinates": "Mostrar localização precisa",
+          "enable_coordinates": "Mostrar localização do veículo",
           "login_method": "Método de início de sessão"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
           "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,20 @@
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
       "storage_error": "Local session storage failed. Check storage and try again."
+    },
+    "initiate_flow": {
+      "user": "Adicionar conta"
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Opções",
-        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
         "data": {
           "poll_interval": "Intervalo de atualização (segundos)",
           "enable_estimation": "Ativar parâmetros nominais",
-          "enable_coordinates": "Mostrar localização precisa",
+          "enable_coordinates": "Mostrar localização do veículo",
           "enable_controls": "Ativar controlos",
           "control_vehicles": "Veículos autorizados",
           "debug_mode": "Modo de depuração",
@@ -98,7 +102,8 @@
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "model_vehicle": {
@@ -306,7 +311,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "Presença da bateria",
+        "name": "Bateria presente",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -318,13 +323,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "present": "Presente",
+          "absent": "Ausente",
+          "unrecognized": "Não reconhecido"
         }
       },
       "seat_lock_raw": {
-        "name": "Fechadura do assento",
+        "name": "Fechadura do banco",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -336,13 +347,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "locked": "Trancado",
+          "unlocked": "Destrancado",
+          "unrecognized": "Não reconhecido"
         }
       },
       "acc_raw": {
-        "name": "Estado ACC",
+        "name": "Ignição (ACC)",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -354,13 +371,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "on": "Ligado",
+          "off": "Desligado",
+          "unrecognized": "Não reconhecido"
         }
       },
       "service_expired_raw": {
-        "name": "Estado do serviço",
+        "name": "Serviço inteligente expirado",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -372,9 +395,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "active": "Ativo",
+          "expired": "Expirado",
+          "unrecognized": "Não reconhecido"
         }
       },
       "health_score": {
@@ -435,6 +464,17 @@
       },
       "last_energy_intensity": {
         "name": "Última viagem: Consumo por distância"
+      },
+      "emergency_battery": {
+        "name": "Bateria de comunicação de emergência"
+      },
+      "main_battery_type": {
+        "name": "Tipo de bateria principal",
+        "state": {
+          "lithium": "Lítio",
+          "lead_acid": "Chumbo-ácido",
+          "unrecognized": "Não reconhecido"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +488,18 @@
         "name": "Desbloqueado"
       },
       "cycle_support": {
-        "name": "Contagem de ciclos suportada"
+        "name": "Suporte à contagem de ciclos",
+        "state": {
+          "on": "Suportado",
+          "off": "Não suportado"
+        }
       },
       "battery_find_my_support": {
-        "name": "Localização da bateria suportada"
+        "name": "Suporte ao Encontrar da Apple",
+        "state": {
+          "on": "Suportado",
+          "off": "Não suportado"
+        }
       }
     },
     "button": {

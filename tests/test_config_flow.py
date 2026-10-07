@@ -51,6 +51,47 @@ async def test_user_success_no_password_stored(hass, flow_manager):
     assert "password" not in entry.data
     assert session_uid(flow_manager.path(entry.data["session_key"])) == "synthetic-business"
     assert not list(flow_manager.root.glob(".candidate-*"))
+    assert entry.title == "fake-account"
+    assert entry.options["enable_coordinates"] is True
+
+
+async def test_account_title_metadata_and_explicit_location_off(hass, flow_manager):
+    from dataclasses import replace
+
+    from custom_components.ninebot.account import AccountDisplay
+
+    prepare = flow_manager.async_prepare.side_effect
+
+    async def with_display(account, password):
+        return replace(await prepare(account, password), display=AccountDisplay("Rider", "bj"))
+
+    flow_manager.async_prepare.side_effect = with_display
+    result = await hass.config_entries.flow.async_init(
+        "ninebot",
+        context={"source": SOURCE_USER},
+        data={
+            "account": "test-account",
+            "password": "synthetic-password",
+            "enable_coordinates": False,
+        },
+    )
+    entry = result["result"]
+    assert entry.title == "Rider：test-account[bj]"
+    assert entry.data["account_display"] == {"username": "Rider", "region": "bj"}
+    assert entry.options["enable_coordinates"] is False
+
+
+async def test_reauth_keeps_custom_entry_title(hass, entry, flow_manager):
+    hass.config_entries.async_update_entry(entry, title="My vehicles")
+    form = await hass.config_entries.flow.async_init(
+        "ninebot", context={"source": SOURCE_REAUTH, "entry_id": entry.entry_id}, data=entry.data
+    )
+    with patch.object(hass.config_entries, "async_reload", return_value=True):
+        result = await hass.config_entries.flow.async_configure(
+            form["flow_id"], {"account": "fake-account", "password": "synthetic-password"}
+        )
+    assert result["reason"] == "reauth_successful"
+    assert entry.title == "My vehicles"
 
 
 @pytest.mark.parametrize("kind", list(ErrorKind))
@@ -306,3 +347,32 @@ async def test_failed_rollback_unload_retains_journal_and_reports_recovery(
     await recovery.async_recover(entry.data["session_key"])
     assert (path / "tokens.json").read_text() == before
     assert not await recovery.async_is_pending(entry.data["session_key"])
+
+
+async def test_two_account_entries_keep_metadata_and_token_directories_separate(hass, flow_manager):
+    from custom_components.ninebot.account import AccountDisplay
+
+    async def prepare(account, password):
+        directory = await hass.async_add_executor_job(flow_manager._candidate_dir)
+        uid = f"business-{account}"
+        await hass.async_add_executor_job(
+            (directory / "tokens.json").write_text,
+            json.dumps({"business_uid": uid, "access_token": "synthetic"}),
+        )
+        return Candidate(directory, uid, AccountDisplay(f"Rider-{account}", "bj"))
+
+    flow_manager.async_prepare.side_effect = prepare
+    results = []
+    for account in ("one", "two"):
+        result = await hass.config_entries.flow.async_init(
+            "ninebot",
+            context={"source": SOURCE_USER},
+            data={"account": account, "password": "synthetic"},
+        )
+        results.append(result["result"])
+    first, second = results
+    assert first.unique_id != second.unique_id
+    assert first.data["session_key"] != second.data["session_key"]
+    assert first.title == "Rider-one：one[bj]" and second.title == "Rider-two：two[bj]"
+    for entry in results:
+        assert session_uid(flow_manager.path(entry.data["session_key"])) == entry.unique_id

@@ -10,13 +10,16 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
+from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, AccountDisplay, account_update
 from .adapters import number, text
 from .const import (
     CONF_ACCOUNT,
     CONF_BUSINESS_UID,
+    CONF_COORDINATES,
     CONF_IDENTITY_SCHEME,
     CONF_POLL_INTERVAL,
     CONF_SESSION_KEY,
+    DEFAULT_COORDINATES,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
 )
@@ -57,6 +60,20 @@ async def async_migrate(hass: HomeAssistant, entry: ConfigEntry, manager: Sessio
     if entry.version > 2:
         return False
     if entry.version == 2:
+        if entry.minor_version < 2:
+            metadata, automatic, title = account_update(
+                dict(entry.data),
+                str(entry.data.get(CONF_ACCOUNT, "")),
+                AccountDisplay(),
+                entry.title,
+            )
+            hass.config_entries.async_update_entry(
+                entry,
+                data={**entry.data, ACCOUNT_METADATA: metadata, AUTOMATIC_TITLE: automatic},
+                options={CONF_COORDINATES: DEFAULT_COORDINATES, **entry.options},
+                title=title,
+                minor_version=2,
+            )
         return True
     uid = text(entry.data.get(CONF_BUSINESS_UID))
     if uid and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", uid) is None:
@@ -113,10 +130,17 @@ async def async_migrate(hass: HomeAssistant, entry: ConfigEntry, manager: Sessio
         CONF_POLL_INTERVAL, entry.data.get("default_scan_interval", DEFAULT_POLL_INTERVAL)
     )
     parsed = number(old_interval, 30, 3600)
-    options = {CONF_POLL_INTERVAL: int(parsed) if parsed is not None else DEFAULT_POLL_INTERVAL}
+    options = {
+        CONF_POLL_INTERVAL: int(parsed) if parsed is not None else DEFAULT_POLL_INTERVAL,
+        CONF_COORDINATES: entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES),
+    }
+    metadata, automatic, title = account_update(
+        dict(entry.data), data[CONF_ACCOUNT], AccountDisplay(), entry.title
+    )
+    data.update({ACCOUNT_METADATA: metadata, AUTOMATIC_TITLE: automatic})
     # Passwords are intentionally not carried into v2 ConfigEntry data.
     hass.config_entries.async_update_entry(
-        entry, data=data, options=options, version=2, minor_version=1
+        entry, data=data, options=options, title=title, version=2, minor_version=2
     )
     ir.async_delete_issue(hass, DOMAIN, f"migration_identity_{entry.entry_id}")
     return True

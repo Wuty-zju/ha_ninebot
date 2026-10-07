@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "Tambah akun",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Akun",
           "password": "Kata sandi",
           "debug_mode": "Mode debug",
           "enable_estimation": "Aktifkan parameter nominal",
-          "enable_coordinates": "Tampilkan lokasi tepat",
+          "enable_coordinates": "Tampilkan lokasi kendaraan",
           "login_method": "Metode masuk"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
           "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,20 @@
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
       "storage_error": "Local session storage failed. Check storage and try again."
+    },
+    "initiate_flow": {
+      "user": "Tambah akun"
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Opsi",
-        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
         "data": {
           "poll_interval": "Interval pembaruan (detik)",
           "enable_estimation": "Aktifkan parameter nominal",
-          "enable_coordinates": "Tampilkan lokasi tepat",
+          "enable_coordinates": "Tampilkan lokasi kendaraan",
           "enable_controls": "Aktifkan kontrol",
           "control_vehicles": "Kendaraan yang diizinkan",
           "debug_mode": "Mode debug",
@@ -98,7 +102,8 @@
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "model_vehicle": {
@@ -306,7 +311,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "Keberadaan baterai",
+        "name": "Baterai terpasang",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -318,13 +323,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "present": "Ada",
+          "absent": "Tidak ada",
+          "unrecognized": "Tidak dikenali"
         }
       },
       "seat_lock_raw": {
-        "name": "Kunci bagasi jok",
+        "name": "Kunci jok",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -336,13 +347,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "locked": "Terkunci",
+          "unlocked": "Terbuka",
+          "unrecognized": "Tidak dikenali"
         }
       },
       "acc_raw": {
-        "name": "Status ACC",
+        "name": "Kontak (ACC)",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -354,13 +371,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "on": "Aktif",
+          "off": "Nonaktif",
+          "unrecognized": "Tidak dikenali"
         }
       },
       "service_expired_raw": {
-        "name": "Status layanan",
+        "name": "Layanan pintar kedaluwarsa",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -372,9 +395,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "active": "Aktif",
+          "expired": "Kedaluwarsa",
+          "unrecognized": "Tidak dikenali"
         }
       },
       "health_score": {
@@ -435,6 +464,17 @@
       },
       "last_energy_intensity": {
         "name": "Perjalanan terakhir: Konsumsi energi per jarak"
+      },
+      "emergency_battery": {
+        "name": "Baterai komunikasi darurat"
+      },
+      "main_battery_type": {
+        "name": "Jenis baterai utama",
+        "state": {
+          "lithium": "Litium",
+          "lead_acid": "Timbal-asam",
+          "unrecognized": "Tidak dikenali"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +488,18 @@
         "name": "Tidak terkunci"
       },
       "cycle_support": {
-        "name": "Dukungan penghitung siklus"
+        "name": "Dukungan penghitung siklus",
+        "state": {
+          "on": "Didukung",
+          "off": "Tidak didukung"
+        }
       },
       "battery_find_my_support": {
-        "name": "Dukungan pencarian baterai"
+        "name": "Dukungan Apple Find My",
+        "state": {
+          "on": "Didukung",
+          "off": "Tidak didukung"
+        }
       }
     },
     "button": {

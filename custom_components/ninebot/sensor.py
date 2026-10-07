@@ -37,7 +37,7 @@ from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import VehicleSnapshot
 from .observations import ENTITY_FIELDS, RawField
-from .parsing import display_scalar
+from .parsing import display_scalar, integer
 from .period_statistics import DayMetric, DaySummary, day_summary
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
@@ -50,6 +50,39 @@ class Description(SensorEntityDescription):
     value: Callable[[VehicleSnapshot], str | float | datetime | None]
     aliases: tuple[str, ...] = ()
     attributes: Callable[[VehicleSnapshot], dict[str, Any]] | None = None
+    precision: Callable[[VehicleSnapshot], int | None] | None = None
+
+
+def source_precision(snapshot: VehicleSnapshot, key: str) -> int | None:
+    if key == "battery":
+        return dict(snapshot.status.precision).get("dump_energy")
+    if key == "endurance":
+        field = {
+            "range_precise": "precise_estimate_mileage",
+            "range_estimated": "estimate_mileage",
+            "range_ai": "ai_estimate_mileage",
+        }.get(range_source(snapshot) or "")
+        return dict(snapshot.status.precision).get(field) if field else None
+    if key == "charging_power_raw":
+        return dict(snapshot.battery.precision).get("charging_power")
+    if snapshot.travel:
+        field = {
+            "month_mileage": "total_mileages",
+            "month_energy_raw": "ec",
+            "month_duration": "duration",
+        }.get(key)
+        if field:
+            return dict(snapshot.travel.precision).get(field)
+        ride = snapshot.travel.last_ride.ride if snapshot.travel.last_ride else None
+        field = {
+            "last_mileage": "mileages",
+            "last_energy_raw": "ec",
+            "last_ride_max_speed": "speed",
+            "last_ride_duration": "duration",
+        }.get(key)
+        if ride and field:
+            return dict(ride.precision).get(field)
+    return None
 
 
 def today_mileage(snapshot: VehicleSnapshot, now: datetime) -> float | None:
@@ -96,16 +129,32 @@ def remaining_charge_attributes(snapshot: VehicleSnapshot) -> dict[str, Any]:
 
 
 def raw_description(field: RawField) -> Description:
+    states = {
+        "acc_raw": {0: "off", 1: "on"},
+        "seat_lock_raw": {0: "locked", 1: "unlocked"},
+        "battery_present_raw": {0: "absent", 1: "present"},
+        "service_expired_raw": {0: "active", 1: "expired"},
+    }.get(field.key)
+
     def value(snapshot: VehicleSnapshot) -> str | float | None:
-        return display_scalar(getattr(snapshot, field.group).observations.get(field.path))
+        raw = getattr(snapshot, field.group).observations.get(field.path)
+        if states is not None:
+            code = integer(raw, 0, 255)
+            return states.get(code, "unrecognized") if code is not None else None
+        return display_scalar(raw)
 
     def attributes(snapshot: VehicleSnapshot) -> dict[str, Any]:
-        return raw_attributes(snapshot, field)
+        result = raw_attributes(snapshot, field)
+        if states and value(snapshot) in states.values():
+            result["interpretation"] = "interpreted"
+        return result
 
     return Description(
         key=field.key,
         group=field.group,
-        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_category=None if states else EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.ENUM if states else None,
+        options=[*states.values(), "unrecognized"] if states else None,
         value=value,
         attributes=attributes,
     )
@@ -247,8 +296,25 @@ SENSORS = (
         value=lambda s: s.battery.charging_power_raw,
     ),
     Description(
+        key="emergency_battery",
+        group="battery",
+        device_class=SensorDeviceClass.BATTERY,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value=lambda s: s.battery.emergency_soc,
+    ),
+    Description(
+        key="main_battery_type",
+        group="battery",
+        device_class=SensorDeviceClass.ENUM,
+        options=["lithium", "lead_acid", "unrecognized"],
+        value=lambda s: s.battery.battery_type,
+    ),
+    Description(
         key="month_ride_count",
         group="travel",
+        suggested_display_precision=0,
         value=lambda s: s.travel.reported_ride_count if s.travel else None,
     ),
     Description(
@@ -281,6 +347,7 @@ SENSORS = (
     Description(
         key="month_energy_intensity",
         group="travel",
+        suggested_display_precision=1,
         device_class=SensorDeviceClass.ENERGY_DISTANCE,
         native_unit_of_measurement=UnitOfEnergyDistance.WATT_HOUR_PER_KM,
         state_class=SensorStateClass.MEASUREMENT,
@@ -290,6 +357,7 @@ SENSORS = (
     Description(
         key="last_energy_intensity",
         group="travel",
+        suggested_display_precision=1,
         device_class=SensorDeviceClass.ENERGY_DISTANCE,
         native_unit_of_measurement=UnitOfEnergyDistance.WATT_HOUR_PER_KM,
         state_class=SensorStateClass.MEASUREMENT,
@@ -299,7 +367,7 @@ SENSORS = (
     Description(
         key="returned_pack_count",
         group="battery",
-        entity_category=EntityCategory.DIAGNOSTIC,
+        suggested_display_precision=0,
         value=lambda s: len(s.battery.batteries),
         attributes=lambda s: {"reported_pack_count": s.battery.observations.get("battery_count")},
     ),
@@ -334,6 +402,7 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.SPEED,
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        suggested_display_precision=1,
         value=lambda s: ride_speed(s, "average_speed_m_s"),
     ),
     *(raw_description(field) for field in ENTITY_FIELDS),
@@ -431,6 +500,17 @@ class NinebotSensor(NinebotEntity, SensorEntity):
     @property
     def native_value(self) -> str | float | datetime | None:
         return self.entity_description.value(self.snapshot) if self.snapshot else None
+
+    @property
+    def suggested_display_precision(self) -> int | None:
+        description = self.entity_description
+        if description.suggested_display_precision is not None:
+            return description.suggested_display_precision
+        if self.snapshot is None:
+            return None
+        if description.precision:
+            return description.precision(self.snapshot)
+        return source_precision(self.snapshot, description.key)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
@@ -558,6 +638,25 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
         ]:
             identity = battery.key
 
+            def precision(
+                s: VehicleSnapshot,
+                field: str = field,
+                identity: str = identity,
+                primary: bool = not prefix,
+            ) -> int | None:
+                found = (
+                    current_battery(s.battery)
+                    if primary
+                    else identified_battery(s.battery, identity)
+                )
+                raw_key = {
+                    "voltage": "bms_volt",
+                    "temperature": "bat_temp",
+                    "cycles": "bms_cycle",
+                    "score_raw": "score",
+                }[field]
+                return dict(found.precision).get(raw_key) if found else None
+
             def value(
                 s: VehicleSnapshot,
                 field: str = field,
@@ -600,6 +699,7 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                     device_class=device_class,
                     state_class=SensorStateClass.MEASUREMENT if device_class else None,
                     entity_category=EntityCategory.DIAGNOSTIC if device_class is None else None,
+                    precision=precision,
                     attributes=attributes
                     if field.endswith("_raw") or key == "bms_cycles"
                     else None,
@@ -626,10 +726,16 @@ def legacy_battery_description(key: str) -> Description:
             else None
         )
 
+    def precision(snapshot: VehicleSnapshot) -> int | None:
+        battery = current_battery(snapshot.battery)
+        raw_key = {"voltage": "bms_volt", "temperature": "bat_temp", "cycles": "bms_cycle"}[field]
+        return dict(battery.precision).get(raw_key) if battery else None
+
     return Description(
         key=key,
         group="battery",
         value=value,
+        precision=precision,
         native_unit_of_measurement=unit,
         device_class=device_class,
         state_class=SensorStateClass.MEASUREMENT if device_class else None,

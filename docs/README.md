@@ -8,9 +8,9 @@ Pinned ninecli==0.1.7 runs through a managed authenticated loopback server. Pass
 
 ## Entities
 
-Created entities are enabled and visible by default; user choices are preserved. Location, controls and debug views require their options. The range sensor prefers precise, then estimated, then AI. b24 removes low-confidence SOC cumulative estimates and duplicate ranges. Nominal V/Ah define rated energy, not measured capacity or SOH. Existing meaningful IDs and Recorder history remain stable.
+Created entities are enabled and visible by default; user choices are preserved. Location display defaults on and preserves any explicit off choice; controls and debug views require opt-in. The range sensor prefers precise, then estimated, then AI. b24 removes low-confidence SOC cumulative estimates and duplicate ranges. Nominal V/Ah define rated energy, not measured capacity or SOH. Existing meaningful IDs and Recorder history remain stable.
 
-BMS voltage/temperature/cycles require valid data and support. Energy ec is Wh and charging_power is W according to maintainer confirmation. Health score is not SOH. Unknown enums and missing reports remain unknown. GPS needs two valid coordinates; the coordinate system is unverified and is never automatically converted.
+BMS voltage/temperature/cycles require valid data and support. Energy ec is Wh and charging_power is W according to maintainer confirmation. Health score is not SOH. Emergency battery SOC uses battery_main.electricity (integer %); battery_type 1 is lithium and 2 lead acid (maintainer-confirmed). ACC 0/1 is off/on, seat 0/1 locked/unlocked, battery presence 0/1 absent/present, service expiry 0/1 active/expired. These existing observation sensors retain their identities until a separate platform migration. Unfamiliar valid codes are unrecognized, missing/invalid reports stay unknown. Apple Find My and cycle-support binary states mean supported/not supported. GPS needs two valid coordinates; the coordinate system is unverified and is never automatically converted.
 
 ## History
 
@@ -18,7 +18,7 @@ get_trips, get_trip_detail and get_history return bounded response data. Local p
 
 ## Controls
 
-Controls require explicit enablement, allowlist and fresh ownership/status. Known denial and ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization. Each command is sent once with bounded state reconciliation, without automatic replay or optimistic state updates. Engine commands are not lock/unlock; acceptance does not prove physical completion.
+Controls require explicit enablement, allowlist and fresh ownership/status. Known denial and ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization. Each command is sent once with bounded state reconciliation, without automatic replay or optimistic state updates. The maintainer confirms start unlocks and stop locks the vehicle. Dedicated Lock integration and stopped/P-gear safety guards follow separately; this release retains the existing buttons. Acceptance does not prove physical completion.
 
 ## Development
 

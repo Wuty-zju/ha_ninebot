@@ -245,6 +245,10 @@ class NinecliClient:
     async def async_login(self, account: str, password: str) -> None:
         await self._request("POST", "/auth/login", {"account": account, "password": password})
 
+    async def async_get_account(self) -> Any:
+        """Only used at explicit login validation, never regular polling."""
+        return await self._request("GET", "/whoami")
+
     async def async_send_login_code(self, account: str) -> None:
         await self._request("POST", "/auth/login-code", {"account": account})
 

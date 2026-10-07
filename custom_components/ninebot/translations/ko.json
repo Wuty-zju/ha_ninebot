@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "계정 추가",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "계정",
           "password": "비밀번호",
           "debug_mode": "디버그 모드",
           "enable_estimation": "정격 매개변수 활성화",
-          "enable_coordinates": "정확한 위치 표시",
+          "enable_coordinates": "차량 위치 표시",
           "login_method": "로그인 방법"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
           "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,20 @@
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
       "storage_error": "Local session storage failed. Check storage and try again."
+    },
+    "initiate_flow": {
+      "user": "계정 추가"
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "옵션",
-        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
         "data": {
           "poll_interval": "상태 갱신 간격(초)",
           "enable_estimation": "정격 매개변수 활성화",
-          "enable_coordinates": "정확한 위치 표시",
+          "enable_coordinates": "차량 위치 표시",
           "enable_controls": "차량 제어 활성화",
           "control_vehicles": "제어 허용 차량",
           "debug_mode": "디버그 모드",
@@ -98,7 +102,8 @@
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "model_vehicle": {
@@ -306,7 +311,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "배터리 장착 상태",
+        "name": "배터리 장착",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -318,13 +323,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "present": "있음",
+          "absent": "없음",
+          "unrecognized": "식별되지 않음"
         }
       },
       "seat_lock_raw": {
-        "name": "시트 수납함 잠금 상태",
+        "name": "시트 잠금",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -336,13 +347,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "locked": "잠김",
+          "unlocked": "잠금 해제",
+          "unrecognized": "식별되지 않음"
         }
       },
       "acc_raw": {
-        "name": "ACC 상태",
+        "name": "전원 상태 (ACC)",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -354,13 +371,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "on": "켜짐",
+          "off": "꺼짐",
+          "unrecognized": "식별되지 않음"
         }
       },
       "service_expired_raw": {
-        "name": "서비스 상태",
+        "name": "스마트 서비스 만료",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -372,9 +395,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "active": "유효",
+          "expired": "만료",
+          "unrecognized": "식별되지 않음"
         }
       },
       "health_score": {
@@ -435,6 +464,17 @@
       },
       "last_energy_intensity": {
         "name": "최근 주행: 거리당 에너지 소비"
+      },
+      "emergency_battery": {
+        "name": "비상 통신 배터리"
+      },
+      "main_battery_type": {
+        "name": "주 배터리 유형",
+        "state": {
+          "lithium": "리튬",
+          "lead_acid": "납산",
+          "unrecognized": "식별되지 않음"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +488,18 @@
         "name": "잠금 해제"
       },
       "cycle_support": {
-        "name": "주기 측정 지원"
+        "name": "충전 주기 횟수 지원",
+        "state": {
+          "on": "지원",
+          "off": "미지원"
+        }
       },
       "battery_find_my_support": {
-        "name": "배터리 찾기 지원"
+        "name": "Apple 나의 찾기 지원",
+        "state": {
+          "on": "지원",
+          "off": "미지원"
+        }
       }
     },
     "button": {

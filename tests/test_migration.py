@@ -170,3 +170,47 @@ async def test_unsafe_legacy_identity_preserves_configuration_and_creates_repair
     assert dict(entry.data) == before
     issue = ir.async_get(hass).async_get_issue("ninebot", f"migration_identity_{entry.entry_id}")
     assert issue and issue.translation_key == "migration_identity_invalid"
+
+
+async def test_v2_display_migration_is_offline_idempotent_and_keeps_opt_out(hass, tmp_path):
+    from custom_components.ninebot.session import SessionManager
+
+    manager = SessionManager(tmp_path / "unused", None)
+    from custom_components.ninebot.migration import async_migrate
+
+    for options, expected in [({}, True), ({"enable_coordinates": False}, False)]:
+        entry = MockConfigEntry(
+            domain="ninebot",
+            version=2,
+            minor_version=1,
+            title="Ninebot",
+            data={"account": "test-account", "session_key": "a" * 32},
+            options=options,
+        )
+        entry.add_to_hass(hass)
+        with patch("custom_components.ninebot.session.NinecliClient") as client:
+            assert await async_migrate(hass, entry, manager)
+            client.assert_not_called()
+        assert entry.minor_version == 2 and entry.title == "test-account"
+        assert entry.options["enable_coordinates"] is expected
+        assert entry.data["session_key"] == "a" * 32
+        before = (dict(entry.data), dict(entry.options), entry.title)
+        assert await async_migrate(hass, entry, manager)
+        assert (dict(entry.data), dict(entry.options), entry.title) == before
+
+
+async def test_v2_display_migration_preserves_user_title(hass, tmp_path):
+    from custom_components.ninebot.migration import async_migrate
+    from custom_components.ninebot.session import SessionManager
+
+    entry = MockConfigEntry(
+        domain="ninebot",
+        version=2,
+        minor_version=1,
+        title="My rides",
+        data={"account": "test-account"},
+    )
+    entry.add_to_hass(hass)
+    assert await async_migrate(hass, entry, SessionManager(tmp_path / "unused", None))
+    assert entry.title == "My rides"
+    assert entry.data["automatic_title"] == "test-account"

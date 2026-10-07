@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "date": "2026-10-05",
-  "implementation_version": "2.0.0b24",
-  "implementation_base_commit": "624e1293d90a0a814b483291d89848a7e023f48f",
+  "date": "2026-10-08",
+  "implementation_version": "2.0.0b35",
+  "implementation_base_commit": "2aa4a3036fd79537ec35b292898d49ce045fd213",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [
@@ -951,22 +951,23 @@
             "int"
           ],
           "container": false,
-          "meaning": "座桶锁候选；无值枚举/反馈契约，暂不造 Lock",
+          "meaning": "座桶锁；0锁1解锁；闭锁只能手动",
           "unit": "—",
-          "classification": "C",
+          "classification": "A",
           "enabled": true,
-          "device_class": "—",
+          "device_class": "enum",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
-          "evidence": "R；语义 V",
+          "evidence": "R；语义 V + maintainer statement 2026-10-08",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/status-01.json",
             "tests/fixtures/ninecli/0.1.7/status-02.json",
-            "tests/fixtures/ninecli/0.1.7/status-charging.json"
+            "tests/fixtures/ninecli/0.1.7/status-charging.json",
+            "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "默认启用原值诊断实体：seat_lock_raw；不猜单位/枚举/权限。"
+          "current_use": "既有seat_lock_raw UID普通enum实体；Lock跨平台迁移及目标确认留后续。"
         },
         {
           "path": "$.battery_exist",
@@ -1181,22 +1182,23 @@
             "int"
           ],
           "container": false,
-          "meaning": "acc；可能 ignition 或定位属性，不能直接判精度/电源",
-          "unit": "待验证",
-          "classification": "C",
+          "meaning": "电门ACC；0关1开；不代表P档/停止",
+          "unit": "—",
+          "classification": "A",
           "enabled": true,
-          "device_class": "—",
+          "device_class": "enum",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
-          "evidence": "R；语义 V",
+          "evidence": "R；语义 V + maintainer statement 2026-10-08",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/status-01.json",
             "tests/fixtures/ninecli/0.1.7/status-02.json",
-            "tests/fixtures/ninecli/0.1.7/status-charging.json"
+            "tests/fixtures/ninecli/0.1.7/status-charging.json",
+            "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "默认启用原值诊断实体：acc_raw；不猜单位/枚举/权限。"
+          "current_use": "既有acc_raw UID普通enum实体，保留历史，状态off/on/unrecognized。"
         },
         {
           "path": "$.loc.lat",
@@ -1533,7 +1535,7 @@
             "bool"
           ],
           "container": false,
-          "meaning": "寻电池支持标志；不是 bell/buck/engine 权限",
+          "meaning": "Apple Find My支持；false不支持/true支持",
           "unit": "—",
           "classification": "C",
           "enabled": true,
@@ -1548,7 +1550,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用支持布尔诊断实体；不是控制权限。"
+          "current_use": "默认可见支持类binary sensor，支持/不支持翻译；不新增定位接口。"
         },
         {
           "path": "$.battery_list",
@@ -1740,22 +1742,23 @@
             "str"
           ],
           "container": false,
-          "meaning": "主电池量；与外层及车辆 SOC 数值不同，不自动归并",
-          "unit": "待验证",
-          "classification": "H/I",
+          "meaning": "应急通信电池SOC",
+          "unit": "%",
+          "classification": "A",
           "enabled": true,
-          "device_class": "—",
-          "state_class": "—",
-          "entity_category": "diagnostic",
+          "device_class": "battery",
+          "state_class": "measurement",
+          "entity_category": "—",
           "compatibility": "C0",
-          "evidence": "R；语义 V",
+          "evidence": "R；语义 V + maintainer statement 2026-10-08",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/battery-01.json",
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
-            "tests/fixtures/ninecli/0.1.7/battery-charging.json"
+            "tests/fixtures/ninecli/0.1.7/battery-charging.json",
+            "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
+          "current_use": "BatteryInfo.emergency_soc→emergency_battery；整数0..100，默认可见；独立主电池SOC。"
         },
         {
           "path": "$.battery_type",
@@ -1763,22 +1766,23 @@
             "str"
           ],
           "container": false,
-          "meaning": "电池类型编码；核实枚举后 metadata",
+          "meaning": "主电池类型；1锂2铅，其它code未识别",
           "unit": "—",
-          "classification": "H/I",
+          "classification": "A",
           "enabled": true,
-          "device_class": "—",
+          "device_class": "enum",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "CG",
-          "evidence": "R；语义 V",
+          "evidence": "R；语义 V + maintainer statement 2026-10-08",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/battery-01.json",
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
-            "tests/fixtures/ninecli/0.1.7/battery-charging.json"
+            "tests/fixtures/ninecli/0.1.7/battery-charging.json",
+            "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
+          "current_use": "BatteryInfo.battery_type→main_battery_type；维护者确认，不恢复估算。"
         },
         {
           "path": "$.charging",
@@ -1935,7 +1939,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用支持布尔诊断实体；不是控制权限。"
+          "current_use": "默认可见支持/不支持binary sensor；false时不采用占位cycle数值。"
         },
         {
           "path": "$.remain_charge_time",

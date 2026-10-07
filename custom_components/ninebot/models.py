@@ -33,6 +33,7 @@ class VehicleStatus:
     longitude: float | None = None
     capabilities: VehicleCapabilities = field(default_factory=VehicleCapabilities)
     observations: dict[str, JsonScalar] = field(default_factory=dict)
+    precision: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class Battery:
     cycle_raw: JsonScalar = None
     score_raw: JsonScalar = None
     electricity_raw: JsonScalar = None
+    precision: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,9 @@ class BatteryInfo:
     batteries: tuple[Battery, ...] = ()
     charging_power_raw: float | None = None
     observations: dict[str, JsonScalar] = field(default_factory=dict)
+    emergency_soc: int | None = None
+    battery_type: str | None = None
+    precision: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -74,6 +79,7 @@ class TravelMonth:
     reported_ride_count: int | None = None
     reported_duration_s: float | None = None
     summary: MonthSummary | None = None
+    precision: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)

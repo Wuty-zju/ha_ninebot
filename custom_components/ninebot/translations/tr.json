@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "Hesap ekle",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Hesap",
           "password": "Parola",
           "debug_mode": "Hata ayıklama modu",
           "enable_estimation": "Nominal parametreleri etkinleştir",
-          "enable_coordinates": "Kesin konumu göster",
+          "enable_coordinates": "Araç konumunu göster",
           "login_method": "Giriş yöntemi"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
           "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,20 @@
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
       "storage_error": "Local session storage failed. Check storage and try again."
+    },
+    "initiate_flow": {
+      "user": "Hesap ekle"
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Seçenekler",
-        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
         "data": {
           "poll_interval": "Durum yenileme aralığı (saniye)",
           "enable_estimation": "Nominal parametreleri etkinleştir",
-          "enable_coordinates": "Kesin konumu göster",
+          "enable_coordinates": "Araç konumunu göster",
           "enable_controls": "Araç kontrolünü etkinleştir",
           "control_vehicles": "İzin verilen araçlar",
           "debug_mode": "Hata ayıklama modu",
@@ -98,7 +102,8 @@
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "model_vehicle": {
@@ -306,7 +311,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "Pil varlığı",
+        "name": "Batarya mevcut",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -318,13 +323,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "present": "Mevcut",
+          "absent": "Yok",
+          "unrecognized": "Tanınmıyor"
         }
       },
       "seat_lock_raw": {
-        "name": "Sele bölmesi kilidi",
+        "name": "Sele kilidi",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -336,13 +347,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "locked": "Kilitli",
+          "unlocked": "Kilidi açık",
+          "unrecognized": "Tanınmıyor"
         }
       },
       "acc_raw": {
-        "name": "ACC durumu",
+        "name": "Kontak (ACC)",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -354,13 +371,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "on": "Açık",
+          "off": "Kapalı",
+          "unrecognized": "Tanınmıyor"
         }
       },
       "service_expired_raw": {
-        "name": "Hizmet durumu",
+        "name": "Akıllı hizmet süresi doldu",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -372,9 +395,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "active": "Etkin",
+          "expired": "Süresi doldu",
+          "unrecognized": "Tanınmıyor"
         }
       },
       "health_score": {
@@ -435,6 +464,17 @@
       },
       "last_energy_intensity": {
         "name": "Son sürüş: Mesafe başına enerji tüketimi"
+      },
+      "emergency_battery": {
+        "name": "Acil iletişim bataryası"
+      },
+      "main_battery_type": {
+        "name": "Ana batarya türü",
+        "state": {
+          "lithium": "Lityum",
+          "lead_acid": "Kurşun asit",
+          "unrecognized": "Tanınmıyor"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +488,18 @@
         "name": "Kilit açık"
       },
       "cycle_support": {
-        "name": "Döngü sayacı desteği"
+        "name": "Döngü sayacı desteği",
+        "state": {
+          "on": "Destekleniyor",
+          "off": "Desteklenmiyor"
+        }
       },
       "battery_find_my_support": {
-        "name": "Pil bulma desteği"
+        "name": "Apple Bul desteği",
+        "state": {
+          "on": "Destekleniyor",
+          "off": "Desteklenmiyor"
+        }
       }
     },
     "button": {

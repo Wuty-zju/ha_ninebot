@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "添加账号",
         "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
           "account": "账号",
           "password": "密码",
           "debug_mode": "调试模式",
           "enable_estimation": "启用电池额定参数",
-          "enable_coordinates": "启用精确位置",
+          "enable_coordinates": "显示车辆位置",
           "login_method": "登录方式"
         },
         "data_description": {
           "debug_mode": "在解析信息实体中显示有界诊断视图，不增加请求。",
           "enable_estimation": "可选额定电压与容量，不再从SOC变化推算充放电量。",
-          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
+          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。",
+          "enable_coordinates": "显示位置复用状态查询，不增加请求；位置可能进入 Home Assistant 历史。关闭后不暴露坐标，坐标系尚未核验。"
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,20 @@
       "session_recovery_pending": "会话恢复尚未完成，备份已保留。请查看“修复”提示并重启 HA 后重试。",
       "sms_expired": "短信登录流程已过期，请重新开始。",
       "storage_error": "本地会话保存失败，请检查存储后重试。"
+    },
+    "initiate_flow": {
+      "user": "添加账号"
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "选项",
-        "description": "额定参数并非实测容量。位置与控制须显式开启，云端接受不代表动作完成。",
+        "description": "额定电池参数是可选规格。新账号默认显示位置，可以关闭。控制需要主动启用并指定车辆；云端接受命令不代表操作已完成。",
         "data": {
           "poll_interval": "状态轮询间隔（秒）",
           "enable_estimation": "启用电池额定参数",
-          "enable_coordinates": "显示云端坐标（坐标系未核验）",
+          "enable_coordinates": "显示车辆位置",
           "enable_controls": "启用车辆控制",
           "control_vehicles": "允许控制的车辆",
           "debug_mode": "调试模式",
@@ -98,7 +102,8 @@
         },
         "data_description": {
           "debug_mode": "只显示已取得快照的安全解析，不输出账号、位置或轨迹。",
-          "configure_model": "选择HA中的车辆设备；与车辆的两个额定参数配置实体共用存储。"
+          "configure_model": "选择HA中的车辆设备；与车辆的两个额定参数配置实体共用存储。",
+          "enable_coordinates": "显示位置复用状态查询，不增加请求；位置可能进入 Home Assistant 历史。关闭后不暴露坐标，坐标系尚未核验。"
         }
       },
       "model_vehicle": {
@@ -306,7 +311,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "电池安装状态",
+        "name": "电池存在",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -318,13 +323,19 @@
             "name": "解析状态",
             "state": {
               "unverified": "语义待验证",
-              "not_reported": "未上报"
+              "not_reported": "未上报",
+              "interpreted": "已解释"
             }
           }
+        },
+        "state": {
+          "present": "存在",
+          "absent": "不存在",
+          "unrecognized": "未识别"
         }
       },
       "seat_lock_raw": {
-        "name": "座桶锁状态",
+        "name": "座桶锁",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -336,13 +347,19 @@
             "name": "解析状态",
             "state": {
               "unverified": "语义待验证",
-              "not_reported": "未上报"
+              "not_reported": "未上报",
+              "interpreted": "已解释"
             }
           }
+        },
+        "state": {
+          "locked": "锁定",
+          "unlocked": "解锁",
+          "unrecognized": "未识别"
         }
       },
       "acc_raw": {
-        "name": "ACC状态",
+        "name": "电门状态（ACC）",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -354,13 +371,19 @@
             "name": "解析状态",
             "state": {
               "unverified": "语义待验证",
-              "not_reported": "未上报"
+              "not_reported": "未上报",
+              "interpreted": "已解释"
             }
           }
+        },
+        "state": {
+          "on": "开启",
+          "off": "关闭",
+          "unrecognized": "未识别"
         }
       },
       "service_expired_raw": {
-        "name": "智能服务状态",
+        "name": "智能服务到期",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -372,9 +395,15 @@
             "name": "解析状态",
             "state": {
               "unverified": "语义待验证",
-              "not_reported": "未上报"
+              "not_reported": "未上报",
+              "interpreted": "已解释"
             }
           }
+        },
+        "state": {
+          "active": "有效",
+          "expired": "已到期",
+          "unrecognized": "未识别"
         }
       },
       "health_score": {
@@ -398,7 +427,7 @@
         "name": "本月骑行总时长"
       },
       "returned_pack_count": {
-        "name": "电池数量"
+        "name": "上报电池组数"
       },
       "month_list_coverage": {
         "name": "本月行程明细覆盖率"
@@ -435,6 +464,17 @@
       },
       "last_energy_intensity": {
         "name": "最近行程单位里程能耗"
+      },
+      "emergency_battery": {
+        "name": "应急通信电池电量"
+      },
+      "main_battery_type": {
+        "name": "主电池类型",
+        "state": {
+          "lithium": "锂电池",
+          "lead_acid": "铅酸电池",
+          "unrecognized": "未识别"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +488,18 @@
         "name": "已解锁"
       },
       "cycle_support": {
-        "name": "循环计数支持"
+        "name": "循环计数支持",
+        "state": {
+          "on": "支持",
+          "off": "不支持"
+        }
       },
       "battery_find_my_support": {
-        "name": "电池查找支持"
+        "name": "Apple 查找支持",
+        "state": {
+          "on": "支持",
+          "off": "不支持"
+        }
       }
     },
     "button": {

@@ -3,7 +3,7 @@
 [中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/README.md)
 
 An independent, unofficial Ninebot vehicle integration using pinned `ninecli==0.1.7`.
-Version 2 replaces the OpenClaw backend. The current b24 code is a prerelease;
+Version 2 replaces the OpenClaw backend. The current b35 code is a prerelease;
 vendor API availability can change. It targets the Chinese App service; other regions are unverified.
 
 ## Installation and account
@@ -16,6 +16,9 @@ ARMv7/32-bit is unsupported. Published Linux/macOS/Windows wheels do not certify
 Password and two-step SMS login are supported. Candidate sessions are isolated and validated before
 commit; passwords are not saved in ConfigEntry or passed as command-line arguments. SMS is covered
 by offline tests, with live verification pending. Reauth/reconfigure retain the same account.
+Use Add account where supported by the HA frontend. Different accounts have separate entries;
+titles use username：account[region] when explicitly reported, otherwise the account alone.
+Custom entry titles are retained. Username/region are refreshed only at explicit login, not by polling.
 Per-entry token/config directories are private local storage; same-user/privileged processes remain
 inside the trust boundary. A managed random-Bearer loopback serve child handles requests.
 Vehicle discovery uses a controlled native command to initialize the business routing cache.
@@ -26,12 +29,14 @@ See [backend/auth contract](docs/README.md).
 - Vehicle SOC, one remaining-range sensor (precise → estimated → AI), charging, power and unlocked state.
 - BMS voltage, temperature, supported cycles, charging power in W and a health score that is **not SOH**.
 - Current-month distance, energy in Wh, ride count and total duration; last-ride distance/time/energy/max/overall average speed.
-- Battery presence, seat/ACC/service observations where reported; unknown encodings remain explicitly unverified.
+- Emergency communication battery SOC (%), main battery type (lithium/lead acid), Apple Find My and cycle support.
+- Battery presence, seat locked/unlocked, ACC on/off and service active/expired; unfamiliar codes are unrecognized.
 - Vehicle image, optional GPS, small ride-completed events and response actions for historical queries.
 - Optional nominal V/Ah produce one stable rated-energy specification. **SOC cumulative estimation was removed in b24.**
 
 Created entities are enabled/visible by default; user-disabled/hidden choices remain intact.
-Coordinates, controls, debugging and nominal battery parameters require their feature options.
+Location display defaults on; existing explicit off choices are preserved. Controls, debugging
+and nominal battery parameters require their feature options.
 Entity names use translations; English/Simplified Chinese are complete, with 21 languages covering
 main names/settings/actions and English fallback for some other long help/error messages.
 
@@ -41,7 +46,7 @@ Disabled BMS/travel consumers stop regular queries except bounded initial/sparse
 Incomplete vehicle discovery does not prove unbinding or refresh missing vehicles' identities.
 See [vehicles/entities/polling](docs/README.md).
 
-GPS requires two valid coordinates and opt-in; its coordinate system is unverified and never auto-converted.
+GPS requires two valid coordinates and the location display option; its coordinate system is unverified and never auto-converted.
 Image URLs use reviewed anonymous origins and HA caching. Diagnostics contain safe schema/metadata,
 not raw values, credentials, identity, precise locations or trails. Debug views are bounded and do not request extra data.
 See [raw/diagnostics contract](docs/README.md).
@@ -59,7 +64,8 @@ See [travel/actions/event contract and example](docs/README.md).
 Controls require explicit enablement, an allowed vehicle, authentication and fresh ownership/status.
 Known denials or ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization.
 Buttons send bell/buck/engine-start/engine-stop once, with bounded status reconciliation, no automatic retry
-and no optimistic physical-state update. Engine commands are not lock/unlock. Acceptance does not verify a physical effect.
+and no optimistic physical-state update. The maintainer confirms start unlocks and stop locks the vehicle. Dedicated Lock integration and
+stopped/P-gear safety checks are pending; this release retains the existing buttons. Acceptance does not verify a physical effect.
 See [control contract](docs/README.md).
 
 ## Upgrade and development
