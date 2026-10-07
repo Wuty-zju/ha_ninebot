@@ -153,7 +153,7 @@ def statistics_response(
 
 
 async def async_statistics_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
-    entry, sn = resolve_vehicle(hass, call.data["device_id"])
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=call.data["refresh"])
     co = entry.runtime_data.coordinator
     months = months_between(call.data["start_month"], call.data["end_month"])
     if not co.statistics.available:
@@ -176,7 +176,9 @@ async def async_statistics_query(hass: HomeAssistant, call: ServiceCall) -> dict
     response = await hass.async_add_executor_job(
         partial(statistics_response, view, sn, months, dt_util.utcnow(), call.data["include_daily"])
     )
-    assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, False)
+    assert_query_scope(
+        hass, call.data["device_id"], entry.entry_id, sn, False, require_live=call.data["refresh"]
+    )
     if call.data["refresh"]:
         # Stored day projections may change; the current travel snapshot and its
         # successful-sample clock remain intact, so this cannot replay an event.

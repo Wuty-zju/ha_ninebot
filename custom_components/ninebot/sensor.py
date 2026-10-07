@@ -593,7 +593,10 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
     def available(self) -> bool:
         # Historical data keeps its actual received timestamp; a failed live
         # travel request must not hide a previously verified yesterday window.
-        return self.coordinator.fresh(self.sn, "profile") and self.coordinator.statistics.available
+        return (
+            self.coordinator.local_vehicle_available(self.sn)
+            and self.coordinator.statistics.available
+        )
 
     @property
     def native_value(self) -> float | None:

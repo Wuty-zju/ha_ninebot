@@ -2,7 +2,7 @@
 
 [English](README.md) · [发布版本](https://github.com/Wuty-zju/ha_ninebot/releases) · [开发入口](docs/README.md)
 
-独立、非官方集成。v2使用固定 `ninecli==0.1.7` 的App协议替换OpenClaw；当前b36代码为预发布。
+独立、非官方集成。v2使用固定 `ninecli==0.1.7` 的App协议替换OpenClaw；当前b37代码为预发布。
 后端面向中国区App服务，其他地区未验证；云端API可用性由厂商决定。
 
 ## 安装与登录
@@ -34,7 +34,7 @@ HACS添加自定义集成仓库 `Wuty-zju/ha_ninebot`，选择测试版；也可
 名称无“原值/raw”，保留有意义的unique_id和历史。21种语言主要名称/设置/查询动作已本地化；
 简中/英文完整，其他语言部分长帮助/错误以英文兜底。
 
-默认status120秒、battery/travel600秒、profile3600秒；按车/组freshness、退避、需求context及partial failure调度，账户backend串行。
+默认status120秒、battery/travel600秒、profile3600秒；保留按车/组freshness、退避、需求context及partial failure。有界调度器共享同键在途读取，优先状态并兼顾其它车辆/后台读取；每账号网络事务1个、全局2个，读取与命令预算独立。取消一个读取者不影响其它读取者，卸载清理在途任务。暂时性GET故障在原deadline内最多额外尝试一次，控制命令不重播；缓存读取不续期，限流元数据与组级退避继续生效。
 禁用全部BMS/行程消费者会停止常规对应查询，bootstrap/空匿名inventory稀疏发现及Event需求为有界例外。
 不完整车辆列表不证明解绑，不给缺席车辆续期身份。详见[车辆/实体/刷新契约](docs/README.md)。
 

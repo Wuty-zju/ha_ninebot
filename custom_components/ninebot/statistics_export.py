@@ -209,7 +209,7 @@ def prepare_import(
 
 async def async_import_statistics(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     """A write action: explicit source range, no upstream refresh or auto-import."""
-    entry, sn = resolve_vehicle(hass, call.data["device_id"])
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
     if DATA_INSTANCE not in hass.data:
         raise validation_error("statistics_recorder")
     if hass.config.time_zone != BUSINESS_TIMEZONE:
@@ -220,7 +220,9 @@ async def async_import_statistics(hass: HomeAssistant, call: ServiceCall) -> dic
     runtime.statistics_import_pending += 1
     try:
         async with runtime.statistics_import_lock:
-            assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, False)
+            assert_query_scope(
+                hass, call.data["device_id"], entry.entry_id, sn, False, require_live=False
+            )
             recorder = get_instance(hass)
             # A second import must read committed values from the first, even if
             # its caller was cancelled after queueing the previous write.
@@ -244,7 +246,9 @@ async def async_import_statistics(hass: HomeAssistant, call: ServiceCall) -> dic
                     hass.config.language.startswith("zh"),
                 )
             )
-            assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, False)
+            assert_query_scope(
+                hass, call.data["device_id"], entry.entry_id, sn, False, require_live=False
+            )
             if hass.config.time_zone != BUSINESS_TIMEZONE:
                 raise validation_error("statistics_timezone")
             # No await in this block: ownership cannot change between plans.

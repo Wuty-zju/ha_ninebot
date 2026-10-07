@@ -3,7 +3,7 @@
 [中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/README.md)
 
 An independent, unofficial Ninebot vehicle integration using pinned `ninecli==0.1.7`.
-Version 2 replaces the OpenClaw backend. The current b35 code is a prerelease;
+Version 2 replaces the OpenClaw backend. The current b37 code is a prerelease;
 vendor API availability can change. It targets the Chinese App service; other regions are unverified.
 
 ## Installation and account
@@ -41,7 +41,12 @@ Entity names use translations; English/Simplified Chinese are complete, with 21 
 main names/settings/actions and English fallback for some other long help/error messages.
 
 Default status/battery-travel/profile intervals are 120/600/3600 seconds. Per-vehicle/group freshness,
-backoff, partial failures and typed consumer contexts govern requests; each account backend is serialized.
+backoff, partial failures and typed consumer contexts govern requests. A bounded broker shares identical
+in-flight reads, prioritizes status and gives other vehicles/background reads a turn. Each account has
+one wire transaction; a shared limit permits two across accounts. Read/control queues have separate
+budgets. Cancellation of one reader does not cancel other readers; unload reclaims pending work.
+Transient GET failures retry at most once within the same deadline; controls never replay. Transport
+rate-limit metadata and existing per-group backoff apply. Reading cached data does not refresh its age.
 Disabled BMS/travel consumers stop regular queries except bounded initial/sparse discovery and ride-event demand.
 Incomplete vehicle discovery does not prove unbinding or refresh missing vehicles' identities.
 See [vehicles/entities/polling](docs/README.md).

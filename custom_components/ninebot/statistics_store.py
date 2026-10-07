@@ -1,8 +1,10 @@
 """Bounded durable normalized month/ride statistics; never raw JSON or GPS."""
 
+import asyncio
 import hashlib
 import json
 from calendar import monthrange
+from collections.abc import Callable
 from copy import copy
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
@@ -107,6 +109,7 @@ class TravelStatisticsStore:
         self.rides: dict[str, dict[str, StoredRide]] = {}
         self.available = True
         self.restored = False
+        self._record_lock = asyncio.Lock()
 
     @staticmethod
     def vehicle_key(sn: str) -> str:
@@ -418,17 +421,23 @@ class TravelStatisticsStore:
         travel: TravelMonth,
         received: datetime,
         backend_version: str | None = None,
+        *,
+        guard: Callable[[], bool] | None = None,
     ) -> None:
-        candidate = copy(self)
-        candidate.months = {key: dict(value) for key, value in self.months.items()}
-        candidate.rides = {key: dict(value) for key, value in self.rides.items()}
-        # Parsing/byte budgets run off-loop on an independent candidate. Readers
-        # and HA's delayed-save callback never observe a half-updated ledger.
-        if await self.hass.async_add_executor_job(
-            candidate.update, sn, travel, received, backend_version
-        ):
-            self.months, self.rides = candidate.months, candidate.rides
-            self._store.async_delay_save(self.dump, 5)
+        async with self._record_lock:
+            if guard is not None and not guard():
+                return
+            candidate = copy(self)
+            candidate.months = {key: dict(value) for key, value in self.months.items()}
+            candidate.rides = {key: dict(value) for key, value in self.rides.items()}
+            # Independent executor candidates cannot overwrite a concurrent
+            # vehicle/month commit. Ownership is rechecked after preparation.
+            changed = await self.hass.async_add_executor_job(
+                candidate.update, sn, travel, received, backend_version
+            )
+            if changed and (guard is None or guard()):
+                self.months, self.rides = candidate.months, candidate.rides
+                self._store.async_delay_save(self.dump, 5)
 
     async def async_save(self) -> None:
         if self.available and self.months:

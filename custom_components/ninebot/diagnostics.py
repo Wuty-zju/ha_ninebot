@@ -71,6 +71,7 @@ async def async_get_config_entry_diagnostics(
             ),
             "control_actions": sorted(runtime.coordinator.backend.control_actions),
         },
+        "query_broker": runtime.coordinator.broker.diagnostics(),
         "identity_migration": runtime.identities.diagnostics() if runtime.identities else None,
         "identity_scheme": entry.data.get("identity_scheme"),
         "identity_conflict_count": len(runtime.identity_conflicts),

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0b37
+
+- Schedule shared reads through a bounded account broker: one wire request per account, two across accounts, priority with vehicle fairness, independent read/control budgets and cancellation-safe single-flight. Preserve the authentication/native routing transaction lock; commands are never coalesced or replayed.
+- Preserve receipt timestamps and revisions through executor parsing and cached normalization. Reject stale ownership/generation results before telemetry, ledger and lifecycle commits; merge groups independently. Serialize ledger candidates so concurrent vehicles/months cannot overwrite each other's records.
+- Retry transient read failures at most once within the same request deadline. Honor bounded transport Retry-After metadata and a shared-transport recovery cooldown without extending it on rejected requests; maintain existing per-group backoff and last-known data. No extra request logging or raw/identity diagnostics.
+- Keep retained historical statistics and Yesterday sensors readable when live cloud freshness/authentication fails. Explicit cloud refresh still requires valid ownership/authentication; removed vehicles and unloaded accounts cannot access local history. Cold-start offline recovery remains a later archive improvement.
+- Create a new status request barrier after every command attempt. This prevents a pre-command request from substituting for reconciliation; target lock-state confirmation and stopped/P safety remain a separate phase. Existing entity identities, options and the exact ninecli pin are unchanged.
+
 ## 2.0.0b36
 
 - Freeze canonical account/model/serial entity ID seeds in a private, versioned store. New accounts use business-identity-scoped unique IDs and devices, including the same vehicle visible to multiple accounts; existing meaningful unique IDs remain unchanged. Names and model changes do not rename entities.

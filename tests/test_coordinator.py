@@ -155,6 +155,233 @@ async def test_manual_refresh_forces_status_and_coalesces(coordinator):
     assert co.data["synthetic-one"].status.battery == 55
 
 
+async def test_late_status_parser_cannot_restore_old_raw_or_other_groups(coordinator):
+    from custom_components.ninebot import adapters
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    await co._async_update_data()
+    started, release = asyncio.Event(), asyncio.Event()
+    original = co.hass.async_add_executor_job
+
+    async def paused(target, *args):
+        if (
+            getattr(target, "func", None) is adapters.status
+            and target.args[0].get("dump_energy") == 55
+        ):
+            started.set()
+            await release.wait()
+        return await original(target, *args)
+
+    co.client.async_get_status.return_value = {"dump_energy": 55}
+    with patch.object(co.hass, "async_add_executor_job", side_effect=paused):
+        older = asyncio.create_task(co.async_refresh_vehicle("synthetic-one"))
+        await started.wait()
+        co.client.async_get_battery.return_value = {"battery_list": [{"bms_volt": 75}]}
+        await co._group("synthetic-one", "battery", force=True)
+        co._barriers["synthetic-one"] = co._barriers.get("synthetic-one", 0) + 1
+        co.client.async_get_status.return_value = {"dump_energy": 20}
+        assert await co.async_refresh_vehicle("synthetic-one")
+        latest = co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC))
+        release.set()
+        await older
+    assert co.data["synthetic-one"].status.battery == 20
+    assert co.data["synthetic-one"].battery.batteries[0].voltage == 75
+    assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is latest
+    assert latest.payload()["dump_energy"] == 20
+
+
+@pytest.mark.parametrize("failed", [False, True])
+async def test_poll_and_history_share_one_inflight_month_including_failure(coordinator, failed):
+    from custom_components.ninebot import adapters
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    await co._async_update_data()
+    sn = "synthetic-one"
+    month = adapters.month_at(datetime.now(UTC))
+    co.raw.discard_vehicle(sn)
+    started, release = asyncio.Event(), asyncio.Event()
+    calls = 0
+
+    async def travel(vehicle, query_month):
+        nonlocal calls
+        calls += 1
+        started.set()
+        await release.wait()
+        if failed:
+            raise NinebotError(ErrorKind.SERVICE)
+        return {"total_mileages": 12, "ec": 30, "list": []}
+
+    co.client.async_get_travel.side_effect = travel
+    poll = asyncio.create_task(co._group(sn, "travel", force=True, include_last_ride=False))
+    await started.wait()
+    query = asyncio.create_task(co.async_query_month(sn, month))
+    for _ in range(100):
+        if co.broker.diagnostics()["waiters"] == 2:
+            break
+        await asyncio.sleep(0)
+    assert co.broker.diagnostics()["waiters"] == 2
+    release.set()
+    results = await asyncio.gather(poll, query, return_exceptions=True)
+    assert calls == 1
+    if failed:
+        assert isinstance(results[1], NinebotError)
+        assert co.data[sn].travel_freshness.error is ErrorKind.SERVICE
+        assert co.raw.get(Endpoint.TRAVEL, sn, month, now=datetime.now(UTC)) is None
+    else:
+        assert results[1].payload()["total_mileages"] == 12
+        assert co.data[sn].travel.mileage == 12
+        assert co.statistics.month(sn, month).distance_km == 12
+
+
+async def test_same_clock_payload_keeps_new_receipt_revision(coordinator, freezer):
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    await co._async_update_data()
+    first = co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC))
+    await co.async_refresh_vehicle("synthetic-one")
+    latest = co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC))
+    assert latest.encoded == first.encoded and latest.received_at == first.received_at
+    assert latest.request_revision > first.request_revision
+
+
+async def test_overlapping_normalization_parses_same_content_once(coordinator):
+    from custom_components.ninebot import adapters
+    from custom_components.ninebot.coordinator import travel_record
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    await co._async_update_data()
+    sn = "synthetic-one"
+    month = adapters.month_at(datetime.now(UTC))
+    record = co.raw.get(Endpoint.TRAVEL, sn, month, now=datetime.now(UTC))
+    co._normalized.clear()
+    started, release = asyncio.Event(), asyncio.Event()
+    original = co.hass.async_add_executor_job
+    calls = 0
+
+    async def paused(target, *args):
+        nonlocal calls
+        if getattr(target, "func", None) is travel_record:
+            calls += 1
+            started.set()
+            await release.wait()
+        return await original(target, *args)
+
+    from functools import partial
+
+    with patch.object(co.hass, "async_add_executor_job", side_effect=paused):
+        one = asyncio.create_task(
+            co._normalize(record, sn, month, partial(travel_record, record, month))
+        )
+        await started.wait()
+        two = asyncio.create_task(
+            co._normalize(record, sn, month, partial(travel_record, record, month))
+        )
+        for _ in range(100):
+            if co._shared_waiters.get(next(iter(co._normalizations.values())), 0) == 2:
+                break
+            await asyncio.sleep(0)
+        release.set()
+        result = await asyncio.gather(one, two)
+    assert calls == 1 and result[0] is result[1]
+    assert not co._normalizations
+
+
+async def test_late_profile_parser_cannot_remove_newly_confirmed_vehicle(coordinator):
+    from custom_components.ninebot import adapters
+
+    co = coordinator
+    await co._async_update_data()
+    started, release = asyncio.Event(), asyncio.Event()
+    original = co.hass.async_add_executor_job
+
+    async def paused(target, *args):
+        if target is adapters.profiles and len(args[0]) == 1:
+            started.set()
+            await release.wait()
+        return await original(target, *args)
+
+    co.client.async_list_vehicles.return_value = [{"wnumber": "synthetic-one"}]
+    co._next_attempt[("", "profile")] = 0
+    with patch.object(co.hass, "async_add_executor_job", side_effect=paused):
+        older = asyncio.create_task(co._list(datetime.now(UTC)))
+        await started.wait()
+        co.client.async_list_vehicles.return_value = [
+            {"wnumber": "synthetic-one"},
+            {"wnumber": "synthetic-two"},
+        ]
+        await co._list(datetime.now(UTC))
+        release.set()
+        await older
+    assert co.data["synthetic-two"].present
+    assert co.fresh("synthetic-two", "status")
+
+
+async def test_ownership_loss_during_ledger_preparation_cannot_commit_or_observe(coordinator):
+    from custom_components.ninebot import adapters
+    from custom_components.ninebot.ride_lifecycle import RideLifecycle
+
+    co = coordinator
+    await co._async_update_data()
+    sn = "synthetic-one"
+    month = adapters.month_at(datetime.now(UTC))
+    before = co.statistics.month(sn, month)
+    started, release = asyncio.Event(), asyncio.Event()
+    original = co.hass.async_add_executor_job
+
+    async def paused(target, *args):
+        if getattr(target, "__name__", "") == "update" and args[1].mileage == 99:
+            started.set()
+            await release.wait()
+        return await original(target, *args)
+
+    co.client.async_get_travel.return_value = {"total_mileages": 99, "list": []}
+    with (
+        patch.object(co.hass, "async_add_executor_job", side_effect=paused),
+        patch.object(RideLifecycle, "observe") as observe,
+    ):
+        old = asyncio.create_task(co._group(sn, "travel", force=True, include_last_ride=False))
+        await started.wait()
+        co._ownership[sn] = co._ownership.get(sn, 0) + 1
+        release.set()
+        await old
+        observe.assert_not_called()
+    assert co.statistics.month(sn, month) is before
+    assert co.data[sn].travel.mileage != 99
+
+
+async def test_history_queue_rechecks_profile_before_wire(coordinator, freezer):
+    co = coordinator
+    await co._async_update_data()
+    started, release = asyncio.Event(), asyncio.Event()
+
+    async def hold(sn):
+        started.set()
+        await release.wait()
+        return {"dump_energy": 70}
+
+    co.client.async_get_status.side_effect = hold
+    co.client.async_get_travel.reset_mock()
+    active = asyncio.create_task(co.async_refresh_vehicle("synthetic-one"))
+    await started.wait()
+    query = asyncio.create_task(co.async_query_month("synthetic-one", "202001"))
+    for _ in range(100):
+        if co.broker.diagnostics()["pending"] == 2:
+            break
+        await asyncio.sleep(0)
+    assert co.broker.diagnostics()["pending"] == 2
+    freezer.tick(timedelta(hours=4))
+    release.set()
+    await active
+    with pytest.raises(HomeAssistantError) as caught:
+        await query
+    assert caught.value.translation_key == "query_unavailable"
+    co.client.async_get_travel.assert_not_awaited()
+
+
 async def test_wrong_status_identity_cannot_replace_telemetry_raw_or_success_time(coordinator):
     from custom_components.ninebot.raw import Endpoint
 
@@ -393,18 +620,24 @@ async def test_history_query_auth_policy_queue_and_unload(coordinator):
     co._authenticated = True
     co.client.async_get_travel.side_effect = None
     co.client.async_get_travel.reset_mock()
-    await co._mutex.acquire()
+    started, release = asyncio.Event(), asyncio.Event()
+
+    async def hold(sn, month):
+        started.set()
+        await release.wait()
+        return {"list": []}
+
+    co.client.async_get_travel.side_effect = hold
     tasks = [asyncio.create_task(co.async_query_month("synthetic-one", "202001")) for _ in range(4)]
-    await asyncio.sleep(0)
+    await started.wait()
     with pytest.raises(HomeAssistantError) as error:
         await co.async_query_month("synthetic-one", "202001")
     assert error.value.translation_key == "busy"
     await co.async_close()
-    co._mutex.release()
     results = await asyncio.gather(*tasks, return_exceptions=True)
     assert all(isinstance(result, asyncio.CancelledError) for result in results)
     assert co._query_pending == 0
-    co.client.async_get_travel.assert_not_awaited()
+    co.client.async_get_travel.assert_awaited_once_with("synthetic-one", "202001")
 
 
 async def test_removed_ownership_clears_private_query_cache(coordinator):

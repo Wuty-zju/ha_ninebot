@@ -30,11 +30,11 @@ jobs:
             test-plugin: '0.13.305'
             ha: '2026.1.0'
           - python: '3.14'
-            test-plugin: '0.13.367'
-            ha: '2026.9.4'
+            test-plugin: '0.13.370'
+            ha: '2026.10.0'
           - python: '3.14'
             test-plugin: '0.13.370'
-            ha: '2026.10.0b4'
+            ha: '2026.10.0b7'
     env:
       LITELLM_LOCAL_MODEL_COST_MAP: 'True'
     steps:
@@ -47,6 +47,10 @@ jobs:
           python -m pip install
           pytest-homeassistant-custom-component==${{ matrix.test-plugin }}
           ninecli==0.1.7 ruff==0.16.10 mypy==2.4.0
+      # The latest test plugin still pins b4 when stable/b7 become available.
+      # Explicitly install the selected Core and verify its actual version.
+      - name: Install the selected Home Assistant boundary
+        run: python -m pip install homeassistant==${{ matrix.ha }}
       - name: Verify the pinned Home Assistant test environment
         env:
           EXPECTED_HA: ${{ matrix.ha }}

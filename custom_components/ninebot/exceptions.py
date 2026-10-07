@@ -18,8 +18,13 @@ class ErrorKind(StrEnum):
 class NinebotError(Exception):
     """Never carry an upstream response or command line in the exception."""
 
-    def __init__(self, kind: ErrorKind) -> None:
+    def __init__(
+        self, kind: ErrorKind, *, retry_after: float | None = None, retryable: bool = False
+    ) -> None:
         self.kind = kind
+        self.retry_after = retry_after
+        self.retryable = retryable
+        self.request_revision = 0
         super().__init__(kind.value)
 
 
