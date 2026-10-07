@@ -161,6 +161,9 @@
     },
     "get_statistics": {
       "service": "mdi:chart-box-outline"
+    },
+    "import_statistics": {
+      "service": "mdi:chart-timeline-variant"
     }
   }
 }

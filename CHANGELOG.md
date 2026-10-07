@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b34
+
+- Add explicit import_statistics response Action for native Recorder day/month trends from the existing ledger. No cloud queries or automatic production imports. Import only closed, verified periods; preserve real zeros and gaps without distributing monthly totals or inventing hourly values.
+- Use separate account/vehicle/grain/metric statistic IDs, bounded serialized imports and strict metadata checks. Merge existing period values and rebuild cumulative suffixes for corrections and repeat-safe imports; retain previous verified points when newer data is missing.
+- Return copyable native statistics-graph configurations and source/skip/queue counts. Initially require HA time zone Asia/Shanghai for accurate business-day grouping; period queries remain available elsewhere. Update English/Chinese Action text and all shipped Action names; preserve curated translations during regeneration.
+
 ## 2.0.0b33
 
 - Add device-scoped get_statistics response data for one to six months, with separate monthly server aggregates and daily projections. Include real source timestamps, revisions, coverage, field availability, period-end observation and scope-matched Wh/km. Missing days remain null; future chart padding is omitted.

@@ -87,8 +87,7 @@ Assistant backups. Removing the account integration also removes this ledger.
 An unreadable/unsupported file is preserved and only statistics storage is paused,
 with a Repair explaining recovery. Vehicle telemetry continues. The five manual-history progress/summary entities are retired; query scope and
 progress remain in get_history response data. This does not delete Recorder rows
-or reuse those identities for different statistics. Historical Recorder imports
-and trend examples are a separate upcoming change.
+or reuse those identities for different statistics. Native historical Recorder imports and trend examples are described below.
 
 Yesterday distance uses the validated daily chart. Today/Yesterday ride count,
 duration and energy require a complete retained monthly list, known end times
@@ -132,9 +131,8 @@ verified adjacent-month report; its timestamp/revision is included.
 
 Future padded days are omitted; actual zero and unknown remain distinct. Stored
 source timestamps are preserved, including after reload. No ride IDs, raw JSON,
-GPS trails or arbitrary attributes enter this response. Historical Recorder
-trend import and graph examples are still a separate H4 increment; an Action
-response alone does not automatically become a dashboard data source.
+GPS trails or arbitrary attributes enter this response. The get_statistics response alone does not automatically become a dashboard data
+source. The explicit import Action below provides native Recorder series.
 
 This script returns the same response to a calling automation or Developer Tools
 Action call. Replace the vehicle device ID and choose valid months. The
@@ -160,3 +158,81 @@ script:
 Calling it from another script with `response_variable: result` exposes
 `result.months`, `result.days`, `result.summary` and `result.scope`. Large
 response objects belong in response variables, not template-sensor attributes.
+
+
+## Native historical trend graphs
+
+`ninebot.import_statistics` writes verified closed day/month aggregates from the
+existing ledger to Recorder. It never requests the cloud. First use bounded
+`get_statistics` with explicit `refresh: true`, or `get_history` continuation,
+if you want to populate a specific missing range. Neither happens implicitly.
+Normal current-month polling can already provide past days in the current month.
+
+Call the import Action with response data:
+
+```yaml
+action: ninebot.import_statistics
+data:
+  device_id: your_vehicle_device_id
+  start_month: "202609"
+  end_month: "202610"
+  include_daily: true
+response_variable: imported
+```
+
+One call covers one to six months. `refresh: true` is rejected. Recorder must
+already be running and HA's time zone must be `Asia/Shanghai`; in other time
+zones use the query response until a safe chart mapping is supported.
+
+The response lists up to eight `series`: day and month distance (km), energy
+(Wh), ride count and duration (s), with stable `statistic_id`, source/skipped
+point counts and queued point counts. Only available metrics are imported. A
+month must have been sampled after its end; the current partial month is skipped.
+A day must be over and meet the existing per-field availability rules. First-day
+ride metrics need a verified adjacent month. Monthly energy is never spread
+across days. Returned ride totals and server day distance can differ.
+
+`dashboard_cards` contains ready-to-copy native card configurations with actual
+statistic IDs. Paste one configuration into the dashboard's manual card editor
+after Recorder processes the queue. No dashboard is changed automatically. The
+cards use bars and `change`, with `period: day` for day series and `period: month`
+for month series. They show a rolling window up to 730 days; older imports are
+retained, but viewing them requires choosing a suitable longer display window.
+Example (replace the ID with the returned **day distance** statistic ID):
+
+```yaml
+type: statistics-graph
+title: 每日骑行里程
+chart_type: bar
+period: day
+days_to_show: 90
+stat_types:
+  - change
+entities:
+  - entity: ninebot:replace_with_returned_day_distance_id
+    name: 骑行里程
+```
+
+For monthly energy, use the returned **month energy** ID, `period: month` and
+a larger `days_to_show`. Keep units in separate cards. Do not interpret hourly
+views as an actual ride/energy distribution, or coarser sums of incomplete day
+series as complete calendar totals. Missing days stay gaps; verified zero stays
+zero. This follows the [native statistics card contract](https://www.home-assistant.io/dashboards/statistics-graph/)
+and [Recorder metadata API](https://developers.home-assistant.io/blog/2025/10/16/recorder-statistics-api-changes/).
+
+Each period's `state` is its value and `sum` is the running sum of known values.
+Repeated imports replace the same periods. A correction rebuilds subsequent sums,
+so a downward correction is not a reset or double count. Previously verified
+points are retained when a newer response omits a value; import warnings state
+this explicitly. Existing incompatible metadata/units, malformed periods or
+more than 12,000 points per series reject the batch before queueing. Do not
+manually repurpose these statistic IDs; removing/recreating an account yields
+a new namespace, while renaming its vehicle does not change IDs.
+
+`status: queued` acknowledges the Recorder queue, not a durable database commit.
+Imports serialize per account with at most two active/waiting callers, and
+revalidate device ownership before writing. Only normalized aggregates enter
+Recorder; no rides, coordinates, trails or raw JSON. Normal entity IDs, names
+and their recorded history remain unchanged. Offline SQLite and the real
+statistics WebSocket contract are tested; no production dashboard or vehicle
+control was exercised.

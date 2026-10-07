@@ -69,7 +69,8 @@
       "get_trips": "取得行程",
       "get_trip_detail": "取得行程詳情",
       "get_history": "取得歷史行程",
-      "get_statistics": "取得範圍統計"
+      "get_statistics": "取得範圍統計",
+      "import_statistics": "匯入歷史趨勢統計"
     }
   },
   "de": {
@@ -142,7 +143,8 @@
       "get_trips": "Fahrten abrufen",
       "get_trip_detail": "Fahrtdetails abrufen",
       "get_history": "Fahrtenhistorie abrufen",
-      "get_statistics": "Zeitraumstatistiken abrufen"
+      "get_statistics": "Zeitraumstatistiken abrufen",
+      "import_statistics": "Verlaufsstatistiken importieren"
     }
   },
   "fr": {
@@ -215,7 +217,8 @@
       "get_trips": "Obtenir les trajets",
       "get_trip_detail": "Obtenir les détails du trajet",
       "get_history": "Obtenir l’historique",
-      "get_statistics": "Obtenir les statistiques de période"
+      "get_statistics": "Obtenir les statistiques de période",
+      "import_statistics": "Importer les statistiques historiques"
     }
   },
   "es": {
@@ -288,7 +291,8 @@
       "get_trips": "Obtener viajes",
       "get_trip_detail": "Obtener detalles del viaje",
       "get_history": "Obtener historial",
-      "get_statistics": "Obtener estadísticas del período"
+      "get_statistics": "Obtener estadísticas del período",
+      "import_statistics": "Importar estadísticas históricas"
     }
   },
   "it": {
@@ -361,7 +365,8 @@
       "get_trips": "Ottieni viaggi",
       "get_trip_detail": "Ottieni dettagli del viaggio",
       "get_history": "Ottieni cronologia",
-      "get_statistics": "Ottieni statistiche del periodo"
+      "get_statistics": "Ottieni statistiche del periodo",
+      "import_statistics": "Importa statistiche storiche"
     }
   },
   "pt": {
@@ -434,7 +439,8 @@
       "get_trips": "Obter viagens",
       "get_trip_detail": "Obter detalhes da viagem",
       "get_history": "Obter histórico",
-      "get_statistics": "Obter estatísticas do período"
+      "get_statistics": "Obter estatísticas do período",
+      "import_statistics": "Importar estatísticas históricas"
     }
   },
   "ru": {
@@ -507,7 +513,8 @@
       "get_trips": "Получить поездки",
       "get_trip_detail": "Получить сведения о поездке",
       "get_history": "Получить историю",
-      "get_statistics": "Получить статистику периода"
+      "get_statistics": "Получить статистику периода",
+      "import_statistics": "Импортировать историческую статистику"
     }
   },
   "ja": {
@@ -580,7 +587,8 @@
       "get_trips": "走行記録を取得",
       "get_trip_detail": "走行詳細を取得",
       "get_history": "走行履歴を取得",
-      "get_statistics": "期間統計を取得"
+      "get_statistics": "期間統計を取得",
+      "import_statistics": "履歴統計をインポート"
     }
   },
   "ko": {
@@ -653,7 +661,8 @@
       "get_trips": "주행 목록 가져오기",
       "get_trip_detail": "주행 상세 가져오기",
       "get_history": "주행 이력 가져오기",
-      "get_statistics": "기간 통계 가져오기"
+      "get_statistics": "기간 통계 가져오기",
+      "import_statistics": "기록 통계 가져오기"
     }
   },
   "nl": {
@@ -726,7 +735,8 @@
       "get_trips": "Ritten ophalen",
       "get_trip_detail": "Ritdetails ophalen",
       "get_history": "Ritgeschiedenis ophalen",
-      "get_statistics": "Periodestatistieken ophalen"
+      "get_statistics": "Periodestatistieken ophalen",
+      "import_statistics": "Historische statistieken importeren"
     }
   },
   "pl": {
@@ -799,7 +809,8 @@
       "get_trips": "Pobierz przejazdy",
       "get_trip_detail": "Pobierz szczegóły przejazdu",
       "get_history": "Pobierz historię",
-      "get_statistics": "Pobierz statystyki okresu"
+      "get_statistics": "Pobierz statystyki okresu",
+      "import_statistics": "Importuj statystyki historyczne"
     }
   },
   "tr": {
@@ -872,7 +883,8 @@
       "get_trips": "Sürüşleri al",
       "get_trip_detail": "Sürüş ayrıntılarını al",
       "get_history": "Geçmişi al",
-      "get_statistics": "Dönem istatistiklerini al"
+      "get_statistics": "Dönem istatistiklerini al",
+      "import_statistics": "Geçmiş istatistikleri içe aktar"
     }
   },
   "ar": {
@@ -945,7 +957,8 @@
       "get_trips": "جلب الرحلات",
       "get_trip_detail": "جلب تفاصيل الرحلة",
       "get_history": "جلب السجل",
-      "get_statistics": "الحصول على إحصاءات الفترة"
+      "get_statistics": "الحصول على إحصاءات الفترة",
+      "import_statistics": "استيراد الإحصاءات التاريخية"
     }
   },
   "hi": {
@@ -1018,7 +1031,8 @@
       "get_trips": "यात्राएँ प्राप्त करें",
       "get_trip_detail": "यात्रा विवरण प्राप्त करें",
       "get_history": "इतिहास प्राप्त करें",
-      "get_statistics": "अवधि के आँकड़े प्राप्त करें"
+      "get_statistics": "अवधि के आँकड़े प्राप्त करें",
+      "import_statistics": "ऐतिहासिक आँकड़े आयात करें"
     }
   },
   "id": {
@@ -1091,7 +1105,8 @@
       "get_trips": "Ambil perjalanan",
       "get_trip_detail": "Ambil detail perjalanan",
       "get_history": "Ambil riwayat",
-      "get_statistics": "Ambil statistik periode"
+      "get_statistics": "Ambil statistik periode",
+      "import_statistics": "Impor statistik historis"
     }
   },
   "vi": {
@@ -1164,7 +1179,8 @@
       "get_trips": "Lấy danh sách chuyến đi",
       "get_trip_detail": "Lấy chi tiết chuyến đi",
       "get_history": "Lấy lịch sử",
-      "get_statistics": "Lấy thống kê theo kỳ"
+      "get_statistics": "Lấy thống kê theo kỳ",
+      "import_statistics": "Nhập thống kê lịch sử"
     }
   },
   "th": {
@@ -1237,7 +1253,8 @@
       "get_trips": "รับรายการเดินทาง",
       "get_trip_detail": "รับรายละเอียดการเดินทาง",
       "get_history": "รับประวัติการเดินทาง",
-      "get_statistics": "รับสถิติช่วงเวลา"
+      "get_statistics": "รับสถิติช่วงเวลา",
+      "import_statistics": "นำเข้าสถิติย้อนหลัง"
     }
   },
   "uk": {
@@ -1310,7 +1327,8 @@
       "get_trips": "Отримати поїздки",
       "get_trip_detail": "Отримати деталі поїздки",
       "get_history": "Отримати історію",
-      "get_statistics": "Отримати статистику періоду"
+      "get_statistics": "Отримати статистику періоду",
+      "import_statistics": "Імпортувати історичну статистику"
     }
   },
   "pt-BR": {
@@ -1383,7 +1401,8 @@
       "get_trips": "Obter viagens",
       "get_trip_detail": "Obter detalhes da viagem",
       "get_history": "Obter histórico",
-      "get_statistics": "Obter estatísticas do período"
+      "get_statistics": "Obter estatísticas do período",
+      "import_statistics": "Importar estatísticas históricas"
     }
   }
 }

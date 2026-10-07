@@ -1,5 +1,6 @@
 """Typed per-entry runtime, separate from durable configuration."""
 
+from asyncio import Lock
 from dataclasses import dataclass, field
 
 from homeassistant.config_entries import ConfigEntry
@@ -22,6 +23,8 @@ class RuntimeData:
     standard_entities_enabled: int = 0
     configured_controls_enabled: int = 0
     events: RideEventPipeline | None = None
+    statistics_import_lock: Lock = field(default_factory=Lock)
+    statistics_import_pending: int = 0
 
 
 type NinebotConfigEntry = ConfigEntry[RuntimeData]

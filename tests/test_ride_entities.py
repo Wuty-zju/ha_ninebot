@@ -52,7 +52,13 @@ async def test_last_ride_native_values_classes_visible_defaults_and_state_size(
             if isinstance(value, float)
             else sensor.native_value == value
         )
-        assert sensor.state_class is None and sensor.extra_state_attributes is None
+        assert sensor.state_class is None
+        assert sensor.extra_state_attributes == {
+            "query_month": "202609",
+            "received_at": "2026-09-26T00:00:00+00:00",
+            "ride_phase": "stabilizing",
+            "completion_basis": None,
+        }
         assert sensor.translation_key == key
         registry.async_update_entity(row.entity_id, disabled_by=None)
     # Isolated HA reload registers enabled entities; no production runtime is touched.

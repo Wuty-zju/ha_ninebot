@@ -551,6 +551,15 @@
     },
     "statistics_unavailable": {
       "message": "统计存储不可用，请先处理修复提示；车辆遥测可继续。"
+    },
+    "statistics_recorder": {
+      "message": "导入原生统计需要已运行的 Recorder；范围查询 Action 不受影响。"
+    },
+    "statistics_timezone": {
+      "message": "原生周期图表目前要求 Home Assistant 时区为 Asia/Shanghai；其他时区仍可使用查询响应。"
+    },
+    "statistics_import_data": {
+      "message": "已有统计的单位、结构或周期数值不兼容，或超出导入预算；本批次未入队。请检查统计后重试。"
     }
   },
   "issues": {
@@ -690,6 +699,28 @@
         "refresh": {
           "name": "查询上游月份",
           "description": "显式查询所选月份，已有新鲜缓存可复用，不读取轨迹。"
+        }
+      }
+    },
+    "import_statistics": {
+      "name": "导入历史趋势统计",
+      "description": "显式将账本中已结束且数据有效的日/月周期写入 Recorder。最多六个月；不请求云端，不分摊小时，不填补缺失数据。",
+      "fields": {
+        "device_id": {
+          "name": "车辆",
+          "description": "当前账户的车辆设备。"
+        },
+        "start_month": {
+          "name": "开始月份",
+          "description": "YYYYMM，范围最多6个月。"
+        },
+        "end_month": {
+          "name": "结束月份",
+          "description": "YYYYMM，不得晚于本月。"
+        },
+        "include_daily": {
+          "name": "包含日统计",
+          "description": "同时导入已确认的日统计；关闭时仅导入完整月。"
         }
       }
     }
