@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-08",
+  "evidence": "Maintainer statement; not a new physical control test or lithium telemetry capture",
+  "contracts": {
+    "battery_main.electricity": "Emergency communication battery SOC, integer percent",
+    "battery_type": {
+      "1": "lithium",
+      "2": "lead_acid"
+    },
+    "loc.acc": {
+      "0": "off",
+      "1": "on"
+    },
+    "barrel_lock_status": {
+      "0": "locked",
+      "1": "unlocked"
+    },
+    "engine/start": "vehicle unlock",
+    "engine/stop": "vehicle lock, stopped and P gear required",
+    "buck": "seat unlock only; locking manual"
+  },
+  "limits": "ACC is not stopped/P-gear evidence; control effects and interlock not validated by this release"
+}

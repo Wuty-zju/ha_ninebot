@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotError
-from .parsing import number, payload, previous_month, text
+from .parsing import number, numeric_precision, payload, previous_month, text
 from .raw import Endpoint
 from .ride_models import FieldState, Ride, RideTrackPoint, SpeedSample
 
@@ -224,6 +224,7 @@ def parse_ride(
         tuple(sorted(provenance.items())),
         field_states=tuple(sorted(states.items())),
         field_sources=tuple((name, source.value) for name in sorted(provenance)),
+        precision=numeric_precision(item, ("mileages", "duration", "ec", "speed")),
     )
 
 
@@ -279,6 +280,8 @@ def merge_detail(summary: Ride, detail: Ride) -> Ride:
     states = dict(summary.field_states)
     detail_states = dict(detail.field_states)
     detail_provenance = dict(detail.field_provenance)
+    precision = dict(summary.precision)
+    detail_precision = dict(detail.precision)
 
     def accept(field: str) -> None:
         if field in detail_provenance:
@@ -293,6 +296,18 @@ def merge_detail(summary: Ride, detail: Ride) -> Ride:
         if after is not None:
             updates[field] = after
             accept(field)
+            raw_key = {
+                "distance_m": "mileages",
+                "duration_s": "duration",
+                "energy_raw": "ec",
+                "speed_raw": "speed",
+            }.get(field)
+            if raw_key and raw_key in detail_precision:
+                precision[raw_key] = (
+                    max(precision.get(raw_key, 0), detail_precision[raw_key])
+                    if before == after
+                    else detail_precision[raw_key]
+                )
             if before is not None and before != after:
                 issues.add(f"detail_corrected_{field}")
         elif before is None:
@@ -314,6 +329,7 @@ def merge_detail(summary: Ride, detail: Ride) -> Ride:
         field_provenance=tuple(sorted(provenance.items())),
         field_states=tuple(sorted(states.items())),
         field_sources=tuple(sorted(sources.items())),
+        precision=tuple(sorted(precision.items())),
         detail_field_states=detail.field_states,
     )
     if merged.started_at and merged.ended_at:

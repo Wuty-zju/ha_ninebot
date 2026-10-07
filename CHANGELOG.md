@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b35
+
+- Add account entry labels and reviewed username/region titles after explicit login. Preserve custom titles, isolated password/SMS sessions and offline migrations; optional display metadata failures do not prevent a validated login.
+- Add emergency communication battery SOC (integer %) and main battery type (1 lithium / 2 lead acid) from maintainer-confirmed fields. Interpret ACC, seat lock, battery presence and service expiry on their existing sensor identities; unknown codes remain unrecognized. Clarify Apple Find My and cycle-support states.
+- Move vehicle location and returned battery pack count into ordinary entity categories. Location display defaults on; preserve existing explicit off choices. This reuses status data, adds no location query and does not convert the unverified coordinate system.
+- Preserve reported decimal scale for measured/ride values and distinguish derived precision. Retain existing entity identities and control behavior; cross-platform lock integration and safety/readback improvements follow separately.
+
 ## 2.0.0b34
 
 - Add explicit import_statistics response Action for native Recorder day/month trends from the existing ledger. No cloud queries or automatic production imports. Import only closed, verified periods; preserve real zeros and gaps without distributing monthly totals or inventing hourly values.

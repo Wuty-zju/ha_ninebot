@@ -44,6 +44,7 @@ def entry(hass):
             "account": "fake-account",
         },
         unique_id="synthetic-business",
+        options={"enable_coordinates": False},
     )
     entry.add_to_hass(hass)
     return entry

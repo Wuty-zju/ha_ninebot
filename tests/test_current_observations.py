@@ -42,6 +42,8 @@ def test_charging_replay_keeps_empty_estimate_and_conflicting_layered_values():
         ("charging_power_raw", 310, "W", "power", "measurement"),
         ("health_score", 0, None, None, None),
         ("returned_pack_count", 1, None, None, None),
+        ("emergency_battery", 93, "%", "battery", "measurement"),
+        ("main_battery_type", "lead_acid", None, "enum", None),
     ]:
         d = descriptions[key]
         assert d.value(snapshot) == expected
@@ -159,6 +161,13 @@ async def test_all_current_defaults_enable_without_granting_coordinates_or_contr
     assert registry.async_get(legacy.entity_id).name == "Personal charging power"
     assert float(hass.states.get(legacy.entity_id).state) == 310
     assert hass.states.get(legacy.entity_id).attributes["unit_of_measurement"] == "W"
+    for platform, key in [("sensor", "returned_pack_count"), ("device_tracker", "location")]:
+        entity_id = registry.async_get_entity_id(platform, "ninebot", f"SyntheticSN_{key}")
+        assert registry.async_get(entity_id).entity_category is None
+    for key, expected in [("emergency_battery", "93"), ("main_battery_type", "lead_acid")]:
+        entity_id = registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
+        assert hass.states.get(entity_id).state == expected
+        assert registry.async_get(entity_id).entity_category is None
     for platform, key in [("button", "bell"), ("device_tracker", "location")]:
         entity_id = registry.async_get_entity_id(platform, "ninebot", f"SyntheticSN_{key}")
         state = hass.states.get(entity_id)

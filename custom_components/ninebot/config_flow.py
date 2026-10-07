@@ -26,6 +26,7 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 
+from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, account_update
 from .compat import validation as vol
 from .const import (
     CONF_ACCOUNT,
@@ -38,6 +39,7 @@ from .const import (
     CONF_IDENTITY_SCHEME,
     CONF_POLL_INTERVAL,
     CONF_SESSION_KEY,
+    DEFAULT_COORDINATES,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
 )
@@ -59,7 +61,7 @@ ERRORS = {
 
 class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 2
-    MINOR_VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         self._entry: ConfigEntry | None = None
@@ -100,6 +102,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 metadata_updated = False
                 old_data = dict(self._entry.data) if self._entry else None
                 old_uid = self._entry.unique_id if self._entry else None
+                old_title = self._entry.title if self._entry else None
                 unloaded = False
                 recovery_pending = False
                 try:
@@ -139,9 +142,13 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         if self._entry
                         else "v2",
                     }
+                    metadata, automatic, title = account_update(
+                        old_data or {}, account, candidate.display, old_title
+                    )
+                    data.update({ACCOUNT_METADATA: metadata, AUTOMATIC_TITLE: automatic})
                     if self._entry:
                         self.hass.config_entries.async_update_entry(
-                            self._entry, data=data, unique_id=candidate.uid
+                            self._entry, data=data, unique_id=candidate.uid, title=title
                         )
                         metadata_updated = True
                         if not await self._reload_entry():
@@ -155,10 +162,14 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             else "reconfigure_successful"
                         )
                     result = self.async_create_entry(
-                        title="Ninebot",
+                        title=title,
                         data=data,
                         options={
-                            key: bool(user_input.get(key, False))
+                            key: bool(
+                                user_input.get(
+                                    key, DEFAULT_COORDINATES if key == CONF_COORDINATES else False
+                                )
+                            )
                             for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
                         },
                     )
@@ -198,7 +209,10 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                 and old_data is not None
                             ):
                                 self.hass.config_entries.async_update_entry(
-                                    self._entry, data=old_data, unique_id=old_uid
+                                    self._entry,
+                                    data=old_data,
+                                    unique_id=old_uid,
+                                    title=old_title or "",
                                 )
                             if not rolled_back:
                                 # A cancelled finalization may have passed its
@@ -248,7 +262,10 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                     **(
                         {
-                            vol.Optional(key, default=False): bool
+                            vol.Optional(
+                                key,
+                                default=DEFAULT_COORDINATES if key == CONF_COORDINATES else False,
+                            ): bool
                             for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
                         }
                         if self._entry is None
@@ -302,7 +319,14 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=vol.Schema({vol.Required(CONF_ACCOUNT): str}),
             )
         self._sms_options = {
-            key: bool(user_input.get(key, self._sms_options.get(key, False)))
+            key: bool(
+                user_input.get(
+                    key,
+                    self._sms_options.get(
+                        key, DEFAULT_COORDINATES if key == CONF_COORDINATES else False
+                    ),
+                )
+            )
             for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
         }
         self._sms_task = asyncio.current_task()
@@ -451,7 +475,7 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                         CONF_ESTIMATION, default=options.get(CONF_ESTIMATION, False)
                     ): bool,
                     vol.Optional(
-                        CONF_COORDINATES, default=options.get(CONF_COORDINATES, False)
+                        CONF_COORDINATES, default=options.get(CONF_COORDINATES, DEFAULT_COORDINATES)
                     ): bool,
                     vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
                     vol.Optional("configure_model", default=False): bool,

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import aiohttp
 
+from .account import AccountDisplay
 from .adapters import profiles, text
 from .client import NinecliClient
 from .exceptions import ErrorKind, NinebotError
@@ -68,6 +69,7 @@ def secure_files(path: Path) -> None:
 class Candidate:
     path: Path
     uid: str
+    display: AccountDisplay = field(default_factory=AccountDisplay, repr=False)
 
 
 SMS_COOLDOWN = 60
@@ -186,13 +188,14 @@ class SessionManager:
             client = self._factory(challenge.path, self._session)
             try:
                 await client.async_consume_login_code(challenge.account, code)
+                display = await self._account_display(client)
                 profiles(await client.async_list_vehicles())
                 uid = await finish_io(lambda: session_uid(challenge.path))
                 await client.async_close()
                 await finish_io(lambda: secure_files(challenge.path))
                 challenge.consumed = True
                 self._sms.pop(challenge.path, None)
-                return Candidate(challenge.path, uid)
+                return Candidate(challenge.path, uid, display)
             finally:
                 await client.async_close()
 
@@ -240,11 +243,12 @@ class SessionManager:
         try:
             client = self._factory(directory, self._session)
             await client.async_login(account, password)
+            display = await self._account_display(client)
             profiles(await client.async_list_vehicles())
             uid = await finish_io(lambda: session_uid(directory))
             await client.async_close()
             await finish_io(lambda: secure_files(directory))
-            return Candidate(directory, uid)
+            return Candidate(directory, uid, display)
         except BaseException:
             try:
                 if client is not None:
@@ -255,6 +259,16 @@ class SessionManager:
 
     async def async_discard(self, candidate: Candidate) -> None:
         await finish_io(lambda: shutil.rmtree(candidate.path, True))
+
+    @staticmethod
+    async def _account_display(client: NinecliClient) -> AccountDisplay:
+        try:
+            return AccountDisplay.parse(await client.async_get_account())
+        except NinebotError as err:
+            if err.kind == ErrorKind.AUTH:
+                raise
+            # Optional display data cannot invalidate otherwise verified login.
+            return AccountDisplay()
 
     def _recover(self, key: str) -> None:
         destination = self.path(key)

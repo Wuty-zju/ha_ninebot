@@ -56,3 +56,14 @@ def test_translation_resources_have_matching_structure_and_placeholders():
 async def test_real_ha_loads_localized_entity_resources(hass, language, expected):
     result = await async_get_translations(hass, language, "entity", {DOMAIN})
     assert result["component.ninebot.entity.sensor.endurance.name"] == expected
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+@pytest.mark.parametrize(
+    "language,name,on", [("en", "Add account", "Supported"), ("zh-Hans", "添加账号", "支持")]
+)
+async def test_ha_loads_account_entry_and_capability_translations(hass, language, name, on):
+    result = await async_get_translations(hass, language, "config", {DOMAIN})
+    assert result["component.ninebot.config.initiate_flow.user"] == name
+    result = await async_get_translations(hass, language, "entity", {DOMAIN})
+    assert result["component.ninebot.entity.binary_sensor.cycle_support.state.on"] == on

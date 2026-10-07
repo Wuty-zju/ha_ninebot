@@ -2,15 +2,21 @@
 
 from homeassistant.components.device_tracker import SourceType, TrackerEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_COORDINATES
+from .const import CONF_COORDINATES, DEFAULT_COORDINATES
 from .entity import NinebotEntity, async_setup_dynamic
 from .runtime import NinebotConfigEntry
 
 
 class NinebotTracker(NinebotEntity, TrackerEntity):
     _attr_source_type = SourceType.GPS
+
+    @property
+    def entity_category(self) -> EntityCategory | None:
+        """Override the tracker's diagnostic default for its primary function."""
+        return None
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "location", "device_tracker", "status")
@@ -19,7 +25,7 @@ class NinebotTracker(NinebotEntity, TrackerEntity):
     def available(self) -> bool:
         return (
             super().available
-            and bool(self.entry.options.get(CONF_COORDINATES))
+            and self.entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES) is True
             and self.latitude is not None
             and self.longitude is not None
         )
@@ -28,7 +34,8 @@ class NinebotTracker(NinebotEntity, TrackerEntity):
     def latitude(self) -> float | None:
         return (
             self.snapshot.status.latitude
-            if self.snapshot and self.entry.options.get(CONF_COORDINATES)
+            if self.snapshot
+            and self.entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES) is True
             else None
         )
 
@@ -36,7 +43,8 @@ class NinebotTracker(NinebotEntity, TrackerEntity):
     def longitude(self) -> float | None:
         return (
             self.snapshot.status.longitude
-            if self.snapshot and self.entry.options.get(CONF_COORDINATES)
+            if self.snapshot
+            and self.entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES) is True
             else None
         )
 

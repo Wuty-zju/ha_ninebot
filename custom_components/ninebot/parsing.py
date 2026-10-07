@@ -2,12 +2,26 @@
 
 import math
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from .exceptions import ErrorKind, NinebotError
 
 type JsonObject = dict[str, Any]
 type JsonScalar = str | int | float | bool | None
+
+
+def numeric_precision(raw: JsonObject, keys: tuple[str, ...]) -> tuple[tuple[str, int], ...]:
+    """Preserve finite decimal representation scale, not physical accuracy."""
+    result = []
+    for key in keys:
+        value = raw.get(key)
+        if number(value) is None:
+            continue
+        exponent = Decimal(str(value)).as_tuple().exponent
+        if isinstance(exponent, int) and -12 <= exponent <= 12:
+            result.append((key, max(0, -exponent)))
+    return tuple(result)
 
 
 def raw_scalar(value: object) -> JsonScalar:

@@ -11,7 +11,7 @@ from .models import Battery, BatteryInfo, LastRide, TravelMonth, VehicleProfile,
 from .month_summary import summarize_month
 from .observations import scalar_observations
 from .parsing import boolean as boolean
-from .parsing import integer, raw_scalar
+from .parsing import integer, numeric_precision, raw_scalar
 from .parsing import number as number
 from .parsing import payload as payload
 from .parsing import previous_month as previous_month
@@ -82,6 +82,10 @@ def status(raw: object, *, expected_sn: str | None = None) -> VehicleStatus:
         latitude=lat,
         longitude=lon,
         observations=scalar_observations(item, "status"),
+        precision=numeric_precision(
+            item,
+            ("dump_energy", "precise_estimate_mileage", "estimate_mileage", "ai_estimate_mileage"),
+        ),
     )
 
 
@@ -135,13 +139,27 @@ def batteries(raw: object) -> BatteryInfo:
                 raw_scalar(value.get("bms_cycle")),
                 raw_scalar(value.get("score")),
                 raw_scalar(value.get("electricity")),
+                numeric_precision(value, ("bms_volt", "bat_temp", "bms_cycle", "score")),
             )
         )
     return BatteryInfo(
         tuple(result),
         number(item.get("charging_power"), 0, 100000),
         scalar_observations(item, "battery"),
+        integer(item["battery_main"].get("electricity"), 0, 100)
+        if isinstance(item.get("battery_main"), dict)
+        else None,
+        battery_type(item.get("battery_type")),
+        numeric_precision(item, ("charging_power",)),
     )
+
+
+def battery_type(raw: object) -> str | None:
+    """Maintainer-confirmed finite enum; unfamiliar codes are not lithium."""
+    code = integer(raw, 0, 255)
+    if code is None:
+        return None
+    return {1: "lithium", 2: "lead_acid"}.get(code, "unrecognized")
 
 
 def month_at(now: datetime) -> str:
@@ -182,4 +200,5 @@ def travel(raw: object, query_month: str) -> TravelMonth:
         integer(item.get("times")),
         number(item.get("duration"), 0, 2678400),
         summarize_month(item, query_month, rides),
+        numeric_precision(item, ("total_mileages", "ec", "duration", "times")),
     )

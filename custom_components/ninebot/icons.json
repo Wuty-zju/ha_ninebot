@@ -59,7 +59,7 @@
         "default": "mdi:lock-outline"
       },
       "acc_raw": {
-        "default": "mdi:information-outline"
+        "default": "mdi:key-wireless"
       },
       "service_expired_raw": {
         "default": "mdi:calendar-alert"
@@ -111,6 +111,12 @@
       },
       "last_energy_intensity": {
         "default": "mdi:leaf"
+      },
+      "emergency_battery": {
+        "default": "mdi:battery-heart-variant"
+      },
+      "main_battery_type": {
+        "default": "mdi:car-battery"
       }
     },
     "event": {
@@ -145,10 +151,10 @@
     },
     "binary_sensor": {
       "cycle_support": {
-        "default": "mdi:check-circle-outline"
+        "default": "mdi:counter"
       },
       "battery_find_my_support": {
-        "default": "mdi:map-marker"
+        "default": "mdi:apple"
       }
     }
   },

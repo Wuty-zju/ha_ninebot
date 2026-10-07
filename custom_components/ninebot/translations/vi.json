@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "Thêm tài khoản",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Tài khoản",
           "password": "Mật khẩu",
           "debug_mode": "Chế độ gỡ lỗi",
           "enable_estimation": "Bật thông số định mức",
-          "enable_coordinates": "Hiện vị trí chính xác",
+          "enable_coordinates": "Hiển thị vị trí xe",
           "login_method": "Cách đăng nhập"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
           "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,21 @@
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
       "storage_error": "Local session storage failed. Check storage and try again."
-    }
+    },
+    "initiate_flow": {
+      "user": "Thêm tài khoản"
+    },
+    "entry_type": "Tài khoản"
   },
   "options": {
     "step": {
       "init": {
         "title": "Tùy chọn",
-        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
         "data": {
           "poll_interval": "Khoảng cập nhật (giây)",
           "enable_estimation": "Bật thông số định mức",
-          "enable_coordinates": "Hiện vị trí chính xác",
+          "enable_coordinates": "Hiển thị vị trí xe",
           "enable_controls": "Bật điều khiển xe",
           "control_vehicles": "Xe được phép điều khiển",
           "debug_mode": "Chế độ gỡ lỗi",
@@ -98,7 +103,8 @@
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "model_vehicle": {
@@ -306,7 +312,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "Trạng thái lắp pin",
+        "name": "Có pin",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -318,13 +324,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "present": "Có",
+          "absent": "Không có",
+          "unrecognized": "Không nhận dạng"
         }
       },
       "seat_lock_raw": {
-        "name": "Khóa cốp yên",
+        "name": "Khóa yên",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -336,13 +348,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "locked": "Đã khóa",
+          "unlocked": "Đã mở khóa",
+          "unrecognized": "Không nhận dạng"
         }
       },
       "acc_raw": {
-        "name": "Trạng thái ACC",
+        "name": "Nguồn điện (ACC)",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -354,13 +372,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "on": "Bật",
+          "off": "Tắt",
+          "unrecognized": "Không nhận dạng"
         }
       },
       "service_expired_raw": {
-        "name": "Trạng thái dịch vụ",
+        "name": "Dịch vụ thông minh hết hạn",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -372,9 +396,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "active": "Còn hiệu lực",
+          "expired": "Hết hạn",
+          "unrecognized": "Không nhận dạng"
         }
       },
       "health_score": {
@@ -435,6 +465,17 @@
       },
       "last_energy_intensity": {
         "name": "Chuyến gần nhất: Năng lượng tiêu thụ trên quãng đường"
+      },
+      "emergency_battery": {
+        "name": "Pin liên lạc khẩn cấp"
+      },
+      "main_battery_type": {
+        "name": "Loại pin chính",
+        "state": {
+          "lithium": "Lithium",
+          "lead_acid": "Chì axit",
+          "unrecognized": "Không nhận dạng"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +489,18 @@
         "name": "Đã mở khóa"
       },
       "cycle_support": {
-        "name": "Hỗ trợ đếm chu kỳ"
+        "name": "Hỗ trợ đếm chu kỳ",
+        "state": {
+          "on": "Có hỗ trợ",
+          "off": "Không hỗ trợ"
+        }
       },
       "battery_find_my_support": {
-        "name": "Hỗ trợ tìm pin"
+        "name": "Hỗ trợ Apple Find My",
+        "state": {
+          "on": "Có hỗ trợ",
+          "off": "Không hỗ trợ"
+        }
       }
     },
     "button": {

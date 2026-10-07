@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "Додати обліковий запис",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Обліковий запис",
           "password": "Пароль",
           "debug_mode": "Режим налагодження",
           "enable_estimation": "Увімкнути номінальні параметри",
-          "enable_coordinates": "Показувати точне місце",
+          "enable_coordinates": "Показувати розташування транспорту",
           "login_method": "Спосіб входу"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
           "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,21 @@
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
       "storage_error": "Local session storage failed. Check storage and try again."
-    }
+    },
+    "initiate_flow": {
+      "user": "Додати обліковий запис"
+    },
+    "entry_type": "Обліковий запис"
   },
   "options": {
     "step": {
       "init": {
         "title": "Налаштування",
-        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
         "data": {
           "poll_interval": "Інтервал оновлення (секунди)",
           "enable_estimation": "Увімкнути номінальні параметри",
-          "enable_coordinates": "Показувати точне місце",
+          "enable_coordinates": "Показувати розташування транспорту",
           "enable_controls": "Увімкнути керування",
           "control_vehicles": "Дозволений транспорт",
           "debug_mode": "Режим налагодження",
@@ -98,7 +103,8 @@
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "model_vehicle": {
@@ -306,7 +312,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "Наявність батареї",
+        "name": "Батарея встановлена",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -318,13 +324,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "present": "Є",
+          "absent": "Немає",
+          "unrecognized": "Не розпізнано"
         }
       },
       "seat_lock_raw": {
-        "name": "Замок підсидільного відсіку",
+        "name": "Замок відсіку під сидінням",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -336,13 +348,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "locked": "Заблоковано",
+          "unlocked": "Розблоковано",
+          "unrecognized": "Не розпізнано"
         }
       },
       "acc_raw": {
-        "name": "Стан ACC",
+        "name": "Запалювання (ACC)",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -354,13 +372,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "on": "Увімкнено",
+          "off": "Вимкнено",
+          "unrecognized": "Не розпізнано"
         }
       },
       "service_expired_raw": {
-        "name": "Стан сервісу",
+        "name": "Термін розумного сервісу минув",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -372,9 +396,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "active": "Чинний",
+          "expired": "Минув",
+          "unrecognized": "Не розпізнано"
         }
       },
       "health_score": {
@@ -435,6 +465,17 @@
       },
       "last_energy_intensity": {
         "name": "Остання поїздка: Витрата енергії на відстань"
+      },
+      "emergency_battery": {
+        "name": "Батарея аварійного зв’язку"
+      },
+      "main_battery_type": {
+        "name": "Тип основної батареї",
+        "state": {
+          "lithium": "Літієва",
+          "lead_acid": "Свинцево-кислотна",
+          "unrecognized": "Не розпізнано"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +489,18 @@
         "name": "Розблоковано"
       },
       "cycle_support": {
-        "name": "Підтримка лічильника циклів"
+        "name": "Підтримка лічильника циклів",
+        "state": {
+          "on": "Підтримується",
+          "off": "Не підтримується"
+        }
       },
       "battery_find_my_support": {
-        "name": "Підтримка пошуку батареї"
+        "name": "Підтримка Apple Локатор",
+        "state": {
+          "on": "Підтримується",
+          "off": "Не підтримується"
+        }
       }
     },
     "button": {

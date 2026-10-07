@@ -2,20 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ninebot",
+        "title": "Account toevoegen",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Account",
           "password": "Wachtwoord",
           "debug_mode": "Debugmodus",
           "enable_estimation": "Nominale parameters inschakelen",
-          "enable_coordinates": "Exacte locatie tonen",
+          "enable_coordinates": "Voertuiglocatie tonen",
           "login_method": "Inlogmethode"
         },
         "data_description": {
           "debug_mode": "Show a bounded diagnostic view without additional requests.",
           "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
+          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "reauth_confirm": {
@@ -80,17 +81,21 @@
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
       "storage_error": "Local session storage failed. Check storage and try again."
-    }
+    },
+    "initiate_flow": {
+      "user": "Account toevoegen"
+    },
+    "entry_type": "Account"
   },
   "options": {
     "step": {
       "init": {
         "title": "Opties",
-        "description": "Rated voltage and capacity are optional specifications, not measured energy. Coordinates and vehicle controls require explicit opt-in; a cloud-accepted command does not confirm a physical action.",
+        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
         "data": {
           "poll_interval": "Statusinterval (seconden)",
           "enable_estimation": "Nominale parameters inschakelen",
-          "enable_coordinates": "Exacte locatie tonen",
+          "enable_coordinates": "Voertuiglocatie tonen",
           "enable_controls": "Voertuigbediening inschakelen",
           "control_vehicles": "Toegestane voertuigen",
           "debug_mode": "Debugmodus",
@@ -98,7 +103,8 @@
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls."
+          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
         }
       },
       "model_vehicle": {
@@ -306,7 +312,7 @@
         }
       },
       "battery_present_raw": {
-        "name": "Batterijaanwezigheid",
+        "name": "Batterij aanwezig",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -318,9 +324,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "present": "Aanwezig",
+          "absent": "Afwezig",
+          "unrecognized": "Niet herkend"
         }
       },
       "seat_lock_raw": {
@@ -336,13 +348,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "locked": "Vergrendeld",
+          "unlocked": "Ontgrendeld",
+          "unrecognized": "Niet herkend"
         }
       },
       "acc_raw": {
-        "name": "ACC-status",
+        "name": "Contact (ACC)",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -354,13 +372,19 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "on": "Aan",
+          "off": "Uit",
+          "unrecognized": "Niet herkend"
         }
       },
       "service_expired_raw": {
-        "name": "Servicestatus",
+        "name": "Slimme dienst verlopen",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -372,9 +396,15 @@
             "name": "Interpretation",
             "state": {
               "unverified": "Unverified",
-              "not_reported": "Not reported"
+              "not_reported": "Not reported",
+              "interpreted": "Interpreted"
             }
           }
+        },
+        "state": {
+          "active": "Actief",
+          "expired": "Verlopen",
+          "unrecognized": "Niet herkend"
         }
       },
       "health_score": {
@@ -435,6 +465,17 @@
       },
       "last_energy_intensity": {
         "name": "Laatste rit: Energieverbruik per afstand"
+      },
+      "emergency_battery": {
+        "name": "Noodcommunicatiebatterij"
+      },
+      "main_battery_type": {
+        "name": "Type hoofdbatterij",
+        "state": {
+          "lithium": "Lithium",
+          "lead_acid": "Loodzuur",
+          "unrecognized": "Niet herkend"
+        }
       }
     },
     "binary_sensor": {
@@ -448,10 +489,18 @@
         "name": "Ontgrendeld"
       },
       "cycle_support": {
-        "name": "Cyclustelling ondersteund"
+        "name": "Ondersteuning cyclustelling",
+        "state": {
+          "on": "Ondersteund",
+          "off": "Niet ondersteund"
+        }
       },
       "battery_find_my_support": {
-        "name": "Batterij zoeken ondersteund"
+        "name": "Ondersteuning Apple Zoek mijn",
+        "state": {
+          "on": "Ondersteund",
+          "off": "Niet ondersteund"
+        }
       }
     },
     "button": {
