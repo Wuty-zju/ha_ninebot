@@ -34,12 +34,6 @@ DESCRIPTIONS = (
         device_class=BinarySensorDeviceClass.POWER,
     ),
     Description(
-        key="unlocked",
-        field="locked",
-        aliases=("vehicle_lock",),
-        device_class=BinarySensorDeviceClass.LOCK,
-    ),
-    Description(
         key="cycle_support",
         field="have_bms_cycle_support",
         group="battery",

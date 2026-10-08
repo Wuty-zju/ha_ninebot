@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Stilstand en P vereist"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Stilstand en P vereist"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Stilstand en P vereist"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Op afstand ontgrendelen",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Stilstand en P vereist"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Op afstand vergrendelen",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Stilstand en P vereist"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Aanwezig",
           "absent": "Afwezig",
-          "unrecognized": "Niet herkend"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Zadelvakslot",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Vergrendeld",
-          "unlocked": "Ontgrendeld",
           "unrecognized": "Niet herkend"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Hoofdvoeding"
       },
-      "unlocked": {
-        "name": "Ontgrendeld"
-      },
       "cycle_support": {
         "name": "Ondersteuning cyclustelling",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Zadelvak openen"
       },
       "engine_start": {
-        "name": "Op afstand starten"
+        "name": "Op afstand ontgrendelen"
       },
       "engine_stop": {
-        "name": "Op afstand stoppen"
+        "name": "Op afstand vergrendelen"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Voertuigslot",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Op afstand sluiten",
+            "state": {
+              "manual": "Alleen handmatig sluiten",
+              "guarded": "Stilstand en P vereist"
+            }
+          },
+          "last_operation": {
+            "name": "Laatste actie"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Zadelvakslot",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Op afstand sluiten",
+            "state": {
+              "manual": "Alleen handmatig sluiten",
+              "guarded": "Stilstand en P vereist"
+            }
+          },
+          "last_operation": {
+            "name": "Laatste actie"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Er loopt een voertuigactie of de bedieningslimiet van het account is bereikt. Probeer het opnieuw na afloop."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Stilstand en P niet bevestigd. Sluitopdracht niet verzonden."
+    },
+    "seat_lock_manual": {
+      "message": "Het zadelvak kan alleen handmatig worden gesloten."
+    },
+    "control_target_not_observed": {
+      "message": "Opdracht geaccepteerd, gewenste slotstand niet waargenomen. Controleer het voertuig voor een nieuwe poging."
+    },
+    "control_not_sent": {
+      "message": "Opdracht niet verzonden: communicatie is tijdelijk niet beschikbaar. Probeer het later opnieuw."
     }
   },
   "issues": {

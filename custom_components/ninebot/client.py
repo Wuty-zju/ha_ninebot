@@ -272,7 +272,9 @@ class NinecliClient:
                 await self._stop()
             raise
 
-    async def _request(self, method: str, path: str, body: dict[str, str] | None = None) -> Any:
+    async def _request(
+        self, method: str, path: str, body: dict[str, str] | None = None, *, retry: bool = True
+    ) -> Any:
         async with self._operation():
             loop = asyncio.get_running_loop()
             deadline = loop.time() + self._timeout
@@ -284,6 +286,7 @@ class NinecliClient:
                         except NinebotError as err:
                             if (
                                 method != "GET"
+                                or not retry
                                 or attempt
                                 or not err.retryable
                                 or deadline - loop.time() < 0.1
@@ -409,6 +412,10 @@ class NinecliClient:
 
     async def async_get_status(self, sn: str) -> Any:
         return await self._request("GET", f"/vehicles/{quote(sn, safe='')}/status")
+
+    async def async_get_status_once(self, sn: str) -> Any:
+        """The bounded control-confirmation budget owns retries on this path."""
+        return await self._request("GET", f"/vehicles/{quote(sn, safe='')}/status", retry=False)
 
     async def async_get_battery(self, sn: str) -> Any:
         return await self._request("GET", f"/vehicles/{quote(sn, safe='')}/battery")

@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "रुकना और P आवश्यक"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "रुकना और P आवश्यक"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "रुकना और P आवश्यक"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "दूर से अनलॉक करें",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "रुकना और P आवश्यक"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "दूर से लॉक करें",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "रुकना और P आवश्यक"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "मौजूद",
           "absent": "अनुपस्थित",
-          "unrecognized": "पहचाना नहीं गया"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "सीट लॉक",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "लॉक",
-          "unlocked": "अनलॉक",
           "unrecognized": "पहचाना नहीं गया"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "मुख्य पावर"
       },
-      "unlocked": {
-        "name": "अनलॉक"
-      },
       "cycle_support": {
         "name": "चक्र गणना समर्थन",
         "state": {
@@ -513,10 +491,10 @@
         "name": "सीट डिब्बा खोलें"
       },
       "engine_start": {
-        "name": "दूर से चालू करें"
+        "name": "दूर से अनलॉक करें"
       },
       "engine_stop": {
-        "name": "दूर से बंद करें"
+        "name": "दूर से लॉक करें"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "वाहन का लॉक",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "दूरस्थ लॉक",
+            "state": {
+              "manual": "केवल हाथ से लॉक करें",
+              "guarded": "रुकना और P आवश्यक"
+            }
+          },
+          "last_operation": {
+            "name": "पिछली कार्रवाई"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "सीट डिब्बे का लॉक",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "दूरस्थ लॉक",
+            "state": {
+              "manual": "केवल हाथ से लॉक करें",
+              "guarded": "रुकना और P आवश्यक"
+            }
+          },
+          "last_operation": {
+            "name": "पिछली कार्रवाई"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "वाहन की एक कार्रवाई चल रही है या खाते की नियंत्रण सीमा पूरी हो गई है। समाप्त होने के बाद फिर प्रयास करें।"
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "रुकने और P की पुष्टि नहीं हुई। लॉक आदेश नहीं भेजा गया।"
+    },
+    "seat_lock_manual": {
+      "message": "सीट डिब्बा केवल हाथ से लॉक किया जा सकता है।"
+    },
+    "control_target_not_observed": {
+      "message": "आदेश स्वीकार हुआ लेकिन लक्ष्य लॉक स्थिति नहीं दिखी। दोबारा प्रयास करने से पहले वाहन देखें।"
+    },
+    "control_not_sent": {
+      "message": "आदेश नहीं भेजा गया: संचार अस्थायी रूप से उपलब्ध नहीं है। बाद में फिर प्रयास करें।"
     }
   },
   "issues": {

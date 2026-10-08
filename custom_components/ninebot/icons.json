@@ -55,9 +55,6 @@
       "battery_present_raw": {
         "default": "mdi:battery-check"
       },
-      "seat_lock_raw": {
-        "default": "mdi:lock-outline"
-      },
       "acc_raw": {
         "default": "mdi:key-wireless"
       },
@@ -155,6 +152,26 @@
       },
       "battery_find_my_support": {
         "default": "mdi:apple"
+      }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "default": "mdi:lock-outline",
+        "state": {
+          "locked": "mdi:lock",
+          "unlocked": "mdi:lock-open-outline",
+          "locking": "mdi:lock-clock",
+          "unlocking": "mdi:lock-clock"
+        }
+      },
+      "seat_lock": {
+        "default": "mdi:lock-outline",
+        "state": {
+          "locked": "mdi:lock",
+          "unlocked": "mdi:lock-open-outline",
+          "locking": "mdi:lock-clock",
+          "unlocking": "mdi:lock-clock"
+        }
       }
     }
   },

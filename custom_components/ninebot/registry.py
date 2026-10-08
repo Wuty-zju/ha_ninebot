@@ -90,8 +90,6 @@ def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]
                 "charging",
                 "power",
                 "main_power",
-                "unlocked",
-                "vehicle_lock",
                 "cycle_support",
                 "battery_find_my_support",
             }
@@ -100,6 +98,7 @@ def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]
         "device_tracker": frozenset({"location"}),
         "event": frozenset({"ride"}),
         "button": frozenset({"refresh", "info", *(key for key, _ in CONTROL_BUTTONS)}),
+        "lock": frozenset({"vehicle_lock", "seat_lock"}),
     }
 
 
@@ -203,6 +202,7 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntr
     if identities is None:
         return
     candidates = []
+    conversions = []
     aliases = {
         "main_power": "power",
         "vehicle_lock": "unlocked",
@@ -212,9 +212,22 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntr
     for row, sn in _owned_entities(hass, entry):
         if sn not in entry.runtime_data.coordinator.data or sn not in identities.seeds:
             continue
+        old_keys = (
+            ("unlocked", "vehicle_lock")
+            if row.domain == "binary_sensor"
+            else ("seat_lock_raw",)
+            if row.domain == "sensor"
+            else ()
+        )
+        if any(
+            row.unique_id in {*legacy_uids(sn, key), scoped_uid(entry, sn, key)} for key in old_keys
+        ):
+            conversions.append((row, sn, "seat_lock" if row.domain == "sensor" else "vehicle_lock"))
+            continue
         keys = visible_keys(entry, sn).get(row.domain, frozenset())
         for key in keys:
             if row.unique_id in {*legacy_uids(sn, key), scoped_uid(entry, sn, key)}:
                 candidates.append((row, sn, aliases.get(key, key)))
                 break
     await identities.async_migrate(candidates)
+    await identities.async_convert_locks(conversions)

@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "停止とPが必要"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "停止とPが必要"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "停止とPが必要"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "遠隔解錠",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "停止とPが必要"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "遠隔施錠",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "停止とPが必要"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "あり",
           "absent": "なし",
-          "unrecognized": "未識別"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "シートロック",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "施錠",
-          "unlocked": "解錠",
           "unrecognized": "未識別"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "主電源"
       },
-      "unlocked": {
-        "name": "解錠済み"
-      },
       "cycle_support": {
         "name": "サイクル数対応",
         "state": {
@@ -513,10 +491,10 @@
         "name": "シート収納を開く"
       },
       "engine_start": {
-        "name": "リモート起動"
+        "name": "遠隔解錠"
       },
       "engine_stop": {
-        "name": "リモート停止"
+        "name": "遠隔施錠"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "車両ロック",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "遠隔施錠",
+            "state": {
+              "manual": "施錠は手動のみ",
+              "guarded": "停止とPが必要"
+            }
+          },
+          "last_operation": {
+            "name": "直近の操作"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "シート収納ロック",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "遠隔施錠",
+            "state": {
+              "manual": "施錠は手動のみ",
+              "guarded": "停止とPが必要"
+            }
+          },
+          "last_operation": {
+            "name": "直近の操作"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "車両操作が進行中か、アカウントの操作上限に達しています。終了後に再試行してください。"
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "停止とPを確認できないため、施錠命令を送信しませんでした。"
+    },
+    "seat_lock_manual": {
+      "message": "シート収納は手動でのみ施錠できます。"
+    },
+    "control_target_not_observed": {
+      "message": "命令は受理されましたが、指定したロック状態を確認できません。再操作前に車両を確認してください。"
+    },
+    "control_not_sent": {
+      "message": "コマンドは送信されていません。通信が一時的に利用できません。後で再試行してください。"
     }
   },
   "issues": {

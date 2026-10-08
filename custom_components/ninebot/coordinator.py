@@ -31,17 +31,27 @@ from .const import (
     DOMAIN,
     VEHICLE_INTERVAL,
 )
-from .control_results import CommandOutcome, ControlResult, ControlResults, ReadbackOutcome
+from .control_results import (
+    CommandOutcome,
+    Confirmation,
+    ControlResult,
+    ControlResults,
+    ReadbackOutcome,
+)
+from .control_safety import LOCK_TARGETS
 from .demand import Group, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
 from .models import Freshness, TravelMonth, VehicleSnapshot
+from .parsing import integer
 from .query_broker import Priority, QueryBroker, QueryKey
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
 from .ride_lifecycle import RideLifecycle
 from .statistics_store import TravelStatisticsStore
 
 LOGGER = logging.getLogger(__name__)
+CONFIRMATION_DELAYS = (0, 2, 5)
+CONFIRMATION_TIMEOUT = 10
 
 
 def travel_record(record: RawRecord, month: str) -> TravelMonth:
@@ -79,7 +89,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             always_update=True,
         )
         self.data = {}
-        self._mutex = asyncio.Lock()  # Command dispatch only; polling/history use the broker.
+        # Only mutual exclusion is shared between accounts, never observations.
+        self._control_leases: set[str] = hass.data.setdefault(f"{DOMAIN}_control_leases", set())
+        self.pending_controls: dict[str, str] = {}
         gate = hass.data.setdefault(f"{DOMAIN}_wire_gate", asyncio.Semaphore(2))
         self.broker = QueryBroker(
             gate, lambda: dt_util.utcnow(), on_auth_failure=self._invalidate_auth
@@ -407,19 +419,26 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         force: bool = False,
         include_last_ride: bool = True,
         include_previous_month: bool = False,
+        single_attempt: bool = False,
     ) -> None:
         endpoint = {
             "status": Endpoint.STATUS,
             "battery": Endpoint.BATTERY,
             "travel": Endpoint.TRAVEL,
         }[group]
-        scope = adapters.month_at(dt_util.utcnow()) if group == "travel" else ""
+        scope = (
+            adapters.month_at(dt_util.utcnow())
+            if group == "travel"
+            else "confirmation"
+            if single_attempt
+            else ""
+        )
         key = self._key(sn, endpoint, scope, self._barriers.get(sn, 0) if group == "status" else 0)
         await self._shared(
             self._groups,
             key,
             lambda: self._group_update(
-                sn, group, key, force, include_last_ride, include_previous_month
+                sn, group, key, force, include_last_ride, include_previous_month, single_attempt
             ),
         )
 
@@ -431,6 +450,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         force: bool,
         include_last_ride: bool,
         include_previous_month: bool,
+        single_attempt: bool,
     ) -> None:
         now = dt_util.utcnow()
         stamp = now.timestamp()
@@ -445,7 +465,14 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         try:
             if group == "status":
                 result = await self._read(
-                    key, partial(self.backend.async_status, sn), Priority.STATUS
+                    key,
+                    partial(
+                        self.backend.async_status_once
+                        if single_attempt
+                        else self.backend.async_status,
+                        sn,
+                    ),
+                    Priority.STATUS,
                 )
                 request_revision = result.request_revision
                 # Validate explicit identity before retaining any new raw data.
@@ -912,6 +939,14 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     snapshot is not None and snapshot.status_freshness.error is None,
                 ),
                 ("transport_unsupported", action in self.backend.control_actions),
+                (
+                    "parking_unverified",
+                    action != "engine/stop"
+                    or (
+                        snapshot is not None
+                        and snapshot.status.safety.permits_lock(dt_util.utcnow())
+                    ),
+                ),
             ),
         )
 
@@ -933,16 +968,20 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         return error
 
     async def async_control(self, sn: str, action: str) -> None:
-        if self._control_pending >= 4:
+        if self._control_pending >= 4 or sn in self._control_leases:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
         self._control_pending += 1
+        self._control_leases.add(sn)
         task = asyncio.current_task()
         if task:
             self._active.add(task)
         try:
             await self._control(sn, action)
         finally:
+            self.pending_controls.pop(sn, None)
+            self._control_leases.discard(sn)
             self._control_pending -= 1
+            self.async_update_listeners()
             if task:
                 self._active.discard(task)
 
@@ -955,41 +994,78 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             or sn not in self.data
             or not self.data[sn].present
         ):
-            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="controls_disabled")
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="parking_unverified"
+                if "parking_unverified" in self.control_decision(sn, action).blockers
+                else "controls_disabled",
+            )
         result = None
         try:
             command_error = None
-            async with self._mutex:
-                # Permission/freshness may change while waiting in the queue.
-                if not self.controls_enabled(sn, action):
-                    raise HomeAssistantError(
-                        translation_domain=DOMAIN, translation_key="controls_disabled"
-                    )
-                result = self.control_results.start(sn, action, dt_util.utcnow())
-                try:
-                    await self.broker.async_command(
-                        sn,
-                        partial(self.backend.async_control, sn, action),
-                        lambda: self.controls_enabled(sn, action),
-                    )
-                    result.outcome = CommandOutcome.ACCEPTED
-                except NinebotAuthError:
-                    result.outcome = CommandOutcome.AUTH_REQUIRED
-                    result.error = ErrorKind.AUTH
-                    result.readback = ReadbackOutcome.SKIPPED
-                    self._manual_auth_failure()
-                    raise HomeAssistantError(
-                        translation_domain=DOMAIN, translation_key="control_uncertain"
-                    ) from None
-                except NinebotError as err:
-                    result.outcome = CommandOutcome.UNCERTAIN
-                    result.error = err.kind
-                    command_error = err
-                finally:
-                    # A command attempt creates a new read barrier even when its
-                    # physical outcome is uncertain. Never reuse an older GET.
-                    self._barriers[sn] = self._barriers.get(sn, 0) + 1
-            refreshed = await self._control_readback(sn, result)
+            owner = self._key(sn, Endpoint.STATUS)
+            result = self.control_results.start(sn, action, dt_util.utcnow())
+            target = LOCK_TARGETS.get(action)
+            if target:
+                result.target_locked = target[1]
+                result.observed_locked = self.lock_state(sn, target[0])
+                stamp = self.data[sn].status_freshness.succeeded_at
+                if (
+                    stamp is not None
+                    and 0 <= (dt_util.utcnow() - stamp).total_seconds() <= 5
+                    and result.observed_locked is target[1]
+                ):
+                    result.outcome = CommandOutcome.ALREADY_IN_TARGET
+                    result.confirmation = Confirmation.ALREADY_IN_TARGET
+                    return
+                self.pending_controls[sn] = action
+                result.confirmation = Confirmation.PENDING
+                self.async_update_listeners()
+            command_revision = 0
+            try:
+                receipt = await self.broker.async_command(
+                    sn,
+                    partial(self.backend.async_control, sn, action),
+                    lambda: self._owns(owner) and self.controls_enabled(sn, action),
+                )
+                command_revision = receipt.revision
+                result.outcome = CommandOutcome.ACCEPTED
+            except NinebotAuthError:
+                result.outcome = CommandOutcome.AUTH_REQUIRED
+                result.error = ErrorKind.AUTH
+                result.readback = ReadbackOutcome.SKIPPED
+                result.confirmation = Confirmation.UNKNOWN if target else Confirmation.NOT_REQUESTED
+                self._manual_auth_failure()
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN, translation_key="control_uncertain"
+                ) from None
+            except NinebotError as err:
+                result.outcome = CommandOutcome.UNCERTAIN
+                result.error = err.kind
+                command_revision = err.request_revision
+                command_error = err
+            finally:
+                self._barriers[sn] = self._barriers.get(sn, 0) + 1
+            if command_error is not None and not command_revision:
+                # Broker admission/guard/cooldown rejected before the operation.
+                # No wire invocation occurred, so do not reconcile or imply it did.
+                result.outcome = CommandOutcome.REJECTED
+                result.readback = ReadbackOutcome.SKIPPED
+                result.confirmation = Confirmation.NOT_REQUESTED
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="busy"
+                    if command_error.kind is ErrorKind.BUSY
+                    else "parking_unverified"
+                    if "parking_unverified" in self.control_decision(sn, action).blockers
+                    else "controls_disabled"
+                    if command_error.kind is ErrorKind.CLOSED
+                    else "control_not_sent",
+                ) from None
+            if target:
+                refreshed = await self._confirm_lock(sn, result, target[0], owner, command_revision)
+            else:
+                refreshed = await self._control_readback(sn, result)
             if command_error is not None:
                 # A successful GET does not turn an uncertain POST into success.
                 raise HomeAssistantError(
@@ -997,7 +1073,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 ) from command_error
             if not refreshed:
                 raise HomeAssistantError(
-                    translation_domain=DOMAIN, translation_key="control_readback_failed"
+                    translation_domain=DOMAIN,
+                    translation_key="control_target_not_observed"
+                    if result.confirmation is Confirmation.TARGET_NOT_OBSERVED
+                    else "control_readback_failed",
                 ) from None
         except asyncio.CancelledError:
             if result is not None:
@@ -1006,10 +1085,96 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     result.readback = ReadbackOutcome.SKIPPED
                 elif result.readback is ReadbackOutcome.PENDING:
                     result.readback = ReadbackOutcome.CANCELLED
+                if result.confirmation is Confirmation.PENDING:
+                    result.confirmation = Confirmation.CANCELLED
             raise
         finally:
             if result is not None:
                 result.finished_at = dt_util.utcnow()
+
+    def lock_state(self, sn: str, key: str) -> bool | None:
+        snapshot = self.data.get(sn)
+        if snapshot is None:
+            return None
+        if key == "vehicle_lock":
+            return snapshot.status.locked
+        if key != "seat_lock":
+            return None
+        value = integer(snapshot.status.observations.get("barrel_lock_status"), 0, 1)
+        return value == 0 if value is not None else None
+
+    async def _confirm_lock(
+        self,
+        sn: str,
+        result: ControlResult,
+        key: str,
+        owner: QueryKey,
+        command_revision: int,
+    ) -> bool:
+        """Three single-attempt reads, one absolute deadline, no optimistic state."""
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        result.readback = ReadbackOutcome.PENDING
+        try:
+            async with asyncio.timeout_at(started + CONFIRMATION_TIMEOUT):
+                for offset in CONFIRMATION_DELAYS:
+                    if not self._owns(owner):
+                        result.readback = ReadbackOutcome.SKIPPED
+                        break
+                    await asyncio.sleep(max(0, started + offset - loop.time()))
+                    if not self._owns(owner):
+                        result.readback = ReadbackOutcome.SKIPPED
+                        break
+                    # Every attempt has its own barrier; regular polling cannot
+                    # supply an earlier or auto-retried receipt to this budget.
+                    self._barriers[sn] = self._barriers.get(sn, 0) + 1
+                    previous = self._committed.get((sn, "status"), 0)
+                    result.read_attempts += 1
+                    await self._group(sn, "status", force=True, single_attempt=True)
+                    self.async_set_updated_data(dict(self.data))
+                    self._schedule_validity_check()
+                    if not self._owns(owner):
+                        result.readback = ReadbackOutcome.SKIPPED
+                        break
+                    snapshot = self.data[sn]
+                    result.readback_error = snapshot.status_freshness.error
+                    result.readback = (
+                        ReadbackOutcome.FAILED
+                        if result.readback_error
+                        else ReadbackOutcome.REFRESHED
+                    )
+                    if not result.readback_error and self._committed.get((sn, "status"), 0) > max(
+                        previous, command_revision
+                    ):
+                        result.observed_locked = self.lock_state(sn, key)
+                        if result.observed_locked is result.target_locked:
+                            result.confirmation = (
+                                Confirmation.OBSERVED_TARGET_COMMAND_UNCERTAIN
+                                if result.outcome is CommandOutcome.UNCERTAIN
+                                else Confirmation.CONFIRMED
+                            )
+                            return True
+                    elif result.readback_error in {
+                        ErrorKind.AUTH,
+                        ErrorKind.CLOSED,
+                        ErrorKind.BUSY,
+                    }:
+                        break
+                    if self.broker.cooling_down:
+                        break
+        except NinebotAuthError:
+            self._manual_auth_failure()
+            result.readback = ReadbackOutcome.FAILED
+            result.readback_error = ErrorKind.AUTH
+        except TimeoutError:
+            result.readback = ReadbackOutcome.FAILED
+            result.readback_error = ErrorKind.CONNECTION
+        result.confirmation = (
+            Confirmation.TARGET_NOT_OBSERVED
+            if result.readback is ReadbackOutcome.REFRESHED and result.observed_locked is not None
+            else Confirmation.UNKNOWN
+        )
+        return False
 
     async def _control_readback(self, sn: str, result: ControlResult) -> bool:
         """One status reconciliation; never resend the command or mask its error."""

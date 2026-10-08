@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Cần dừng xe và P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Cần dừng xe và P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Cần dừng xe và P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Mở khóa từ xa",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Cần dừng xe và P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Khóa từ xa",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Cần dừng xe và P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Có",
           "absent": "Không có",
-          "unrecognized": "Không nhận dạng"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Khóa yên",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Đã khóa",
-          "unlocked": "Đã mở khóa",
           "unrecognized": "Không nhận dạng"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Nguồn chính"
       },
-      "unlocked": {
-        "name": "Đã mở khóa"
-      },
       "cycle_support": {
         "name": "Hỗ trợ đếm chu kỳ",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Mở cốp yên"
       },
       "engine_start": {
-        "name": "Khởi động từ xa"
+        "name": "Mở khóa từ xa"
       },
       "engine_stop": {
-        "name": "Dừng từ xa"
+        "name": "Khóa từ xa"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Khóa xe",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Khóa từ xa",
+            "state": {
+              "manual": "Chỉ khóa thủ công",
+              "guarded": "Cần dừng xe và P"
+            }
+          },
+          "last_operation": {
+            "name": "Thao tác gần nhất"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Khóa cốp yên",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Khóa từ xa",
+            "state": {
+              "manual": "Chỉ khóa thủ công",
+              "guarded": "Cần dừng xe và P"
+            }
+          },
+          "last_operation": {
+            "name": "Thao tác gần nhất"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Một thao tác xe đang diễn ra hoặc đã đạt giới hạn điều khiển của tài khoản. Hãy thử lại sau khi hoàn tất."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Chưa xác nhận xe đã dừng và ở P. Không gửi lệnh khóa."
+    },
+    "seat_lock_manual": {
+      "message": "Cốp yên chỉ có thể khóa thủ công."
+    },
+    "control_target_not_observed": {
+      "message": "Lệnh đã được chấp nhận nhưng chưa thấy trạng thái khóa yêu cầu. Kiểm tra xe trước khi thử lại."
+    },
+    "control_not_sent": {
+      "message": "Lệnh chưa được gửi: giao tiếp tạm thời không khả dụng. Hãy thử lại sau."
     }
   },
   "issues": {

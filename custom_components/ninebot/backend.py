@@ -32,6 +32,7 @@ class NinebotBackend(Protocol):
 
     async def async_vehicles(self) -> BackendResult: ...
     async def async_status(self, vehicle: str) -> BackendResult: ...
+    async def async_status_once(self, vehicle: str) -> BackendResult: ...
     async def async_battery(self, vehicle: str) -> BackendResult: ...
     async def async_travel_month(self, vehicle: str, month: str) -> BackendResult: ...
     async def async_trip_detail(self, vehicle: str, detail_id: str) -> BackendResult: ...
@@ -75,6 +76,12 @@ class NinecliBackend:
 
     async def async_status(self, vehicle: str) -> BackendResult:
         payload = await self.client.async_get_status(vehicle)
+        return BackendResult(
+            payload, Endpoint.STATUS, datetime.now(UTC), backend_version=await self._version()
+        )
+
+    async def async_status_once(self, vehicle: str) -> BackendResult:
+        payload = await self.client.async_get_status_once(vehicle)
         return BackendResult(
             payload, Endpoint.STATUS, datetime.now(UTC), backend_version=await self._version()
         )

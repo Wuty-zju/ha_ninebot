@@ -207,7 +207,8 @@
           "ready": "可发送命令",
           "unverified": "上游能力尚未确认",
           "denied": "上游已明确拒绝",
-          "unsupported": "不支持此命令"
+          "unsupported": "不支持此命令",
+          "parking_unverified": "需停车且挂P档"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
               "denied": "上游已明确拒绝",
-              "unsupported": "不支持此命令"
+              "unsupported": "不支持此命令",
+              "parking_unverified": "需停车且挂P档"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
               "denied": "上游已明确拒绝",
-              "unsupported": "不支持此命令"
+              "unsupported": "不支持此命令",
+              "parking_unverified": "需停车且挂P档"
             }
           },
           "engine_start": {
-            "name": "远程启动",
+            "name": "远程开启",
             "state": {
               "authentication_required": "需要重新认证",
               "disabled": "未启用车辆控制",
@@ -246,7 +249,8 @@
               "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
               "denied": "上游已明确拒绝",
-              "unsupported": "不支持此命令"
+              "unsupported": "不支持此命令",
+              "parking_unverified": "需停车且挂P档"
             }
           },
           "engine_stop": {
@@ -259,7 +263,8 @@
               "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
               "denied": "上游已明确拒绝",
-              "unsupported": "不支持此命令"
+              "unsupported": "不支持此命令",
+              "parking_unverified": "需停车且挂P档"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "存在",
           "absent": "不存在",
-          "unrecognized": "未识别"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "座桶锁",
-        "state_attributes": {
-          "source": {
-            "name": "来源字段"
-          },
-          "raw_type": {
-            "name": "原始类型"
-          },
-          "interpretation": {
-            "name": "解析状态",
-            "state": {
-              "unverified": "语义待验证",
-              "not_reported": "未上报",
-              "interpreted": "已解释"
-            }
-          }
-        },
-        "state": {
-          "locked": "锁定",
-          "unlocked": "解锁",
           "unrecognized": "未识别"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "主电源"
       },
-      "unlocked": {
-        "name": "已解锁"
-      },
       "cycle_support": {
         "name": "循环计数支持",
         "state": {
@@ -513,7 +491,7 @@
         "name": "打开座桶"
       },
       "engine_start": {
-        "name": "远程启动"
+        "name": "远程开启"
       },
       "engine_stop": {
         "name": "远程关闭"
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "车辆锁",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "远程上锁",
+            "state": {
+              "manual": "仅手动上锁",
+              "guarded": "需停车且挂P档"
+            }
+          },
+          "last_operation": {
+            "name": "最近操作"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "座桶锁",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "远程上锁",
+            "state": {
+              "manual": "仅手动上锁",
+              "guarded": "需停车且挂P档"
+            }
+          },
+          "last_operation": {
+            "name": "最近操作"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "命令已被接口接受，但未能读取当前状态；无法据此确认车辆动作。"
     },
     "busy": {
-      "message": "请求队列已满，请稍后重试。"
+      "message": "已有车辆操作正在进行，或账号控制数量已达上限。请等待结束后重试。"
     },
     "model_storage_invalid": {
       "message": "电池参数存储不可写，请先处理修复提示。"
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "实体身份存储不可用，请检查修复提示。"
+    },
+    "parking_unverified": {
+      "message": "无法确认车辆已停止并挂入P档，上锁命令未发送。"
+    },
+    "seat_lock_manual": {
+      "message": "座桶只能手动上锁。"
+    },
+    "control_target_not_observed": {
+      "message": "命令已被接口接受，但未观察到目标锁状态；请检查车辆后再操作。"
+    },
+    "control_not_sent": {
+      "message": "操作未发送：通信暂不可用，请稍后重试。"
     }
   },
   "issues": {

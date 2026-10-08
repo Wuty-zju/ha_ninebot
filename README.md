@@ -3,7 +3,7 @@
 [中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/README.md)
 
 An independent, unofficial Ninebot vehicle integration using pinned `ninecli==0.1.7`.
-Version 2 replaces the OpenClaw backend. The current b37 code is a prerelease;
+Version 2 replaces the OpenClaw backend. The current b38 code is a prerelease;
 vendor API availability can change. It targets the Chinese App service; other regions are unverified.
 
 ## Installation and account
@@ -26,11 +26,11 @@ See [backend/auth contract](docs/README.md).
 
 ## Current data and options
 
-- Vehicle SOC, one remaining-range sensor (precise → estimated → AI), charging, power and unlocked state.
+- Vehicle SOC, one remaining-range sensor (precise → estimated → AI), charging, power and native vehicle/seat locks.
 - BMS voltage, temperature, supported cycles, charging power in W and a health score that is **not SOH**.
 - Current-month distance, energy in Wh, ride count and total duration; last-ride distance/time/energy/max/overall average speed.
 - Emergency communication battery SOC (%), main battery type (lithium/lead acid), Apple Find My and cycle support.
-- Battery presence, seat locked/unlocked, ACC on/off and service active/expired; unfamiliar codes are unrecognized.
+- Battery presence, ACC on/off and service active/expired; unfamiliar codes are unrecognized.
 - Vehicle image, optional GPS, small ride-completed events and response actions for historical queries.
 - Optional nominal V/Ah produce one stable rated-energy specification. **SOC cumulative estimation was removed in b24.**
 
@@ -68,9 +68,13 @@ See [travel/actions/event contract and example](docs/README.md).
 
 Controls require explicit enablement, an allowed vehicle, authentication and fresh ownership/status.
 Known denials or ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization.
-Buttons send bell/buck/engine-start/engine-stop once, with bounded status reconciliation, no automatic retry
-and no optimistic physical-state update. The maintainer confirms start unlocks and stop locks the vehicle. Dedicated Lock integration and
-stopped/P-gear safety checks are pending; this release retains the existing buttons. Acceptance does not verify a physical effect.
+Native vehicle/seat Lock entities share the same guarded executor as the retained buttons.
+Start unlocks the vehicle; stop may lock only with reviewed, fresh stopped-and-P evidence. Current
+ninecli data provides no verified motion/P signal, so remote locking is refused rather than guessed
+from ACC or power. Buck releases the seat lock; seat locking is manual only.
+A command is sent at most once, followed by at most three single-attempt status reads within ten seconds.
+Target confirmation means observed cloud state, not physical verification; uncertainty is preserved.
+Same-vehicle actions are mutually exclusive across accounts. Pending state is never optimistic confirmation.
 See [control contract](docs/README.md).
 
 ## Upgrade and development
@@ -78,7 +82,10 @@ See [control contract](docs/README.md).
 Back up matching HA configuration/storage before upgrading. Meaningful IDs, user names and Recorder history
 are preserved; reviewed obsolete estimates/duplicates are removed only for confirmed exclusive ownership.
 b36 introduces canonical generated entity IDs; see the [migration guide](docs/README.md#canonical-entity-ids-and-upgrade). Custom/unverifiable IDs stay unchanged; automations using renamed or removed IDs need adjustment. Downgrading requires matching pre-upgrade storage,
-including parameter Store backups; code-only rollback does not reverse migrations.
+including identity/parameter stores and registries; code-only rollback does not reverse migrations.
+b38 converts reviewed old binary/sensor lock rows to Lock entities with the same unique ID strings and
+user choices. Old Recorder data remains under the old entity IDs; new Lock history starts separately.
+Use get_entity_migration and update on/off automation conditions to locked/unlocked.
 [Historical migration matrix](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md) records the initial v2 transition.
 
 Developers start with [product documentation](docs/README.md) and [product constraints](AGENTS.md), then the relevant code/tests/fixture provenance.

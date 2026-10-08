@@ -131,7 +131,6 @@ def remaining_charge_attributes(snapshot: VehicleSnapshot) -> dict[str, Any]:
 def raw_description(field: RawField) -> Description:
     states = {
         "acc_raw": {0: "off", 1: "on"},
-        "seat_lock_raw": {0: "locked", 1: "unlocked"},
         "battery_present_raw": {0: "absent", 1: "present"},
         "service_expired_raw": {0: "active", 1: "expired"},
     }.get(field.key)
@@ -405,7 +404,7 @@ SENSORS = (
         suggested_display_precision=1,
         value=lambda s: ride_speed(s, "average_speed_m_s"),
     ),
-    *(raw_description(field) for field in ENTITY_FIELDS),
+    *(raw_description(field) for field in ENTITY_FIELDS if field.key != "seat_lock_raw"),
 )
 
 

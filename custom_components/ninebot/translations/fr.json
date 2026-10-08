@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Arrêt et P requis"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Arrêt et P requis"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Arrêt et P requis"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Déverrouiller à distance",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Arrêt et P requis"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Verrouiller à distance",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Arrêt et P requis"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Présente",
           "absent": "Absente",
-          "unrecognized": "Non reconnu"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Verrou du coffre de selle",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Verrouillé",
-          "unlocked": "Déverrouillé",
           "unrecognized": "Non reconnu"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Alimentation principale"
       },
-      "unlocked": {
-        "name": "Déverrouillé"
-      },
       "cycle_support": {
         "name": "Prise en charge du compteur de cycles",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Ouvrir le coffre de selle"
       },
       "engine_start": {
-        "name": "Démarrage à distance"
+        "name": "Déverrouiller à distance"
       },
       "engine_stop": {
-        "name": "Arrêt à distance"
+        "name": "Verrouiller à distance"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Verrou du véhicule",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Verrouillage à distance",
+            "state": {
+              "manual": "Verrouillage manuel uniquement",
+              "guarded": "Arrêt et P requis"
+            }
+          },
+          "last_operation": {
+            "name": "Dernière opération"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Verrou du coffre sous selle",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Verrouillage à distance",
+            "state": {
+              "manual": "Verrouillage manuel uniquement",
+              "guarded": "Arrêt et P requis"
+            }
+          },
+          "last_operation": {
+            "name": "Dernière opération"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Une opération du véhicule est en cours ou la limite de contrôle du compte est atteinte. Réessayez après sa fin."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Arrêt et position P non confirmés. Commande de verrouillage non envoyée."
+    },
+    "seat_lock_manual": {
+      "message": "Le coffre sous selle se verrouille uniquement manuellement."
+    },
+    "control_target_not_observed": {
+      "message": "Commande acceptée, mais état demandé non observé. Vérifiez le véhicule avant de réessayer."
+    },
+    "control_not_sent": {
+      "message": "Commande non envoyée : la communication est temporairement indisponible. Réessayez plus tard."
     }
   },
   "issues": {

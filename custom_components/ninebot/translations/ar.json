@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "يتطلب التوقف ووضع P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "يتطلب التوقف ووضع P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "يتطلب التوقف ووضع P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "فتح القفل عن بُعد",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "يتطلب التوقف ووضع P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "القفل عن بُعد",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "يتطلب التوقف ووضع P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "موجودة",
           "absent": "غير موجودة",
-          "unrecognized": "غير معروف"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "قفل المقعد",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "مقفل",
-          "unlocked": "غير مقفل",
           "unrecognized": "غير معروف"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "الطاقة الرئيسية"
       },
-      "unlocked": {
-        "name": "غير مقفل"
-      },
       "cycle_support": {
         "name": "دعم عداد الدورات",
         "state": {
@@ -513,10 +491,10 @@
         "name": "فتح حجرة المقعد"
       },
       "engine_start": {
-        "name": "بدء التشغيل عن بعد"
+        "name": "فتح القفل عن بُعد"
       },
       "engine_stop": {
-        "name": "إيقاف التشغيل عن بعد"
+        "name": "القفل عن بُعد"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "قفل المركبة",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "القفل عن بعد",
+            "state": {
+              "manual": "قفل يدوي فقط",
+              "guarded": "يتطلب التوقف ووضع P"
+            }
+          },
+          "last_operation": {
+            "name": "آخر عملية"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "قفل حجرة المقعد",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "القفل عن بعد",
+            "state": {
+              "manual": "قفل يدوي فقط",
+              "guarded": "يتطلب التوقف ووضع P"
+            }
+          },
+          "last_operation": {
+            "name": "آخر عملية"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "هناك عملية مركبة قيد التنفيذ أو تم بلوغ حد التحكم للحساب. أعد المحاولة بعد انتهائها."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "لم يتم تأكيد التوقف ووضع P. لم يتم إرسال أمر القفل."
+    },
+    "seat_lock_manual": {
+      "message": "يمكن قفل حجرة المقعد يدويًا فقط."
+    },
+    "control_target_not_observed": {
+      "message": "تم قبول الأمر لكن حالة القفل المطلوبة لم تظهر. تحقق من المركبة قبل المحاولة مجددًا."
+    },
+    "control_not_sent": {
+      "message": "لم يتم إرسال الأمر: الاتصال غير متاح مؤقتًا. أعد المحاولة لاحقًا."
     }
   },
   "issues": {

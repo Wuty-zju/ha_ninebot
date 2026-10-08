@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Durma ve P gerekli"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Durma ve P gerekli"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Durma ve P gerekli"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Uzaktan kilidi aç",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Durma ve P gerekli"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Uzaktan kilitle",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Durma ve P gerekli"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Mevcut",
           "absent": "Yok",
-          "unrecognized": "Tanınmıyor"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Sele kilidi",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Kilitli",
-          "unlocked": "Kilidi açık",
           "unrecognized": "Tanınmıyor"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Ana güç"
       },
-      "unlocked": {
-        "name": "Kilit açık"
-      },
       "cycle_support": {
         "name": "Döngü sayacı desteği",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Sele bölmesini aç"
       },
       "engine_start": {
-        "name": "Uzaktan başlat"
+        "name": "Uzaktan kilidi aç"
       },
       "engine_stop": {
-        "name": "Uzaktan durdur"
+        "name": "Uzaktan kilitle"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Araç kilidi",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Uzaktan kilitleme",
+            "state": {
+              "manual": "Yalnızca elle kilitleme",
+              "guarded": "Durma ve P gerekli"
+            }
+          },
+          "last_operation": {
+            "name": "Son işlem"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Sele bölmesi kilidi",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Uzaktan kilitleme",
+            "state": {
+              "manual": "Yalnızca elle kilitleme",
+              "guarded": "Durma ve P gerekli"
+            }
+          },
+          "last_operation": {
+            "name": "Son işlem"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Bir araç işlemi sürüyor veya hesabın kontrol sınırına ulaşıldı. Tamamlandıktan sonra tekrar deneyin."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Durma ve P doğrulanamadı. Kilitleme komutu gönderilmedi."
+    },
+    "seat_lock_manual": {
+      "message": "Sele bölmesi yalnızca elle kilitlenebilir."
+    },
+    "control_target_not_observed": {
+      "message": "Komut kabul edildi ancak hedef kilit durumu görülmedi. Yeniden denemeden önce aracı kontrol edin."
+    },
+    "control_not_sent": {
+      "message": "Komut gönderilmedi: iletişim geçici olarak kullanılamıyor. Daha sonra tekrar deneyin."
     }
   },
   "issues": {

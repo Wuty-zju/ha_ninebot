@@ -17,6 +17,8 @@ class CommandOutcome(StrEnum):
     UNCERTAIN = "uncertain"
     AUTH_REQUIRED = "authentication_required"
     CANCELLED = "cancelled"
+    ALREADY_IN_TARGET = "already_in_target"
+    REJECTED = "rejected"
 
 
 class ReadbackOutcome(StrEnum):
@@ -25,6 +27,17 @@ class ReadbackOutcome(StrEnum):
     REFRESHED = "refreshed"
     FAILED = "failed"
     SKIPPED = "skipped"
+    CANCELLED = "cancelled"
+
+
+class Confirmation(StrEnum):
+    NOT_REQUESTED = "not_requested"
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    OBSERVED_TARGET_COMMAND_UNCERTAIN = "observed_target_command_uncertain"
+    ALREADY_IN_TARGET = "already_in_target"
+    TARGET_NOT_OBSERVED = "target_not_observed"
+    UNKNOWN = "unknown"
     CANCELLED = "cancelled"
 
 
@@ -38,8 +51,12 @@ class ControlResult:
     readback: ReadbackOutcome = ReadbackOutcome.NOT_REQUESTED
     readback_error: ErrorKind | None = None
     finished_at: datetime | None = None
+    target_locked: bool | None = None
+    observed_locked: bool | None = None
+    confirmation: Confirmation = Confirmation.NOT_REQUESTED
+    read_attempts: int = 0
 
-    def diagnostics(self) -> dict[str, str | bool | None]:
+    def diagnostics(self) -> dict[str, str | bool | int | None]:
         return {
             "attempted_at": self.attempted_at.isoformat(),
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
@@ -48,6 +65,10 @@ class ControlResult:
             "readback": self.readback.value,
             "readback_error": self.readback_error.value if self.readback_error else None,
             "physical_outcome_verified": False,
+            "target_locked": self.target_locked,
+            "observed_locked": self.observed_locked,
+            "confirmation": self.confirmation.value,
+            "read_attempts": self.read_attempts,
         }
 
 
@@ -72,7 +93,7 @@ class ControlResults:
             self._records.popitem(last=False)
         return result
 
-    def diagnostics(self, vehicle: str) -> dict[str, dict[str, str | bool | None]]:
+    def diagnostics(self, vehicle: str) -> dict[str, dict[str, str | bool | int | None]]:
         return {
             action: result.diagnostics()
             for action in sorted(CONTROL_ACTIONS)

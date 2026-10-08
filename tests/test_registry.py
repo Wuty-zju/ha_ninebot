@@ -67,7 +67,7 @@ async def test_cleanup_does_not_guess_shared_or_ambiguous_device_owner(hass, ent
     assert registry.async_get(row.entity_id) is not None
 
 
-async def test_failed_first_refresh_does_not_cleanup_and_reload_never_recreates_lock(
+async def test_failed_first_refresh_does_not_cleanup_and_reload_creates_only_current_locks(
     hass, entry, app_client
 ):
     from custom_components.ninebot.exceptions import ErrorKind, NinebotError
@@ -86,14 +86,18 @@ async def test_failed_first_refresh_does_not_cleanup_and_reload_never_recreates_
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert registry.async_get(obsolete.entity_id) is None
-    assert not any(
-        row.domain == "lock" for row in er.async_entries_for_config_entry(registry, entry.entry_id)
-    )
+    assert {
+        row.unique_id
+        for row in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if row.domain == "lock"
+    } == {"SyntheticSN_vehicle_lock", "SyntheticSN_seat_lock"}
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
-    assert not any(
-        row.domain == "lock" for row in er.async_entries_for_config_entry(registry, entry.entry_id)
-    )
+    assert {
+        row.unique_id
+        for row in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if row.domain == "lock"
+    } == {"SyntheticSN_vehicle_lock", "SyntheticSN_seat_lock"}
     app_client.async_control.assert_not_awaited()
 
 

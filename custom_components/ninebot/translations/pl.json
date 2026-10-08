@@ -207,7 +207,8 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported"
+          "unsupported": "Command unsupported",
+          "parking_unverified": "Wymaga postoju i P"
         },
         "state_attributes": {
           "bell": {
@@ -220,7 +221,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Wymaga postoju i P"
             }
           },
           "bucket": {
@@ -233,11 +235,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Wymaga postoju i P"
             }
           },
           "engine_start": {
-            "name": "Remote start",
+            "name": "Odblokuj zdalnie",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -246,11 +249,12 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Wymaga postoju i P"
             }
           },
           "engine_stop": {
-            "name": "Remote stop",
+            "name": "Zablokuj zdalnie",
             "state": {
               "authentication_required": "Authentication required",
               "disabled": "Controls disabled",
@@ -259,7 +263,8 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported"
+              "unsupported": "Command unsupported",
+              "parking_unverified": "Wymaga postoju i P"
             }
           }
         }
@@ -331,30 +336,6 @@
         "state": {
           "present": "Obecny",
           "absent": "Nieobecny",
-          "unrecognized": "Nierozpoznany"
-        }
-      },
-      "seat_lock_raw": {
-        "name": "Zamek schowka pod siedzeniem",
-        "state_attributes": {
-          "source": {
-            "name": "Source field"
-          },
-          "raw_type": {
-            "name": "Original type"
-          },
-          "interpretation": {
-            "name": "Interpretation",
-            "state": {
-              "unverified": "Unverified",
-              "not_reported": "Not reported",
-              "interpreted": "Interpreted"
-            }
-          }
-        },
-        "state": {
-          "locked": "Zablokowany",
-          "unlocked": "Odblokowany",
           "unrecognized": "Nierozpoznany"
         }
       },
@@ -484,9 +465,6 @@
       "power": {
         "name": "Główne zasilanie"
       },
-      "unlocked": {
-        "name": "Odblokowano"
-      },
       "cycle_support": {
         "name": "Obsługa licznika cykli",
         "state": {
@@ -513,10 +491,10 @@
         "name": "Otwórz schowek"
       },
       "engine_start": {
-        "name": "Zdalny start"
+        "name": "Odblokuj zdalnie"
       },
       "engine_stop": {
-        "name": "Zdalne zatrzymanie"
+        "name": "Zablokuj zdalnie"
       }
     },
     "image": {
@@ -549,6 +527,38 @@
           }
         }
       }
+    },
+    "lock": {
+      "vehicle_lock": {
+        "name": "Zamek pojazdu",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Zdalne zamykanie",
+            "state": {
+              "manual": "Tylko ręczne zamykanie",
+              "guarded": "Wymaga postoju i P"
+            }
+          },
+          "last_operation": {
+            "name": "Ostatnia operacja"
+          }
+        }
+      },
+      "seat_lock": {
+        "name": "Zamek schowka pod siedzeniem",
+        "state_attributes": {
+          "remote_lock_mode": {
+            "name": "Zdalne zamykanie",
+            "state": {
+              "manual": "Tylko ręczne zamykanie",
+              "guarded": "Wymaga postoju i P"
+            }
+          },
+          "last_operation": {
+            "name": "Ostatnia operacja"
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -562,7 +572,7 @@
       "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
     },
     "busy": {
-      "message": "The request queue is full; try again later."
+      "message": "Trwa operacja pojazdu lub osiągnięto limit sterowania konta. Spróbuj ponownie po zakończeniu."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -611,6 +621,18 @@
     },
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
+    },
+    "parking_unverified": {
+      "message": "Postój i P niepotwierdzone. Nie wysłano polecenia zamknięcia."
+    },
+    "seat_lock_manual": {
+      "message": "Schowek można zamknąć tylko ręcznie."
+    },
+    "control_target_not_observed": {
+      "message": "Polecenie przyjęte, ale nie zaobserwowano żądanego stanu. Sprawdź pojazd przed ponowną próbą."
+    },
+    "control_not_sent": {
+      "message": "Polecenie nie zostało wysłane: komunikacja jest chwilowo niedostępna. Spróbuj później."
     }
   },
   "issues": {

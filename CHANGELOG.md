@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b38
+
+- Add native vehicle and seat Lock entities while retaining the original buttons. Share strict status interpretation, explicit controls/allowlist/ownership policy and a same-physical-vehicle lease across accounts. Vehicle stop requires reviewed fresh stopped-and-P evidence; current ninecli data has none, so remote locking is refused. Seat locking is manual only.
+- Send each lock command at most once; compare its target against up to three new single-attempt status reads within a ten-second absolute deadline. Keep accepted, confirmed, unobserved and uncertain outcomes distinct, show pending without optimistic state, respect cooldown and reclaim on cancel/unload. Broker admission, safety and cooldown rejection before the wire reports not sent without extra reads. Bell retains ordinary one-read reconciliation.
+- Journal cross-domain conversion before replacing exact owned old lock binary/sensor rows. Retain UID strings and user choices, preserve old Recorder data and expose the old/new mapping; new Lock history starts separately. Preserve conflicts rather than guessing. Back up matching storage before upgrade/rollback and update automation IDs and on/off conditions.
+- Add Lock names, action errors and safety status in all 21 shipped languages, plus icons. Keep the existing authenticated loopback, dependency pin, entity naming seeds and telemetry budgets. No real controls or production deployment.
+
 ## 2.0.0b37
 
 - Schedule shared reads through a bounded account broker: one wire request per account, two across accounts, priority with vehicle fairness, independent read/control budgets and cancellation-safe single-flight. Preserve the authentication/native routing transaction lock; commands are never coalesced or replayed.
