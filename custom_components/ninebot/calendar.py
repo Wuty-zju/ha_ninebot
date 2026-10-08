@@ -5,11 +5,13 @@ from datetime import datetime
 from typing import Any
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
+from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
+from homeassistant.util.unit_conversion import DurationConverter
 
 from .archive_runtime import ArchiveStatistics
 from .archive_timeline import SELECTION_BASIS
@@ -100,8 +102,10 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
             ),
             (
                 "last_ride_duration",
-                ride.duration_s / 60 if ride.duration_s is not None else None,
-                "min",
+                DurationConverter.convert(ride.duration_s, UnitOfTime.SECONDS, UnitOfTime.HOURS)
+                if ride.duration_s is not None
+                else None,
+                "h",
                 0,
             ),
             (

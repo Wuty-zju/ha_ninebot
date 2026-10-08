@@ -14,7 +14,7 @@ export function digits(value, fallback = 0) {
 }
 
 const SCALARS = ['ride_id', 'detail_id', 'query_month', 'source', 'start_time', 'end_time',
-  'distance_m', 'duration_s', 'max_speed_m_s', 'average_speed_m_s', 'energy_wh',
+  'distance_m', 'duration_s', 'duration_h', 'max_speed_m_s', 'average_speed_m_s', 'energy_wh',
   'used_electricity_raw', 'energy_intensity_wh_per_km', 'received_at', 'parser_contract'];
 export function safeRide(ride) {
   const result = Object.fromEntries(SCALARS.map(key => [key, ride[key] ?? null]));
@@ -182,13 +182,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     return `${n}${unit ? ` ${unit}` : ''}`;
   }
   duration(value) {
-    if (!Number.isFinite(value) || value < 0) return '—';
-    const seconds = Math.round(value), minutes = Math.floor(seconds / 60), remainder = seconds % 60;
-    const language = this.browser.hass?.locale?.language ?? this.browser.hass?.language ?? 'en';
-    const format = (value, unit) => new Intl.NumberFormat(language, {
-      style: 'unit', unit, unitDisplay: 'short', maximumFractionDigits: 0,
-    }).format(value);
-    return `${format(minutes, 'minute')}${remainder ? ` ${format(remainder, 'second')}` : ''}`;
+    return this.number(value, 0, 'h');
   }
   timestamp(value) {
     if (!value || Number.isNaN(new Date(value).getTime())) return '—';
@@ -206,7 +200,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     for (const [name, value] of [
       [labels.start, this.timestamp(ride.start_time)], [labels.end, this.timestamp(ride.end_time)],
       [labels.distance, this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')],
-      [labels.duration, this.duration(ride.duration_s)],
+      [labels.duration, this.duration(ride.duration_h)],
       [labels.max_speed, this.number(ride.max_speed_m_s === null ? null : ride.max_speed_m_s * 3.6, 0, 'km/h')],
       [labels.avg_speed, this.number(ride.average_speed_m_s === null ? null : ride.average_speed_m_s * 3.6, 1, 'km/h')],
       [labels.energy, this.number(ride.energy_wh, 0, 'Wh')],
@@ -253,7 +247,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         });
         summary.append(element('div', this.timestamp(ride.start_time)),
           element('div', `${this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')} · ` +
-            `${this.duration(ride.duration_s)}`, 'metrics'));
+            `${this.duration(ride.duration_h)}`, 'metrics'));
         section.append(summary);
         const detail = browser.details.get(ride.ride_id), displayed = detail ?? ride;
         section.append(this.metrics(displayed, labels));

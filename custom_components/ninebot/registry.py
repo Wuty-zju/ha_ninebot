@@ -7,6 +7,7 @@ Transiently missing data and unrecognized identities never imply obsolescence.
 import re
 from collections.abc import Iterator
 
+from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -254,3 +255,27 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntr
                 break
     await identities.async_migrate(candidates, force=True)
     await identities.async_convert_locks(conversions)
+    # Core stores the original suggested unit in the registry. Changing the
+    # description alone would leave existing rides displaying minutes.
+    for row, sn in _owned_entities(hass, entry):
+        if row.domain != "sensor" or row.options.get(DOMAIN, {}).get("ride_hours_revision") == 1:
+            continue
+        keys = (
+            "month_duration",
+            "last_ride_duration",
+            "today_ride_duration",
+            "yesterday_ride_duration",
+        )
+        if not any(
+            row.unique_id in {*legacy_uids(sn, key), scoped_uid(entry, sn, key)} for key in keys
+        ):
+            continue
+        registry = er.async_get(hass)
+        registry.async_update_entity_options(
+            row.entity_id,
+            "sensor",
+            {**row.options.get("sensor", {}), "unit_of_measurement": UnitOfTime.HOURS},
+        )
+        registry.async_update_entity_options(
+            row.entity_id, DOMAIN, {**row.options.get(DOMAIN, {}), "ride_hours_revision": 1}
+        )
