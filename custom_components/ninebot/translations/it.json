@@ -554,6 +554,11 @@
           }
         }
       }
+    },
+    "calendar": {
+      "ride_calendar": {
+        "name": "Viaggi"
+      }
     }
   },
   "exceptions": {
@@ -631,6 +636,12 @@
     },
     "sync_job": {
       "message": "Nessuna attività corrispondente per questo veicolo e ID."
+    },
+    "calendar_range": {
+      "message": "Scegli un intervallo più breve: fino a cinque anni e 5.000 viaggi salvati."
+    },
+    "calendar_unavailable": {
+      "message": "L’archivio locale dei viaggi non è temporaneamente disponibile. Riprova tra poco."
     }
   },
   "issues": {

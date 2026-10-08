@@ -8,11 +8,13 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .archive_statistics import ArchiveStatisticsView, StatisticsReader
+from .archive_timeline import ArchivedRide
 from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
 from .models import TravelMonth, VehicleProfile
@@ -39,12 +41,30 @@ class ArchiveStatistics(TravelStatisticsStore):
         self.archive_ready = False
         self.error: ArchiveFailure | None = None
         self._archive_issue = f"ride_archive_{entry_id}"
+        self._entry_scope = entry_id
         self._archive_lock = asyncio.Lock()
         self._vehicles: set[str] = set()
         self._projection = ArchiveStatisticsView()
         self._projection_month = ""
+        self._latest: dict[str, ArchivedRide | None] = {}
         self.persistence_enabled = False
         register_archive(hass, self.archive)
+
+    def _signal(self, sn: str) -> str:
+        scope = hashlib.sha256(f"{self._entry_scope}\0{sn}".encode()).hexdigest()
+        return f"{DOMAIN}_archive_changed_{scope}"
+
+    @callback
+    def async_add_archive_listener(
+        self, sn: str, listener: Callable[[], None]
+    ) -> Callable[[], None]:
+        """Historical consumers need updates even while the live state is unchanged."""
+        return async_dispatcher_connect(self.hass, self._signal(sn), listener)
+
+    @callback
+    def _notify_change(self, sn: str, guard: Callable[[], bool] | None) -> None:
+        if guard is None or guard():
+            async_dispatcher_send(self.hass, self._signal(sn))
 
     async def async_load(self) -> None:
         await super().async_load()
@@ -69,6 +89,8 @@ class ArchiveStatistics(TravelStatisticsStore):
             self.record_error(err, opening=True)
 
     def record_error(self, err: ArchiveError, *, opening: bool = False) -> None:
+        if err.kind is ArchiveFailure.BUDGET:
+            return  # A display query limit does not disable healthy archive writes.
         self.error = err.kind
         if err.kind in {ArchiveFailure.BUSY, ArchiveFailure.CLOSED} or (
             err.kind is ArchiveFailure.OWNER and not opening
@@ -118,6 +140,10 @@ class ArchiveStatistics(TravelStatisticsStore):
             return self._projection.month_rides(sn, month)
         return super().month_rides(sn, month)
 
+    def latest_ride(self, sn: str) -> ArchivedRide | None:
+        """Memory-only historical projection, without any live freshness claim."""
+        return self._latest.get(sn) if self.archive_ready else None
+
     async def async_view(self, sn: str, months: tuple[str, ...]) -> StatisticsReader:
         if not self.archive_ready:
             view = copy(self)
@@ -142,15 +168,23 @@ class ArchiveStatistics(TravelStatisticsStore):
         if vehicle is not None and self._projection_month == month:
             records = dict(self._projection.records)
             selections = dict(self._projection.selections)
+            latest = dict(self._latest)
             vehicles = (vehicle,)
         else:
             records, selections = {}, {}
+            latest = {}
             vehicles = tuple(sorted(self._vehicles))
         for sn in vehicles:
             view = await self.async_view(sn, (previous_month(month), month))
             assert isinstance(view, ArchiveStatisticsView)
             records.update(view.records)
             selections.update(view.selections)
+            try:
+                latest[sn] = await self.archive.async_latest(sn, local)
+            except ArchiveError as err:
+                if err.kind is not ArchiveFailure.BUDGET:
+                    raise
+                latest[sn] = None  # Do not silently select an arbitrary older record.
         if guard is not None and not guard():
             return
         projection = ArchiveStatisticsView(records=records, selections=selections)
@@ -163,6 +197,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection = projection
         self._projection_month = month
         self.months, self.rides = months, rides
+        self._latest = latest
 
     async def async_refresh_projection(self) -> None:
         if not self.archive_ready:
@@ -185,11 +220,12 @@ class ArchiveStatistics(TravelStatisticsStore):
     ) -> None:
         if not self.archive_ready:
             return
+        changed = False
         async with self._archive_lock:
             if guard is not None and not guard():
                 return
             try:
-                await self.archive.async_record_month(
+                changed = await self.archive.async_record_month(
                     sn, travel, received, backend_version, guard=guard, ordered=receipt_ordered
                 )
                 if guard is not None and not guard():
@@ -199,6 +235,8 @@ class ArchiveStatistics(TravelStatisticsStore):
                 self._archive_success()
             except ArchiveError as err:
                 self.record_error(err)
+        if changed:
+            self._notify_change(sn, guard)
 
     async def async_record_profiles(
         self,
@@ -246,11 +284,12 @@ class ArchiveStatistics(TravelStatisticsStore):
     ) -> None:
         if not self.archive_ready:
             return
+        changed = False
         async with self._archive_lock:
             if not guard():
                 return
             try:
-                await self.archive.async_record_detail(
+                changed = await self.archive.async_record_detail(
                     sn, ride, received, guard=guard, ordered=True
                 )
                 if not guard():
@@ -259,6 +298,8 @@ class ArchiveStatistics(TravelStatisticsStore):
                 self._archive_success()
             except ArchiveError as err:
                 self.record_error(err)
+        if changed:
+            self._notify_change(sn, guard)
 
     async def async_save(self) -> None:
         """Transactions already persist; the legacy Store must never write again."""
@@ -268,3 +309,5 @@ class ArchiveStatistics(TravelStatisticsStore):
             await self.archive.async_close()
         finally:
             unregister_archive(self.hass, self.archive)
+            self.archive_ready = False
+            self._latest.clear()

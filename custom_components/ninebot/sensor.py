@@ -2,7 +2,7 @@
 
 import hashlib
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -24,18 +24,20 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import Entity, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from .archive_runtime import ArchiveStatistics
+from .archive_timeline import SELECTION_BASIS, ArchivedRide
 from .battery import current_battery, identified_battery
 from .capabilities import CONTROL_BUTTONS, CONTROL_STATES, control_state
 from .compat import unrecorded_attributes
 from .const import BUSINESS_TIMEZONE, CONF_DEBUG, CONF_ESTIMATION, DETAIL_INTERVAL
 from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
-from .models import VehicleSnapshot
+from .models import LastRide, TravelMonth, VehicleSnapshot
 from .observations import ENTITY_FIELDS, RawField
 from .parsing import display_scalar, integer
 from .period_statistics import DayMetric, DaySummary, day_summary
@@ -496,24 +498,75 @@ class NinebotSensor(NinebotEntity, SensorEntity):
         self.entity_description = description
         self._attr_translation_key = description.translation_key or description.key
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if self.entity_description.key.startswith("last_") and isinstance(
+            statistics := self.coordinator.statistics, ArchiveStatistics
+        ):
+            self.async_on_remove(
+                statistics.async_add_archive_listener(self.sn, self._archive_updated)
+            )
+
+    @callback
+    def _archive_updated(self) -> None:
+        self.async_write_ha_state()
+
+    def _presentation(self) -> tuple[VehicleSnapshot | None, ArchivedRide | None]:
+        """Overlay one archived ride for this entity, never mutate live snapshots."""
+        snapshot = self.snapshot
+        statistics = self.coordinator.statistics
+        if (
+            snapshot is None
+            or not self.entity_description.key.startswith("last_")
+            or not isinstance(statistics, ArchiveStatistics)
+            or (archived := statistics.latest_ride(self.sn)) is None
+        ):
+            return snapshot, None
+        live = last_timed_ride(snapshot)
+        if (
+            self.coordinator.fresh(self.sn, "travel")
+            and live is not None
+            and live.ended_at is not None
+            and archived.ride.ended_at is not None
+            and live.ended_at >= archived.ride.ended_at
+        ):
+            return snapshot, None
+        ride = archived.ride
+        last = LastRide(
+            ride.query_month,
+            ride.distance_m / 1000 if ride.distance_m is not None else None,
+            ride.energy_raw,
+            ride.ride_id,
+            ride,
+        )
+        return replace(snapshot, travel=TravelMonth(ride.query_month, last_ride=last)), archived
+
+    @property
+    def available(self) -> bool:
+        if self._presentation()[1] is not None:
+            return self.coordinator.local_vehicle_available(self.sn)
+        return super().available
+
     @property
     def native_value(self) -> str | float | datetime | None:
-        return self.entity_description.value(self.snapshot) if self.snapshot else None
+        snapshot, _ = self._presentation()
+        return self.entity_description.value(snapshot) if snapshot else None
 
     @property
     def suggested_display_precision(self) -> int | None:
         description = self.entity_description
         if description.suggested_display_precision is not None:
             return description.suggested_display_precision
-        if self.snapshot is None:
+        snapshot, _ = self._presentation()
+        if snapshot is None:
             return None
         if description.precision:
-            return description.precision(self.snapshot)
-        return source_precision(self.snapshot, description.key)
+            return description.precision(snapshot)
+        return source_precision(snapshot, description.key)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        snapshot = self.snapshot
+        snapshot, archived = self._presentation()
         if snapshot is None:
             return None
         attributes = (
@@ -522,7 +575,7 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             else {}
         )
         if self._data_group == "travel":
-            received = snapshot.travel_freshness.succeeded_at
+            received = archived.received_at if archived else snapshot.travel_freshness.succeeded_at
             attributes.update(
                 query_month=snapshot.travel.month if snapshot.travel else None,
                 received_at=received.isoformat() if received else None,
@@ -531,13 +584,15 @@ class NinebotSensor(NinebotEntity, SensorEntity):
                 last = snapshot.travel.last_ride if snapshot.travel else None
                 ride = last.ride if last else None
                 lifecycle = self.coordinator.ride_lifecycles.get(self.sn)
-                phase = lifecycle.phase(ride) if lifecycle and ride else "reported"
+                phase = lifecycle.phase(ride) if lifecycle and ride and not archived else "reported"
                 attributes.update(
                     ride_phase=phase,
                     completion_basis="stable_successful_samples"
                     if phase == "finalized_by_policy"
                     else None,
                 )
+                if archived:
+                    attributes.update(source="ride_archive", selection_basis=SELECTION_BASIS)
         return attributes or None
 
 

@@ -46,7 +46,9 @@ class PollingDemand:
 
 def entity_context(vehicle: str, platform: str, key: str, group: str) -> ConsumerContext:
     """A disabled entity never adds this context to the coordinator."""
-    if platform == "event" and key == "ride":
+    if platform == "calendar":
+        need = Need.MONTH  # Dates are local reads; no adjacent-month cloud backfill.
+    elif platform == "event" and key == "ride":
         need = Need.RIDE_EVENT
     elif platform == "button" and key != "refresh":
         need = Need.CONTROL

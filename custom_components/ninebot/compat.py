@@ -13,6 +13,12 @@ from homeassistant.helpers.entity import Entity
 validation: ModuleType = import_module("voluptuous")
 
 
+def update_calendar_listeners(entity: Entity) -> None:
+    """New Core subscriptions; older Core still supports ordinary range reads."""
+    if callable(notify := getattr(entity, "async_update_event_listeners", None)):
+        notify()
+
+
 def unrecorded_attributes(attributes: frozenset[str]) -> frozenset[str]:
     """Progressively exclude debug views from Recorder; views remain bounded."""
     return attributes if hasattr(Entity, "_unrecorded_attributes") else frozenset()
