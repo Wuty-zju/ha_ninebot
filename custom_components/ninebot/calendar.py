@@ -142,14 +142,12 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
             )
             if value is not None
         ]
-        return "\n".join(
-            times
-            + [
-                f"{self._labels.get(key, key)}: {value:.{digits if value != 0 or key == 'last_ride_duration' else 0}f} {unit}"
-                for key, value, unit, digits in metrics
-                if value is not None
-            ]
-        )
+        for key, value, unit, digits in metrics:
+            if value is None:
+                continue
+            precision = digits if value != 0 or key == "last_ride_duration" else 0
+            times.append(f"{self._labels.get(key, key)}: {value:.{precision}f} {unit}")
+        return "\n".join(times)
 
     async def async_get_events(
         self, hass: HomeAssistant, start_date: datetime, end_date: datetime
