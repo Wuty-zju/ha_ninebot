@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "ไม่ได้ส่งคำสั่ง: การสื่อสารไม่พร้อมใช้งานชั่วคราว โปรดลองอีกครั้งในภายหลัง"
+    },
+    "sync_conflict": {
+      "message": "มีงานซิงค์ที่ยังไม่เสร็จ โปรดดำเนินต่อหรือยกเลิกก่อน"
+    },
+    "sync_job": {
+      "message": "ไม่พบงานที่ตรงกับรถและ ID นี้"
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "ซิงค์คลังประวัติการเดินทาง",
+      "description": "เติมเดือนที่ขาด ครั้งละไม่เกินสามคำขอ ใช้ข้อมูลเดือนที่มีอยู่แล้ว ดำเนินต่อด้วย ID งานหลังรอหรือเริ่มใหม่ รายการบางส่วนยังถือว่าไม่ครบ",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "การดำเนินการ"
+        },
+        "job_id": {
+          "name": "ID งาน"
+        },
+        "start_month": {
+          "name": "เดือนเริ่มต้น (YYYYMM)"
+        },
+        "end_month": {
+          "name": "เดือนสิ้นสุด (YYYYMM)"
         }
       }
     }

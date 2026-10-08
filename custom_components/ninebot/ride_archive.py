@@ -38,6 +38,7 @@ from .parsing import previous_month
 from .raw import version_metadata
 from .ride_models import Ride
 from .statistics_store import StoredMonth, StoredRide
+from .sync_job import SyncJob, SyncState, job_data, restored_job
 from .travel import MAX_RIDES, opaque_id
 
 SCHEMA_VERSION = 1
@@ -263,6 +264,8 @@ class RideArchive:
             raise ArchiveError(ArchiveFailure.OWNER)
         if not str(meta.get("revision", "")).isdigit():
             raise ArchiveError(ArchiveFailure.SCHEMA)
+        if "sync_job" in meta:
+            restored_job(decoded(meta["sync_job"]))
         if (
             db.execute("PRAGMA quick_check").fetchone()[0] != "ok"
             or db.execute("PRAGMA foreign_key_check").fetchone()
@@ -557,6 +560,22 @@ class RideArchive:
                 )
             if changed:
                 self._revision(bump=True)
+            # Facts and the job checkpoint commit or roll back together.
+            job = self._sync_job()
+            if (
+                job is not None
+                and job.state is SyncState.QUERYING
+                and job.vehicle == vehicle
+                and job.next_month == travel.month
+            ):
+                assert travel.summary is not None
+                self._put_sync(
+                    job.advance(
+                        max(observed, job.updated_at),
+                        queried=True,
+                        complete=travel.summary.list_complete,
+                    )
+                )
         return changed
 
     async def async_record_detail(
@@ -780,6 +799,66 @@ class RideArchive:
             if prepared or ride_rows:
                 self._revision(bump=True)
         return True
+
+    def _sync_job(self) -> SyncJob | None:
+        row = self._db().execute("SELECT value FROM meta WHERE key='sync_job'").fetchone()
+        return restored_job(decoded(row[0])) if row else None
+
+    def _put_sync(self, job: SyncJob) -> None:
+        data = encoded(job_data(job))
+        restored_job(decoded(data))
+        self._db(write=True).execute(
+            "INSERT INTO meta VALUES ('sync_job',?) ON CONFLICT(key) "
+            "DO UPDATE SET value=excluded.value",
+            (data,),
+        )
+
+    async def async_sync_job(self) -> SyncJob | None:
+        return await self._run(self._sync_job)
+
+    async def async_set_sync_job(
+        self,
+        job: SyncJob,
+        expected: SyncJob | None,
+        *,
+        guard: Callable[[], bool],
+    ) -> None:
+        def commit() -> None:
+            db = self._db(write=True)
+            with db:
+                current = self._sync_job()
+                if current != expected or (
+                    expected is not None
+                    and (job.job_id != expected.job_id or job.revision != expected.revision + 1)
+                    and not expected.terminal
+                ):
+                    raise ArchiveError(ArchiveFailure.BUSY)
+                self._put_sync(job)
+
+        await self._run(commit, guard=guard)
+
+    async def async_skip_sync_month(
+        self,
+        expected: SyncJob,
+        received: datetime,
+        *,
+        guard: Callable[[], bool],
+    ) -> SyncJob:
+        def skip() -> SyncJob:
+            db = self._db(write=True)
+            with db:
+                if self._sync_job() != expected or expected.next_month is None:
+                    raise ArchiveError(ArchiveFailure.BUSY)
+                month = self._month(expected.vehicle, expected.next_month)
+                if month is None or month.travel.summary is None:
+                    raise ArchiveError(ArchiveFailure.SCHEMA)
+                advanced = expected.advance(
+                    utc_string(received), queried=False, complete=month.travel.summary.list_complete
+                )
+                self._put_sync(advanced)
+                return advanced
+
+        return await self._run(skip, guard=guard)
 
     async def async_backup(self, destination: Path) -> None:
         await self._run(partial(self._backup, destination))

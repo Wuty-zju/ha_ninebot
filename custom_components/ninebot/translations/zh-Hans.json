@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "操作未发送：通信暂不可用，请稍后重试。"
+    },
+    "sync_conflict": {
+      "message": "已有未完成的历史同步，请先继续或取消该任务。"
+    },
+    "sync_job": {
+      "message": "此车辆与任务 ID 没有对应的历史同步任务。"
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "车辆",
           "description": "选择本账号的车辆设备。"
+        }
+      }
+    },
+    "sync_history": {
+      "name": "同步行程档案",
+      "description": "显式补齐缺失月份，每次最多查询三个月。已知月份复用本地数据。冷却或重启后使用任务 ID 继续；部分列表仍标为不完整。",
+      "fields": {
+        "device_id": {
+          "name": "车辆"
+        },
+        "operation": {
+          "name": "操作"
+        },
+        "job_id": {
+          "name": "任务 ID"
+        },
+        "start_month": {
+          "name": "开始月份（YYYYMM）"
+        },
+        "end_month": {
+          "name": "结束月份（YYYYMM）"
         }
       }
     }

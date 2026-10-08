@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Command not sent: communication is temporarily unavailable. Retry later."
+    },
+    "sync_conflict": {
+      "message": "Another history sync is unfinished. Continue or cancel it first."
+    },
+    "sync_job": {
+      "message": "No matching history sync was found for this vehicle and job ID."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Sync history archive",
+      "description": "Explicitly fill missing months, at most three queries per call. Known months are reused. Continue with the job ID after cooldown or restart; partial lists remain incomplete.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Operation"
+        },
+        "job_id": {
+          "name": "Job ID"
+        },
+        "start_month": {
+          "name": "Start month (YYYYMM)"
+        },
+        "end_month": {
+          "name": "End month (YYYYMM)"
         }
       }
     }

@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Opdracht niet verzonden: communicatie is tijdelijk niet beschikbaar. Probeer het later opnieuw."
+    },
+    "sync_conflict": {
+      "message": "Een synchronisatie is niet afgerond. Hervat of annuleer deze eerst."
+    },
+    "sync_job": {
+      "message": "Geen passende taak voor dit voertuig en deze ID."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Ritarchief synchroniseren",
+      "description": "Vult ontbrekende maanden aan, maximaal drie aanvragen per oproep. Bekende maanden worden hergebruikt. Hervat met de taak-ID na wachttijd of herstart; gedeeltelijke lijsten blijven onvolledig.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Bewerking"
+        },
+        "job_id": {
+          "name": "Taak-ID"
+        },
+        "start_month": {
+          "name": "Beginmaand (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Eindmaand (YYYYMM)"
         }
       }
     }

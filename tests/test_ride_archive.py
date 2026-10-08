@@ -26,6 +26,7 @@ from custom_components.ninebot.raw import Endpoint
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
 from custom_components.ninebot.ride_models import FieldState
 from custom_components.ninebot.statistics_store import TravelStatisticsStore
+from custom_components.ninebot.sync_job import SyncJob, SyncState
 from custom_components.ninebot.travel import parse_ride
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
@@ -56,6 +57,51 @@ def sample(month="202609", *, ids=("first", "second"), count=None, distance="1.2
         },
         month,
     )
+
+
+async def test_sync_facts_checkpoint_atomic_backup_and_scope(archive, tmp_path, monkeypatch):
+    from custom_components.ninebot.ride_archive import utc_string, vehicle_key
+
+    now = utc_string(NOW)
+    job = SyncJob("a" * 32, vehicle_key(SN), "202608", "202609", "202609", now, now)
+    await archive.async_set_sync_job(job, None, guard=lambda: True)
+    with pytest.raises(ArchiveError) as error:
+        await archive.async_set_sync_job(job, None, guard=lambda: True)
+    assert error.value.kind is ArchiveFailure.BUSY
+    querying = replace(job, state=SyncState.QUERYING, revision=2)
+    with pytest.raises(ArchiveError) as error:
+        await archive.async_set_sync_job(querying, job, guard=lambda: False)
+    assert error.value.kind is ArchiveFailure.OWNER
+    await archive.async_set_sync_job(querying, job, guard=lambda: True)
+    original = archive._put_sync
+
+    def fail_checkpoint(value):
+        raise sqlite3.OperationalError("disk full")
+
+    monkeypatch.setattr(archive, "_put_sync", fail_checkpoint)
+    with pytest.raises(ArchiveError):
+        await archive.async_record_month(SN, sample(), NOW)
+    assert await archive.async_month(SN, "202609") is None
+    assert not (await archive.async_page(SN)).rides
+    assert await archive.async_sync_job() == querying
+    monkeypatch.setattr(archive, "_put_sync", original)
+    await archive.async_record_month(SN, sample(), NOW)
+    advanced = await archive.async_sync_job()
+    assert advanced.processed == 1 and advanced.queried == 1
+    assert advanced.next_month == "202608" and advanced.state is SyncState.READY
+    await archive.async_record_month(SN, sample("202608", count=3), NOW)
+    final = await archive.async_skip_sync_month(advanced, NOW, guard=lambda: True)
+    assert final.state is SyncState.COMPLETE and final.skipped == 1
+    assert final.incomplete_months == ("202608",)
+    backup = tmp_path / "with-job.sqlite3"
+    await archive.async_backup(backup)
+    recovered = RideArchive(backup, OWNER)
+    try:
+        await recovered.async_open()
+        assert await recovered.async_sync_job() == final
+        assert len((await recovered.async_page(SN)).rides) == 2
+    finally:
+        await recovered.async_close()
 
 
 @pytest.fixture

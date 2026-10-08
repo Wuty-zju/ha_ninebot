@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "आदेश नहीं भेजा गया: संचार अस्थायी रूप से उपलब्ध नहीं है। बाद में फिर प्रयास करें।"
+    },
+    "sync_conflict": {
+      "message": "एक सिंक अधूरा है। पहले जारी रखें या रद्द करें।"
+    },
+    "sync_job": {
+      "message": "इस वाहन और कार्य ID का सिंक नहीं मिला।"
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "यात्रा संग्रह सिंक करें",
+      "description": "लापता महीने भरें, प्रति कॉल अधिकतम तीन प्रश्न। ज्ञात महीने दोबारा उपयोग होते हैं। प्रतीक्षा या पुनः आरंभ के बाद कार्य ID से जारी रखें; आंशिक सूचियाँ अधूरी रहती हैं।",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "क्रिया"
+        },
+        "job_id": {
+          "name": "कार्य ID"
+        },
+        "start_month": {
+          "name": "आरंभ महीना (YYYYMM)"
+        },
+        "end_month": {
+          "name": "अंत महीना (YYYYMM)"
         }
       }
     }

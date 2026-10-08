@@ -97,6 +97,24 @@ once without modifying its original bytes; it is then a read-only migration
 source. In-memory day statistics project only current and adjacent months, while
 range Actions read the selected months directly from the archive.
 
+`ninebot.sync_history` explicitly fills missing months in a range of at most
+360 months. Target one vehicle device, set `operation: start`, `start_month`
+and `end_month`; each call queries at most three missing months. The response
+contains `job_id`, `next_month`, counters and coverage. Use `operation: continue`
+with that job ID for the next batch, including after a restart. `status` reads
+progress without cloud access; `cancel` stops the active call and preserves
+already committed facts. One unfinished job is allowed per account; finish or
+cancel it before starting another vehicle or range.
+
+Known months, including partial reports, are reused locally rather than repeatedly
+queried as presumed upstream pagination. `complete` means the selected month
+range has been visited, not that every upstream ride or detail has been obtained.
+Check `all_rides_complete`, `incomplete_months` and `unknown_months` separately.
+Network failures retain the checkpoint with a 60–3600 second cooldown; respect
+`retry_after_s`. The job does not poll in the background or resume cloud access
+automatically. Month facts and their checkpoint are committed together. Sync
+never requests ride details, tracks or vehicle controls.
+
 The archive has a 100 MiB write budget and does not silently evict historical
 rides at the previous 500-record limit. Storage exhaustion pauses writes while
 retaining readable history. Unreadable/unsupported archives are preserved, and

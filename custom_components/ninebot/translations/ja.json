@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "コマンドは送信されていません。通信が一時的に利用できません。後で再試行してください。"
+    },
+    "sync_conflict": {
+      "message": "未完了の同期があります。先に再開またはキャンセルしてください。"
+    },
+    "sync_job": {
+      "message": "この車両とジョブIDに一致する同期がありません。"
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "走行履歴を同期",
+      "description": "不足月を補完します。1回最大3件の月別照会です。既存月はローカルデータを使用します。待機や再起動後はジョブIDで再開してください。部分的な一覧は未完のままです。",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "操作"
+        },
+        "job_id": {
+          "name": "ジョブID"
+        },
+        "start_month": {
+          "name": "開始月（YYYYMM）"
+        },
+        "end_month": {
+          "name": "終了月（YYYYMM）"
         }
       }
     }

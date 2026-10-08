@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Commande non envoyée : la communication est temporairement indisponible. Réessayez plus tard."
+    },
+    "sync_conflict": {
+      "message": "Une synchronisation est en cours. Reprenez-la ou annulez-la d’abord."
+    },
+    "sync_job": {
+      "message": "Aucune tâche correspondante pour ce véhicule et cet identifiant."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Synchroniser les trajets archivés",
+      "description": "Complète les mois manquants, trois requêtes maximum par appel. Réutilise les mois connus. Reprendre avec l’identifiant après attente ou redémarrage ; les listes partielles restent incomplètes.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Opération"
+        },
+        "job_id": {
+          "name": "Identifiant de tâche"
+        },
+        "start_month": {
+          "name": "Mois de début (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Mois de fin (YYYYMM)"
         }
       }
     }

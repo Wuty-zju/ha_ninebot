@@ -44,6 +44,7 @@ from .control_safety import LOCK_TARGETS
 from .demand import Group, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
+from .history_sync import HistorySync
 from .models import Freshness, TravelMonth, VehicleSnapshot
 from .parsing import integer
 from .query_broker import Priority, QueryBroker, QueryKey
@@ -77,6 +78,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.backend: NinebotBackend = backend or NinecliBackend(client)
         self.raw = RawStore()
         self.history = HistoryStore()
+        self.history_sync = HistorySync(self)
         self.ride_lifecycles: dict[str, RideLifecycle] = {}
         self.statistics = ArchiveStatistics(
             hass, entry.entry_id, str(entry.data[CONF_BUSINESS_UID])
@@ -808,10 +810,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         travel = await self._normalize(record, sn, month, partial(travel_record, record, month))
         return MonthObservation(travel, record.received_at, record.backend_version, "runtime_query")
 
-    async def async_query_month(self, sn: str, month: str) -> RawRecord:
+    async def async_query_month(
+        self, sn: str, month: str, *, priority: Priority = Priority.INTERACTIVE
+    ) -> RawRecord:
         """Explicit history query; never changes current-month state/events."""
         adapters.previous_month(month)
-        return await self._query_record(sn, Endpoint.TRAVEL, month, month)
+        return await self._query_record(sn, Endpoint.TRAVEL, month, month, priority=priority)
 
     async def async_query_detail(self, sn: str, detail_id: str, month: str) -> RawRecord:
         """The action layer must resolve this ID from this vehicle's month index."""
@@ -820,7 +824,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             raise NinebotError(ErrorKind.PROTOCOL)
         return await self._query_record(sn, Endpoint.TRIP_DETAIL, detail_id, month)
 
-    async def _query_record(self, sn: str, endpoint: Endpoint, scope: str, month: str) -> RawRecord:
+    async def _query_record(
+        self,
+        sn: str,
+        endpoint: Endpoint,
+        scope: str,
+        month: str,
+        *,
+        priority: Priority = Priority.INTERACTIVE,
+    ) -> RawRecord:
         if self._query_pending >= 4:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
         self._query_pending += 1
@@ -832,7 +844,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return await self._shared(
                 self._queries,
                 key,
-                lambda: self._query_record_update(sn, endpoint, scope, month, key),
+                lambda: self._query_record_update(sn, endpoint, scope, month, key, priority),
             )
         finally:
             self._query_pending -= 1
@@ -840,7 +852,13 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 self._active.discard(task)
 
     async def _query_record_update(
-        self, sn: str, endpoint: Endpoint, scope: str, month: str, request_key: QueryKey
+        self,
+        sn: str,
+        endpoint: Endpoint,
+        scope: str,
+        month: str,
+        request_key: QueryKey,
+        priority: Priority = Priority.INTERACTIVE,
     ) -> RawRecord:
         key = self._key(sn, endpoint, month if endpoint is Endpoint.TRAVEL else f"{month}:{scope}")
         if not self._owns(request_key) or not self._owns(key) or not self.fresh(sn, "profile"):
@@ -864,7 +882,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     raise NinebotError(ErrorKind.CLOSED)
                 return await operation()
 
-            result = replace(await self._read(key, query, Priority.INTERACTIVE), query_month=month)
+            result = replace(await self._read(key, query, priority), query_month=month)
             if not self.fresh(sn, "profile"):
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="query_unavailable"
@@ -1287,6 +1305,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     async def _shutdown(self, tasks: set[asyncio.Task[Any]]) -> None:
         """Finish cleanup before propagating cancellation of the unload caller."""
+        await self.history_sync.async_close()
         await self.broker.async_close()
         await self.backend.async_close()
         await asyncio.gather(*tasks, return_exceptions=True)

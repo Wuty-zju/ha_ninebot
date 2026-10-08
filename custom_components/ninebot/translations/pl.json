@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Polecenie nie zostało wysłane: komunikacja jest chwilowo niedostępna. Spróbuj później."
+    },
+    "sync_conflict": {
+      "message": "Synchronizacja jest niedokończona. Najpierw ją wznów lub anuluj."
+    },
+    "sync_job": {
+      "message": "Brak zadania dla tego pojazdu i identyfikatora."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Synchronizuj archiwum przejazdów",
+      "description": "Uzupełnia brakujące miesiące, do trzech zapytań na wywołanie. Znane dane są używane ponownie. Wznów przez ID po przerwie lub restarcie; częściowe listy pozostają niepełne.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Operacja"
+        },
+        "job_id": {
+          "name": "ID zadania"
+        },
+        "start_month": {
+          "name": "Miesiąc początkowy (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Miesiąc końcowy (YYYYMM)"
         }
       }
     }

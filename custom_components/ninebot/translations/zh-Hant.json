@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "操作未送出：通訊暫時無法使用，請稍後重試。"
+    },
+    "sync_conflict": {
+      "message": "已有未完成的歷史同步，請先繼續或取消該工作。"
+    },
+    "sync_job": {
+      "message": "此車輛與工作 ID 沒有對應的歷史同步工作。"
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "同步行程檔案",
+      "description": "明確補齊缺少月份，每次最多查詢三個月。已知月份使用本機資料。冷卻或重新啟動後使用工作 ID 繼續；部分清單仍標為不完整。",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "操作"
+        },
+        "job_id": {
+          "name": "工作 ID"
+        },
+        "start_month": {
+          "name": "開始月份（YYYYMM）"
+        },
+        "end_month": {
+          "name": "結束月份（YYYYMM）"
         }
       }
     }

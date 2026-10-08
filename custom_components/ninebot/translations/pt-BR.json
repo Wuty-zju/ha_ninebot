@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Comando não enviado: a comunicação está temporariamente indisponível. Tente novamente mais tarde."
+    },
+    "sync_conflict": {
+      "message": "Há uma sincronização pendente. Continue ou cancele primeiro."
+    },
+    "sync_job": {
+      "message": "Nenhuma tarefa para este veículo e ID."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Sincronizar arquivo de viagens",
+      "description": "Preenche meses ausentes, até três consultas por chamada. Reutiliza meses conhecidos. Continue com o ID após espera ou reinício; listas parciais continuam incompletas.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Operação"
+        },
+        "job_id": {
+          "name": "ID da tarefa"
+        },
+        "start_month": {
+          "name": "Mês inicial (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Mês final (YYYYMM)"
         }
       }
     }

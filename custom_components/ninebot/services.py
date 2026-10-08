@@ -408,7 +408,15 @@ def async_register_actions(hass: HomeAssistant) -> None:
     from .history_actions import HISTORY_SCHEMA, async_history_query
     from .statistics_actions import STATISTICS_SCHEMA, async_statistics_query
     from .statistics_export import IMPORT_SCHEMA, async_import_statistics
+    from .sync_actions import SYNC_SCHEMA, async_sync_history
 
+    hass.services.async_register(
+        DOMAIN,
+        "sync_history",
+        partial(async_sync_history, hass),
+        schema=SYNC_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
     hass.services.async_register(
         DOMAIN,
         "get_entity_migration",

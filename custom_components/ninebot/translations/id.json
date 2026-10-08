@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Perintah tidak dikirim: komunikasi sementara tidak tersedia. Coba lagi nanti."
+    },
+    "sync_conflict": {
+      "message": "Sinkronisasi belum selesai. Lanjutkan atau batalkan dahulu."
+    },
+    "sync_job": {
+      "message": "Tidak ada tugas cocok untuk kendaraan dan ID ini."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Sinkronkan arsip perjalanan",
+      "description": "Isi bulan yang belum ada, maksimal tiga kueri per panggilan. Bulan yang dikenal digunakan kembali. Lanjutkan dengan ID setelah jeda atau mulai ulang; daftar parsial tetap belum lengkap.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Operasi"
+        },
+        "job_id": {
+          "name": "ID tugas"
+        },
+        "start_month": {
+          "name": "Bulan awal (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Bulan akhir (YYYYMM)"
         }
       }
     }

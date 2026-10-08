@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Befehl nicht gesendet: Die Kommunikation ist vorübergehend nicht verfügbar. Später erneut versuchen."
+    },
+    "sync_conflict": {
+      "message": "Eine Synchronisierung ist noch offen. Zuerst fortsetzen oder abbrechen."
+    },
+    "sync_job": {
+      "message": "Kein passender Auftrag für dieses Fahrzeug und diese ID."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Fahrtarchiv synchronisieren",
+      "description": "Fehlende Monate ergänzen, höchstens drei Abfragen pro Aufruf. Bekannte Monate werden lokal gelesen. Nach Wartezeit oder Neustart mit der Auftrags-ID fortsetzen; Teillisten bleiben unvollständig.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Vorgang"
+        },
+        "job_id": {
+          "name": "Auftrags-ID"
+        },
+        "start_month": {
+          "name": "Startmonat (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Endmonat (YYYYMM)"
         }
       }
     }

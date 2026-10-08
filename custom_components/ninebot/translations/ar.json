@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "لم يتم إرسال الأمر: الاتصال غير متاح مؤقتًا. أعد المحاولة لاحقًا."
+    },
+    "sync_conflict": {
+      "message": "توجد مزامنة غير مكتملة. تابعها أو ألغها أولًا."
+    },
+    "sync_job": {
+      "message": "لم تُوجد مهمة مطابقة لهذه المركبة وهذا المعرّف."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "مزامنة أرشيف الرحلات",
+      "description": "استكمال الأشهر المفقودة، حتى ثلاثة استعلامات في كل طلب. تُستخدم الأشهر المعروفة محليًا. تابع بمعرّف المهمة بعد الانتظار أو إعادة التشغيل؛ تبقى القوائم الجزئية غير مكتملة.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "العملية"
+        },
+        "job_id": {
+          "name": "معرّف المهمة"
+        },
+        "start_month": {
+          "name": "شهر البداية (YYYYMM)"
+        },
+        "end_month": {
+          "name": "شهر النهاية (YYYYMM)"
         }
       }
     }

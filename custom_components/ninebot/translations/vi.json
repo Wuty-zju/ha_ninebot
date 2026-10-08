@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Lệnh chưa được gửi: giao tiếp tạm thời không khả dụng. Hãy thử lại sau."
+    },
+    "sync_conflict": {
+      "message": "Có tác vụ đồng bộ chưa xong. Hãy tiếp tục hoặc hủy trước."
+    },
+    "sync_job": {
+      "message": "Không có tác vụ phù hợp với xe và ID này."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Đồng bộ kho chuyến đi",
+      "description": "Bổ sung tháng thiếu, tối đa ba truy vấn mỗi lần gọi. Dùng lại tháng đã có. Tiếp tục bằng ID sau thời gian chờ hoặc khởi động lại; danh sách một phần vẫn chưa đầy đủ.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Thao tác"
+        },
+        "job_id": {
+          "name": "ID tác vụ"
+        },
+        "start_month": {
+          "name": "Tháng đầu (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Tháng cuối (YYYYMM)"
         }
       }
     }

@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Komut gönderilmedi: iletişim geçici olarak kullanılamıyor. Daha sonra tekrar deneyin."
+    },
+    "sync_conflict": {
+      "message": "Tamamlanmamış eşitleme var. Önce devam edin veya iptal edin."
+    },
+    "sync_job": {
+      "message": "Bu araç ve kimlik için uygun iş bulunamadı."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Sürüş arşivini eşitle",
+      "description": "Eksik ayları doldurur, çağrı başına en çok üç sorgu. Bilinen aylar yeniden kullanılır. Bekleme veya yeniden başlatmadan sonra iş kimliğiyle devam edin; kısmi listeler eksik kalır.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "İşlem"
+        },
+        "job_id": {
+          "name": "İş kimliği"
+        },
+        "start_month": {
+          "name": "Başlangıç ayı (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Bitiş ayı (YYYYMM)"
         }
       }
     }

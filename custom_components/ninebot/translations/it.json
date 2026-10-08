@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Comando non inviato: la comunicazione è temporaneamente non disponibile. Riprova più tardi."
+    },
+    "sync_conflict": {
+      "message": "Una sincronizzazione è incompleta. Riprendila o annullala prima."
+    },
+    "sync_job": {
+      "message": "Nessuna attività corrispondente per questo veicolo e ID."
     }
   },
   "issues": {
@@ -812,6 +818,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Sincronizza archivio viaggi",
+      "description": "Completa i mesi mancanti, massimo tre richieste per chiamata. Riutilizza i mesi noti. Riprendi con l’ID dopo attesa o riavvio; gli elenchi parziali restano incompleti.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Operazione"
+        },
+        "job_id": {
+          "name": "ID attività"
+        },
+        "start_month": {
+          "name": "Mese iniziale (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Mese finale (YYYYMM)"
         }
       }
     }
