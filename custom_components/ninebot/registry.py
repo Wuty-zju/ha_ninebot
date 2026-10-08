@@ -258,7 +258,7 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntr
     # Core stores the original suggested unit in the registry. Changing the
     # description alone would leave existing rides displaying minutes.
     for row, sn in _owned_entities(hass, entry):
-        if row.domain != "sensor" or row.options.get(DOMAIN, {}).get("ride_hours_revision") == 1:
+        if row.domain != "sensor" or row.options.get(DOMAIN, {}).get("ride_hours_revision") == 2:
             continue
         keys = (
             "month_duration",
@@ -274,8 +274,12 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntr
         registry.async_update_entity_options(
             row.entity_id,
             "sensor",
-            {**row.options.get("sensor", {}), "unit_of_measurement": UnitOfTime.HOURS},
+            {
+                **row.options.get("sensor", {}),
+                "unit_of_measurement": UnitOfTime.HOURS,
+                "display_precision": 2,
+            },
         )
         registry.async_update_entity_options(
-            row.entity_id, DOMAIN, {**row.options.get(DOMAIN, {}), "ride_hours_revision": 1}
+            row.entity_id, DOMAIN, {**row.options.get(DOMAIN, {}), "ride_hours_revision": 2}
         )

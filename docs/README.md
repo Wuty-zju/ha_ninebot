@@ -612,3 +612,10 @@ The maintainer explicitly selects integration_type=service; HA now uses its stan
 Monthly, last-ride, today and yesterday ride duration sensors retain native seconds but use HA's duration conversion to display hours. Existing owned ride duration entities receive a one-time public registry unit migration to h, including previous unit choices, as requested; later manual unit changes are not repeatedly overwritten. Unique IDs, Recorder source facts and duration_seconds stay intact. Calendar descriptions and duration_h in historical responses use HA DurationConverter; duration_s remains for existing automations. The optional card uses duration_h. Integer display from b45 remains: a short nonzero ride may round to 0 h; this is presentation only, not a missing or zero-length record. Charging remaining time is not a ride duration and remains unchanged.
 
 简中：按本次明确要求改为service，页面显示“服务”。全部骑行时长默认h，已有实体单位一次迁移；保留原秒、身份与历史。沿用整数显示，短行程可能取整为0h，精确秒仍在属性和Action。未运行功能测试，未修改生产HA。
+
+
+## b47 ride hour precision
+
+This overrides b46 integer presentation: monthly, last-ride, today and yesterday ride durations display hours with two decimals, including 0.00 h. Native seconds, duration_seconds, archive facts and unrounded duration_s/duration_h responses remain intact. HA converts sensor units; calendar and card hour values retain the existing HA DurationConverter path. Existing owned duration entities receive one public registry h/display_precision=2 migration (ride_hours_revision=2), including previous presentation overrides; later user changes remain respected. Calendar/card formatting agrees with the default entities. Charging remaining time and other sensor precision stay unchanged. No functional tests or production changes were performed.
+
+简中：骑行时长统一默认h、两位小数（0.00 h），覆盖旧版整数显示；已有实体单位及精度一次迁移。原秒值/历史/身份保留，充电剩余时间不变。本轮未功能测试、未修改生产HA。
