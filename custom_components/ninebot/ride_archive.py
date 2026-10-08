@@ -292,7 +292,10 @@ class RideArchive:
             ):
                 raise ValueError("Invalid archived month")
             stamp(observed)
-            self._ids(ids)
+            identities = self._ids(ids)
+            summary = restored_month(decoded(data)).summary
+            if summary is None or summary.unique_ride_count != len(identities):
+                raise ValueError("Invalid archived month membership")
         for _, key, data, observed, revision, started, ended in db.execute("SELECT * FROM rides"):
             ride = restored_ride(decoded(data))
             if (
@@ -493,6 +496,12 @@ class RideArchive:
         )
         ids_data = encoded({"ids": ids})
         self._ids(ids_data)
+        if (
+            travel.summary is None
+            or travel.summary.returned_count != len(travel.rides)
+            or travel.summary.unique_ride_count != len(ids)
+        ):
+            raise ValueError("Archive month membership mismatch")
         candidates: dict[str, Ride] = {}
         for ride in travel.rides:
             restored_ride(decoded(encoded(ride_data(ride))))

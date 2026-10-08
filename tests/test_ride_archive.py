@@ -463,3 +463,12 @@ async def test_corrupt_normalized_row_does_not_get_rewritten_during_open(archive
         assert path.read_bytes() == original
     finally:
         await rejected.async_close()
+
+
+async def test_month_summary_cannot_claim_more_identities_than_its_actual_list(archive):
+    month = sample()
+    with pytest.raises(ArchiveError) as err:
+        await archive.async_record_month(SN, replace(month, rides=month.rides[:1]), NOW)
+    assert err.value.kind == ArchiveFailure.SCHEMA
+    assert await archive.async_month(SN, "202609") is None
+    assert not (await archive.async_page(SN)).rides
