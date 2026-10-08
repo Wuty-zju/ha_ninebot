@@ -98,12 +98,14 @@
           "enable_controls": "啟用車輛控制",
           "control_vehicles": "允許控制的車輛",
           "debug_mode": "調試模式",
-          "configure_model": "配置電池額定參數"
+          "configure_model": "配置電池額定參數",
+          "enable_calendar": "啟用行程日曆"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
           "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
+          "enable_calendar": "開關每輛車的本地行程日曆。關閉不刪除歷史；重新開啟沿用原實體。瀏覽不請求雲端。"
         }
       },
       "model_vehicle": {

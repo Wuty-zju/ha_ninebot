@@ -98,12 +98,14 @@
           "enable_controls": "Ativar controlos",
           "control_vehicles": "Veículos autorizados",
           "debug_mode": "Modo de depuração",
-          "configure_model": "Configurar parâmetros nominais"
+          "configure_model": "Configurar parâmetros nominais",
+          "enable_calendar": "Viagens"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
           "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
+          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
+          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud."
         }
       },
       "model_vehicle": {

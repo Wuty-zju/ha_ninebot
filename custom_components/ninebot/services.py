@@ -158,6 +158,21 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
             {"sequence": sample.sequence, "speed_raw": sample.raw, "unit": "unknown"}
             for sample in ride.speed_samples
         ],
+        "distance_samples": [
+            {
+                "sequence": point.sequence,
+                "distance_delta_raw": point.distance_delta_raw,
+                "unit": "unknown",
+            }
+            for point in ride.track_points
+            if point.distance_delta_raw is not None
+        ],
+        "track_summary": {
+            "returned": len(ride.track_points),
+            "total_known": ride.total_track_points,
+            "truncated": ride.track_truncated,
+            "coordinate_system": "unknown",
+        },
     }
     if include_track:
         result["coordinate_system"] = "unknown"

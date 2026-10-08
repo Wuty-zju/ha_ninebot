@@ -1,6 +1,7 @@
 """A small, optional cloud-reported ride completion event, without GPS."""
 
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.event import EventEntity, EventExtraStoredData
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
@@ -8,6 +9,7 @@ from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from .archive_runtime import ArchiveStatistics
 from .entity import NinebotEntity, async_setup_dynamic
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
@@ -29,10 +31,26 @@ class NinebotRideEvent(NinebotEntity, EventEntity):
     @property
     def available(self) -> bool:
         return bool(
-            super().available
+            self.coordinator.local_vehicle_available(self.sn)
             and self.entry.runtime_data.events
             and self.entry.runtime_data.events.available
         )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Explain an empty event without synthesizing a historical trigger."""
+        attributes: dict[str, Any] = {
+            "observation_status": "event_recorded" if self.state else "waiting_for_new_ride",
+            "travel_fresh": self.coordinator.fresh(self.sn, "travel"),
+            "historical_replay": False,
+        }
+        statistics = self.coordinator.statistics
+        latest = (
+            statistics.latest_ride(self.sn) if isinstance(statistics, ArchiveStatistics) else None
+        )
+        if latest and latest.ride.ended_at:
+            attributes["last_reported_ride_end"] = latest.ride.ended_at.isoformat()
+        return attributes
 
     @property
     def extra_restore_state_data(self) -> RideEventExtraData:
@@ -76,6 +94,7 @@ class NinebotRideEvent(NinebotEntity, EventEntity):
                 "duration_s": ride.duration_s,
                 "max_speed_m_s": ride.server_max_speed_m_s,
                 "average_speed_m_s": ride.average_speed_m_s,
+                "energy_wh": ride.energy_raw,
                 "source": "cloud_travel_end_report",
                 "completion_basis": "stable_successful_samples",
                 "late": late,

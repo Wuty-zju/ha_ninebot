@@ -570,3 +570,20 @@ no unverified coordinate conversion is performed.
 总里程缺报显示“未上报”。账号标题补充真实用户名，搜索框下的全局“中枢”标题
 没有集成专属修改接口，本版不冒称已改成“账号”。按维护者要求未运行功能测试，
 没有采集云数据、修改生产HA或执行控制。
+
+
+## b45 calendar, battery and ride presentation
+
+Only the propulsion SOC sensor declares the vehicle's battery device class. Emergency communication SOC remains a separate percentage/measurement entity; the tracker battery level explicitly uses propulsion SOC. No source values or unique IDs change.
+
+Configure → Enable ride calendar toggles the per-vehicle local calendar (default on). Disabling removes its active runtime consumer, not recorded rides or registry identity; enabling restores the same entity. Other enabled ride entities still request travel normally. Calendar entries show local start/end, distance (one decimal km), duration (integer min), max speed (integer km/h), average speed (one decimal), energy (integer Wh), and intensity (one decimal Wh/km). Missing facts are omitted rather than invented. Browsing remains local and bounded.
+
+Ride duration sensors retain native seconds with suggested minutes and integer display precision; rounding occurs only in presentation. The duration_seconds attribute and historical response retain the source duration. The optional card still shows minutes plus whole seconds. Month list coverage suggests integer percentages.
+
+Event state is the timestamp of a *newly observed completion event*, not the most recent historical ride. Unknown before the first new completion is correct. Attributes explain waiting_for_new_ride, current travel freshness and the last known reported ride end. Historical startup baselines never trigger an event; dedup and durable-before-emission remain. An existing event stays available during a temporary cloud outage when vehicle ownership and event storage remain valid. No guarantees of delivery for rides during downtime are introduced.
+
+Get trip detail already parses bounded trail points. Responses/card now also expose coordinate-free point distance values and track counts alongside speed sample curves. Point speed/distance units and coordinate system remain unknown: curves show raw values versus sequence, not km/h versus elapsed time. The coordinate-consented get_trip_detail(include_track: true) action can return up to 2,000 points, with existing vehicle/user access checks. Full tracks do not enter entity state or Recorder; the card retains at most 500 samples and no coordinates. HA's native map displays current GPS trackers, not a historical route polyline; accurate map overlay requires confirmed CRS and a dedicated renderer. No extra polling or automatic detail fetching is introduced.
+
+The integration entry heading still comes from HA's global integration_type translation and has no per-domain account override. Add account/title remain supported; no global DOM or translation patch is installed. This prerelease skips functional tests by explicit maintainer request.
+
+简中：车辆摘要使用主电池电量，应急通信电量保留独立百分比实体。配置可关闭行程日历且不删历史；日历补充起止时间和Wh/km，并统一精度。骑行事件等待新的完成记录时未知符合EventEntity语义，属性说明原因；不将历史骑行冒充新事件。详情卡展示速度/点间距离原量曲线和轨迹点数，单位与坐标系未确认前不制作虚假GPS路线。本次未测试、未新增云采集或修改生产HA。

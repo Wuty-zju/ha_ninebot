@@ -285,6 +285,12 @@ def main() -> None:
                     data["entity"].setdefault(platform, {})[key] = value
                 elif "state" in value:
                     data["entity"][platform][key]["state"] = value["state"]
+        for section in ("data", "data_description"):
+            old_init = previous.get("options", {}).get("step", {}).get("init", {}).get(section, {})
+            if "enable_calendar" in old_init:
+                data["options"]["step"]["init"].setdefault(section, {})["enable_calendar"] = (
+                    old_init["enable_calendar"]
+                )
         if "initiate_flow" in previous["config"]:
             data["config"]["initiate_flow"] = previous["config"]["initiate_flow"]
         save(DIRECTORY / "translations" / f"{locale}.json", data)

@@ -14,7 +14,7 @@ from homeassistant.util import dt as dt_util
 from .archive_runtime import ArchiveStatistics
 from .archive_timeline import SELECTION_BASIS
 from .compat import update_calendar_listeners
-from .const import DOMAIN
+from .const import CONF_CALENDAR, DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .ride_archive import ArchiveError, ArchiveFailure
 from .ride_models import Ride
@@ -65,6 +65,9 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
                 "last_ride_max_speed",
                 "last_ride_average_speed",
                 "last_energy_raw",
+                "last_energy_intensity",
+                "last_ride_start",
+                "last_ride_end",
             )
         }
         if isinstance(statistics := self.coordinator.statistics, ArchiveStatistics):
@@ -87,21 +90,25 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
             self.async_write_ha_state()
 
     def _description(self, ride: Ride) -> str:
-        precision = dict(ride.precision)
         average = ride.average_speed_m_s
         metrics = (
             (
                 "last_mileage",
                 ride.distance_m / 1000 if ride.distance_m is not None else None,
                 "km",
-                precision.get("mileages", 2),
+                1,
             ),
-            ("last_ride_duration", ride.duration_s, "s", precision.get("duration", 0)),
+            (
+                "last_ride_duration",
+                ride.duration_s / 60 if ride.duration_s is not None else None,
+                "min",
+                0,
+            ),
             (
                 "last_ride_max_speed",
                 ride.server_max_speed_m_s * 3.6 if ride.server_max_speed_m_s is not None else None,
                 "km/h",
-                precision.get("speed", 1),
+                0,
             ),
             (
                 "last_ride_average_speed",
@@ -111,12 +118,33 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
                 "km/h",
                 1,
             ),
-            ("last_energy_raw", ride.energy_raw, "Wh", precision.get("ec", 0)),
+            ("last_energy_raw", ride.energy_raw, "Wh", 0),
+            (
+                "last_energy_intensity",
+                ride.energy_raw / (ride.distance_m / 1000)
+                if ride.energy_raw is not None
+                and ride.distance_m is not None
+                and ride.distance_m > 0
+                else None,
+                "Wh/km",
+                1,
+            ),
         )
-        return "\n".join(
-            f"{self._labels.get(key, key)}: {value:.{min(max(digits, 0), 6)}f} {unit}"
-            for key, value, unit, digits in metrics
+        times = [
+            f"{self._labels.get(key, key)}: {dt_util.as_local(value).isoformat()}"
+            for key, value in (
+                ("last_ride_start", ride.started_at),
+                ("last_ride_end", ride.ended_at),
+            )
             if value is not None
+        ]
+        return "\n".join(
+            times
+            + [
+                f"{self._labels.get(key, key)}: {value:.{digits if value != 0 else 0}f} {unit}"
+                for key, value, unit, digits in metrics
+                if value is not None
+            ]
         )
 
     async def async_get_events(
@@ -176,4 +204,6 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
 async def async_setup_entry(
     hass: HomeAssistant, entry: NinebotConfigEntry, add: AddEntitiesCallback
 ) -> None:
+    if not entry.options.get(CONF_CALENDAR, True):
+        return
     async_setup_dynamic(hass, entry, add, lambda sn: [NinebotRideCalendar(entry, sn)])
