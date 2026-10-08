@@ -174,15 +174,15 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     const locale = this.browser.hass?.language ?? 'en';
     return LABELS[locale] ?? (locale.startsWith('zh') ? LABELS['zh-Hans'] : LABELS[locale.split('-')[0]]) ?? LABELS.en;
   }
-  number(value, precision, unit = '') {
+  number(value, precision, unit = '', preserveZero = false) {
     if (!Number.isFinite(value)) return '—';
     const language = this.browser.hass?.locale?.language ?? this.browser.hass?.language ?? 'en';
-    const n = new Intl.NumberFormat(language, { minimumFractionDigits: value === 0 ? 0 : digits(precision),
-      maximumFractionDigits: value === 0 ? 0 : digits(precision) }).format(value);
+    const n = new Intl.NumberFormat(language, { minimumFractionDigits: value === 0 && !preserveZero ? 0 : digits(precision),
+      maximumFractionDigits: value === 0 && !preserveZero ? 0 : digits(precision) }).format(value);
     return `${n}${unit ? ` ${unit}` : ''}`;
   }
   duration(value) {
-    return this.number(value, 0, 'h');
+    return this.number(value, 2, 'h', true);
   }
   timestamp(value) {
     if (!value || Number.isNaN(new Date(value).getTime())) return '—';

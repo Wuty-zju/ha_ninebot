@@ -568,6 +568,8 @@ class NinebotSensor(NinebotEntity, SensorEntity):
         # reports a translated unsupported/not-reported state.
         if value in ("unsupported", "not_reported"):
             return None
+        if description.key in {"month_duration", "last_ride_duration"}:
+            return 2
         if value == 0:
             return 0
         if description.device_class is SensorDeviceClass.DISTANCE:
@@ -674,6 +676,8 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
 
     @property
     def suggested_display_precision(self) -> int:
+        if self._attr_device_class is SensorDeviceClass.DURATION:
+            return 2
         if self.native_value == 0:
             return 0
         if self._attr_device_class is SensorDeviceClass.DISTANCE:

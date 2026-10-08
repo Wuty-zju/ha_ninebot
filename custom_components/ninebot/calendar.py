@@ -106,7 +106,7 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
                 if ride.duration_s is not None
                 else None,
                 "h",
-                0,
+                2,
             ),
             (
                 "last_ride_max_speed",
@@ -145,7 +145,7 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
         return "\n".join(
             times
             + [
-                f"{self._labels.get(key, key)}: {value:.{digits if value != 0 else 0}f} {unit}"
+                f"{self._labels.get(key, key)}: {value:.{digits if value != 0 or key == 'last_ride_duration' else 0}f} {unit}"
                 for key, value, unit, digits in metrics
                 if value is not None
             ]

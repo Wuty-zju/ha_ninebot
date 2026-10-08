@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b47
+
+- Display all ride durations in hours with two decimal places, including zero; retain native seconds and HA unit conversion.
+- Migrate existing owned ride duration entity unit/precision once to h/2 through public registry APIs; preserve IDs and subsequent user choices. Align calendar and optional detail card formatting.
+- No functional tests, compatibility dispatch, cloud queries or production changes, per maintainer instruction. Automatic style/distribution checks only.
+
 ## 2.0.0b46
 
 - Set integration_type to service as requested; the standard HA entry section now uses the Services heading. No custom account-heading patch.
