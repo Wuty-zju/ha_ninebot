@@ -8,6 +8,9 @@
     "@Wuty-zju"
   ],
   "config_flow": true,
+  "dependencies": [
+    "http"
+  ],
   "documentation": "https://github.com/Wuty-zju/ha_ninebot",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
@@ -18,5 +21,5 @@
   "requirements": [
     "ninecli==0.1.7"
   ],
-  "version": "2.0.0b42"
+  "version": "2.0.0b43"
 }

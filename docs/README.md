@@ -455,3 +455,60 @@ required for GPS; automation traces may retain an explicitly requested track.
 原始精度和缺月/部分/未知覆盖；已存列表完整不等于云端全部历史。继续分页时带回
 `next_cursor`，档案修订、重载或游标过期后从第一页重新读取。缺月同步和单条云端
 详情必须分别显式调用。账号/车辆实体身份及既有远程锁轮询逻辑保持不变。
+
+
+## Optional ride detail card
+
+After loading b43 or later, manually add a dashboard **JavaScript module** resource:
+`/ninebot-static/ninebot-trip-card.js`. The integration serves only its packaged
+assets using HA's async static API; it does not install resources or change your
+dashboards. Reload the browser after an integration update. No separate download,
+root-directory runtime dependency or external map/chart service is needed.
+
+```yaml
+type: custom:ninebot-trip-card
+entity: calendar.REPLACE_WITH_NINEBOT_RIDE_CALENDAR
+limit: 20
+# Optional fixed dates; otherwise the current Shanghai business month is used.
+# start_date: "2026-09-01"
+# end_date: "2026-09-30"
+```
+
+Choose exactly one vehicle: its Ninebot calendar `entity`, **or** `device_id`
+instead of `entity`. Optional `title` changes only the card heading. `limit` is
+1–100. Editing dates requires clicking **Read locally**; browsing and Next page
+read one local archive page, never backfill missing months. HA state updates do
+not repoll history. Use the existing explicit `sync_history` Action for gaps.
+
+Each ride expands distance, duration, timestamps, server maximum speed, overall
+distance/duration average speed, Wh and the actual observation receipt. Unknown
+values display a dash. Coverage remains an observed subset even when no missing
+month is listed. Dates select Shanghai business days; times use HA's display
+time zone. Source paths and parser information are available in a separate
+disclosure. Source precision is retained; average speed is a calculated metric.
+
+**Fetch cloud detail** explicitly requests only the selected ride/month and
+uses the existing backend/cache. It requests no coordinates. Verified raw speed
+samples can produce a small curve against sequence, labeled **unit unverified**;
+this is not a calibrated speed-versus-time plot or a GPS route. Sample means do
+not replace the server maximum or overall average. Unverified electricity usage
+is shown separately with an unknown-unit label.
+
+The browser keeps one scalar page and up to five current-page details, at most
+500 speed samples each; no tracks/raw payloads/localStorage. User, connection,
+vehicle or date changes discard old results, including late responses. Next
+page cursors can expire or be invalidated by archive changes; read from the first
+page again. Disconnect/reconnect performs at most one local page read.
+
+All historical queries, statistics reads and migration reports use standard HA
+read permissions for the selected vehicle's Ninebot calendar (or full-reader
+permission). Synchronization changes and Recorder imports require control
+permission; `sync_history` status remains read-only. Checks apply before work
+and before returning, with the existing account/vehicle generation guards.
+Trusted internal automations keep HA's normal no-user-context behavior.
+
+**简体中文：** 手动添加上面的JavaScript模块资源，再添加自定义卡片；用车辆的
+Ninebot行程日历或device_id选择一辆车。打开、改日期后点击“本地读取”和翻页只读
+本地档案，不自动补月。展开显示单趟指标；“获取云端详情”才按需查询这一趟，
+不请求GPS。速度采样曲线明确标注单位未确认，不冒充实测速度时间图或地图。
+缺月使用显式sync_history；同步修改/统计导入需要对应车辆的控制权限。

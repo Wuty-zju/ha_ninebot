@@ -1,10 +1,11 @@
 """Bounded, device-scoped history queries with explicit response data."""
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from functools import partial
 from typing import Any, cast
 
-from homeassistant.auth.permissions.const import POLICY_READ
+from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError, Unauthorized
@@ -403,7 +404,12 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
 
 
 async def async_check_history_access(
-    hass: HomeAssistant, call: ServiceCall, entry_id: str, *, include_track: bool = False
+    hass: HomeAssistant,
+    call: ServiceCall,
+    entry_id: str,
+    *,
+    include_track: bool = False,
+    permission: str = POLICY_READ,
 ) -> None:
     """Standard HA permissions, including device-scoped restricted users.
 
@@ -415,8 +421,8 @@ async def async_check_history_access(
         return
     user = await hass.auth.async_get_user(call.context.user_id)
     if user is None or not user.is_active:
-        raise Unauthorized(context=call.context, permission=POLICY_READ)
-    if user.permissions.access_all_entities(POLICY_READ):
+        raise Unauthorized(context=call.context, permission=permission)
+    if user.permissions.access_all_entities(permission):
         return
     rows = er.async_entries_for_device(er.async_get(hass), call.data["device_id"])
     platforms = ("calendar", "device_tracker") if include_track else ("calendar",)
@@ -426,12 +432,42 @@ async def async_check_history_access(
             and row.config_entry_id == entry_id
             and row.domain == platform
             and row.disabled_by is None
-            and user.permissions.check_entity(row.entity_id, POLICY_READ)
+            and user.permissions.check_entity(row.entity_id, permission)
             for row in rows
         )
         for platform in platforms
     ):
-        raise Unauthorized(context=call.context, permission=POLICY_READ)
+        raise Unauthorized(context=call.context, permission=permission)
+
+
+async def async_scoped_action(
+    hass: HomeAssistant,
+    handler: Callable[[HomeAssistant, ServiceCall], Awaitable[dict[str, Any]]],
+    call: ServiceCall,
+) -> dict[str, Any]:
+    """Apply the same account/device permission boundary to older Actions."""
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
+    co = entry.runtime_data.coordinator
+    generation, ownership = co._generation, co._ownership.get(sn, 0)
+    permission = (
+        POLICY_CONTROL
+        if call.service == "import_statistics"
+        or (call.service == "sync_history" and call.data["operation"] != "status")
+        else POLICY_READ
+    )
+
+    async def check() -> None:
+        await async_check_history_access(hass, call, entry.entry_id, permission=permission)
+        assert_query_scope(
+            hass, call.data["device_id"], entry.entry_id, sn, False, require_live=False
+        )
+        if generation != co._generation or ownership != co._ownership.get(sn, 0):
+            raise validation_error("query_unavailable")
+
+    await check()
+    response = await handler(hass, call)
+    await check()
+    return response
 
 
 async def async_entity_migration(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
@@ -462,14 +498,14 @@ def async_register_actions(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         "sync_history",
-        partial(async_sync_history, hass),
+        partial(async_scoped_action, hass, async_sync_history),
         schema=SYNC_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,
         "get_entity_migration",
-        partial(async_entity_migration, hass),
+        partial(async_scoped_action, hass, async_entity_migration),
         schema=vol.Schema({vol.Required("device_id"): cv.string}),
         supports_response=SupportsResponse.ONLY,
     )
@@ -477,7 +513,7 @@ def async_register_actions(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         "import_statistics",
-        partial(async_import_statistics, hass),
+        partial(async_scoped_action, hass, async_import_statistics),
         schema=IMPORT_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
@@ -485,7 +521,7 @@ def async_register_actions(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         "get_statistics",
-        partial(async_statistics_query, hass),
+        partial(async_scoped_action, hass, async_statistics_query),
         schema=STATISTICS_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
@@ -493,7 +529,7 @@ def async_register_actions(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         "get_history",
-        partial(async_history_query, hass),
+        partial(async_scoped_action, hass, async_history_query),
         schema=HISTORY_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
