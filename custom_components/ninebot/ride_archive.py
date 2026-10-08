@@ -33,6 +33,15 @@ from .archive_codec import (
     stamp,
 )
 from .archive_legacy import prepare_legacy
+from .archive_timeline import (
+    MAX_TIMELINE_DAYS,
+    MAX_TIMELINE_RIDES,
+    ArchivedRide,
+    ArchiveTimeline,
+    TimelineLimitError,
+    latest_query,
+    timeline_query,
+)
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
 from .raw import version_metadata
@@ -57,6 +66,7 @@ class ArchiveFailure(StrEnum):
     SCHEMA = "schema"
     OWNER = "owner"
     CURSOR = "cursor"
+    BUDGET = "budget"
 
 
 class ArchiveError(Exception):
@@ -712,6 +722,41 @@ class RideArchive:
         return await self._run(
             partial(self._page, vehicle_key(sn), start_key, end_key, limit, cursor)
         )
+
+    async def async_timeline(
+        self, sn: str, start: datetime, end: datetime, *, limit: int = MAX_TIMELINE_RIDES
+    ) -> ArchiveTimeline:
+        """One serialized, current-selection range read; never cloud backfill."""
+        key = vehicle_key(sn)
+        start_key, end_key = utc_string(start), utc_string(end)
+        if (
+            start_key >= end_key
+            or (end.astimezone(UTC) - start.astimezone(UTC)).total_seconds()
+            > MAX_TIMELINE_DAYS * 86400
+            or type(limit) is not int
+            or not 1 <= limit <= MAX_TIMELINE_RIDES
+        ):
+            raise ValueError("Invalid archive timeline range")
+
+        def query() -> ArchiveTimeline:
+            try:
+                return timeline_query(self._db(), key, start_key, end_key, limit)
+            except TimelineLimitError:
+                raise ArchiveError(ArchiveFailure.BUDGET) from None
+
+        return await self._run(query)
+
+    async def async_latest(self, sn: str, now: datetime) -> ArchivedRide | None:
+        """Latest valid time-bounded observation, independent of query month."""
+        key, now_key = vehicle_key(sn), utc_string(now)
+
+        def query() -> ArchivedRide | None:
+            try:
+                return latest_query(self._db(), key, now_key)
+            except TimelineLimitError:
+                raise ArchiveError(ArchiveFailure.BUDGET) from None
+
+        return await self._run(query)
 
     def _page(
         self,
