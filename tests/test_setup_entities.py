@@ -635,6 +635,7 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
     ]
     for platform, key in (
         ("event", "ride"),
+        ("calendar", "ride_calendar"),
         ("binary_sensor", "cycle_support"),
         ("binary_sensor", "battery_find_my_support"),
     ):
