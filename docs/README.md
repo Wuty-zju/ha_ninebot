@@ -582,8 +582,24 @@ Ride duration sensors retain native seconds with suggested minutes and integer d
 
 Event state is the timestamp of a *newly observed completion event*, not the most recent historical ride. Unknown before the first new completion is correct. Attributes explain waiting_for_new_ride, current travel freshness and the last known reported ride end. Historical startup baselines never trigger an event; dedup and durable-before-emission remain. An existing event stays available during a temporary cloud outage when vehicle ownership and event storage remain valid. No guarantees of delivery for rides during downtime are introduced.
 
-Get trip detail already parses bounded trail points. Responses/card now also expose coordinate-free point distance values and track counts alongside speed sample curves. Point speed/distance units and coordinate system remain unknown: curves show raw values versus sequence, not km/h versus elapsed time. The coordinate-consented get_trip_detail(include_track: true) action can return up to 2,000 points, with existing vehicle/user access checks. Full tracks do not enter entity state or Recorder; the card retains at most 500 samples and no coordinates. HA's native map displays current GPS trackers, not a historical route polyline; accurate map overlay requires confirmed CRS and a dedicated renderer. No extra polling or automatic detail fetching is introduced.
+Get trip detail already parses bounded trail points. Responses/card now also expose coordinate-free point distance values and track counts alongside speed sample curves. Point speed/distance units and coordinate system remain unknown: curves show raw values versus sequence, not km/h versus elapsed time. The coordinate-consented get_trip_detail(include_track: true) action can return up to 2,000 points, with existing vehicle/user access checks. Full tracks do not enter entity state or Recorder; the card retains at most 500 samples and no coordinates. HA's native map can show the tracker's Recorder location history via hours_to_show, but does not directly consume downloaded ride track arrays; overlaying an individual cloud ride requires confirmed CRS and a dedicated renderer. No extra polling or automatic detail fetching is introduced.
 
 The integration entry heading still comes from HA's global integration_type translation and has no per-domain account override. Add account/title remain supported; no global DOM or translation patch is installed. This prerelease skips functional tests by explicit maintainer request.
 
 简中：车辆摘要使用主电池电量，应急通信电量保留独立百分比实体。配置可关闭行程日历且不删历史；日历补充起止时间和Wh/km，并统一精度。骑行事件等待新的完成记录时未知符合EventEntity语义，属性说明原因；不将历史骑行冒充新事件。详情卡展示速度/点间距离原量曲线和轨迹点数，单位与坐标系未确认前不制作虚假GPS路线。本次未测试、未新增云采集或修改生产HA。
+
+
+### Native location history map
+
+The [official map card](https://www.home-assistant.io/dashboards/map/) supports `hours_to_show` for locations already recorded by HA. Replace the example entity with the vehicle's actual Device location tracker:
+
+```yaml
+type: map
+entities:
+  - device_tracker.account_vehicle_serial_location
+hours_to_show: 24
+```
+
+This uses existing consented tracker state/history and does not download rides or increase polling. Recorder/history must retain the location entity. Sampling gaps and the upstream unverified CRS still apply; it is a trace of HA observations, not the complete Ninebot ride trail. Calendar disabling does not disable the tracker. No dashboard or production Recorder setting is modified automatically.
+
+原生地图卡可直接展示HA已有的位置历史：使用设备位置tracker并设置hours_to_show。它不是云端行程轨迹数组的导入入口，不回填历史GPS点、不增加查询。需保留相应Recorder历史并启用坐标；采样间隔可能产生缺段。
