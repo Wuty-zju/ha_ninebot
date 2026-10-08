@@ -89,6 +89,7 @@ async def async_get_config_entry_diagnostics(
             "source_mode": runtime.coordinator.statistics.source_mode,
             "archive_ready": runtime.coordinator.statistics.archive_ready,
             "write_paused": runtime.coordinator.statistics.archive.write_paused,
+            "backup_paused": runtime.coordinator.statistics.archive.backup_paused,
             "error_kind": runtime.coordinator.statistics.error.value
             if runtime.coordinator.statistics.error
             else None,

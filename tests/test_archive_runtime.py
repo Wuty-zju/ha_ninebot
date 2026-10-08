@@ -16,8 +16,11 @@ from custom_components.ninebot.archive_runtime import ArchiveStatistics, archive
 from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
 from custom_components.ninebot.models import VehicleProfile
 from custom_components.ninebot.period_statistics import day_summary
+from custom_components.ninebot.raw import Endpoint
+from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure
 from custom_components.ninebot.statistics_actions import statistics_response
 from custom_components.ninebot.statistics_store import TravelStatisticsStore
+from custom_components.ninebot.travel import parse_ride
 
 NOW = datetime(2026, 10, 8, 4, tzinfo=UTC)
 SN = "SyntheticSN"
@@ -232,5 +235,56 @@ async def test_same_clock_ordered_receipts_correct_disk_facts_and_ignore_lost_ow
         renamed = replace(PROFILE, name="Renamed")
         await store.async_record_profiles((renamed,), NOW, True, lambda: True)
         assert (await store.async_cached_profiles())[0].name == "Renamed"
+    finally:
+        await store.async_close()
+
+
+async def test_archive_failure_recovery_views_detail_and_guards(hass, freezer):
+    freezer.move_to(NOW)
+    store = ArchiveStatistics(hass, "fault-entry", "owner")
+    try:
+        assert (await store.async_view(SN, ("202609",))).month(SN, "202609") is None
+        assert await store.async_cached_month(SN, "202609") is None
+        assert await store.async_cached_profiles() == ()
+        await store.async_record_profiles((PROFILE,), NOW, True, lambda: True)
+        detail = parse_ride(
+            {"travel_id": "r-0", "ec": 99},
+            "202609",
+            source=Endpoint.TRIP_DETAIL,
+        )
+        await store.async_record_detail(SN, detail, NOW, lambda: True)
+        await store.async_load()
+        await store.async_record_profiles((PROFILE,), NOW, False, lambda: True)
+        await store.async_record_profiles((PROFILE,), NOW, True, lambda: False)
+        baseline = travel({"times": 1, "list": [{"travel_id": "r-0", "ec": 50}]}, "202609")
+        await store.async_record(SN, baseline, NOW)
+        await store.async_record_detail(SN, detail, NOW + timedelta(seconds=1), lambda: False)
+        await store.async_record_detail(SN, detail, NOW + timedelta(seconds=1), lambda: True)
+        assert (await store.async_cached_month(SN, "202609")).travel.rides[0].energy_raw == 99
+        for method, invoke in (
+            ("async_record_month", lambda: store.async_record(SN, many_rides(1), NOW)),
+            (
+                "async_record_profiles",
+                lambda: store.async_record_profiles((PROFILE,), NOW, True, lambda: True),
+            ),
+            (
+                "async_record_detail",
+                lambda: store.async_record_detail(SN, detail, NOW, lambda: True),
+            ),
+            ("async_profiles", store.async_cached_profiles),
+            ("async_months", store.async_refresh_projection),
+        ):
+            with patch.object(
+                store.archive, method, side_effect=ArchiveError(ArchiveFailure.STORAGE)
+            ):
+                await invoke()
+            assert store.error is ArchiveFailure.STORAGE
+        await store.async_record_profiles((PROFILE,), NOW, True, lambda: True)
+        assert store.error is None and store.writable
+        old = store._projection
+        await store._project(lambda: False)
+        assert store._projection is old
+        await store.archive.async_close()
+        assert await store.async_cached_profiles() == ()
     finally:
         await store.async_close()

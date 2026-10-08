@@ -197,6 +197,52 @@ async def test_offline_known_month_reused_but_missing_waits_without_cloud(
     app_client.async_get_travel.assert_not_awaited()
 
 
+async def test_storage_retry_replays_received_raw_without_another_query(
+    hass, entry, app_client, sync_device, freezer
+):
+    co = entry.runtime_data.coordinator
+    with patch.object(co.statistics, "async_record"):
+        first = await call(hass, sync_device, start_month="202609", end_month="202609")
+    assert first["state"] == "waiting" and first["reason"] == "storage"
+    assert first["processed_months"] == 0 and first["retry_after_s"] == 60
+    assert app_client.async_get_travel.await_count == 1
+    app_client.async_get_travel.reset_mock()
+    freezer.tick(timedelta(seconds=61))
+    second = await call(hass, sync_device, operation="continue", job_id=first["job_id"])
+    assert second["state"] == "complete" and second["queried_months"] == 1
+    app_client.async_get_travel.assert_not_awaited()
+    assert await co.statistics.async_cached_month(SN, "202609") is not None
+
+
+async def test_unavailable_archive_and_invalid_sync_schema(hass, entry, app_client, sync_device):
+    from custom_components.ninebot.compat import validation as vol
+    from custom_components.ninebot.sync_actions import SYNC_SCHEMA
+
+    co = entry.runtime_data.coordinator
+    for data in ({"job_id": "../private"}, {"operation": "control"}):
+        with pytest.raises(vol.Invalid):
+            SYNC_SCHEMA({"device_id": sync_device, **data})
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, sync_device)
+    assert err.value.translation_key == "history_range"
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, sync_device, start_month="202610", end_month="202609")
+    assert err.value.translation_key == "history_range"
+    co.statistics.archive_ready = False
+    for operation in ("start", "status"):
+        with pytest.raises(HomeAssistantError) as err:
+            await call(
+                hass, sync_device, operation=operation, start_month="202609", end_month="202609"
+            )
+        assert err.value.translation_key == "statistics_unavailable"
+    co.statistics.archive_ready = True
+    await co.statistics.archive.async_close()
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, sync_device, start_month="202609", end_month="202609")
+    assert err.value.translation_key == "statistics_unavailable"
+    app_client.async_get_travel.assert_not_awaited()
+
+
 def test_sync_codec_rejects_inconsistent_and_secret_metadata():
     job = SyncJob(
         "a" * 32, "b" * 64, "202601", "202603", "202603", NOW.isoformat(), NOW.isoformat()
@@ -218,3 +264,29 @@ def test_sync_codec_rejects_inconsistent_and_secret_metadata():
     assert restored_job(json.loads(json.dumps(job_data(ready)))) == ready
     cancelled = replace(ready, state=SyncState.CANCELLED, reason="cancelled")
     assert restored_job(json.loads(json.dumps(job_data(cancelled)))) == cancelled
+
+
+def test_checkpoint_coverage_and_terminal_state_cannot_be_forged():
+    job = SyncJob(
+        "a" * 32, "b" * 64, "202601", "202603", "202603", NOW.isoformat(), NOW.isoformat()
+    ).advance(NOW.isoformat(), queried=True, complete=None)
+    base = json.loads(json.dumps(job_data(job)))
+    for change in (
+        {"updated_at": "2026-10-07T00:00:00+00:00"},
+        {"queried": 0},
+        {"state": "complete", "next_month": None},
+        {"state": "cancelled"},
+        {"state": "waiting"},
+        {"unknown_months": ["202603", "202603"]},
+        {"unknown_months": ["202604"]},
+        {"unknown_months": ["202602"]},
+        {"unknown_months": [1]},
+        {"incomplete_months": ["202603"]},
+    ):
+        with pytest.raises(ValueError):
+            restored_job({**base, **change})
+    done = job.advance(NOW.isoformat(), queried=False, complete=True).advance(
+        NOW.isoformat(), queried=False, complete=True
+    )
+    with pytest.raises(ValueError):
+        done.advance(NOW.isoformat(), queried=False, complete=True)

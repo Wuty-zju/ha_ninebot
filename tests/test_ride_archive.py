@@ -5,6 +5,7 @@ import hashlib
 import json
 import sqlite3
 import threading
+from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
@@ -32,6 +33,48 @@ from custom_components.ninebot.travel import parse_ride
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OWNER = hashlib.sha256(b"synthetic-account").hexdigest()
 SN = "synthetic-vehicle"
+
+
+@pytest.mark.parametrize(
+    "sql,values",
+    [
+        ("CREATE TABLE unexpected (secret TEXT)", ()),
+        ("ALTER TABLE vehicles ADD COLUMN unrelated TEXT", ()),
+        ("UPDATE meta SET value='not-a-number' WHERE key='revision'", ()),
+        ("INSERT INTO meta VALUES ('sync_job','{}')", ()),
+        ("PRAGMA ignore_check_constraints=ON", ()),
+        ("UPDATE vehicles SET profile=?", ('{"sn":"foreign","model":"m","name":"n"}',)),
+        ("UPDATE vehicles SET observed='not-a-timestamp'", ()),
+        ("UPDATE months SET data='{}'", ()),
+        ("UPDATE months SET revision=0", ()),
+        ("UPDATE months SET backend='secret token'", ()),
+        ("UPDATE months SET ids=?", ('{"ids":["first","first"]}',)),
+        ("UPDATE months SET ids=?", ('{"ids":["first"]}',)),
+        ("UPDATE months SET ids=?", ('{"ids":[true]}',)),
+        ("UPDATE rides SET data='{}'", ()),
+        ("UPDATE rides SET revision=0", ()),
+        ("UPDATE rides SET started='not-the-real-index'", ()),
+        ("UPDATE membership SET ride='foreign-id' WHERE ride='first'", ()),
+    ],
+)
+async def test_corrupt_disk_metadata_refused_without_modifying_original(tmp_path, sql, values):
+    path = tmp_path / "corrupt.sqlite3"
+    store = RideArchive(path, OWNER)
+    await store.async_open()
+    await store.async_record_month(SN, sample(), NOW)
+    await store.async_close()
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute(sql, values)
+        if sql == "PRAGMA ignore_check_constraints=ON":
+            db.execute("UPDATE vehicles SET present=2")
+    original = path.read_bytes()
+    broken = RideArchive(path, OWNER)
+    try:
+        with pytest.raises(ArchiveError):
+            await broken.async_open()
+        assert path.read_bytes() == original
+    finally:
+        await broken.async_close()
 
 
 def sample(month="202609", *, ids=("first", "second"), count=None, distance="1.20"):
@@ -268,7 +311,7 @@ async def test_backup_restore_and_future_owner_corrupt_files_untouched(archive, 
         path = tmp_path / (fault + ".sqlite3")
         await archive.async_backup(path)
         if fault == "future":
-            with sqlite3.connect(path) as db:
+            with closing(sqlite3.connect(path)) as db, db:
                 db.execute("PRAGMA user_version=99")
         elif fault == "corrupt":
             path.write_bytes(b"not a SQLite archive")
@@ -495,7 +538,7 @@ async def test_corrupt_normalized_row_does_not_get_rewritten_during_open(archive
     await archive.async_record_month(SN, sample(), NOW)
     path = tmp_path / "corrupt-row.sqlite3"
     await archive.async_backup(path)
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         row = db.execute("SELECT data FROM rides LIMIT 1").fetchone()
         data = json.loads(row[0])
         data["distance_m"] = "unreviewed"

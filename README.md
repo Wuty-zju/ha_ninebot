@@ -60,7 +60,8 @@ See [raw/diagnostics contract](docs/README.md).
 
 `ninebot.get_trips`, `get_trip_detail` and `get_history` target the HA vehicle device and return response data.
 Historical lists/tracks are not entities or large state attributes. Local pagination only covers received rows;
-reported monthly totals can exceed the returned list. History cursors are bounded memory, not a permanent database.
+reported monthly totals can exceed the returned list. History cursors are bounded memory; 2.0.0b39 persists normalized facts in a private per-account archive.
+`sync_history` fills at most three missing months per call and retains its checkpoint across restarts.
 Tracks require coordinates opt-in plus `include_track`; automation traces may retain response locations.
 Server maximum speed and distance/duration average remain distinct; point-speed/delta units are unverified.
 Ride events establish a startup baseline and suppress duplicates; cloud timing/pagination can cause missed events.

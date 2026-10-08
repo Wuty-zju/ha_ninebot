@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0b39
+
+- Persist normalized monthly facts, scalar ride details, field provenance and precision in an account-scoped SQLite archive. Import the validated v1 statistics source once without modifying it; retain history beyond its old 500-ride cap. Current/adjacent-month memory projections and bounded range reads use the same archive.
+- Add response-only `sync_history`: at most three missing-month queries per explicit batch, one durable job per account, atomic facts/checkpoints, restart continuation, cancellation and bounded failure cooldown. Reuse known months including partial lists, without pretending to have upstream pagination or complete history. No background full-history polling, detail downloads or controls.
+- Restore minimal known vehicle profiles and historical queries when the first cloud refresh fails. Preserve authentication, ownership, live freshness and control restrictions; cached profiles do not grant live permission. Closed-month queries prefer local facts, and offline current observations expose their actual age.
+- Add official local backup hooks that drain and freeze archive writes, including setup-in-progress actors, and thaw on completion/failure. Close the actor on account removal and clean only its known database/journal files after backup; unexpected files/links remain with a Repair. Distinguish capacity, I/O and incompatible-storage Repairs.
+- Keep a 100 MiB per-account write budget without silently evicting old history. Full storage retains readable facts. Raw JSON, GPS tracks and speed samples stay in bounded runtime caches, outside SQLite, entity state and Recorder. Preserve meaningful entity identities and the exact ninecli/HA dependency boundaries.
+
 ## 2.0.0b38
 
 - Add native vehicle and seat Lock entities while retaining the original buttons. Share strict status interpretation, explicit controls/allowlist/ownership policy and a same-physical-vehicle lease across accounts. Vehicle stop requires reviewed fresh stopped-and-P evidence; current ninecli data has none, so remote locking is refused. Seat locking is manual only.

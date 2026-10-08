@@ -677,6 +677,22 @@
     "entity_id_storage_invalid": {
       "title": "Entity identity storage unavailable",
       "description": "Frozen identity seeds or migration records cannot be read. This account pauses setup to prevent duplicates. Restore a matching identity storage backup; do not edit registries directly."
+    },
+    "ride_archive_capacity": {
+      "title": "คลังประวัติเต็ม",
+      "description": "ถึงขีดจำกัดขนาดจึงหยุดเขียน ประวัติเดิมยังอ่านได้ สำรองการตั้งค่าทั้งหมดและตรวจขนาด อย่าลบประวัติเพื่อซ่อนข้อความนี้"
+    },
+    "ride_archive_io": {
+      "title": "เขียนคลังประวัติไม่ได้",
+      "description": "ตรวจพื้นที่และสิทธิ์แล้วโหลดบัญชีใหม่ เก็บข้อมูลสำรองและไฟล์เดิม ข้อมูลรถยังทำงานได้"
+    },
+    "ride_archive_removal": {
+      "title": "เก็บคลังของบัญชีที่ลบแล้ว",
+      "description": "ไฟล์หรือลิงก์ที่ไม่คาดคิดหรือข้อผิดพลาดการเข้าถึงหยุดการล้าง สำรองและตรวจโฟลเดอร์ส่วนตัว บัญชีอื่นไม่ได้ถูกลบ"
+    },
+    "ride_archive_invalid": {
+      "title": "Travel statistics storage unavailable",
+      "description": "The private history statistics file is invalid or uses an unsupported version. It has not been overwritten. Current vehicle telemetry continues. Keep configuration backups and check storage permissions and the integration version before restoring a compatible backup."
     }
   },
   "services": {
@@ -738,7 +754,7 @@
     },
     "get_history": {
       "name": "รับประวัติการเดินทาง",
-      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; indexing is memory-only, without automatic archiving or Recorder import.",
+      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; recorded month/ride facts are durable, while cursors and response indexes are memory-only. No automatic Recorder import.",
       "fields": {
         "device_id": {
           "name": "Vehicle"

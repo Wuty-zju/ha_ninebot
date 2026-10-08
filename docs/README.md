@@ -12,7 +12,7 @@ b37 shares identical in-flight reads through a bounded broker, including failure
 
 Executor parsing retains the original request start/receipt times and monotonic revision. Cache rereads do not renew freshness, and stale generation/ownership responses cannot overwrite telemetry or the historical ledger. Concurrent ledger preparations commit in order. Transient GET failures can retry once within the same deadline; authentication/schema failures and controls are not retried. Only an actual transport Retry-After is honored, with bounded shared-transport recovery cooldown and existing per-group backoff. Diagnostics expose counters, not request keys, identities or payloads.
 
-For a loaded account and still-known vehicle, retained daily statistics, get_statistics without refresh, import_statistics and entity migration reports remain usable after live profile expiry or authentication failure. Explicit cloud refresh and live telemetry still use their freshness/authentication checks. Removed/foreign vehicles and unloaded entries remain rejected. The current R4 candidate restores minimal, account-scoped profiles and historical Actions from the archive when the first cloud refresh fails. Cached profiles do not grant live freshness or control permission, and invalid local sessions still require reauthentication. Retained data does not prove all upstream history was returned.
+For a loaded account and still-known vehicle, retained daily statistics, get_statistics without refresh, import_statistics and entity migration reports remain usable after live profile expiry or authentication failure. Explicit cloud refresh and live telemetry still use their freshness/authentication checks. Removed/foreign vehicles and unloaded entries remain rejected. 2.0.0b39 restores minimal, account-scoped profiles and historical Actions from the archive when the first cloud refresh fails. Cached profiles do not grant live freshness or control permission, and invalid local sessions still require reauthentication. Retained data does not prove all upstream history was returned.
 
 A command attempt establishes a new status request barrier. b38 lock confirmation uses separate single-attempt status reads, so pre-command requests and ordinary auto-retried polling cannot substitute for the command confirmation budget.
 
@@ -90,7 +90,7 @@ for display on reload. This restoration never triggers automations. Old restore
 data without a saved timestamp remains unknown rather than inventing one from
 the ride's end time. No additional cloud polling or ride-detail requests are used.
 
-The R4 candidate uses an account-scoped SQLite archive for normalized month
+2.0.0b39 uses an account-scoped SQLite archive for normalized month
 summaries and scalar ride metadata. Ordinary travel polling and explicit queries
 write the same archive. The previous v1 statistics file is validated and imported
 once without modifying its original bytes; it is then a read-only migration
@@ -118,9 +118,18 @@ never requests ride details, tracks or vehicle controls.
 The archive has a 100 MiB write budget and does not silently evict historical
 rides at the previous 500-record limit. Storage exhaustion pauses writes while
 retaining readable history. Unreadable/unsupported archives are preserved, and
-ordinary vehicle telemetry continues with a storage Repair. Final phase delivery
-still requires durable incremental jobs, account-removal lifecycle and Home
-Assistant backup hooks; this local candidate is not yet a released R4 phase.
+ordinary vehicle telemetry continues with a storage Repair. Official Home Assistant backup pre/post hooks: archive writes
+pause and earlier SQL operations drain before backup, while historical reads remain
+available. A transient backup pause does not clear a capacity failure. Setup cannot
+create another archive writer during backup. Account removal closes the actor and
+removes only that entry's database/journal files; unexpected files or symlinks are
+retained with a Repair. Removal during backup is deferred until its post hook.
+These hooks prepare local storage; they do not upload archives or create a backup
+agent. See the [official backup contract](https://developers.home-assistant.io/docs/core/platform/backup/).
+Retain a complete configuration/storage backup, including identities, registries,
+sessions and the private archive, when restoring or rolling back. A SQLite-only
+copy cannot restore entity migration or account configuration. Calendar/trend presentation follows separately; this archive does not claim full
+upstream history.
 
 `get_trips` and `get_history` prefer recorded closed months without another cloud
 request. Current-month observations keep their original age; offline reads return
@@ -161,7 +170,7 @@ assigned to resetting daily/monthly totals.
 `ninebot.get_statistics` accepts `device_id`, `start_month`, `end_month`,
 `include_daily` (default true) and `refresh` (default false). One response covers
 one to six months. The default reads the selected local archive months and sends no
-cloud request. Use the existing `get_history` continuations to fill a longer
+cloud request. Use `sync_history` jobs to fill missing months in a longer
 history, then query it in six-month windows; this Action is not a second scan
 and cannot discover unqueried upstream history. Explicit refresh makes at most one cached/queued month
 query per requested month, without fetching details or controls.

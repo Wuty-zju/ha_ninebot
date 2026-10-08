@@ -13,6 +13,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
 
 from .archive_statistics import ArchiveStatisticsView, StatisticsReader
+from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
@@ -43,6 +44,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection = ArchiveStatisticsView()
         self._projection_month = ""
         self.persistence_enabled = False
+        register_archive(hass, self.archive)
 
     async def async_load(self) -> None:
         await super().async_load()
@@ -64,11 +66,13 @@ class ArchiveStatistics(TravelStatisticsStore):
             await self.async_refresh_projection()
             self.restored = self.restored or bool(profiles or self.months or self.rides)
         except ArchiveError as err:
-            self.record_error(err)
+            self.record_error(err, opening=True)
 
-    def record_error(self, err: ArchiveError) -> None:
+    def record_error(self, err: ArchiveError, *, opening: bool = False) -> None:
         self.error = err.kind
-        if err.kind in {ArchiveFailure.BUSY, ArchiveFailure.CLOSED, ArchiveFailure.OWNER}:
+        if err.kind in {ArchiveFailure.BUSY, ArchiveFailure.CLOSED} or (
+            err.kind is ArchiveFailure.OWNER and not opening
+        ):
             return  # Lifecycle/queue/ownership is not an actionable storage Repair.
         ir.async_create_issue(
             self.hass,
@@ -76,7 +80,13 @@ class ArchiveStatistics(TravelStatisticsStore):
             self._archive_issue,
             is_fixable=False,
             severity=ir.IssueSeverity.WARNING,
-            translation_key="travel_statistics_storage",
+            translation_key=(
+                "ride_archive_capacity"
+                if err.kind is ArchiveFailure.CAPACITY
+                else "ride_archive_io"
+                if err.kind is ArchiveFailure.STORAGE
+                else "ride_archive_invalid"
+            ),
         )
 
     def _archive_success(self) -> None:
@@ -92,7 +102,12 @@ class ArchiveStatistics(TravelStatisticsStore):
 
     @property
     def writable(self) -> bool:
-        return self.archive_ready and not self.archive.write_paused and self.error is None
+        return (
+            self.archive_ready
+            and not self.archive.write_paused
+            and not self.archive.backup_paused
+            and self.error is None
+        )
 
     @property
     def source_mode(self) -> str:
@@ -249,4 +264,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         """Transactions already persist; the legacy Store must never write again."""
 
     async def async_close(self) -> None:
-        await self.archive.async_close()
+        try:
+            await self.archive.async_close()
+        finally:
+            unregister_archive(self.hass, self.archive)

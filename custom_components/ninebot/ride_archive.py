@@ -165,6 +165,7 @@ class RideArchive:
         self._open_lock = asyncio.Lock()
         self._close_task: asyncio.Task[None] | None = None
         self.write_paused = False
+        self.backup_paused = False
 
     async def _run(
         self,
@@ -235,10 +236,31 @@ class RideArchive:
             raise ArchiveError(ArchiveFailure.CLOSED)
         if write and self.write_paused:
             raise ArchiveError(ArchiveFailure.CAPACITY)
+        if write and self.backup_paused:
+            raise ArchiveError(ArchiveFailure.BUSY)
         return self._connection
+
+    async def async_prepare_backup(self) -> None:
+        """Reject new writes immediately, then drain earlier SQL operations."""
+        self.backup_paused = True
+        if self._closing:
+            await self.async_close()
+            return
+
+        def barrier() -> None:
+            if self._connection is not None and self._connection.in_transaction:
+                raise ArchiveError(ArchiveFailure.STORAGE)
+
+        await self._run(barrier, lifecycle=True)
+
+    def resume_after_backup(self) -> None:
+        """The loop clears a transient barrier, never a capacity failure."""
+        self.backup_paused = False
 
     async def async_open(self) -> None:
         async with self._open_lock:
+            if self.backup_paused:
+                raise ArchiveError(ArchiveFailure.BUSY)
             if self._closing or self._opened:
                 raise ArchiveError(ArchiveFailure.CLOSED)
             try:

@@ -9,6 +9,8 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
+from .archive_lifecycle import async_remove_archive
+from .backup import backup_active, defer_removal
 from .client import NinecliClient
 from .const import CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN, PLATFORMS, SESSION_DIRECTORY
 from .coordinator import NinebotCoordinator
@@ -24,6 +26,7 @@ from .registry import (
     async_migrate_entity_ids,
     async_remove_obsolete_entities,
 )
+from .ride_archive import ArchiveError, ArchiveFailure
 from .runtime import NinebotConfigEntry, RuntimeData
 from .services import async_register_actions
 from .session import SessionManager, session_uid
@@ -56,6 +59,8 @@ def manager_for(hass: HomeAssistant) -> SessionManager:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> bool:
+    if backup_active(hass):
+        raise ConfigEntryNotReady("Ninebot archive backup is in progress")
     manager = manager_for(hass)
     key = entry.data[CONF_SESSION_KEY]
     await manager.async_recover(key)
@@ -80,6 +85,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
     try:
         await store.async_load()
         await coordinator.statistics.async_load()
+        if coordinator.statistics.archive.backup_paused or (
+            not coordinator.statistics.archive_ready
+            and coordinator.statistics.error is ArchiveFailure.BUSY
+        ):
+            raise ConfigEntryNotReady("Ninebot archive backup is in progress")
         assert entry.runtime_data.identities is not None
         await entry.runtime_data.identities.async_load()
         cached = await coordinator.statistics.async_cached_profiles()
@@ -135,5 +145,30 @@ async def async_migrate_entry(hass: HomeAssistant, entry: NinebotConfigEntry) ->
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    if isinstance(runtime := getattr(entry, "runtime_data", None), RuntimeData):
+        # HA still calls remove when platform unload failed. No SQL actor may
+        # remain open over a file that is about to be removed.
+        if runtime.events:
+            await runtime.events.async_close()
+        await runtime.coordinator.async_close()
+
+    async def remove() -> None:
+        try:
+            await async_remove_archive(hass, entry.entry_id)
+        except ArchiveError:
+            ir.async_create_issue(
+                hass,
+                DOMAIN,
+                f"ride_archive_remove_{entry.entry_id}",
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="ride_archive_removal",
+            )
+            return
+        ir.async_delete_issue(hass, DOMAIN, f"ride_archive_remove_{entry.entry_id}")
+        ir.async_delete_issue(hass, DOMAIN, f"ride_archive_{entry.entry_id}")
+
+    if not defer_removal(hass, remove):
+        await remove()
     await TravelStatisticsStore(hass, entry.entry_id).async_remove()
     await IdentityStore(hass, entry).async_remove()
