@@ -3,7 +3,7 @@
 from homeassistant.const import Platform
 
 DOMAIN = "ninebot"
-VERSION = "2.0.0b40"
+VERSION = "2.0.0b41"
 PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
@@ -13,6 +13,7 @@ PLATFORMS = [
     Platform.NUMBER,
     Platform.EVENT,
     Platform.LOCK,
+    Platform.CALENDAR,
 ]
 CONF_BUSINESS_UID = "business_uid"
 CONF_SESSION_KEY = "session_key"

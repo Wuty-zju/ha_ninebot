@@ -554,6 +554,11 @@
           }
         }
       }
+    },
+    "calendar": {
+      "ride_calendar": {
+        "name": "Trayectos"
+      }
     }
   },
   "exceptions": {
@@ -631,6 +636,12 @@
     },
     "sync_job": {
       "message": "No se encontró una tarea para este vehículo e ID."
+    },
+    "calendar_range": {
+      "message": "Elige un intervalo más corto: hasta cinco años y 5.000 trayectos guardados."
+    },
+    "calendar_unavailable": {
+      "message": "El archivo local de trayectos no está disponible temporalmente. Inténtalo de nuevo en breve."
     }
   },
   "issues": {

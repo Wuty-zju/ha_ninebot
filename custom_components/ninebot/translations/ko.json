@@ -554,6 +554,11 @@
           }
         }
       }
+    },
+    "calendar": {
+      "ride_calendar": {
+        "name": "주행 기록"
+      }
     }
   },
   "exceptions": {
@@ -631,6 +636,12 @@
     },
     "sync_job": {
       "message": "이 차량과 작업 ID에 맞는 동기화가 없습니다."
+    },
+    "calendar_range": {
+      "message": "더 짧은 기간을 선택하세요. 최대 5년, 저장된 주행 5,000건까지입니다."
+    },
+    "calendar_unavailable": {
+      "message": "로컬 주행 보관함을 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하세요."
     }
   },
   "issues": {

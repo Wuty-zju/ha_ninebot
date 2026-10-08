@@ -14,6 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dis
 from homeassistant.util import dt as dt_util
 
 from .archive_statistics import ArchiveStatisticsView, StatisticsReader
+from .archive_timeline import ArchivedRide
 from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
 from .models import TravelMonth, VehicleProfile
@@ -45,6 +46,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._vehicles: set[str] = set()
         self._projection = ArchiveStatisticsView()
         self._projection_month = ""
+        self._latest: dict[str, ArchivedRide | None] = {}
         self.persistence_enabled = False
         register_archive(hass, self.archive)
 
@@ -138,6 +140,10 @@ class ArchiveStatistics(TravelStatisticsStore):
             return self._projection.month_rides(sn, month)
         return super().month_rides(sn, month)
 
+    def latest_ride(self, sn: str) -> ArchivedRide | None:
+        """Memory-only historical projection, without any live freshness claim."""
+        return self._latest.get(sn) if self.archive_ready else None
+
     async def async_view(self, sn: str, months: tuple[str, ...]) -> StatisticsReader:
         if not self.archive_ready:
             view = copy(self)
@@ -162,15 +168,23 @@ class ArchiveStatistics(TravelStatisticsStore):
         if vehicle is not None and self._projection_month == month:
             records = dict(self._projection.records)
             selections = dict(self._projection.selections)
+            latest = dict(self._latest)
             vehicles = (vehicle,)
         else:
             records, selections = {}, {}
+            latest = {}
             vehicles = tuple(sorted(self._vehicles))
         for sn in vehicles:
             view = await self.async_view(sn, (previous_month(month), month))
             assert isinstance(view, ArchiveStatisticsView)
             records.update(view.records)
             selections.update(view.selections)
+            try:
+                latest[sn] = await self.archive.async_latest(sn, local)
+            except ArchiveError as err:
+                if err.kind is not ArchiveFailure.BUDGET:
+                    raise
+                latest[sn] = None  # Do not silently select an arbitrary older record.
         if guard is not None and not guard():
             return
         projection = ArchiveStatisticsView(records=records, selections=selections)
@@ -183,6 +197,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection = projection
         self._projection_month = month
         self.months, self.rides = months, rides
+        self._latest = latest
 
     async def async_refresh_projection(self) -> None:
         if not self.archive_ready:
@@ -294,3 +309,5 @@ class ArchiveStatistics(TravelStatisticsStore):
             await self.archive.async_close()
         finally:
             unregister_archive(self.hass, self.archive)
+            self.archive_ready = False
+            self._latest.clear()

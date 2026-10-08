@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b41
+
+- Add one read-only local ride calendar per vehicle, with native month/day/list navigation and small scalar ride details. Browsing is bounded to five years, 5,000 scanned records and 8 MiB, never triggers cloud backfill and never exports GPS tracks. Preserve complete/partial list correction semantics and archived evidence.
+- Restore existing last-ride sensors from a memory projection across older archive months during cloud/authentication failure. Preserve entity IDs, source precision, actual observation receipts and live freshness; historical display never emits completion events or grants control permission.
+- Notify new Core calendar subscriptions on archive content changes, without repeated reads for unrelated status/BMS updates. Retain 2026.1 date-read compatibility, 21 locale names/messages, exact ninecli pin and b40 command/readback behavior. Native calendar/trend UI was checked in a synthetic isolated HA, without vehicle/cloud access or production writes.
+
 ## 2.0.0b40
 
 - Allow remote stop/vehicle locking without local motion or P telemetry. Keep account consent, allowlist, ownership and known cloud-denial checks; vehicle/cloud conditions decide execution. Retain both remote buttons and the seat-unlock button, with no remote seat locking.

@@ -173,6 +173,11 @@
           "unlocking": "mdi:lock-clock"
         }
       }
+    },
+    "calendar": {
+      "ride_calendar": {
+        "default": "mdi:calendar-clock"
+      }
     }
   },
   "services": {

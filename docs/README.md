@@ -128,8 +128,8 @@ These hooks prepare local storage; they do not upload archives or create a backu
 agent. See the [official backup contract](https://developers.home-assistant.io/docs/core/platform/backup/).
 Retain a complete configuration/storage backup, including identities, registries,
 sessions and the private archive, when restoring or rolling back. A SQLite-only
-copy cannot restore entity migration or account configuration. Calendar/trend presentation follows separately; this archive does not claim full
-upstream history.
+copy cannot restore entity migration or account configuration. This archive does
+not claim full upstream history.
 
 `get_trips` and `get_history` prefer recorded closed months without another cloud
 request. Current-month observations keep their original age; offline reads return
@@ -215,6 +215,53 @@ Calling it from another script with `response_variable: result` exposes
 `result.months`, `result.days`, `result.summary` and `result.scope`. Large
 response objects belong in response variables, not template-sensor attributes.
 
+
+## Ride calendar and offline last ride
+
+Each vehicle has one read-only **Rides / 行程日历** calendar. Use HA's Calendar
+page or a native Calendar dashboard card to navigate dates, select day/month/list
+views and open a ride for its times, distance, duration, maximum speed, overall
+average speed and energy, when known. Coordinates and tracks are excluded.
+
+```yaml
+type: calendar
+entities:
+  - calendar.replace_with_your_vehicle_ride_calendar
+initial_view: dayGridMonth
+```
+
+Use the actual entity ID from the vehicle device page; the account/vehicle naming
+seed is stable. Browsing only reads the local archive. It never discovers missing
+months, requests ride detail or writes to Recorder. Populate missing history
+explicitly with `sync_history` or an existing historical query, then revisit the
+date. Calendar `coverage: observed_subset` means recorded observations, not every
+ride in the cloud. Omission from a complete revised list removes a ride from the
+current calendar selection while preserving its archived evidence; omissions from
+a partial list retain known rides. Missing/conflicting times do not become invented
+all-day events. Future or ongoing rides are not presented as completed rides.
+
+One date query supports up to five years, 5,000 scanned rides and 8 MiB of source
+records. Larger requests report an error and require a shorter range, rather than
+silently dropping events. Missing dates are empty, not zero-distance rides. The
+calendar state stays `off` when no active/upcoming event exists: past rides are
+accessed through date ranges, not copied into state attributes. New Core uses its
+native event subscription API to refresh changed ranges; older HA, including
+2026.1, supports normal date reads/navigation. Unrelated live telemetry does not
+requery subscribed ranges.
+
+Existing last-ride sensors retain their identities. A valid last ride can be read
+from older archive months even during cloud/authentication failure. Archived
+presentation includes its query month, actual stored receipt, `source: ride_archive`
+and `ride_phase: reported`. The receipt is the last archived observation, not a
+claim that each retained field was reported again or that the vehicle is online.
+Fresh live values take precedence for the same/newer last ride. Cached history
+never extends lock/GPS freshness or emits a new ride-completed event. No archive
+or valid known ride remains unknown rather than a fabricated value.
+
+Native calendar dates answer **when and what happened**. The following Recorder
+trend cards answer **how distance/energy/count/duration changes by day or month**.
+Historical Actions provide bounded lists, coverage and optional detail responses;
+these views share one archive instead of creating one entity per ride.
 
 ## Native historical trend graphs
 

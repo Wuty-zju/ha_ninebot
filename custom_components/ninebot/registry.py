@@ -97,6 +97,7 @@ def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]
         "image": frozenset({"vehicle_image"}),
         "device_tracker": frozenset({"location"}),
         "event": frozenset({"ride"}),
+        "calendar": frozenset({"ride_calendar"}),
         "button": frozenset({"refresh", "info", *(key for key, _ in CONTROL_BUTTONS)}),
         "lock": frozenset({"vehicle_lock", "seat_lock"}),
     }

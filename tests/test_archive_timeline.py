@@ -15,6 +15,11 @@ START = NOW - timedelta(days=1)
 SN = "synthetic-calendar-vehicle"
 
 
+@pytest.fixture(autouse=True)
+def isolated_archive_directory(hass, tmp_path):
+    hass.config.config_dir = str(tmp_path)
+
+
 def sample(ids=("first", "second"), *, count=None, month="202610", start=START):
     return travel(
         {
@@ -184,6 +189,7 @@ async def test_archive_change_notifications_are_scoped_content_only_and_unsubscr
         await store.async_load()
         await store.async_record(SN, sample(), NOW)
         await hass.async_block_till_done()
+        assert store.error is None
         assert calls == ["changed"]
         await store.async_record(SN, sample(), NOW + timedelta(seconds=1))
         await hass.async_block_till_done()
@@ -245,3 +251,34 @@ async def test_guard_loss_or_storage_failure_never_publishes_archive_revision(ha
     finally:
         remove()
         await store.async_close()
+
+
+async def test_latest_memory_projection_is_scoped_invalidated_on_budget_and_closed(
+    hass, monkeypatch, freezer
+):
+    from custom_components.ninebot.archive_runtime import ArchiveStatistics
+
+    freezer.move_to(NOW)
+    store = ArchiveStatistics(hass, "latest-projection", "synthetic-owner")
+    try:
+        await store.async_load()
+        old = sample(month="202401", start=datetime(2024, 1, 1, tzinfo=UTC))
+        await store.async_record(SN, old, NOW)
+        await store.async_record("another-vehicle", sample(), NOW)
+        original = store.archive.async_latest
+        assert store.latest_ride(SN).ride.query_month == "202401"
+        other = store.latest_ride("another-vehicle")
+
+        async def bounded(sn, now):
+            if sn == SN:
+                raise ArchiveError(ArchiveFailure.BUDGET)
+            return await original(sn, now)
+
+        monkeypatch.setattr(store.archive, "async_latest", bounded)
+        await store.async_record(SN, sample(), NOW)
+        assert store.latest_ride(SN) is None  # No arbitrary stale fallback.
+        assert store.latest_ride("another-vehicle") is other
+        assert store.writable and store.error is None
+    finally:
+        await store.async_close()
+    assert store.latest_ride("another-vehicle") is None and not store.archive_ready

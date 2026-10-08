@@ -3,7 +3,7 @@
 [中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/README.md)
 
 An independent, unofficial Ninebot vehicle integration using pinned `ninecli==0.1.7`.
-Version 2 replaces the OpenClaw backend. The current b38 code is a prerelease;
+Version 2 replaces the OpenClaw backend. The current b41 code is a prerelease;
 vendor API availability can change. It targets the Chinese App service; other regions are unverified.
 
 ## Installation and account

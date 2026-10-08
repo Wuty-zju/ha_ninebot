@@ -554,6 +554,11 @@
           }
         }
       }
+    },
+    "calendar": {
+      "ride_calendar": {
+        "name": "Rides"
+      }
     }
   },
   "exceptions": {
@@ -631,6 +636,12 @@
     },
     "sync_job": {
       "message": "No matching history sync was found for this vehicle and job ID."
+    },
+    "calendar_range": {
+      "message": "Choose a shorter date range: up to five years and 5,000 stored rides."
+    },
+    "calendar_unavailable": {
+      "message": "The local ride archive is temporarily unavailable. Try again shortly."
     }
   },
   "issues": {
