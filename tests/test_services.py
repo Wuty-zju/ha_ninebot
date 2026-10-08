@@ -308,24 +308,21 @@ async def test_wrong_detail_and_invalid_shape_fail_closed(hass, entry, app_clien
 
 
 async def test_ownership_rechecked_after_executor_await(hass, entry, app_client, query_device):
-    from custom_components.ninebot import services
-
-    original = services.month_data
+    co = entry.runtime_data.coordinator
     entered, release = asyncio.Event(), asyncio.Event()
-    original_executor = hass.async_add_executor_job
+    original = co.statistics.async_cached_month
 
-    async def executor(target, *args):
-        if target is original:
-            entered.set()
-            await release.wait()
-        return await original_executor(target, *args)
+    async def paused(sn, month):
+        result = await original(sn, month)
+        entered.set()
+        await release.wait()
+        return result
 
-    with patch.object(hass, "async_add_executor_job", side_effect=executor):
+    with patch.object(co.statistics, "async_cached_month", side_effect=paused):
         task = asyncio.create_task(
             call(hass, "get_trips", {"device_id": query_device, "month": "202609"})
         )
         await entered.wait()
-        co = entry.runtime_data.coordinator
         co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], present=False)
         release.set()
         with pytest.raises(HomeAssistantError, match="Vehicle query unavailable"):

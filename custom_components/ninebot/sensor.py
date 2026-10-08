@@ -619,7 +619,7 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
             "adjacent_revision": summary.adjacent_revision,
             "ride_window_complete": summary.rides_complete,
             "availability_reason": summary.reason(self.field),
-            "storage": "bounded_statistics",
+            "storage": self.coordinator.statistics.source_mode,
         }
 
 

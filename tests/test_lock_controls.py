@@ -172,7 +172,7 @@ async def test_pending_never_optimistic_and_same_vehicle_across_accounts_is_busy
     await started.wait()
     other_entry = MockConfigEntry(
         domain="ninebot",
-        data={},
+        data={"business_uid": "other-account"},
         options={"enable_controls": True, "control_vehicles": ["SyntheticSN"]},
     )
     other = NinebotCoordinator(co.hass, other_entry, AsyncMock())

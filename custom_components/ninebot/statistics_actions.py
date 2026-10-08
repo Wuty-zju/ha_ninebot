@@ -2,7 +2,6 @@
 
 import math
 from calendar import monthrange
-from copy import copy
 from datetime import date, datetime
 from functools import partial
 from typing import Any
@@ -13,13 +12,15 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 
+from .archive_statistics import StatisticsReader
 from .compat import validation as vol
 from .const import BUSINESS_TIMEZONE, DOMAIN
 from .exceptions import NinebotError
 from .parsing import previous_month
 from .period_statistics import DAY_METRICS, day_summary
-from .services import assert_query_scope, month_data, query_month, resolve_vehicle, validation_error
-from .statistics_store import TravelStatisticsStore, timestamp
+from .ride_archive import ArchiveError
+from .services import assert_query_scope, query_month, resolve_vehicle, validation_error
+from .statistics_store import timestamp
 from .travel_statistics import energy_statistics
 
 MAX_STATISTICS_MONTHS = 6
@@ -56,7 +57,7 @@ def finite_sum(values: list[float | int | None]) -> float | int | None:
 
 
 def statistics_response(
-    store: TravelStatisticsStore,
+    store: StatisticsReader,
     sn: str,
     months: tuple[str, ...],
     now: datetime,
@@ -125,7 +126,7 @@ def statistics_response(
     return {
         "schema_version": 1,
         "source": "ninecli",
-        "source_mode": "bounded_statistics_ledger",
+        "source_mode": store.source_mode,
         "business_timezone": BUSINESS_TIMEZONE,
         "date_assignment": "whole_ride_end_business_date",
         "scope": {"start_month": months[0], "end_month": months[-1], "month_count": len(months)},
@@ -161,18 +162,17 @@ async def async_statistics_query(hass: HomeAssistant, call: ServiceCall) -> dict
     if call.data["refresh"]:
         try:
             for month in months:
-                record = await co.async_query_month(sn, month)
-                await co.statistics.async_record(
-                    sn, month_data(record), record.received_at, record.backend_version
-                )
+                await co.async_query_month(sn, month)
         except NinebotError as err:
             raise HomeAssistantError(
                 translation_domain=DOMAIN, translation_key=err.kind.value
             ) from err
-    # The executor never sees dictionaries changing midway through its read.
-    view = copy(co.statistics)
-    view.months = {key: dict(values) for key, values in co.statistics.months.items()}
-    view.rides = {key: dict(values) for key, values in co.statistics.rides.items()}
+    # Include the boundary month for rides spanning the first queried day.
+    try:
+        view = await co.statistics.async_view(sn, (previous_month(months[0]), *months))
+    except ArchiveError as err:
+        co.statistics.record_error(err)
+        raise validation_error("statistics_unavailable") from err
     response = await hass.async_add_executor_job(
         partial(statistics_response, view, sn, months, dt_util.utcnow(), call.data["include_daily"])
     )

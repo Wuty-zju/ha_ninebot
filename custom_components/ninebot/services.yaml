@@ -150,3 +150,30 @@ get_entity_migration:
       selector:
         device:
           integration: ninebot
+sync_history:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: ninebot
+    operation:
+      default: start
+      selector:
+        select:
+          options:
+            - start
+            - continue
+            - status
+            - cancel
+    start_month:
+      example: "202601"
+      selector:
+        text:
+    end_month:
+      example: "202610"
+      selector:
+        text:
+    job_id:
+      selector:
+        text:

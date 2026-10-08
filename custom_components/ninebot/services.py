@@ -233,6 +233,18 @@ async def detail_ride(
     ride = await hass.async_add_executor_job(detail_data, record, summary, max_points)
     if reference is not None and co.raw.resolve(reference, now=dt_util.utcnow()) is not record:
         reference = None
+    await co.statistics.async_record_detail(
+        sn,
+        ride,
+        record.received_at,
+        lambda: (
+            co.local_vehicle_available(sn)
+            and co.fresh(sn, "profile")
+            and co.raw.resolve(reference, now=dt_util.utcnow()) is record
+            if reference is not None
+            else False
+        ),
+    )
     return RideDetail(
         summary.detail_id,
         summary.query_month,
@@ -281,7 +293,8 @@ def assert_query_scope(
 
 
 async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
-    entry, sn = resolve_vehicle(hass, call.data["device_id"])
+    require_live = call.service == "get_trip_detail" or call.data.get("include_detail", False)
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=require_live)
     co = entry.runtime_data.coordinator
     include_track = call.data["include_track"]
     if include_track and entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES) is not True:
@@ -296,8 +309,8 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     else:
         month = call.data.get("query_month", adapters.month_at(dt_util.utcnow()))
     try:
-        record = await co.async_query_month(sn, month)
-        travel = await hass.async_add_executor_job(month_data, record)
+        observation = await co.async_month_observation(sn, month)
+        travel = observation.travel
         rides = travel.rides
         if is_list:
             # Stable local order when verified times exist; retain original order
@@ -326,9 +339,11 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
             response = {
                 "schema_version": 2,
                 "query_month": month,
-                "received_at": iso(record.received_at),
+                "received_at": iso(observation.received_at),
                 "source": "ninecli",
-                "backend_version": record.backend_version,
+                "source_mode": observation.source_mode,
+                "current_sample_stale": observation.current_sample_stale,
+                "backend_version": observation.backend_version,
                 **month_response(travel),
                 "rides": [ride_response(ride, include_track) for ride in selected],
                 "pagination": {
@@ -373,7 +388,9 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
             }
     except NinebotError as err:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key=err.kind.value) from err
-    assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, include_track)
+    assert_query_scope(
+        hass, call.data["device_id"], entry.entry_id, sn, include_track, require_live=require_live
+    )
     return response
 
 
@@ -391,7 +408,15 @@ def async_register_actions(hass: HomeAssistant) -> None:
     from .history_actions import HISTORY_SCHEMA, async_history_query
     from .statistics_actions import STATISTICS_SCHEMA, async_statistics_query
     from .statistics_export import IMPORT_SCHEMA, async_import_statistics
+    from .sync_actions import SYNC_SCHEMA, async_sync_history
 
+    hass.services.async_register(
+        DOMAIN,
+        "sync_history",
+        partial(async_sync_history, hass),
+        schema=SYNC_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
     hass.services.async_register(
         DOMAIN,
         "get_entity_migration",

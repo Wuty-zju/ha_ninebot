@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "Opdracht niet verzonden: communicatie is tijdelijk niet beschikbaar. Probeer het later opnieuw."
+    },
+    "sync_conflict": {
+      "message": "Een synchronisatie is niet afgerond. Hervat of annuleer deze eerst."
+    },
+    "sync_job": {
+      "message": "Geen passende taak voor dit voertuig en deze ID."
     }
   },
   "issues": {
@@ -671,6 +677,22 @@
     "entity_id_storage_invalid": {
       "title": "Entity identity storage unavailable",
       "description": "Frozen identity seeds or migration records cannot be read. This account pauses setup to prevent duplicates. Restore a matching identity storage backup; do not edit registries directly."
+    },
+    "ride_archive_capacity": {
+      "title": "Ritarchief vol",
+      "description": "De groottelimiet pauzeert schrijven. Bestaande historie blijft leesbaar. Bewaar een volledige back-up en controleer de grootte; wis geen historie om dit bericht te verwijderen."
+    },
+    "ride_archive_io": {
+      "title": "Ritarchief niet beschrijfbaar",
+      "description": "Controleer vrije ruimte en rechten, herlaad daarna het account. Bewaar back-ups en bestand; telemetrie gaat door."
+    },
+    "ride_archive_removal": {
+      "title": "Archief verwijderd account bewaard",
+      "description": "Onverwachte bestanden, links of toegangsproblemen stoppen opruimen. Maak een back-up en controleer de privémappen; andere accounts zijn niet verwijderd."
+    },
+    "ride_archive_invalid": {
+      "title": "Travel statistics storage unavailable",
+      "description": "The private history statistics file is invalid or uses an unsupported version. It has not been overwritten. Current vehicle telemetry continues. Keep configuration backups and check storage permissions and the integration version before restoring a compatible backup."
     }
   },
   "services": {
@@ -732,7 +754,7 @@
     },
     "get_history": {
       "name": "Ritgeschiedenis ophalen",
-      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; indexing is memory-only, without automatic archiving or Recorder import.",
+      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; recorded month/ride facts are durable, while cursors and response indexes are memory-only. No automatic Recorder import.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -812,6 +834,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "Ritarchief synchroniseren",
+      "description": "Vult ontbrekende maanden aan, maximaal drie aanvragen per oproep. Bekende maanden worden hergebruikt. Hervat met de taak-ID na wachttijd of herstart; gedeeltelijke lijsten blijven onvolledig.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "Bewerking"
+        },
+        "job_id": {
+          "name": "Taak-ID"
+        },
+        "start_month": {
+          "name": "Beginmaand (YYYYMM)"
+        },
+        "end_month": {
+          "name": "Eindmaand (YYYYMM)"
         }
       }
     }

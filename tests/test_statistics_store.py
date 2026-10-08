@@ -186,5 +186,6 @@ async def test_coordinator_current_and_historical_queries_share_persistent_sourc
     current = co.data["SyntheticSN"].travel.month
     assert co.statistics.month("SyntheticSN", current).distance_km == 14.8
     await co.async_query_month("SyntheticSN", "202608")
-    assert co.statistics.month("SyntheticSN", "202608").energy_wh == 340
+    view = await co.statistics.async_view("SyntheticSN", ("202608",))
+    assert view.month("SyntheticSN", "202608").energy_wh == 340
     assert co.data["SyntheticSN"].travel.month == current

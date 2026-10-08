@@ -6,9 +6,10 @@ from datetime import date, datetime
 from typing import Literal
 from zoneinfo import ZoneInfo
 
+from .archive_statistics import StatisticsReader
 from .const import BUSINESS_TIMEZONE, DETAIL_INTERVAL
 from .parsing import previous_month
-from .statistics_store import TravelStatisticsStore, timestamp
+from .statistics_store import timestamp
 
 type DayMetric = Literal["distance_km", "ride_count", "duration_s", "energy_wh"]
 DAY_METRICS: tuple[DayMetric, ...] = ("distance_km", "ride_count", "duration_s", "energy_wh")
@@ -33,7 +34,7 @@ class DaySummary:
         return dict(self.availability).get(metric, "available")
 
 
-def day_summary(store: TravelStatisticsStore, sn: str, day: date, now: datetime) -> DaySummary:
+def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> DaySummary:
     """Missing dates/rows are gaps; only a proven empty window means zero."""
     record = store.month(sn, day.strftime("%Y%m"))
     zone = ZoneInfo(BUSINESS_TIMEZONE)

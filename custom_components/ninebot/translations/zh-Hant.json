@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "操作未送出：通訊暫時無法使用，請稍後重試。"
+    },
+    "sync_conflict": {
+      "message": "已有未完成的歷史同步，請先繼續或取消該工作。"
+    },
+    "sync_job": {
+      "message": "此車輛與工作 ID 沒有對應的歷史同步工作。"
     }
   },
   "issues": {
@@ -671,6 +677,22 @@
     "entity_id_storage_invalid": {
       "title": "Entity identity storage unavailable",
       "description": "Frozen identity seeds or migration records cannot be read. This account pauses setup to prevent duplicates. Restore a matching identity storage backup; do not edit registries directly."
+    },
+    "ride_archive_capacity": {
+      "title": "行程檔案容量已滿",
+      "description": "檔案達到容量上限，已暫停寫入，既有歷史仍可讀取。請保留完整設定備份，確認檔案大小後再復原；勿刪除歷史來清除此提示。"
+    },
+    "ride_archive_io": {
+      "title": "行程檔案無法寫入",
+      "description": "請檢查剩餘磁碟空間與儲存權限，再重新載入帳號。保留備份與現有檔案，遙測仍可繼續。"
+    },
+    "ride_archive_removal": {
+      "title": "已移除帳號的檔案仍被保留",
+      "description": "目錄存在非預期檔案、連結或無法存取，清理已停止。請先備份，再人工檢查私有檔案目錄；其他帳號未被清理。"
+    },
+    "ride_archive_invalid": {
+      "title": "行程統計儲存無法使用",
+      "description": "私人歷史統計檔案無效或版本不受支援，原始檔案未被覆寫，目前車輛遙測仍可使用。請保留設定備份，檢查儲存權限和整合版本，再還原相容備份。"
     }
   },
   "services": {
@@ -732,7 +754,7 @@
     },
     "get_history": {
       "name": "取得歷史行程",
-      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; indexing is memory-only, without automatic archiving or Recorder import.",
+      "description": "按需分批查詢（預設3、最多6個月/次）。續查游標15分鐘有效；明細缺頁仍標為不完整。返回歷史、圖表與範圍統計；月份和行程資料持久儲存，游標與回應索引僅在記憶體，不自動匯入Recorder。",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -812,6 +834,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "同步行程檔案",
+      "description": "明確補齊缺少月份，每次最多查詢三個月。已知月份使用本機資料。冷卻或重新啟動後使用工作 ID 繼續；部分清單仍標為不完整。",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "操作"
+        },
+        "job_id": {
+          "name": "工作 ID"
+        },
+        "start_month": {
+          "name": "開始月份（YYYYMM）"
+        },
+        "end_month": {
+          "name": "結束月份（YYYYMM）"
         }
       }
     }

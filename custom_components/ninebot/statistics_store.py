@@ -108,8 +108,13 @@ class TravelStatisticsStore:
         self.months: dict[str, dict[str, StoredMonth]] = {}
         self.rides: dict[str, dict[str, StoredRide]] = {}
         self.available = True
+        self.persistence_enabled = True
         self.restored = False
         self._record_lock = asyncio.Lock()
+
+    @property
+    def source_mode(self) -> str:
+        return "bounded_statistics_ledger"
 
     @staticmethod
     def vehicle_key(sn: str) -> str:
@@ -437,10 +442,11 @@ class TravelStatisticsStore:
             )
             if changed and (guard is None or guard()):
                 self.months, self.rides = candidate.months, candidate.rides
-                self._store.async_delay_save(self.dump, 5)
+                if self.persistence_enabled:
+                    self._store.async_delay_save(self.dump, 5)
 
     async def async_save(self) -> None:
-        if self.available and self.months:
+        if self.persistence_enabled and self.available and self.months:
             try:
                 committed = self.dump()
                 await self._store.async_save(committed)

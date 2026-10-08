@@ -633,6 +633,12 @@
     },
     "control_not_sent": {
       "message": "명령이 전송되지 않았습니다. 통신을 일시적으로 사용할 수 없습니다. 나중에 다시 시도하세요."
+    },
+    "sync_conflict": {
+      "message": "미완료 동기화가 있습니다. 먼저 계속하거나 취소하세요."
+    },
+    "sync_job": {
+      "message": "이 차량과 작업 ID에 맞는 동기화가 없습니다."
     }
   },
   "issues": {
@@ -671,6 +677,22 @@
     "entity_id_storage_invalid": {
       "title": "Entity identity storage unavailable",
       "description": "Frozen identity seeds or migration records cannot be read. This account pauses setup to prevent duplicates. Restore a matching identity storage backup; do not edit registries directly."
+    },
+    "ride_archive_capacity": {
+      "title": "주행 기록 용량 초과",
+      "description": "용량 제한으로 쓰기를 중지했습니다. 기존 기록은 읽을 수 있습니다. 전체 설정을 백업하고 크기를 확인하세요. 알림을 없애려고 기록을 삭제하지 마세요."
+    },
+    "ride_archive_io": {
+      "title": "주행 기록 쓰기 불가",
+      "description": "디스크 공간과 권한을 확인한 뒤 계정을 다시 로드하세요. 백업과 기존 파일을 보관하세요. 차량 정보는 계속 제공됩니다."
+    },
+    "ride_archive_removal": {
+      "title": "삭제한 계정의 기록 보존",
+      "description": "예상하지 못한 파일, 링크 또는 접근 오류로 정리를 중단했습니다. 백업 후 전용 폴더를 확인하세요. 다른 계정은 삭제하지 않았습니다."
+    },
+    "ride_archive_invalid": {
+      "title": "Travel statistics storage unavailable",
+      "description": "The private history statistics file is invalid or uses an unsupported version. It has not been overwritten. Current vehicle telemetry continues. Keep configuration backups and check storage permissions and the integration version before restoring a compatible backup."
     }
   },
   "services": {
@@ -732,7 +754,7 @@
     },
     "get_history": {
       "name": "주행 이력 가져오기",
-      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; indexing is memory-only, without automatic archiving or Recorder import.",
+      "description": "Explicit batches of 3 months (max 6). Continuations last 15 minutes. Missing ride pages stay incomplete. Returns history, charts and scoped statistics; recorded month/ride facts are durable, while cursors and response indexes are memory-only. No automatic Recorder import.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -812,6 +834,27 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select the vehicle device owned by this account."
+        }
+      }
+    },
+    "sync_history": {
+      "name": "주행 기록 동기화",
+      "description": "누락된 달을 보충하며 호출당 최대 세 달을 조회합니다. 기존 자료는 재사용합니다. 대기 또는 재시작 후 작업 ID로 계속하세요. 일부 목록은 미완료로 유지됩니다.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "operation": {
+          "name": "작업"
+        },
+        "job_id": {
+          "name": "작업 ID"
+        },
+        "start_month": {
+          "name": "시작 월 (YYYYMM)"
+        },
+        "end_month": {
+          "name": "종료 월 (YYYYMM)"
         }
       }
     }

@@ -84,8 +84,17 @@ async def async_get_config_entry_diagnostics(
         "raw_schema": runtime.coordinator.raw.diagnostics(dt_util.utcnow()),
         "ride_events": runtime.events.diagnostics() if runtime.events else None,
         "travel_statistics": {
-            "writable": runtime.coordinator.statistics.available,
+            "writable": runtime.coordinator.statistics.writable,
+            "readable": runtime.coordinator.statistics.available,
+            "source_mode": runtime.coordinator.statistics.source_mode,
+            "archive_ready": runtime.coordinator.statistics.archive_ready,
+            "write_paused": runtime.coordinator.statistics.archive.write_paused,
+            "backup_paused": runtime.coordinator.statistics.archive.backup_paused,
+            "error_kind": runtime.coordinator.statistics.error.value
+            if runtime.coordinator.statistics.error
+            else None,
             "restored": runtime.coordinator.statistics.restored,
+            "count_scope": "current_and_previous_month_projection",
             "month_count": sum(map(len, runtime.coordinator.statistics.months.values())),
             "ride_metadata_count": sum(map(len, runtime.coordinator.statistics.rides.values())),
         },

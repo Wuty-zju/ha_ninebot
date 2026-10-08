@@ -22,10 +22,6 @@ pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 @pytest.fixture
 async def history_device(hass, entry, app_client, freezer):
     freezer.move_to(datetime(2026, 9, 26, tzinfo=UTC))
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    entry.runtime_data.coordinator.raw.clear()
-    app_client.async_get_travel.reset_mock()
 
     def month(sn, query):
         stamp = datetime.strptime(query, "%Y%m").replace(tzinfo=UTC).timestamp()
@@ -49,6 +45,10 @@ async def history_device(hass, entry, app_client, freezer):
         }
 
     app_client.async_get_travel.side_effect = month
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    entry.runtime_data.coordinator.raw.clear()
+    app_client.async_get_travel.reset_mock()
     return next(
         device.id
         for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
@@ -110,7 +110,7 @@ async def test_bounded_scan_drains_pages_truthful_totals_and_visible_entities(
     assert response["statistics"]["indexed_rides"]["energy_intensity_wh_per_km"] == 20
     assert response["statistics"]["indexed_rides"]["coverage_fraction"] == 15 / 20
     assert response["statistics"]["indexed_rides"]["all_rides_complete"] is False
-    assert app_client.async_get_travel.await_count == 5
+    assert app_client.async_get_travel.await_count == 4  # current month already archived
     assert co.data["SyntheticSN"] is current
     assert len(seen) == 15
     app_client.async_get_trip_detail.assert_not_awaited()
@@ -172,7 +172,7 @@ async def test_partial_error_retains_prefix_and_blocks_repeat_until_retry(
     assert first["retry_after_s"] == 60
     second = await call(hass, history_device, cursor=first["next_cursor"])
     assert second["error"]["kind"] == "retry_cooldown"
-    assert app_client.async_get_travel.await_count == 2
+    assert app_client.async_get_travel.await_count == 1  # only missing August failed
     assert second["coverage"]["indexed_unique_count"] == 3
 
 
@@ -184,7 +184,7 @@ async def test_budget_is_explicit_not_false_full_history(hass, entry, app_client
     assert response["coverage"]["all_rides_complete"] is False
     assert response["next_cursor"] is None
     assert len(response["rides"]) == 2
-    assert app_client.async_get_travel.await_count == 1
+    assert app_client.async_get_travel.await_count == 0  # index budget reached in local month
 
 
 def test_history_cache_eviction_budget_and_schema_limits(freezer):
