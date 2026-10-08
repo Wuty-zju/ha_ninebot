@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "Wymaga postoju i P"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Wymaga postoju i P"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Wymaga postoju i P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Wymaga postoju i P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Wymaga postoju i P"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "Zdalne zamykanie",
             "state": {
               "manual": "Tylko ręczne zamykanie",
-              "guarded": "Wymaga postoju i P"
+              "remote": "Zdalne blokowanie"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "Zdalne zamykanie",
             "state": {
               "manual": "Tylko ręczne zamykanie",
-              "guarded": "Wymaga postoju i P"
+              "remote": "Zdalne blokowanie"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "Wynik niepewny. Sprawdź pojazd."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "Polecenie wysłane; nie można odczytać stanu zamka."
     },
     "busy": {
       "message": "Trwa operacja pojazdu lub osiągnięto limit sterowania konta. Spróbuj ponownie po zakończeniu."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "Postój i P niepotwierdzone. Nie wysłano polecenia zamknięcia."
-    },
     "seat_lock_manual": {
       "message": "Schowek można zamknąć tylko ręcznie."
     },
     "control_target_not_observed": {
-      "message": "Polecenie przyjęte, ale nie zaobserwowano żądanego stanu. Sprawdź pojazd przed ponowną próbą."
+      "message": "Polecenie wysłane; żądany stan zamka nie został potwierdzony."
     },
     "control_not_sent": {
       "message": "Polecenie nie zostało wysłane: komunikacja jest chwilowo niedostępna. Spróbuj później."

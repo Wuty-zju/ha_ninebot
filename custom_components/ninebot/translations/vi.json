@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "Cần dừng xe và P"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Cần dừng xe và P"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Cần dừng xe và P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Cần dừng xe và P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Cần dừng xe và P"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "Khóa từ xa",
             "state": {
               "manual": "Chỉ khóa thủ công",
-              "guarded": "Cần dừng xe và P"
+              "remote": "Khóa từ xa"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "Khóa từ xa",
             "state": {
               "manual": "Chỉ khóa thủ công",
-              "guarded": "Cần dừng xe và P"
+              "remote": "Khóa từ xa"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "Kết quả chưa rõ. Hãy kiểm tra xe."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "Đã gửi lệnh; không đọc được trạng thái khóa."
     },
     "busy": {
       "message": "Một thao tác xe đang diễn ra hoặc đã đạt giới hạn điều khiển của tài khoản. Hãy thử lại sau khi hoàn tất."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "Chưa xác nhận xe đã dừng và ở P. Không gửi lệnh khóa."
-    },
     "seat_lock_manual": {
       "message": "Cốp yên chỉ có thể khóa thủ công."
     },
     "control_target_not_observed": {
-      "message": "Lệnh đã được chấp nhận nhưng chưa thấy trạng thái khóa yêu cầu. Kiểm tra xe trước khi thử lại."
+      "message": "Đã gửi lệnh; chưa xác nhận trạng thái khóa yêu cầu."
     },
     "control_not_sent": {
       "message": "Lệnh chưa được gửi: giao tiếp tạm thời không khả dụng. Hãy thử lại sau."

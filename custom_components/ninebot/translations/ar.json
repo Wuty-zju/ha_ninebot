@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "يتطلب التوقف ووضع P"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "يتطلب التوقف ووضع P"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "يتطلب التوقف ووضع P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "يتطلب التوقف ووضع P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "يتطلب التوقف ووضع P"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "القفل عن بعد",
             "state": {
               "manual": "قفل يدوي فقط",
-              "guarded": "يتطلب التوقف ووضع P"
+              "remote": "قفل عن بُعد"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "القفل عن بعد",
             "state": {
               "manual": "قفل يدوي فقط",
-              "guarded": "يتطلب التوقف ووضع P"
+              "remote": "قفل عن بُعد"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "نتيجة الأمر غير مؤكدة. تحقق من المركبة."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "تم إرسال الأمر؛ تعذر قراءة حالة القفل."
     },
     "busy": {
       "message": "هناك عملية مركبة قيد التنفيذ أو تم بلوغ حد التحكم للحساب. أعد المحاولة بعد انتهائها."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "لم يتم تأكيد التوقف ووضع P. لم يتم إرسال أمر القفل."
-    },
     "seat_lock_manual": {
       "message": "يمكن قفل حجرة المقعد يدويًا فقط."
     },
     "control_target_not_observed": {
-      "message": "تم قبول الأمر لكن حالة القفل المطلوبة لم تظهر. تحقق من المركبة قبل المحاولة مجددًا."
+      "message": "تم إرسال الأمر؛ لم تتأكد حالة القفل المطلوبة بعد."
     },
     "control_not_sent": {
       "message": "لم يتم إرسال الأمر: الاتصال غير متاح مؤقتًا. أعد المحاولة لاحقًا."

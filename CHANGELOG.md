@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b40
+
+- Allow remote stop/vehicle locking without local motion or P telemetry. Keep account consent, allowlist, ownership and known cloud-denial checks; vehicle/cloud conditions decide execution. Retain both remote buttons and the seat-unlock button, with no remote seat locking.
+- Send each explicit request once, confirm state at 0/2/5 seconds, then briefly read status at 10/20/25 seconds to observe automatic relocking. Replace follow-up on a new same-vehicle command, stop on errors/unload, and never retry the command or optimistically change lock state.
+- Simplify consistent lock feedback in all 21 locales. Keep entity identities, migration history, the exact ninecli pin and minimum HA unchanged. No physical vehicle control was tested.
+
 ## 2.0.0b39
 
 - Persist normalized monthly facts, scalar ride details, field provenance and precision in an account-scoped SQLite archive. Import the validated v1 statistics source once without modifying it; retain history beyond its old 500-ride cap. Current/adjacent-month memory projections and bounded range reads use the same archive.

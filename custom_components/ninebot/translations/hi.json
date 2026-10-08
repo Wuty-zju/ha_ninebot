@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "रुकना और P आवश्यक"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "रुकना और P आवश्यक"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "रुकना और P आवश्यक"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "रुकना और P आवश्यक"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "रुकना और P आवश्यक"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "दूरस्थ लॉक",
             "state": {
               "manual": "केवल हाथ से लॉक करें",
-              "guarded": "रुकना और P आवश्यक"
+              "remote": "रिमोट लॉक"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "दूरस्थ लॉक",
             "state": {
               "manual": "केवल हाथ से लॉक करें",
-              "guarded": "रुकना और P आवश्यक"
+              "remote": "रिमोट लॉक"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "आदेश का परिणाम अनिश्चित है। वाहन जाँचें।"
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "आदेश भेजा गया; लॉक की स्थिति नहीं पढ़ी जा सकी।"
     },
     "busy": {
       "message": "वाहन की एक कार्रवाई चल रही है या खाते की नियंत्रण सीमा पूरी हो गई है। समाप्त होने के बाद फिर प्रयास करें।"
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "रुकने और P की पुष्टि नहीं हुई। लॉक आदेश नहीं भेजा गया।"
-    },
     "seat_lock_manual": {
       "message": "सीट डिब्बा केवल हाथ से लॉक किया जा सकता है।"
     },
     "control_target_not_observed": {
-      "message": "आदेश स्वीकार हुआ लेकिन लक्ष्य लॉक स्थिति नहीं दिखी। दोबारा प्रयास करने से पहले वाहन देखें।"
+      "message": "आदेश भेजा गया; अनुरोधित लॉक स्थिति की पुष्टि नहीं हुई।"
     },
     "control_not_sent": {
       "message": "आदेश नहीं भेजा गया: संचार अस्थायी रूप से उपलब्ध नहीं है। बाद में फिर प्रयास करें।"

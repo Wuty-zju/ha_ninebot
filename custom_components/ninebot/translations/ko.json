@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "정차 및 P 필요"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "정차 및 P 필요"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "정차 및 P 필요"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "정차 및 P 필요"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "정차 및 P 필요"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "원격 잠금",
             "state": {
               "manual": "수동 잠금만 가능",
-              "guarded": "정차 및 P 필요"
+              "remote": "원격 잠금"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "원격 잠금",
             "state": {
               "manual": "수동 잠금만 가능",
-              "guarded": "정차 및 P 필요"
+              "remote": "원격 잠금"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "명령 결과를 알 수 없습니다. 차량을 확인하세요."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "명령을 보냈지만 잠금 상태를 읽을 수 없습니다."
     },
     "busy": {
       "message": "차량 작업이 진행 중이거나 계정 제어 한도에 도달했습니다. 완료 후 다시 시도하세요."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "정차 및 P 상태를 확인할 수 없어 잠금 명령을 보내지 않았습니다."
-    },
     "seat_lock_manual": {
       "message": "시트 수납함은 수동으로만 잠글 수 있습니다."
     },
     "control_target_not_observed": {
-      "message": "명령은 수락되었지만 목표 잠금 상태를 확인하지 못했습니다. 재시도 전에 차량을 확인하세요."
+      "message": "명령을 보냈지만 요청한 잠금 상태가 아직 확인되지 않았습니다."
     },
     "control_not_sent": {
       "message": "명령이 전송되지 않았습니다. 통신을 일시적으로 사용할 수 없습니다. 나중에 다시 시도하세요."

@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "Arrêt et P requis"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Arrêt et P requis"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Arrêt et P requis"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Arrêt et P requis"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Arrêt et P requis"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "Verrouillage à distance",
             "state": {
               "manual": "Verrouillage manuel uniquement",
-              "guarded": "Arrêt et P requis"
+              "remote": "Verrouillage à distance"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "Verrouillage à distance",
             "state": {
               "manual": "Verrouillage manuel uniquement",
-              "guarded": "Arrêt et P requis"
+              "remote": "Verrouillage à distance"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "Résultat incertain. Vérifiez le véhicule."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "Commande envoyée ; état du verrou indisponible."
     },
     "busy": {
       "message": "Une opération du véhicule est en cours ou la limite de contrôle du compte est atteinte. Réessayez après sa fin."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "Arrêt et position P non confirmés. Commande de verrouillage non envoyée."
-    },
     "seat_lock_manual": {
       "message": "Le coffre sous selle se verrouille uniquement manuellement."
     },
     "control_target_not_observed": {
-      "message": "Commande acceptée, mais état demandé non observé. Vérifiez le véhicule avant de réessayer."
+      "message": "Commande envoyée ; état demandé du verrou non confirmé."
     },
     "control_not_sent": {
       "message": "Commande non envoyée : la communication est temporairement indisponible. Réessayez plus tard."

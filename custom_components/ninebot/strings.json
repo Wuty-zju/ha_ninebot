@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "Requires stopped vehicle and P"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Requires stopped vehicle and P"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Requires stopped vehicle and P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Requires stopped vehicle and P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Requires stopped vehicle and P"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "Remote locking",
             "state": {
               "manual": "Manual locking only",
-              "guarded": "Requires stopped vehicle and P"
+              "remote": "Remote locking"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "Remote locking",
             "state": {
               "manual": "Manual locking only",
-              "guarded": "Requires stopped vehicle and P"
+              "remote": "Remote locking"
             }
           },
           "last_operation": {
@@ -563,16 +558,16 @@
   },
   "exceptions": {
     "controls_disabled": {
-      "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
+      "message": "Command not sent. Check control settings and account connection."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "Command result unknown. Check the vehicle."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "Command sent; current lock state could not be read."
     },
     "busy": {
-      "message": "Another vehicle operation is pending or the account control limit has been reached. Retry after it finishes."
+      "message": "A vehicle operation is in progress. Try again shortly."
     },
     "model_storage_invalid": {
       "message": "Battery parameter storage is unavailable. Resolve the Repair before saving."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "Cannot confirm the vehicle is stopped and in P. Lock command not sent."
-    },
     "seat_lock_manual": {
       "message": "The seat compartment can only be locked manually."
     },
     "control_target_not_observed": {
-      "message": "The command was accepted, but the requested lock state was not observed. Check the vehicle before retrying."
+      "message": "Command sent; the requested lock state is not yet confirmed."
     },
     "control_not_sent": {
       "message": "Command not sent: communication is temporarily unavailable. Retry later."

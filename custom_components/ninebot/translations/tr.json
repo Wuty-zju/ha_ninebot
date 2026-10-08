@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "Durma ve P gerekli"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Durma ve P gerekli"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Durma ve P gerekli"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Durma ve P gerekli"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Durma ve P gerekli"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "Uzaktan kilitleme",
             "state": {
               "manual": "Yalnızca elle kilitleme",
-              "guarded": "Durma ve P gerekli"
+              "remote": "Uzaktan kilitleme"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "Uzaktan kilitleme",
             "state": {
               "manual": "Yalnızca elle kilitleme",
-              "guarded": "Durma ve P gerekli"
+              "remote": "Uzaktan kilitleme"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "Komut sonucu belirsiz. Aracı kontrol edin."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "Komut gönderildi; kilit durumu okunamadı."
     },
     "busy": {
       "message": "Bir araç işlemi sürüyor veya hesabın kontrol sınırına ulaşıldı. Tamamlandıktan sonra tekrar deneyin."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "Durma ve P doğrulanamadı. Kilitleme komutu gönderilmedi."
-    },
     "seat_lock_manual": {
       "message": "Sele bölmesi yalnızca elle kilitlenebilir."
     },
     "control_target_not_observed": {
-      "message": "Komut kabul edildi ancak hedef kilit durumu görülmedi. Yeniden denemeden önce aracı kontrol edin."
+      "message": "Komut gönderildi; istenen kilit durumu henüz doğrulanmadı."
     },
     "control_not_sent": {
       "message": "Komut gönderilmedi: iletişim geçici olarak kullanılamıyor. Daha sonra tekrar deneyin."

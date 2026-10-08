@@ -482,7 +482,7 @@ async def test_unknown_permissions_reach_cloud_only_with_user_consent(coordinato
     }
     await co._async_update_data()
     co.client.async_get_status_once.return_value = {"loc": {"lock": 0}, "barrel_lock_status": 1}
-    for action in ("bell", "buck", "engine/start"):
+    for action in ("bell", "buck", "engine/start", "engine/stop"):
         co.client.async_get_status_once.return_value = {
             "loc": {"lock": 0 if action == "engine/start" else 1},
             "barrel_lock_status": 1,
@@ -490,15 +490,11 @@ async def test_unknown_permissions_reach_cloud_only_with_user_consent(coordinato
         assert co.controls_enabled("synthetic-one", action)
         assert co.control_decision("synthetic-one", action).permission is CapabilityState.UNKNOWN
         await co.async_control("synthetic-one", action)
-    assert co.client.async_control.await_count == 3
-    assert not co.controls_enabled("synthetic-one", "engine/stop")
-    with pytest.raises(HomeAssistantError) as err:
-        await co.async_control("synthetic-one", "engine/stop")
-    assert err.value.translation_key == "parking_unverified"
+    assert co.client.async_control.await_count == 4
     assert not co.controls_enabled("synthetic-one", "arbitrary")
     with pytest.raises(HomeAssistantError):
         await co.async_control("synthetic-one", "arbitrary")
-    assert co.client.async_control.await_count == 3
+    assert co.client.async_control.await_count == 4
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)

@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "Requer paragem e P"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Requer paragem e P"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Requer paragem e P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Requer paragem e P"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Requer paragem e P"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "Fecho remoto",
             "state": {
               "manual": "Apenas fecho manual",
-              "guarded": "Requer paragem e P"
+              "remote": "Bloqueio remoto"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "Fecho remoto",
             "state": {
               "manual": "Apenas fecho manual",
-              "guarded": "Requer paragem e P"
+              "remote": "Bloqueio remoto"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "Resultado incerto. Verifique o veículo."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "Comando enviado; estado da fechadura indisponível."
     },
     "busy": {
       "message": "Existe uma operação do veículo em curso ou foi atingido o limite de controlo da conta. Tente novamente após terminar."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "Paragem e P não confirmados. Comando de fecho não enviado."
-    },
     "seat_lock_manual": {
       "message": "O compartimento do banco só pode ser fechado manualmente."
     },
     "control_target_not_observed": {
-      "message": "Comando aceite, mas estado solicitado não observado. Verifique o veículo antes de tentar novamente."
+      "message": "Comando enviado; estado solicitado ainda não confirmado."
     },
     "control_not_sent": {
       "message": "Comando não enviado: a comunicação está temporariamente indisponível. Tente mais tarde."
