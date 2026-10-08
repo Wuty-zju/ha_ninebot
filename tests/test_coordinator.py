@@ -23,7 +23,7 @@ async def coordinator(tmp_path, request):
     hass = HomeAssistant(str(tmp_path))
     entry = ConfigEntry(
         domain="ninebot",
-        data={},
+        data={"business_uid": "fake-business"},
         options=(
             {"enable_controls": True, "control_vehicles": ["synthetic-one"]}
             if getattr(request, "param", False) is True
@@ -47,6 +47,7 @@ async def coordinator(tmp_path, request):
     client.async_get_battery.return_value = {"battery_list": []}
     client.async_get_travel.return_value = {"total_mileages": 0, "ec": 0, "list": None}
     co = NinebotCoordinator(hass, entry, client)
+    await co.statistics.async_load()
     from custom_components.ninebot.demand import ConsumerContext, Need
 
     with (
@@ -330,17 +331,17 @@ async def test_ownership_loss_during_ledger_preparation_cannot_commit_or_observe
     month = adapters.month_at(datetime.now(UTC))
     before = co.statistics.month(sn, month)
     started, release = asyncio.Event(), asyncio.Event()
-    original = co.hass.async_add_executor_job
+    original = co.statistics.archive.async_record_month
 
-    async def paused(target, *args):
-        if getattr(target, "__name__", "") == "update" and args[1].mileage == 99:
+    async def paused(*args, **kwargs):
+        if args[1].mileage == 99:
             started.set()
             await release.wait()
-        return await original(target, *args)
+        return await original(*args, **kwargs)
 
     co.client.async_get_travel.return_value = {"total_mileages": 99, "list": []}
     with (
-        patch.object(co.hass, "async_add_executor_job", side_effect=paused),
+        patch.object(co.statistics.archive, "async_record_month", side_effect=paused),
         patch.object(RideLifecycle, "observe") as observe,
     ):
         old = asyncio.create_task(co._group(sn, "travel", force=True, include_last_ride=False))

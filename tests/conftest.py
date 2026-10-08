@@ -33,7 +33,8 @@ def app_client():
 
 
 @pytest.fixture
-def entry(hass):
+def entry(hass, tmp_path):
+    hass.config.config_dir = str(tmp_path)
     entry = MockConfigEntry(
         domain="ninebot",
         version=2,

@@ -12,7 +12,7 @@ b37 shares identical in-flight reads through a bounded broker, including failure
 
 Executor parsing retains the original request start/receipt times and monotonic revision. Cache rereads do not renew freshness, and stale generation/ownership responses cannot overwrite telemetry or the historical ledger. Concurrent ledger preparations commit in order. Transient GET failures can retry once within the same deadline; authentication/schema failures and controls are not retried. Only an actual transport Retry-After is honored, with bounded shared-transport recovery cooldown and existing per-group backoff. Diagnostics expose counters, not request keys, identities or payloads.
 
-For a loaded account and still-known vehicle, retained daily statistics, get_statistics without refresh, import_statistics and entity migration reports remain usable after live profile expiry or authentication failure. Explicit cloud refresh and live telemetry still use their freshness/authentication checks. Removed/foreign vehicles and unloaded entries remain rejected. Cold-start offline initialization and a full persistent ride archive are separate future features; retained data does not prove all upstream history was returned.
+For a loaded account and still-known vehicle, retained daily statistics, get_statistics without refresh, import_statistics and entity migration reports remain usable after live profile expiry or authentication failure. Explicit cloud refresh and live telemetry still use their freshness/authentication checks. Removed/foreign vehicles and unloaded entries remain rejected. The current R4 candidate restores minimal, account-scoped profiles and historical Actions from the archive when the first cloud refresh fails. Cached profiles do not grant live freshness or control permission, and invalid local sessions still require reauthentication. Retained data does not prove all upstream history was returned.
 
 A command attempt establishes a new status request barrier. b38 lock confirmation uses separate single-attempt status reads, so pre-command requests and ordinary auto-retried polling cannot substitute for the command confirmation budget.
 
@@ -90,22 +90,33 @@ for display on reload. This restoration never triggers automations. Old restore
 data without a saved timestamp remains unknown rather than inventing one from
 the ride's end time. No additional cloud polling or ride-detail requests are used.
 
-Normalized month summaries and small ride metadata are now retained in an
-account-specific Home Assistant storage file. Ordinary travel polling and explicit
-history queries update the same ledger; this does not start a full-history scan or
-add requests. Restoration is cached data, not a new successful cloud sample.
+The R4 candidate uses an account-scoped SQLite archive for normalized month
+summaries and scalar ride metadata. Ordinary travel polling and explicit queries
+write the same archive. The previous v1 statistics file is validated and imported
+once without modifying its original bytes; it is then a read-only migration
+source. In-memory day statistics project only current and adjacent months, while
+range Actions read the selected months directly from the archive.
 
-The ledger is bounded to 360 month summaries, 500 ride records and 2 MiB per
-account. Monthly server totals remain separate from returned-list coverage;
-evicted/missing ride rows cannot prove complete daily totals. Corrections replace
-records instead of accumulating them again. Raw JSON and location trails are not
-stored there, but ride IDs/timestamps are private history: protect your Home
-Assistant backups. Removing the account integration also removes this ledger.
+The archive has a 100 MiB write budget and does not silently evict historical
+rides at the previous 500-record limit. Storage exhaustion pauses writes while
+retaining readable history. Unreadable/unsupported archives are preserved, and
+ordinary vehicle telemetry continues with a storage Repair. Final phase delivery
+still requires durable incremental jobs, account-removal lifecycle and Home
+Assistant backup hooks; this local candidate is not yet a released R4 phase.
 
-An unreadable/unsupported file is preserved and only statistics storage is paused,
-with a Repair explaining recovery. Vehicle telemetry continues. The five manual-history progress/summary entities are retired; query scope and
-progress remain in get_history response data. This does not delete Recorder rows
-or reuse those identities for different statistics. Native historical Recorder imports and trend examples are described below.
+`get_trips` and `get_history` prefer recorded closed months without another cloud
+request. Current-month observations keep their original age; offline reads return
+`current_sample_stale` rather than claiming a fresh sample. `get_statistics`
+without refresh remains entirely local. Explicit refresh can correct existing
+month facts. Details are fetched lazily, and only verified scalar detail facts
+persist; raw JSON, tracks and speed samples remain in bounded runtime caches.
+Historical list completeness and server totals remain separate, and omitted
+rows in a partial report are not deleted from the underlying identity archive.
+Ride IDs/timestamps remain private: protect configuration backups.
+
+The five manual-history progress/summary entities remain retired; query scope
+and progress stay in response data. No Recorder rows are deleted or reused for
+different statistics. Native historical imports and trend examples follow below.
 
 Yesterday distance uses the validated daily chart. Today/Yesterday ride count,
 duration and energy require a complete retained monthly list, known end times
@@ -131,10 +142,10 @@ assigned to resetting daily/monthly totals.
 
 `ninebot.get_statistics` accepts `device_id`, `start_month`, `end_month`,
 `include_daily` (default true) and `refresh` (default false). One response covers
-one to six months. The default reads the existing bounded ledger and sends no
+one to six months. The default reads the selected local archive months and sends no
 cloud request. Use the existing `get_history` continuations to fill a longer
 history, then query it in six-month windows; this Action is not a second scan
-or full-history archive. Explicit refresh makes at most one cached/queued month
+and cannot discover unqueried upstream history. Explicit refresh makes at most one cached/queued month
 query per requested month, without fetching details or controls.
 
 `months` contains server-reported totals; `days` contains business-day distance

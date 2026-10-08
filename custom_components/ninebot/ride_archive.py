@@ -388,13 +388,17 @@ class RideArchive:
         *,
         complete: bool,
         guard: Callable[[], bool] | None = None,
+        ordered: bool = False,
     ) -> None:
+        if type(ordered) is not bool or (ordered and guard is None):
+            raise ValueError("Ordered receipts require an ownership/revision fence")
         await self._run(
-            partial(self._record_profiles, profiles, utc_string(received), complete), guard=guard
+            partial(self._record_profiles, profiles, utc_string(received), complete, ordered),
+            guard=guard,
         )
 
     def _record_profiles(
-        self, profiles: tuple[VehicleProfile, ...], observed: str, complete: bool
+        self, profiles: tuple[VehicleProfile, ...], observed: str, complete: bool, ordered: bool
     ) -> None:
         if type(complete) is not bool or len(profiles) > MAX_PROFILES:
             raise ValueError("Invalid archive profiles")
@@ -410,7 +414,7 @@ class RideArchive:
         db = self._db(write=True)
         with db:
             previous = db.execute("SELECT value FROM meta WHERE key='profiles_observed'").fetchone()
-            if previous and previous[0] >= observed:
+            if previous and (previous[0] > observed or (previous[0] == observed and not ordered)):
                 return
             if complete:
                 db.execute("UPDATE vehicles SET present=0 WHERE observed<=?", (observed,))
@@ -438,11 +442,13 @@ class RideArchive:
         )
         return (restored_ride(decoded(row[0])), row[1], row[2]) if row else None
 
-    def _upsert_ride(self, vehicle: str, incoming: Ride, observed: str) -> bool:
+    def _upsert_ride(
+        self, vehicle: str, incoming: Ride, observed: str, ordered: bool = False
+    ) -> bool:
         if incoming.ride_id is None:
             return False  # Explicit month coverage preserves missing identity.
         before = self._ride(vehicle, incoming.ride_id)
-        if before and before[1] >= observed:
+        if before and (before[1] > observed or (before[1] == observed and not ordered)):
             return False
         result = merged_ride(before[0] if before else None, incoming)
         data = encoded(ride_data(result))
@@ -472,16 +478,24 @@ class RideArchive:
         backend_version: str | None = None,
         *,
         guard: Callable[[], bool] | None = None,
+        ordered: bool = False,
     ) -> bool:
+        if type(ordered) is not bool or (ordered and guard is None):
+            raise ValueError("Ordered receipts require an ownership/revision fence")
         return await self._run(
             partial(
-                self._record_month, vehicle_key(sn), travel, utc_string(received), backend_version
+                self._record_month,
+                vehicle_key(sn),
+                travel,
+                utc_string(received),
+                backend_version,
+                ordered,
             ),
             guard=guard,
         )
 
     def _record_month(
-        self, vehicle: str, travel: TravelMonth, observed: str, backend: str | None
+        self, vehicle: str, travel: TravelMonth, observed: str, backend: str | None, ordered: bool
     ) -> bool:
         # All candidate validation is before the transaction. No raw objects
         # are passed through encoded month data or normalized ride rows.
@@ -519,7 +533,7 @@ class RideArchive:
                 "SELECT data,observed,revision,backend,ids FROM months WHERE vehicle=? AND month=?",
                 (vehicle, travel.month),
             ).fetchone()
-            if before and before[1] >= observed:
+            if before and (before[1] > observed or (before[1] == observed and not ordered)):
                 return False
             changed = not before or (before[0], before[3], before[4]) != (data, backend, ids_data)
             db.execute("INSERT OR IGNORE INTO vehicles VALUES (?,NULL,?,0)", (vehicle, observed))
@@ -535,7 +549,7 @@ class RideArchive:
                 (vehicle, travel.month),
             )
             for identity, ride in candidates.items():
-                changed = self._upsert_ride(vehicle, ride, observed) or changed
+                changed = self._upsert_ride(vehicle, ride, observed, ordered) or changed
                 db.execute(
                     "INSERT INTO membership VALUES (?,?,?,1) ON "
                     "CONFLICT(vehicle,month,ride) DO UPDATE SET latest=1",
@@ -552,13 +566,16 @@ class RideArchive:
         received: datetime,
         *,
         guard: Callable[[], bool] | None = None,
+        ordered: bool = False,
     ) -> bool:
+        if type(ordered) is not bool or (ordered and guard is None):
+            raise ValueError("Ordered receipts require an ownership/revision fence")
         return await self._run(
-            partial(self._record_detail, vehicle_key(sn), ride, utc_string(received)),
+            partial(self._record_detail, vehicle_key(sn), ride, utc_string(received), ordered),
             guard=guard,
         )
 
-    def _record_detail(self, vehicle: str, ride: Ride, observed: str) -> bool:
+    def _record_detail(self, vehicle: str, ride: Ride, observed: str, ordered: bool) -> bool:
         # A detail call cannot introduce an arbitrary ID not already indexed
         # for this vehicle/month, even when another account owns that ID.
         db = self._db(write=True)
@@ -574,10 +591,21 @@ class RideArchive:
         if before is None or before[0].detail_id is None or before[0].detail_id != ride.detail_id:
             raise ArchiveError(ArchiveFailure.OWNER)
         with db:
-            changed = self._upsert_ride(vehicle, ride, observed)
+            changed = self._upsert_ride(vehicle, ride, observed, ordered)
             if changed:
                 self._revision(bump=True)
         return changed
+
+    async def async_months(self, sn: str, months: tuple[str, ...]) -> tuple[ArchiveMonth, ...]:
+        """One serialized read for at most six selected months plus the boundary."""
+        if not 1 <= len(months) <= 7 or len(set(months)) != len(months):
+            raise ValueError("Invalid archive month range")
+        for month in months:
+            previous_month(month)
+        key = vehicle_key(sn)
+        return await self._run(
+            lambda: tuple(found for month in months if (found := self._month(key, month)))
+        )
 
     async def async_month(self, sn: str, month: str) -> ArchiveMonth | None:
         previous_month(month)
@@ -595,10 +623,18 @@ class RideArchive:
         if row is None:
             return None
         ids = self._ids(row[4])
+        # Fetch one bounded month in one SQL statement, not one statement per ride.
+        indexed = {
+            identity: restored_ride(decoded(data))
+            for identity, data in self._db().execute(
+                "SELECT r.id,r.data FROM rides r JOIN membership m "
+                "ON m.vehicle=r.vehicle AND m.ride=r.id "
+                "WHERE m.vehicle=? AND m.month=? AND m.latest=1",
+                (vehicle, month),
+            )
+        }
         rides = tuple(
-            replace(found[0], query_month=month)
-            for identity in ids
-            if (found := self._ride(vehicle, identity))
+            replace(indexed[identity], query_month=month) for identity in ids if identity in indexed
         )
         found_ids = {ride.ride_id for ride in rides}
         total = (

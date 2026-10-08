@@ -4,7 +4,7 @@ from pathlib import Path
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
@@ -17,6 +17,7 @@ from .event_store import RideEventPipeline
 from .exceptions import NinebotError
 from .identity import IdentityStore
 from .migration import async_migrate
+from .models import VehicleSnapshot
 from .registry import (
     async_enable_configured_controls,
     async_enable_standard_entities,
@@ -81,7 +82,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         await coordinator.statistics.async_load()
         assert entry.runtime_data.identities is not None
         await entry.runtime_data.identities.async_load()
-        await coordinator.async_config_entry_first_refresh()
+        cached = await coordinator.statistics.async_cached_profiles()
+        coordinator.data = {profile.sn: VehicleSnapshot(profile) for profile in cached}
+        try:
+            await coordinator.async_config_entry_first_refresh()
+        except (ConfigEntryNotReady, ConfigEntryAuthFailed) as err:
+            if not cached:
+                raise
+            # This is historical availability, never a successful cloud sample.
+            if isinstance(err, ConfigEntryAuthFailed):
+                entry.async_start_reauth(hass)
+
         await entry.runtime_data.identities.async_prepare(
             s.profile for s in coordinator.data.values()
         )

@@ -19,7 +19,6 @@ from .services import (
     assert_query_scope,
     bounded_integer,
     iso,
-    month_data,
     month_response,
     query_month,
     resolve_vehicle,
@@ -109,7 +108,7 @@ def merge_month(state: HistoryState, travel: TravelMonth) -> HistoryState:
 
 
 async def async_history_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
-    entry, sn = resolve_vehicle(hass, call.data["device_id"])
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
     co = entry.runtime_data.coordinator
     store = co.history
     start, end = call.data["start_month"], call.data["end_month"]
@@ -144,8 +143,8 @@ async def async_history_query(hass: HomeAssistant, call: ServiceCall) -> dict[st
                 error = {"month": month, "kind": "retry_cooldown"}
                 break
             try:
-                record = await co.async_query_month(sn, month)
-                travel = await hass.async_add_executor_job(month_data, record)
+                observation = await co.async_month_observation(sn, month)
+                travel = observation.travel
             except NinebotError as err:
                 store.retry_at[(sn, month)] = dt_util.utcnow() + timedelta(seconds=60)
                 retry_after = 60
@@ -154,7 +153,9 @@ async def async_history_query(hass: HomeAssistant, call: ServiceCall) -> dict[st
             state = await hass.async_add_executor_job(merge_month, state, travel)
             response = {
                 "month": month,
-                "received_at": iso(record.received_at),
+                "received_at": iso(observation.received_at),
+                "source_mode": observation.source_mode,
+                "current_sample_stale": observation.current_sample_stale,
                 **month_response(travel),
             }
             if not call.data["include_daily_chart"]:
@@ -165,7 +166,7 @@ async def async_history_query(hass: HomeAssistant, call: ServiceCall) -> dict[st
     limit = call.data["limit"]
     rides, pending = state.pending[:limit], state.pending[limit:]
     state = replace(state, pending=pending)
-    assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, False)
+    assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, False, require_live=False)
     needs_more = bool(pending) or (state.next_month is not None and state.stopped_reason is None)
     next_cursor = store.put(state, dt_util.utcnow()) if needs_more else None
     if needs_more and next_cursor is None:
@@ -243,5 +244,6 @@ async def async_history_query(hass: HomeAssistant, call: ServiceCall) -> dict[st
         "stopped_reason": state.stopped_reason,
         "error": error,
         "retry_after_s": retry_after,
-        "storage": "runtime_only",
+        "storage": "runtime_only",  # compatibility: continuation/aggregate lifetime
+        "fact_storage": co.statistics.source_mode,
     }

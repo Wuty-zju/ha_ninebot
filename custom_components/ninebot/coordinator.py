@@ -18,11 +18,13 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from . import adapters
+from .archive_runtime import ArchiveStatistics
 from .backend import BackendResult, NinebotBackend, NinecliBackend
 from .capabilities import CONTROL_ACTIONS, ControlDecision, VehicleCapabilities, decide_control
 from .client import NinecliClient
 from .const import (
     BUSINESS_TIMEZONE,
+    CONF_BUSINESS_UID,
     CONF_CONTROL_VEHICLES,
     CONF_CONTROLS,
     CONF_POLL_INTERVAL,
@@ -46,8 +48,9 @@ from .models import Freshness, TravelMonth, VehicleSnapshot
 from .parsing import integer
 from .query_broker import Priority, QueryBroker, QueryKey
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
+from .ride_archive import ArchiveError
 from .ride_lifecycle import RideLifecycle
-from .statistics_store import TravelStatisticsStore
+from .travel_observation import MonthObservation
 
 LOGGER = logging.getLogger(__name__)
 CONFIRMATION_DELAYS = (0, 2, 5)
@@ -75,7 +78,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.raw = RawStore()
         self.history = HistoryStore()
         self.ride_lifecycles: dict[str, RideLifecycle] = {}
-        self.statistics = TravelStatisticsStore(hass, entry.entry_id)
+        self.statistics = ArchiveStatistics(
+            hass, entry.entry_id, str(entry.data[CONF_BUSINESS_UID])
+        )
         self.control_results = ControlResults()
         self.interval = max(
             30, min(3600, int(entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)))
@@ -279,6 +284,16 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         def notify(at: datetime) -> None:
             self._validity_cancel = None
             self.async_update_listeners()
+            if self.statistics.projection_needs_refresh(at):
+
+                async def refresh_local() -> None:
+                    await self.statistics.async_refresh_projection()
+                    if not self._stopping:
+                        self.async_update_listeners()
+
+                task = self.hass.async_create_task(refresh_local())
+                self._active.add(task)
+                task.add_done_callback(self._active.discard)
             self._schedule_validity_check()
 
         self._validity_cancel = async_track_point_in_utc_time(self.hass, notify, min(deadlines))
@@ -409,7 +424,19 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         )
         self._authenticated = True
         self._committed[("", "profile")] = result.request_revision
-        self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, True)
+        await self.statistics.async_record_profiles(
+            tuple(found),
+            finished,
+            result.vehicles_complete,
+            lambda: (
+                self._current_read(key, result.request_revision)
+                and self._committed.get(("", "profile")) == result.request_revision
+            ),
+        )
+        if self._current_read(key, result.request_revision) and (
+            self._committed.get(("", "profile")) == result.request_revision
+        ):
+            self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, True)
 
     async def _group(
         self,
@@ -596,6 +623,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                             fallback_record.received_at if fallback_record else result.received_at,
                             result.backend_version,
                             guard=lambda: self._current_read(previous_key, previous_revision),
+                            receipt_ordered=True,
                         )
                         if include_last_ride and travel.last_ride is None:
                             travel = replace(travel, last_ride=fallback.last_ride)
@@ -620,7 +648,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 if not current_month():
                     return
                 await self.statistics.async_record(
-                    sn, travel, observed, travel_version, guard=current_month
+                    sn, travel, observed, travel_version, guard=current_month, receipt_ordered=True
                 )
                 if not current_month():
                     return
@@ -745,6 +773,41 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 return record
         return None
 
+    async def async_month_observation(self, sn: str, month: str) -> MonthObservation:
+        """Closed history needs no cloud TTL; current observations keep their age."""
+        adapters.previous_month(month)
+        if not self.local_vehicle_available(sn):
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="query_unavailable")
+        generation, ownership = self._generation, self._ownership.get(sn, 0)
+        now = dt_util.utcnow()
+        try:
+            cached = await self.statistics.async_cached_month(sn, month)
+        except ArchiveError as err:
+            self.statistics.record_error(err)
+            cached = None
+        if (
+            generation != self._generation
+            or ownership != self._ownership.get(sn, 0)
+            or not self.local_vehicle_available(sn)
+        ):
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="query_unavailable")
+        if cached is not None:
+            age = (now - cached.received_at).total_seconds()
+            current = month == adapters.month_at(now)
+            if 0 <= age and (
+                not current or age <= DETAIL_INTERVAL or not self.fresh(sn, "profile")
+            ):
+                return MonthObservation(
+                    cached.travel,
+                    cached.received_at,
+                    cached.backend_version,
+                    "ride_archive",
+                    current and age > DETAIL_INTERVAL,
+                )
+        record = await self.async_query_month(sn, month)
+        travel = await self._normalize(record, sn, month, partial(travel_record, record, month))
+        return MonthObservation(travel, record.received_at, record.backend_version, "runtime_query")
+
     async def async_query_month(self, sn: str, month: str) -> RawRecord:
         """Explicit history query; never changes current-month state/events."""
         adapters.previous_month(month)
@@ -825,6 +888,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     record.received_at,
                     record.backend_version,
                     guard=lambda: self._current_read(key, record.request_revision),
+                    receipt_ordered=True,
                 )
             if not self._owns(key) or not self.fresh(sn, "profile"):
                 raise HomeAssistantError(
@@ -1227,6 +1291,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         await self.backend.async_close()
         await asyncio.gather(*tasks, return_exceptions=True)
         await self.statistics.async_save()
+        await self.statistics.async_close()
         self.raw.clear()
         self._normalized.clear()
         self.history.clear()
