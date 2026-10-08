@@ -3,7 +3,7 @@
 [中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/README.md)
 
 An independent, unofficial Ninebot vehicle integration using pinned `ninecli==0.1.7`.
-Version 2 replaces the OpenClaw backend. The current b43 code is a prerelease;
+Version 2 replaces the OpenClaw backend. The current b44 code is a prerelease;
 vendor API availability can change. It targets the Chinese App service; other regions are unverified.
 
 ## Installation and account
@@ -103,3 +103,5 @@ Exact CI execution/skip scope and physical verification are separate facts; see 
 Native historical day/month trends are available through the explicit `ninebot.import_statistics` Action, with ready-to-copy standard statistics graph cards. See the [history and visualization guide](docs/README.md#native-historical-trend-graphs); imports read the existing ledger and do not query the cloud.
 
 An optional packaged [ride detail card](docs/README.md#optional-ride-detail-card) adds local date pages and explicitly requested details/uncalibrated sample curves, alongside native calendars and statistics graphs.
+
+See the [b44 naming/display migration](docs/README.md#b44-display-and-naming-update) for forced existing-ID renames, presentation and account-header limitations.

@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Daya baterai"
+        "name": "Baterai utama: daya"
       },
       "endurance": {
         "name": "Jarak tersisa"
@@ -174,13 +174,16 @@
         "name": "Daya pengisian"
       },
       "bms_voltage": {
-        "name": "Tegangan baterai"
+        "name": "Baterai utama: tegangan terukur"
       },
       "batt_temp": {
-        "name": "Suhu baterai"
+        "name": "Baterai utama: suhu"
       },
       "bms_cycles": {
-        "name": "Siklus pengisian"
+        "name": "Baterai utama: siklus",
+        "state": {
+          "unsupported": "Tidak didukung"
+        }
       },
       "last_ride_duration": {
         "name": "Perjalanan terakhir: Durasi perjalanan"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Tidak didukung"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Belum dilaporkan"
         }
       },
       "battery_present_raw": {
-        "name": "Baterai terpasang",
+        "name": "Baterai utama: tersedia",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Layanan pintar kedaluwarsa",
+        "name": "Layanan pintar",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Skor kesehatan baterai",
+        "name": "Baterai utama: skor kesehatan",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Tidak didukung"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Bulan ini: Durasi perjalanan"
       },
       "returned_pack_count": {
-        "name": "Jumlah baterai"
+        "name": "Baterai utama: jumlah"
       },
       "month_list_coverage": {
         "name": "Bulan ini: Cakupan catatan perjalanan"
       },
       "battery_rated_energy": {
-        "name": "Energi nominal baterai"
+        "name": "Baterai utama: energi nominal"
       },
       "today_mileage": {
         "name": "Jarak hari ini"
@@ -461,14 +473,14 @@
         "name": "Daya utama"
       },
       "cycle_support": {
-        "name": "Dukungan penghitung siklus",
+        "name": "Baterai utama: dukungan penghitung siklus",
         "state": {
           "on": "Didukung",
           "off": "Tidak didukung"
         }
       },
       "battery_find_my_support": {
-        "name": "Dukungan Apple Find My",
+        "name": "Baterai utama: dukungan Find My",
         "state": {
           "on": "Didukung",
           "off": "Tidak didukung"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Lokasi kendaraan"
+        "name": "Lokasi perangkat"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Tegangan nominal"
+        "name": "Baterai utama: tegangan nominal"
       },
       "battery_capacity": {
-        "name": "Kapasitas nominal"
+        "name": "Baterai utama: kapasitas nominal"
       }
     },
     "event": {

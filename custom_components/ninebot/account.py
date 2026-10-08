@@ -37,14 +37,19 @@ class AccountDisplay:
 
 
 def account_update(
-    data: dict, account: str, display: AccountDisplay, title: str | None = None
+    data: dict,
+    account: str,
+    display: AccountDisplay,
+    title: str | None = None,
+    *,
+    force: bool = False,
 ) -> tuple[dict[str, str], str, str]:
     """Retain last known metadata and protect a user-customized entry title."""
     metadata = AccountDisplay.parse(data.get(ACCOUNT_METADATA)).as_dict() | display.as_dict()
     automatic = AccountDisplay.parse(metadata).title(account)
     selected = (
         title
-        if title is not None and title not in ("Ninebot", data.get(AUTOMATIC_TITLE))
+        if not force and title is not None and title not in ("Ninebot", data.get(AUTOMATIC_TITLE))
         else automatic
     )
     return metadata, automatic, selected

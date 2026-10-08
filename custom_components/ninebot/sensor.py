@@ -39,7 +39,7 @@ from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .models import LastRide, TravelMonth, VehicleSnapshot
 from .observations import ENTITY_FIELDS, RawField
-from .parsing import display_scalar, integer
+from .parsing import boolean, display_scalar, integer, number
 from .period_statistics import DayMetric, DaySummary, day_summary
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
@@ -142,10 +142,16 @@ def raw_description(field: RawField) -> Description:
         if states is not None:
             code = integer(raw, 0, 255)
             return states.get(code, "unrecognized") if code is not None else None
+        if field.key == "service_remaining_days_raw" and number(raw) == 0:
+            return "unsupported"
+        if field.key == "odometer_raw" and raw is None:
+            return "not_reported"
         return display_scalar(raw)
 
     def attributes(snapshot: VehicleSnapshot) -> dict[str, Any]:
         result = raw_attributes(snapshot, field)
+        if value(snapshot) in ("unsupported", "not_reported"):
+            result["interpretation"] = "maintainer_display_contract"
         if states and value(snapshot) in states.values():
             result["interpretation"] = "interpreted"
         return result
@@ -323,6 +329,7 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.MINUTES,
         value=lambda s: s.travel.reported_duration_s if s.travel else None,
     ),
     Description(
@@ -377,6 +384,7 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.MINUTES,
         value=lambda s: ride_value(s, "duration_s"),
     ),
     Description(
@@ -554,7 +562,26 @@ class NinebotSensor(NinebotEntity, SensorEntity):
 
     @property
     def suggested_display_precision(self) -> int | None:
+        value = self.native_value
         description = self.entity_description
+        # A mixed scalar/status sensor must not be declared numeric when it
+        # reports a translated unsupported/not-reported state.
+        if value in ("unsupported", "not_reported"):
+            return None
+        if value == 0:
+            return 0
+        if description.device_class is SensorDeviceClass.DISTANCE:
+            return 1
+        if description.device_class in {
+            SensorDeviceClass.ENERGY,
+            SensorDeviceClass.ENERGY_DISTANCE,
+        }:
+            return 0
+        if description.key == "last_ride_max_speed":
+            return 0
+        if description.device_class is SensorDeviceClass.DURATION:
+            return 2
+
         if description.suggested_display_precision is not None:
             return description.suggested_display_precision
         snapshot, _ = self._presentation()
@@ -574,6 +601,8 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             if self.entity_description.attributes
             else {}
         )
+        if self.entity_description.device_class is SensorDeviceClass.DURATION:
+            attributes["duration_seconds"] = self.native_value
         if self._data_group == "travel":
             received = archived.received_at if archived else snapshot.travel_freshness.succeeded_at
             attributes.update(
@@ -611,6 +640,10 @@ class RatedEnergySensor(NinebotEntity, SensorEntity):
         return self.entry.runtime_data.models.model(self.sn).nominal
 
     @property
+    def suggested_display_precision(self) -> int:
+        return 0 if self.native_value == 0 else 3
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return {"basis": "user_rated_voltage_capacity", "measured": False}
 
@@ -637,6 +670,16 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
             self._attr_native_unit_of_measurement,
             self._attr_device_class,
         ) = DAY_FIELDS[key]
+        if self._attr_device_class is SensorDeviceClass.DURATION:
+            self._attr_suggested_unit_of_measurement = UnitOfTime.MINUTES
+
+    @property
+    def suggested_display_precision(self) -> int:
+        if self.native_value == 0:
+            return 0
+        if self._attr_device_class is SensorDeviceClass.DISTANCE:
+            return 1
+        return 2 if self._attr_device_class is SensorDeviceClass.DURATION else 0
 
     def _summary(self) -> DaySummary:
         now = dt_util.utcnow()
@@ -675,6 +718,7 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
             "ride_window_complete": summary.rides_complete,
             "availability_reason": summary.reason(self.field),
             "storage": self.coordinator.statistics.source_mode,
+            **({"duration_seconds": summary.duration_s} if self.field == "duration_s" else {}),
         }
 
 
@@ -725,8 +769,18 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                     if primary
                     else identified_battery(s.battery, identity)
                 )
-                if found and field == "cycles" and found.cycle_supported is not True:
-                    return None
+                if field == "cycles":
+                    supported = (
+                        found.cycle_supported
+                        if found
+                        else boolean(s.battery.observations.get("have_bms_cycle_support"))
+                    )
+                    if supported is False:
+                        return "unsupported"
+                    if supported is not True:
+                        return None
+                if found and field == "score_raw" and number(found.score_raw) == 0:
+                    return "unsupported"
                 return display_scalar(getattr(found, field)) if found else None
 
             def attributes(
@@ -741,7 +795,13 @@ def battery_descriptions(snapshot: VehicleSnapshot) -> list[Description]:
                     else identified_battery(s.battery, identity)
                 )
                 return {
-                    "interpretation": "unverified",
+                    "interpretation": "maintainer_display_contract"
+                    if found
+                    and (
+                        (field == "score_raw" and number(found.score_raw) == 0)
+                        or (field == "cycles" and found.cycle_supported is False)
+                    )
+                    else "unverified",
                     "cycle_supported": found.cycle_supported if found else None,
                     "reported_cycles": display_scalar(found.cycle_raw) if found else None,
                 }
@@ -773,8 +833,18 @@ def legacy_battery_description(key: str) -> Description:
         "bms_cycles": ("cycles", None, None),
     }[key]
 
-    def value(snapshot: VehicleSnapshot) -> float | None:
+    def value(snapshot: VehicleSnapshot) -> str | float | None:
         battery = current_battery(snapshot.battery)
+        if (
+            key == "bms_cycles"
+            and (
+                battery.cycle_supported
+                if battery
+                else boolean(snapshot.battery.observations.get("have_bms_cycle_support"))
+            )
+            is False
+        ):
+            return "unsupported"
         if battery is None:
             return None
         return (

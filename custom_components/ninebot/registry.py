@@ -14,7 +14,11 @@ from homeassistant.helpers import entity_registry as er
 from .capabilities import CONTROL_BUTTONS
 from .compat import device_entry_ids
 from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, CONF_ESTIMATION, DOMAIN
-from .identity import device_sn, legacy_uids, scoped_uid
+from .identity import (
+    device_sn,
+    legacy_uids,
+    scoped_uid,
+)
 from .observations import ENTITY_FIELDS, RAW_FIELDS
 from .runtime import NinebotConfigEntry
 from .sensor import DAY_FIELDS, SENSORS, battery_descriptions
@@ -206,7 +210,6 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntr
     conversions = []
     aliases = {
         "main_power": "power",
-        "vehicle_lock": "unlocked",
         "remaining_range": "endurance",
         "info": "refresh",
     }
@@ -226,9 +229,28 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntr
             conversions.append((row, sn, "seat_lock" if row.domain == "sensor" else "vehicle_lock"))
             continue
         keys = visible_keys(entry, sn).get(row.domain, frozenset())
+        # Naming migration includes configured-but-currently-inactive parameters.
+        if row.domain == "number":
+            keys |= frozenset({"main_battery_voltage", "battery_capacity"})
+        elif row.domain == "sensor":
+            keys |= frozenset({"battery_rated_energy"})
+        elif row.domain == "lock":
+            converted = [
+                key
+                for key in ("vehicle_lock", "seat_lock")
+                if any(
+                    plan["uid"] == row.unique_id
+                    and plan["reason"].startswith("lock_conversion")
+                    and plan["new"] == identities.seeds[sn].entity_id("lock", key)
+                    for plan in identities.migrations.values()
+                )
+            ]
+            if len(converted) == 1:
+                candidates.append((row, sn, converted[0]))
+                continue
         for key in keys:
             if row.unique_id in {*legacy_uids(sn, key), scoped_uid(entry, sn, key)}:
                 candidates.append((row, sn, aliases.get(key, key)))
                 break
-    await identities.async_migrate(candidates)
+    await identities.async_migrate(candidates, force=True)
     await identities.async_convert_locks(conversions)

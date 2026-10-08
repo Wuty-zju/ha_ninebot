@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Заряд батареи"
+        "name": "Основная батарея: заряд"
       },
       "endurance": {
         "name": "Оставшийся запас хода"
@@ -174,13 +174,16 @@
         "name": "Мощность зарядки"
       },
       "bms_voltage": {
-        "name": "Напряжение батареи"
+        "name": "Основная батарея: измеренное напряжение"
       },
       "batt_temp": {
-        "name": "Температура батареи"
+        "name": "Основная батарея: температура"
       },
       "bms_cycles": {
-        "name": "Циклы зарядки"
+        "name": "Основная батарея: циклы",
+        "state": {
+          "unsupported": "Не поддерживается"
+        }
       },
       "last_ride_duration": {
         "name": "Последняя поездка: Продолжительность поездок"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Не поддерживается"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Не передано"
         }
       },
       "battery_present_raw": {
-        "name": "Батарея установлена",
+        "name": "Основная батарея: наличие",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Срок умного сервиса истёк",
+        "name": "Смарт-сервис",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Оценка состояния батареи",
+        "name": "Основная батарея: оценка состояния",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Не поддерживается"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Этот месяц: Продолжительность поездок"
       },
       "returned_pack_count": {
-        "name": "Количество батарей"
+        "name": "Основная батарея: количество"
       },
       "month_list_coverage": {
         "name": "Этот месяц: Полнота списка поездок"
       },
       "battery_rated_energy": {
-        "name": "Номинальная энергия батареи"
+        "name": "Основная батарея: номинальная энергия"
       },
       "today_mileage": {
         "name": "Расстояние за сегодня"
@@ -461,14 +473,14 @@
         "name": "Основное питание"
       },
       "cycle_support": {
-        "name": "Поддержка счётчика циклов",
+        "name": "Основная батарея: поддержка счётчика циклов",
         "state": {
           "on": "Поддерживается",
           "off": "Не поддерживается"
         }
       },
       "battery_find_my_support": {
-        "name": "Поддержка Apple Локатор",
+        "name": "Основная батарея: поддержка Find My",
         "state": {
           "on": "Поддерживается",
           "off": "Не поддерживается"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Местоположение транспорта"
+        "name": "Местоположение устройства"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Номинальное напряжение"
+        "name": "Основная батарея: номинальное напряжение"
       },
       "battery_capacity": {
-        "name": "Номинальная ёмкость"
+        "name": "Основная батарея: номинальная ёмкость"
       }
     },
     "event": {

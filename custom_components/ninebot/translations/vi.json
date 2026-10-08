@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Mức pin"
+        "name": "Pin chính: mức pin"
       },
       "endurance": {
         "name": "Quãng đường còn lại"
@@ -174,13 +174,16 @@
         "name": "Công suất sạc"
       },
       "bms_voltage": {
-        "name": "Điện áp pin"
+        "name": "Pin chính: điện áp đo được"
       },
       "batt_temp": {
-        "name": "Nhiệt độ pin"
+        "name": "Pin chính: nhiệt độ"
       },
       "bms_cycles": {
-        "name": "Chu kỳ sạc"
+        "name": "Pin chính: chu kỳ",
+        "state": {
+          "unsupported": "Không hỗ trợ"
+        }
       },
       "last_ride_duration": {
         "name": "Chuyến gần nhất: Thời gian di chuyển"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Không hỗ trợ"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Chưa báo cáo"
         }
       },
       "battery_present_raw": {
-        "name": "Có pin",
+        "name": "Pin chính: hiện diện",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Dịch vụ thông minh hết hạn",
+        "name": "Dịch vụ thông minh",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Điểm sức khỏe pin",
+        "name": "Pin chính: điểm sức khỏe",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Không hỗ trợ"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Tháng này: Thời gian di chuyển"
       },
       "returned_pack_count": {
-        "name": "Số pin"
+        "name": "Pin chính: số lượng"
       },
       "month_list_coverage": {
         "name": "Tháng này: Mức đầy đủ lịch sử"
       },
       "battery_rated_energy": {
-        "name": "Năng lượng định mức pin"
+        "name": "Pin chính: năng lượng định mức"
       },
       "today_mileage": {
         "name": "Quãng đường hôm nay"
@@ -461,14 +473,14 @@
         "name": "Nguồn chính"
       },
       "cycle_support": {
-        "name": "Hỗ trợ đếm chu kỳ",
+        "name": "Pin chính: hỗ trợ đếm chu kỳ",
         "state": {
           "on": "Có hỗ trợ",
           "off": "Không hỗ trợ"
         }
       },
       "battery_find_my_support": {
-        "name": "Hỗ trợ Apple Find My",
+        "name": "Pin chính: hỗ trợ Find My",
         "state": {
           "on": "Có hỗ trợ",
           "off": "Không hỗ trợ"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Vị trí xe"
+        "name": "Vị trí thiết bị"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Điện áp định mức"
+        "name": "Pin chính: điện áp định mức"
       },
       "battery_capacity": {
-        "name": "Dung lượng định mức"
+        "name": "Pin chính: dung lượng định mức"
       }
     },
     "event": {

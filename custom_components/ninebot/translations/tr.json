@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Pil seviyesi"
+        "name": "Ana batarya: şarj"
       },
       "endurance": {
         "name": "Kalan menzil"
@@ -174,13 +174,16 @@
         "name": "Şarj gücü"
       },
       "bms_voltage": {
-        "name": "Pil voltajı"
+        "name": "Ana batarya: ölçülen gerilim"
       },
       "batt_temp": {
-        "name": "Pil sıcaklığı"
+        "name": "Ana batarya: sıcaklık"
       },
       "bms_cycles": {
-        "name": "Şarj döngüsü"
+        "name": "Ana batarya: döngüler",
+        "state": {
+          "unsupported": "Desteklenmiyor"
+        }
       },
       "last_ride_duration": {
         "name": "Son sürüş: Sürüş süresi"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Desteklenmiyor"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Bildirilmedi"
         }
       },
       "battery_present_raw": {
-        "name": "Batarya mevcut",
+        "name": "Ana batarya: mevcut",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Akıllı hizmet süresi doldu",
+        "name": "Akıllı hizmet",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Pil sağlık puanı",
+        "name": "Ana batarya: sağlık puanı",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Desteklenmiyor"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Bu ay: Sürüş süresi"
       },
       "returned_pack_count": {
-        "name": "Pil sayısı"
+        "name": "Ana batarya: sayısı"
       },
       "month_list_coverage": {
         "name": "Bu ay: Sürüş kaydı kapsamı"
       },
       "battery_rated_energy": {
-        "name": "Pil nominal enerjisi"
+        "name": "Ana batarya: nominal enerji"
       },
       "today_mileage": {
         "name": "Bugünkü mesafe"
@@ -461,14 +473,14 @@
         "name": "Ana güç"
       },
       "cycle_support": {
-        "name": "Döngü sayacı desteği",
+        "name": "Ana batarya: döngü sayacı desteği",
         "state": {
           "on": "Destekleniyor",
           "off": "Desteklenmiyor"
         }
       },
       "battery_find_my_support": {
-        "name": "Apple Bul desteği",
+        "name": "Ana batarya: Find My desteği",
         "state": {
           "on": "Destekleniyor",
           "off": "Desteklenmiyor"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Araç konumu"
+        "name": "Cihaz konumu"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Nominal voltaj"
+        "name": "Ana batarya: nominal gerilim"
       },
       "battery_capacity": {
-        "name": "Nominal kapasite"
+        "name": "Ana batarya: nominal kapasite"
       }
     },
     "event": {

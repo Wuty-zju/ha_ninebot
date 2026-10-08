@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "बैटरी स्तर"
+        "name": "मुख्य बैटरी: चार्ज"
       },
       "endurance": {
         "name": "शेष दूरी"
@@ -174,13 +174,16 @@
         "name": "चार्जिंग शक्ति"
       },
       "bms_voltage": {
-        "name": "बैटरी वोल्टेज"
+        "name": "मुख्य बैटरी: मापा वोल्टेज"
       },
       "batt_temp": {
-        "name": "बैटरी तापमान"
+        "name": "मुख्य बैटरी: तापमान"
       },
       "bms_cycles": {
-        "name": "चार्ज चक्र"
+        "name": "मुख्य बैटरी: साइकल संख्या",
+        "state": {
+          "unsupported": "समर्थित नहीं"
+        }
       },
       "last_ride_duration": {
         "name": "पिछली यात्रा: यात्रा अवधि"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "समर्थित नहीं"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "रिपोर्ट नहीं किया गया"
         }
       },
       "battery_present_raw": {
-        "name": "बैटरी मौजूद",
+        "name": "मुख्य बैटरी: मौजूदगी",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "स्मार्ट सेवा समाप्त",
+        "name": "स्मार्ट सेवा",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "बैटरी स्वास्थ्य स्कोर",
+        "name": "मुख्य बैटरी: स्वास्थ्य स्कोर",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "समर्थित नहीं"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "इस महीने: यात्रा अवधि"
       },
       "returned_pack_count": {
-        "name": "बैटरियों की संख्या"
+        "name": "मुख्य बैटरी: संख्या"
       },
       "month_list_coverage": {
         "name": "इस महीने: यात्रा रिकॉर्ड कवरेज"
       },
       "battery_rated_energy": {
-        "name": "बैटरी की निर्धारित ऊर्जा"
+        "name": "मुख्य बैटरी: रेटेड ऊर्जा"
       },
       "today_mileage": {
         "name": "आज की दूरी"
@@ -461,14 +473,14 @@
         "name": "मुख्य पावर"
       },
       "cycle_support": {
-        "name": "चक्र गणना समर्थन",
+        "name": "मुख्य बैटरी: साइकल गणना समर्थन",
         "state": {
           "on": "समर्थित",
           "off": "समर्थित नहीं"
         }
       },
       "battery_find_my_support": {
-        "name": "Apple Find My समर्थन",
+        "name": "मुख्य बैटरी: Find My समर्थन",
         "state": {
           "on": "समर्थित",
           "off": "समर्थित नहीं"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "वाहन स्थान"
+        "name": "डिवाइस स्थान"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "निर्धारित वोल्टेज"
+        "name": "मुख्य बैटरी: रेटेड वोल्टेज"
       },
       "battery_capacity": {
-        "name": "निर्धारित क्षमता"
+        "name": "मुख्य बैटरी: रेटेड क्षमता"
       }
     },
     "event": {

@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Batterieladung"
+        "name": "Hauptbatterie: Ladestand"
       },
       "endurance": {
         "name": "Restreichweite"
@@ -174,13 +174,16 @@
         "name": "Ladeleistung"
       },
       "bms_voltage": {
-        "name": "Batteriespannung"
+        "name": "Hauptbatterie: gemessene Spannung"
       },
       "batt_temp": {
-        "name": "Batterietemperatur"
+        "name": "Hauptbatterie: Temperatur"
       },
       "bms_cycles": {
-        "name": "Ladezyklen"
+        "name": "Hauptbatterie: Zyklen",
+        "state": {
+          "unsupported": "Nicht unterstützt"
+        }
       },
       "last_ride_duration": {
         "name": "Letzte Fahrt: Fahrtdauer"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Nicht unterstützt"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Nicht gemeldet"
         }
       },
       "battery_present_raw": {
-        "name": "Batterie vorhanden",
+        "name": "Hauptbatterie: vorhanden",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Smart-Dienst abgelaufen",
+        "name": "Smart-Dienst",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Batteriezustandsbewertung",
+        "name": "Hauptbatterie: Zustandsbewertung",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Nicht unterstützt"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Diesen Monat: Fahrtdauer"
       },
       "returned_pack_count": {
-        "name": "Batterieanzahl"
+        "name": "Hauptbatterie: Anzahl"
       },
       "month_list_coverage": {
         "name": "Diesen Monat: Fahrtenabdeckung"
       },
       "battery_rated_energy": {
-        "name": "Batterienennenergie"
+        "name": "Hauptbatterie: Nennenergie"
       },
       "today_mileage": {
         "name": "Heutige Strecke"
@@ -461,14 +473,14 @@
         "name": "Hauptstromversorgung"
       },
       "cycle_support": {
-        "name": "Zyklenzählung unterstützt",
+        "name": "Hauptbatterie: Unterstützung der Zykluszählung",
         "state": {
           "on": "Unterstützt",
           "off": "Nicht unterstützt"
         }
       },
       "battery_find_my_support": {
-        "name": "Apple „Wo ist?“ unterstützt",
+        "name": "Hauptbatterie: Find My-Unterstützung",
         "state": {
           "on": "Unterstützt",
           "off": "Nicht unterstützt"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Fahrzeugposition"
+        "name": "Gerätestandort"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Nennspannung"
+        "name": "Hauptbatterie: Nennspannung"
       },
       "battery_capacity": {
-        "name": "Nennkapazität"
+        "name": "Hauptbatterie: Nennkapazität"
       }
     },
     "event": {

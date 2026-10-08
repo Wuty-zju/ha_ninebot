@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "شحن البطارية"
+        "name": "البطارية الرئيسية: الشحن"
       },
       "endurance": {
         "name": "المدى المتبقي"
@@ -174,13 +174,16 @@
         "name": "قدرة الشحن"
       },
       "bms_voltage": {
-        "name": "جهد البطارية"
+        "name": "البطارية الرئيسية: الجهد المقاس"
       },
       "batt_temp": {
-        "name": "حرارة البطارية"
+        "name": "البطارية الرئيسية: درجة الحرارة"
       },
       "bms_cycles": {
-        "name": "دورات الشحن"
+        "name": "البطارية الرئيسية: عدد الدورات",
+        "state": {
+          "unsupported": "غير مدعوم"
+        }
       },
       "last_ride_duration": {
         "name": "آخر رحلة: مدة الرحلات"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "غير مدعوم"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "لم يتم الإبلاغ"
         }
       },
       "battery_present_raw": {
-        "name": "البطارية موجودة",
+        "name": "البطارية الرئيسية: الوجود",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "انتهاء الخدمة الذكية",
+        "name": "الخدمة الذكية",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "درجة صحة البطارية",
+        "name": "البطارية الرئيسية: تقييم الصحة",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "غير مدعوم"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "هذا الشهر: مدة الرحلات"
       },
       "returned_pack_count": {
-        "name": "عدد البطاريات"
+        "name": "البطارية الرئيسية: العدد"
       },
       "month_list_coverage": {
         "name": "هذا الشهر: تغطية سجل الرحلات"
       },
       "battery_rated_energy": {
-        "name": "طاقة البطارية الاسمية"
+        "name": "البطارية الرئيسية: الطاقة الاسمية"
       },
       "today_mileage": {
         "name": "المسافة اليوم"
@@ -461,14 +473,14 @@
         "name": "الطاقة الرئيسية"
       },
       "cycle_support": {
-        "name": "دعم عداد الدورات",
+        "name": "البطارية الرئيسية: دعم عداد الدورات",
         "state": {
           "on": "مدعوم",
           "off": "غير مدعوم"
         }
       },
       "battery_find_my_support": {
-        "name": "دعم تحديد الموقع من Apple",
+        "name": "البطارية الرئيسية: دعم Find My",
         "state": {
           "on": "مدعوم",
           "off": "غير مدعوم"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "موقع المركبة"
+        "name": "موقع الجهاز"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "الجهد الاسمي"
+        "name": "البطارية الرئيسية: الجهد الاسمي"
       },
       "battery_capacity": {
-        "name": "السعة الاسمية"
+        "name": "البطارية الرئيسية: السعة الاسمية"
       }
     },
     "event": {

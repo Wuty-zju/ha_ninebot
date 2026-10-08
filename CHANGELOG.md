@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0b44
+
+- Force a one-time canonical rename of owned existing entity IDs, including pre-upgrade custom IDs, preserving unique IDs and old/new migration evidence. Keep collision/ownership guards and subsequent user renames; include inactive parameter entities and converted locks. Update external references from the migration mapping.
+- Normalize account titles to the reported username/account/optional region, with one missing-name enrichment at successful setup and no ongoing whoami polling. Retain independent multi-account entries. HA owns the search-section heading; no global frontend patch or unsupported Account heading is introduced.
+- Suggest minute duration display with retained native seconds, one-decimal distances, integer consumption/max speed and zero without fractional padding. Keep unrounded raw/domain/archive values and explicit user presentation choices. The optional card displays minutes/integer seconds.
+- Standardize main-battery labels/localized statuses, shorten Chinese battery type names, display score/service-remaining zero and explicitly unsupported cycles as Not supported, and missing odometer as Not reported. Move vehicle image to diagnostics; retain device-linked GPS tracking and coordinate consent.
+- Per maintainer request, no functional tests or live vehicle/production operations are performed for this release; JS tests join the existing manually dispatched major compatibility workflow rather than running on every beta. Routine distribution/style validation remains automatic.
+
 ## 2.0.0b43
 
 - Package an optional ride-history dashboard card: local date-range pages, scalar ride details, source precision and coverage, with explicitly requested single-ride cloud details. Opening or paginating the card never queries the cloud; no GPS tracks, controls, background history scans or browser persistence. Raw speed samples remain explicitly unit-unverified.

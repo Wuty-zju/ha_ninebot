@@ -5,6 +5,7 @@ import logging
 import httpx
 from homeassistant.components.image import ImageEntity
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import NinebotEntity, async_setup_dynamic
@@ -15,6 +16,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class NinebotImage(NinebotEntity, ImageEntity):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         NinebotEntity.__init__(self, entry, sn, "vehicle_image", "image", "profile")
         ImageEntity.__init__(self, self.coordinator.hass, verify_ssl=True)

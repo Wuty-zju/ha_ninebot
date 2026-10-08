@@ -151,7 +151,7 @@
         "default": "mdi:counter"
       },
       "battery_find_my_support": {
-        "default": "mdi:apple"
+        "default": "mdi:map-marker-radius"
       }
     },
     "lock": {
@@ -177,6 +177,11 @@
     "calendar": {
       "ride_calendar": {
         "default": "mdi:calendar-clock"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "default": "mdi:map-marker"
       }
     }
   },

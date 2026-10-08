@@ -26,6 +26,8 @@ from .models import VehicleProfile
 
 IDENTITY_VERSION = "entity_identity_version"
 IDENTITY_INITIALIZED = "entity_identity_initialized"
+NAMING_REVISION = "entity_naming_revision"
+CURRENT_NAMING_REVISION = 2
 MAX_VEHICLES = 1000
 MAX_MIGRATIONS = 10000
 STATUSES = {
@@ -465,7 +467,11 @@ class IdentityStore:
                 changed |= before != plan
             if changed:
                 await self._save()
-            if any(plan["status"] == "conflict" for plan in self.migrations.values()):
+            if any(
+                plan["status"] == "conflict"
+                for key, plan in self.migrations.items()
+                if not key.startswith("naming-v1:")
+            ):
                 self._repair()
             else:
                 ir.async_delete_issue(self.hass, DOMAIN, self._issue)
@@ -477,18 +483,24 @@ class IdentityStore:
             "statuses": dict(Counter(row["status"] for row in self.migrations.values())),
         }
 
-    async def async_migrate(self, candidates: Iterable[tuple[er.RegistryEntry, str, str]]) -> None:
+    async def async_migrate(
+        self, candidates: Iterable[tuple[er.RegistryEntry, str, str]], *, force: bool = False
+    ) -> None:
         """Preflight the full set and journal before touching the registry."""
         async with self._lock:
             registry = er.async_get(self.hass)
-            existing = {
-                row.id: row
-                for row in er.async_entries_for_config_entry(registry, self.entry.entry_id)
-            }
             plans: dict[str, dict[str, str]] = {}
             candidates = list(candidates)
             eligible = {row.id for row, _, _ in candidates}
             unrecorded = sum(row.id not in self.migrations for row, _, _ in candidates)
+            if force:
+                unrecorded += sum(
+                    row.id in self.migrations
+                    and f"naming-v1:{row.id}" not in self.migrations
+                    and self.migrations[row.id]["reason"]
+                    not in {"canonical_v2", "public_registry_api_v2", "recovered_v2"}
+                    for row, _, _ in candidates
+                )
             if len(self.migrations) + unrecorded > MAX_MIGRATIONS:
                 self._repair("entity_id_storage_invalid")
                 raise ConfigEntryError(
@@ -496,7 +508,13 @@ class IdentityStore:
                 )
             for row, sn, key in candidates:
                 if row.id in self.migrations:
-                    continue
+                    if not force or self.migrations[row.id]["reason"] in {
+                        "canonical_v2",
+                        "public_registry_api_v2",
+                        "recovered_v2",
+                    }:
+                        continue
+                    self.migrations.setdefault(f"naming-v1:{row.id}", dict(self.migrations[row.id]))
                 new = self.seeds[sn].entity_id(row.domain, key)
                 device = dr.async_get(self.hass).async_get(row.device_id) if row.device_id else None
                 generated = False
@@ -512,14 +530,24 @@ class IdentityStore:
                     expected = f"{row.domain}.{original_object}"
                     generated = row.entity_id == expected
                 status = (
-                    "unchanged" if row.entity_id == new else "planned" if generated else "protected"
+                    "unchanged"
+                    if row.entity_id == new
+                    else "planned"
+                    if generated or force
+                    else "protected"
                 )
                 plans[row.id] = {
                     "old": row.entity_id,
                     "new": new,
                     "uid": row.unique_id,
                     "status": status,
-                    "reason": "generated" if generated else "custom_or_unverifiable",
+                    "reason": "canonical_v2"
+                    if force and row.entity_id == new
+                    else "maintainer_forced_v2"
+                    if force
+                    else "generated"
+                    if generated
+                    else "custom_or_unverifiable",
                     "before_modified_at": row.modified_at.isoformat(),
                     "renamed_modified_at": "",
                 }
@@ -534,8 +562,16 @@ class IdentityStore:
             self.migrations.update(plans)
             if plans or any(plan["status"] == "planned" for plan in self.migrations.values()):
                 await self._save()
+            # Saving yields to the event loop; inspect the current registry again
+            # so a concurrent rename cannot be overwritten by a stale row.
+            existing = {
+                row.id: row
+                for row in er.async_entries_for_config_entry(registry, self.entry.entry_id)
+            }
             changed = False
             for row_id, plan in self.migrations.items():
+                if row_id.startswith("naming-v1:"):
+                    continue
                 current = existing.get(row_id)
                 # Registry uses delayed persistence. If it restored the exact
                 # pre-rename row, redo our persisted intent. A later user rename
@@ -554,6 +590,10 @@ class IdentityStore:
                 elif (
                     row_id not in eligible
                     or current.unique_id != plan["uid"]
+                    or (
+                        current.entity_id != plan["new"]
+                        and current.modified_at.isoformat() != plan["before_modified_at"]
+                    )
                     or current.entity_id
                     not in (
                         plan["old"],
@@ -562,7 +602,7 @@ class IdentityStore:
                 ):
                     plan.update(status="protected", reason="registry_changed_after_plan")
                 elif current.entity_id == plan["new"]:
-                    plan.update(status="renamed", reason="recovered")
+                    plan.update(status="renamed", reason="recovered_v2" if force else "recovered")
                 elif registry.async_get(plan["new"]) or self.hass.states.get(plan["new"]):
                     plan.update(status="conflict", reason="occupied_target")
                 else:
@@ -570,14 +610,23 @@ class IdentityStore:
                         current.entity_id, new_entity_id=plan["new"]
                     )
                     plan["renamed_modified_at"] = updated.modified_at.isoformat()
-                    plan.update(status="renamed", reason="public_registry_api")
+                    plan.update(
+                        status="renamed",
+                        reason="public_registry_api_v2" if force else "public_registry_api",
+                    )
                 changed = True
             if changed:
                 await self._save()
-            if any(plan["status"] == "conflict" for plan in self.migrations.values()):
+            active_plans = [self.migrations[row.id] for row, _, _ in candidates]
+            if any(plan["status"] in {"conflict", "protected"} for plan in active_plans):
                 self._repair()
             else:
                 ir.async_delete_issue(self.hass, DOMAIN, self._issue)
+                if force and self.entry.data.get(NAMING_REVISION) != CURRENT_NAMING_REVISION:
+                    self.hass.config_entries.async_update_entry(
+                        self.entry,
+                        data={**self.entry.data, NAMING_REVISION: CURRENT_NAMING_REVISION},
+                    )
 
     async def async_remove(self) -> None:
         await self.store.async_remove()

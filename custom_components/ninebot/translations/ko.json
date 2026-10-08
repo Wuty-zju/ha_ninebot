@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "배터리 잔량"
+        "name": "주 배터리: 잔량"
       },
       "endurance": {
         "name": "남은 주행 거리"
@@ -174,13 +174,16 @@
         "name": "충전 전력"
       },
       "bms_voltage": {
-        "name": "배터리 전압"
+        "name": "주 배터리: 실측 전압"
       },
       "batt_temp": {
-        "name": "배터리 온도"
+        "name": "주 배터리: 온도"
       },
       "bms_cycles": {
-        "name": "충전 주기 수"
+        "name": "주 배터리: 사이클 횟수",
+        "state": {
+          "unsupported": "미지원"
+        }
       },
       "last_ride_duration": {
         "name": "최근 주행: 주행 시간"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "미지원"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "보고되지 않음"
         }
       },
       "battery_present_raw": {
-        "name": "배터리 장착",
+        "name": "주 배터리: 유무",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "스마트 서비스 만료",
+        "name": "스마트 서비스",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "배터리 건강 점수",
+        "name": "주 배터리: 건강 점수",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "미지원"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "이번 달: 주행 시간"
       },
       "returned_pack_count": {
-        "name": "배터리 수"
+        "name": "주 배터리: 개수"
       },
       "month_list_coverage": {
         "name": "이번 달: 주행 기록 확보율"
       },
       "battery_rated_energy": {
-        "name": "배터리 정격 에너지"
+        "name": "주 배터리: 정격 에너지"
       },
       "today_mileage": {
         "name": "오늘 주행 거리"
@@ -461,14 +473,14 @@
         "name": "주 전원"
       },
       "cycle_support": {
-        "name": "충전 주기 횟수 지원",
+        "name": "주 배터리: 사이클 횟수 지원",
         "state": {
           "on": "지원",
           "off": "미지원"
         }
       },
       "battery_find_my_support": {
-        "name": "Apple 나의 찾기 지원",
+        "name": "주 배터리: Find My 지원",
         "state": {
           "on": "지원",
           "off": "미지원"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "차량 위치"
+        "name": "기기 위치"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "정격 전압"
+        "name": "주 배터리: 정격 전압"
       },
       "battery_capacity": {
-        "name": "정격 용량"
+        "name": "주 배터리: 정격 용량"
       }
     },
     "event": {

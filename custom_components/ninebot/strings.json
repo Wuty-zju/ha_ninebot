@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Battery"
+        "name": "Main battery charge"
       },
       "endurance": {
         "name": "Remaining range"
@@ -174,13 +174,16 @@
         "name": "Charging power"
       },
       "bms_voltage": {
-        "name": "Battery voltage"
+        "name": "Main battery measured voltage"
       },
       "batt_temp": {
-        "name": "Battery temperature"
+        "name": "Main battery temperature"
       },
       "bms_cycles": {
-        "name": "Battery cycles"
+        "name": "Main battery cycles",
+        "state": {
+          "unsupported": "Not supported"
+        }
       },
       "last_ride_duration": {
         "name": "Last ride duration"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Not supported"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Not reported"
         }
       },
       "battery_present_raw": {
-        "name": "Battery present",
+        "name": "Main battery present",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Smart service expired",
+        "name": "Smart service",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Battery health score",
+        "name": "Main battery health score",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Not supported"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Current month ride duration"
       },
       "returned_pack_count": {
-        "name": "Reported battery packs"
+        "name": "Main battery packs"
       },
       "month_list_coverage": {
         "name": "Month ride list coverage"
       },
       "battery_rated_energy": {
-        "name": "Rated battery energy"
+        "name": "Main battery rated energy"
       },
       "today_mileage": {
         "name": "Today distance"
@@ -461,14 +473,14 @@
         "name": "Main power"
       },
       "cycle_support": {
-        "name": "Cycle count support",
+        "name": "Main battery cycle count support",
         "state": {
           "on": "Supported",
           "off": "Not supported"
         }
       },
       "battery_find_my_support": {
-        "name": "Apple Find My support",
+        "name": "Main battery Find My support",
         "state": {
           "on": "Supported",
           "off": "Not supported"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Cloud location"
+        "name": "Device location"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Rated battery voltage"
+        "name": "Main battery rated voltage"
       },
       "battery_capacity": {
-        "name": "Rated battery capacity"
+        "name": "Main battery rated capacity"
       }
     },
     "event": {

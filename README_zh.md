@@ -70,3 +70,5 @@ b36引入规范生成ID，详见[迁移指南](docs/README.md#canonical-entity-i
 实体默认启用，用户禁用选择保留，不新增历史或详情轮询。
 
 可选的[行程详情卡](docs/README.md#optional-ride-detail-card)提供本地日期分页、单趟指标和显式按需详情/单位未确认的采样曲线，与原生日历及统计图配合使用。需手动添加资源，不自动修改仪表盘。
+
+本版会强制迁移已有实体ID；显示规则及账号页面标题限制见[b44升级说明](docs/README.md#b44-display-and-naming-update)。

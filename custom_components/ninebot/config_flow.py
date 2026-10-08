@@ -146,7 +146,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         else "v2",
                     }
                     metadata, automatic, title = account_update(
-                        old_data or {}, account, candidate.display, old_title
+                        old_data or {}, account, candidate.display, old_title, force=True
                     )
                     data.update({ACCOUNT_METADATA: metadata, AUTOMATIC_TITLE: automatic})
                     if self._entry:
