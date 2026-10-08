@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "ระดับแบตเตอรี่"
+        "name": "แบตเตอรี่หลัก: ระดับประจุ"
       },
       "endurance": {
         "name": "ระยะทางที่เหลือ"
@@ -174,13 +174,16 @@
         "name": "กำลังชาร์จ"
       },
       "bms_voltage": {
-        "name": "แรงดันแบตเตอรี่"
+        "name": "แบตเตอรี่หลัก: แรงดันที่วัดได้"
       },
       "batt_temp": {
-        "name": "อุณหภูมิแบตเตอรี่"
+        "name": "แบตเตอรี่หลัก: อุณหภูมิ"
       },
       "bms_cycles": {
-        "name": "รอบชาร์จ"
+        "name": "แบตเตอรี่หลัก: จำนวนรอบ",
+        "state": {
+          "unsupported": "ไม่รองรับ"
+        }
       },
       "last_ride_duration": {
         "name": "การเดินทางล่าสุด: ระยะเวลาเดินทาง"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "ไม่รองรับ"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "ยังไม่รายงาน"
         }
       },
       "battery_present_raw": {
-        "name": "มีแบตเตอรี่",
+        "name": "แบตเตอรี่หลัก: การมีแบตเตอรี่",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "บริการอัจฉริยะหมดอายุ",
+        "name": "บริการอัจฉริยะ",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "คะแนนสุขภาพแบตเตอรี่",
+        "name": "แบตเตอรี่หลัก: คะแนนสุขภาพ",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "ไม่รองรับ"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "เดือนนี้: ระยะเวลาเดินทาง"
       },
       "returned_pack_count": {
-        "name": "จำนวนแบตเตอรี่"
+        "name": "แบตเตอรี่หลัก: จำนวน"
       },
       "month_list_coverage": {
         "name": "เดือนนี้: ความครบถ้วนของประวัติ"
       },
       "battery_rated_energy": {
-        "name": "พลังงานพิกัดแบตเตอรี่"
+        "name": "แบตเตอรี่หลัก: พลังงานพิกัด"
       },
       "today_mileage": {
         "name": "ระยะทางวันนี้"
@@ -461,14 +473,14 @@
         "name": "ไฟหลัก"
       },
       "cycle_support": {
-        "name": "รองรับการนับรอบ",
+        "name": "แบตเตอรี่หลัก: รองรับการนับรอบ",
         "state": {
           "on": "รองรับ",
           "off": "ไม่รองรับ"
         }
       },
       "battery_find_my_support": {
-        "name": "รองรับ Apple Find My",
+        "name": "แบตเตอรี่หลัก: รองรับ Find My",
         "state": {
           "on": "รองรับ",
           "off": "ไม่รองรับ"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "ตำแหน่งรถ"
+        "name": "ตำแหน่งอุปกรณ์"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "แรงดันพิกัด"
+        "name": "แบตเตอรี่หลัก: แรงดันพิกัด"
       },
       "battery_capacity": {
-        "name": "ความจุพิกัด"
+        "name": "แบตเตอรี่หลัก: ความจุพิกัด"
       }
     },
     "event": {

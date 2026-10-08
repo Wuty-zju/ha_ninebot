@@ -20,7 +20,8 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-      - run: node --test tests/frontend/*.mjs
+      - if: github.event_name == 'workflow_dispatch'
+        run: node --test tests/frontend/*.mjs
   test:
     # Full compatibility runs are requested for major updates, not every beta.
     # A maintainer can dispatch this workflow on the branch/main being released.

@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Poziom baterii"
+        "name": "Główny akumulator: poziom naładowania"
       },
       "endurance": {
         "name": "Pozostały zasięg"
@@ -174,13 +174,16 @@
         "name": "Moc ładowania"
       },
       "bms_voltage": {
-        "name": "Napięcie baterii"
+        "name": "Główny akumulator: zmierzone napięcie"
       },
       "batt_temp": {
-        "name": "Temperatura baterii"
+        "name": "Główny akumulator: temperatura"
       },
       "bms_cycles": {
-        "name": "Cykle ładowania"
+        "name": "Główny akumulator: cykle",
+        "state": {
+          "unsupported": "Nieobsługiwane"
+        }
       },
       "last_ride_duration": {
         "name": "Ostatni przejazd: Czas przejazdów"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Nieobsługiwane"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Nie zgłoszono"
         }
       },
       "battery_present_raw": {
-        "name": "Akumulator obecny",
+        "name": "Główny akumulator: obecność",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Usługa inteligentna wygasła",
+        "name": "Usługa inteligentna",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Ocena kondycji baterii",
+        "name": "Główny akumulator: ocena stanu",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Nieobsługiwane"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Ten miesiąc: Czas przejazdów"
       },
       "returned_pack_count": {
-        "name": "Liczba baterii"
+        "name": "Główny akumulator: liczba"
       },
       "month_list_coverage": {
         "name": "Ten miesiąc: Kompletność listy przejazdów"
       },
       "battery_rated_energy": {
-        "name": "Energia znamionowa baterii"
+        "name": "Główny akumulator: energia znamionowa"
       },
       "today_mileage": {
         "name": "Dzisiejszy dystans"
@@ -461,14 +473,14 @@
         "name": "Główne zasilanie"
       },
       "cycle_support": {
-        "name": "Obsługa licznika cykli",
+        "name": "Główny akumulator: obsługa licznika cykli",
         "state": {
           "on": "Obsługiwane",
           "off": "Nieobsługiwane"
         }
       },
       "battery_find_my_support": {
-        "name": "Obsługa Apple Znajdź",
+        "name": "Główny akumulator: obsługa Find My",
         "state": {
           "on": "Obsługiwane",
           "off": "Nieobsługiwane"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Pozycja pojazdu"
+        "name": "Lokalizacja urządzenia"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Napięcie znamionowe"
+        "name": "Główny akumulator: napięcie znamionowe"
       },
       "battery_capacity": {
-        "name": "Pojemność znamionowa"
+        "name": "Główny akumulator: pojemność znamionowa"
       }
     },
     "event": {

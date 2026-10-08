@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Carga da bateria"
+        "name": "Bateria principal: carga"
       },
       "endurance": {
         "name": "Autonomia restante"
@@ -174,13 +174,16 @@
         "name": "Potência de carga"
       },
       "bms_voltage": {
-        "name": "Tensão da bateria"
+        "name": "Bateria principal: tensão medida"
       },
       "batt_temp": {
-        "name": "Temperatura da bateria"
+        "name": "Bateria principal: temperatura"
       },
       "bms_cycles": {
-        "name": "Ciclos de carga"
+        "name": "Bateria principal: ciclos",
+        "state": {
+          "unsupported": "Não suportado"
+        }
       },
       "last_ride_duration": {
         "name": "Última viagem: Duração das viagens"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Não suportado"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Não comunicado"
         }
       },
       "battery_present_raw": {
-        "name": "Bateria presente",
+        "name": "Bateria principal: presente",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Serviço inteligente expirado",
+        "name": "Serviço inteligente",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Pontuação de saúde da bateria",
+        "name": "Bateria principal: pontuação de saúde",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Não suportado"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Este mês: Duração das viagens"
       },
       "returned_pack_count": {
-        "name": "Número de baterias"
+        "name": "Bateria principal: quantidade"
       },
       "month_list_coverage": {
         "name": "Este mês: Cobertura das viagens"
       },
       "battery_rated_energy": {
-        "name": "Energia nominal da bateria"
+        "name": "Bateria principal: energia nominal"
       },
       "today_mileage": {
         "name": "Distância de hoje"
@@ -461,14 +473,14 @@
         "name": "Alimentação principal"
       },
       "cycle_support": {
-        "name": "Suporte à contagem de ciclos",
+        "name": "Bateria principal: suporte à contagem de ciclos",
         "state": {
           "on": "Suportado",
           "off": "Não suportado"
         }
       },
       "battery_find_my_support": {
-        "name": "Suporte ao Encontrar da Apple",
+        "name": "Bateria principal: suporte ao Find My",
         "state": {
           "on": "Suportado",
           "off": "Não suportado"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Localização do veículo"
+        "name": "Localização do dispositivo"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Tensão nominal"
+        "name": "Bateria principal: tensão nominal"
       },
       "battery_capacity": {
-        "name": "Capacidade nominal"
+        "name": "Bateria principal: capacidade nominal"
       }
     },
     "event": {

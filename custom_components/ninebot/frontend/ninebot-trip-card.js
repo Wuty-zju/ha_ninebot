@@ -171,9 +171,18 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   number(value, precision, unit = '') {
     if (!Number.isFinite(value)) return '—';
     const language = this.browser.hass?.locale?.language ?? this.browser.hass?.language ?? 'en';
-    const n = new Intl.NumberFormat(language, { minimumFractionDigits: digits(precision),
-      maximumFractionDigits: digits(precision) }).format(value);
+    const n = new Intl.NumberFormat(language, { minimumFractionDigits: value === 0 ? 0 : digits(precision),
+      maximumFractionDigits: value === 0 ? 0 : digits(precision) }).format(value);
     return `${n}${unit ? ` ${unit}` : ''}`;
+  }
+  duration(value) {
+    if (!Number.isFinite(value) || value < 0) return '—';
+    const seconds = Math.round(value), minutes = Math.floor(seconds / 60), remainder = seconds % 60;
+    const language = this.browser.hass?.locale?.language ?? this.browser.hass?.language ?? 'en';
+    const format = (value, unit) => new Intl.NumberFormat(language, {
+      style: 'unit', unit, unitDisplay: 'short', maximumFractionDigits: 0,
+    }).format(value);
+    return `${format(minutes, 'minute')}${remainder ? ` ${format(remainder, 'second')}` : ''}`;
   }
   timestamp(value) {
     if (!value || Number.isNaN(new Date(value).getTime())) return '—';
@@ -187,14 +196,14 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     button.addEventListener('click', action); return button;
   }
   metrics(ride, labels) {
-    const dl = element('dl'), p = ride.precision;
+    const dl = element('dl');
     for (const [name, value] of [
       [labels.start, this.timestamp(ride.start_time)], [labels.end, this.timestamp(ride.end_time)],
-      [labels.distance, this.number(ride.distance_m === null ? null : ride.distance_m / 1000, p.mileages, 'km')],
-      [labels.duration, this.number(ride.duration_s, p.duration, 's')],
-      [labels.max_speed, this.number(ride.max_speed_m_s === null ? null : ride.max_speed_m_s * 3.6, p.speed, 'km/h')],
+      [labels.distance, this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')],
+      [labels.duration, this.duration(ride.duration_s)],
+      [labels.max_speed, this.number(ride.max_speed_m_s === null ? null : ride.max_speed_m_s * 3.6, 0, 'km/h')],
       [labels.avg_speed, this.number(ride.average_speed_m_s === null ? null : ride.average_speed_m_s * 3.6, 1, 'km/h')],
-      [labels.energy, this.number(ride.energy_wh, p.ec, 'Wh')],
+      [labels.energy, this.number(ride.energy_wh, 0, 'Wh')],
       [labels.observed, this.timestamp(ride.received_at)],
     ]) { dl.append(element('dt', name), element('dd', value)); }
     return dl;
@@ -236,8 +245,8 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
           if (section.open) this.openRides.add(ride.ride_id); else this.openRides.delete(ride.ride_id);
         });
         summary.append(element('div', this.timestamp(ride.start_time)),
-          element('div', `${this.number(ride.distance_m === null ? null : ride.distance_m / 1000, ride.precision.mileages, 'km')} · ` +
-            `${this.number(ride.duration_s, ride.precision.duration, 's')}`, 'metrics'));
+          element('div', `${this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')} · ` +
+            `${this.duration(ride.duration_s)}`, 'metrics'));
         section.append(summary);
         const detail = browser.details.get(ride.ride_id), displayed = detail ?? ride;
         section.append(this.metrics(displayed, labels));

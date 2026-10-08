@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "バッテリー残量"
+        "name": "主バッテリー: 残量"
       },
       "endurance": {
         "name": "航続可能距離"
@@ -174,13 +174,16 @@
         "name": "充電電力"
       },
       "bms_voltage": {
-        "name": "バッテリー電圧"
+        "name": "主バッテリー: 実測電圧"
       },
       "batt_temp": {
-        "name": "バッテリー温度"
+        "name": "主バッテリー: 温度"
       },
       "bms_cycles": {
-        "name": "充電サイクル数"
+        "name": "主バッテリー: サイクル数",
+        "state": {
+          "unsupported": "非対応"
+        }
       },
       "last_ride_duration": {
         "name": "前回の走行: 走行時間"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "非対応"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "未報告"
         }
       },
       "battery_present_raw": {
-        "name": "バッテリー有無",
+        "name": "主バッテリー: 有無",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "スマートサービス期限切れ",
+        "name": "スマートサービス",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "バッテリー健康スコア",
+        "name": "主バッテリー: 健康スコア",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "非対応"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "今月: 走行時間"
       },
       "returned_pack_count": {
-        "name": "バッテリー数"
+        "name": "主バッテリー: 個数"
       },
       "month_list_coverage": {
         "name": "今月: 走行記録の取得率"
       },
       "battery_rated_energy": {
-        "name": "バッテリー定格電力量"
+        "name": "主バッテリー: 定格エネルギー"
       },
       "today_mileage": {
         "name": "今日の走行距離"
@@ -461,14 +473,14 @@
         "name": "主電源"
       },
       "cycle_support": {
-        "name": "サイクル数対応",
+        "name": "主バッテリー: サイクルカウント対応",
         "state": {
           "on": "対応",
           "off": "非対応"
         }
       },
       "battery_find_my_support": {
-        "name": "Apple「探す」対応",
+        "name": "主バッテリー: Find My対応",
         "state": {
           "on": "対応",
           "off": "非対応"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "車両位置"
+        "name": "デバイスの位置"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "定格電圧"
+        "name": "主バッテリー: 定格電圧"
       },
       "battery_capacity": {
-        "name": "定格容量"
+        "name": "主バッテリー: 定格容量"
       }
     },
     "event": {

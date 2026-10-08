@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "电量"
+        "name": "主电池电量"
       },
       "endurance": {
         "name": "剩余续航"
@@ -174,13 +174,16 @@
         "name": "充电功率"
       },
       "bms_voltage": {
-        "name": "电池实测电压"
+        "name": "主电池实测电压"
       },
       "batt_temp": {
-        "name": "电池温度"
+        "name": "主电池温度"
       },
       "bms_cycles": {
-        "name": "电池循环次数"
+        "name": "主电池循环次数",
+        "state": {
+          "unsupported": "不支持"
+        }
       },
       "last_ride_duration": {
         "name": "最近行程时长"
@@ -290,6 +293,9 @@
               "not_reported": "未上报"
             }
           }
+        },
+        "state": {
+          "unsupported": "不支持"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "未上报"
             }
           }
+        },
+        "state": {
+          "not_reported": "未上报"
         }
       },
       "battery_present_raw": {
-        "name": "电池存在",
+        "name": "主电池存在",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "智能服务到期",
+        "name": "智能服务",
         "state_attributes": {
           "source": {
             "name": "来源字段"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "电池健康评分",
+        "name": "主电池健康评分",
         "state_attributes": {
           "interpretation": {
             "name": "解析状态",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "循环计数支持"
           }
+        },
+        "state": {
+          "unsupported": "不支持"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "本月骑行总时长"
       },
       "returned_pack_count": {
-        "name": "上报电池组数"
+        "name": "主电池组数"
       },
       "month_list_coverage": {
         "name": "本月行程明细覆盖率"
       },
       "battery_rated_energy": {
-        "name": "电池额定能量"
+        "name": "主电池额定能量"
       },
       "today_mileage": {
         "name": "今日里程"
@@ -447,8 +459,8 @@
       "main_battery_type": {
         "name": "主电池类型",
         "state": {
-          "lithium": "锂电池",
-          "lead_acid": "铅酸电池",
+          "lithium": "锂",
+          "lead_acid": "铅酸",
           "unrecognized": "未识别"
         }
       }
@@ -461,14 +473,14 @@
         "name": "主电源"
       },
       "cycle_support": {
-        "name": "循环计数支持",
+        "name": "主电池循环计数支持",
         "state": {
           "on": "支持",
           "off": "不支持"
         }
       },
       "battery_find_my_support": {
-        "name": "Apple 查找支持",
+        "name": "主电池 Find My 支持",
         "state": {
           "on": "支持",
           "off": "不支持"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "云端位置"
+        "name": "设备位置"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "电池额定电压"
+        "name": "主电池额定电压"
       },
       "battery_capacity": {
-        "name": "电池额定容量"
+        "name": "主电池额定容量"
       }
     },
     "event": {

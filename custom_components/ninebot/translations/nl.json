@@ -132,7 +132,7 @@
   "entity": {
     "sensor": {
       "battery": {
-        "name": "Batterijlading"
+        "name": "Hoofdbatterij: lading"
       },
       "endurance": {
         "name": "Resterende actieradius"
@@ -174,13 +174,16 @@
         "name": "Laadvermogen"
       },
       "bms_voltage": {
-        "name": "Batterijspanning"
+        "name": "Hoofdbatterij: gemeten spanning"
       },
       "batt_temp": {
-        "name": "Batterijtemperatuur"
+        "name": "Hoofdbatterij: temperatuur"
       },
       "bms_cycles": {
-        "name": "Laadcycli"
+        "name": "Hoofdbatterij: cycli",
+        "state": {
+          "unsupported": "Niet ondersteund"
+        }
       },
       "last_ride_duration": {
         "name": "Laatste rit: Ritduur"
@@ -290,6 +293,9 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "unsupported": "Niet ondersteund"
         }
       },
       "odometer_raw": {
@@ -308,10 +314,13 @@
               "not_reported": "Not reported"
             }
           }
+        },
+        "state": {
+          "not_reported": "Niet gemeld"
         }
       },
       "battery_present_raw": {
-        "name": "Batterij aanwezig",
+        "name": "Hoofdbatterij: aanwezig",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -359,7 +368,7 @@
         }
       },
       "service_expired_raw": {
-        "name": "Slimme dienst verlopen",
+        "name": "Slimme dienst",
         "state_attributes": {
           "source": {
             "name": "Source field"
@@ -383,7 +392,7 @@
         }
       },
       "health_score": {
-        "name": "Batterijgezondheidsscore",
+        "name": "Hoofdbatterij: gezondheidsscore",
         "state_attributes": {
           "interpretation": {
             "name": "Interpretation",
@@ -394,6 +403,9 @@
           "cycle_supported": {
             "name": "Cycle count supported"
           }
+        },
+        "state": {
+          "unsupported": "Niet ondersteund"
         }
       },
       "month_ride_count": {
@@ -403,13 +415,13 @@
         "name": "Deze maand: Ritduur"
       },
       "returned_pack_count": {
-        "name": "Aantal batterijen"
+        "name": "Hoofdbatterij: aantal"
       },
       "month_list_coverage": {
         "name": "Deze maand: Dekking rittenlijst"
       },
       "battery_rated_energy": {
-        "name": "Nominale batterijenergie"
+        "name": "Hoofdbatterij: nominale energie"
       },
       "today_mileage": {
         "name": "Afstand vandaag"
@@ -461,14 +473,14 @@
         "name": "Hoofdvoeding"
       },
       "cycle_support": {
-        "name": "Ondersteuning cyclustelling",
+        "name": "Hoofdbatterij: ondersteuning van cyclustelling",
         "state": {
           "on": "Ondersteund",
           "off": "Niet ondersteund"
         }
       },
       "battery_find_my_support": {
-        "name": "Ondersteuning Apple Zoek mijn",
+        "name": "Hoofdbatterij: Find My-ondersteuning",
         "state": {
           "on": "Ondersteund",
           "off": "Niet ondersteund"
@@ -499,15 +511,15 @@
     },
     "device_tracker": {
       "location": {
-        "name": "Voertuiglocatie"
+        "name": "Apparaatlocatie"
       }
     },
     "number": {
       "main_battery_voltage": {
-        "name": "Nominale spanning"
+        "name": "Hoofdbatterij: nominale spanning"
       },
       "battery_capacity": {
-        "name": "Nominale capaciteit"
+        "name": "Hoofdbatterij: nominale capaciteit"
       }
     },
     "event": {

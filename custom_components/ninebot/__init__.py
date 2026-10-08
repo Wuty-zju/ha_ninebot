@@ -9,10 +9,18 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
+from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, AccountDisplay, account_update
 from .archive_lifecycle import async_remove_archive
 from .backup import backup_active, defer_removal
 from .client import NinecliClient
-from .const import CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN, PLATFORMS, SESSION_DIRECTORY
+from .const import (
+    CONF_ACCOUNT,
+    CONF_BUSINESS_UID,
+    CONF_SESSION_KEY,
+    DOMAIN,
+    PLATFORMS,
+    SESSION_DIRECTORY,
+)
 from .coordinator import NinebotCoordinator
 from .entity import async_audit_device_identities
 from .event_store import RideEventPipeline
@@ -105,6 +113,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
             if isinstance(err, ConfigEntryAuthFailed):
                 entry.async_start_reauth(hass)
 
+        display = AccountDisplay.parse(entry.data.get(ACCOUNT_METADATA))
+        if display.username is None and coordinator._list_freshness.succeeded_at is not None:
+            try:
+                display = AccountDisplay.parse(await client.async_get_account())
+            except NinebotError:
+                # Display enrichment cannot invalidate a loaded account; no retry loop.
+                pass
+        metadata, automatic, title = account_update(
+            dict(entry.data),
+            str(entry.data.get(CONF_ACCOUNT, "")),
+            display,
+            entry.title,
+            force=True,
+        )
+        if metadata != entry.data.get(ACCOUNT_METADATA) or entry.title != title:
+            hass.config_entries.async_update_entry(
+                entry,
+                data={**entry.data, ACCOUNT_METADATA: metadata, AUTOMATIC_TITLE: automatic},
+                title=title,
+            )
         await entry.runtime_data.identities.async_prepare(
             s.profile for s in coordinator.data.values()
         )

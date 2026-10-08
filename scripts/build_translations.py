@@ -16,6 +16,8 @@ CATALOG = json.loads((ROOT / "scripts/localization_labels.json").read_text())
 
 SENSOR_WORDS = {
     "battery": "battery",
+    "emergency_battery": "emergency_battery",
+    "main_battery_type": "battery_type",
     "endurance": "range",
     "remaining_charge_time": "charge_time",
     "charging_power_raw": "power",
@@ -73,20 +75,20 @@ def main() -> None:
             k: v for k, v in data["entity"]["sensor"].items() if k in allowed
         }
         data["entity"]["sensor"]["battery_rated_energy"] = {
-            "name": "Rated battery energy" if data is en else "电池额定能量"
+            "name": "Main battery rated energy" if data is en else "主电池额定能量"
         }
         if data is en:
-            data["entity"]["sensor"]["service_expired_raw"]["name"] = "Smart service status"
+            data["entity"]["sensor"]["service_expired_raw"]["name"] = "Smart service"
         data["entity"]["sensor"]["endurance"]["name"] = (
             "Remaining range" if data is en else "剩余续航"
         )
         for value in data["entity"]["sensor"].values():
             value["name"] = value["name"].removesuffix(" raw").removesuffix("原值").strip()
         data["entity"]["number"]["main_battery_voltage"]["name"] = (
-            "Rated battery voltage" if data is en else "电池额定电压"
+            "Main battery rated voltage" if data is en else "主电池额定电压"
         )
         data["entity"]["number"]["battery_capacity"]["name"] = (
-            "Rated battery capacity" if data is en else "电池额定容量"
+            "Main battery rated capacity" if data is en else "主电池额定容量"
         )
         for step in data["config"]["step"].values():
             if "enable_estimation" in step.get("data", {}):
@@ -169,12 +171,12 @@ def main() -> None:
     for key, name in {
         "service_remaining_days_raw": "智能服务剩余天数",
         "odometer_raw": "总里程",
-        "battery_present_raw": "电池安装状态",
+        "battery_present_raw": "主电池存在",
         "seat_lock_raw": "座桶锁状态",
         "acc_raw": "ACC状态",
-        "service_expired_raw": "智能服务状态",
-        "returned_pack_count": "电池数量",
-        "health_score": "电池健康评分",
+        "service_expired_raw": "智能服务",
+        "returned_pack_count": "主电池组数",
+        "health_score": "主电池健康评分",
         "raw_data_summary": "车辆信息",
     }.items():
         zh["entity"]["sensor"][key]["name"] = name
@@ -276,6 +278,15 @@ def main() -> None:
             "get_entity_migration",
         ):
             data["services"][action]["name"] = ui[action]
+        # Keep reviewed scalar/status semantics and account/lock/calendar labels.
+        for platform, entities in previous.get("entity", {}).items():
+            for key, value in entities.items():
+                if platform not in data["entity"] or key not in data["entity"][platform]:
+                    data["entity"].setdefault(platform, {})[key] = value
+                elif "state" in value:
+                    data["entity"][platform][key]["state"] = value["state"]
+        if "initiate_flow" in previous["config"]:
+            data["config"]["initiate_flow"] = previous["config"]["initiate_flow"]
         save(DIRECTORY / "translations" / f"{locale}.json", data)
 
 
