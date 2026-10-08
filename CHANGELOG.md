@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b43
+
+- Package an optional ride-history dashboard card: local date-range pages, scalar ride details, source precision and coverage, with explicitly requested single-ride cloud details. Opening or paginating the card never queries the cloud; no GPS tracks, controls, background history scans or browser persistence. Raw speed samples remain explicitly unit-unverified.
+- Use the authenticated Home Assistant service-response API, an integration-contained async static route and 21 locale dictionaries. Bound memory to one page and five details, discard stale responses after user/device/date/connection changes, and keep sources in an optional disclosure.
+- Apply the same vehicle-scoped Home Assistant permissions to legacy history/statistics/migration Actions; synchronization and Recorder imports require control permission. Preserve vehicle identities, archive facts and b40 remote start/stop polling without a local motion/P prohibition. Correct the current-use field inventory without changing recorded payloads or frozen evidence.
+
 ## 2.0.0b42
 
 - Add response-only `get_recorded_trips` for bounded date-range browsing of the local archive, including offline reads. Opening a page never refreshes a month, downloads details or controls the vehicle. Keep received timestamps, source precision and explicit missing/partial/unknown coverage.

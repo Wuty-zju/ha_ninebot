@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-10-08",
-  "implementation_version": "2.0.0b35",
-  "implementation_base_commit": "2aa4a3036fd79537ec35b292898d49ce045fd213",
+  "implementation_version": "2.0.0b43",
+  "implementation_base_commit": "85d300878d27f3593876a1c88646a47258876055",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [
@@ -69,18 +69,18 @@
           "container": false,
           "meaning": "激活时间/枚举；格式/语义 V，不创建时间实体",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：activation_time_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：activation_time_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].active_uid",
@@ -111,18 +111,18 @@
           "container": false,
           "meaning": "激活时间/枚举；格式/语义 V，不创建时间实体",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：activation_status_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：activation_status_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].and_mac",
@@ -153,7 +153,7 @@
           "container": false,
           "meaning": "授权时间；格式/有效期关系未确认",
           "unit": "—",
-          "classification": "H/I",
+          "classification": "J/I",
           "enabled": "—",
           "device_class": "—",
           "state_class": "—",
@@ -164,7 +164,7 @@
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。"
+          "current_use": "授权/个人时间值在RawStore保存前移除；不按绑定月自动扫描历史。"
         },
         {
           "path": "$[].auth_email",
@@ -300,18 +300,18 @@
           "container": false,
           "meaning": "车型/业务枚举；路由和支持矩阵，不能转权限",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：business_type_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：business_type_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].color",
@@ -343,18 +343,18 @@
           "container": false,
           "meaning": "真实 null；权限仍为未知，不推断允许或位图。显式启用后的命令交由云端最终鉴权。",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：shared_permissions_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：shared_permissions_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].common_user_vehicle_index",
@@ -364,18 +364,18 @@
           "container": false,
           "meaning": "共享列表索引；不能作稳定车辆 ID",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：shared_vehicle_index_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：shared_vehicle_index_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].common_user_version",
@@ -386,18 +386,18 @@
           "container": false,
           "meaning": "支持/版本候选；真实 null，禁止猜 bit mask",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：shared_version_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：shared_version_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].device_name",
@@ -405,13 +405,13 @@
             "str"
           ],
           "container": false,
-          "meaning": "用户车辆名；Device name，诊断名实体保持",
+          "meaning": "用户车辆名；DeviceInfo.name，独立重复实体已退役",
           "unit": "—",
-          "classification": "F/C",
-          "enabled": "设备是 / sensor否",
+          "classification": "F/J",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R/S",
           "sources": [
@@ -419,7 +419,7 @@
             "tests/fixtures/ninecli/0.1.7/vehicles.json",
             "tests/fixtures/ninecli/0.1.7/vehicle-image.json"
           ],
-          "current_use": "DeviceInfo.name；sensor.device_name（诊断默认关闭）；原值不进入raw/schema diagnostics。"
+          "current_use": "DeviceInfo.name；独立device_name重复实体已退役，原值不进入raw/schema diagnostics。"
         },
         {
           "path": "$[].img_url",
@@ -430,7 +430,7 @@
           "meaning": "车辆车型图片；light 优先、img fallback；签名查询移除",
           "unit": "—",
           "classification": "A/F",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -472,18 +472,18 @@
           "container": false,
           "meaning": "共享用户标志；不是操作授权许可",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：shared_user_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：shared_user_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].is_img_special",
@@ -494,18 +494,18 @@
           "container": false,
           "meaning": "图片标志；null 未确认",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：special_image_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：special_image_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].latest_support",
@@ -516,18 +516,18 @@
           "container": false,
           "meaning": "支持/版本候选；真实 null，禁止猜 bit mask",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：latest_support_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：latest_support_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].loc_delay_time",
@@ -538,18 +538,18 @@
           "container": false,
           "meaning": "位置延迟候选；null，单位未知，不作 freshness",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：location_delay_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：location_delay_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].owner_user_area_code",
@@ -662,10 +662,10 @@
             "int"
           ],
           "container": false,
-          "meaning": "智能服务剩余天数候选；确认后可禁用诊断，当前 runtime",
+          "meaning": "智能服务剩余天数候选；保留标量诊断，不推断endpoint权限",
           "unit": "待验证（名称提示天）",
           "classification": "C",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "diagnostic",
@@ -675,7 +675,7 @@
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：service_remaining_days_raw；不猜单位/枚举/权限。"
+          "current_use": "已翻译服务剩余量诊断标量service_remaining_days_raw；未确认单位不作时间/权限推断。"
         },
         {
           "path": "$[].support",
@@ -686,18 +686,18 @@
           "container": false,
           "meaning": "支持/版本候选；真实 null，禁止猜 bit mask",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：support_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：support_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].total_mileage",
@@ -709,7 +709,7 @@
           "meaning": "总里程候选；真实 null，不冒充 odometer",
           "unit": "待验证",
           "classification": "C",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "diagnostic",
@@ -719,7 +719,7 @@
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：odometer_raw；不猜单位/枚举/权限。"
+          "current_use": "有用标量观测实体：odometer_raw；显示名称已翻译，编码未确认前不造binary枚举。"
         },
         {
           "path": "$[].v6_dark_img_url",
@@ -752,7 +752,7 @@
           "meaning": "车辆车型图片；light 优先、img fallback；签名查询移除",
           "unit": "—",
           "classification": "A/F",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -837,18 +837,18 @@
           "container": false,
           "meaning": "车型/业务枚举；路由和支持矩阵，不能转权限",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
             "docs/evidence/v2x-field-inventory.json",
             "tests/fixtures/ninecli/0.1.7/vehicles.json"
           ],
-          "current_use": "默认启用原值诊断实体：vehicle_type_raw；不猜单位/枚举/权限。"
+          "current_use": "有界观测模型/调试视图保留：vehicle_type_raw；独立实体已退役，不猜枚举/单位/权限。"
         },
         {
           "path": "$[].vin",
@@ -879,8 +879,8 @@
           "container": false,
           "meaning": "车辆云身份；用于现有 unique_id/device identifier",
           "unit": "—",
-          "classification": "F/C/H",
-          "enabled": "设备是 / sensor否",
+          "classification": "F/H",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -891,7 +891,7 @@
             "tests/fixtures/ninecli/0.1.7/vehicles.json",
             "tests/fixtures/ninecli/0.1.7/vehicle-image.json"
           ],
-          "current_use": "既有车辆身份与默认启用序列号诊断；diagnostics不输出实际SN。"
+          "current_use": "冻结车辆身份与DeviceInfo.serial_number；独立序列号重复实体已退役，diagnostics不输出实际SN。"
         }
       ]
     },
@@ -931,7 +931,7 @@
           "meaning": "普通/AI 续航，分别表达",
           "unit": "km",
           "classification": "A/H",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "distance",
           "state_class": "measurement",
           "entity_category": "—",
@@ -951,10 +951,10 @@
             "int"
           ],
           "container": false,
-          "meaning": "座桶锁；0锁1解锁；闭锁只能手动",
+          "meaning": "维护者确认0锁/1解锁；已有raw0；buck解锁、闭锁只能手动",
           "unit": "—",
           "classification": "A",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "enum",
           "state_class": "—",
           "entity_category": "—",
@@ -967,7 +967,7 @@
             "tests/fixtures/ninecli/0.1.7/status-charging.json",
             "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "既有seat_lock_raw UID普通enum实体；Lock跨平台迁移及目标确认留后续。"
+          "current_use": "R3b/b38已交付座桶Lock：旧sensor UID字符串保留、跨domain history独立；buck单向解锁、有界目标确认；远程lock明确手动提示。见控制手册R3b。"
         },
         {
           "path": "$.battery_exist",
@@ -975,13 +975,13 @@
             "int"
           ],
           "container": false,
-          "meaning": "电池存在枚举；确认后可诊断，不与 pack_count 等价",
+          "meaning": "维护者确认0不存在/1存在；不与pack_count等价",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "A",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -990,7 +990,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：battery_present_raw；不猜单位/枚举/权限。"
+          "current_use": "b35已交付battery_present_raw原UID普通ENUM：0不存在/1存在，其它有限code未识别；不等同包数量。"
         },
         {
           "path": "$.ble_name",
@@ -1024,7 +1024,7 @@
           "meaning": "充电状态；当前 binary_sensor",
           "unit": "—",
           "classification": "A",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -1047,7 +1047,7 @@
           "meaning": "车辆 SOC；当前 battery Entity",
           "unit": "%",
           "classification": "A",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "battery",
           "state_class": "measurement",
           "entity_category": "—",
@@ -1070,7 +1070,7 @@
           "meaning": "普通/AI 续航，分别表达",
           "unit": "km",
           "classification": "A/H",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "distance",
           "state_class": "measurement",
           "entity_category": "—",
@@ -1093,10 +1093,10 @@
           "meaning": "共享账户标记；不能推出 owner 或控制权",
           "unit": "—",
           "classification": "H/I",
-          "enabled": true,
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1115,11 +1115,11 @@
           "container": false,
           "meaning": "服务到期标志候选；需验证对 endpoint 权限影响",
           "unit": "—",
-          "classification": "C",
-          "enabled": true,
+          "classification": "A",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1128,7 +1128,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "默认启用原值诊断实体：service_expired_raw；不猜单位/枚举/权限。"
+          "current_use": "b35已交付service_expired_raw原UID普通ENUM：0未到期/1已到期，其它有限code未识别；不推断endpoint权限。"
         },
         {
           "path": "$.left_mileage_user_choose",
@@ -1139,10 +1139,10 @@
           "meaning": "App 续航显示偏好/阈值候选；未知语义",
           "unit": "—",
           "classification": "H/I",
-          "enabled": true,
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1182,10 +1182,10 @@
             "int"
           ],
           "container": false,
-          "meaning": "电门ACC；0关1开；不代表P档/停止",
+          "meaning": "电门/ACC信号候选；手册电路与维护者骑车1/停放0支持；本轮acc0/pwr1证明不同",
           "unit": "—",
           "classification": "A",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "enum",
           "state_class": "—",
           "entity_category": "—",
@@ -1198,7 +1198,7 @@
             "tests/fixtures/ninecli/0.1.7/status-charging.json",
             "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "既有acc_raw UID普通enum实体，保留历史，状态off/on/unrecognized。"
+          "current_use": "b35已交付acc_raw原UID普通ENUM开/关；未来按安全身份迁移评估BinarySensor，严格0/1；非GNSS accuracy/非运动速度/不直接等同pwr。"
         },
         {
           "path": "$.loc.lat",
@@ -1209,7 +1209,7 @@
           "meaning": "车辆定位；精确值不进入 diagnostics/schema摘要",
           "unit": "角度；CRS待验证",
           "classification": "B",
-          "enabled": "否；用户位置选项",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -1229,10 +1229,10 @@
             "int"
           ],
           "container": false,
-          "meaning": "锁当前状态，不能等同 engine 控制效果",
+          "meaning": "1锁/0解锁；维护者确认engine/start解锁、stop上锁；动作结果另须新观测确认",
           "unit": "—",
-          "classification": "A/C",
-          "enabled": "是",
+          "classification": "A/H/I",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -1244,7 +1244,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "binary_sensor.unlocked + 反码诊断 sensor.vehicle_lock_raw（默认关闭）"
+          "current_use": "R3b/b38已交付车辆Lock替代旧binary.unlocked，保UID/旧历史；保留engine buttons共享守卫/目标回读。b40起不以运动/P本地拦截stop；每次1POST、0/2/5s确认及10/20/25s跟随；反码重复vehicle_lock_raw已退役"
         },
         {
           "path": "$.loc.lon",
@@ -1255,7 +1255,7 @@
           "meaning": "车辆定位；精确值不进入 diagnostics/schema摘要",
           "unit": "角度；CRS待验证",
           "classification": "B",
-          "enabled": "否；用户位置选项",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -1279,10 +1279,10 @@
           "meaning": "真实 null；权限仍为未知，不推断允许或位图。显式启用后的命令交由云端最终鉴权。",
           "unit": "—",
           "classification": "H/I",
-          "enabled": true,
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1302,7 +1302,7 @@
           "meaning": "精确续航；沿用 endurance/remaining_range aliases",
           "unit": "km",
           "classification": "A/H",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "distance",
           "state_class": "measurement",
           "entity_category": "—",
@@ -1325,10 +1325,10 @@
           "meaning": "App 续航显示偏好/阈值候选；未知语义",
           "unit": "—",
           "classification": "H/I",
-          "enabled": true,
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1348,7 +1348,7 @@
           "meaning": "车辆电源状态；不是功率",
           "unit": "—",
           "classification": "A",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -1371,7 +1371,7 @@
           "meaning": "服务器剩余充电文字；保留原实体，不能当秒",
           "unit": "—",
           "classification": "B",
-          "enabled": true,
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -1394,10 +1394,10 @@
           "meaning": "剩余充电时间候选；duration 或 deadline 不明确",
           "unit": "待验证",
           "classification": "H/I",
-          "enabled": true,
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1512,13 +1512,13 @@
             "str"
           ],
           "container": false,
-          "meaning": "服务端 count；历史为字符串，曾与数组长度不符；只作 schema",
+          "meaning": "上游count编码；2026-10-08为0但list有1条，非实际物理电池数",
           "unit": "—",
-          "classification": "H/I",
-          "enabled": true,
+          "classification": "A/H",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；不可信计数",
           "sources": [
@@ -1527,7 +1527,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "有界raw/观测模型和安全调试视图；b24移除独立协议或重复实体，不扩大未知语义"
+          "current_use": "returned_pack_count已取list长度并放普通区、名“上报电池组数”，不将server0误当无电池、不计铅酸单体数量；编码继续debug。"
         },
         {
           "path": "$.battery_find_my_support",
@@ -1535,13 +1535,13 @@
             "bool"
           ],
           "container": false,
-          "meaning": "Apple Find My支持；false不支持/true支持",
+          "meaning": "维护者确认Apple Find My支持，false不支持/true支持；不是其它命令权限",
           "unit": "—",
           "classification": "C",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "—",
+          "entity_category": "diagnostic",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1550,7 +1550,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认可见支持类binary sensor，支持/不支持翻译；不新增定位接口。"
+          "current_use": "b35已交付准确名称Apple查找支持、支持/不支持状态翻译的既有布尔诊断实体；不新增FindMy定位接口。"
         },
         {
           "path": "$.battery_list",
@@ -1607,7 +1607,7 @@
           "meaning": "BMS 温度；保持身份",
           "unit": "°C",
           "classification": "A",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "temperature",
           "state_class": "measurement",
           "entity_category": "—",
@@ -1629,11 +1629,11 @@
           "container": false,
           "meaning": "循环数；只有明确 support=true 才启用，false 的哨兵不使用",
           "unit": "无HA单位（计数）",
-          "classification": "C",
-          "enabled": true,
+          "classification": "A/H",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0/CG",
           "evidence": "R/S；样本 support=false",
           "sources": [
@@ -1642,7 +1642,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "循环次数支持门禁及reported_cycles属性，或分层电量调试观测；不创建重复raw实体"
+          "current_use": "支持明确为true时battery_cycles实体；包reported_cycles及调试保留原上报，不把false哨兵当有效循环数。"
         },
         {
           "path": "$.battery_list[].bms_volt",
@@ -1653,7 +1653,7 @@
           "meaning": "BMS 电压；显式合法数值，保持单/多包旧身份",
           "unit": "V",
           "classification": "A",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "voltage",
           "state_class": "measurement",
           "entity_category": "—",
@@ -1675,11 +1675,11 @@
           "container": false,
           "meaning": "包 SOC 候选；范围/主包/缓存语义待核，与 status SOC 区分",
           "unit": "待验证（可能 %）",
-          "classification": "C",
-          "enabled": true,
+          "classification": "H/I",
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1688,7 +1688,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "循环次数支持门禁及reported_cycles属性，或分层电量调试观测；不创建重复raw实体"
+          "current_use": "仅pack.electricity_raw及有界调试保留；不能替代动力SOC或应急SOC，不创建重复实体。"
         },
         {
           "path": "$.battery_list[].score",
@@ -1699,10 +1699,10 @@
           "meaning": "评分原始量；不得直接命名 SOH",
           "unit": "未知",
           "classification": "A",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1742,10 +1742,10 @@
             "str"
           ],
           "container": false,
-          "meaning": "应急通信电池SOC",
+          "meaning": "维护者2026-10-08确认应急通信电池SOC；已有raw93、动力SOC88",
           "unit": "%",
-          "classification": "A",
-          "enabled": true,
+          "classification": "A/H",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "battery",
           "state_class": "measurement",
           "entity_category": "—",
@@ -1758,7 +1758,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-charging.json",
             "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "BatteryInfo.emergency_soc→emergency_battery；整数0..100，默认可见；独立主电池SOC。"
+          "current_use": "b35已交付普通应急通信电池Sensor，BATTERY/%/measurement、整数1%显示；严格0..100/缺值，保留runtime raw。"
         },
         {
           "path": "$.battery_type",
@@ -1766,10 +1766,10 @@
             "str"
           ],
           "container": false,
-          "meaning": "主电池类型；1锂2铅，其它code未识别",
+          "meaning": "维护者2026-10-08确认1→lithium、2→lead_acid；本车raw仅2",
           "unit": "—",
-          "classification": "A",
-          "enabled": true,
+          "classification": "A/H",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "enum",
           "state_class": "—",
           "entity_category": "—",
@@ -1782,7 +1782,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-charging.json",
             "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "BatteryInfo.battery_type→main_battery_type；维护者确认，不恢复估算。"
+          "current_use": "b35已交付普通主电池类型ENUM，未知code未识别；1用合成fixture不当实测。不恢复SOC估算。"
         },
         {
           "path": "$.charging",
@@ -1813,10 +1813,10 @@
             "int"
           ],
           "container": false,
-          "meaning": "原始充电量；charging_power_raw 保持无单位",
+          "meaning": "充电功率；W由维护者确认，保留charging_power_raw历史unique_id",
           "unit": "W",
           "classification": "A",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "power",
           "state_class": "measurement",
           "entity_category": "—",
@@ -1860,10 +1860,10 @@
           "meaning": "充电保护标志；枚举未知，不直接套 Problem class",
           "unit": "—",
           "classification": "H/I",
-          "enabled": true,
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1904,10 +1904,10 @@
           "meaning": "电池外层量；与 status/main 分开，未知更新时间",
           "unit": "待验证",
           "classification": "H/I",
-          "enabled": true,
+          "enabled": "—",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "diagnostic",
+          "entity_category": "—",
           "compatibility": "C0",
           "evidence": "R；语义 V",
           "sources": [
@@ -1927,10 +1927,10 @@
           "meaning": "循环数 feature gate；必须 True，不从 cycle 数值猜能力",
           "unit": "—",
           "classification": "C",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
-          "entity_category": "—",
+          "entity_category": "diagnostic",
           "compatibility": "C0",
           "evidence": "R/S",
           "sources": [
@@ -1939,7 +1939,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认可见支持/不支持binary sensor；false时不采用占位cycle数值。"
+          "current_use": "默认启用支持布尔诊断实体；不是控制权限。"
         },
         {
           "path": "$.remain_charge_time",
@@ -2021,10 +2021,10 @@
             "str"
           ],
           "container": false,
-          "meaning": "月汇总字符串列表；不是 ride detail endpoint/轨迹",
+          "meaning": "按月日历的numeric字符串日里程；本次既有归档30/31项、和匹配月总且9月20/20日映射匹配",
           "unit": "—",
-          "classification": "H/I",
-          "enabled": "—",
+          "classification": "A/E/H/I",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -2036,7 +2036,7 @@
             "tests/fixtures/ninecli/0.1.7/travel-02.json",
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "有界 runtime raw（隐私字段主动移除）；静态字段清单。只有已审核名称进入运行时 schema，未知语义不创建实体。"
+          "current_use": "MonthSummary严格校验→今日/昨日里程、get_statistics日序列、显式已结束日Recorder统计；不输出日程到diagnostics"
         },
         {
           "path": "$.duration",
@@ -2047,7 +2047,7 @@
           "meaning": "月时长候选；不能当 last ride duration",
           "unit": "s",
           "classification": "A",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "duration",
           "state_class": "—",
           "entity_category": "—",
@@ -2070,7 +2070,7 @@
           "meaning": "月能量原始值；禁止直接 Energy Dashboard",
           "unit": "Wh",
           "classification": "A",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "energy",
           "state_class": "—",
           "entity_category": "—",
@@ -2158,7 +2158,7 @@
             "str"
           ],
           "container": false,
-          "meaning": "日汇总候选，定义待验证",
+          "meaning": "对应结束日的日里程，本次9月20/20与detail[index]匹配；不能按每条ride相加",
           "unit": "待验证",
           "classification": "H/I",
           "enabled": "—",
@@ -2170,7 +2170,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "私有raw/审核schema；不作累计sensor"
+          "current_use": "Raw/一致性证据；today仍取经过校验的daily序列，不重复创建entity"
         },
         {
           "path": "$.list[].duration",
@@ -2181,7 +2181,7 @@
           "meaning": "秒；20/20原始样本与end-start一致",
           "unit": "s",
           "classification": "A/E/D/H",
-          "enabled": "是；只选最新已完成行程",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "duration",
           "state_class": "—",
           "entity_category": "—",
@@ -2198,10 +2198,10 @@
             "str"
           ],
           "container": false,
-          "meaning": "原始能量；单位待验证",
+          "meaning": "行程能量；维护者确认Wh",
           "unit": "Wh",
           "classification": "A",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "energy",
           "state_class": "—",
           "entity_category": "—",
@@ -2218,10 +2218,10 @@
             "int"
           ],
           "container": false,
-          "meaning": "Unix秒；明确最新已完成ride的排序依据",
+          "meaning": "Unix秒；最近已报告ride排序依据，不证明完成",
           "unit": "Unix seconds",
           "classification": "A/E/D/H",
-          "enabled": "是；只选最新已完成行程",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "timestamp",
           "state_class": "—",
           "entity_category": "—",
@@ -2301,7 +2301,7 @@
           "meaning": "km显示契约；内部转m",
           "unit": "km",
           "classification": "A/E/D/H",
-          "enabled": "是；只选最新已完成行程",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "distance",
           "state_class": "—",
           "entity_category": "—",
@@ -2321,7 +2321,7 @@
           "meaning": "ninecli显示契约为服务端最高km/h；App未独立核验",
           "unit": "km/h",
           "classification": "A/E/D/H",
-          "enabled": "是；只选最新已完成行程",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "speed",
           "state_class": "—",
           "entity_category": "—",
@@ -2341,7 +2341,7 @@
           "meaning": "Unix秒；时区转换为UTC",
           "unit": "Unix seconds",
           "classification": "A/E/D/H",
-          "enabled": "是；只选最新已完成行程",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "timestamp",
           "state_class": "—",
           "entity_category": "—",
@@ -2424,7 +2424,7 @@
           "meaning": "月次数候选；分页/撤销/重复语义待验",
           "unit": "—",
           "classification": "A",
-          "enabled": true,
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
@@ -2447,7 +2447,7 @@
           "meaning": "月里程；现 month_mileage 无 state_class；单调性待验",
           "unit": "km",
           "classification": "A/E",
-          "enabled": "是",
+          "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "distance",
           "state_class": "—",
           "entity_category": "—",
@@ -2459,7 +2459,7 @@
             "tests/fixtures/ninecli/0.1.7/travel-02.json",
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "sensor.month_mileage + get_trips response"
+          "current_use": "sensor.month_mileage + get_trips/get_statistics；已结束且月末后采样的月统计显式Recorder导入"
         }
       ]
     },
@@ -2472,7 +2472,7 @@
             "dict"
           ],
           "container": true,
-          "meaning": "上游显示策略提示；具体语义待验证",
+          "meaning": "单次行程详情根对象",
           "unit": "—",
           "classification": "H/I/J",
           "enabled": "—",
@@ -2592,7 +2592,7 @@
             "int"
           ],
           "container": false,
-          "meaning": "秒；20/20原始样本与end-start一致",
+          "meaning": "详情时长字段；正式单位按固定显示/解析契约为秒；列表20/20关系不冒称全部detail实测",
           "unit": "s",
           "classification": "E/H",
           "enabled": "—",
@@ -2612,7 +2612,7 @@
             "str"
           ],
           "container": false,
-          "meaning": "原始能量；单位待验证",
+          "meaning": "单次行程能量；维护者确认Wh",
           "unit": "未知",
           "classification": "E/H",
           "enabled": "—",
@@ -2632,7 +2632,7 @@
             "int"
           ],
           "container": false,
-          "meaning": "Unix秒；明确最新已完成ride的排序依据",
+          "meaning": "Unix秒；最近已报告ride排序依据，不证明完成",
           "unit": "Unix seconds",
           "classification": "E/H",
           "enabled": "—",
@@ -3278,5 +3278,10 @@
   ],
   "command_response_path_count": 12,
   "previous_inventory": "docs/evidence/archive/v2x-b19-field-usage.json",
-  "representation_contract": "docs/v2x-实体精简与额定参数迁移.md"
+  "representation_contract": "docs/v2x-实体精简与额定参数迁移.md",
+  "implementation_sources": [
+    "custom_components/ninebot/observations.py",
+    "custom_components/ninebot/sensor.py",
+    "custom_components/ninebot/lock.py"
+  ]
 }
