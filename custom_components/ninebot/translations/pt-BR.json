@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "O arquivo local de viagens está temporariamente indisponível. Tente novamente em breve."
+    },
+    "recorded_range": {
+      "message": "Escolha até cinco anos em ordem cronológica. Reduza o intervalo se exceder o limite de leitura."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Mês final (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Consultar viagens salvas",
+      "description": "Ler somente o histórico local, sem solicitações à nuvem.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Data inicial",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Data final",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

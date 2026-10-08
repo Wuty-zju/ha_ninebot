@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b42
+
+- Add response-only `get_recorded_trips` for bounded date-range browsing of the local archive, including offline reads. Opening a page never refreshes a month, downloads details or controls the vehicle. Keep received timestamps, source precision and explicit missing/partial/unknown coverage.
+- Use revision-fenced keyset pagination, at most 100 rides per page, five-year date ranges, and eight 15-minute runtime continuations per account. Archive changes require a fresh page; incomplete lists retain prior observations and complete corrections preserve evidence outside the current view.
+- Enforce Home Assistant read permissions for local browsing and trip/detail queries. Restricted readers need the selected vehicle’s ride calendar, plus its tracker when requesting GPS. Recheck scope and permissions before returning; keep tracks out of the local Action, state and Recorder. Preserve b40/b41 remote command behavior and all entity identities.
+
 ## 2.0.0b41
 
 - Add one read-only local ride calendar per vehicle, with native month/day/list navigation and small scalar ride details. Browsing is bounded to five years, 5,000 scanned records and 8 MiB, never triggers cloud backfill and never exports GPS tracks. Preserve complete/partial list correction semantics and archived evidence.

@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "本機行程檔案暫時無法使用，請稍後再試。"
+    },
+    "recorded_range": {
+      "message": "依序選擇最多五年的日期；超過讀取預算時請縮小範圍。"
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "結束月份（YYYYMM）"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "瀏覽已記錄行程",
+      "description": "僅讀取本機歷史，不請求雲端。",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "開始日期",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "結束日期",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

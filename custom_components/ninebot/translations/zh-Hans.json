@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "本地行程档案暂时不可用，请稍后重试。"
+    },
+    "recorded_range": {
+      "message": "按先后顺序选择最多五年的日期；超出读取预算时请缩小范围。"
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "结束月份（YYYYMM）"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "浏览已记录行程",
+      "description": "仅读取本地历史，不请求云端。",
+      "fields": {
+        "device_id": {
+          "name": "车辆"
+        },
+        "limit": {
+          "name": "本次最多返回行程数",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "上一次返回的续查游标"
+        },
+        "start_date": {
+          "name": "开始日期",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "结束日期",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

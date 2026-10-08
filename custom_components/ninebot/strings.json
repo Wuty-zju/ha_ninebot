@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "The local ride archive is temporarily unavailable. Try again shortly."
+    },
+    "recorded_range": {
+      "message": "Choose up to five years, in date order. If a read budget is exceeded, narrow the range."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "End month (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Browse recorded trips",
+      "description": "Read local history only; no cloud requests.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Start date",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "End date",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

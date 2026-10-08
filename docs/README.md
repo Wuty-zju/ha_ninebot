@@ -394,3 +394,64 @@ merge unrelated histories already stored under the target ID or move sensor
 history into the lock platform. Starting with b38, conversion of reviewed unlocked/vehicle_lock binary sensors and seat_lock_raw sensors is journaled before public registry changes. Exactly one owned old identity is replaced; the UID string, custom name/icon/area/labels/aliases and user disabled/hidden choices are retained. Ambiguous identities, occupied targets and concurrent user changes are preserved with a Repair. No numeric suffix is invented.
 
 The old binary/sensor registry ID cannot become a Lock registry ID. Recorder rows remain queryable under the old entity ID; new Lock states use locked/unlocked and start separate history. get_entity_migration includes conversion mappings and this boundary. Update YAML/templates/dashboard references and on/off conditions explicitly. Full configuration/storage backup is required for rollback: older versions cannot read the new conversion journal statuses. No production registry or database was edited during development.
+
+
+## Local archive browsing
+
+`ninebot.get_recorded_trips` is a read-only local Action for manual browsing or a
+custom dashboard. Unlike `get_history`, it never fills missing months or refreshes
+the current month. It works while live authentication is unavailable, provided
+the account is loaded and the vehicle is still locally known.
+
+```yaml
+action: ninebot.get_recorded_trips
+data:
+  device_id: REPLACE_WITH_VEHICLE_DEVICE_ID
+  start_date: "2026-09-01"
+  end_date: "2026-10-08"
+  limit: 20
+response_variable: recorded_trips
+```
+
+Dates are inclusive in Asia/Shanghai, independent of the HA display time zone.
+One call returns at most 100 scalar rides, ordered by start time and ride ID;
+ongoing/future rides and conflicting or absent times are excluded. The maximum
+range is five years (1,830 days). Narrow the range if the 5,000-row scan or 8 MiB
+read budget is exceeded; there is no silent truncation or automatic retry loop.
+
+The response includes `source_mode: ride_archive`, `revision`, `rides[]` with
+`received_at`, `precision`, field provenance and units, `months[]`, and `coverage`.
+Coverage lists missing, partial and unknown months. `all_observed_lists_complete`
+only describes stored lists, **not complete upstream history or finalized rides**;
+`upstream_history_complete` remains `unverified`. A month can contain malformed
+rows without usable timestamps. No track, precise location or raw JSON is returned.
+The local page uses the same selection as the calendar: latest lists plus retained
+observations from partial lists. Complete-list corrections can remove a ride from
+the current view while retaining its historical evidence in the archive.
+
+Pass `next_cursor` as `cursor` with the same device and dates to get the next page.
+A cursor preserves the first page's `as_of`, is held only in this account's memory,
+expires after 15 minutes, and can be evicted when eight continuations are in use.
+An archive content change (including another vehicle in this account), reload or
+range change requires starting again without a cursor. An observation timestamp
+refresh without content changes does not invalidate the cursor. The Action does
+not retain response pages, copy rides into state attributes or write to Recorder.
+
+For missing months, explicitly use `sync_history` and its bounded continuation
+contract. To retrieve one cloud detail, explicitly call `get_trip_detail` with the
+selected `ride_id` and `query_month`. Neither is implicitly called during local
+browsing. Point speed/distance units and coordinates remain unverified.
+
+Local browsing and `get_trips`/`get_trip_detail` check standard HA read permissions.
+A normal full reader is allowed; a restricted user needs read access to the selected
+vehicle's Ninebot calendar, and its tracker for a GPS response. Unrelated telemetry
+access alone does not grant trip history. These checks run before querying and
+again before returning. Internal automation calls without a user context retain
+HA's normal trusted automation behavior. Existing coordinate opt-in is still
+required for GPS; automation traces may retain an explicitly requested track.
+
+**简体中文：** `get_recorded_trips` 按上海时区的起止日期（含两端）仅读取本地
+档案，每页最多100条，不自动补采缺月、不拉轨迹、不调用控制。返回来源、采样时间、
+原始精度和缺月/部分/未知覆盖；已存列表完整不等于云端全部历史。继续分页时带回
+`next_cursor`，档案修订、重载或游标过期后从第一页重新读取。缺月同步和单条云端
+详情必须分别显式调用。账号/车辆实体身份及既有远程锁轮询逻辑保持不变。

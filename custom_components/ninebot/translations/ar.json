@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "أرشيف الرحلات المحلي غير متاح مؤقتًا. حاول مرة أخرى بعد قليل."
+    },
+    "recorded_range": {
+      "message": "اختر حتى خمس سنوات بترتيب التاريخ. ضيّق النطاق إذا تم تجاوز حد القراءة."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "شهر النهاية (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "عرض الرحلات المحفوظة",
+      "description": "قراءة السجل المحلي فقط دون طلبات إلى السحابة.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "تاريخ البداية",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "تاريخ النهاية",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

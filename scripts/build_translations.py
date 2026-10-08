@@ -260,6 +260,13 @@ def main() -> None:
             data["entity"]["sensor"]["today_mileage"] = previous["entity"]["sensor"][
                 "today_mileage"
             ]
+        # Preserve the curated local archive Action and concise range error.
+        for key in ("get_recorded_trips",):
+            if key in previous.get("services", {}):
+                data["services"][key] = previous["services"][key]
+        for key in ("recorded_range",):
+            if key in previous.get("exceptions", {}):
+                data["exceptions"][key] = previous["exceptions"][key]
         for action in (
             "get_trips",
             "get_trip_detail",

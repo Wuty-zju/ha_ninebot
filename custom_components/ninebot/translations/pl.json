@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "Lokalne archiwum przejazdów jest chwilowo niedostępne. Spróbuj ponownie za chwilę."
+    },
+    "recorded_range": {
+      "message": "Wybierz do pięciu lat w kolejności dat. Zmniejsz zakres po przekroczeniu limitu odczytu."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Miesiąc końcowy (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Przeglądaj zapisane przejazdy",
+      "description": "Tylko historia lokalna, bez zapytań do chmury.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Data początkowa",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Data końcowa",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

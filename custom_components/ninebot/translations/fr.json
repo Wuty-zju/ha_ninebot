@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "Les archives locales des trajets sont temporairement indisponibles. Réessayez dans un instant."
+    },
+    "recorded_range": {
+      "message": "Choisir jusqu’à cinq ans, dans l’ordre chronologique. Réduire la période si la limite de lecture est dépassée."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Mois de fin (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Consulter les trajets enregistrés",
+      "description": "Lire uniquement l’historique local, sans requête cloud.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Date de début",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Date de fin",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

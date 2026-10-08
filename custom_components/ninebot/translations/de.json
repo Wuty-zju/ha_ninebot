@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "Das lokale Fahrtenarchiv ist vorübergehend nicht verfügbar. Versuche es später erneut."
+    },
+    "recorded_range": {
+      "message": "Bis zu fünf Jahre in Datumsreihenfolge wählen. Bei überschrittenem Leselimit den Bereich verkleinern."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Endmonat (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Gespeicherte Fahrten anzeigen",
+      "description": "Nur lokale Historie lesen; keine Cloud-Anfragen.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Startdatum",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Enddatum",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

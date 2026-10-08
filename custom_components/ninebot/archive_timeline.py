@@ -42,7 +42,7 @@ def _complete(data: str) -> bool:
     return month.summary.list_complete is True
 
 
-def _selection(db: sqlite3.Connection, vehicle: str) -> tuple[str, tuple[str, ...]]:
+def current_selection(db: sqlite3.Connection, vehicle: str) -> tuple[str, tuple[str, ...]]:
     partial = tuple(
         month
         for month, data in db.execute("SELECT month,data FROM months WHERE vehicle=?", (vehicle,))
@@ -67,7 +67,7 @@ def valid_timed_ride(ride: Ride) -> bool:
 def timeline_query(
     db: sqlite3.Connection, vehicle: str, start: str, end: str, limit: int
 ) -> ArchiveTimeline:
-    selection, arguments = _selection(db, vehicle)
+    selection, arguments = current_selection(db, vehicle)
     cursor = db.execute(
         "SELECT data,observed FROM rides WHERE vehicle=? AND ended>? AND started<? "
         f"AND started<>'' AND ended>started AND {selection} ORDER BY started,id LIMIT ?",
@@ -92,7 +92,7 @@ def timeline_query(
 
 
 def latest_query(db: sqlite3.Connection, vehicle: str, now: str) -> ArchivedRide | None:
-    selection, arguments = _selection(db, vehicle)
+    selection, arguments = current_selection(db, vehicle)
     cursor = db.execute(
         "SELECT data,observed FROM rides WHERE vehicle=? AND ended<=? "
         f"AND started<>'' AND ended>started AND {selection} "

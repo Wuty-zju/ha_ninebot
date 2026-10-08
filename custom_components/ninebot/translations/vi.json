@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "Kho lưu trữ chuyến đi cục bộ tạm thời không khả dụng. Hãy thử lại sau ít phút."
+    },
+    "recorded_range": {
+      "message": "Chọn tối đa năm năm theo thứ tự ngày. Thu hẹp khoảng thời gian nếu vượt giới hạn đọc."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Tháng cuối (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Xem chuyến đi đã lưu",
+      "description": "Chỉ đọc lịch sử cục bộ, không gửi yêu cầu đám mây.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Ngày bắt đầu",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Ngày kết thúc",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

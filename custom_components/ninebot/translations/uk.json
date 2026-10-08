@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "Локальний архів поїздок тимчасово недоступний. Спробуйте пізніше."
+    },
+    "recorded_range": {
+      "message": "Виберіть до п’яти років у порядку дат. Якщо перевищено ліміт читання, скоротіть діапазон."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Кінцевий місяць (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Перегляд збережених поїздок",
+      "description": "Лише локальна історія, без запитів до хмари.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Початкова дата",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Кінцева дата",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

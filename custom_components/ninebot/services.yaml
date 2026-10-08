@@ -1,3 +1,30 @@
+get_recorded_trips:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: ninebot
+    start_date:
+      required: true
+      example: "2026-09-01"
+      selector:
+        date:
+    end_date:
+      required: true
+      example: "2026-09-30"
+      selector:
+        date:
+    limit:
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    cursor:
+      selector:
+        text:
 get_trips:
   fields:
     device_id:

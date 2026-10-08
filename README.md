@@ -62,6 +62,9 @@ See [raw/diagnostics contract](docs/README.md).
 Historical lists/tracks are not entities or large state attributes. Local pagination only covers received rows;
 reported monthly totals can exceed the returned list. History cursors are bounded memory; 2.0.0b39 persists normalized facts in a private per-account archive.
 `sync_history` fills at most three missing months per call and retains its checkpoint across restarts.
+`get_recorded_trips` browses dated local archive pages without cloud queries, even during
+authentication failure. It returns coverage, observation receipts, provenance and source precision;
+content changes invalidate its revision-bound cursor. See the [local browsing example](docs/README.md#local-archive-browsing).
 Tracks require coordinates opt-in plus `include_track`; automation traces may retain response locations.
 Server maximum speed and distance/duration average remain distinct; point-speed/delta units are unverified.
 Ride events establish a startup baseline and suppress duplicates; cloud timing/pagination can cause missed events.

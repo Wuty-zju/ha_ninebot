@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from . import adapters
+from .archive_browse import RecordedCursors
 from .archive_runtime import ArchiveStatistics
 from .backend import BackendResult, NinebotBackend, NinecliBackend
 from .capabilities import CONTROL_ACTIONS, ControlDecision, VehicleCapabilities, decide_control
@@ -80,6 +81,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.backend: NinebotBackend = backend or NinecliBackend(client)
         self.raw = RawStore()
         self.history = HistoryStore()
+        self.recorded_cursors = RecordedCursors()
         self.history_sync = HistorySync(self)
         self.ride_lifecycles: dict[str, RideLifecycle] = {}
         self.statistics = ArchiveStatistics(
@@ -1340,6 +1342,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.raw.clear()
         self._normalized.clear()
         self.history.clear()
+        self.recorded_cursors.clear()
         self.ride_lifecycles.clear()
         self.control_results.clear()
         await self.async_shutdown()
