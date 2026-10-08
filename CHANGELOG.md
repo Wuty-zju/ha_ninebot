@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.0b45
+
+- Reserve the vehicle battery device class for propulsion SOC; retain emergency communication SOC as a separate percentage sensor and explicitly supply main SOC to the GPS tracker.
+- Suggest one decimal for Wh/km and integer minute display for ride duration through HA native seconds-to-minutes conversion. Keep unrounded seconds in domain/archive and duration_seconds. Month list coverage suggests integer percentages.
+- Add an account option to enable/disable local ride calendars without deleting history or entity identity. Align calendar distance, duration, speed and energy formatting; add start/end and energy intensity to descriptions.
+- Keep an observed ride event available through temporary cloud staleness while ownership/storage remain valid. Explain waiting-for-new-ride and expose the last reported ride end, without triggering historical events. Include energy in new completion events.
+- Add bounded coordinate-free point-distance samples and track counts to historical responses and the optional card, alongside existing raw speed curves. Point units and CRS remain unverified; do not plot a supposedly accurate GPS map or fabricate km/h sample values.
+- HA still controls the Hub heading; there is no supported per-integration Account section override. No functional tests, cloud queries or production operations were performed, per maintainer instruction.
+
 ## 2.0.0b44
 
 - Force a one-time canonical rename of owned existing entity IDs, including pre-upgrade custom IDs, preserving unique IDs and old/new migration evidence. Keep collision/ownership guards and subsequent user renames; include inactive parameter entities and converted locks. Update external references from the migration mapping.

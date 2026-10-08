@@ -30,7 +30,10 @@ export const LABELS = {
     "missing": "Missing months",
     "partial": "Partial months",
     "unknown": "Unknown months",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Last ride energy consumption per distance",
+    "track_points": "Track points",
+    "distance_samples": "Point distance values · units unverified"
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -63,7 +66,10 @@ export const LABELS = {
     "missing": "缺月",
     "partial": "部分月份",
     "unknown": "未知月份",
-    "source_fields": "来源字段"
+    "source_fields": "来源字段",
+    "energy_intensity": "最近行程单位里程能耗",
+    "track_points": "轨迹点数",
+    "distance_samples": "点间距离曲线 · 单位待验证"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -96,7 +102,10 @@ export const LABELS = {
     "missing": "缺月",
     "partial": "部分月份",
     "unknown": "未知月份",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "上次行程: 單位里程能耗",
+    "track_points": "軌跡點數",
+    "distance_samples": "點間距離曲線 · 單位待驗證"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -129,7 +138,10 @@ export const LABELS = {
     "missing": "Fehlende Monate",
     "partial": "Teilweise Monate",
     "unknown": "Unbekannte Monate",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Letzte Fahrt: Energieverbrauch pro Strecke",
+    "track_points": "Trackpunkte",
+    "distance_samples": "Punktabstände · Einheit ungeprüft"
   },
   "fr": {
     "title": "Historique des trajets",
@@ -162,7 +174,10 @@ export const LABELS = {
     "missing": "Mois manquants",
     "partial": "Mois partiels",
     "unknown": "Mois inconnus",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Dernier trajet: Consommation par distance",
+    "track_points": "Points de trace",
+    "distance_samples": "Distances entre points · unité non vérifiée"
   },
   "es": {
     "title": "Historial de viajes",
@@ -195,7 +210,10 @@ export const LABELS = {
     "missing": "Meses faltantes",
     "partial": "Meses parciales",
     "unknown": "Meses desconocidos",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Último viaje: Consumo por distancia",
+    "track_points": "Puntos del recorrido",
+    "distance_samples": "Distancias entre puntos · unidad sin verificar"
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -228,7 +246,10 @@ export const LABELS = {
     "missing": "Mesi mancanti",
     "partial": "Mesi parziali",
     "unknown": "Mesi sconosciuti",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Ultimo viaggio: Consumo per distanza",
+    "track_points": "Punti del percorso",
+    "distance_samples": "Distanze tra punti · unità non verificata"
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -261,7 +282,10 @@ export const LABELS = {
     "missing": "Meses em falta",
     "partial": "Meses parciais",
     "unknown": "Meses desconhecidos",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Última viagem: Consumo por distância",
+    "track_points": "Pontos do percurso",
+    "distance_samples": "Distâncias entre pontos · unidade não verificada"
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -294,7 +318,10 @@ export const LABELS = {
     "missing": "Meses ausentes",
     "partial": "Meses parciais",
     "unknown": "Meses desconhecidos",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Última viagem: Consumo por distância",
+    "track_points": "Pontos do percurso",
+    "distance_samples": "Distâncias entre pontos · unidade não verificada"
   },
   "ru": {
     "title": "История поездок",
@@ -327,7 +354,10 @@ export const LABELS = {
     "missing": "Отсутствующие месяцы",
     "partial": "Неполные месяцы",
     "unknown": "Неизвестные месяцы",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Последняя поездка: Расход энергии на расстояние",
+    "track_points": "Точки маршрута",
+    "distance_samples": "Расстояния между точками · единицы не проверены"
   },
   "ja": {
     "title": "走行履歴",
@@ -360,7 +390,10 @@ export const LABELS = {
     "missing": "未取得の月",
     "partial": "一部の月",
     "unknown": "不明な月",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "前回の走行: 距離あたりの消費電力",
+    "track_points": "軌跡ポイント数",
+    "distance_samples": "点間距離 · 単位未確認"
   },
   "ko": {
     "title": "주행 기록",
@@ -393,7 +426,10 @@ export const LABELS = {
     "missing": "누락된 월",
     "partial": "일부 월",
     "unknown": "알 수 없는 월",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "최근 주행: 거리당 에너지 소비",
+    "track_points": "경로 지점 수",
+    "distance_samples": "지점 간 거리 · 단위 미확인"
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -426,7 +462,10 @@ export const LABELS = {
     "missing": "Ontbrekende maanden",
     "partial": "Gedeeltelijke maanden",
     "unknown": "Onbekende maanden",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Laatste rit: Energieverbruik per afstand",
+    "track_points": "Routepunten",
+    "distance_samples": "Afstanden tussen punten · eenheid niet bevestigd"
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -459,7 +498,10 @@ export const LABELS = {
     "missing": "Brakujące miesiące",
     "partial": "Niepełne miesiące",
     "unknown": "Nieznane miesiące",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Ostatni przejazd: Zużycie energii na dystans",
+    "track_points": "Punkty trasy",
+    "distance_samples": "Odległości między punktami · jednostka niepotwierdzona"
   },
   "uk": {
     "title": "Історія поїздок",
@@ -492,7 +534,10 @@ export const LABELS = {
     "missing": "Відсутні місяці",
     "partial": "Неповні місяці",
     "unknown": "Невідомі місяці",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Остання поїздка: Витрата енергії на відстань",
+    "track_points": "Точки маршруту",
+    "distance_samples": "Відстані між точками · одиниці не перевірені"
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -525,7 +570,10 @@ export const LABELS = {
     "missing": "Eksik aylar",
     "partial": "Kısmi aylar",
     "unknown": "Bilinmeyen aylar",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Son sürüş: Mesafe başına enerji tüketimi",
+    "track_points": "Rota noktaları",
+    "distance_samples": "Noktalar arası mesafe · birim doğrulanmadı"
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -558,7 +606,10 @@ export const LABELS = {
     "missing": "अनुपस्थित महीने",
     "partial": "आंशिक महीने",
     "unknown": "अज्ञात महीने",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "पिछली यात्रा: प्रति दूरी ऊर्जा खपत",
+    "track_points": "मार्ग बिंदु",
+    "distance_samples": "बिंदुओं के बीच दूरी · इकाई अपुष्ट"
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -591,7 +642,10 @@ export const LABELS = {
     "missing": "Bulan belum tersedia",
     "partial": "Bulan sebagian",
     "unknown": "Bulan tidak diketahui",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Perjalanan terakhir: Konsumsi energi per jarak",
+    "track_points": "Titik lintasan",
+    "distance_samples": "Jarak antar titik · satuan belum diverifikasi"
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -624,7 +678,10 @@ export const LABELS = {
     "missing": "เดือนที่ขาด",
     "partial": "เดือนบางส่วน",
     "unknown": "เดือนที่ไม่ทราบ",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "การเดินทางล่าสุด: การใช้พลังงานต่อระยะทาง",
+    "track_points": "จุดเส้นทาง",
+    "distance_samples": "ระยะระหว่างจุด · ยังไม่ยืนยันหน่วย"
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -657,7 +714,10 @@ export const LABELS = {
     "missing": "Tháng thiếu",
     "partial": "Tháng một phần",
     "unknown": "Tháng chưa xác định",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "Chuyến gần nhất: Năng lượng tiêu thụ trên quãng đường",
+    "track_points": "Điểm lộ trình",
+    "distance_samples": "Khoảng cách giữa các điểm · chưa xác minh đơn vị"
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -690,6 +750,9 @@ export const LABELS = {
     "missing": "أشهر مفقودة",
     "partial": "أشهر جزئية",
     "unknown": "أشهر غير معروفة",
-    "source_fields": "Source field"
+    "source_fields": "Source field",
+    "energy_intensity": "آخر رحلة: استهلاك الطاقة لكل مسافة",
+    "track_points": "نقاط المسار",
+    "distance_samples": "المسافات بين النقاط · الوحدة غير مؤكدة"
   }
 };

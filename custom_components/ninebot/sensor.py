@@ -305,7 +305,6 @@ SENSORS = (
     Description(
         key="emergency_battery",
         group="battery",
-        device_class=SensorDeviceClass.BATTERY,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
@@ -335,6 +334,7 @@ SENSORS = (
     Description(
         key="month_list_coverage",
         group="travel",
+        suggested_display_precision=0,
         native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         value=lambda s: (
@@ -572,15 +572,14 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             return 0
         if description.device_class is SensorDeviceClass.DISTANCE:
             return 1
-        if description.device_class in {
-            SensorDeviceClass.ENERGY,
-            SensorDeviceClass.ENERGY_DISTANCE,
-        }:
+        if description.device_class is SensorDeviceClass.ENERGY:
             return 0
+        if description.device_class is SensorDeviceClass.ENERGY_DISTANCE:
+            return 1
         if description.key == "last_ride_max_speed":
             return 0
         if description.device_class is SensorDeviceClass.DURATION:
-            return 2
+            return 0
 
         if description.suggested_display_precision is not None:
             return description.suggested_display_precision
@@ -679,7 +678,7 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
             return 0
         if self._attr_device_class is SensorDeviceClass.DISTANCE:
             return 1
-        return 2 if self._attr_device_class is SensorDeviceClass.DURATION else 0
+        return 0
 
     def _summary(self) -> DaySummary:
         now = dt_util.utcnow()

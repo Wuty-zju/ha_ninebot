@@ -31,6 +31,7 @@ from .compat import validation as vol
 from .const import (
     CONF_ACCOUNT,
     CONF_BUSINESS_UID,
+    CONF_CALENDAR,
     CONF_CONTROL_VEHICLES,
     CONF_CONTROLS,
     CONF_COORDINATES,
@@ -481,6 +482,7 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                         CONF_COORDINATES, default=options.get(CONF_COORDINATES, DEFAULT_COORDINATES)
                     ): bool,
                     vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
+                    vol.Optional(CONF_CALENDAR, default=options.get(CONF_CALENDAR, True)): bool,
                     vol.Optional("configure_model", default=False): bool,
                     vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
                     vol.Optional(

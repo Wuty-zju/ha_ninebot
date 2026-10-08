@@ -3,7 +3,7 @@
 from homeassistant.const import Platform
 
 DOMAIN = "ninebot"
-VERSION = "2.0.0b42"
+VERSION = "2.0.0b45"
 PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
@@ -25,6 +25,7 @@ CONF_CONTROL_VEHICLES = "control_vehicles"
 CONF_ESTIMATION = "enable_estimation"
 CONF_COORDINATES = "enable_coordinates"
 CONF_DEBUG = "debug_mode"
+CONF_CALENDAR = "enable_calendar"
 DEFAULT_POLL_INTERVAL = 120
 DEFAULT_COORDINATES = True
 DETAIL_INTERVAL = 600

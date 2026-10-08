@@ -52,6 +52,12 @@ class NinebotTracker(NinebotEntity, TrackerEntity):
     def entity_picture(self) -> str | None:
         return self.snapshot.profile.image_url if self.snapshot else None
 
+    @property
+    def battery_level(self) -> int | None:
+        """Associate the tracker with propulsion SOC, never communication SOC."""
+        value = self.snapshot.status.battery if self.snapshot else None
+        return round(value) if value is not None else None
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: NinebotConfigEntry, add: AddEntitiesCallback

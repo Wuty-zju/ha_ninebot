@@ -98,12 +98,14 @@
           "enable_controls": "启用车辆控制",
           "control_vehicles": "允许控制的车辆",
           "debug_mode": "调试模式",
-          "configure_model": "配置电池额定参数"
+          "configure_model": "配置电池额定参数",
+          "enable_calendar": "启用行程日历"
         },
         "data_description": {
           "debug_mode": "只显示已取得快照的安全解析，不输出账号、位置或轨迹。",
           "configure_model": "选择HA中的车辆设备；与车辆的两个额定参数配置实体共用存储。",
-          "enable_coordinates": "显示位置复用状态查询，不增加请求；位置可能进入 Home Assistant 历史。关闭后不暴露坐标，坐标系尚未核验。"
+          "enable_coordinates": "显示位置复用状态查询，不增加请求；位置可能进入 Home Assistant 历史。关闭后不暴露坐标，坐标系尚未核验。",
+          "enable_calendar": "开关每辆车的本地行程日历。关闭不删除历史记录；重新开启沿用原实体。浏览日历不会请求云端。"
         }
       },
       "model_vehicle": {

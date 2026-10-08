@@ -15,7 +15,7 @@ export function digits(value, fallback = 0) {
 
 const SCALARS = ['ride_id', 'detail_id', 'query_month', 'source', 'start_time', 'end_time',
   'distance_m', 'duration_s', 'max_speed_m_s', 'average_speed_m_s', 'energy_wh',
-  'used_electricity_raw', 'received_at', 'parser_contract'];
+  'used_electricity_raw', 'energy_intensity_wh_per_km', 'received_at', 'parser_contract'];
 export function safeRide(ride) {
   const result = Object.fromEntries(SCALARS.map(key => [key, ride[key] ?? null]));
   result.precision = Object.fromEntries(['mileages', 'duration', 'speed', 'ec'].map(
@@ -26,6 +26,12 @@ export function safeRide(ride) {
   result.speed_samples = (Array.isArray(ride.speed_samples) ? ride.speed_samples : [])
     .slice(0, 500).filter(point => Number.isFinite(point.sequence) && Number.isFinite(point.speed_raw))
     .map(point => ({ sequence: point.sequence, speed_raw: point.speed_raw }));
+  result.distance_samples = (Array.isArray(ride.distance_samples) ? ride.distance_samples : [])
+    .slice(0, 500).filter(point => Number.isFinite(point.sequence) && Number.isFinite(point.distance_delta_raw))
+    .map(point => ({ sequence: point.sequence, distance_delta_raw: point.distance_delta_raw }));
+  result.track_summary = { total_known: Number.isInteger(ride.track_summary?.total_known) ? ride.track_summary.total_known : null,
+    returned: Number.isInteger(ride.track_summary?.returned) ? ride.track_summary.returned : null,
+    truncated: ride.track_summary?.truncated === true };
   return result; // Never retain tracks, raw payloads, signed URLs or extra fields.
 }
 
@@ -204,6 +210,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       [labels.max_speed, this.number(ride.max_speed_m_s === null ? null : ride.max_speed_m_s * 3.6, 0, 'km/h')],
       [labels.avg_speed, this.number(ride.average_speed_m_s === null ? null : ride.average_speed_m_s * 3.6, 1, 'km/h')],
       [labels.energy, this.number(ride.energy_wh, 0, 'Wh')],
+      [labels.energy_intensity, this.number(ride.energy_intensity_wh_per_km, 1, 'Wh/km')],
       [labels.observed, this.timestamp(ride.received_at)],
     ]) { dl.append(element('dt', name), element('dd', value)); }
     return dl;
@@ -259,19 +266,25 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         section.append(sourceInfo);
         if (displayed.used_electricity_raw !== null) section.append(element('p',
           `${labels.unknown_units}: ${displayed.used_electricity_raw}`, 'note'));
-        const points = samplePolyline(displayed.speed_samples);
-        if (points) {
-          section.append(element('p', labels.samples, 'note'));
+        if (displayed.track_summary.total_known !== null) section.append(element('p',
+          `${labels.track_points}: ${displayed.track_summary.total_known}`, 'note'));
+        for (const [title, samples, field] of [
+          [labels.samples, displayed.speed_samples, 'speed_raw'],
+          [labels.distance_samples, displayed.distance_samples, 'distance_delta_raw'],
+        ]) {
+          const points = samplePolyline(samples.map(point => ({ sequence: point.sequence, speed_raw: point[field] })));
+          if (!points) continue;
+          section.append(element('p', title, 'note'));
           const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
           svg.setAttribute('viewBox', '0 0 300 100'); svg.setAttribute('role', 'img');
-          svg.setAttribute('aria-label', labels.samples);
+          svg.setAttribute('aria-label', title);
           const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
           line.setAttribute('points', points); line.setAttribute('fill', 'none');
           line.setAttribute('stroke', 'var(--primary-color)'); line.setAttribute('stroke-width', '2');
           svg.append(line); section.append(svg);
-          const samples = element('details'); samples.append(element('summary', labels.samples));
-          samples.append(element('p', displayed.speed_samples.map(p => `${p.sequence}: ${p.speed_raw}`).join(' · '), 'note'));
-          section.append(samples);
+          const values = element('details'); values.append(element('summary', title));
+          values.append(element('p', samples.map(p => `${p.sequence}: ${p[field]}`).join(' · '), 'note'));
+          section.append(values);
         }
         const button = this.button(labels.cloud_detail, () => void browser.detail(ride));
         button.disabled ||= !ride.detail_id; section.append(button); card.append(section);

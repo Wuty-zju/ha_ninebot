@@ -105,3 +105,5 @@ Native historical day/month trends are available through the explicit `ninebot.i
 An optional packaged [ride detail card](docs/README.md#optional-ride-detail-card) adds local date pages and explicitly requested details/uncalibrated sample curves, alongside native calendars and statistics graphs.
 
 See the [b44 naming/display migration](docs/README.md#b44-display-and-naming-update) for forced existing-ID renames, presentation and account-header limitations.
+
+[b45 calendar and ride presentation](docs/README.md#b45-calendar-battery-and-ride-presentation)
