@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b46
+
+- Set integration_type to service as requested; the standard HA entry section now uses the Services heading. No custom account-heading patch.
+- Change all ride duration sensors to suggested hours with native seconds retained. Migrate existing owned ride duration registry units once through HA public APIs, preserving IDs and subsequent manual unit changes.
+- Use HA DurationConverter for calendar/hour response presentation; keep backward-compatible duration_s and add duration_h. Align the optional history card to hours. Retain integer presentation from b45: short rides may round to 0 h; exact seconds remain available.
+- Per maintainer instruction, no functional tests, compatibility dispatch, live queries or production operations. Automatic style and distribution checks only.
+
 ## 2.0.0b45
 
 - Reserve the vehicle battery device class for propulsion SOC; retain emergency communication SOC as a separate percentage sensor and explicitly supply main SOC to the GPS tracker.

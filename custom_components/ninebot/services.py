@@ -7,12 +7,14 @@ from typing import Any, cast
 
 from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError, Unauthorized
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
+from homeassistant.util.unit_conversion import DurationConverter
 
 from . import adapters
 from .compat import device_entry_ids, is_child_device
@@ -131,6 +133,11 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
         "end_time": iso(ride.ended_at),
         "distance_m": ride.distance_m,
         "duration_s": ride.duration_s,
+        "duration_h": DurationConverter.convert(
+            ride.duration_s, UnitOfTime.SECONDS, UnitOfTime.HOURS
+        )
+        if ride.duration_s is not None
+        else None,
         "max_speed_m_s": ride.server_max_speed_m_s,
         "average_speed_m_s": (
             None if "duration_time_difference" in ride.issues else ride.average_speed_m_s

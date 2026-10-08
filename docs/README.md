@@ -603,3 +603,12 @@ hours_to_show: 24
 This uses existing consented tracker state/history and does not download rides or increase polling. Recorder/history must retain the location entity. Sampling gaps and the upstream unverified CRS still apply; it is a trace of HA observations, not the complete Ninebot ride trail. Calendar disabling does not disable the tracker. No dashboard or production Recorder setting is modified automatically.
 
 原生地图卡可直接展示HA已有的位置历史：使用设备位置tracker并设置hours_to_show。它不是云端行程轨迹数组的导入入口，不回填历史GPS点、不增加查询。需保留相应Recorder历史并启用坐标；采样间隔可能产生缺段。
+
+
+## b46 service classification and ride hours
+
+The maintainer explicitly selects integration_type=service; HA now uses its standard Services section title. This overrides the previous hub classification decision without changing account/session/device ownership. It does not introduce an unsupported account type.
+
+Monthly, last-ride, today and yesterday ride duration sensors retain native seconds but use HA's duration conversion to display hours. Existing owned ride duration entities receive a one-time public registry unit migration to h, including previous unit choices, as requested; later manual unit changes are not repeatedly overwritten. Unique IDs, Recorder source facts and duration_seconds stay intact. Calendar descriptions and duration_h in historical responses use HA DurationConverter; duration_s remains for existing automations. The optional card uses duration_h. Integer display from b45 remains: a short nonzero ride may round to 0 h; this is presentation only, not a missing or zero-length record. Charging remaining time is not a ride duration and remains unchanged.
+
+简中：按本次明确要求改为service，页面显示“服务”。全部骑行时长默认h，已有实体单位一次迁移；保留原秒、身份与历史。沿用整数显示，短行程可能取整为0h，精确秒仍在属性和Action。未运行功能测试，未修改生产HA。

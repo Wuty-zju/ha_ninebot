@@ -328,7 +328,7 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
-        suggested_unit_of_measurement=UnitOfTime.MINUTES,
+        suggested_unit_of_measurement=UnitOfTime.HOURS,
         value=lambda s: s.travel.reported_duration_s if s.travel else None,
     ),
     Description(
@@ -384,7 +384,7 @@ SENSORS = (
         group="travel",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
-        suggested_unit_of_measurement=UnitOfTime.MINUTES,
+        suggested_unit_of_measurement=UnitOfTime.HOURS,
         value=lambda s: ride_value(s, "duration_s"),
     ),
     Description(
@@ -670,7 +670,7 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
             self._attr_device_class,
         ) = DAY_FIELDS[key]
         if self._attr_device_class is SensorDeviceClass.DURATION:
-            self._attr_suggested_unit_of_measurement = UnitOfTime.MINUTES
+            self._attr_suggested_unit_of_measurement = UnitOfTime.HOURS
 
     @property
     def suggested_display_precision(self) -> int:
