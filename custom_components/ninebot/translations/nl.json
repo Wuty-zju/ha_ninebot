@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "Stilstand en P vereist"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Stilstand en P vereist"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Stilstand en P vereist"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Stilstand en P vereist"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Stilstand en P vereist"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "Op afstand sluiten",
             "state": {
               "manual": "Alleen handmatig sluiten",
-              "guarded": "Stilstand en P vereist"
+              "remote": "Op afstand vergrendelen"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "Op afstand sluiten",
             "state": {
               "manual": "Alleen handmatig sluiten",
-              "guarded": "Stilstand en P vereist"
+              "remote": "Op afstand vergrendelen"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "Resultaat onzeker. Controleer het voertuig."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "Opdracht verzonden; slotstatus niet leesbaar."
     },
     "busy": {
       "message": "Er loopt een voertuigactie of de bedieningslimiet van het account is bereikt. Probeer het opnieuw na afloop."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "Stilstand en P niet bevestigd. Sluitopdracht niet verzonden."
-    },
     "seat_lock_manual": {
       "message": "Het zadelvak kan alleen handmatig worden gesloten."
     },
     "control_target_not_observed": {
-      "message": "Opdracht geaccepteerd, gewenste slotstand niet waargenomen. Controleer het voertuig voor een nieuwe poging."
+      "message": "Opdracht verzonden; gevraagde slotstatus nog niet bevestigd."
     },
     "control_not_sent": {
       "message": "Opdracht niet verzonden: communicatie is tijdelijk niet beschikbaar. Probeer het later opnieuw."

@@ -1,19 +1,16 @@
-"""Offline safety, target confirmation and native Lock service contracts."""
+"""Offline cloud dispatch, target confirmation and native Lock service contracts."""
 
 import asyncio
 from dataclasses import replace
-from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
-from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ninebot import coordinator as module
 from custom_components.ninebot.client import NinecliClient
-from custom_components.ninebot.control_safety import SafetyObservation, SafetySource
 from custom_components.ninebot.coordinator import NinebotCoordinator
 from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
 from custom_components.ninebot.lock import NinebotLock
@@ -97,64 +94,43 @@ async def test_uncertain_post_stays_uncertain_even_when_target_observed(controls
     co.client.async_control.assert_awaited_once()
 
 
-@pytest.mark.parametrize(
-    "stopped,parked,age,source",
-    [
-        (None, None, 0, SafetySource.UNKNOWN),
-        (False, True, 0, SafetySource.REVIEWED_TELEMETRY),
-        (True, False, 0, SafetySource.REVIEWED_TELEMETRY),
-        (True, True, 6, SafetySource.REVIEWED_TELEMETRY),
-        (True, True, -1, SafetySource.REVIEWED_TELEMETRY),
-        (True, True, 0, SafetySource.UNKNOWN),
-    ],
-)
-async def test_lock_requires_reviewed_stopped_and_p_not_acc(
-    controls, entry, stopped, parked, age, source
-):
+@pytest.mark.parametrize("acc", [None, 0, 1, 2])
+async def test_stop_sends_without_motion_or_p_telemetry(controls, entry, acc):
     co = controls
     sn = "SyntheticSN"
     snapshot = co.data[sn]
-    safety = SafetyObservation(stopped, parked, dt_util.utcnow() - timedelta(seconds=age), source)
-    co.data[sn] = replace(snapshot, status=replace(snapshot.status, safety=safety))
-    assert not co.controls_enabled(sn, "engine/stop")
-    for call in (
-        lambda: co.async_control(sn, "engine/stop"),
-        lambda: NinebotLock(entry, sn, "vehicle_lock").async_lock(),
-    ):
-        with pytest.raises(HomeAssistantError) as err:
-            await call()
-        assert err.value.translation_key == "parking_unverified"
-    co.client.async_control.assert_not_awaited()
-    co.client.async_get_status_once.assert_not_awaited()
-
-
-async def test_reviewed_synthetic_safety_can_lock_and_manual_seat_lock_never_posts(controls, entry):
-    co = controls
-    sn = "SyntheticSN"
-    snapshot = co.data[sn]
-    safety = SafetyObservation(True, True, dt_util.utcnow(), SafetySource.REVIEWED_TELEMETRY)
-    co.data[sn] = replace(snapshot, status=replace(snapshot.status, locked=False, safety=safety))
+    co.data[sn] = replace(
+        snapshot, status=replace(snapshot.status, locked=False, observations={"loc.acc": acc})
+    )
     co.client.async_get_status_once.return_value = payload(vehicle=1)
+    assert co.controls_enabled(sn, "engine/stop")
     await NinebotLock(entry, sn, "vehicle_lock").async_lock()
     co.client.async_control.assert_awaited_once_with(sn, "engine/stop")
+    assert co.lock_state(sn, "vehicle_lock") is True
+    assert co.control_results.diagnostics(sn)["engine/stop"]["confirmation"] == "confirmed"
+
+
+async def test_manual_seat_lock_never_posts(controls, entry):
     with pytest.raises(HomeAssistantError) as err:
-        await NinebotLock(entry, sn, "seat_lock").async_lock()
+        await NinebotLock(entry, "SyntheticSN", "seat_lock").async_lock()
     assert err.value.translation_key == "seat_lock_manual"
-    assert co.client.async_control.await_count == 1
+    controls.client.async_control.assert_not_awaited()
 
 
-async def test_already_in_target_sends_nothing_but_consent_is_still_required(controls):
+async def test_already_observed_target_still_sends_once_with_consent(controls):
     co = controls
     sn = "SyntheticSN"
     snapshot = co.data[sn]
     co.data[sn] = replace(snapshot, status=replace(snapshot.status, locked=False))
+    co.client.async_get_status_once.return_value = payload(vehicle=0)
     await co.async_control(sn, "engine/start")
-    assert co.control_results.diagnostics(sn)["engine/start"]["confirmation"] == "already_in_target"
-    co.client.async_control.assert_not_awaited()
-    co.client.async_get_status_once.assert_not_awaited()
+    assert co.control_results.diagnostics(sn)["engine/start"]["confirmation"] == "confirmed"
+    co.client.async_control.assert_awaited_once_with(sn, "engine/start")
+    co.client.async_get_status_once.assert_awaited_once()
     with patch.object(co, "controls_enabled", return_value=False):
         with pytest.raises(HomeAssistantError):
             await co.async_control(sn, "engine/start")
+    assert co.client.async_control.await_count == 1
 
 
 async def test_pending_never_optimistic_and_same_vehicle_across_accounts_is_busy(controls, entry):
@@ -254,25 +230,39 @@ async def test_single_attempt_transport_does_not_double_confirmation_budget(tmp_
     await client.async_close()
 
 
-async def test_safety_changes_while_queued_blocks_stop_at_wire(controls):
+async def test_permission_changes_while_queued_still_blocks_stop(controls):
+    from custom_components.ninebot.capabilities import (
+        CapabilityState,
+        ControlCapability,
+        VehicleCapabilities,
+    )
+
     co = controls
     sn = "SyntheticSN"
-    snapshot = co.data[sn]
-    safe = SafetyObservation(True, True, dt_util.utcnow(), SafetySource.REVIEWED_TELEMETRY)
-    co.data[sn] = replace(snapshot, status=replace(snapshot.status, locked=False, safety=safe))
     gate = co.broker._wire_gate
     await gate.acquire()
     await gate.acquire()
     task = asyncio.create_task(co.async_control(sn, "engine/stop"))
     await asyncio.sleep(0)
     co.data[sn] = replace(
-        co.data[sn], status=replace(co.data[sn].status, safety=replace(safe, parked=False))
+        co.data[sn],
+        status=replace(
+            co.data[sn].status,
+            capabilities=VehicleCapabilities(
+                (
+                    ControlCapability(
+                        "engine/stop",
+                        permission=CapabilityState.DENIED,
+                    ),
+                )
+            ),
+        ),
     )
     gate.release()
     gate.release()
     with pytest.raises(HomeAssistantError) as err:
         await task
-    assert err.value.translation_key == "parking_unverified"
+    assert err.value.translation_key == "controls_disabled"
     co.client.async_control.assert_not_awaited()
     co.client.async_get_status_once.assert_not_awaited()
     assert not co.pending_controls and not co._control_leases
@@ -334,4 +324,92 @@ async def test_broker_rejects_before_wire_without_readback_or_uncertain_claim(co
     assert result["outcome"] == "rejected"
     assert result["confirmation"] == "not_requested" and result["read_attempts"] == 0
     assert result["readback"] == "skipped"
+    assert not co.pending_controls and not co._control_leases
+
+
+async def test_temporary_followup_observes_auto_relock_without_changing_command_result(
+    controls,
+    entry,
+    monkeypatch,
+):
+    co = controls
+    monkeypatch.setattr(module, "CONTROL_FOLLOWUP_DELAYS", (0, 0, 0))
+    co.client.async_get_status_once.side_effect = [
+        payload(vehicle=0),
+        payload(vehicle=0),
+        payload(vehicle=1),
+        payload(vehicle=1),
+    ]
+    await co.async_control("SyntheticSN", "engine/start")
+    following = co._control_followups["SyntheticSN"]
+    assert not co.pending_controls and not co._control_leases
+    await following
+    await asyncio.sleep(0)
+    assert not co._control_followups
+    assert NinebotLock(entry, "SyntheticSN", "vehicle_lock").is_locked is True
+    result = co.control_results.diagnostics("SyntheticSN")["engine/start"]
+    assert result["confirmation"] == "confirmed" and result["observed_locked"] is False
+    assert result["read_attempts"] == 1
+    assert co.client.async_get_status_once.await_count == 4
+    co.client.async_control.assert_awaited_once()
+    co.client.async_get_battery.assert_awaited_once()  # bootstrap only
+    assert module.CONTROL_FOLLOWUP_TIMEOUT == 30
+
+
+async def test_followup_replaced_by_new_command_and_unload_cancels_remaining(controls):
+    co = controls
+    co.client.async_get_status_once.return_value = payload(vehicle=0)
+    await co.async_control("SyntheticSN", "engine/start")
+    old = co._control_followups["SyntheticSN"]
+    co.client.async_get_status_once.return_value = payload(vehicle=1)
+    await co.async_control("SyntheticSN", "engine/stop")
+    assert old.cancelled()
+    latest = co._control_followups["SyntheticSN"]
+    assert latest is not old
+    await co.async_close()
+    assert latest.cancelled() and not co._control_followups
+    assert co.client.async_control.await_count == 2
+
+
+@pytest.mark.parametrize("failure", ["auth", "rate_limit", "network", "ownership"])
+async def test_followup_failure_stops_without_retry_or_replaying_command(
+    controls, monkeypatch, failure
+):
+    co = controls
+    co.client.async_get_status_once.return_value = payload(vehicle=0)
+    await co.async_control("SyntheticSN", "engine/start")
+    following = co._control_followups.pop("SyntheticSN")
+    following.cancel()
+    await asyncio.gather(following, return_exceptions=True)
+    monkeypatch.setattr(module, "CONTROL_FOLLOWUP_DELAYS", (0, 0, 0))
+    if failure == "ownership":
+        owner = co._key("SyntheticSN", module.Endpoint.STATUS)
+        co._generation += 1
+    else:
+        owner = co._key("SyntheticSN", module.Endpoint.STATUS)
+        co.client.async_get_status_once.side_effect = (
+            NinebotAuthError()
+            if failure == "auth"
+            else NinebotError(ErrorKind.SERVICE, retry_after=60)
+            if failure == "rate_limit"
+            else NinebotError(ErrorKind.CONNECTION)
+        )
+    await co._control_followup("SyntheticSN", owner, asyncio.get_running_loop().time())
+    assert co.client.async_get_status_once.await_count == (1 if failure == "ownership" else 2)
+    co.client.async_control.assert_awaited_once()
+
+
+async def test_followup_deadline_cancels_slow_read_without_replaying(controls, monkeypatch):
+    co = controls
+    monkeypatch.setattr(module, "CONTROL_FOLLOWUP_TIMEOUT", 0.02)
+    monkeypatch.setattr(module, "CONTROL_FOLLOWUP_DELAYS", (0, 0, 0))
+
+    async def blocked(*args):
+        await asyncio.Event().wait()
+
+    co.client.async_get_status_once.side_effect = blocked
+    owner = co._key("SyntheticSN", module.Endpoint.STATUS)
+    await co._control_followup("SyntheticSN", owner, asyncio.get_running_loop().time())
+    co.client.async_get_status_once.assert_awaited_once()
+    co.client.async_control.assert_not_awaited()
     assert not co.pending_controls and not co._control_leases

@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from .capabilities import VehicleCapabilities
-from .control_safety import SafetyObservation
 from .exceptions import ErrorKind
 from .month_summary import MonthSummary
 from .parsing import JsonScalar
@@ -35,7 +34,6 @@ class VehicleStatus:
     capabilities: VehicleCapabilities = field(default_factory=VehicleCapabilities)
     observations: dict[str, JsonScalar] = field(default_factory=dict)
     precision: tuple[tuple[str, int], ...] = ()
-    safety: SafetyObservation = field(default_factory=SafetyObservation)
 
 
 @dataclass(frozen=True)

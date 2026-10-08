@@ -207,8 +207,7 @@
           "ready": "Ready to send",
           "unverified": "Upstream capability unverified",
           "denied": "Upstream explicitly denied",
-          "unsupported": "Command unsupported",
-          "parking_unverified": "Stillstand und P erforderlich"
+          "unsupported": "Command unsupported"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Stillstand und P erforderlich"
+              "unsupported": "Command unsupported"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Stillstand und P erforderlich"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Stillstand und P erforderlich"
+              "unsupported": "Command unsupported"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "Ready to send",
               "unverified": "Upstream capability unverified",
               "denied": "Upstream explicitly denied",
-              "unsupported": "Command unsupported",
-              "parking_unverified": "Stillstand und P erforderlich"
+              "unsupported": "Command unsupported"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "Fernverriegelung",
             "state": {
               "manual": "Nur manuell verriegeln",
-              "guarded": "Stillstand und P erforderlich"
+              "remote": "Fernverriegelung"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "Fernverriegelung",
             "state": {
               "manual": "Nur manuell verriegeln",
-              "guarded": "Stillstand und P erforderlich"
+              "remote": "Fernverriegelung"
             }
           },
           "last_operation": {
@@ -566,10 +561,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Control outcome is unconfirmed; it may have executed. Check the vehicle before retrying."
+      "message": "Befehlsergebnis unklar. Fahrzeug prüfen."
     },
     "control_readback_failed": {
-      "message": "The command was accepted, but current status could not be read. Physical completion is unconfirmed."
+      "message": "Befehl gesendet; Schlosszustand nicht lesbar."
     },
     "busy": {
       "message": "Ein Fahrzeugvorgang läuft bereits oder das Steuerungslimit des Kontos ist erreicht. Danach erneut versuchen."
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "Entity identity storage unavailable; check Repairs."
     },
-    "parking_unverified": {
-      "message": "Stillstand und P nicht bestätigt. Verriegelungsbefehl nicht gesendet."
-    },
     "seat_lock_manual": {
       "message": "Das Sitzfach kann nur manuell verriegelt werden."
     },
     "control_target_not_observed": {
-      "message": "Befehl angenommen, gewünschter Schlosszustand nicht beobachtet. Fahrzeug vor erneutem Versuch prüfen."
+      "message": "Befehl gesendet; gewünschter Schlosszustand noch nicht bestätigt."
     },
     "control_not_sent": {
       "message": "Befehl nicht gesendet: Die Kommunikation ist vorübergehend nicht verfügbar. Später erneut versuchen."

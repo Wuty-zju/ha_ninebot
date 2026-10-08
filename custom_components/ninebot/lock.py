@@ -31,7 +31,7 @@ class NinebotLock(NinebotEntity, LockEntity):
             default=None,
         )
         return {
-            "remote_lock_mode": "manual" if self.key == "seat_lock" else "guarded",
+            "remote_lock_mode": "manual" if self.key == "seat_lock" else "remote",
             "last_operation": latest,
         }
 

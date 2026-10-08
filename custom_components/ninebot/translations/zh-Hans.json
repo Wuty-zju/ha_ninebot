@@ -207,8 +207,7 @@
           "ready": "可发送命令",
           "unverified": "上游能力尚未确认",
           "denied": "上游已明确拒绝",
-          "unsupported": "不支持此命令",
-          "parking_unverified": "需停车且挂P档"
+          "unsupported": "不支持此命令"
         },
         "state_attributes": {
           "bell": {
@@ -221,8 +220,7 @@
               "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
               "denied": "上游已明确拒绝",
-              "unsupported": "不支持此命令",
-              "parking_unverified": "需停车且挂P档"
+              "unsupported": "不支持此命令"
             }
           },
           "bucket": {
@@ -235,8 +233,7 @@
               "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
               "denied": "上游已明确拒绝",
-              "unsupported": "不支持此命令",
-              "parking_unverified": "需停车且挂P档"
+              "unsupported": "不支持此命令"
             }
           },
           "engine_start": {
@@ -249,8 +246,7 @@
               "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
               "denied": "上游已明确拒绝",
-              "unsupported": "不支持此命令",
-              "parking_unverified": "需停车且挂P档"
+              "unsupported": "不支持此命令"
             }
           },
           "engine_stop": {
@@ -263,8 +259,7 @@
               "ready": "可发送命令",
               "unverified": "上游能力尚未确认",
               "denied": "上游已明确拒绝",
-              "unsupported": "不支持此命令",
-              "parking_unverified": "需停车且挂P档"
+              "unsupported": "不支持此命令"
             }
           }
         }
@@ -536,7 +531,7 @@
             "name": "远程上锁",
             "state": {
               "manual": "仅手动上锁",
-              "guarded": "需停车且挂P档"
+              "remote": "远程上锁"
             }
           },
           "last_operation": {
@@ -551,7 +546,7 @@
             "name": "远程上锁",
             "state": {
               "manual": "仅手动上锁",
-              "guarded": "需停车且挂P档"
+              "remote": "远程上锁"
             }
           },
           "last_operation": {
@@ -563,16 +558,16 @@
   },
   "exceptions": {
     "controls_disabled": {
-      "message": "命令未发送：请启用控制、允许此车辆，并检查认证、数据有效性与已知拒绝条件。车辆控制状态显示当前阻止原因。"
+      "message": "指令未发送，请检查控制设置和账号连接。"
     },
     "control_uncertain": {
-      "message": "控制未确认；可能已执行，请检查车辆后再操作。"
+      "message": "操作结果不确定，请检查车辆。"
     },
     "control_readback_failed": {
-      "message": "命令已被接口接受，但未能读取当前状态；无法据此确认车辆动作。"
+      "message": "指令已发送，暂时无法读取锁状态。"
     },
     "busy": {
-      "message": "已有车辆操作正在进行，或账号控制数量已达上限。请等待结束后重试。"
+      "message": "车辆操作进行中，请稍后重试。"
     },
     "model_storage_invalid": {
       "message": "电池参数存储不可写，请先处理修复提示。"
@@ -622,14 +617,11 @@
     "entity_id_storage_invalid": {
       "message": "实体身份存储不可用，请检查修复提示。"
     },
-    "parking_unverified": {
-      "message": "无法确认车辆已停止并挂入P档，上锁命令未发送。"
-    },
     "seat_lock_manual": {
       "message": "座桶只能手动上锁。"
     },
     "control_target_not_observed": {
-      "message": "命令已被接口接受，但未观察到目标锁状态；请检查车辆后再操作。"
+      "message": "指令已发送，尚未确认目标锁状态，请检查车辆。"
     },
     "control_not_sent": {
       "message": "操作未发送：通信暂不可用，请稍后重试。"

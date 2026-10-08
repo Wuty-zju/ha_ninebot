@@ -40,7 +40,7 @@ from .control_results import (
     ControlResults,
     ReadbackOutcome,
 )
-from .control_safety import LOCK_TARGETS
+from .control_targets import LOCK_TARGETS
 from .demand import Group, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
@@ -56,6 +56,8 @@ from .travel_observation import MonthObservation
 LOGGER = logging.getLogger(__name__)
 CONFIRMATION_DELAYS = (0, 2, 5)
 CONFIRMATION_TIMEOUT = 10
+CONTROL_FOLLOWUP_DELAYS = (10, 20, 25)
+CONTROL_FOLLOWUP_TIMEOUT = 30
 
 
 def travel_record(record: RawRecord, month: str) -> TravelMonth:
@@ -120,6 +122,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._stopping = False
         self._authenticated = False
         self._control_pending = 0
+        self._control_followups: dict[str, asyncio.Task[None]] = {}
         self._query_pending = 0
         self._active: set[asyncio.Task[Any]] = set()
         self._forced: dict[str, asyncio.Task[bool]] = {}
@@ -1021,14 +1024,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     snapshot is not None and snapshot.status_freshness.error is None,
                 ),
                 ("transport_unsupported", action in self.backend.control_actions),
-                (
-                    "parking_unverified",
-                    action != "engine/stop"
-                    or (
-                        snapshot is not None
-                        and snapshot.status.safety.permits_lock(dt_util.utcnow())
-                    ),
-                ),
             ),
         )
 
@@ -1058,6 +1053,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         if task:
             self._active.add(task)
         try:
+            if previous := self._control_followups.pop(sn, None):
+                previous.cancel()
+                await asyncio.gather(previous, return_exceptions=True)
             await self._control(sn, action)
         finally:
             self.pending_controls.pop(sn, None)
@@ -1078,9 +1076,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         ):
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
-                translation_key="parking_unverified"
-                if "parking_unverified" in self.control_decision(sn, action).blockers
-                else "controls_disabled",
+                translation_key="controls_disabled",
             )
         result = None
         try:
@@ -1091,15 +1087,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if target:
                 result.target_locked = target[1]
                 result.observed_locked = self.lock_state(sn, target[0])
-                stamp = self.data[sn].status_freshness.succeeded_at
-                if (
-                    stamp is not None
-                    and 0 <= (dt_util.utcnow() - stamp).total_seconds() <= 5
-                    and result.observed_locked is target[1]
-                ):
-                    result.outcome = CommandOutcome.ALREADY_IN_TARGET
-                    result.confirmation = Confirmation.ALREADY_IN_TARGET
-                    return
                 self.pending_controls[sn] = action
                 result.confirmation = Confirmation.PENDING
                 self.async_update_listeners()
@@ -1138,14 +1125,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     translation_domain=DOMAIN,
                     translation_key="busy"
                     if command_error.kind is ErrorKind.BUSY
-                    else "parking_unverified"
-                    if "parking_unverified" in self.control_decision(sn, action).blockers
                     else "controls_disabled"
                     if command_error.kind is ErrorKind.CLOSED
                     else "control_not_sent",
                 ) from None
             if target:
+                started = asyncio.get_running_loop().time()
                 refreshed = await self._confirm_lock(sn, result, target[0], owner, command_revision)
+                if self._owns(owner) and not self.broker.cooling_down:
+                    self._schedule_control_followup(sn, owner, started)
             else:
                 refreshed = await self._control_readback(sn, result)
             if command_error is not None:
@@ -1173,6 +1161,42 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         finally:
             if result is not None:
                 result.finished_at = dt_util.utcnow()
+
+    def _schedule_control_followup(self, sn: str, owner: QueryKey, started: float) -> None:
+        """Observe automatic relocking without holding pending state or a lease."""
+        assert self.config_entry is not None
+        task = self.config_entry.async_create_background_task(
+            self.hass, self._control_followup(sn, owner, started), "ninebot lock state follow-up"
+        )
+        self._control_followups[sn] = task
+
+        def finished(done: asyncio.Task[None]) -> None:
+            if self._control_followups.get(sn) is done:
+                self._control_followups.pop(sn, None)
+
+        task.add_done_callback(finished)
+
+    async def _control_followup(self, sn: str, owner: QueryKey, started: float) -> None:
+        """Three additional status-only reads; never replay a control command."""
+        loop = asyncio.get_running_loop()
+        try:
+            async with asyncio.timeout_at(started + CONTROL_FOLLOWUP_TIMEOUT):
+                for offset in CONTROL_FOLLOWUP_DELAYS:
+                    await asyncio.sleep(max(0, started + offset - loop.time()))
+                    if not self._owns(owner) or not self._authenticated or self.broker.cooling_down:
+                        return
+                    self._barriers[sn] = self._barriers.get(sn, 0) + 1
+                    await self._group(sn, "status", force=True, single_attempt=True)
+                    if not self._owns(owner):
+                        return
+                    self.async_set_updated_data(dict(self.data))
+                    self._schedule_validity_check()
+                    if self.data[sn].status_freshness.error is not None:
+                        return
+        except NinebotAuthError:
+            self._manual_auth_failure()
+        except (TimeoutError, NinebotError):
+            return  # Normal polling/backoff resumes; no repeated control warnings.
 
     def lock_state(self, sn: str, key: str) -> bool | None:
         snapshot = self.data.get(sn)
@@ -1293,7 +1317,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self._validity_cancel = None
         if self._shutdown_task is None:
             current = asyncio.current_task()
-            tasks = (self._active | set(self._forced.values())) - {current}
+            tasks = (
+                self._active | set(self._forced.values()) | set(self._control_followups.values())
+            ) - {current}
             for task in tasks:
                 task.cancel()
             self._shutdown_task = asyncio.create_task(self._shutdown(tasks))

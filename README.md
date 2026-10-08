@@ -70,10 +70,12 @@ See [travel/actions/event contract and example](docs/README.md).
 Controls require explicit enablement, an allowed vehicle, authentication and fresh ownership/status.
 Known denials or ambiguity block dispatch; unknown permission stays unknown and the cloud decides authorization.
 Native vehicle/seat Lock entities share the same guarded executor as the retained buttons.
-Start unlocks the vehicle; stop may lock only with reviewed, fresh stopped-and-P evidence. Current
-ninecli data provides no verified motion/P signal, so remote locking is refused rather than guessed
-from ACC or power. Buck releases the seat lock; seat locking is manual only.
-A command is sent at most once, followed by at most three single-attempt status reads within ten seconds.
+Start unlocks the vehicle and stop requests locking. Motion/P policy is enforced by the vehicle/cloud;
+the integration does not disable stop based on missing telemetry. Buck releases the seat lock;
+seat locking is manual only. Explicit lock requests send one command even if cached status already
+shows the target. Up to three single-attempt status reads at 0/2/5 seconds confirm the target,
+then up to three short-lived reads at 10/20/25 seconds observe automatic relocking.
+Follow-up ends within 30 seconds, stops on errors/unload, and is replaced by a newer same-vehicle command.
 Target confirmation means observed cloud state, not physical verification; uncertainty is preserved.
 Same-vehicle actions are mutually exclusive across accounts. Pending state is never optimistic confirmation.
 See [control contract](docs/README.md).
