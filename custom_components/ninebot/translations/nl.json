@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "Het lokale rittenarchief is tijdelijk niet beschikbaar. Probeer het zo opnieuw."
+    },
+    "recorded_range": {
+      "message": "Kies maximaal vijf jaar in datumvolgorde. Verklein het bereik als de leeslimiet is overschreden."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Eindmaand (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Opgeslagen ritten bekijken",
+      "description": "Alleen lokale geschiedenis lezen, zonder cloudverzoeken.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Begindatum",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Einddatum",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

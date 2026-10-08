@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "ローカルの走行アーカイブを一時的に利用できません。しばらくしてから再試行してください。"
+    },
+    "recorded_range": {
+      "message": "日付順に最大5年間を選択してください。読み取り上限を超えた場合は期間を短くしてください。"
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "終了月（YYYYMM）"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "記録済みの走行を表示",
+      "description": "ローカル履歴のみ読み取り、クラウドに問い合わせません。",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "開始日",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "終了日",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

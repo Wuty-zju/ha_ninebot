@@ -14,12 +14,14 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as WorkerTimeout
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from functools import partial
 from pathlib import Path
 from typing import TypeVar
+from zoneinfo import ZoneInfo
 
+from .archive_browse import RecordedCursor, RecordedCursorMismatch, RecordedPage, recorded_page
 from .archive_codec import (
     decoded,
     encoded,
@@ -42,6 +44,7 @@ from .archive_timeline import (
     latest_query,
     timeline_query,
 )
+from .const import BUSINESS_TIMEZONE
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
 from .raw import version_metadata
@@ -755,6 +758,52 @@ class RideArchive:
                 return latest_query(self._db(), key, now_key)
             except TimelineLimitError:
                 raise ArchiveError(ArchiveFailure.BUDGET) from None
+
+        return await self._run(query)
+
+    async def async_recorded_page(
+        self,
+        sn: str,
+        start: datetime,
+        end: datetime,
+        now: datetime,
+        *,
+        limit: int = MAX_PAGE,
+        cursor: RecordedCursor | None = None,
+    ) -> RecordedPage:
+        """Calendar selection as revision-fenced pages, without cloud or writes."""
+        vehicle, start_key, end_key = vehicle_key(sn), utc_string(start), utc_string(end)
+        as_of = cursor.as_of if cursor else utc_string(now)
+        if (
+            start_key >= end_key
+            or (end.astimezone(UTC) - start.astimezone(UTC)).total_seconds()
+            > MAX_TIMELINE_DAYS * 86400
+            or type(limit) is not int
+            or not 1 <= limit <= MAX_PAGE
+        ):
+            raise ValueError("Invalid recorded range")
+        zone = ZoneInfo(BUSINESS_TIMEZONE)
+        first_month = start.astimezone(zone).strftime("%Y%m")
+        last_month = (end - timedelta(microseconds=1)).astimezone(zone).strftime("%Y%m")
+
+        def query() -> RecordedPage:
+            try:
+                return recorded_page(
+                    self._db(),
+                    self.owner,
+                    vehicle,
+                    start_key,
+                    end_key,
+                    as_of,
+                    limit,
+                    first_month,
+                    last_month,
+                    cursor,
+                )
+            except TimelineLimitError:
+                raise ArchiveError(ArchiveFailure.BUDGET) from None
+            except RecordedCursorMismatch:
+                raise ArchiveError(ArchiveFailure.CURSOR) from None
 
         return await self._run(query)
 

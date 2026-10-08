@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "로컬 주행 보관함을 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하세요."
+    },
+    "recorded_range": {
+      "message": "날짜순으로 최대 5년을 선택하세요. 읽기 한도를 초과하면 기간을 줄이세요."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "종료 월 (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "저장된 주행 조회",
+      "description": "로컬 기록만 읽으며 클라우드에 요청하지 않습니다.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "시작 날짜",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "종료 날짜",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "Arsip perjalanan lokal sementara tidak tersedia. Coba lagi sebentar."
+    },
+    "recorded_range": {
+      "message": "Pilih hingga lima tahun sesuai urutan tanggal. Persempit rentang jika batas pembacaan terlampaui."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Bulan akhir (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Lihat perjalanan tersimpan",
+      "description": "Hanya membaca riwayat lokal, tanpa permintaan cloud.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Tanggal mulai",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Tanggal akhir",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

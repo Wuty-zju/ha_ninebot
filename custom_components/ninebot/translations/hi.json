@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "स्थानीय यात्रा संग्रह अभी उपलब्ध नहीं है। थोड़ी देर बाद फिर प्रयास करें।"
+    },
+    "recorded_range": {
+      "message": "तिथि क्रम में अधिकतम पाँच वर्ष चुनें। पढ़ने की सीमा पार होने पर अवधि घटाएँ।"
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "अंत महीना (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "सहेजी गई यात्राएँ देखें",
+      "description": "केवल स्थानीय इतिहास पढ़ें; क्लाउड अनुरोध नहीं।",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "आरंभ तिथि",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "अंतिम तिथि",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }

@@ -4,11 +4,13 @@ from datetime import datetime
 from functools import partial
 from typing import Any, cast
 
+from homeassistant.auth.permissions.const import POLICY_READ
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse, callback
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError, Unauthorized
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from . import adapters
@@ -145,6 +147,7 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
         "server_average_speed_raw": ride.server_average_speed_raw,
         "raw_units": "unknown",
         "parser_contract": ride.parser_contract,
+        "precision": dict(ride.precision),
         "field_provenance": dict(ride.field_provenance),
         "field_states": {name: state.value for name, state in ride.field_states},
         "field_sources": dict(ride.field_sources),
@@ -296,7 +299,9 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     require_live = call.service == "get_trip_detail" or call.data.get("include_detail", False)
     entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=require_live)
     co = entry.runtime_data.coordinator
+    generation, ownership = co._generation, co._ownership.get(sn, 0)
     include_track = call.data["include_track"]
+    await async_check_history_access(hass, call, entry.entry_id, include_track=include_track)
     if include_track and entry.options.get(CONF_COORDINATES, DEFAULT_COORDINATES) is not True:
         raise validation_error("query_coordinates")
     is_list = call.service == "get_trips"
@@ -388,10 +393,45 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
             }
     except NinebotError as err:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key=err.kind.value) from err
+    await async_check_history_access(hass, call, entry.entry_id, include_track=include_track)
     assert_query_scope(
         hass, call.data["device_id"], entry.entry_id, sn, include_track, require_live=require_live
     )
+    if generation != co._generation or ownership != co._ownership.get(sn, 0):
+        raise validation_error("query_unavailable")
     return response
+
+
+async def async_check_history_access(
+    hass: HomeAssistant, call: ServiceCall, entry_id: str, *, include_track: bool = False
+) -> None:
+    """Standard HA permissions, including device-scoped restricted users.
+
+    Automations have no user context. Ordinary full readers are allowed; a
+    restricted reader needs this vehicle's Calendar, and tracker for GPS.
+    Owning an unrelated telemetry entity does not grant trip history access.
+    """
+    if call.context.user_id is None:
+        return
+    user = await hass.auth.async_get_user(call.context.user_id)
+    if user is None or not user.is_active:
+        raise Unauthorized(context=call.context, permission=POLICY_READ)
+    if user.permissions.access_all_entities(POLICY_READ):
+        return
+    rows = er.async_entries_for_device(er.async_get(hass), call.data["device_id"])
+    platforms = ("calendar", "device_tracker") if include_track else ("calendar",)
+    if any(
+        not any(
+            row.platform == DOMAIN
+            and row.config_entry_id == entry_id
+            and row.domain == platform
+            and row.disabled_by is None
+            and user.permissions.check_entity(row.entity_id, POLICY_READ)
+            for row in rows
+        )
+        for platform in platforms
+    ):
+        raise Unauthorized(context=call.context, permission=POLICY_READ)
 
 
 async def async_entity_migration(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
@@ -406,9 +446,18 @@ async def async_entity_migration(hass: HomeAssistant, call: ServiceCall) -> dict
 def async_register_actions(hass: HomeAssistant) -> None:
     """Actions remain available in editors when no account is loaded."""
     from .history_actions import HISTORY_SCHEMA, async_history_query
+    from .recorded_actions import RECORDED_SCHEMA, async_recorded_query
     from .statistics_actions import STATISTICS_SCHEMA, async_statistics_query
     from .statistics_export import IMPORT_SCHEMA, async_import_statistics
     from .sync_actions import SYNC_SCHEMA, async_sync_history
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_recorded_trips",
+        partial(async_recorded_query, hass),
+        schema=RECORDED_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
 
     hass.services.async_register(
         DOMAIN,

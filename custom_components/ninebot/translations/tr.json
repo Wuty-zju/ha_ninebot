@@ -642,6 +642,9 @@
     },
     "calendar_unavailable": {
       "message": "Yerel sürüş arşivi geçici olarak kullanılamıyor. Kısa süre sonra tekrar deneyin."
+    },
+    "recorded_range": {
+      "message": "Tarih sırasıyla en fazla beş yıl seçin. Okuma sınırı aşılırsa aralığı daraltın."
     }
   },
   "issues": {
@@ -858,6 +861,30 @@
         },
         "end_month": {
           "name": "Bitiş ayı (YYYYMM)"
+        }
+      }
+    },
+    "get_recorded_trips": {
+      "name": "Kayıtlı sürüşleri görüntüle",
+      "description": "Yalnızca yerel geçmişi okur; buluta istek göndermez.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle"
+        },
+        "limit": {
+          "name": "Maximum rides returned",
+          "description": "1–100"
+        },
+        "cursor": {
+          "name": "Continuation from the previous response"
+        },
+        "start_date": {
+          "name": "Başlangıç tarihi",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "end_date": {
+          "name": "Bitiş tarihi",
+          "description": "YYYY-MM-DD · Asia/Shanghai"
         }
       }
     }
