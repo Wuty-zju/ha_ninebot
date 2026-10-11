@@ -574,7 +574,7 @@ no unverified coordinate conversion is performed.
 
 ## b45 calendar, battery and ride presentation
 
-Only the propulsion SOC sensor declares the vehicle's battery device class. Emergency communication SOC remains a separate percentage/measurement entity; the tracker battery level explicitly uses propulsion SOC. No source values or unique IDs change.
+Only the propulsion SOC sensor declares the vehicle's battery device class. Emergency communication SOC remains a separate percentage/measurement entity; battery information comes from that standalone sensor, not the deprecated tracker battery_level property. No source values or unique IDs change.
 
 Configure → Enable ride calendar toggles the per-vehicle local calendar (default on). Disabling removes its active runtime consumer, not recorded rides or registry identity; enabling restores the same entity. Other enabled ride entities still request travel normally. Calendar entries show local start/end, distance (one decimal km), duration (integer min), max speed (integer km/h), average speed (one decimal), energy (integer Wh), and intensity (one decimal Wh/km). Missing facts are omitted rather than invented. Browsing remains local and bounded.
 
@@ -619,3 +619,10 @@ Monthly, last-ride, today and yesterday ride duration sensors retain native seco
 This overrides b46 integer presentation: monthly, last-ride, today and yesterday ride durations display hours with two decimals, including 0.00 h. Native seconds, duration_seconds, archive facts and unrounded duration_s/duration_h responses remain intact. HA converts sensor units; calendar and card hour values retain the existing HA DurationConverter path. Existing owned duration entities receive one public registry h/display_precision=2 migration (ride_hours_revision=2), including previous presentation overrides; later user changes remain respected. Calendar/card formatting agrees with the default entities. Charging remaining time and other sensor precision stay unchanged. No functional tests or production changes were performed.
 
 简中：骑行时长统一默认h、两位小数（0.00 h），覆盖旧版整数显示；已有实体单位及精度一次迁移。原秒值/历史/身份保留，充电剩余时间不变。本轮未功能测试、未修改生产HA。
+
+
+## b49 tracker battery compatibility
+
+The Device location tracker no longer overrides deprecated battery_level. Use the vehicle's Main battery charge sensor for battery information and automations; emergency communication charge remains separate. Tracker identity, coordinates, zones and history are unchanged. Automations reading state_attr(tracker_entity, "battery_level") must read the main battery sensor instead. This follows the Home Assistant [device tracker migration](https://developers.home-assistant.io/blog/2026/06/15/device-tracker-changes/) before removal in 2027.7, without increasing minimum HA or cloud requests.
+
+The loader warning that a custom integration has not been tested by Home Assistant is a standard notice for third-party integrations. It is not suppressed or bypassed.
