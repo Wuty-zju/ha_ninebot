@@ -26,7 +26,7 @@ See [backend/auth contract](docs/README.md).
 
 ## Current data and options
 
-- Vehicle SOC, one remaining-range sensor (precise → estimated → AI), charging, power and native vehicle/seat locks.
+- Vehicle SOC, separate precise, estimated and AI-estimated range sensors (AI is diagnostic), charging, power and native vehicle/seat locks.
 - BMS voltage, temperature, supported cycles, charging power in W and a health score that is **not SOH**.
 - Current-month distance, energy in Wh, ride count and total duration; last-ride distance/time/energy/max/overall average speed.
 - Emergency communication battery SOC (%), main battery type (lithium/lead acid), Apple Find My and cycle support.

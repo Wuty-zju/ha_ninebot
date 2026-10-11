@@ -121,7 +121,7 @@ def test_source_precision_preserves_reported_scale_and_detail_corrections():
     )
     snapshot = VehicleSnapshot(
         VehicleProfile("test", "Vehicle", "Model"),
-        status({"dump_energy": "88", "estimate_mileage": 98.3}),
+        status({"dump_energy": "88", "precise_estimate_mileage": 98.3}),
         batteries({"battery_list": [{"bms_volt": "77.7", "bat_temp": "22"}]}),
         month,
     )

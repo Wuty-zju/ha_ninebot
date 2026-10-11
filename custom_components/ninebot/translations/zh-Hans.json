@@ -137,7 +137,7 @@
         "name": "主电池电量"
       },
       "endurance": {
-        "name": "剩余续航"
+        "name": "精准续航"
       },
       "remaining_charge_time": {
         "name": "剩余充电时间",
@@ -465,6 +465,12 @@
           "lead_acid": "铅酸",
           "unrecognized": "未识别"
         }
+      },
+      "range_estimated": {
+        "name": "预估续航"
+      },
+      "range_ai": {
+        "name": "AI 预估续航"
       }
     },
     "binary_sensor": {

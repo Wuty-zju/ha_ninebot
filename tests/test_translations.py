@@ -47,10 +47,10 @@ def test_translation_resources_have_matching_structure_and_placeholders():
 @pytest.mark.parametrize(
     "language,expected",
     [
-        ("en", "Remaining range"),
-        ("zh-Hans", "剩余续航"),
-        ("de", "Restreichweite"),
-        ("ja", "航続可能距離"),
+        ("en", "Precise range"),
+        ("zh-Hans", "精准续航"),
+        ("de", "Präzise Reichweite"),
+        ("ja", "精密推定航続距離"),
     ],
 )
 async def test_real_ha_loads_localized_entity_resources(hass, language, expected):

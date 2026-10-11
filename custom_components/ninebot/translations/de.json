@@ -137,7 +137,7 @@
         "name": "Hauptbatterie: Ladestand"
       },
       "endurance": {
-        "name": "Restreichweite"
+        "name": "Präzise Reichweite"
       },
       "remaining_charge_time": {
         "name": "Verbleibende Ladezeit",
@@ -465,6 +465,12 @@
           "lead_acid": "Blei-Säure",
           "unrecognized": "Nicht erkannt"
         }
+      },
+      "range_estimated": {
+        "name": "Geschätzte Reichweite"
+      },
+      "range_ai": {
+        "name": "KI-geschätzte Reichweite"
       }
     },
     "binary_sensor": {

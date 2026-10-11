@@ -137,7 +137,7 @@
         "name": "主バッテリー: 残量"
       },
       "endurance": {
-        "name": "航続可能距離"
+        "name": "精密推定航続距離"
       },
       "remaining_charge_time": {
         "name": "充電残り時間",
@@ -465,6 +465,12 @@
           "lead_acid": "鉛蓄電池",
           "unrecognized": "未識別"
         }
+      },
+      "range_estimated": {
+        "name": "推定航続距離"
+      },
+      "range_ai": {
+        "name": "AI 推定航続距離"
       }
     },
     "binary_sensor": {

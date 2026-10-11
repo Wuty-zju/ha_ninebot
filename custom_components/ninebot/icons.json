@@ -114,6 +114,12 @@
       },
       "main_battery_type": {
         "default": "mdi:car-battery"
+      },
+      "range_estimated": {
+        "default": "mdi:map-marker-distance"
+      },
+      "range_ai": {
+        "default": "mdi:map-marker-distance"
       }
     },
     "event": {

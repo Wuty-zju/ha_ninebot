@@ -137,7 +137,7 @@
         "name": "Bateria principal: carga"
       },
       "endurance": {
-        "name": "Autonomia restante"
+        "name": "Autonomia precisa"
       },
       "remaining_charge_time": {
         "name": "Tempo de carga restante",
@@ -465,6 +465,12 @@
           "lead_acid": "Chumbo-ácido",
           "unrecognized": "Não reconhecido"
         }
+      },
+      "range_estimated": {
+        "name": "Autonomia estimada"
+      },
+      "range_ai": {
+        "name": "Autonomia estimada por IA"
       }
     },
     "binary_sensor": {

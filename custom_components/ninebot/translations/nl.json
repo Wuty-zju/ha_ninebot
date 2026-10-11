@@ -137,7 +137,7 @@
         "name": "Hoofdbatterij: lading"
       },
       "endurance": {
-        "name": "Resterende actieradius"
+        "name": "Nauwkeurig rijbereik"
       },
       "remaining_charge_time": {
         "name": "Resterende laadtijd",
@@ -465,6 +465,12 @@
           "lead_acid": "Loodzuur",
           "unrecognized": "Niet herkend"
         }
+      },
+      "range_estimated": {
+        "name": "Geschat rijbereik"
+      },
+      "range_ai": {
+        "name": "AI-geschat rijbereik"
       }
     },
     "binary_sensor": {

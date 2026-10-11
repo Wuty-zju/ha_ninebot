@@ -137,7 +137,7 @@
         "name": "मुख्य बैटरी: चार्ज"
       },
       "endurance": {
-        "name": "शेष दूरी"
+        "name": "सटीक शेष दूरी"
       },
       "remaining_charge_time": {
         "name": "शेष चार्जिंग समय",
@@ -465,6 +465,12 @@
           "lead_acid": "लेड एसिड",
           "unrecognized": "पहचाना नहीं गया"
         }
+      },
+      "range_estimated": {
+        "name": "अनुमानित शेष दूरी"
+      },
+      "range_ai": {
+        "name": "AI अनुमानित शेष दूरी"
       }
     },
     "binary_sensor": {

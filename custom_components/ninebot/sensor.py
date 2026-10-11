@@ -58,13 +58,13 @@ class Description(SensorEntityDescription):
 def source_precision(snapshot: VehicleSnapshot, key: str) -> int | None:
     if key == "battery":
         return dict(snapshot.status.precision).get("dump_energy")
-    if key == "endurance":
-        field = {
-            "range_precise": "precise_estimate_mileage",
-            "range_estimated": "estimate_mileage",
-            "range_ai": "ai_estimate_mileage",
-        }.get(range_source(snapshot) or "")
-        return dict(snapshot.status.precision).get(field) if field else None
+    range_fields = {
+        "endurance": "precise_estimate_mileage",
+        "range_estimated": "estimate_mileage",
+        "range_ai": "ai_estimate_mileage",
+    }
+    if key in range_fields:
+        return dict(snapshot.status.precision).get(range_fields[key])
     if key == "charging_power_raw":
         return dict(snapshot.battery.precision).get("charging_power")
     if snapshot.travel:
@@ -198,21 +198,12 @@ def ride_speed(snapshot: VehicleSnapshot, field: str) -> float | None:
 
 
 def remaining_range(snapshot: VehicleSnapshot) -> float | None:
-    for value in (
-        snapshot.status.range_precise,
-        snapshot.status.range_estimated,
-        snapshot.status.range_ai,
-    ):
-        if value is not None:
-            return value
-    return None
+    """Keep the historical sensor identity, but report only precise cloud range."""
+    return snapshot.status.range_precise
 
 
 def range_source(snapshot: VehicleSnapshot) -> str | None:
-    for key in ("range_precise", "range_estimated", "range_ai"):
-        if getattr(snapshot.status, key) is not None:
-            return key
-    return None
+    return "range_precise" if snapshot.status.range_precise is not None else None
 
 
 def energy_intensity(snapshot: VehicleSnapshot, *, last: bool = False) -> float | None:
@@ -246,7 +237,29 @@ SENSORS = (
         state_class=SensorStateClass.MEASUREMENT,
         aliases=("remaining_range",),
         value=remaining_range,
+        suggested_display_precision=1,
         attributes=lambda s: {"source": range_source(s)},
+    ),
+    Description(
+        key="range_estimated",
+        group="status",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value=lambda s: s.status.range_estimated,
+        attributes=lambda s: {"source": "estimate_mileage"},
+    ),
+    Description(
+        key="range_ai",
+        group="status",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value=lambda s: s.status.range_ai,
+        attributes=lambda s: {"source": "ai_estimate_mileage"},
     ),
     Description(
         key="remaining_charge_time",
@@ -570,6 +583,8 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             return None
         if description.key in {"month_duration", "last_ride_duration"}:
             return 2
+        if description.key in {"endurance", "range_estimated", "range_ai"}:
+            return 1
         if value == 0:
             return 0
         if description.device_class is SensorDeviceClass.DISTANCE:

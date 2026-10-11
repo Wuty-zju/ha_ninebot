@@ -137,7 +137,7 @@
         "name": "主電池電量"
       },
       "endurance": {
-        "name": "剩餘續航"
+        "name": "精準續航"
       },
       "remaining_charge_time": {
         "name": "剩餘充電時間",
@@ -465,6 +465,12 @@
           "lead_acid": "鉛酸",
           "unrecognized": "未識別"
         }
+      },
+      "range_estimated": {
+        "name": "預估續航"
+      },
+      "range_ai": {
+        "name": "AI 預估續航"
       }
     },
     "binary_sensor": {

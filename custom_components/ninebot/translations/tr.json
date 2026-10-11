@@ -137,7 +137,7 @@
         "name": "Ana batarya: şarj"
       },
       "endurance": {
-        "name": "Kalan menzil"
+        "name": "Hassas menzil"
       },
       "remaining_charge_time": {
         "name": "Kalan şarj süresi",
@@ -465,6 +465,12 @@
           "lead_acid": "Kurşun asit",
           "unrecognized": "Tanınmıyor"
         }
+      },
+      "range_estimated": {
+        "name": "Tahmini menzil"
+      },
+      "range_ai": {
+        "name": "Yapay zekâ tahmini menzil"
       }
     },
     "binary_sensor": {

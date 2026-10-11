@@ -943,7 +943,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "单一endurance续航实体按precise/estimated/AI优先并报告来源；三值仍保留调试视图"
+          "current_use": "b48三种云端续航独立实体：precise→endurance，estimate→range_estimated，AI→range_ai诊断默认启用；km一位小数，不fallback"
         },
         {
           "path": "$.barrel_lock_status",
@@ -1082,7 +1082,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "单一endurance续航实体按precise/estimated/AI优先并报告来源；三值仍保留调试视图"
+          "current_use": "b48三种云端续航独立实体：precise→endurance，estimate→range_estimated，AI→range_ai诊断默认启用；km一位小数，不fallback"
         },
         {
           "path": "$.is_common_user",
@@ -1314,7 +1314,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "单一endurance续航实体按precise/estimated/AI优先并报告来源；三值仍保留调试视图"
+          "current_use": "b48三种云端续航独立实体：precise→endurance，estimate→range_estimated，AI→range_ai诊断默认启用；km一位小数，不fallback"
         },
         {
           "path": "$.precise_mileage_user_choose",

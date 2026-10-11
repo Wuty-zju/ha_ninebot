@@ -121,6 +121,8 @@ async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
 
     promoted = [
         row("sensor", "ninebot_syntheticsn_endurance"),
+        row("sensor", "SyntheticSN_range_estimated"),
+        row("sensor", "SyntheticSN_range_ai"),
         row("sensor", "SyntheticSN_last_ride_end"),
         row("image", "SyntheticSN_vehicle_image"),
         row("sensor", "SyntheticSN_month_energy_raw"),
@@ -136,15 +138,21 @@ async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.standard_entities_enabled == len(promoted)
-    assert all(registry.async_get(item.entity_id).disabled_by is None for item in promoted)
-    assert registry.async_get(promoted[0].entity_id).name == "My range"
-    assert all(
-        registry.async_get(item.entity_id).disabled_by == item.disabled_by for item in retained
-    )
+
+    def current(item):
+        # Naming migration changes entity_id; the registry identity stays fixed.
+        entity_id = registry.async_get_entity_id(item.domain, "ninebot", item.unique_id)
+        return registry.async_get(entity_id)
+
+    assert all(current(item).disabled_by is None for item in promoted)
+    assert current(promoted[0]).name == "My range"
+    assert all(current(item).disabled_by == item.disabled_by for item in retained)
     # A user's later disable decision takes precedence on every future reload.
-    registry.async_update_entity(promoted[0].entity_id, disabled_by=er.RegistryEntryDisabler.USER)
+    registry.async_update_entity(
+        current(promoted[0]).entity_id, disabled_by=er.RegistryEntryDisabler.USER
+    )
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.standard_entities_enabled == 0
-    assert registry.async_get(promoted[0].entity_id).disabled_by is er.RegistryEntryDisabler.USER
+    assert current(promoted[0]).disabled_by is er.RegistryEntryDisabler.USER
     app_client.async_control.assert_not_awaited()
