@@ -73,7 +73,7 @@ async def test_full_setup_physical_values_and_unload(hass, entry, app_client):
     lock_id = registry.async_get_entity_id("lock", "ninebot", "SyntheticSN_vehicle_lock")
     assert hass.states.get(lock_id).state == "locked"
     cycle_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_bms_cycles")
-    assert hass.states.get(cycle_id).state == "unknown"
+    assert hass.states.get(cycle_id).state == "unsupported"
     raw_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_month_energy_raw")
     assert registry.async_get(raw_id).disabled_by is None
     assert registry.async_get(raw_id).unit_of_measurement == "Wh"
@@ -736,4 +736,47 @@ async def test_native_gps_tracker_uses_zones_and_removes_coordinates_on_opt_out(
     assert state.state == "unavailable"
     assert "latitude" not in state.attributes and "longitude" not in state.attributes
     assert registry.async_get(row.entity_id).unique_id == row.unique_id
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_tracker_uses_standalone_main_battery_without_deprecated_property(
+    hass, entry, app_client
+):
+    from dataclasses import replace
+
+    from custom_components.ninebot.device_tracker import NinebotTracker
+
+    hass.config_entries.async_update_entry(entry, options={"enable_coordinates": True})
+    app_client.async_get_battery.return_value["battery_main"] = {"electricity": 25}
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+
+    def row(platform, key):
+        return registry.async_get(
+            registry.async_get_entity_id(platform, "ninebot", f"SyntheticSN_{key}")
+        )
+
+    tracker = row("device_tracker", "location")
+    main = row("sensor", "battery")
+    emergency = row("sensor", "emergency_battery")
+    assert "battery_level" not in NinebotTracker.__dict__
+    state = hass.states.get(tracker.entity_id)
+    assert "battery_level" not in state.attributes
+    assert state.attributes["source_type"] == "gps"
+    assert state.attributes["latitude"] == state.attributes["longitude"] == 0
+    assert main.device_id == tracker.device_id
+    assert hass.states.get(main.entity_id).attributes["device_class"] == "battery"
+    assert float(hass.states.get(main.entity_id).state) == 80
+    assert "device_class" not in hass.states.get(emergency.entity_id).attributes
+    assert float(hass.states.get(emergency.entity_id).state) == 25
+    co = entry.runtime_data.coordinator
+    snapshot = co.data["SyntheticSN"]
+    co.async_set_updated_data(
+        {"SyntheticSN": replace(snapshot, status=replace(snapshot.status, battery=62))}
+    )
+    await hass.async_block_till_done()
+    assert float(hass.states.get(main.entity_id).state) == 62
+    assert "battery_level" not in hass.states.get(tracker.entity_id).attributes
+    assert registry.async_get(tracker.entity_id).unique_id == tracker.unique_id
     assert await hass.config_entries.async_unload(entry.entry_id)
