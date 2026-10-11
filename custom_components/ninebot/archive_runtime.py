@@ -140,6 +140,16 @@ class ArchiveStatistics(TravelStatisticsStore):
             return self._projection.month_rides(sn, month)
         return super().month_rides(sn, month)
 
+    def month_metric_complete(self, sn: str, month: str, metric: str) -> bool:
+        if self.archive_ready:
+            return self._projection.month_metric_complete(sn, month, metric)
+        return super().month_metric_complete(sn, month, metric)
+
+    def month_completeness_basis(self, sn: str, month: str) -> str:
+        if self.archive_ready:
+            return self._projection.month_completeness_basis(sn, month)
+        return super().month_completeness_basis(sn, month)
+
     def latest_ride(self, sn: str) -> ArchivedRide | None:
         """Memory-only historical projection, without any live freshness claim."""
         return self._latest.get(sn) if self.archive_ready else None
@@ -150,7 +160,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             view.months = {key: dict(values) for key, values in self.months.items()}
             view.rides = {key: dict(values) for key, values in self.rides.items()}
             return view
-        records = await self.archive.async_months(sn, months)
+        records = await self.archive.async_statistics_months(sn, months)
         return await self.hass.async_add_executor_job(
             ArchiveStatisticsView.from_months, sn, records
         )
@@ -168,10 +178,12 @@ class ArchiveStatistics(TravelStatisticsStore):
         if vehicle is not None and self._projection_month == month:
             records = dict(self._projection.records)
             selections = dict(self._projection.selections)
+            blocked_metrics = dict(self._projection.blocked_metrics)
+            bases = dict(self._projection.completeness_bases)
             latest = dict(self._latest)
             vehicles = (vehicle,)
         else:
-            records, selections = {}, {}
+            records, selections, blocked_metrics, bases = {}, {}, {}, {}
             latest = {}
             vehicles = tuple(sorted(self._vehicles))
         for sn in vehicles:
@@ -179,6 +191,8 @@ class ArchiveStatistics(TravelStatisticsStore):
             assert isinstance(view, ArchiveStatisticsView)
             records.update(view.records)
             selections.update(view.selections)
+            blocked_metrics.update(view.blocked_metrics)
+            bases.update(view.completeness_bases)
             try:
                 latest[sn] = await self.archive.async_latest(sn, local)
             except ArchiveError as err:
@@ -187,7 +201,12 @@ class ArchiveStatistics(TravelStatisticsStore):
                 latest[sn] = None  # Do not silently select an arbitrary older record.
         if guard is not None and not guard():
             return
-        projection = ArchiveStatisticsView(records=records, selections=selections)
+        projection = ArchiveStatisticsView(
+            records=records,
+            selections=selections,
+            blocked_metrics=blocked_metrics,
+            completeness_bases=bases,
+        )
         months: dict[str, dict[str, StoredMonth]] = {}
         rides: dict[str, dict[str, StoredRide]] = {}
         for (key, query_month), record in records.items():

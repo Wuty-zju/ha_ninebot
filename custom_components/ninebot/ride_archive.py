@@ -36,6 +36,7 @@ from .archive_codec import (
 )
 from .archive_legacy import prepare_legacy
 from .archive_timeline import (
+    MAX_TIMELINE_BYTES,
     MAX_TIMELINE_DAYS,
     MAX_TIMELINE_RIDES,
     ArchivedRide,
@@ -89,6 +90,7 @@ class ArchiveMonth:
     returned_ids: tuple[str, ...]
     missing_ids: tuple[str, ...]
     known_ride_count: int
+    statistics_rides: tuple[Ride, ...] | None = None
 
     @property
     def complete(self) -> bool:
@@ -660,6 +662,44 @@ class RideArchive:
         return await self._run(
             lambda: tuple(found for month in months if (found := self._month(key, month)))
         )
+
+    async def async_statistics_months(
+        self, sn: str, months: tuple[str, ...]
+    ) -> tuple[ArchiveMonth, ...]:
+        """Read retained partial memberships without changing upstream response semantics."""
+        if not 1 <= len(months) <= 7 or len(set(months)) != len(months):
+            raise ValueError("Invalid archive month range")
+        for month in months:
+            previous_month(month)
+        return await self._run(partial(self._statistics_months, vehicle_key(sn), months))
+
+    def _statistics_months(
+        self, vehicle: str, months: tuple[str, ...]
+    ) -> tuple[ArchiveMonth, ...]:
+        result = []
+        count = size = 0
+        for month in months:
+            archived = self._month(vehicle, month)
+            if archived is None:
+                continue
+            # A complete response supersedes omitted IDs. A partial omission
+            # is not deletion; historical memberships remain eligible facts.
+            assert archived.travel.summary is not None
+            latest = " AND m.latest=1" if archived.travel.summary.list_complete is True else ""
+            rides = []
+            for data in self._db().execute(
+                "SELECT r.data FROM rides r JOIN membership m "
+                "ON m.vehicle=r.vehicle AND m.ride=r.id "
+                f"WHERE m.vehicle=? AND m.month=?{latest}",
+                (vehicle, month),
+            ):
+                count += 1
+                size += len(data[0].encode())
+                if count > MAX_TIMELINE_RIDES or size > MAX_TIMELINE_BYTES:
+                    raise TimelineLimitError
+                rides.append(replace(restored_ride(decoded(data[0])), query_month=month))
+            result.append(replace(archived, statistics_rides=tuple(rides)))
+        return tuple(result)
 
     async def async_month(self, sn: str, month: str) -> ArchiveMonth | None:
         previous_month(month)

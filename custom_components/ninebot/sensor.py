@@ -734,6 +734,7 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
             "adjacent_received_at": summary.adjacent_received_at,
             "adjacent_revision": summary.adjacent_revision,
             "ride_window_complete": summary.rides_complete,
+            "completeness_basis": summary.completeness_basis,
             "availability_reason": summary.reason(self.field),
             "storage": self.coordinator.statistics.source_mode,
             **({"duration_seconds": summary.duration_s} if self.field == "duration_s" else {}),

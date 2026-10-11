@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b50
+
+- Restore today/yesterday ride counts, duration and energy when retained local rides reconcile with the latest monthly count and distance, even if one response returns only a partial list. Check energy and duration independently against monthly reports.
+- Keep upstream list coverage, existing entity IDs, source seconds, precision, freshness, account isolation and complete-response omission rules unchanged. No extra polling or automatic historical scan.
+- Add focused cloud regression for accumulated lists, restart, field conflicts, scope, query budgets and existing daily/action/export/calendar boundaries; no production HA changes or live vehicle requests.
+
 ## 2.0.0b47
 
 - Display all ride durations in hours with two decimal places, including zero; retain native seconds and HA unit conversion.

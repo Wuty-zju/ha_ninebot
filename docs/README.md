@@ -626,3 +626,12 @@ This overrides b46 integer presentation: monthly, last-ride, today and yesterday
 The Device location tracker no longer overrides deprecated battery_level. Use the vehicle's Main battery charge sensor for battery information and automations; emergency communication charge remains separate. Tracker identity, coordinates, zones and history are unchanged. Automations reading state_attr(tracker_entity, "battery_level") must read the main battery sensor instead. This follows the Home Assistant [device tracker migration](https://developers.home-assistant.io/blog/2026/06/15/device-tracker-changes/) before removal in 2027.7, without increasing minimum HA or cloud requests.
 
 The loader warning that a custom integration has not been tested by Home Assistant is a standard notice for third-party integrations. It is not suppressed or bypassed.
+
+
+## b50 accumulated daily statistics
+
+Today/yesterday ride count, duration and energy can use previously retained local records when their unique count and total distance reconcile with the latest monthly report. Energy and duration additionally require their own monthly metric checks. A partial response does not erase earlier records; a complete response supersedes omitted IDs for the current statistics view. A genuinely incomplete archive, invalid time, missing metric or inconsistent total remains unknown. Reconciliation is local evidence, not an upstream full-ID guarantee.
+
+The existing month list coverage still describes the latest response (for example, 20 out of 37), not the accumulated archive. Daily entity attributes and get_statistics daily rows add completeness_basis: upstream_complete, local_reconciled, incomplete or not_verified. IDs, units, two-decimal ride hours and original seconds remain unchanged. On upgrade, the archive is reprojected locally; no manual full-history sync or additional cloud request is required. Existing records must be present to recover totals. Current-day freshness and month-boundary safeguards continue; historical statistics are imported into Recorder only by the existing explicit action.
+
+简中：累计保存的唯一行程数与本月报告次数、里程吻合时，今日/昨日统计可使用本地累计记录，不再被单次20条明细阻断；能耗、时长还分别核对月汇总。真实缺报、冲突及过期仍显示未知。单次返回覆盖率保持原义，实体身份、单位和精度不变。升级后自动从已有档案重建统计视图，不需重新扫描全历史或增加轮询。属性中的local_reconciled表示本地核对吻合，不表示接口宣称返回了全部ID。不会自动写入生产Recorder或部署配置。
