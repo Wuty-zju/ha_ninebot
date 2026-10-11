@@ -137,7 +137,7 @@
         "name": "Baterai utama: daya"
       },
       "endurance": {
-        "name": "Jarak tersisa"
+        "name": "Jarak tempuh presisi"
       },
       "remaining_charge_time": {
         "name": "Waktu pengisian tersisa",
@@ -465,6 +465,12 @@
           "lead_acid": "Timbal-asam",
           "unrecognized": "Tidak dikenali"
         }
+      },
+      "range_estimated": {
+        "name": "Perkiraan jarak tempuh"
+      },
+      "range_ai": {
+        "name": "Perkiraan jarak tempuh AI"
       }
     },
     "binary_sensor": {

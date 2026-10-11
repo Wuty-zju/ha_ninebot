@@ -137,7 +137,7 @@
         "name": "주 배터리: 잔량"
       },
       "endurance": {
-        "name": "남은 주행 거리"
+        "name": "정밀 주행 가능 거리"
       },
       "remaining_charge_time": {
         "name": "남은 충전 시간",
@@ -465,6 +465,12 @@
           "lead_acid": "납산",
           "unrecognized": "식별되지 않음"
         }
+      },
+      "range_estimated": {
+        "name": "예상 주행 가능 거리"
+      },
+      "range_ai": {
+        "name": "AI 예상 주행 가능 거리"
       }
     },
     "binary_sensor": {

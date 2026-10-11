@@ -47,8 +47,6 @@ OBSOLETE_KEYS = {
             "last_energy",
             "location",
             "month_energy",
-            "range_estimated",
-            "range_ai",
             "device_name",
             "sn",
             "vehicle_lock_raw",
@@ -282,4 +280,24 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: NinebotConfigEntr
         )
         registry.async_update_entity_options(
             row.entity_id, DOMAIN, {**row.options.get(DOMAIN, {}), "ride_hours_revision": 2}
+        )
+
+    # Existing user precision settings are preserved. Promote only the default
+    # display precision once for the retained and restored cloud-range sensors.
+    for row, sn in _owned_entities(hass, entry):
+        if row.domain != "sensor" or row.options.get(DOMAIN, {}).get("cloud_range_revision") == 1:
+            continue
+        if not any(
+            row.unique_id in {*legacy_uids(sn, key), scoped_uid(entry, sn, key)}
+            for key in ("endurance", "remaining_range", "range_estimated", "range_ai")
+        ):
+            continue
+        registry = er.async_get(hass)
+        options = row.options.get("sensor", {})
+        if "display_precision" not in options:
+            registry.async_update_entity_options(
+                row.entity_id, "sensor", {**options, "display_precision": 1}
+            )
+        registry.async_update_entity_options(
+            row.entity_id, DOMAIN, {**row.options.get(DOMAIN, {}), "cloud_range_revision": 1}
         )

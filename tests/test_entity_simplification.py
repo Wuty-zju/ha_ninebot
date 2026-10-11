@@ -110,7 +110,6 @@ async def test_exact_generation_cleanup_does_not_delete_lookalikes_or_shared_dev
             "SyntheticSN_estimated_out_total_v2_g0",
             "ninebot_syntheticsn_estimated_in_daily_v2_g100",
             "SyntheticSN_estimated_nominal_v2_g2",
-            "SyntheticSN_range_ai",
             "SyntheticSN_cycle_raw",
         )
     ]
@@ -121,6 +120,8 @@ async def test_exact_generation_cleanup_does_not_delete_lookalikes_or_shared_dev
             "OtherSN_estimated_out_total_v2_g1",
             "SyntheticSN_estimated_out_total_v2_g1_extra",
             "SyntheticSN_battery_rated_energy",
+            "SyntheticSN_range_ai",
+            "SyntheticSN_range_estimated",
         )
     ]
     with patch(
@@ -159,8 +160,8 @@ async def test_remaining_range_source_is_explicit_and_zero_does_not_fall_back(
     s = entry.runtime_data.coordinator.data["SyntheticSN"]
     for precise, estimated, ai, value, source in (
         (0, 40, 50, 0, "range_precise"),
-        (None, 40, 50, 40, "range_estimated"),
-        (None, None, 50, 50, "range_ai"),
+        (None, 40, 50, None, None),
+        (None, None, 50, None, None),
         (None, None, None, None, None),
     ):
         s = replace(
@@ -168,3 +169,34 @@ async def test_remaining_range_source_is_explicit_and_zero_does_not_fall_back(
             status=replace(s.status, range_precise=precise, range_estimated=estimated, range_ai=ai),
         )
         assert remaining_range(s) == value and range_source(s) == source
+
+
+async def test_three_cloud_ranges_are_independent_visible_and_precise(hass, entry, app_client):
+    from homeassistant.helpers.entity import EntityCategory
+
+    from custom_components.ninebot.sensor import SENSORS, NinebotSensor
+
+    app_client.async_get_status.return_value.update(
+        precise_estimate_mileage=117.12, estimate_mileage=98.34, ai_estimate_mileage=26.78
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    for key, expected in (("endurance", 117.12), ("range_estimated", 98.34), ("range_ai", 26.78)):
+        entity_id = registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
+        row = registry.async_get(entity_id)
+        assert row.disabled_by is None and row.hidden_by is None
+        assert (row.entity_category is EntityCategory.DIAGNOSTIC) == (key == "range_ai")
+        assert float(hass.states.get(entity_id).state) == expected
+        description = next(d for d in SENSORS if d.key == key)
+        sensor = NinebotSensor(entry, "SyntheticSN", description)
+        assert sensor.suggested_display_precision == 1
+        co = entry.runtime_data.coordinator
+        previous = co.data["SyntheticSN"]
+        co.data["SyntheticSN"] = replace(
+            previous,
+            status=replace(previous.status, range_precise=0, range_estimated=0, range_ai=0),
+        )
+        assert sensor.native_value == 0 and sensor.suggested_display_precision == 1
+        co.data["SyntheticSN"] = previous
+    app_client.async_get_status.assert_awaited_once()

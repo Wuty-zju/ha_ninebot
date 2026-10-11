@@ -137,7 +137,7 @@
         "name": "Batteria principale: carica"
       },
       "endurance": {
-        "name": "Autonomia residua"
+        "name": "Autonomia precisa"
       },
       "remaining_charge_time": {
         "name": "Tempo di ricarica residuo",
@@ -465,6 +465,12 @@
           "lead_acid": "Piombo-acido",
           "unrecognized": "Non riconosciuto"
         }
+      },
+      "range_estimated": {
+        "name": "Autonomia stimata"
+      },
+      "range_ai": {
+        "name": "Autonomia stimata con IA"
       }
     },
     "binary_sensor": {

@@ -137,7 +137,7 @@
         "name": "Main battery charge"
       },
       "endurance": {
-        "name": "Remaining range"
+        "name": "Precise range"
       },
       "remaining_charge_time": {
         "name": "Remaining charge time",
@@ -465,6 +465,12 @@
           "lead_acid": "Lead acid",
           "unrecognized": "Unrecognized"
         }
+      },
+      "range_estimated": {
+        "name": "Estimated range"
+      },
+      "range_ai": {
+        "name": "AI estimated range"
       }
     },
     "binary_sensor": {

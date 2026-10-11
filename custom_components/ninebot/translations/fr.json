@@ -137,7 +137,7 @@
         "name": "Batterie principale: charge"
       },
       "endurance": {
-        "name": "Autonomie restante"
+        "name": "Autonomie précise"
       },
       "remaining_charge_time": {
         "name": "Temps de charge restant",
@@ -465,6 +465,12 @@
           "lead_acid": "Plomb-acide",
           "unrecognized": "Non reconnu"
         }
+      },
+      "range_estimated": {
+        "name": "Autonomie estimée"
+      },
+      "range_ai": {
+        "name": "Autonomie estimée par IA"
       }
     },
     "binary_sensor": {

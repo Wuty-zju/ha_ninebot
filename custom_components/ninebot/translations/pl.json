@@ -137,7 +137,7 @@
         "name": "Główny akumulator: poziom naładowania"
       },
       "endurance": {
-        "name": "Pozostały zasięg"
+        "name": "Dokładny zasięg"
       },
       "remaining_charge_time": {
         "name": "Pozostały czas ładowania",
@@ -465,6 +465,12 @@
           "lead_acid": "Kwasowo-ołowiowy",
           "unrecognized": "Nierozpoznany"
         }
+      },
+      "range_estimated": {
+        "name": "Szacowany zasięg"
+      },
+      "range_ai": {
+        "name": "Zasięg szacowany przez AI"
       }
     },
     "binary_sensor": {

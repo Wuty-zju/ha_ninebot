@@ -137,7 +137,7 @@
         "name": "Pin chính: mức pin"
       },
       "endurance": {
-        "name": "Quãng đường còn lại"
+        "name": "Phạm vi di chuyển chính xác"
       },
       "remaining_charge_time": {
         "name": "Thời gian sạc còn lại",
@@ -465,6 +465,12 @@
           "lead_acid": "Chì axit",
           "unrecognized": "Không nhận dạng"
         }
+      },
+      "range_estimated": {
+        "name": "Phạm vi di chuyển ước tính"
+      },
+      "range_ai": {
+        "name": "Phạm vi di chuyển ước tính bằng AI"
       }
     },
     "binary_sensor": {
