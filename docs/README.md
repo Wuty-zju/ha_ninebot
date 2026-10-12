@@ -146,9 +146,13 @@ and progress stay in response data. No Recorder rows are deleted or reused for
 different statistics. Native historical imports and trend examples follow below.
 
 Yesterday distance uses the validated daily chart. Today/Yesterday ride count,
-duration and energy require a complete retained monthly list, known end times
-and current-report metric fields. Missing/evicted/partial lists stay unknown,
-with a small availability reason; proven empty windows return zero. Historical
+duration and energy require a verified complete or locally reconciled retained
+monthly selection, known end times and valid metric fields. Since b50, a partial
+latest response can use accumulated records when their unique count and distance
+match the monthly report; energy and duration are checked independently. A
+genuinely incomplete archive or inconsistent metric stays unknown, with a small
+availability reason; proven empty windows return zero. See the
+[b50 completeness contract](#b50-accumulated-daily-statistics). Historical
 days require a report received after that day ended, rather than a partial
 snapshot taken during it. Rides are assigned as a whole to their Asia/Shanghai
 end date; no invented midnight split or proportional energy allocation is made.
@@ -515,6 +519,8 @@ Ninebot行程日历或device_id选择一辆车。打开、改日期后点击“�
 
 
 ## b44 display and naming update
+
+This section records the b44 upgrade. Current service classification and ride-hour presentation are described in the b46/b47 sections below; b50 daily completeness supersedes the older single-response prerequisite.
 
 On upgrade, loaded vehicles' existing entity IDs, including pre-upgrade custom
 IDs, are migrated once to `domain.account_ascii_vehicle_serial_field`. Initial
