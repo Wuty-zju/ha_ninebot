@@ -101,14 +101,16 @@ async def async_sparse_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
     if type(budget) is not int or not 1 <= budget <= 60:
         budget = DEFAULT_BUDGET
     performed = False
-    if operation in {"repair", "repair_cancel"} and months is None:
-        raise validation_error("history_range")
     if operation == "repair":
+        if months is None:
+            raise validation_error("history_range")
         await archive.async_schedule_months(sn, months, dt_util.utcnow(), guard=manager.guard(sn))
         performed = await manager.async_step(sn, budget, dt_util.utcnow(), months=months)
     elif operation == "repair_continue":
         performed = await manager.async_step(sn, budget, dt_util.utcnow(), months=months)
     elif operation == "repair_cancel":
+        if months is None:
+            raise validation_error("history_range")
         await manager.async_cancel(sn, months)
     tasks = await archive.async_month_tasks(sn)
     if months is not None:
