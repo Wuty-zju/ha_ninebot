@@ -65,6 +65,10 @@ get_trips:
         boolean:
 get_trip_detail:
   fields:
+    local_only:
+      default: false
+      selector:
+        boolean:
     device_id:
       required: true
       selector:

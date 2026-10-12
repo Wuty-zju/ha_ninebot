@@ -86,6 +86,7 @@ DETAIL_SCHEMA = vol.Schema(
         **COMMON,
         vol.Required("ride_id"): ride_identifier,
         vol.Optional("query_month"): query_month,
+        vol.Optional("local_only", default=False): cv.boolean,
         vol.Optional("point_offset", default=0): point_offset,
         vol.Optional("max_points", default=500): partial(bounded_integer, maximum=MAX_TRACK_POINTS),
     }
@@ -442,6 +443,9 @@ def assert_query_scope(
 
 async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     require_live = call.data.get("refresh", False)
+    local_only = call.data.get("local_only", False)
+    if local_only and require_live:
+        raise validation_error("query_local_refresh")
     entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=require_live)
     co = entry.runtime_data.coordinator
     generation, ownership = co._generation, co._ownership.get(sn, 0)
@@ -486,6 +490,10 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
             "ride": ride_response(detail.ride, include_track),
             "detail_context": detail_context(detail),
         }
+    if local_only:
+        # A map may request many chunks. Missing evidence must never silently
+        # trigger month discovery or a cloud detail download on its behalf.
+        raise validation_error("query_detail_not_recorded")
     try:
         observation = await co.async_month_observation(
             sn, month, prefer_local=not require_live, refresh=require_live

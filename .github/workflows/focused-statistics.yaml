@@ -15,7 +15,6 @@ on:
       - 'custom_components/ninebot/backup.py'
       - 'tests/test_private_detail_archive.py'
       - 'custom_components/ninebot/travel.py'
-      - 'custom_components/ninebot/services.py'
       - 'tests/test_travel.py'
       - 'custom_components/ninebot/archive_runtime.py'
       - 'tests/test_accumulated_statistics.py'

@@ -410,3 +410,44 @@ async def test_archive_detail_offline_chunk_and_explicit_refresh(
     with pytest.raises(HomeAssistantError):
         await call(hass, "get_trip_detail", {**data, "query_month": "202608"})
     app_client.async_control.assert_not_awaited()
+
+
+async def test_local_only_missing_detail_never_queries_cloud(hass, entry, app_client, query_device):
+    co = entry.runtime_data.coordinator
+    data = {"device_id": query_device, "ride_id": "fixture-ride-01", "local_only": True}
+    app_client.async_get_travel.reset_mock()
+    app_client.async_get_trip_detail.reset_mock()
+    with patch.object(co, "async_month_observation") as month:
+        with pytest.raises(HomeAssistantError) as error:
+            await call(hass, "get_trip_detail", data)
+        assert error.value.translation_key == "query_detail_not_recorded"
+        month.assert_not_awaited()
+        with pytest.raises(HomeAssistantError) as error:
+            await call(hass, "get_trip_detail", {**data, "refresh": True})
+        assert error.value.translation_key == "query_local_refresh"
+        month.assert_not_awaited()
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_get_trip_detail.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()
+
+
+async def test_local_only_saved_detail_offline_and_coordinate_guard(
+    hass, entry, app_client, query_device
+):
+    data = {"device_id": query_device, "ride_id": "fixture-ride-01", "query_month": "202609"}
+    await call(hass, "get_trip_detail", data)
+    co = entry.runtime_data.coordinator
+    app_client.async_get_trip_detail.reset_mock()
+    with (
+        patch.object(co, "fresh", return_value=False),
+        patch.object(co, "async_month_observation") as month,
+    ):
+        saved = await call(hass, "get_trip_detail", {**data, "local_only": True})
+        assert saved["source_mode"] == "ride_archive"
+        assert "track" not in saved["ride"]
+        with pytest.raises(HomeAssistantError) as error:
+            await call(hass, "get_trip_detail", {**data, "local_only": True, "include_track": True})
+        assert error.value.translation_key == "query_coordinates"
+        month.assert_not_awaited()
+    app_client.async_get_trip_detail.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()

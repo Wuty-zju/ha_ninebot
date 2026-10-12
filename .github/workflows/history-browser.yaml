@@ -1,0 +1,35 @@
+name: History browser
+on:
+  pull_request:
+    paths:
+      - 'custom_components/ninebot/services.py'
+      - 'custom_components/ninebot/frontend/**'
+      - 'tests/test_services.py'
+      - 'tests/frontend/**'
+      - '.github/workflows/history-browser.yaml'
+permissions:
+  contents: read
+concurrency:
+  group: history-browser-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install isolated minimum HA environment
+        run: >-
+          python -m pip install pytest-homeassistant-custom-component==0.13.305
+          homeassistant==2026.1.0 ninecli==0.1.7 mypy==2.4.0
+      - run: mypy custom_components/ninebot --follow-imports=silent
+      - name: Replay affected detail and archive boundaries
+        run: >-
+          python -m pytest -q tests/test_services.py tests/test_travel.py
+          tests/test_private_detail_archive.py
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - run: node --test tests/frontend/*.mjs

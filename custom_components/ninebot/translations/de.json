@@ -669,6 +669,12 @@
     },
     "recorded_range": {
       "message": "Bis zu fünf Jahre in Datumsreihenfolge wählen. Bei überschrittenem Leselimit den Bereich verkleinern."
+    },
+    "query_detail_not_recorded": {
+      "message": "This trip detail is not saved locally. Fetch its cloud detail separately before viewing the track."
+    },
+    "query_local_refresh": {
+      "message": "Local-only reading cannot be combined with cloud refresh."
     }
   },
   "issues": {
@@ -791,6 +797,10 @@
         "point_offset": {
           "name": "Source point offset",
           "description": "Read a bounded chunk by original sequence; no coordinate or timestamp inference."
+        },
+        "local_only": {
+          "name": "Read local archive only",
+          "description": "Read saved detail without cloud fallback. Missing detail is reported; cannot be combined with cloud refresh."
         }
       }
     },

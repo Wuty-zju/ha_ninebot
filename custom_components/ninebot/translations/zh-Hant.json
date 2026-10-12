@@ -669,6 +669,12 @@
     },
     "recorded_range": {
       "message": "依序選擇最多五年的日期；超過讀取預算時請縮小範圍。"
+    },
+    "query_detail_not_recorded": {
+      "message": "本機尚未儲存這次行程的詳情。請另行取得雲端詳情後再查看軌跡。"
+    },
+    "query_local_refresh": {
+      "message": "僅本機讀取與雲端重新整理不能同時啟用。"
     }
   },
   "issues": {
@@ -791,6 +797,10 @@
         "point_offset": {
           "name": "原始点起始序号",
           "description": "按原始点序号读取下一段；不转换坐标或推测时间。"
+        },
+        "local_only": {
+          "name": "僅從本機讀取",
+          "description": "只讀取已儲存的詳情。缺少時提示，不請求九號雲端；不能與雲端重新整理同時啟用。"
         }
       }
     },

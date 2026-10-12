@@ -656,6 +656,12 @@ Schema v1 migration creates an exclusive `rides.schema1-<hash>.sqlite3` recovery
 
 `get_trip_detail` prefers the saved private archive before any month/cloud query. `get_trips` also prefers recorded months and saved requested details. `refresh: true` explicitly requests cloud data and requires current live access; local history still requires a loaded account, recognized enabled vehicle, and HA permissions. Use `point_offset` plus `max_points` for bounded raw-sequence chunks; `track_summary.next_offset` continues even when a chunk contains invalid points. Coordinate opt-in remains mandatory for GPS responses. Scalar/archive revisions and geometry receipt timestamps identify mixed sources; no arbitrary raw JSON is returned. Local pagination and observed coverage never prove full upstream history.
 
+For strictly offline browsing, set `local_only: true` on `get_trip_detail`.
+This returns saved detail or reports that it is not recorded, without querying
+the month or downloading cloud detail. It cannot be combined with `refresh: true`.
+The same account, vehicle and coordinate permissions apply to every chunk.
+The default remains local-first with cloud fallback for existing automations.
+
 ### Known-ride background preservation (b54, H4 first step)
 
 Enable **Preserve trip details in background** in account options to save known ride IDs independently of calendars or enabled travel entities. This is off by default because private GPS/speed storage and cloud requests are involved. Default budget: 30 logical history calls per account/hour (1–60); ninecli internal transport retries are outside this logical counter. Claims, budget and exponential jittered retries are durable; HA restarts do not reset them. Vehicles are rotated and background work uses the existing Broker priority below telemetry/control. Stored stable details are reused; changed scalar fingerprints can schedule a new candidate, while recent rides receive at most a limited stability recheck. Cloud simplification never erases the selected old route.
