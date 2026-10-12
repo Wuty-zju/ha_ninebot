@@ -7,10 +7,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.raw import Endpoint, build_record
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
 from custom_components.ninebot.travel import merge_detail, parse_ride
-from custom_components.ninebot.adapters import travel
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OWNER = hashlib.sha256(b"synthetic-account").hexdigest()
