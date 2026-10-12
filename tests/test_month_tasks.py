@@ -133,6 +133,22 @@ async def test_task_capacity_rolls_back_and_retires_metadata_only(tmp_path):
             await archive.async_schedule_months("B", (months[-1],), NOW, guard=lambda: True)
         assert err.value.kind is ArchiveFailure.BUSY
         assert await archive.async_month_tasks("B") == ()
+        from types import SimpleNamespace
+
+        from custom_components.ninebot.month_sync import SparseMonthSync
+
+        co = SimpleNamespace(
+            statistics=SimpleNamespace(archive=archive),
+            _generation=1,
+            _ownership={"B": 1},
+            _stopping=False,
+            local_vehicle_available=lambda sn: True,
+            fresh=lambda sn, group: True,
+        )
+        # Automatic seeds cannot deadlock a full queue before existing work drains.
+        await SparseMonthSync(co).async_seed_recent(("B",), NOW)
+        assert await archive.async_month_tasks("B") == ()
+        assert await archive.async_claim_month("A", NOW, 30, guard=lambda: True) is not None
         await archive.async_cancel_months("A", (months[0],), guard=lambda: True)
         await archive.async_schedule_months("B", (months[-1],), NOW, guard=lambda: True)
         assert len(await archive.async_month_tasks("A")) == 127

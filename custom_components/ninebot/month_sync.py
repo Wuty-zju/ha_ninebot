@@ -14,7 +14,7 @@ from .exceptions import NinebotError
 from .parsing import previous_month
 from .preservation import retry_delay
 from .query_broker import Priority
-from .ride_archive import ArchiveError
+from .ride_archive import ArchiveError, ArchiveFailure
 
 if TYPE_CHECKING:
     from .coordinator import NinebotCoordinator
@@ -51,9 +51,14 @@ class SparseMonthSync:
             return
         month = previous_month(local.strftime("%Y%m"))
         for sn in eligible:
-            await self.co.statistics.archive.async_schedule_months(
-                sn, (month,), now, source="recent", guard=self.guard(sn)
-            )
+            try:
+                await self.co.statistics.archive.async_schedule_months(
+                    sn, (month,), now, source="recent", guard=self.guard(sn)
+                )
+            except ArchiveError as err:
+                if err.kind is ArchiveFailure.BUSY:
+                    return  # A full queue must drain before automatic seeding can retry.
+                raise
         self._seeded = signature
 
     async def async_step(
