@@ -6,6 +6,7 @@ on:
       - 'custom_components/ninebot/frontend/**'
       - 'tests/test_services.py'
       - 'tests/frontend/**'
+      - 'tests/browser/**'
       - '.github/workflows/history-browser.yaml'
 permissions:
   contents: read
@@ -31,7 +32,7 @@ jobs:
           if grep -Eq '^(custom_components/ninebot/services.py|tests/test_services.py|.github/workflows/history-browser.yaml)$' changed-paths.txt; then
             echo 'backend=true' >> "$GITHUB_OUTPUT"
           fi
-          if grep -Eq '^(custom_components/ninebot/frontend/|tests/frontend/|.github/workflows/history-browser.yaml)' changed-paths.txt; then
+          if grep -Eq '^(custom_components/ninebot/frontend/|tests/frontend/|tests/browser/|.github/workflows/history-browser.yaml)' changed-paths.txt; then
             echo 'frontend=true' >> "$GITHUB_OUTPUT"
           fi
   backend:
@@ -62,3 +63,19 @@ jobs:
         with:
           node-version: '24'
       - run: node --test tests/frontend/*.mjs
+      - name: Install isolated browser smoke tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ninebot-browser" --no-save --package-lock=false playwright@1.55.1
+          "$RUNNER_TEMP/ninebot-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Render two synthetic archived vehicle routes
+        env:
+          BROWSER_TEST_DEPS: ${{ runner.temp }}/ninebot-browser
+          BROWSER_TEST_OUTPUT: ${{ runner.temp }}/ninebot-map-smoke
+        run: node tests/browser/history-map.mjs
+      - name: Keep synthetic render evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: synthetic-history-map
+          path: ${{ runner.temp }}/ninebot-map-smoke
+          if-no-files-found: error
+          retention-days: 7

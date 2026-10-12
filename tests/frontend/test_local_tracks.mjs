@@ -38,10 +38,16 @@ test('four calls per interaction, source-offset continuation and rendering memor
   await reader.read('device-a', ride);
   assert.deepEqual(calls, [0, 512, 1024, 1536]);
   await reader.read('device-a', ride);
-  assert.equal(reader.tracks.get(trackKey('device-a', ride)).points.length, 4096);
+  assert.ok(reader.tracks.get(trackKey('device-a', ride)).points.length <= 4096);
   assert.equal(reader.tracks.get(trackKey('device-a', ride)).complete, false);
   assert.equal(reader.tracks.get(trackKey('device-a', ride)).capped, true);
-  await reader.read('device-a', ride); assert.equal(calls.length, 8);
+  for (let i = 0; i < 3; i++) await reader.read('device-a', ride);
+  const saved = reader.tracks.get(trackKey('device-a', ride));
+  assert.equal(calls.length, 20); assert.equal(saved.valid_read, 10000);
+  assert.equal(saved.complete, true); assert.ok(saved.points.length <= 4096);
+  assert.equal(saved.points[0].sequence, 0); assert.equal(saved.points.at(-1).sequence, 9999);
+  assert.equal(trackSegments(saved.points, saved.kind).length, 1);
+  await reader.read('device-a', ride); assert.equal(calls.length, 20);
 });
 
 test('invalid-only source chunks advance and gaps/simplified points never connect', async () => {

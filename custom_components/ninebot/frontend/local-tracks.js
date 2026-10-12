@@ -51,7 +51,10 @@ export function trackSegments(points, kind) {
   const segments = [];
   for (const point of points) {
     const segment = segments.at(-1);
-    if (!segment || point.sequence !== segment.at(-1).sequence + 1) segments.push([point]);
+    const last = segment?.at(-1);
+    const continuous = last && (point.segment !== undefined && last.segment !== undefined ?
+      point.segment === last.segment : point.sequence === last.sequence + 1);
+    if (!continuous) segments.push([point]);
     else segment.push(point);
   }
   return segments;
@@ -65,14 +68,17 @@ export class LocalTracks {
   clear() {
     this.epoch++; this.busy = false; this.error = null; this.tracks.clear(); this.changed();
   }
+  remove(key) {
+    if (!this.busy) { this.tracks.delete(key); this.changed(); }
+  }
   async read(device, ride) {
     if (this.busy || typeof device !== 'string' || !device || !ride?.ride_id ||
         !/^20\d{4}$/.test(ride.query_month)) return;
     const key = trackKey(device, ride), prior = this.tracks.get(key);
-    if (prior?.complete || prior?.capped) return;
+    if (prior?.complete) return;
     const epoch = this.epoch;
     let item = prior ? { ...prior, points: [...prior.points] } :
-      { points: [], next: 0, fingerprint: null, complete: false, capped: false };
+      { points: [], next: 0, fingerprint: null, complete: false, capped: false, bounds: null, valid_read: 0 };
     this.busy = true; this.error = null; this.changed();
     try {
       // One explicit interaction, at most four sequential service calls.
@@ -86,15 +92,28 @@ export class LocalTracks {
         if (item.fingerprint !== null && item.fingerprint !== chunk.fingerprint) {
           throw new Error('track_revision_changed');
         }
-        const points = [...item.points, ...chunk.points];
+        let last = item.points.at(-1), bounds = item.bounds;
+        const annotated = chunk.points.map(point => {
+          const gap = last && point.sequence !== last.sequence + 1;
+          const result = { ...point, segment: (last?.segment ?? 0) + (gap ? 1 : 0),
+            speed_segment: (last?.speed_segment ?? 0) + (gap || point.speed_raw === null ? 1 : 0),
+            distance_segment: (last?.distance_segment ?? 0) + (gap || point.distance_delta_raw === null ? 1 : 0) };
+          bounds = bounds ? [Math.min(bounds[0], point.latitude), Math.min(bounds[1], point.longitude),
+            Math.max(bounds[2], point.latitude), Math.max(bounds[3], point.longitude)] :
+            [point.latitude, point.longitude, point.latitude, point.longitude];
+          last = result; return result;
+        });
+        const points = [...item.points, ...annotated];
+        const step = Math.max(1, Math.ceil(points.length / (MAX_POINTS - 2)));
         item = { ...item, fingerprint: chunk.fingerprint, total: chunk.total, kind: chunk.kind,
-          points: points.slice(0, MAX_POINTS), next: chunk.next, complete: chunk.next === null,
-          capped: points.length >= MAX_POINTS };
-        if (item.complete || item.capped) break;
+          points: step === 1 ? points : points.filter((_, i) => i === 0 || i === points.length - 1 || i % step === 0),
+          next: chunk.next, complete: chunk.next === null, bounds,
+          valid_read: item.valid_read + chunk.points.length, capped: item.capped || step > 1 };
+        if (item.complete) break;
       }
       this.tracks.delete(key);
       while (this.tracks.size >= MAX_TRACKS) this.tracks.delete(this.tracks.keys().next().value);
-      this.tracks.set(key, item);
+      this.tracks.set(key, { ...item, label: String(ride.vehicle_label ?? device).slice(0, 128), ride_id: ride.ride_id });
     } catch (error) {
       if (this.epoch === epoch) {
         // HA permission failures can also be translated device/coordinate

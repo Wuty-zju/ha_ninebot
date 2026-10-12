@@ -478,11 +478,26 @@ limit: 20
 # end_date: "2026-09-30"
 ```
 
-Choose exactly one vehicle: its Ninebot calendar `entity`, **or** `device_id`
-instead of `entity`. Optional `title` changes only the card heading. `limit` is
-1–100. Editing dates requires clicking **Read locally**; browsing and Next page
-read one local archive page, never backfill missing months. HA state updates do
-not repoll history. Use the existing explicit `sync_history` Action for gaps.
+Choose one vehicle using its calendar `entity` or `device_id`, or use `vehicles`
+for up to five explicitly selected vehicles (including different loaded accounts):
+
+```yaml
+type: custom:ninebot-trip-card
+vehicles:
+  - entity: calendar.REPLACE_WITH_FIRST_VEHICLE
+  - device_id: REPLACE_WITH_SECOND_VEHICLE_DEVICE_ID
+    name: Second vehicle
+start_date: "2026-09-01"
+end_date: "2026-09-30"
+limit: 40
+```
+
+Optional `title` changes only the heading. `limit` is a **total page budget** of
+1–100 and must allow at least one row per configured vehicle. Checkboxes select
+which vehicles to read. Each vehicle has its own cursor; completed vehicles do
+not restart during Next page. Date edits require **Read locally**. Browsing never
+backfills missing months or queries ninecli. Ordinary HA state updates do not
+repoll history. Use explicit `sync_history` for gaps; coverage counts vehicle-months.
 
 Each ride expands distance, duration, timestamps, server maximum speed, overall
 distance/duration average speed, Wh and the actual observation receipt. Unknown
@@ -498,11 +513,37 @@ this is not a calibrated speed-versus-time plot or a GPS route. Sample means do
 not replace the server maximum or overall average. Unverified electricity usage
 is shown separately with an unknown-unit label.
 
-The browser keeps one scalar page and up to five current-page details, at most
-500 speed samples each; no tracks/raw payloads/localStorage. User, connection,
-vehicle or date changes discard old results, including late responses. Next
-page cursors can expire or be invalidated by archive changes; read from the first
-page again. Disconnect/reconnect performs at most one local page read.
+**Show saved route** reads only the private local archive with `local_only: true`
+and `include_track: true`; coordinate opt-in and HA tracker/calendar permissions
+remain required. Missing detail is reported, never silently downloaded. Fetch
+cloud detail separately if needed. Up to five routes can overlay across vehicles
+and pages within the selected dates; each can be removed. User/connection/date/
+vehicle changes, disconnection and query errors discard private projections.
+
+A click reads at most four 512-source-row chunks. **Read more saved points**
+continues from the original sequence, including invalid-only chunks. Browser
+memory retains at most 4,096 displayed points per route; long routes are thinned
+without truncating the archive or stopping continuation. First/last points and
+full scanned bounds survive; real geometry/value gaps remain separate. Completion
+only means the saved response was read, not that cloud sampling/history is complete.
+Simplified points are location previews, never road routes. Curves show unknown-unit
+raw values against source sequence, not elapsed time; thinning is explicitly labeled.
+
+Leaflet **1.9.4** and its BSD-2-Clause license/assets are bundled inside the integration;
+no external JavaScript/CDN is loaded. Tiles are off by default. Enabling the optional
+OpenStreetMap basemap sends the visible map area to that provider. Original coordinates
+are plotted without WGS/GCJ conversion or road matching; their CRS remains unknown,
+so alignment may differ. No tracks, raw payloads or URLs enter entity attributes,
+Recorder, diagnostics or localStorage. Stored archives may be part of your HA backup.
+
+The **Native calendar and statistics cards** disclosure supplies standard HA card
+configuration for the selected calendars and a link to `/calendar`. Optional
+`statistics_entities` accepts up to 20 sensor or `ninebot:` statistic IDs from your
+existing `import_statistics` response. Each metric gets a separate native graph,
+with `change` and a rolling 30-day window. It does not import or write statistics.
+Calendar/graph navigation remains independent of the trip-card date selection;
+use `get_statistics(refresh: false)` for exact historical ranges. No HA private
+frontend element or historical tracker injection is used.
 
 All historical queries, statistics reads and migration reports use standard HA
 read permissions for the selected vehicle's Ninebot calendar (or full-reader
