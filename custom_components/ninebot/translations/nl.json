@@ -108,7 +108,7 @@
           "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
-          "preserve_history": "Off by default. Preserve known ride details and resume your selected history range; cloud coverage may remain partial.",
+          "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
           "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations."
         }
       },
@@ -881,7 +881,7 @@
     },
     "sync_history": {
       "name": "Ritarchief synchroniseren",
-      "description": "Vult ontbrekende maanden aan, maximaal drie aanvragen per oproep. Bekende maanden worden hergebruikt. Hervat met de taak-ID na wachttijd of herstart; gedeeltelijke lijsten blijven onvolledig.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -897,6 +897,10 @@
         },
         "end_month": {
           "name": "Eindmaand (YYYYMM)"
+        },
+        "months": {
+          "name": "Repair months (YYYYMM list)",
+          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
         }
       }
     },

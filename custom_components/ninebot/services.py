@@ -640,7 +640,10 @@ async def async_scoped_action(
     permission = (
         POLICY_CONTROL
         if call.service == "import_statistics"
-        or (call.service == "sync_history" and call.data["operation"] != "status")
+        or (
+            call.service == "sync_history"
+            and call.data["operation"] not in {"status", "repair_status"}
+        )
         else POLICY_READ
     )
 

@@ -57,6 +57,7 @@ from .sync_job import SyncJob, SyncState, job_data, restored_job
 from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
 
 if TYPE_CHECKING:
+    from .month_tasks import MonthTask
     from .preservation import PreservationTask
 
 SCHEMA_VERSION = 2
@@ -343,7 +344,13 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("preservation:"):
+            if key.startswith("month_task:"):
+                from .month_tasks import validate_key
+
+                validate_key(key, value)
+            elif key == "preservation_month_kind" and value not in {"sparse", "range"}:
+                raise ValueError("Invalid month scheduling turn")
+            elif key.startswith("preservation:"):
                 task_state(value)
             elif key == "preservation_cursor" and (
                 len(value) != 64 or any(c not in "0123456789abcdef" for c in value)
@@ -353,6 +360,10 @@ class RideArchive:
                 raise ValueError("Invalid preservation turn")
             elif key == "preservation_budget" and not 0 <= float(value) <= 4102444800:
                 raise ValueError("Invalid preservation budget timestamp")
+        from .month_tasks import MAX_TASKS
+
+        if sum(key.startswith("month_task:") for key in meta) > MAX_TASKS:
+            raise ValueError("Invalid month task count")
         if "sync_job" in meta:
             restored_job(decoded(meta["sync_job"]))
         if (
@@ -979,6 +990,12 @@ class RideArchive:
                 "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (key, value),
             )
+        if kind != "detail":
+            db.execute(
+                "INSERT INTO meta VALUES ('preservation_month_kind',?) ON CONFLICT(key) "
+                "DO UPDATE SET value=excluded.value",
+                ("range" if kind == "sparse" else "sparse",),
+            )
         return True
 
     async def async_background_budget(
@@ -997,6 +1014,109 @@ class RideArchive:
                 )
 
         return await self._run(reserve, guard=guard)
+
+    async def async_month_turn(self) -> str:
+        def read() -> str:
+            found = (
+                self._db()
+                .execute("SELECT value FROM meta WHERE key='preservation_month_kind'")
+                .fetchone()
+            )
+            return found[0] if found else "sparse"
+
+        return await self._run(read)
+
+    async def async_month_tasks(self, sn: str) -> "tuple[MonthTask, ...]":
+        from .month_tasks import rows
+
+        return await self._run(lambda: rows(self._db(), vehicle_key(sn)))
+
+    async def async_schedule_months(
+        self,
+        sn: str,
+        months: tuple[str, ...],
+        now: datetime,
+        *,
+        guard: Callable[[], bool],
+        source: str = "manual",
+    ) -> None:
+        from .month_tasks import MonthTaskCapacity, schedule
+
+        utc_string(now)
+
+        def commit() -> None:
+            try:
+                schedule(self._db(write=True), vehicle_key(sn), months, now, source=source)
+            except MonthTaskCapacity as err:
+                raise ArchiveError(ArchiveFailure.BUSY) from err
+
+        await self._run(commit, guard=guard)
+
+    async def async_claim_month(
+        self,
+        sn: str,
+        now: datetime,
+        budget: int,
+        *,
+        guard: Callable[[], bool],
+        months: tuple[str, ...] | None = None,
+    ) -> "MonthTask | None":
+        from .month_tasks import claim
+
+        utc_string(now)
+        if type(budget) is not int or not 1 <= budget <= 60:
+            raise ValueError("Invalid month budget")
+
+        def commit() -> "MonthTask | None":
+            db = self._db(write=True)
+            vehicle = vehicle_key(sn)
+            return claim(
+                db,
+                vehicle,
+                now,
+                lambda: self._reserve_background(db, vehicle, now.timestamp(), budget, "sparse"),
+                months,
+            )
+
+        return await self._run(commit, guard=guard)
+
+    async def async_finish_month(
+        self,
+        sn: str,
+        expected: "MonthTask",
+        now: datetime,
+        *,
+        guard: Callable[[], bool],
+        success: bool,
+        complete: bool | None = None,
+        reason: str | None = None,
+        delay: float = 0,
+    ) -> bool:
+        from .month_tasks import finish
+
+        utc_string(now)
+        return await self._run(
+            lambda: finish(
+                self._db(write=True),
+                vehicle_key(sn),
+                expected,
+                now,
+                success=success,
+                complete=complete,
+                reason=reason,
+                delay=delay,
+            ),
+            guard=guard,
+        )
+
+    async def async_cancel_months(
+        self, sn: str, months: tuple[str, ...], *, guard: Callable[[], bool]
+    ) -> None:
+        from .month_tasks import cancel
+
+        for month in months:
+            previous_month(month)
+        await self._run(lambda: cancel(self._db(write=True), vehicle_key(sn), months), guard=guard)
 
     async def async_preservation_claim(
         self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]

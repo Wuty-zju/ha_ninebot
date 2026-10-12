@@ -108,7 +108,7 @@
           "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "開關每輛車的本地行程日曆。關閉不刪除歷史；重新開啟沿用原實體。瀏覽不請求雲端。",
-          "preserve_history": "默认关闭。保全已知行程的私有轨迹，并自动续接用户选定的历史范围；不代表云端全史完整。",
+          "preserve_history": "默认关闭。保全已知行程、续接用户选定范围与散月任务，并在月初首周有限复核上月；云端覆盖仍可能不完整。",
           "history_requests_per_hour": "每个账号的后台月份与详情查询共享此预算；ninecli 内部重试不计在此逻辑请求数内。"
         }
       },
@@ -881,7 +881,7 @@
     },
     "sync_history": {
       "name": "同步行程檔案",
-      "description": "明確補齊缺少月份，每次最多查詢三個月。已知月份使用本機資料。冷卻或重新啟動後使用工作 ID 繼續；部分清單仍標為不完整。",
+      "description": "按范围补齐缺月，或用 repair 指定 1–12 个散月重新读取。repair_status 查看，repair_continue 续接，repair_cancel 取消；部分列表不会变为全量。",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -897,6 +897,10 @@
         },
         "end_month": {
           "name": "結束月份（YYYYMM）"
+        },
+        "months": {
+          "name": "修复月份（YYYYMM 数组）",
+          "description": "用于散月修复与取消；一次最多 12 个不同月份。"
         }
       }
     },
