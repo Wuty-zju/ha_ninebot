@@ -55,6 +55,10 @@ get_trips:
       default: false
       selector:
         boolean:
+    refresh:
+      default: false
+      selector:
+        boolean:
     include_track:
       default: false
       selector:
@@ -74,6 +78,13 @@ get_trip_detail:
       example: "202609"
       selector:
         text:
+    point_offset:
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 1048576
+          mode: box
     max_points:
       default: 500
       selector:
@@ -81,6 +92,10 @@ get_trip_detail:
           min: 1
           max: 2000
           mode: box
+    refresh:
+      default: false
+      selector:
+        boolean:
     include_track:
       default: false
       selector:

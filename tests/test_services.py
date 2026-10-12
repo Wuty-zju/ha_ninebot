@@ -146,11 +146,13 @@ async def test_detail_defaults_no_gps_then_explicit_opt_in_and_bound_cache(
         "returned": 2,
         "total_known": 5,
         "truncated": True,
+        "offset": 0,
+        "next_offset": 2,
     }
     assert len(second["ride"]["speed_samples"]) == 2
     assert second["ride"]["track"][0]["longitude"] == 120
     await call(hass, "get_trip_detail", {**data, "include_track": True, "max_points": 2})
-    assert app_client.async_get_trip_detail.await_count == 2
+    assert app_client.async_get_trip_detail.await_count == 1
     app_client.async_control.assert_not_awaited()
     json.dumps(second, allow_nan=False)
 
@@ -385,3 +387,26 @@ def test_unbound_or_conflicting_detail_cannot_enrich_summary(payload):
     )
     with pytest.raises(NinebotError):
         detail_data(record, summary, 10)
+
+
+async def test_archive_detail_offline_chunk_and_explicit_refresh(
+    hass, entry, app_client, query_device
+):
+    data = {"device_id": query_device, "ride_id": "fixture-ride-01", "query_month": "202609"}
+    await call(hass, "get_trip_detail", data)
+    co = entry.runtime_data.coordinator
+    co.raw.clear()
+    with patch.object(co, "fresh", return_value=False):
+        saved = await call(hass, "get_trip_detail", {**data, "point_offset": 2, "max_points": 2})
+        assert saved["source_mode"] == "ride_archive"
+        assert [s["sequence"] for s in saved["ride"]["speed_samples"]] == [2, 3]
+        assert saved["ride"]["track_summary"]["next_offset"] == 4
+        assert saved["detail_context"]["scalar_revision"] >= 1
+        with pytest.raises(HomeAssistantError):
+            await call(hass, "get_trip_detail", {**data, "refresh": True})
+    assert app_client.async_get_trip_detail.await_count == 1
+    await call(hass, "get_trip_detail", {**data, "refresh": True})
+    assert app_client.async_get_trip_detail.await_count == 2
+    with pytest.raises(HomeAssistantError):
+        await call(hass, "get_trip_detail", {**data, "query_month": "202608"})
+    app_client.async_control.assert_not_awaited()

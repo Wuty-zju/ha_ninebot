@@ -20,6 +20,8 @@ class ArchivedDetail:
     selection: str
     latest_hash: str
     geometry_hash: str
+    scalar_revision: int
+    scalar_observed_at: datetime
 
 
 def packed(record: RawRecord) -> tuple[str, bytes, RawRecord]:

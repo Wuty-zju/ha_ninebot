@@ -749,6 +749,10 @@
         "include_track": {
           "name": "Include track",
           "description": "Requires details and coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        },
+        "refresh": {
+          "name": "重新查询云端",
+          "description": "默认读取本地档案；开启后重新查询云端。"
         }
       }
     },
@@ -775,6 +779,14 @@
         "include_track": {
           "name": "Include track",
           "description": "Requires coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        },
+        "refresh": {
+          "name": "重新查询云端",
+          "description": "默认读取本地档案；开启后重新查询云端。"
+        },
+        "point_offset": {
+          "name": "原始点起始序号",
+          "description": "按原始点序号读取下一段；不转换坐标或推测时间。"
         }
       }
     },

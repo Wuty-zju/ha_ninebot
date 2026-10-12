@@ -53,9 +53,11 @@ def timestamp(value: object, *, formatted: bool = False) -> datetime | None:
 
 
 def scan_track(
-    value: object, max_points: int
+    value: object, max_points: int, point_offset: int = 0
 ) -> tuple[tuple[RideTrackPoint, ...], TrackQuality, tuple[str, ...]]:
     """Validate every row within the response byte budget; only retain the view."""
+    if type(point_offset) is not int or not 0 <= point_offset <= MAX_RESPONSE_BYTES:
+        raise ValueError("Invalid point offset")
     if not 1 <= max_points <= MAX_TRACK_POINTS:
         raise ValueError("Invalid point limit")
     if value is None:
@@ -107,7 +109,7 @@ def scan_track(
             if location == previous:
                 duplicates += 1
             previous = location
-            if sequence < max_points:
+            if point_offset <= sequence < point_offset + max_points:
                 result.append(point)
         sequence += 1
         offset = end + 1
@@ -151,7 +153,12 @@ def field_state(item: dict[str, Any], keys: tuple[str, ...], value: object) -> F
 
 
 def parse_ride(
-    raw: object, month: str, *, source: Endpoint = Endpoint.TRAVEL, max_points: int = 500
+    raw: object,
+    month: str,
+    *,
+    source: Endpoint = Endpoint.TRAVEL,
+    max_points: int = 500,
+    point_offset: int = 0,
 ) -> Ride:
     previous_month(month)
     item = payload(raw)
@@ -208,7 +215,7 @@ def parse_ride(
     if maximum is not None:
         provenance["server_max_speed_m_s"] = "speed:max-km/h:ninecli-display-contract"
     track, quality, track_issues = (
-        scan_track(item.get("trail"), max_points)
+        scan_track(item.get("trail"), max_points, point_offset)
         if source is Endpoint.TRIP_DETAIL and "trail" in item
         else ((), TrackQuality(), ())
     )
@@ -283,13 +290,15 @@ def parse_ride(
         samples,
         track,
         total,
-        total is not None and total > max_points,
+        total is not None and (point_offset > 0 or total > point_offset + max_points),
         tuple(sorted(set(issues))),
         tuple(sorted(provenance.items())),
         field_states=tuple(sorted(states.items())),
         field_sources=tuple((name, source.value) for name in sorted(provenance)),
         precision=numeric_precision(item, ("mileages", "duration", "ec", "speed")),
         track_quality=quality,
+        track_offset=point_offset,
+        track_limit=max_points,
     )
 
 
@@ -416,6 +425,8 @@ def merge_detail(summary: Ride, detail: Ride) -> Ride:
             "total_track_points",
             "track_truncated",
             "track_quality",
+            "track_offset",
+            "track_limit",
         ):
             updates[field] = getattr(detail, field)
         accept("track_points")

@@ -26,6 +26,7 @@ from .identity import device_sn
 from .models import TravelMonth
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord
+from .ride_archive import ArchiveError
 from .ride_models import Ride, RideDetail
 from .runtime import NinebotConfigEntry
 from .travel import MAX_TRACK_POINTS, merge_detail, opaque_id, parse_ride
@@ -54,6 +55,12 @@ def bounded_integer(value: object, maximum: int) -> int:
     return value
 
 
+def point_offset(value: object) -> int:
+    if type(value) is not int or not 0 <= value <= 1048576:
+        raise vol.Invalid("Invalid point offset")
+    return value
+
+
 def ride_identifier(value: object) -> str:
     if not isinstance(value, str) or not (result := opaque_id(value)):
         raise vol.Invalid("Invalid ride ID")
@@ -63,6 +70,7 @@ def ride_identifier(value: object) -> str:
 COMMON = {
     vol.Required("device_id"): cv.string,
     vol.Optional("include_track", default=False): cv.boolean,
+    vol.Optional("refresh", default=False): cv.boolean,
 }
 TRIPS_SCHEMA = vol.Schema(
     {
@@ -78,6 +86,7 @@ DETAIL_SCHEMA = vol.Schema(
         **COMMON,
         vol.Required("ride_id"): ride_identifier,
         vol.Optional("query_month"): query_month,
+        vol.Optional("point_offset", default=0): point_offset,
         vol.Optional("max_points", default=500): partial(bounded_integer, maximum=MAX_TRACK_POINTS),
     }
 )
@@ -188,6 +197,12 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
             "server_simplified": ride.track_quality.server_simplified,
             "server_window_days": ride.track_quality.server_window_days,
             "selection": ride.geometry_selection,
+            "offset": ride.track_offset,
+            "limit": ride.track_limit,
+            "next_offset": ride.track_offset + ride.track_limit
+            if ride.total_track_points is not None
+            and ride.track_offset + ride.track_limit < ride.total_track_points
+            else None,
         },
     }
     if include_track:
@@ -207,6 +222,11 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
             "returned": len(ride.track_points),
             "total_known": ride.total_track_points,
             "truncated": ride.track_truncated,
+            "offset": ride.track_offset,
+            "next_offset": ride.track_offset + ride.track_limit
+            if ride.total_track_points is not None
+            and ride.track_offset + ride.track_limit < ride.total_track_points
+            else None,
         }
     return result
 
@@ -252,12 +272,91 @@ def month_response(travel: TravelMonth) -> dict[str, Any]:
     }
 
 
+def detail_context(detail: RideDetail) -> dict[str, Any]:
+    return {
+        "requested_detail_id": detail.requested_detail_id,
+        "query_month": detail.query_month,
+        "received_at": iso(detail.received_at),
+        "backend_version": detail.backend_version,
+        "endpoint_version": detail.endpoint_version,
+        "source_mode": detail.source_mode,
+        "archive_revision": detail.archive_revision,
+        "scalar_revision": detail.scalar_revision,
+        "scalar_observed_at": iso(detail.scalar_observed_at),
+        "geometry_received_at": iso(detail.geometry_received_at),
+        "mixed_geometry_revision": detail.mixed_geometry_revision,
+    }
+
+
+async def cached_detail(
+    co: NinebotCoordinator,
+    sn: str,
+    ride_id: str,
+    month: str | None,
+    max_points: int,
+    offset: int = 0,
+) -> tuple[RideDetail, RawRecord] | None:
+    if not co.statistics.archive_ready:
+        return None
+    generation, ownership = co._generation, co._ownership.get(sn, 0)
+    try:
+        found = await co.statistics.archive.async_private_detail(
+            sn,
+            ride_id,
+            max_points=max_points,
+            point_offset=offset,
+            guard=lambda: (
+                co.local_vehicle_available(sn)
+                and generation == co._generation
+                and ownership == co._ownership.get(sn, 0)
+            ),
+        )
+    except ArchiveError as err:
+        co.statistics.record_error(err)
+        raise validation_error("query_unavailable") from err
+    if found is None:
+        return None
+    if month is not None and found.ride.query_month != month:
+        raise validation_error("query_ride")
+    return RideDetail(
+        found.ride.detail_id or ride_id,
+        found.ride.query_month,
+        found.latest.received_at,
+        found.ride,
+        found.latest.backend_version,
+        found.latest.endpoint_version,
+        source_mode="ride_archive",
+        archive_revision=found.revision,
+        scalar_revision=found.scalar_revision,
+        scalar_observed_at=found.scalar_observed_at,
+        geometry_received_at=found.geometry.received_at,
+        mixed_geometry_revision=found.latest_hash != found.geometry_hash,
+    ), found.latest
+
+
 async def detail_ride(
-    hass: HomeAssistant, co: NinebotCoordinator, sn: str, summary: Ride, max_points: int
+    hass: HomeAssistant,
+    co: NinebotCoordinator,
+    sn: str,
+    summary: Ride,
+    max_points: int,
+    *,
+    refresh: bool = False,
+    offset: int = 0,
 ) -> tuple[RideDetail, RawRecord]:
+    if not refresh and summary.ride_id is not None:
+        local = await cached_detail(
+            co, sn, summary.ride_id, summary.query_month, max_points, offset
+        )
+        if local is not None:
+            return local
+    if not co.fresh(sn, "profile"):
+        raise validation_error("query_unavailable")
     if summary.detail_id is None:
         raise validation_error("query_ride")
-    record = await co.async_query_detail(sn, summary.detail_id, summary.query_month)
+    record = await co.async_query_detail(
+        sn, summary.detail_id, summary.query_month, refresh=refresh
+    )
     reference = co.raw.reference(
         Endpoint.TRIP_DETAIL,
         sn,
@@ -265,7 +364,7 @@ async def detail_ride(
         now=dt_util.utcnow(),
         query_month=summary.query_month,
     )
-    ride = await hass.async_add_executor_job(detail_data, record, summary, max_points)
+    ride = await hass.async_add_executor_job(detail_data, record, summary, max_points, offset)
     if reference is not None and co.raw.resolve(reference, now=dt_util.utcnow()) is not record:
         reference = None
     await co.statistics.async_record_detail(
@@ -292,12 +391,16 @@ async def detail_ride(
     ), record
 
 
-def detail_data(record: RawRecord, summary: Ride, max_points: int) -> Ride:
+def detail_data(record: RawRecord, summary: Ride, max_points: int, offset: int = 0) -> Ride:
     """Decode and normalize bounded raw JSON away from the event loop."""
     if record.endpoint is not Endpoint.TRIP_DETAIL or record.query_month != summary.query_month:
         raise NinebotError(ErrorKind.PROTOCOL)
     detail = parse_ride(
-        record.payload(), summary.query_month, source=Endpoint.TRIP_DETAIL, max_points=max_points
+        record.payload(),
+        summary.query_month,
+        source=Endpoint.TRIP_DETAIL,
+        max_points=max_points,
+        point_offset=offset,
     )
     # The observed detail lacks an ID. Check available timestamps rather than
     # merging a demonstrably different trip into a legitimate month index.
@@ -329,7 +432,7 @@ def assert_query_scope(
 
 
 async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
-    require_live = call.service == "get_trip_detail" or call.data.get("include_detail", False)
+    require_live = call.data.get("refresh", False)
     entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=require_live)
     co = entry.runtime_data.coordinator
     generation, ownership = co._generation, co._ownership.get(sn, 0)
@@ -346,8 +449,38 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
         month = call.data["month"]
     else:
         month = call.data.get("query_month", adapters.month_at(dt_util.utcnow()))
+    local = None
+    if not is_list and not require_live:
+        local = await cached_detail(
+            co,
+            sn,
+            call.data["ride_id"],
+            call.data.get("query_month"),
+            call.data["max_points"],
+            call.data["point_offset"],
+        )
+    if local is not None:
+        detail, record = local
+        await async_check_history_access(hass, call, entry.entry_id, include_track=include_track)
+        assert_query_scope(
+            hass, call.data["device_id"], entry.entry_id, sn, include_track, require_live=False
+        )
+        if generation != co._generation or ownership != co._ownership.get(sn, 0):
+            raise validation_error("query_unavailable")
+        return {
+            "schema_version": 2,
+            "query_month": detail.query_month,
+            "received_at": iso(record.received_at),
+            "source": "ninecli",
+            "source_mode": "ride_archive",
+            "backend_version": record.backend_version,
+            "ride": ride_response(detail.ride, include_track),
+            "detail_context": detail_context(detail),
+        }
     try:
-        observation = await co.async_month_observation(sn, month)
+        observation = await co.async_month_observation(
+            sn, month, prefer_local=not require_live, refresh=require_live
+        )
         travel = observation.travel
         rides = travel.rides
         if is_list:
@@ -363,6 +496,7 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
             page, limit = call.data["page"], call.data["limit"]
             start = (page - 1) * limit
             selected = rides[start : start + limit]
+            contexts = {}
             if call.data["include_detail"]:
                 # Serial backend and explicit <=5 fanout; no background downloads.
                 enriched = []
@@ -372,7 +506,9 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
                         or sum(ride.ride_id == summary.ride_id for ride in rides) != 1
                     ):
                         raise validation_error("query_ride")
-                    enriched.append((await detail_ride(hass, co, sn, summary, 500))[0].ride)
+                    detail, _ = await detail_ride(hass, co, sn, summary, 500, refresh=require_live)
+                    enriched.append(detail.ride)
+                    contexts[summary.ride_id] = detail_context(detail)
                 selected = tuple(enriched)
             response = {
                 "schema_version": 2,
@@ -383,7 +519,17 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
                 "current_sample_stale": observation.current_sample_stale,
                 "backend_version": observation.backend_version,
                 **month_response(travel),
-                "rides": [ride_response(ride, include_track) for ride in selected],
+                "rides": [
+                    {
+                        **ride_response(ride, include_track),
+                        **(
+                            {"detail_context": contexts[ride.ride_id]}
+                            if ride.ride_id in contexts
+                            else {}
+                        ),
+                    }
+                    for ride in selected
+                ],
                 "pagination": {
                     "page": page,
                     "limit": limit,
@@ -407,7 +553,13 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
             if len(matches) != 1:
                 raise validation_error("query_ride")
             detail, detail_record = await detail_ride(
-                hass, co, sn, matches[0], call.data["max_points"]
+                hass,
+                co,
+                sn,
+                matches[0],
+                call.data["max_points"],
+                refresh=require_live,
+                offset=call.data["point_offset"],
             )
             response = {
                 "schema_version": 2,
@@ -416,13 +568,8 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
                 "source": "ninecli",
                 "backend_version": detail_record.backend_version,
                 "ride": ride_response(detail.ride, include_track),
-                "detail_context": {
-                    "requested_detail_id": detail.requested_detail_id,
-                    "query_month": detail.query_month,
-                    "received_at": iso(detail.received_at),
-                    "backend_version": detail.backend_version,
-                    "endpoint_version": detail.endpoint_version,
-                },
+                "source_mode": detail.source_mode,
+                "detail_context": detail_context(detail),
             }
     except NinebotError as err:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key=err.kind.value) from err

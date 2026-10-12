@@ -95,6 +95,8 @@ class Ride:
     precision: tuple[tuple[str, int], ...] = ()
     track_quality: TrackQuality = TrackQuality()
     geometry_selection: str = "candidate"
+    track_offset: int = 0
+    track_limit: int = 500
 
     @property
     def average_speed_m_s(self) -> float | None:
@@ -137,3 +139,9 @@ class RideDetail:
     backend_version: str | None = None
     endpoint_version: str | None = None
     raw_reference: RawReference | None = None
+    source_mode: str = "ninecli"
+    archive_revision: int | None = None
+    scalar_revision: int | None = None
+    scalar_observed_at: datetime | None = None
+    geometry_received_at: datetime | None = None
+    mixed_geometry_revision: bool = False

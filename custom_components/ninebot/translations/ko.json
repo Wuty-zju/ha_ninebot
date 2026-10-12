@@ -749,6 +749,10 @@
         "include_track": {
           "name": "Include track",
           "description": "Requires details and coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        },
+        "refresh": {
+          "name": "Refresh from cloud",
+          "description": "Prefer the local archive by default. Enable to request a fresh cloud response."
         }
       }
     },
@@ -775,6 +779,14 @@
         "include_track": {
           "name": "Include track",
           "description": "Requires coordinates opt-in. Precise locations may persist in automation traces or response variables."
+        },
+        "refresh": {
+          "name": "Refresh from cloud",
+          "description": "Prefer the local archive by default. Enable to request a fresh cloud response."
+        },
+        "point_offset": {
+          "name": "Source point offset",
+          "description": "Read a bounded chunk by original sequence; no coordinate or timestamp inference."
         }
       }
     },
