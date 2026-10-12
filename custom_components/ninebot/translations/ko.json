@@ -108,8 +108,8 @@
           "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
-          "preserve_history": "Off by default. Preserve private GPS/speed for known rides; this does not prove full cloud history.",
-          "history_requests_per_hour": "1–60, default 30. Logical detail calls; backend transport retries remain managed by ninecli."
+          "preserve_history": "Off by default. Preserve known ride details and resume your selected history range; cloud coverage may remain partial.",
+          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations."
         }
       },
       "model_vehicle": {

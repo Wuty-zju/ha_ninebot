@@ -108,8 +108,8 @@
           "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "開關每輛車的本地行程日曆。關閉不刪除歷史；重新開啟沿用原實體。瀏覽不請求雲端。",
-          "preserve_history": "默认关闭；保存已知行程的完整私有GPS/速度数据，不代表云端全量历史。",
-          "history_requests_per_hour": "1–60，默认30。限制逻辑详情调用；ninecli内部重试仍由后端负责。"
+          "preserve_history": "默认关闭。保全已知行程的私有轨迹，并自动续接用户选定的历史范围；不代表云端全史完整。",
+          "history_requests_per_hour": "每个账号的后台月份与详情查询共享此预算；ninecli 内部重试不计在此逻辑请求数内。"
         }
       },
       "model_vehicle": {

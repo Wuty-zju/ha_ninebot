@@ -658,7 +658,7 @@ Schema v1 migration creates an exclusive `rides.schema1-<hash>.sqlite3` recovery
 
 ### Known-ride background preservation (b54, H4 first step)
 
-Enable **Preserve trip details in background** in account options to save known ride IDs independently of calendars or enabled travel entities. This is off by default because private GPS/speed storage and cloud requests are involved. Default budget: 30 logical detail calls per account/hour (1–60); ninecli internal transport retries are outside this logical counter. Claims, budget and exponential jittered retries are durable; HA restarts do not reset them. Vehicles are rotated and background work uses the existing Broker priority below telemetry/control. Stored stable details are reused; changed scalar fingerprints can schedule a new candidate, while recent rides receive at most a limited stability recheck. Cloud simplification never erases the selected old route.
+Enable **Preserve trip details in background** in account options to save known ride IDs independently of calendars or enabled travel entities. This is off by default because private GPS/speed storage and cloud requests are involved. Default budget: 30 logical history calls per account/hour (1–60); ninecli internal transport retries are outside this logical counter. Claims, budget and exponential jittered retries are durable; HA restarts do not reset them. Vehicles are rotated and background work uses the existing Broker priority below telemetry/control. Stored stable details are reused; changed scalar fingerprints can schedule a new candidate, while recent rides receive at most a limited stability recheck. Cloud simplification never erases the selected old route.
 
 Only already indexed IDs are eligible. The current-month demand uses existing travel intervals; this stage does not scan all months, supply unsupported cloud pagination, or prove full coverage. Sparse month-gap scheduling is still pending in H4. Capacity/backup/authentication suspend work; unload cancels background work and drains the archive actor. Diagnostics expose only fixed status, never ride IDs or GPS. No automatic archive expiry is introduced.
 
@@ -677,5 +677,4 @@ The vehicle fairness cursor survives restarts and contains only a hashed identit
 This does not create an automatic all-history range. Previous-month late-arrival
 reconciliation, sparse forced month repair and richer multi-vehicle task queues
 remain subsequent H4 work. Known partial coverage is retained, never promoted to
-complete merely because a range job finishes. No production data is changed by
-installing this release until the user enables preservation or invokes an Action.
+complete merely because a range job finishes. No new cloud endpoint or automatic full-history range is introduced.
