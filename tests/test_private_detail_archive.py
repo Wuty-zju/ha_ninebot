@@ -3,14 +3,42 @@
 import hashlib
 import sqlite3
 from contextlib import closing
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from custom_components.ninebot.raw import Endpoint, build_record
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
 from custom_components.ninebot.travel import merge_detail, parse_ride
-from tests.test_ride_archive import NOW, OWNER, SN, sample
+from custom_components.ninebot.adapters import travel
+
+NOW = datetime(2026, 9, 26, tzinfo=UTC)
+OWNER = hashlib.sha256(b"synthetic-account").hexdigest()
+SN = "synthetic-vehicle"
+
+
+def sample():
+    return travel(
+        {
+            "month": "202609",
+            "times": 2,
+            "total_mileages": 2.4,
+            "ec": 240,
+            "duration": 1200,
+            "list": [
+                {
+                    "travel_id": identity,
+                    "mileages": 1.2,
+                    "duration": 600,
+                    "ec": 120,
+                    "start_time": int(NOW.timestamp()) + index * 1000,
+                    "end_time": int(NOW.timestamp()) + index * 1000 + 600,
+                }
+                for index, identity in enumerate(("first", "second"))
+            ],
+        },
+        "202609",
+    )
 
 
 def record(raw, at=NOW):

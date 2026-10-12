@@ -395,7 +395,8 @@ class RideArchive:
                 backend,
                 endpoint,
             ) in db.execute(
-                "SELECT vehicle,ride,hash,typeof(body),length(body),observed,month,backend,endpoint "
+                "SELECT vehicle,ride,hash,typeof(body),length(body),observed,month,"
+                "backend,endpoint "
                 "FROM detail_payloads"
             ):
                 if (
