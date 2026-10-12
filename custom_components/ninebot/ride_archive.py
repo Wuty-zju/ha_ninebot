@@ -1,7 +1,8 @@
 """Account-scoped SQLite ride archive, serialized entirely outside HA's loop.
 
-Only reviewed normalized scalar facts persist. The bounded RawStore remains
-responsible for raw responses and GPS. Historical membership is retained even
+Reviewed scalar facts and bounded private detail responses persist. The bounded
+RawStore remains the live response cache; archived GPS is never HA state.
+Historical membership is retained even
 when a subsequent incomplete month response omits previously observed rides.
 """
 
@@ -45,16 +46,17 @@ from .archive_timeline import (
     latest_query,
     timeline_query,
 )
-from .const import BUSINESS_TIMEZONE
+from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
+from .detail_codec import ArchivedDetail, packed, unpacked
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
-from .raw import version_metadata
+from .raw import Endpoint, RawRecord, version_metadata
 from .ride_models import Ride
 from .statistics_store import StoredMonth, StoredRide
 from .sync_job import SyncJob, SyncState, job_data, restored_job
-from .travel import MAX_RIDES, opaque_id
+from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
 MAX_PENDING = 16
 MAX_PAGE = 100
@@ -158,6 +160,39 @@ TABLE_COLUMNS = {
     "months": ("vehicle", "month", "data", "observed", "revision", "backend", "ids"),
     "rides": ("vehicle", "id", "data", "observed", "revision", "started", "ended"),
     "membership": ("vehicle", "month", "ride", "latest"),
+}
+
+
+DETAIL_SCHEMA = (
+    "CREATE TABLE detail_payloads (vehicle TEXT NOT NULL, ride TEXT NOT NULL, hash TEXT NOT NULL,"
+    " body BLOB NOT NULL, observed TEXT NOT NULL, month TEXT NOT NULL, backend TEXT, endpoint TEXT,"
+    " PRIMARY KEY(vehicle,ride,hash), FOREIGN KEY(vehicle,ride) REFERENCES rides(vehicle,id))",
+    "CREATE TABLE details (vehicle TEXT NOT NULL, ride TEXT NOT NULL, latest_hash TEXT NOT NULL,"
+    " geometry_hash TEXT NOT NULL, observed TEXT NOT NULL, revision INTEGER NOT NULL,"
+    " selection TEXT NOT NULL, PRIMARY KEY(vehicle,ride),"
+    " FOREIGN KEY(vehicle,ride,latest_hash) REFERENCES detail_payloads(vehicle,ride,hash),"
+    " FOREIGN KEY(vehicle,ride,geometry_hash) REFERENCES detail_payloads(vehicle,ride,hash))",
+)
+DETAIL_COLUMNS = {
+    "detail_payloads": (
+        "vehicle",
+        "ride",
+        "hash",
+        "body",
+        "observed",
+        "month",
+        "backend",
+        "endpoint",
+    ),
+    "details": (
+        "vehicle",
+        "ride",
+        "latest_hash",
+        "geometry_hash",
+        "observed",
+        "revision",
+        "selection",
+    ),
 }
 
 
@@ -287,13 +322,14 @@ class RideArchive:
                 raise
             self._opened = True
 
-    def _check(self, db: sqlite3.Connection) -> None:
-        if db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
+    def _check(self, db: sqlite3.Connection, version: int = SCHEMA_VERSION) -> None:
+        if db.execute("PRAGMA user_version").fetchone()[0] != version:
             raise ArchiveError(ArchiveFailure.SCHEMA)
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if tables != TABLE_COLUMNS.keys():
+        columns_by_table = TABLE_COLUMNS | (DETAIL_COLUMNS if version == 2 else {})
+        if tables != columns_by_table.keys():
             raise ArchiveError(ArchiveFailure.SCHEMA)
-        for table, columns in TABLE_COLUMNS.items():
+        for table, columns in columns_by_table.items():
             if tuple(row[1] for row in db.execute(f"PRAGMA table_info({table})")) != columns:
                 raise ArchiveError(ArchiveFailure.SCHEMA)
         meta = dict(db.execute("SELECT key,value FROM meta"))
@@ -347,15 +383,65 @@ class RideArchive:
                 raise ValueError("Invalid archived ride index")
             stamp(observed)
 
+        if version == 2:
+            for (
+                vehicle,
+                identity,
+                digest,
+                body_type,
+                body_size,
+                observed,
+                month,
+                backend,
+                endpoint,
+            ) in db.execute(
+                "SELECT vehicle,ride,hash,typeof(body),length(body),observed,month,"
+                "backend,endpoint "
+                "FROM detail_payloads"
+            ):
+                if (
+                    len(vehicle) != 64
+                    or opaque_id(identity) != identity
+                    or len(digest) != 64
+                    or any(c not in "0123456789abcdef" for c in digest)
+                    or body_type != "blob"
+                    or body_size > MAX_RESPONSE_BYTES + 1024
+                    or (backend is not None and version_metadata(backend) != backend)
+                    or (endpoint is not None and version_metadata(endpoint) != endpoint)
+                ):
+                    raise ValueError("Invalid private detail metadata")
+                stamp(observed)
+                previous_month(month)
+            for _, _, _, _, observed, revision, selection in db.execute("SELECT * FROM details"):
+                if revision < 1 or selection not in {
+                    "initial",
+                    "accepted_candidate",
+                    "retained_previous_missing_geometry",
+                    "retained_previous_server_simplified",
+                    "retained_previous_geometry_conflict",
+                    "retained_previous_unverified_reduction",
+                }:
+                    raise ValueError("Invalid private selection metadata")
+                stamp(observed)
+            if db.execute(
+                "SELECT 1 FROM detail_payloads GROUP BY vehicle,ride HAVING COUNT(*)>2 LIMIT 1"
+            ).fetchone():
+                raise ValueError("Invalid private detail retention")
+
     def _open(self) -> None:
         if self.path.is_symlink() or self.path.parent.is_symlink():
             raise ArchiveError(ArchiveFailure.STORAGE)
         if self.path.exists():
             probe = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True)
             try:
-                self._check(probe)
+                version = probe.execute("PRAGMA user_version").fetchone()[0]
+                if version not in (1, SCHEMA_VERSION):
+                    raise ArchiveError(ArchiveFailure.SCHEMA)
+                self._check(probe, version)
             finally:
                 probe.close()
+            if version == 1:
+                self._migrate_v1()
         else:
             self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             os.chmod(self.path.parent, 0o700)
@@ -364,7 +450,7 @@ class RideArchive:
             db = sqlite3.connect(self.path)
             try:
                 with db:
-                    for sql in SCHEMA:
+                    for sql in (*SCHEMA, *DETAIL_SCHEMA):
                         db.execute(sql)
                     db.executemany(
                         "INSERT INTO meta VALUES (?,?)", (("owner", self.owner), ("revision", "0"))
@@ -387,6 +473,55 @@ class RideArchive:
         except BaseException:
             db.close()
             raise
+
+    def _migrate_v1(self) -> None:
+        """Validate first, save an exclusive consistent backup, then atomic DDL."""
+        with self.path.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        destination = self.path.with_name(f"rides.schema1-{digest}.sqlite3")
+        db = sqlite3.connect(self.path)
+        try:
+            if not destination.exists():
+                descriptor, filename = tempfile.mkstemp(
+                    prefix=".ninebot-migration-", dir=self.path.parent
+                )
+                os.close(descriptor)
+                temporary = Path(filename)
+                try:
+                    target = sqlite3.connect(temporary)
+                    try:
+                        db.backup(target)
+                        self._check(target, 1)
+                    finally:
+                        target.close()
+                    with temporary.open("rb") as stream:
+                        os.fsync(stream.fileno())
+                    os.link(temporary, destination)
+                finally:
+                    temporary.unlink(missing_ok=True)
+            elif destination.is_symlink():
+                raise ArchiveError(ArchiveFailure.STORAGE)
+            else:
+                target = sqlite3.connect(destination.as_uri() + "?mode=ro", uri=True)
+                try:
+                    self._check(target, 1)
+                finally:
+                    target.close()
+            pages = db.execute("PRAGMA page_count").fetchone()[0]
+            size = db.execute("PRAGMA page_size").fetchone()[0]
+            db.execute(f"PRAGMA max_page_count={max(pages, self.max_bytes // size)}")
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                for sql in DETAIL_SCHEMA:
+                    db.execute(sql)
+                db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                self._check(db)
+                db.commit()
+            except BaseException:
+                db.rollback()
+                raise
+        finally:
+            db.close()
 
     @staticmethod
     def _ids(value: str) -> tuple[str, ...]:
@@ -623,15 +758,18 @@ class RideArchive:
         *,
         guard: Callable[[], bool] | None = None,
         ordered: bool = False,
+        raw: RawRecord | None = None,
     ) -> bool:
         if type(ordered) is not bool or (ordered and guard is None):
             raise ValueError("Ordered receipts require an ownership/revision fence")
         return await self._run(
-            partial(self._record_detail, vehicle_key(sn), ride, utc_string(received), ordered),
+            partial(self._record_detail, vehicle_key(sn), ride, utc_string(received), ordered, raw),
             guard=guard,
         )
 
-    def _record_detail(self, vehicle: str, ride: Ride, observed: str, ordered: bool) -> bool:
+    def _record_detail(
+        self, vehicle: str, ride: Ride, observed: str, ordered: bool, raw: RawRecord | None = None
+    ) -> bool:
         # A detail call cannot introduce an arbitrary ID not already indexed
         # for this vehicle/month, even when another account owns that ID.
         db = self._db(write=True)
@@ -646,11 +784,137 @@ class RideArchive:
         before = self._ride(vehicle, ride.ride_id)
         if before is None or before[0].detail_id is None or before[0].detail_id != ride.detail_id:
             raise ArchiveError(ArchiveFailure.OWNER)
+        if before[1] > observed or (before[1] == observed and not ordered):
+            return False
         with db:
             changed = self._upsert_ride(vehicle, ride, observed, ordered)
+            if raw is not None:
+                changed = self._save_private_detail(vehicle, ride, raw, observed) or changed
             if changed:
                 self._revision(bump=True)
         return changed
+
+    def _save_private_detail(self, vehicle: str, ride: Ride, raw: RawRecord, observed: str) -> bool:
+        if raw.query_month != ride.query_month or utc_string(raw.received_at) != observed:
+            raise ValueError("Invalid detail receipt")
+        digest, body, clean = packed(raw)
+        candidate = parse_ride(
+            clean.payload(), ride.query_month, source=Endpoint.TRIP_DETAIL, max_points=2000
+        )
+        for field in ("started_at", "ended_at"):
+            if getattr(candidate, field) is not None and getattr(candidate, field) != getattr(
+                ride, field
+            ):
+                raise ValueError("Invalid detail trip scope")
+        if (
+            (candidate.ride_id is not None and candidate.ride_id != ride.ride_id)
+            or (candidate.detail_id is not None and candidate.detail_id != ride.detail_id)
+            or {"conflicting_ride_ids", "conflicting_detail_ids"} & set(candidate.issues)
+        ):
+            raise ValueError("Invalid private detail identity")
+        db = self._db()
+        old = self._private_detail(vehicle, ride.ride_id, 2000)
+        if old and utc_string(old.latest.received_at) > observed:
+            return False
+        adopt, reason = select_geometry(old.ride, candidate) if old else (True, "initial")
+        geometry_hash = digest if adopt or old is None else old.geometry_hash
+        changed = old is None or old.latest_hash != digest or old.geometry_hash != geometry_hash
+        revision = (old.revision if old else 0) + int(changed)
+        db.execute(
+            "INSERT OR IGNORE INTO detail_payloads VALUES (?,?,?,?,?,?,?,?)",
+            (
+                vehicle,
+                ride.ride_id,
+                digest,
+                body,
+                observed,
+                ride.query_month,
+                clean.backend_version,
+                clean.endpoint_version,
+            ),
+        )
+        db.execute(
+            "INSERT INTO details VALUES (?,?,?,?,?,?,?) ON CONFLICT(vehicle,ride) DO UPDATE SET "
+            "latest_hash=excluded.latest_hash,geometry_hash=excluded.geometry_hash,"
+            "observed=excluded.observed,revision=excluded.revision,selection=excluded.selection",
+            (vehicle, ride.ride_id, digest, geometry_hash, observed, revision, reason),
+        )
+        # Bound storage to latest candidate plus selected geometry, not every poll.
+        db.execute(
+            "DELETE FROM detail_payloads WHERE vehicle=? AND ride=? AND hash NOT IN (?,?)",
+            (vehicle, ride.ride_id, digest, geometry_hash),
+        )
+        return changed
+
+    async def async_private_detail(
+        self,
+        sn: str,
+        ride_id: str,
+        *,
+        max_points: int = 500,
+        guard: Callable[[], bool] | None = None,
+    ) -> ArchivedDetail | None:
+        if (
+            opaque_id(ride_id) != ride_id
+            or type(max_points) is not int
+            or not 1 <= max_points <= 2000
+        ):
+            raise ValueError("Invalid private detail query")
+        return await self._run(
+            partial(self._private_detail, vehicle_key(sn), ride_id, max_points), guard=guard
+        )
+
+    def _private_detail(
+        self, vehicle: str, ride_id: str | None, max_points: int
+    ) -> ArchivedDetail | None:
+        row = (
+            self._db()
+            .execute(
+                "SELECT latest_hash,geometry_hash,observed,revision,selection FROM details "
+                "WHERE vehicle=? AND ride=?",
+                (vehicle, ride_id),
+            )
+            .fetchone()
+        )
+        if row is None:
+            return None
+        summary = self._ride(vehicle, ride_id) if ride_id is not None else None
+        if summary is None:
+            raise ValueError("Missing private detail summary")
+        records = []
+        for digest in row[:2]:
+            blob = (
+                self._db()
+                .execute(
+                    "SELECT body,observed,month,backend,endpoint FROM detail_payloads "
+                    "WHERE vehicle=? AND ride=? AND hash=?",
+                    (vehicle, ride_id, digest),
+                )
+                .fetchone()
+            )
+            if blob is None:
+                raise ValueError("Missing private payload")
+            records.append(unpacked(blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]))
+        latest, geometry = records
+        # Last successful receipt updates even if the content hash is unchanged.
+        latest = replace(latest, received_at=stamp(row[2]))
+        parsed = parse_ride(
+            geometry.payload(),
+            geometry.query_month or summary[0].query_month,
+            source=Endpoint.TRIP_DETAIL,
+            max_points=max_points,
+        )
+        result = replace(
+            summary[0],
+            source=Endpoint.TRIP_DETAIL,
+            track_points=parsed.track_points,
+            speed_samples=parsed.speed_samples,
+            total_track_points=parsed.total_track_points,
+            track_truncated=parsed.track_truncated,
+            track_quality=parsed.track_quality,
+            geometry_selection=row[4],
+        )
+        return ArchivedDetail(result, latest, geometry, row[3], row[4], row[0], row[1])
 
     async def async_months(self, sn: str, months: tuple[str, ...]) -> tuple[ArchiveMonth, ...]:
         """One serialized read for at most six selected months plus the boundary."""

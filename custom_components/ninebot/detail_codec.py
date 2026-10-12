@@ -1,0 +1,82 @@
+"""Private, bounded business detail encoding; never HA state or diagnostics."""
+
+import hashlib
+import json
+import zlib
+from dataclasses import dataclass
+from datetime import datetime
+
+from .const import MAX_RESPONSE_BYTES
+from .raw import Endpoint, RawRecord, build_record
+from .ride_models import Ride
+
+
+@dataclass(frozen=True)
+class ArchivedDetail:
+    ride: Ride
+    latest: RawRecord
+    geometry: RawRecord
+    revision: int
+    selection: str
+    latest_hash: str
+    geometry_hash: str
+
+
+def packed(record: RawRecord) -> tuple[str, bytes, RawRecord]:
+    """Reapply redaction even to caller-created records; preserve unknown data."""
+    if record.endpoint is not Endpoint.TRIP_DETAIL or record.query_month is None:
+        raise ValueError("Invalid private detail scope")
+    clean = build_record(
+        record.endpoint,
+        record.payload(),
+        record.received_at,
+        record.query_month,
+        backend_version=record.backend_version,
+        endpoint_version=record.endpoint_version,
+    )
+    if not isinstance(clean.payload(), dict):
+        raise ValueError("Invalid private detail shape")
+    # Canonical JSON enables content dedup independent of key ordering.
+    body = json.dumps(
+        clean.payload(), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    ).encode()
+    if len(body) > MAX_RESPONSE_BYTES:
+        raise ValueError("Private detail byte budget")
+    return hashlib.sha256(body).hexdigest(), zlib.compress(body), clean
+
+
+def unpacked(
+    body: bytes,
+    digest: str,
+    received: datetime,
+    month: str,
+    backend: str | None,
+    endpoint: str | None,
+) -> RawRecord:
+    """Bound decompression before JSON parsing, and verify payload integrity."""
+    if not isinstance(body, bytes) or len(body) > MAX_RESPONSE_BYTES + 1024:
+        raise ValueError("Private detail compressed budget")
+    decoder = zlib.decompressobj()
+    try:
+        raw = decoder.decompress(body, MAX_RESPONSE_BYTES + 1)
+    except zlib.error as err:
+        raise ValueError("Invalid private detail compression") from err
+    if (
+        len(raw) > MAX_RESPONSE_BYTES
+        or not decoder.eof
+        or decoder.unused_data
+        or decoder.unconsumed_tail
+        or hashlib.sha256(raw).hexdigest() != digest
+    ):
+        raise ValueError("Invalid private detail integrity")
+    record = build_record(
+        Endpoint.TRIP_DETAIL,
+        json.loads(raw),
+        received,
+        month,
+        backend_version=backend,
+        endpoint_version=endpoint,
+    )
+    if not isinstance(record.payload(), dict):
+        raise ValueError("Invalid private detail shape")
+    return record

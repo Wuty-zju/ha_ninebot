@@ -19,6 +19,7 @@ from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
+from .raw import RawRecord
 from .ride_archive import ArchiveError, ArchiveFailure, ArchiveMonth, RideArchive
 from .ride_models import Ride
 from .statistics_store import StoredMonth, StoredRide, TravelStatisticsStore
@@ -299,7 +300,12 @@ class ArchiveStatistics(TravelStatisticsStore):
         return await self.archive.async_month(sn, month)
 
     async def async_record_detail(
-        self, sn: str, ride: Ride, received: datetime, guard: Callable[[], bool]
+        self,
+        sn: str,
+        ride: Ride,
+        received: datetime,
+        guard: Callable[[], bool],
+        raw: RawRecord | None = None,
     ) -> None:
         if not self.archive_ready:
             return
@@ -309,7 +315,7 @@ class ArchiveStatistics(TravelStatisticsStore):
                 return
             try:
                 changed = await self.archive.async_record_detail(
-                    sn, ride, received, guard=guard, ordered=True
+                    sn, ride, received, guard=guard, ordered=True, raw=raw
                 )
                 if not guard():
                     return
