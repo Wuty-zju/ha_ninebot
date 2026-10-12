@@ -694,7 +694,7 @@ class RideArchive:
                 count += 1
                 size += len(data[0].encode())
                 if count > MAX_TIMELINE_RIDES or size > MAX_TIMELINE_BYTES:
-                    raise TimelineLimitError
+                    raise ArchiveError(ArchiveFailure.BUDGET)
                 rides.append(replace(restored_ride(decoded(data[0])), query_month=month))
             result.append(replace(archived, statistics_rides=tuple(rides)))
         return tuple(result)
