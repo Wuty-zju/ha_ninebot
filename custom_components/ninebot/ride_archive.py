@@ -345,6 +345,12 @@ class RideArchive:
         for key, value in meta.items():
             if key.startswith("preservation:"):
                 task_state(value)
+            elif key == "preservation_cursor" and (
+                len(value) != 64 or any(c not in "0123456789abcdef" for c in value)
+            ):
+                raise ValueError("Invalid preservation cursor")
+            elif key == "preservation_turn" and value not in {"detail", "month"}:
+                raise ValueError("Invalid preservation turn")
             elif key == "preservation_budget" and not 0 <= float(value) <= 4102444800:
                 raise ValueError("Invalid preservation budget timestamp")
         if "sync_job" in meta:
@@ -935,6 +941,63 @@ class RideArchive:
             result, latest, geometry, row[3], row[4], row[0], row[1], summary[2], stamp(summary[1])
         )
 
+    async def async_preservation_order(
+        self, vehicles: tuple[str, ...]
+    ) -> tuple[tuple[str, ...], str]:
+        """Restore fairness without storing account names or raw vehicle identities."""
+
+        def read() -> tuple[tuple[str, ...], str]:
+            db = self._db()
+            meta = dict(
+                db.execute(
+                    "SELECT key,value FROM meta WHERE key IN "
+                    "('preservation_cursor','preservation_turn')"
+                )
+            )
+            ordered = tuple(sorted(vehicles))
+            cursor = meta.get("preservation_cursor")
+            for index, sn in enumerate(ordered):
+                if vehicle_key(sn) == cursor:
+                    ordered = ordered[index + 1 :] + ordered[: index + 1]
+                    break
+            return ordered, meta.get("preservation_turn", "detail")
+
+        return await self._run(read)
+
+    def _reserve_background(
+        self, db: sqlite3.Connection, vehicle: str, epoch: float, budget: int, kind: str
+    ) -> bool:
+        limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
+        if limit is not None and float(limit[0]) > epoch:
+            return False
+        for key, value in (
+            ("preservation_budget", str(epoch + 3600 / budget)),
+            ("preservation_cursor", vehicle),
+            ("preservation_turn", "month" if kind == "detail" else "detail"),
+        ):
+            db.execute(
+                "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
+        return True
+
+    async def async_background_budget(
+        self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
+    ) -> bool:
+        """Reserve one month operation before I/O, with the same account detail budget."""
+        utc_string(now)
+        if type(budget) is not int or not 1 <= budget <= 60:
+            raise ValueError("Invalid preservation budget")
+
+        def reserve() -> bool:
+            db = self._db(write=True)
+            with db:
+                return self._reserve_background(
+                    db, vehicle_key(sn), now.timestamp(), budget, "month"
+                )
+
+        return await self._run(reserve, guard=guard)
+
     async def async_preservation_claim(
         self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
     ) -> "PreservationTask | None":
@@ -1028,11 +1091,7 @@ class RideArchive:
                     "DO UPDATE SET value=excluded.value",
                     (key, encoded(state)),
                 )
-                db.execute(
-                    "INSERT INTO meta VALUES ('preservation_budget',?) ON CONFLICT(key) "
-                    "DO UPDATE SET value=excluded.value",
-                    (str(epoch + interval),),
-                )
+                self._reserve_background(db, vehicle, epoch, budget, "detail")
                 return PreservationTask(ride, signature, state["attempts"], state["observations"])
         return None
 

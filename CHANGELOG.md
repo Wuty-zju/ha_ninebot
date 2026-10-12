@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b55
+
+- Resume explicitly selected missing-month ranges in opt-in background preservation, one missing month per tick with durable checkpoints and the shared account detail/month request budget. Local known partial months remain explicitly partial rather than being repeatedly fetched as unverified pagination.
+- Persist vehicle fairness and alternate pending range/list work with detail preservation across restarts; keep existing foreground sync batches when background preservation is disabled. No new automatic full-history range, entity identities or cloud endpoint assumptions.
+- Previous-month reconciliation and explicit sparse month repair remain subsequent H4 work; H5 map rendering is not yet delivered.
+
 ## 2.0.0b54
 
 - Add opt-in background preservation for known ride IDs, independent of enabled calendars/entities. Persist claims, retry times and account budget in the existing archive; restart does not reset the budget.

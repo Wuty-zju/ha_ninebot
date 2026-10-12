@@ -38,6 +38,7 @@ jobs:
       - name: Run related offline regression only
         run: >-
           python -m pytest -q
+          tests/test_history_sync.py
           tests/test_preservation.py
           tests/test_query_broker.py
           tests/test_coordinator.py

@@ -138,3 +138,33 @@ async def test_worker_uses_background_budget_and_persists_full_detail(tmp_path):
         await worker.async_close()
     finally:
         await archive.async_close()
+
+
+async def test_persistent_vehicle_order_and_shared_month_budget(tmp_path):
+    path = tmp_path / "fair.sqlite3"
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        for sn in ("A", "B"):
+            await archive.async_record_month(sn, sample(), NOW)
+        assert await archive.async_preservation_order(("B", "A")) == (("A", "B"), "detail")
+        assert await archive.async_preservation_claim("A", NOW, 30, guard=lambda: True)
+        assert not await archive.async_background_budget("B", NOW, 30, guard=lambda: True)
+    finally:
+        await archive.async_close()
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        assert await archive.async_preservation_order(("A", "B")) == (("B", "A"), "month")
+        assert await archive.async_background_budget(
+            "B", NOW + timedelta(seconds=121), 30, guard=lambda: True
+        )
+        assert await archive.async_preservation_order(("A", "B")) == (("A", "B"), "detail")
+        assert (
+            await archive.async_preservation_claim(
+                "A", NOW + timedelta(seconds=122), 30, guard=lambda: True
+            )
+            is None
+        )
+    finally:
+        await archive.async_close()
