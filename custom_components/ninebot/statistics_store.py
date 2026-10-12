@@ -137,6 +137,13 @@ class TravelStatisticsStore:
         )
         return selected, complete
 
+    def month_metric_complete(self, sn: str, month: str, metric: str) -> bool:
+        """Legacy fields are checked per selected day, without reconciliation claims."""
+        return True
+
+    def month_completeness_basis(self, sn: str, month: str) -> str:
+        return "upstream_complete" if self.month_rides(sn, month)[1] else "incomplete"
+
     def dump(self) -> dict[str, Any]:
         return {
             "schema_version": 1,

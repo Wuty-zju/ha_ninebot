@@ -118,6 +118,7 @@ def statistics_response(
                         "adjacent_received_at": summary.adjacent_received_at,
                         "adjacent_revision": summary.adjacent_revision,
                         "ride_window_complete": summary.rides_complete,
+                        "completeness_basis": summary.completeness_basis,
                         "availability": {field: summary.reason(field) for field in DAY_METRICS},
                         "period_closed": day < today,
                     }

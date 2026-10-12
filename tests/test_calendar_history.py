@@ -93,7 +93,7 @@ async def test_offline_cold_start_calendar_and_latest_across_old_months(
         assert len(events) == 2 and events[0].end <= events[1].start
         assert not events[0].all_day and events[0].location is None
         assert events[0].uid != "one" and len(events[0].uid) == 64
-        assert "30.0 km/h" in events[0].description and "7.2 km/h" in events[0].description
+        assert "30 km/h" in events[0].description and "7.2 km/h" in events[0].description
         assert not await entity.async_get_events(hass, NOW, NOW + timedelta(days=1))
         client = await hass_client()
         response = await client.get(
@@ -111,16 +111,18 @@ async def test_offline_cold_start_calendar_and_latest_across_old_months(
         assert not {"track", "rides", "latitude", "longitude", "raw"} & result[0].keys()
         registry = er.async_get(hass)
         expected = {
-            "last_mileage": ("1.2", 2),
-            "last_energy_raw": ("100.0", 0),
-            "last_ride_duration": ("600.0", 0),
-            "last_ride_max_speed": ("30.0", 1),
-            "last_ride_average_speed": ("7.2", 1),
+            "last_mileage": (1.2, 1),
+            "last_energy_raw": (100, 0),
+            "last_ride_duration": (600 / 3600, 2),
+            "last_ride_max_speed": (30, 0),
+            "last_ride_average_speed": (7.2, 1),
         }
         for key, (value, precision) in expected.items():
-            identity = registry.async_get_entity_id("sensor", "ninebot", f"{SN}_{key}")
+            identity = registry.async_get_entity_id(
+                "sensor", "ninebot", entry.runtime_data.identities.unique_id(SN, key)
+            )
             state = hass.states.get(identity)
-            assert float(state.state) == float(value)
+            assert float(state.state) == pytest.approx(value)
             assert state.attributes["source"] == "ride_archive"
             assert state.attributes["query_month"] == "202401"
             assert state.attributes["received_at"] == NOW.isoformat()

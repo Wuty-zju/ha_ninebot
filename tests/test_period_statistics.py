@@ -184,20 +184,24 @@ async def test_visible_entities_native_metadata_historical_cache_and_retirement(
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert all(registry.async_get(row.entity_id) is None for row in retired)
-        assert registry.async_get(retained.entity_id).name == "My monthly distance"
+        migrated = next(row for row in registry.entities.values() if row.id == retained.id)
+        assert migrated.name == "My monthly distance"
+        assert migrated.unique_id == retained.unique_id
         expected = {
             "yesterday_mileage": (14.8, "km", "distance"),
             "yesterday_ride_count": (2, None, None),
-            "yesterday_ride_duration": (2671, "s", "duration"),
+            "yesterday_ride_duration": (2671 / 3600, "h", "duration"),
             "yesterday_ride_energy": (340, "Wh", "energy"),
             "today_ride_count": (0, None, None),
-            "today_ride_duration": (0, "s", "duration"),
+            "today_ride_duration": (0, "h", "duration"),
             "today_ride_energy": (0, "Wh", "energy"),
             "month_energy_intensity": (340 / 14.8, "Wh/km", "energy_distance"),
             "last_energy_intensity": (195 / 8.7, "Wh/km", "energy_distance"),
         }
         for key, (value, unit, device_class) in expected.items():
-            eid = registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
+            eid = registry.async_get_entity_id(
+                "sensor", "ninebot", entry.runtime_data.identities.unique_id("SyntheticSN", key)
+            )
             row = registry.async_get(eid)
             state = hass.states.get(eid)
             assert row.disabled_by is row.hidden_by is None
@@ -223,7 +227,11 @@ async def test_visible_entities_native_metadata_historical_cache_and_retirement(
         )
         co.async_update_listeners()
         await hass.async_block_till_done()
-        eid = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_yesterday_ride_energy")
+        eid = registry.async_get_entity_id(
+            "sensor",
+            "ninebot",
+            entry.runtime_data.identities.unique_id("SyntheticSN", "yesterday_ride_energy"),
+        )
         assert float(hass.states.get(eid).state) == 340
 
 

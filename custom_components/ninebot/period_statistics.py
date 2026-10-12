@@ -29,6 +29,7 @@ class DaySummary:
     rides_complete: bool = False
     adjacent_received_at: str | None = None
     adjacent_revision: int | None = None
+    completeness_basis: str = "not_verified"
 
     def reason(self, metric: DayMetric) -> str:
         return dict(self.availability).get(metric, "available")
@@ -64,6 +65,7 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
         "distance_km": "available" if distance is not None else "missing_daily_chart"
     }
     rows, complete = store.month_rides(sn, record.month)
+    completeness_basis = store.month_completeness_basis(sn, record.month)
     previous_record = None
     adjacent_missing = False
     if day.day == 1:
@@ -71,6 +73,8 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
         # don't assume upstream month filtering uses an end date too.
         previous_rows, previous_complete = store.month_rides(sn, previous_month(record.month))
         previous_record = store.month(sn, previous_month(record.month))
+        if store.month_completeness_basis(sn, previous_month(record.month)) == "local_reconciled":
+            completeness_basis = "local_reconciled"
         previous_observed = bool(
             previous_complete
             and previous_record
@@ -98,6 +102,10 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
         values = [getattr(row, field) for row in selected]
         valid = (
             complete
+            and store.month_metric_complete(sn, record.month, field)
+            and (
+                day.day != 1 or store.month_metric_complete(sn, previous_month(record.month), field)
+            )
             and all(field in row.current_fields for row in selected)
             and all(value is not None for value in values)
         )
@@ -150,4 +158,5 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
         complete,
         previous_record.received_at if previous_record else None,
         previous_record.revision if previous_record else None,
+        completeness_basis,
     )
