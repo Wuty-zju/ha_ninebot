@@ -18,7 +18,6 @@ on:
       - 'tests/test_travel.py'
       - 'custom_components/ninebot/archive_runtime.py'
       - 'tests/test_accumulated_statistics.py'
-      - '.github/workflows/focused-statistics.yaml'
 permissions:
   contents: read
 concurrency:
