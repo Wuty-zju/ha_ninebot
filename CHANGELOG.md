@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b54
+
+- Add opt-in background preservation for known ride IDs, independent of enabled calendars/entities. Persist claims, retry times and account budget in the existing archive; restart does not reset the budget.
+- Reuse stored stable details, detect scalar fingerprint changes, use finite recent-ride rechecks, round-robin vehicles and background Broker priority. Defaults to 30 logical detail requests/account/hour; no full-history scan or unverified cloud paging.
+- Preserve existing backup/cancellation/owner fences, safe diagnostic status and no repeated ordinary failure logs. Sparse month-gap scheduling remains a subsequent H4 step; map rendering remains H5.
+
 ## 2.0.0b53
 
 - Prefer account-scoped persisted ride details and month observations in historical queries; repeated saved-detail reads issue no cloud request and remain usable during authentication/freshness failures while local ownership remains valid. Explicit refresh requires live access and bypasses the response cache.

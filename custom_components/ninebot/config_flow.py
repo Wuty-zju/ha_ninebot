@@ -47,6 +47,7 @@ from .const import (
 from .exceptions import ErrorKind, NinebotError
 from .identity import IDENTITY_VERSION
 from .parsing import number
+from .preservation import CONF_BUDGET, CONF_PRESERVE, DEFAULT_BUDGET
 from .services import resolve_vehicle
 from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
 
@@ -483,6 +484,10 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     ): bool,
                     vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
                     vol.Optional(CONF_CALENDAR, default=options.get(CONF_CALENDAR, True)): bool,
+                    vol.Optional(CONF_PRESERVE, default=options.get(CONF_PRESERVE, False)): bool,
+                    vol.Optional(
+                        CONF_BUDGET, default=options.get(CONF_BUDGET, DEFAULT_BUDGET)
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
                     vol.Optional("configure_model", default=False): bool,
                     vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
                     vol.Optional(

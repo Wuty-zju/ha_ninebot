@@ -19,7 +19,7 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from functools import partial
 from pathlib import Path
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 from zoneinfo import ZoneInfo
 
 from .archive_browse import RecordedCursor, RecordedCursorMismatch, RecordedPage, recorded_page
@@ -55,6 +55,9 @@ from .ride_models import Ride
 from .statistics_store import StoredMonth, StoredRide
 from .sync_job import SyncJob, SyncState, job_data, restored_job
 from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
+
+if TYPE_CHECKING:
+    from .preservation import PreservationTask
 
 SCHEMA_VERSION = 2
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
@@ -337,6 +340,13 @@ class RideArchive:
             raise ArchiveError(ArchiveFailure.OWNER)
         if not str(meta.get("revision", "")).isdigit():
             raise ArchiveError(ArchiveFailure.SCHEMA)
+        from .preservation import task_state
+
+        for key, value in meta.items():
+            if key.startswith("preservation:"):
+                task_state(value)
+            elif key == "preservation_budget" and not 0 <= float(value) <= 4102444800:
+                raise ValueError("Invalid preservation budget timestamp")
         if "sync_job" in meta:
             restored_job(decoded(meta["sync_job"]))
         if (
@@ -924,6 +934,154 @@ class RideArchive:
         return ArchivedDetail(
             result, latest, geometry, row[3], row[4], row[0], row[1], summary[2], stamp(summary[1])
         )
+
+    async def async_preservation_claim(
+        self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
+    ) -> "PreservationTask | None":
+        if type(budget) is not int or not 1 <= budget <= 60:
+            raise ValueError("Invalid preservation budget")
+        return await self._run(
+            partial(self._preservation_claim, vehicle_key(sn), now, budget), guard=guard
+        )
+
+    def _preservation_claim(
+        self, vehicle: str, now: datetime, budget: int
+    ) -> "PreservationTask | None":
+        from .preservation import PreservationTask, fingerprint, task_state
+
+        epoch = now.timestamp()
+        db = self._db(write=True)
+        with db:
+            limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
+            if limit is not None and float(limit[0]) > epoch:
+                return None
+            rows = db.execute(
+                "SELECT r.id,r.data,r.revision,m.value FROM rides r LEFT JOIN meta m "
+                "ON m.key='preservation:'||r.vehicle||':'||r.id "
+                "WHERE r.vehicle=? AND (m.value IS NULL OR "
+                "json_extract(m.value,'$.revision')!=r.revision OR "
+                "json_extract(m.value,'$.next_attempt')<=?) "
+                "ORDER BY r.started DESC LIMIT 128",
+                (vehicle, epoch),
+            ).fetchall()
+            for identity, data, revision, value in rows:
+                ride = restored_ride(decoded(data))
+                if ride.detail_id is None:
+                    continue
+                key = f"preservation:{vehicle}:{identity}"
+                signature = fingerprint(ride)
+                before = task_state(value) if value is not None else None
+                state = (
+                    before
+                    if before and before["fingerprint"] == signature
+                    else {
+                        "fingerprint": signature,
+                        "attempts": 0,
+                        "observations": 0,
+                        "next_attempt": 0,
+                        "reason": None,
+                        "revision": revision,
+                    }
+                )
+                if (
+                    before is None
+                    and db.execute(
+                        "SELECT 1 FROM details WHERE vehicle=? AND ride=?", (vehicle, identity)
+                    ).fetchone()
+                ):
+                    # Seed known persisted details without downloading them again.
+                    state["observations"] = 2
+                    state["next_attempt"] = 4102444800
+                state["revision"] = revision
+                if state["next_attempt"] > epoch:
+                    db.execute(
+                        "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) "
+                        "DO UPDATE SET value=excluded.value",
+                        (key, encoded(state)),
+                    )
+                    continue
+                interval = 3600 / budget
+                state["attempts"] = min(255, state["attempts"] + 1)
+                state["next_attempt"] = epoch + max(60, interval)
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) "
+                    "DO UPDATE SET value=excluded.value",
+                    (key, encoded(state)),
+                )
+                db.execute(
+                    "INSERT INTO meta VALUES ('preservation_budget',?) ON CONFLICT(key) "
+                    "DO UPDATE SET value=excluded.value",
+                    (str(epoch + interval),),
+                )
+                return PreservationTask(ride, signature, state["attempts"], state["observations"])
+        return None
+
+    async def async_preservation_finish(
+        self,
+        sn: str,
+        task,
+        now: datetime,
+        *,
+        success: bool,
+        revisit: bool = False,
+        retry_after: float | None = None,
+        reason: str = "unavailable",
+        guard: Callable[[], bool],
+    ) -> None:
+        await self._run(
+            partial(
+                self._preservation_finish,
+                vehicle_key(sn),
+                task,
+                now,
+                success,
+                revisit,
+                retry_after,
+                reason,
+            ),
+            guard=guard,
+        )
+
+    def _preservation_finish(
+        self,
+        vehicle: str,
+        task: "PreservationTask",
+        now: datetime,
+        success: bool,
+        revisit: bool,
+        retry_after: float | None,
+        reason: str,
+    ) -> None:
+        from .preservation import fingerprint, retry_delay, task_state
+
+        if task.ride.ride_id is None:
+            raise ValueError("Missing preservation identity")
+        key = f"preservation:{vehicle}:{task.ride.ride_id}"
+        db = self._db(write=True)
+        with db:
+            row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+            current = self._ride(vehicle, task.ride.ride_id)
+            if row is None or current is None:
+                return
+            state = task_state(row[0])
+            if state["fingerprint"] != task.fingerprint or state["attempts"] != task.attempts:
+                return
+            if success:
+                state["fingerprint"] = fingerprint(current[0])
+                state["observations"] = min(2, state["observations"] + 1)
+                state["attempts"] = 0
+                state["reason"] = None
+                state["next_attempt"] = (
+                    now.timestamp() + 600 if revisit and state["observations"] < 2 else 4102444800
+                )
+            else:
+                state["reason"] = reason
+                state["next_attempt"] = min(
+                    4102444800, now.timestamp() + retry_delay(task.attempts, retry_after)
+                )
+            state["revision"] = current[2]
+            task_state(encoded(state))
+            db.execute("UPDATE meta SET value=? WHERE key=?", (encoded(state), key))
 
     async def async_months(self, sn: str, months: tuple[str, ...]) -> tuple[ArchiveMonth, ...]:
         """One serialized read for at most six selected months plus the boundary."""
