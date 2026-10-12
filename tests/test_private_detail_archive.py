@@ -80,7 +80,8 @@ async def test_full_private_payload_restart_and_independent_geometry(tmp_path):
         assert first.ride.track_quality.valid_point_count == 2501
         assert first.geometry.payload()["trail"] == trail
         assert first.latest.payload()["unknown_extra"] == {"value": [1, 2]}
-        assert "token" not in first.latest.payload() and "account" not in first.latest.payload()
+        assert first.latest.payload()["token"] == "[redacted]"
+        assert first.latest.payload()["account"] == "[redacted]"
         await save(archive, raw, NOW + timedelta(seconds=2))
         equal = await archive.async_private_detail(SN, "first")
         assert equal.revision == first.revision
@@ -171,3 +172,45 @@ async def test_private_receipt_rollback_backup_gate_and_bad_owner(tmp_path):
         assert err.value.kind is ArchiveFailure.OWNER
     finally:
         await foreign.async_close()
+
+
+async def test_private_payload_hash_corruption_is_refused_on_read(tmp_path):
+    archive = await opened(tmp_path)
+    try:
+        await save(archive, {"trail": "120,30,1,1"}, NOW + timedelta(seconds=1))
+    finally:
+        await archive.async_close()
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        db.execute("UPDATE detail_payloads SET body=?", (b"not-a-zlib-stream",))
+    reopened = RideArchive(archive.path, OWNER)
+    try:
+        await reopened.async_open()
+        with pytest.raises(ArchiveError) as err:
+            await reopened.async_private_detail(SN, "first")
+        assert err.value.kind is ArchiveFailure.SCHEMA
+    finally:
+        await reopened.async_close()
+
+
+async def test_rejected_private_owner_guard_and_stale_receipt_do_not_write(tmp_path):
+    archive = await opened(tmp_path)
+    try:
+        at = NOW + timedelta(seconds=2)
+        await save(archive, {"trail": "120,30,1,1", "mileages": 2}, at)
+        first = await archive.async_private_detail(SN, "first")
+        await save(archive, {"trail": "120,30,1,1", "mileages": 1}, NOW + timedelta(seconds=1))
+        after = await archive.async_private_detail(SN, "first")
+        assert after.latest_hash == first.latest_hash and after.ride.distance_m == 2000
+        summary = (await archive.async_month(SN, "202609")).travel.rides[0]
+        with pytest.raises(ArchiveError) as err:
+            await archive.async_record_detail(
+                SN,
+                summary,
+                at + timedelta(seconds=1),
+                guard=lambda: False,
+                raw=record({"trail": "120,30,1,1"}, at + timedelta(seconds=1)),
+            )
+        assert err.value.kind is ArchiveFailure.OWNER
+        assert (await archive.async_private_detail(SN, "first")).revision == first.revision
+    finally:
+        await archive.async_close()
