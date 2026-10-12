@@ -42,12 +42,13 @@ from .control_results import (
     ReadbackOutcome,
 )
 from .control_targets import LOCK_TARGETS
-from .demand import Group, PollingDemand, polling_demand
+from .demand import ConsumerContext, Group, Need, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
 from .history_sync import HistorySync
 from .models import Freshness, TravelMonth, VehicleSnapshot
 from .parsing import integer
+from .preservation import CONF_PRESERVE, HistoryPreservation
 from .query_broker import Priority, QueryBroker, QueryKey
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
 from .ride_archive import ArchiveError
@@ -83,6 +84,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.history = HistoryStore()
         self.recorded_cursors = RecordedCursors()
         self.history_sync = HistorySync(self)
+        self.preservation = HistoryPreservation(self)
         self.ride_lifecycles: dict[str, RideLifecycle] = {}
         self.statistics = ArchiveStatistics(
             hass, entry.entry_id, str(entry.data[CONF_BUSINESS_UID])
@@ -835,13 +837,21 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         )
 
     async def async_query_detail(
-        self, sn: str, detail_id: str, month: str, *, refresh: bool = False
+        self,
+        sn: str,
+        detail_id: str,
+        month: str,
+        *,
+        refresh: bool = False,
+        priority: Priority = Priority.INTERACTIVE,
     ) -> RawRecord:
         """The action layer must resolve this ID from this vehicle's month index."""
         adapters.previous_month(month)
         if not detail_id or len(detail_id) > 256:
             raise NinebotError(ErrorKind.PROTOCOL)
-        return await self._query_record(sn, Endpoint.TRIP_DETAIL, detail_id, month, refresh=refresh)
+        return await self._query_record(
+            sn, Endpoint.TRIP_DETAIL, detail_id, month, refresh=refresh, priority=priority
+        )
 
     async def _query_record(
         self,
@@ -948,7 +958,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
     def demand(self, sn: str) -> PollingDemand:
         return polling_demand(
             self.data[sn],
-            self.async_contexts(),
+            (*self.async_contexts(), ConsumerContext(sn, Need.MONTH))
+            if self.config_entry is not None
+            and self.config_entry.options.get(CONF_PRESERVE, False) is True
+            else self.async_contexts(),
             now=dt_util.utcnow(),
         )
 
@@ -1351,6 +1364,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     async def _shutdown(self, tasks: set[asyncio.Task[Any]]) -> None:
         """Finish cleanup before propagating cancellation of the unload caller."""
+        await self.preservation.async_close()
         await self.history_sync.async_close()
         await self.broker.async_close()
         await self.backend.async_close()
