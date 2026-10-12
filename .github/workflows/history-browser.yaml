@@ -13,7 +13,30 @@ concurrency:
   group: history-browser-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
-  offline:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.scope.outputs.backend }}
+      frontend: ${{ steps.scope.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-paths.txt
+          if grep -Eq '^(custom_components/ninebot/services.py|tests/test_services.py|.github/workflows/history-browser.yaml)$' changed-paths.txt; then
+            echo 'backend=true' >> "$GITHUB_OUTPUT"
+          fi
+          if grep -Eq '^(custom_components/ninebot/frontend/|tests/frontend/|.github/workflows/history-browser.yaml)' changed-paths.txt; then
+            echo 'frontend=true' >> "$GITHUB_OUTPUT"
+          fi
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -29,6 +52,12 @@ jobs:
         run: >-
           python -m pytest -q tests/test_services.py tests/test_travel.py
           tests/test_private_detail_archive.py
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
