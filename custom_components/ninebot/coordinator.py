@@ -780,7 +780,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 return record
         return None
 
-    async def async_month_observation(self, sn: str, month: str) -> MonthObservation:
+    async def async_month_observation(
+        self, sn: str, month: str, *, prefer_local: bool = False, refresh: bool = False
+    ) -> MonthObservation:
         """Closed history needs no cloud TTL; current observations keep their age."""
         adapters.previous_month(month)
         if not self.local_vehicle_available(sn):
@@ -798,11 +800,14 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             or not self.local_vehicle_available(sn)
         ):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="query_unavailable")
-        if cached is not None:
+        if cached is not None and not refresh:
             age = (now - cached.received_at).total_seconds()
             current = month == adapters.month_at(now)
             if 0 <= age and (
-                not current or age <= DETAIL_INTERVAL or not self.fresh(sn, "profile")
+                prefer_local
+                or not current
+                or age <= DETAIL_INTERVAL
+                or not self.fresh(sn, "profile")
             ):
                 return MonthObservation(
                     cached.travel,
@@ -811,23 +816,32 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     "ride_archive",
                     current and age > DETAIL_INTERVAL,
                 )
-        record = await self.async_query_month(sn, month)
+        record = await self.async_query_month(sn, month, refresh=refresh)
         travel = await self._normalize(record, sn, month, partial(travel_record, record, month))
         return MonthObservation(travel, record.received_at, record.backend_version, "runtime_query")
 
     async def async_query_month(
-        self, sn: str, month: str, *, priority: Priority = Priority.INTERACTIVE
+        self,
+        sn: str,
+        month: str,
+        *,
+        priority: Priority = Priority.INTERACTIVE,
+        refresh: bool = False,
     ) -> RawRecord:
         """Explicit history query; never changes current-month state/events."""
         adapters.previous_month(month)
-        return await self._query_record(sn, Endpoint.TRAVEL, month, month, priority=priority)
+        return await self._query_record(
+            sn, Endpoint.TRAVEL, month, month, priority=priority, refresh=refresh
+        )
 
-    async def async_query_detail(self, sn: str, detail_id: str, month: str) -> RawRecord:
+    async def async_query_detail(
+        self, sn: str, detail_id: str, month: str, *, refresh: bool = False
+    ) -> RawRecord:
         """The action layer must resolve this ID from this vehicle's month index."""
         adapters.previous_month(month)
         if not detail_id or len(detail_id) > 256:
             raise NinebotError(ErrorKind.PROTOCOL)
-        return await self._query_record(sn, Endpoint.TRIP_DETAIL, detail_id, month)
+        return await self._query_record(sn, Endpoint.TRIP_DETAIL, detail_id, month, refresh=refresh)
 
     async def _query_record(
         self,
@@ -837,6 +851,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         month: str,
         *,
         priority: Priority = Priority.INTERACTIVE,
+        refresh: bool = False,
     ) -> RawRecord:
         if self._query_pending >= 4:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
@@ -849,7 +864,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return await self._shared(
                 self._queries,
                 key,
-                lambda: self._query_record_update(sn, endpoint, scope, month, key, priority),
+                lambda: self._query_record_update(
+                    sn, endpoint, scope, month, key, priority, refresh
+                ),
             )
         finally:
             self._query_pending -= 1
@@ -864,6 +881,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         month: str,
         request_key: QueryKey,
         priority: Priority = Priority.INTERACTIVE,
+        refresh: bool = False,
     ) -> RawRecord:
         key = self._key(sn, endpoint, month if endpoint is Endpoint.TRAVEL else f"{month}:{scope}")
         if not self._owns(request_key) or not self._owns(key) or not self.fresh(sn, "profile"):
@@ -871,7 +889,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         now = dt_util.utcnow()
         cached = self.raw.get(endpoint, sn, scope, now=now, query_month=month)
         ttl = 900 if endpoint is Endpoint.TRIP_DETAIL else DETAIL_INTERVAL
-        if cached and 0 <= (now - cached.received_at).total_seconds() < ttl:
+        if not refresh and cached and 0 <= (now - cached.received_at).total_seconds() < ttl:
             return cached
         try:
             operation = (

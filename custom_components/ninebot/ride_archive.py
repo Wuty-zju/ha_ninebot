@@ -852,20 +852,24 @@ class RideArchive:
         ride_id: str,
         *,
         max_points: int = 500,
+        point_offset: int = 0,
         guard: Callable[[], bool] | None = None,
     ) -> ArchivedDetail | None:
         if (
-            opaque_id(ride_id) != ride_id
+            type(point_offset) is not int
+            or not 0 <= point_offset <= MAX_RESPONSE_BYTES
+            or opaque_id(ride_id) != ride_id
             or type(max_points) is not int
             or not 1 <= max_points <= 2000
         ):
             raise ValueError("Invalid private detail query")
         return await self._run(
-            partial(self._private_detail, vehicle_key(sn), ride_id, max_points), guard=guard
+            partial(self._private_detail, vehicle_key(sn), ride_id, max_points, point_offset),
+            guard=guard,
         )
 
     def _private_detail(
-        self, vehicle: str, ride_id: str | None, max_points: int
+        self, vehicle: str, ride_id: str | None, max_points: int, point_offset: int = 0
     ) -> ArchivedDetail | None:
         row = (
             self._db()
@@ -903,6 +907,7 @@ class RideArchive:
             geometry.query_month or summary[0].query_month,
             source=Endpoint.TRIP_DETAIL,
             max_points=max_points,
+            point_offset=point_offset,
         )
         result = replace(
             summary[0],
@@ -913,8 +918,12 @@ class RideArchive:
             track_truncated=parsed.track_truncated,
             track_quality=parsed.track_quality,
             geometry_selection=row[4],
+            track_offset=point_offset,
+            track_limit=max_points,
         )
-        return ArchivedDetail(result, latest, geometry, row[3], row[4], row[0], row[1])
+        return ArchivedDetail(
+            result, latest, geometry, row[3], row[4], row[0], row[1], summary[2], stamp(summary[1])
+        )
 
     async def async_months(self, sn: str, months: tuple[str, ...]) -> tuple[ArchiveMonth, ...]:
         """One serialized read for at most six selected months plus the boundary."""

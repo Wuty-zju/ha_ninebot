@@ -135,8 +135,8 @@ not claim full upstream history.
 request. Current-month observations keep their original age; offline reads return
 `current_sample_stale` rather than claiming a fresh sample. `get_statistics`
 without refresh remains entirely local. Explicit refresh can correct existing
-month facts. Details are fetched lazily, and only verified scalar detail facts
-persist; raw JSON, tracks and speed samples remain in bounded runtime caches.
+month facts. Details are fetched lazily; since b52 their sanitized full business payloads,
+tracks and speed samples persist privately alongside reviewed scalar facts.
 Historical list completeness and server totals remain separate, and omitted
 rows in a partial report are not deleted from the underlying identity archive.
 Ride IDs/timestamps remain private: protect configuration backups.
@@ -651,3 +651,7 @@ Detail Action `track_summary` now includes geometry kind, full-response valid/in
 A requested cloud detail is now stored as compressed, credential/profile-redacted business JSON in the same account-scoped SQLite archive. Full trails, raw speed samples and unknown safe business fields remain available for later re-parsing; display limits do not trim the saved payload. Each ride retains the latest candidate plus independently selected geometry (at most two payloads); unchanged hashes do not increase content revisions. There is no automatic expiry, cloud backfill or Recorder/GPS attributes. Capacity pauses writes instead of evicting history. These local files and Home Assistant backups contain private location data, even when the response omits coordinates; protect them accordingly. Coordinate response permissions remain unchanged. H3 will expose cache-first detail queries.
 
 Schema v1 migration creates an exclusive `rides.schema1-<hash>.sqlite3` recovery copy alongside the database before transactionally adding detail tables. Rolling back to b51 requires stopping this integration and restoring the corresponding v1 copy; b51 must not be pointed at the v2 database. Normal HA backups retain the v2 archive and use the existing write barrier. No entity IDs or scalar history are migrated.
+
+### Local-first detail queries (b53)
+
+`get_trip_detail` prefers the saved private archive before any month/cloud query. `get_trips` also prefers recorded months and saved requested details. `refresh: true` explicitly requests cloud data and requires current live access; local history still requires a loaded account, recognized enabled vehicle, and HA permissions. Use `point_offset` plus `max_points` for bounded raw-sequence chunks; `track_summary.next_offset` continues even when a chunk contains invalid points. Coordinate opt-in remains mandatory for GPS responses. Scalar/archive revisions and geometry receipt timestamps identify mixed sources; no arbitrary raw JSON is returned. Local pagination and observed coverage never prove full upstream history.

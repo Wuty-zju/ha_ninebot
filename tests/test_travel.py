@@ -382,3 +382,18 @@ def test_geometry_protection_does_not_freeze_mutable_scalars():
         source=Endpoint.TRIP_DETAIL,
     )
     assert merge_detail(previous, grown).track_quality.valid_point_count == 4
+
+
+def test_track_chunk_offsets_keep_full_quality_and_raw_sequence():
+    ride = parse_ride(
+        {"trail": "bad;120,30,1,1;bad;121,31,2,2;122,32,3,3"},
+        "202609",
+        source=Endpoint.TRIP_DETAIL,
+        max_points=2,
+        point_offset=2,
+    )
+    assert [point.sequence for point in ride.track_points] == [3]
+    assert ride.track_offset == 2 and ride.track_limit == 2
+    assert ride.track_quality.invalid_point_count == 2
+    assert ride.track_quality.valid_point_count == 3
+    assert ride.total_track_points == 5

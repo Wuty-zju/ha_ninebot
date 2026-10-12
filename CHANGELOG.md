@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b53
+
+- Prefer account-scoped persisted ride details and month observations in historical queries; repeated saved-detail reads issue no cloud request and remain usable during authentication/freshness failures while local ownership remains valid. Explicit refresh requires live access and bypasses the response cache.
+- Add bounded source-sequence point_offset chunks, preserving full-response quality counts and unknown point units/coordinates. Include archive/scalar revision and geometry receipt context without exposing raw payloads.
+- Keep coordinate opt-in, permission/revocation fences and existing response keys; automatic incremental preservation and map rendering follow separately.
+
 ## 2.0.0b52
 
 - Preserve requested ride details, full original trail and speed samples in the account-scoped private SQLite archive; sanitize credentials/profile data and retain unknown business fields. Payloads are compressed and content-deduplicated without card/Action point truncation.
