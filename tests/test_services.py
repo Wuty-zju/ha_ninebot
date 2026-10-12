@@ -451,3 +451,19 @@ async def test_local_only_saved_detail_offline_and_coordinate_guard(
         month.assert_not_awaited()
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
+
+
+async def test_local_only_unavailable_archive_is_not_reported_as_missing_detail(
+    hass, entry, app_client, query_device
+):
+    co = entry.runtime_data.coordinator
+    with patch.object(co.statistics, "archive_ready", False):
+        with pytest.raises(HomeAssistantError) as error:
+            await call(
+                hass,
+                "get_trip_detail",
+                {"device_id": query_device, "ride_id": "fixture-ride-01", "local_only": True},
+            )
+        assert error.value.translation_key == "query_unavailable"
+    app_client.async_get_trip_detail.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()

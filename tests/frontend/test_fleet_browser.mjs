@@ -92,6 +92,8 @@ test('fleet targets/native card options are bounded and never include route data
   const cards = nativeCards(vehicleTargets({ vehicles: ['calendar.a', 'calendar.b'] }), ['ninebot:synthetic_day_distance_km']);
   assert.equal(cards.cards[0].type, 'calendar'); assert.deepEqual(cards.cards[0].entities, ['calendar.a', 'calendar.b']);
   assert.equal(cards.cards[1].type, 'statistics-graph'); assert.deepEqual(cards.cards[1].stat_types, ['change']);
+  const monthly = nativeCards([], ['ninebot:synthetic_month_duration_s']).cards[0];
+  assert.equal(monthly.period, 'month'); assert.equal(monthly.days_to_show, 365);
   assert.ok(!JSON.stringify(cards).includes('latitude'));
   assert.throws(() => nativeCards([], ['javascript:alert(1)']));
 });

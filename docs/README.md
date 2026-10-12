@@ -542,7 +542,9 @@ The **Native calendar and statistics cards** disclosure supplies standard HA car
 configuration for the selected calendars and a link to `/calendar`. Optional
 `statistics_entities` accepts up to 20 sensor or `ninebot:` statistic IDs from your
 existing `import_statistics` response. Each metric gets a separate native graph,
-with `change` and a rolling 30-day window. It does not import or write statistics.
+with `change`: day series use 30 days, exported month series use 365 days.
+Sensor IDs must provide cumulative SUM statistics; measurement-only sensors do
+not support this change graph. It does not import or write statistics.
 Calendar/graph navigation remains independent of the trip-card date selection;
 use `get_statistics(refresh: false)` for exact historical ranges. No HA private
 frontend element or historical tracker injection is used.

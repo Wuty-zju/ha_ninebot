@@ -30,8 +30,12 @@ export function nativeCards(targets, statistics = []) {
   const calendars = targets.map(target => target.entity).filter(Boolean);
   return { type: 'vertical-stack', cards: [
     ...(calendars.length ? [{ type: 'calendar', entities: calendars, initial_view: 'dayGridMonth' }] : []),
-    ...statistics.map(id => ({ type: 'statistics-graph', entities: [id], period: 'day',
-      days_to_show: 30, chart_type: 'bar', stat_types: ['change'] })),
+    ...statistics.map(id => {
+      // This is our exported statistic ID contract, not an upstream-field guess.
+      const monthly = /^ninebot:.*_month_(distance_km|energy_wh|ride_count|duration_s)$/.test(id);
+      return { type: 'statistics-graph', entities: [id], period: monthly ? 'month' : 'day',
+        days_to_show: monthly ? 365 : 30, chart_type: 'bar', stat_types: ['change'] };
+    }),
   ] };
 }
 

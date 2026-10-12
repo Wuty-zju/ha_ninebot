@@ -463,6 +463,8 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
     else:
         month = call.data.get("query_month", adapters.month_at(dt_util.utcnow()))
     local = None
+    if local_only and not co.statistics.archive_ready:
+        raise validation_error("query_unavailable")
     if not is_list and not require_live:
         local = await cached_detail(
             co,
