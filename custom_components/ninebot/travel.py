@@ -15,7 +15,7 @@ from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotError
 from .parsing import number, numeric_precision, payload, previous_month, text
 from .raw import Endpoint
-from .ride_models import FieldState, Ride, RideTrackPoint, SpeedSample
+from .ride_models import FieldState, GeometryKind, Ride, RideTrackPoint, SpeedSample, TrackQuality
 
 MAX_RIDES = 1000
 MAX_TRACK_POINTS = 2000
@@ -52,34 +52,90 @@ def timestamp(value: object, *, formatted: bool = False) -> datetime | None:
     return result if 2000 <= result.year <= 2099 else None
 
 
+def scan_track(
+    value: object, max_points: int
+) -> tuple[tuple[RideTrackPoint, ...], TrackQuality, tuple[str, ...]]:
+    """Validate every row within the response byte budget; only retain the view."""
+    if not 1 <= max_points <= MAX_TRACK_POINTS:
+        raise ValueError("Invalid point limit")
+    if value is None:
+        return (), TrackQuality(field_state=FieldState.NULL), ()
+    if not isinstance(value, str):
+        return (
+            (),
+            TrackQuality(kind=GeometryKind.INVALID, field_state=FieldState.INVALID),
+            ("unverified_track_format",),
+        )
+    if len(value) > MAX_RESPONSE_BYTES:
+        raise NinebotError(ErrorKind.PROTOCOL)
+    if value == "":
+        return (
+            (),
+            TrackQuality(
+                kind=GeometryKind.EMPTY,
+                field_state=FieldState.EMPTY,
+                raw_point_count=0,
+                valid_point_count=0,
+                invalid_point_count=0,
+                consecutive_duplicate_count=0,
+                scan_complete=True,
+            ),
+            (),
+        )
+    # Scan offsets rather than materializing an unbounded split list of rows.
+    result = []
+    valid = invalid = duplicates = sequence = 0
+    previous = None
+    offset = 0
+    while offset < len(value):
+        end = value.find(";", offset)
+        if end < 0:
+            end = len(value)
+        fields = value[offset:end].split(",", 4)
+        point = None
+        if len(fields) == 4:
+            lon, lat = number(fields[0], -180, 180), number(fields[1], -90, 90)
+            speed, delta = number(fields[2], 0), number(fields[3])
+            if lon is not None and lat is not None and speed is not None and delta is not None:
+                point = RideTrackPoint(lat, lon, sequence, speed, delta)
+        if point is None:
+            invalid += 1
+            previous = None
+        else:
+            valid += 1
+            location = (point.latitude, point.longitude)
+            if location == previous:
+                duplicates += 1
+            previous = location
+            if sequence < max_points:
+                result.append(point)
+        sequence += 1
+        offset = end + 1
+    kind = (
+        GeometryKind.INVALID
+        if valid == 0
+        else GeometryKind.SINGLE_POINT
+        if valid == 1
+        else GeometryKind.SAMPLED_UNVERIFIED
+    )
+    quality = TrackQuality(
+        kind=kind,
+        field_state=FieldState.VALID if valid else FieldState.INVALID,
+        raw_point_count=sequence,
+        valid_point_count=valid,
+        invalid_point_count=invalid,
+        consecutive_duplicate_count=duplicates,
+        scan_complete=True,
+    )
+    return tuple(result), quality, ("invalid_track_points",) if invalid else ()
+
+
 def parse_track(
     value: object, max_points: int
 ) -> tuple[tuple[RideTrackPoint, ...], int | None, tuple[str, ...]]:
-    if not 1 <= max_points <= MAX_TRACK_POINTS:
-        raise ValueError("Invalid point limit")
-    if value is None or value == "":
-        return (), 0, ()
-    if not isinstance(value, str):
-        return (), None, ("unverified_track_format",)
-    if len(value) > MAX_RESPONSE_BYTES:
-        raise NinebotError(ErrorKind.PROTOCOL)
-    rows = value.split(";")
-    if rows[-1] == "":
-        rows.pop()  # Accept one terminal separator, not arbitrary empty points.
-    result = []
-    invalid = False
-    for sequence, row in enumerate(rows[:max_points]):
-        fields = row.split(",")
-        if len(fields) != 4:
-            invalid = True
-            continue
-        longitude, latitude = number(fields[0], -180, 180), number(fields[1], -90, 90)
-        speed, delta = number(fields[2], 0), number(fields[3])
-        if longitude is None or latitude is None or speed is None or delta is None:
-            invalid = True
-            continue
-        result.append(RideTrackPoint(latitude, longitude, sequence, speed, delta))
-    return tuple(result), len(rows), ("invalid_track_points",) if invalid else ()
+    """Compatibility projection; quality callers use scan_track instead."""
+    points, quality, issues = scan_track(value, max_points)
+    return points, 0 if value is None else quality.raw_point_count, issues
 
 
 def field_state(item: dict[str, Any], keys: tuple[str, ...], value: object) -> FieldState:
@@ -151,11 +207,26 @@ def parse_ride(
             issues.append("duration_time_difference")
     if maximum is not None:
         provenance["server_max_speed_m_s"] = "speed:max-km/h:ninecli-display-contract"
-    track, total, track_issues = (
-        parse_track(item.get("trail"), max_points)
-        if source is Endpoint.TRIP_DETAIL
-        else ((), None, ())
+    track, quality, track_issues = (
+        scan_track(item.get("trail"), max_points)
+        if source is Endpoint.TRIP_DETAIL and "trail" in item
+        else ((), TrackQuality(), ())
     )
+    simple = item.get("is_show_simple_point")
+    window = item.get("show_simple_point_days")
+    simple = simple if type(simple) is bool else None
+    window = window if type(window) is int and 0 <= window <= 36500 else None
+    quality = replace(
+        quality,
+        server_simplified=simple,
+        server_window_days=window,
+        simplified_state=field_state(item, ("is_show_simple_point",), simple),
+        window_state=field_state(item, ("show_simple_point_days",), window),
+        kind=GeometryKind.SERVER_SIMPLIFIED
+        if simple is True and quality.valid_point_count
+        else quality.kind,
+    )
+    total = quality.raw_point_count
     issues.extend(track_issues)
     samples = tuple(
         SpeedSample(point.sequence, point.speed_raw)
@@ -189,14 +260,7 @@ def parse_ride(
     }
     # Absent/null trail is unknown, not a proven empty route. Malformed points
     # can still yield a bounded partial track; issues carry its incompleteness.
-    trail_state = field_state(item, ("trail",), None)
-    if source is Endpoint.TRIP_DETAIL and "trail" in item and item["trail"] is not None:
-        if item["trail"] == "":
-            trail_state = FieldState.EMPTY
-        elif track:
-            trail_state = FieldState.VALID
-        else:
-            trail_state = FieldState.INVALID
+    trail_state = quality.field_state
     states["track_points"] = trail_state
     if trail_state in (FieldState.VALID, FieldState.EMPTY):
         provenance["track_points"] = "trail:lon-lat-speedRaw-deltaRaw:four-column-string"
@@ -225,6 +289,7 @@ def parse_ride(
         field_states=tuple(sorted(states.items())),
         field_sources=tuple((name, source.value) for name in sorted(provenance)),
         precision=numeric_precision(item, ("mileages", "duration", "ec", "speed")),
+        track_quality=quality,
     )
 
 
@@ -250,6 +315,36 @@ def latest_ride(rides: tuple[Ride, ...]) -> Ride | None:
         if candidates
         else None
     )
+
+
+def select_geometry(previous: Ride, candidate: Ride) -> tuple[bool, str]:
+    """Conservative selection without pretending point counts prove truth.
+
+    Fewer points without an upstream revision may be legitimate correction;
+    preserve the candidate for future reconciliation, but do not erase evidence.
+    """
+    old, new = previous.track_quality, candidate.track_quality
+    if not previous.track_points:
+        return bool(candidate.track_points) or new.field_state is FieldState.EMPTY, "initial"
+    if not candidate.track_points:
+        return False, "retained_previous_missing_geometry"
+    if new.server_simplified is True and old.server_simplified is not True:
+        return False, "retained_previous_server_simplified"
+    if new.scan_complete and (
+        (new.invalid_point_count or 0) > (old.invalid_point_count or 0)
+        or (new.consecutive_duplicate_count or 0) > (old.consecutive_duplicate_count or 0)
+    ):
+        return False, "retained_previous_geometry_conflict"
+    if (
+        old.scan_complete
+        and new.scan_complete
+        and (
+            (new.valid_point_count or 0) < (old.valid_point_count or 0)
+            and old.server_simplified is not True
+        )
+    ):
+        return False, "retained_previous_unverified_reduction"
+    return True, "accepted_candidate"
 
 
 def merge_detail(summary: Ride, detail: Ride) -> Ride:
@@ -313,14 +408,23 @@ def merge_detail(summary: Ride, detail: Ride) -> Ride:
         elif before is None:
             states[field] = detail_states.get(field, FieldState.MISSING)
     track_state = detail_states.get("track_points")
-    # Explicit empty is valid only for a parsed, verified trail string. Manual
-    # models retain legacy nonempty supplementation, never implicit clearing.
-    if detail.track_points or track_state is FieldState.EMPTY:
-        for field in ("track_points", "speed_samples", "total_track_points", "track_truncated"):
+    use_geometry, selection = select_geometry(summary, detail)
+    if use_geometry:
+        for field in (
+            "track_points",
+            "speed_samples",
+            "total_track_points",
+            "track_truncated",
+            "track_quality",
+        ):
             updates[field] = getattr(detail, field)
         accept("track_points")
+        issues.discard("invalid_track_points")
+        if detail.track_quality.invalid_point_count:
+            issues.add("invalid_track_points")
     elif not summary.track_points:
         states["track_points"] = track_state or FieldState.MISSING
+    updates["geometry_selection"] = selection
     merged = replace(
         summary,
         source=Endpoint.TRIP_DETAIL,

@@ -146,9 +146,13 @@ and progress stay in response data. No Recorder rows are deleted or reused for
 different statistics. Native historical imports and trend examples follow below.
 
 Yesterday distance uses the validated daily chart. Today/Yesterday ride count,
-duration and energy require a complete retained monthly list, known end times
-and current-report metric fields. Missing/evicted/partial lists stay unknown,
-with a small availability reason; proven empty windows return zero. Historical
+duration and energy require a verified complete or locally reconciled retained
+monthly selection, known end times and valid metric fields. Since b50, a partial
+latest response can use accumulated records when their unique count and distance
+match the monthly report; energy and duration are checked independently. A
+genuinely incomplete archive or inconsistent metric stays unknown, with a small
+availability reason; proven empty windows return zero. See the
+[b50 completeness contract](#b50-accumulated-daily-statistics). Historical
 days require a report received after that day ended, rather than a partial
 snapshot taken during it. Rides are assigned as a whole to their Asia/Shanghai
 end date; no invented midnight split or proportional energy allocation is made.
@@ -516,6 +520,8 @@ Ninebot行程日历或device_id选择一辆车。打开、改日期后点击“�
 
 ## b44 display and naming update
 
+This section records the b44 upgrade. Current service classification and ride-hour presentation are described in the b46/b47 sections below; b50 daily completeness supersedes the older single-response prerequisite.
+
 On upgrade, loaded vehicles' existing entity IDs, including pre-upgrade custom
 IDs, are migrated once to `domain.account_ascii_vehicle_serial_field`. Initial
 configuration uses the same rule. Naming seeds and unique IDs remain stable;
@@ -635,3 +641,7 @@ Today/yesterday ride count, duration and energy can use previously retained loca
 The existing month list coverage still describes the latest response (for example, 20 out of 37), not the accumulated archive. Daily entity attributes and get_statistics daily rows add completeness_basis: upstream_complete, local_reconciled, incomplete or not_verified. IDs, units, two-decimal ride hours and original seconds remain unchanged. On upgrade, the archive is reprojected locally; no manual full-history sync or additional cloud request is required. Existing records must be present to recover totals. Current-day freshness and month-boundary safeguards continue; historical statistics are imported into Recorder only by the existing explicit action.
 
 简中：累计保存的唯一行程数与本月报告次数、里程吻合时，今日/昨日统计可使用本地累计记录，不再被单次20条明细阻断；能耗、时长还分别核对月汇总。真实缺报、冲突及过期仍显示未知。单次返回覆盖率保持原义，实体身份、单位和精度不变。升级后自动从已有档案重建统计视图，不需重新扫描全历史或增加轮询。属性中的local_reconciled表示本地核对吻合，不表示接口宣称返回了全部ID。不会自动写入生产Recorder或部署配置。
+
+### Historical track quality (b51)
+
+Detail Action `track_summary` now includes geometry kind, full-response valid/invalid/consecutive-duplicate counts, scan completeness, strict server simplification/window metadata and the geometry selection reason. Counts describe the bounded upstream response, not proof of a complete physical route. Returned point limits still apply; source indexes and unknown coordinate/point units remain unchanged. Empty/simplified/conflicting candidates cannot erase a retained usable track while valid scalar corrections still merge. Persistent detail protection and local-first retrieval are the next stage; b51 does not yet persist GPS or speed samples.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b51
+
+- Validate the entire bounded trail response independently of the displayed point limit; report valid/invalid/duplicate counts and strict upstream simplification metadata in historical Action responses. Preserve original point indexes and unverified units/coordinates.
+- Keep previous usable geometry when a new detail is empty, simplified, malformed or an unverified reduction, while still applying valid distance/duration/energy corrections. This prevents geometry protection from freezing scalar updates.
+- This stage adds quality contracts only: full private detail persistence and cache-first queries follow separately. No extra cloud polling, production HA changes or entity identity migration.
+
 ## 2.0.0b50
 
 - Restore today/yesterday ride counts, duration and energy when retained local rides reconcile with the latest monthly count and distance, even if one response returns only a partial list. Check energy and duration independently against monthly reports.

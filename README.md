@@ -3,7 +3,7 @@
 [中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/README.md)
 
 An independent, unofficial Ninebot vehicle integration using pinned `ninecli==0.1.7`.
-Version 2 replaces the OpenClaw backend. The current b44 code is a prerelease;
+Version 2 replaces the OpenClaw backend. The current b50 code is a prerelease;
 vendor API availability can change. It targets the Chinese App service; other regions are unverified.
 
 ## Installation and account
@@ -18,7 +18,8 @@ commit; passwords are not saved in ConfigEntry or passed as command-line argumen
 by offline tests, with live verification pending. Reauth/reconfigure retain the same account.
 Use Add account where supported by the HA frontend. Different accounts have separate entries;
 titles use username：account[region] when explicitly reported, otherwise the account alone.
-Custom entry titles are retained. Username/region are refreshed only at explicit login, not by polling.
+Custom entry titles are retained. Login reads username/region; older entries without a username can
+make one display-enrichment read on successful setup. This is not a polling/retry loop.
 Per-entry token/config directories are private local storage; same-user/privileged processes remain
 inside the trust boundary. A managed random-Bearer loopback serve child handles requests.
 Vehicle discovery uses a controlled native command to initialize the business routing cache.
@@ -28,7 +29,9 @@ See [backend/auth contract](docs/README.md).
 
 - Vehicle SOC, separate precise, estimated and AI-estimated range sensors (AI is diagnostic), charging, power and native vehicle/seat locks.
 - BMS voltage, temperature, supported cycles, charging power in W and a health score that is **not SOH**.
-- Current-month distance, energy in Wh, ride count and total duration; last-ride distance/time/energy/max/overall average speed.
+- Today/yesterday and current-month statistics; last-ride distance/time/energy/max/overall average speed.
+  Daily counts, duration and Wh use verified complete or locally reconciled archive records;
+  missing records and inconsistent totals remain unknown. Ride durations default to hours with two decimals.
 - Emergency communication battery SOC (%), main battery type (lithium/lead acid), Apple Find My and cycle support.
 - Battery presence, ACC on/off and service active/expired; unfamiliar codes are unrecognized.
 - Vehicle image, optional GPS, small ride-completed events and response actions for historical queries.

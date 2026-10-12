@@ -220,19 +220,19 @@ def test_missing_null_invalid_trail_does_not_erase_previous_track(raw):
         assert detail.total_track_points is None
 
 
-def test_verified_empty_track_clears_explicitly_and_partial_track_stays_marked():
+def test_empty_and_invalid_candidate_preserve_previous_valid_geometry():
     previous = parse_ride({"trail": "120,30,1,5"}, "202609", source=Endpoint.TRIP_DETAIL)
     cleared = merge_detail(
         previous, parse_ride({"trail": ""}, "202609", source=Endpoint.TRIP_DETAIL)
     )
-    assert cleared.track_points == cleared.speed_samples == ()
-    assert cleared.total_track_points == 0 and not cleared.track_truncated
-    assert dict(cleared.field_states)["track_points"] is FieldState.EMPTY
+    assert cleared.track_points == previous.track_points
+    assert cleared.total_track_points == 1 and not cleared.track_truncated
+    assert dict(cleared.detail_field_states)["track_points"] is FieldState.EMPTY
     partial = merge_detail(
         previous, parse_ride({"trail": "bad;121,31,2,6"}, "202609", source=Endpoint.TRIP_DETAIL)
     )
-    assert partial.track_points[0].sequence == 1
-    assert partial.total_track_points == 2 and "invalid_track_points" in partial.issues
+    assert partial.track_points == previous.track_points
+    assert partial.total_track_points == 1 and "invalid_track_points" in partial.issues
 
 
 def test_detail_scope_id_conflict_and_combined_timestamps_cannot_cross():
@@ -278,3 +278,107 @@ def test_presence_and_provenance_are_charged_to_history_budget():
     )
     assert bare.retained_cost < HISTORY_BUDGET < state.retained_cost
     assert HistoryStore().put(state, datetime(2026, 9, 26, tzinfo=UTC)) is None
+
+
+@pytest.mark.parametrize(
+    ("raw", "kind", "state", "valid", "invalid"),
+    [
+        ({}, "unknown", FieldState.MISSING, None, None),
+        ({"trail": None}, "unknown", FieldState.NULL, None, None),
+        ({"trail": ""}, "empty", FieldState.EMPTY, 0, 0),
+        ({"trail": []}, "invalid", FieldState.INVALID, None, None),
+        ({"trail": "wrong"}, "invalid", FieldState.INVALID, 0, 1),
+        ({"trail": "120,30,1,4"}, "single_point", FieldState.VALID, 1, 0),
+        ({"trail": "120,30,1,4;121,31,2,5"}, "sampled_unverified", FieldState.VALID, 2, 0),
+        (
+            {"trail": "120,30,1,4;121,31,2,5", "is_show_simple_point": True},
+            "server_simplified",
+            FieldState.VALID,
+            2,
+            0,
+        ),
+    ],
+)
+def test_whole_track_quality_presence(raw, kind, state, valid, invalid):
+    ride = parse_ride(raw, "202609", source=Endpoint.TRIP_DETAIL)
+    quality = ride.track_quality
+    assert quality.kind.value == kind
+    assert quality.field_state is state
+    assert quality.valid_point_count == valid
+    assert quality.invalid_point_count == invalid
+    assert quality.scan_complete == isinstance(raw.get("trail"), str)
+
+
+@pytest.mark.parametrize("value", [0, 1, "true", "false", {}, []])
+def test_simplified_flag_does_not_coerce_non_boolean(value):
+    ride = parse_ride(
+        {"is_show_simple_point": value, "show_simple_point_days": True},
+        "202609",
+        source=Endpoint.TRIP_DETAIL,
+    )
+    assert ride.track_quality.server_simplified is None
+    assert ride.track_quality.simplified_state is FieldState.INVALID
+    assert ride.track_quality.server_window_days is None
+    assert ride.track_quality.window_state is FieldState.INVALID
+
+
+def test_full_scan_detects_invalid_tail_without_expanding_projection():
+    ride = parse_ride(
+        {"trail": "120,30,1,4;120,30,2,5;bad;121,31,3,6", "show_simple_point_days": 180},
+        "202609",
+        source=Endpoint.TRIP_DETAIL,
+        max_points=1,
+    )
+    assert len(ride.track_points) == 1
+    assert ride.total_track_points == 4 and ride.track_truncated
+    assert ride.track_quality.valid_point_count == 3
+    assert ride.track_quality.invalid_point_count == 1
+    assert ride.track_quality.consecutive_duplicate_count == 1
+    assert ride.track_quality.server_window_days == 180
+    assert "invalid_track_points" in ride.issues
+    points, _, _ = parse_track("bad;120,30,1,4;bad;121,31,3,6", 4)
+    assert [point.sequence for point in points] == [1, 3]
+
+
+def test_geometry_protection_does_not_freeze_mutable_scalars():
+    previous = parse_ride(
+        {
+            "travel_id": "a",
+            "mileages": 1,
+            "duration": 10,
+            "ec": 20,
+            "trail": "120,30,1,4;121,31,2,5;122,32,3,6",
+            "is_show_simple_point": False,
+        },
+        "202609",
+        source=Endpoint.TRIP_DETAIL,
+    )
+    for raw, reason in (
+        ({"trail": ""}, "retained_previous_missing_geometry"),
+        (
+            {"trail": "120,30,1,4;121,31,2,5", "is_show_simple_point": True},
+            "retained_previous_server_simplified",
+        ),
+        ({"trail": "120,30,1,4;121,31,2,5"}, "retained_previous_unverified_reduction"),
+        ({"trail": "120,30,1,4;121,31,2,5;122,32,3,6;bad"}, "retained_previous_geometry_conflict"),
+        (
+            {"trail": "120,30,1,4;121,31,2,5;122,32,3,6;122,32,4,7"},
+            "retained_previous_geometry_conflict",
+        ),
+    ):
+        candidate = parse_ride(
+            {**raw, "travel_id": "a", "mileages": 2, "duration": 15, "ec": 30},
+            "202609",
+            source=Endpoint.TRIP_DETAIL,
+        )
+        result = merge_detail(previous, candidate)
+        assert result.distance_m == 2000 and result.duration_s == 15 and result.energy_raw == 30
+        assert result.track_points == previous.track_points
+        assert result.track_quality == previous.track_quality
+        assert result.geometry_selection == reason
+    grown = parse_ride(
+        {"trail": "120,30,1,4;121,31,2,5;122,32,3,6;123,33,4,7"},
+        "202609",
+        source=Endpoint.TRIP_DETAIL,
+    )
+    assert merge_detail(previous, grown).track_quality.valid_point_count == 4

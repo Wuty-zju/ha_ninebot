@@ -17,6 +17,32 @@ class FieldState(StrEnum):
     EMPTY = "empty"
 
 
+class GeometryKind(StrEnum):
+    UNKNOWN = "unknown"
+    EMPTY = "empty"
+    INVALID = "invalid"
+    SINGLE_POINT = "single_point"
+    SERVER_SIMPLIFIED = "server_simplified"
+    SAMPLED_UNVERIFIED = "sampled_unverified"
+
+
+@dataclass(frozen=True)
+class TrackQuality:
+    """Whole response evidence, independent of a bounded display projection."""
+
+    kind: GeometryKind = GeometryKind.UNKNOWN
+    field_state: FieldState = FieldState.MISSING
+    raw_point_count: int | None = None
+    valid_point_count: int | None = None
+    invalid_point_count: int | None = None
+    consecutive_duplicate_count: int | None = None
+    scan_complete: bool = False
+    server_simplified: bool | None = None
+    server_window_days: int | None = None
+    simplified_state: FieldState = FieldState.MISSING
+    window_state: FieldState = FieldState.MISSING
+
+
 @dataclass(frozen=True)
 class SpeedSample:
     sequence: int
@@ -67,6 +93,8 @@ class Ride:
     field_sources: tuple[tuple[str, str], ...] = ()
     detail_field_states: tuple[tuple[str, FieldState], ...] = ()
     precision: tuple[tuple[str, int], ...] = ()
+    track_quality: TrackQuality = TrackQuality()
+    geometry_selection: str = "candidate"
 
     @property
     def average_speed_m_s(self) -> float | None:
