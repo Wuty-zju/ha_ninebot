@@ -938,6 +938,7 @@ class RideArchive:
     async def async_preservation_claim(
         self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
     ) -> "PreservationTask | None":
+        utc_string(now)
         if type(budget) is not int or not 1 <= budget <= 60:
             raise ValueError("Invalid preservation budget")
         return await self._run(
@@ -961,12 +962,31 @@ class RideArchive:
                 "WHERE r.vehicle=? AND (m.value IS NULL OR "
                 "json_extract(m.value,'$.revision')!=r.revision OR "
                 "json_extract(m.value,'$.next_attempt')<=?) "
-                "ORDER BY r.started DESC LIMIT 128",
-                (vehicle, epoch),
+                "ORDER BY CASE WHEN r.ended>=? AND r.ended<=? THEN 0 ELSE 1 END, "
+                "r.started DESC LIMIT 128",
+                (
+                    vehicle,
+                    epoch,
+                    utc_string(now - timedelta(days=180)),
+                    utc_string(now - timedelta(days=150)),
+                ),
             ).fetchall()
             for identity, data, revision, value in rows:
                 ride = restored_ride(decoded(data))
                 if ride.detail_id is None:
+                    ignored = {
+                        "fingerprint": fingerprint(ride),
+                        "attempts": 0,
+                        "observations": 2,
+                        "next_attempt": 4102444800,
+                        "reason": None,
+                        "revision": revision,
+                    }
+                    db.execute(
+                        "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) "
+                        "DO UPDATE SET value=excluded.value",
+                        (f"preservation:{vehicle}:{identity}", encoded(ignored)),
+                    )
                     continue
                 key = f"preservation:{vehicle}:{identity}"
                 signature = fingerprint(ride)
@@ -1019,7 +1039,7 @@ class RideArchive:
     async def async_preservation_finish(
         self,
         sn: str,
-        task,
+        task: "PreservationTask",
         now: datetime,
         *,
         success: bool,
@@ -1028,6 +1048,7 @@ class RideArchive:
         reason: str = "unavailable",
         guard: Callable[[], bool],
     ) -> None:
+        utc_string(now)
         await self._run(
             partial(
                 self._preservation_finish,

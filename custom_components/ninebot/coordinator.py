@@ -959,7 +959,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         return polling_demand(
             self.data[sn],
             (*self.async_contexts(), ConsumerContext(sn, Need.MONTH))
-            if self.config_entry.options.get(CONF_PRESERVE, False) is True
+            if self.config_entry is not None
+            and self.config_entry.options.get(CONF_PRESERVE, False) is True
             else self.async_contexts(),
             now=dt_util.utcnow(),
         )

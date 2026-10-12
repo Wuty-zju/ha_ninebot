@@ -53,7 +53,8 @@ class HistoryPreservation:
         self.status = "disabled"
 
     def start(self) -> None:
-        if self.co.config_entry.options.get(CONF_PRESERVE, False) is not True:
+        entry = self.co.config_entry
+        if entry is None or entry.options.get(CONF_PRESERVE, False) is not True:
             return
         self.status = "idle"
         self._remove = async_track_time_interval(
@@ -79,7 +80,10 @@ class HistoryPreservation:
         vehicles = sorted(sn for sn in co.data if co.local_vehicle_available(sn))
         if not vehicles:
             return
-        budget = co.config_entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
+        entry = co.config_entry
+        if entry is None:
+            return
+        budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
         if type(budget) is not int or not 1 <= budget <= 60:
             budget = DEFAULT_BUDGET
         generation = co._generation

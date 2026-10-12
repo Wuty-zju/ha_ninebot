@@ -409,7 +409,16 @@ def detail_data(record: RawRecord, summary: Ride, max_points: int, offset: int =
     for field in ("started_at", "ended_at"):
         before, after = getattr(summary, field), getattr(detail, field)
         if before is not None and after is not None and before != after:
-            raise NinebotError(ErrorKind.PROTOCOL)
+            growing = (
+                field == "ended_at"
+                and detail.started_at is not None
+                and detail.started_at == summary.started_at
+                and after > before
+                and detail.duration_s is not None
+                and abs((after - detail.started_at).total_seconds() - detail.duration_s) <= 1
+            )
+            if not growing:
+                raise NinebotError(ErrorKind.PROTOCOL)
     return merge_detail(summary, detail)
 
 
