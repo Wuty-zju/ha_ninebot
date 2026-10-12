@@ -526,7 +526,9 @@ memory retains at most 4,096 displayed points per route; long routes are thinned
 without truncating the archive or stopping continuation. First/last points and
 full scanned bounds survive; real geometry/value gaps remain separate. Completion
 only means the saved response was read, not that cloud sampling/history is complete.
-Simplified points are location previews, never road routes. Curves show unknown-unit
+Simplified points are location previews, never road routes. The point slider and playback
+use only loaded source points in fixed 0.5-second display steps, without API calls;
+the interval does not represent riding time or speed. Curves show unknown-unit
 raw values against source sequence, not elapsed time; thinning is explicitly labeled.
 
 Leaflet **1.9.4** and its BSD-2-Clause license/assets are bundled inside the integration;

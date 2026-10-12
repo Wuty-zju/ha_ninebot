@@ -25,7 +25,13 @@ export class RouteMap {
     root.append(this.container);
   }
   clear() {
-    this.serial++; this.map?.remove(); this.map = null; this.layer = null; this.tiles = null;
+    this.serial++; this.map?.remove(); this.map = null; this.layer = null; this.tiles = null; this.focus = null; this.selectedPoint = null;
+  }
+  highlight(point = null) {
+    this.selectedPoint = point;
+    this.focus?.remove(); this.focus = null;
+    if (this.map && point) this.focus = this.library.circleMarker([point.latitude, point.longitude],
+      { color: '#ffffff', fillColor: '#2196f3', radius: 9, weight: 3, fillOpacity: 1 }).addTo(this.layer);
   }
   async update(tracks, tiles = false) {
     const serial = ++this.serial;
@@ -39,6 +45,7 @@ export class RouteMap {
         this.map.attributionControl.setPrefix('Leaflet 1.9.4');
         this.layer = L.layerGroup().addTo(this.map);
       }
+      this.library = L;
       this.layer.clearLayers();
       if (tiles && !this.tiles) this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(this.map);
@@ -59,6 +66,7 @@ export class RouteMap {
           }
         }
       });
+      this.highlight(this.selectedPoint);
       this.map.invalidateSize();
       if (bounds.length) this.map.fitBounds(bounds, { padding: [20, 20], maxZoom: 16, animate: false });
     } catch {

@@ -26,7 +26,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.routeMap = new RouteMap(() => { this.mapError = true; this.render(); });
     this.tracks = new LocalTracks((service, data) => this.browser.invoke(service, data), () => this.render());
     this.browser = new FleetBrowser(() => this.render(), () => {
-      this.tiles = false; this.mapError = false; this.tracks.clear(); this.routeMap.clear();
+      this.stopPlayback(true); this.tiles = false; this.mapError = false; this.tracks.clear(); this.routeMap.clear();
     });
   }
   setConfig(config) { this.openRides.clear(); this.browser.configure(config); }
@@ -84,6 +84,40 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     ]) { dl.append(element('dt', name), element('dd', value)); }
     return dl;
   }
+  stopPlayback(clearFocus = false) {
+    clearInterval(this.playback); this.playback = null; this.playKey = null;
+    if (this.playButton) this.playButton.textContent = this.labels().play_points;
+    this.playButton = null;
+    if (clearFocus) this.routeMap?.highlight();
+  }
+  pointControls(key, track, labels) {
+    const controls = element('div', '', 'toolbar'), status = element('p', '', 'note');
+    const label = element('label', labels.point_sequence), input = element('input'); input.type = 'range';
+    input.min = '0'; input.max = String(Math.max(0, track.points.length - 1)); input.step = '1'; input.value = '0';
+    input.setAttribute('aria-label', `${labels.point_sequence} · ${track.label}`);
+    input.disabled = this.browser.busy || this.tracks.busy || !track.points.length;
+    const show = () => {
+      const point = track.points[Number(input.value)];
+      if (!point || !this.tracks.tracks.has(key)) return;
+      status.textContent = `${labels.point_sequence}: ${point.sequence} · ${labels.point_speed}: ${point.speed_raw ?? '—'} · ${labels.point_distance}: ${point.distance_delta_raw ?? '—'}`;
+      this.routeMap.highlight(point);
+    };
+    input.addEventListener('input', () => { this.stopPlayback(); play.textContent = labels.play_points; show(); });
+    const play = this.button(labels.play_points, () => {
+      if (this.playback && this.playKey === key) { this.stopPlayback(); return; }
+      this.stopPlayback(); show(); this.playKey = key; this.playButton = play;
+      play.textContent = labels.pause_points;
+      this.playback = setInterval(() => {
+        if (!input.isConnected || !this.tracks.tracks.has(key) || Number(input.value) >= track.points.length - 1) {
+          this.stopPlayback(); play.textContent = labels.play_points; return;
+        }
+        input.value = String(Number(input.value) + 1); show();
+      }, 500);
+    });
+    play.disabled ||= track.points.length < 2;
+    label.append(input); controls.append(label, play, status, element('p', labels.playback_note, 'note'));
+    return controls;
+  }
   async readRoute(ride) {
     if (!this.browser.active || this.browser.busy || !this.browser.page?.rides.includes(ride)) return;
     if (this.mapError) {
@@ -108,6 +142,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     parent.append(svg, element('p', `${this.labels().sample_axis}: ${samples[0]?.sequence ?? '—'}–${samples.at(-1)?.sequence ?? '—'}`, 'note'));
   }
   render() {
+    this.stopPlayback(true);
     const browser = this.browser;
     if (!browser?.config) return;
     const labels = this.labels(), card = element('ha-card');
@@ -158,7 +193,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         legend.style.borderLeft = `4px solid ${ROUTE_COLORS[index]}`;
         legend.style.paddingLeft = '8px'; card.append(legend);
         const key = [...this.tracks.tracks.entries()].find(([, value]) => value === track)[0];
-        card.append(this.button(labels.remove_track, () => this.tracks.remove(key)));
+        card.append(this.button(labels.remove_track, () => this.tracks.remove(key)), this.pointControls(key, track, labels));
         this.curve(card, labels.samples, track.points, 'speed_raw');
         this.curve(card, labels.distance_samples, track.points, 'distance_delta_raw');
       }

@@ -55,7 +55,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -113,7 +119,13 @@ export const LABELS = {
     "show_track": "显示已保存轨迹",
     "more_track": "继续读取本地点",
     "remove_track": "移除此轨迹",
-    "sample_axis": "源点序号（非时间轴）"
+    "sample_axis": "源点序号（非时间轴）",
+    "point_sequence": "源点序号",
+    "point_speed": "速度采样值 · 单位待验证",
+    "point_distance": "距离采样值 · 单位待验证",
+    "play_points": "按点播放",
+    "pause_points": "暂停播放",
+    "playback_note": "按已读点固定0.5秒逐点播放，不代表实际时间或速度，不请求API。"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -171,7 +183,13 @@ export const LABELS = {
     "show_track": "顯示已儲存軌跡",
     "more_track": "繼續讀取本機點",
     "remove_track": "移除此軌跡",
-    "sample_axis": "來源點序號（非時間軸）"
+    "sample_axis": "來源點序號（非時間軸）",
+    "point_sequence": "來源點序號",
+    "point_speed": "速度取樣值 · 單位待驗證",
+    "point_distance": "距離取樣值 · 單位待驗證",
+    "play_points": "按點播放",
+    "pause_points": "暫停播放",
+    "playback_note": "按已讀點固定0.5秒逐點播放，不代表實際時間或速度，不請求API。"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -229,7 +247,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "fr": {
     "title": "Historique des trajets",
@@ -287,7 +311,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "es": {
     "title": "Historial de viajes",
@@ -345,7 +375,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -403,7 +439,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -461,7 +503,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -519,7 +567,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "ru": {
     "title": "История поездок",
@@ -577,7 +631,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "ja": {
     "title": "走行履歴",
@@ -635,7 +695,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "ko": {
     "title": "주행 기록",
@@ -693,7 +759,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -751,7 +823,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -809,7 +887,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "uk": {
     "title": "Історія поїздок",
@@ -867,7 +951,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -925,7 +1015,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -983,7 +1079,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -1041,7 +1143,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -1099,7 +1207,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -1157,7 +1271,13 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -1215,6 +1335,12 @@ export const LABELS = {
     "show_track": "Show saved route",
     "more_track": "Read more saved points",
     "remove_track": "Remove this route",
-    "sample_axis": "Source point sequence (not elapsed time)"
+    "sample_axis": "Source point sequence (not elapsed time)",
+    "point_sequence": "Source point sequence",
+    "point_speed": "Speed raw · unit unverified",
+    "point_distance": "Distance raw · unit unverified",
+    "play_points": "Play points",
+    "pause_points": "Pause points",
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
   }
 };

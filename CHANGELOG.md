@@ -3,7 +3,7 @@
 ## 2.0.0b57
 
 - Extend the optional history card with up to five selected vehicles and saved-route overlays, bounded local pages and per-vehicle continuations. Keep existing single-vehicle configuration compatible.
-- Add strict archive-only detail reads, version-fenced source chunks, gap-aware raw curves and bounded display thinning for long routes; originals remain intact. Clear private projections on user, connection, date, selection or access changes.
+- Add strict archive-only detail reads, version-fenced source chunks, gap-aware raw curves, local source-point playback and bounded display thinning for long routes; originals remain intact. Clear private projections on user, connection, date, selection or access changes.
 - Bundle pinned Leaflet 1.9.4 and its license; tiles are off by default, with explicit optional OpenStreetMap privacy disclosure. Simplified historical points are previews, and coordinates/point units remain unverified.
 - Provide standard native calendar/statistics card configurations without automatic Recorder writes or private frontend APIs. No new entities, identity migration, cloud capture or vehicle control.
 

@@ -53,6 +53,16 @@ try {
   assert.ok(calls.every(call => call.service_data.local_only === true && call.service_data.include_track === true));
   assert.equal(external.length, 0);
   assert.deepEqual(errors, []);
+  const callsBeforePlayback = await page.evaluate(() => fixtureRequests.length);
+  const slider = page.getByRole('slider', { name: '源点序号 · Synthetic A', exact: true });
+  await slider.focus(); await slider.press('Home');
+  for (let i = 0; i < 10; i++) await slider.press('ArrowRight');
+  await page.waitForFunction(() => fixtureCard.routeMap.focus !== null);
+  assert.ok(Math.abs(await page.evaluate(() => fixtureCard.routeMap.focus.getLatLng().lat) - 30.001) < 1e-8);
+  await page.getByRole('button', { name: '按点播放', exact: true }).first().click();
+  await page.waitForFunction(() => fixtureCard.playback !== null && Number(fixtureCard.shadowRoot.querySelector('input[type=range]').value) > 10);
+  await page.getByRole('button', { name: '暂停播放', exact: true }).click();
+  assert.equal(await page.evaluate(() => fixtureRequests.length), callsBeforePlayback);
   const output = process.env.BROWSER_TEST_OUTPUT;
   if (output) {
     await mkdir(output, { recursive: true });
@@ -68,7 +78,7 @@ try {
   await page.evaluate(() => {
     fixtureCard.hass = { ...fixtureHass, user: { id: 'another-synthetic-reader' } };
   });
-  await page.waitForFunction(() => fixtureCard.tracks.tracks.size === 0 && fixtureCard.routeMap.map === null);
+  await page.waitForFunction(() => fixtureCard.tracks.tracks.size === 0 && fixtureCard.routeMap.map === null && fixtureCard.playback === null);
   assert.deepEqual(errors, []);
   console.log('Synthetic browser smoke passed: two scoped routes, local assets, tile opt-in, user-change privacy cleanup.');
 } finally {
