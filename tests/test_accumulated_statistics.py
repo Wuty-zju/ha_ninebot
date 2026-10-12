@@ -1,6 +1,5 @@
 """Synthetic replay of repeated capped lists, not a copied private vehicle fixture."""
 
-from copy import deepcopy
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
@@ -15,6 +14,11 @@ from custom_components.ninebot.statistics_actions import statistics_response
 NOW = datetime(2026, 10, 7, 4, tzinfo=UTC)
 SN = "synthetic-statistics-vehicle"
 YESTERDAY = date(2026, 10, 6)
+
+
+@pytest.fixture(autouse=True)
+def isolated_statistics_directory(hass, tmp_path):
+    hass.config.config_dir = str(tmp_path)
 
 
 def capped_month(count=37, *, first=None):
@@ -47,14 +51,15 @@ def capped_month(count=37, *, first=None):
     }
 
 
-async def seed(store):
+async def seed(store, *, missing_energy=False):
     await store.async_record_profiles(
         (VehicleProfile(SN, "Synthetic", "Model"),), NOW, True, lambda: True
     )
     for offset, count in enumerate((20, 21, 37)):
-        await store.async_record(
-            SN, travel(capped_month(count), "202610"), NOW + timedelta(seconds=offset)
-        )
+        raw = capped_month(count)
+        if missing_energy and offset == 0:
+            raw["list"][0].pop("ec")
+        await store.async_record(SN, travel(raw, "202610"), NOW + timedelta(seconds=offset))
 
 
 async def test_capped_list_threshold_accumulation_action_and_restart(hass, freezer):
@@ -122,17 +127,9 @@ async def test_reconciled_metrics_fail_independently(hass, freezer, field):
     store = ArchiveStatistics(hass, "metrics", "owner")
     try:
         await store.async_load()
-        await seed(store)
-        raw = capped_month()
-        if field == "missing_energy":
-            # A newly observed identity with absent energy, not a retained
-            # historical fact from a prior successful observation.
-            raw["list"][-1]["travel_id"] = "synthetic-new-without-energy"
-            raw["list"][-1].pop("ec")
-            complete = capped_month(first=0)
-            complete["list"][-1] = deepcopy(raw["list"][-1])
-            await store.async_record(SN, travel(complete, "202610"), NOW + timedelta(seconds=3))
-        else:
+        await seed(store, missing_energy=field == "missing_energy")
+        if field != "missing_energy":
+            raw = capped_month()
             raw[field] += 100
             await store.async_record(SN, travel(raw, "202610"), NOW + timedelta(seconds=3))
         summary = day_summary(store, SN, YESTERDAY, NOW + timedelta(seconds=3))
@@ -207,5 +204,25 @@ async def test_statistics_selection_budget_is_explicit(hass, freezer, monkeypatc
             await store.async_view(SN, ("202610",))
         assert error.value.kind is ArchiveFailure.BUDGET
         assert store.archive_ready
+    finally:
+        await store.async_close()
+
+
+async def test_reconciliation_uses_reported_precision_without_rounding_rides(hass, freezer):
+    freezer.move_to(NOW)
+    store = ArchiveStatistics(hass, "precision", "owner")
+    try:
+        await store.async_load()
+        for offset, count in enumerate((20, 21, 37)):
+            raw = capped_month(count)
+            raw.pop("detail")
+            raw["total_mileages"] = str(round(count * 1.005, 1))
+            for row in raw["list"]:
+                row["mileages"] = "1.005"
+            await store.async_record(SN, travel(raw, "202610"), NOW + timedelta(seconds=offset))
+        summary = day_summary(store, SN, YESTERDAY, NOW + timedelta(seconds=2))
+        assert summary.ride_count == 11
+        assert summary.distance_km == pytest.approx(11.055)
+        assert summary.completeness_basis == "local_reconciled"
     finally:
         await store.async_close()

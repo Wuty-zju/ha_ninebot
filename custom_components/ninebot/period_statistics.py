@@ -104,8 +104,7 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
             complete
             and store.month_metric_complete(sn, record.month, field)
             and (
-                day.day != 1
-                or store.month_metric_complete(sn, previous_month(record.month), field)
+                day.day != 1 or store.month_metric_complete(sn, previous_month(record.month), field)
             )
             and all(field in row.current_fields for row in selected)
             and all(value is not None for value in values)

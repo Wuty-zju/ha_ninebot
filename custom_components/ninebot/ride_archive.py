@@ -673,9 +673,7 @@ class RideArchive:
             previous_month(month)
         return await self._run(partial(self._statistics_months, vehicle_key(sn), months))
 
-    def _statistics_months(
-        self, vehicle: str, months: tuple[str, ...]
-    ) -> tuple[ArchiveMonth, ...]:
+    def _statistics_months(self, vehicle: str, months: tuple[str, ...]) -> tuple[ArchiveMonth, ...]:
         result = []
         count = size = 0
         for month in months:
