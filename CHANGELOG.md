@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b52
+
+- Preserve requested ride details, full original trail and speed samples in the account-scoped private SQLite archive; sanitize credentials/profile data and retain unknown business fields. Payloads are compressed and content-deduplicated without card/Action point truncation.
+- Store the latest response and independently selected geometry; valid scalar corrections still update while degraded geometry cannot erase an older detailed route. Bound revisions to two selected payloads per ride, with no automatic expiry or extra cloud polling. Capacity stops writes rather than deleting history.
+- Migrate v1 scalar archives transactionally with a consistent local v1 recovery copy. Existing backup hooks cover private details. Local-first Action retrieval follows in H3; this stage does not yet change query routing.
+
 ## 2.0.0b51
 
 - Validate the entire bounded trail response independently of the displayed point limit; report valid/invalid/duplicate counts and strict upstream simplification metadata in historical Action responses. Preserve original point indexes and unverified units/coordinates.

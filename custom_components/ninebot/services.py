@@ -279,6 +279,7 @@ async def detail_ride(
             if reference is not None
             else False
         ),
+        raw=record,
     )
     return RideDetail(
         summary.detail_id,
