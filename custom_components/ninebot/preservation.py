@@ -49,7 +49,6 @@ class HistoryPreservation:
         self.co = co
         self._remove: Callable[[], None] | None = None
         self._task: asyncio.Task[None] | None = None
-        self._vehicle = 0
         self.status = "disabled"
 
     def start(self) -> None:
@@ -77,7 +76,9 @@ class HistoryPreservation:
         if not co.statistics.writable:
             self.status = "storage_paused"
             return
-        vehicles = sorted(sn for sn in co.data if co.local_vehicle_available(sn))
+        vehicles, turn = await archive.async_preservation_order(
+            tuple(sn for sn in co.data if co.local_vehicle_available(sn))
+        )
         if not vehicles:
             return
         entry = co.config_entry
@@ -86,9 +87,10 @@ class HistoryPreservation:
         budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
         if type(budget) is not int or not 1 <= budget <= 60:
             budget = DEFAULT_BUDGET
+        if turn == "month" and await self._resume_months(vehicles, budget):
+            return
         generation = co._generation
-        for index in range(len(vehicles)):
-            sn = vehicles[(self._vehicle + index) % len(vehicles)]
+        for sn in vehicles:
             if not co.fresh(sn, "profile"):
                 continue
             ownership = co._ownership.get(sn, 0)
@@ -104,7 +106,6 @@ class HistoryPreservation:
             task = await archive.async_preservation_claim(sn, now, budget, guard=owns)
             if task is None:
                 continue
-            self._vehicle = (self._vehicle + index + 1) % len(vehicles)
             self.status = "querying"
             try:
                 # Missing detail can reuse an unpersisted response after a storage interruption.
@@ -178,7 +179,28 @@ class HistoryPreservation:
                     )
                 self.status = "waiting"
             return  # At most one logical endpoint operation per tick/account budget.
-        self.status = "idle"
+        if not await self._resume_months(vehicles, budget):
+            self.status = "idle"
+
+    async def _resume_months(self, vehicles: tuple[str, ...], budget: int) -> bool:
+        """Only resume a previously explicit user range; never invent a full-history range."""
+        from .ride_archive import vehicle_key
+
+        co = self.co
+        job = await co.statistics.archive.async_sync_job()
+        if job is None or job.terminal:
+            return False
+        from .archive_codec import stamp
+
+        if job.retry_at and dt_util.utcnow() < stamp(job.retry_at):
+            return False
+        for sn in vehicles:
+            if vehicle_key(sn) == job.vehicle and co.fresh(sn, "profile"):
+                self.status = "syncing_months"
+                # Same HistorySync lock/checkpoint as the Action, one missing month at most.
+                await co.history_sync.async_advance(sn, job.job_id, budget=budget, max_missing=1)
+                return True
+        return False
 
     async def async_close(self) -> None:
         if self._remove is not None:

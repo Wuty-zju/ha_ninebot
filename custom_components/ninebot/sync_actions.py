@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.util import dt as dt_util
 
 from .compat import validation as vol
+from .preservation import CONF_BUDGET, CONF_PRESERVE, DEFAULT_BUDGET
 from .ride_archive import ArchiveError
 from .services import assert_query_scope, query_month, resolve_vehicle, validation_error
 from .sync_job import public_progress
@@ -36,18 +37,25 @@ async def async_sync_history(hass: HomeAssistant, call: ServiceCall) -> dict[str
     co = entry.runtime_data.coordinator
     manager = co.history_sync
     operation = call.data["operation"]
+    budget = (
+        entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
+        if entry.options.get(CONF_PRESERVE) is True
+        else None
+    )
+    if budget is not None and (type(budget) is not int or not 1 <= budget <= 60):
+        budget = DEFAULT_BUDGET
     try:
         if operation == "start":
             if "start_month" not in call.data or "end_month" not in call.data:
                 raise validation_error("history_range")
             job = await manager.async_start(sn, call.data["start_month"], call.data["end_month"])
-            job = await manager.async_advance(sn, job.job_id)
+            job = await manager.async_advance(sn, job.job_id, budget=budget)
         else:
             if operation != "status" and "job_id" not in call.data:
                 raise validation_error("sync_job")
             job = await manager.async_job(sn, call.data.get("job_id"))
             if operation == "continue":
-                job = await manager.async_advance(sn, job.job_id)
+                job = await manager.async_advance(sn, job.job_id, budget=budget)
             elif operation == "cancel":
                 job = await manager.async_cancel(sn, job.job_id)
     except ValueError as err:

@@ -290,3 +290,30 @@ def test_checkpoint_coverage_and_terminal_state_cannot_be_forged():
     )
     with pytest.raises(ValueError):
         done.advance(NOW.isoformat(), queried=False, complete=True)
+
+
+async def test_preservation_resumes_explicit_range_one_month_per_budget(
+    hass, entry, app_client, sync_device, freezer
+):
+    from custom_components.ninebot.preservation import HistoryPreservation
+
+    co = entry.runtime_data.coordinator
+    await co.history_sync.async_start(SN, "202608", "202609")
+    # No eligible details: range continuation is the next operation. Synthetic
+    # current-month fixture has IDs without valid starts and never controls a vehicle.
+    with patch.object(co.statistics.archive, "async_preservation_claim", return_value=None):
+        worker = HistoryPreservation(co)
+        await worker.async_tick(NOW)
+        job = await co.history_sync.async_job(SN)
+        assert job.processed == 1 and job.next_month == "202608"
+        assert app_client.async_get_travel.await_count == 1
+        await worker.async_tick(NOW + timedelta(seconds=1))
+        assert app_client.async_get_travel.await_count == 1
+        freezer.tick(timedelta(seconds=121))
+        await worker.async_tick(NOW + timedelta(seconds=121))
+        job = await co.history_sync.async_job(SN)
+        assert job.state is SyncState.COMPLETE and job.queried == 2
+        assert len(job.incomplete_months) == 2
+        assert app_client.async_get_travel.await_count == 2
+        await worker.async_close()
+    app_client.async_control.assert_not_awaited()

@@ -67,17 +67,26 @@ class HistorySync:
             raise sync_error("sync_job")
         return job
 
-    async def async_advance(self, sn: str, job_id: str) -> SyncJob:
+    async def async_advance(
+        self,
+        sn: str,
+        job_id: str,
+        *,
+        budget: int | None = None,
+        max_missing: int = MAX_MISSING_MONTHS,
+    ) -> SyncJob:
+        if type(max_missing) is not int or not 1 <= max_missing <= MAX_MISSING_MONTHS:
+            raise ValueError("Invalid missing-month batch")
         if self._lock.locked():
             raise sync_error("busy")
         async with self._lock:
             self._task = asyncio.current_task()
             try:
-                return await self._advance(sn, job_id)
+                return await self._advance(sn, job_id, budget, max_missing)
             finally:
                 self._task = None
 
-    async def _advance(self, sn: str, job_id: str) -> SyncJob:
+    async def _advance(self, sn: str, job_id: str, budget: int | None, max_missing: int) -> SyncJob:
         job = await self.async_job(sn, job_id)
         if job.terminal:
             return job
@@ -100,10 +109,14 @@ class HistorySync:
             if cached is not None:
                 job = await archive.async_skip_sync_month(job, dt_util.utcnow(), guard=owns)
                 continue  # Known partial months are not repeatedly fetched as pagination.
-            if missing >= MAX_MISSING_MONTHS:
+            if missing >= max_missing:
                 break
             if not self.co.fresh(sn, "profile"):
                 return await self._wait(job, "unavailable", owns)
+            if budget is not None and not await archive.async_background_budget(
+                sn, dt_util.utcnow(), budget, guard=owns
+            ):
+                return job
             job = replace(
                 job,
                 state=SyncState.QUERYING,
