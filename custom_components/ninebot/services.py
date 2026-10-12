@@ -179,6 +179,15 @@ def ride_response(ride: Ride, include_track: bool = False) -> dict[str, Any]:
             "total_known": ride.total_track_points,
             "truncated": ride.track_truncated,
             "coordinate_system": "unknown",
+            "geometry_kind": ride.track_quality.kind.value,
+            "field_state": ride.track_quality.field_state.value,
+            "valid_points": ride.track_quality.valid_point_count,
+            "invalid_points": ride.track_quality.invalid_point_count,
+            "consecutive_duplicates": ride.track_quality.consecutive_duplicate_count,
+            "scan_complete": ride.track_quality.scan_complete,
+            "server_simplified": ride.track_quality.server_simplified,
+            "server_window_days": ride.track_quality.server_window_days,
+            "selection": ride.geometry_selection,
         },
     }
     if include_track:
