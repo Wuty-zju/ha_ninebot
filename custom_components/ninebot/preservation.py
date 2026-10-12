@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import json
+import math
 import random
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -46,7 +47,10 @@ class HistoryPreservation:
     """One bounded background operation at a time, independent of entities."""
 
     def __init__(self, co: "NinebotCoordinator") -> None:
+        from .month_sync import SparseMonthSync
+
         self.co = co
+        self.months = SparseMonthSync(co)
         self._remove: Callable[[], None] | None = None
         self._task: asyncio.Task[None] | None = None
         self.status = "disabled"
@@ -87,6 +91,8 @@ class HistoryPreservation:
         budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
         if type(budget) is not int or not 1 <= budget <= 60:
             budget = DEFAULT_BUDGET
+        if entry.options.get(CONF_PRESERVE) is True:
+            await self.months.async_seed_recent(vehicles, now)
         if turn == "month" and await self._resume_months(vehicles, budget):
             return
         generation = co._generation
@@ -183,7 +189,22 @@ class HistoryPreservation:
             self.status = "idle"
 
     async def _resume_months(self, vehicles: tuple[str, ...], budget: int) -> bool:
-        """Only resume a previously explicit user range; never invent a full-history range."""
+        """Alternate sparse selected months and explicit ranges, without a full-history scan."""
+        if await self.co.statistics.archive.async_month_turn() == "sparse":
+            for sn in vehicles:
+                if await self.months.async_step(sn, budget, dt_util.utcnow()):
+                    self.status = "syncing_months"
+                    return True
+        if await self._resume_range(vehicles, budget):
+            return True
+        for sn in vehicles:
+            if await self.months.async_step(sn, budget, dt_util.utcnow()):
+                self.status = "syncing_months"
+                return True
+        return False
+
+    async def _resume_range(self, vehicles: tuple[str, ...], budget: int) -> bool:
+        """Resume a previously explicit range without creating another one."""
         from .ride_archive import vehicle_key
 
         co = self.co
@@ -209,6 +230,7 @@ class HistoryPreservation:
         if self._task is not None and self._task is not asyncio.current_task():
             self._task.cancel()
             await asyncio.gather(self._task, return_exceptions=True)
+        await self.months.async_close()
 
 
 def task_state(value: str) -> dict[str, Any]:
@@ -243,4 +265,6 @@ def task_state(value: str) -> dict[str, Any]:
 
 def retry_delay(attempts: int, retry_after: float | None) -> float:
     delay = min(86400, 60 * 2 ** min(attempts, 10)) * random.uniform(0.9, 1.1)
-    return max(delay, retry_after or 0)
+    if retry_after is not None and math.isfinite(retry_after) and retry_after >= 0:
+        delay = max(delay, retry_after)
+    return delay

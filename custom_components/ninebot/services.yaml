@@ -208,6 +208,10 @@ sync_history:
             - continue
             - status
             - cancel
+            - repair
+            - repair_continue
+            - repair_status
+            - repair_cancel
     start_month:
       example: "202601"
       selector:
@@ -219,3 +223,7 @@ sync_history:
     job_id:
       selector:
         text:
+    months:
+      example: ["202601", "202603"]
+      selector:
+        object:

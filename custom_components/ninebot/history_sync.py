@@ -160,7 +160,7 @@ class HistorySync:
                 if current.revision == job.revision:
                     stored = await self.co.statistics.async_cached_month(sn, month)
                     if stored is None:
-                        return await self._wait(job, "storage", owns)
+                        return await self._wait(job, "storage", owns, background=budget is not None)
                     current = await archive.async_skip_sync_month(job, dt_util.utcnow(), guard=owns)
                 job = current
             except (HomeAssistantError, NinebotError) as err:
@@ -177,15 +177,35 @@ class HistorySync:
                 # Auth increments the generation: do not store under the old scope.
                 if not owns():
                     raise
-                return await self._wait(job, kind, owns)
+                return await self._wait(
+                    job,
+                    kind,
+                    owns,
+                    background=budget is not None,
+                    retry_after=err.retry_after if isinstance(err, NinebotError) else None,
+                )
         if not owns():
             raise sync_error("query_unavailable")
         return job
 
-    async def _wait(self, job: SyncJob, reason: str, guard: Callable[[], bool]) -> SyncJob:
+    async def _wait(
+        self,
+        job: SyncJob,
+        reason: str,
+        guard: Callable[[], bool],
+        *,
+        background: bool = False,
+        retry_after: float | None = None,
+    ) -> SyncJob:
         now = dt_util.utcnow()
         failures = min(255, job.failures + 1)
-        delay = min(3600, 60 * 2 ** min(failures - 1, 6))
+        from .preservation import retry_delay
+
+        delay = (
+            retry_delay(failures - 1, retry_after)
+            if background
+            else min(3600, 60 * 2 ** min(failures - 1, 6))
+        )
         waiting = replace(
             job,
             state=SyncState.WAITING,

@@ -678,3 +678,31 @@ This does not create an automatic all-history range. Previous-month late-arrival
 reconciliation, sparse forced month repair and richer multi-vehicle task queues
 remain subsequent H4 work. Known partial coverage is retained, never promoted to
 complete merely because a range job finishes. No new cloud endpoint or automatic full-history range is introduced.
+
+
+### Sparse month repair and late arrivals (b56)
+
+Use `ninebot.sync_history` with `operation: repair`, a vehicle `device_id`, and
+`months: ["202601", "202603"]` to refresh exactly those months, including a
+previously partial month. No intervening months are queried. One eligible selected
+month is attempted per call; use `repair_continue` after the shared budget/retry
+cooldown, `repair_status` for local-only progress, or `repair_cancel` with `months`
+to stop selected tasks. These tasks are per vehicle and multiple vehicles can have
+pending selections in the same account. Status requires read permission; mutations
+require control permission. No command is sent to a physical vehicle.
+
+Enable background preservation to resume these tasks automatically. It also
+checks the previous month at most daily during days 1–7 in Asia/Shanghai for late
+records, without periodically rereading old stable months. Successful partial
+reads remain partial and stop the task; repeated first-page responses cannot prove
+full history. A new explicit repair can reread a completed month. Eight consecutive
+failed attempts suspend a task until explicit rescheduling. Runtime/cloud failures
+retain existing history and use fixed safe progress, backoff, jitter and Retry-After.
+
+The account shares one durable background month/detail budget and rotates vehicles
+and month/detail work. The queue retains at most 128 task metadata records; if all
+slots are active, enqueue waits for room rather than deleting history. Retiring
+finished/cancelled/failed task metadata does not delete rides, raw details or GPS.
+Backup includes task claims and budget. Cancel/unload drains the active query before
+returning; old sync_history range operations remain supported. No cloud paging,
+coordinate conversion or point-time/unit inference is introduced.

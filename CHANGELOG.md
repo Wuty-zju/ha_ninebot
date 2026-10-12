@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b56
+
+- Add durable per-vehicle sparse month repair through sync_history repair/repair_continue/repair_status/repair_cancel. Select up to 12 months without rereading the intervening history; shared account budget and background fairness survive restart.
+- When preservation is enabled, reconcile the previous month at most daily during the first seven days of the new month. Keep partial coverage explicit; one successful partial read ends a repair instead of repeatedly polling an unsupported cloud page.
+- Bound queue metadata to 128 tasks, preserve all ride/track evidence when recycling finished task slots, drain cancelled/unloaded queries and retain backup/checkpoint fences. Jittered retries respect Retry-After; eight consecutive sparse failures suspend the task until an explicit new request.
+- Keep ninecli serve, authentication, IDs and raw unit/coordinate boundaries. History maps remain the next H5 phase.
+
 ## 2.0.0b55
 
 - Resume explicitly selected missing-month ranges in opt-in background preservation, one missing month per tick with durable checkpoints and the shared account detail/month request budget. Local known partial months remain explicitly partial rather than being repeatedly fetched as unverified pagination.

@@ -317,3 +317,67 @@ async def test_preservation_resumes_explicit_range_one_month_per_budget(
         assert app_client.async_get_travel.await_count == 2
         await worker.async_close()
     app_client.async_control.assert_not_awaited()
+
+
+async def test_sparse_repair_action_only_selected_months_and_partial_status(
+    hass, entry, app_client, sync_device, freezer
+):
+    first = await call(hass, sync_device, operation="repair", months=["202604", "202608"])
+    assert app_client.async_get_travel.await_count == 1
+    assert first["tasks"][0]["month"] == "202604"
+    assert first["tasks"][0]["state"] == "complete"
+    assert first["tasks"][0]["list_complete"] is False
+    assert first["tasks"][1]["state"] == "pending"
+    assert not first["upstream_pagination_verified"]
+    app_client.async_get_travel.reset_mock()
+    status = await call(hass, sync_device, operation="repair_status")
+    assert status["tasks"] == first["tasks"]
+    assert not status["operation_performed"]
+    await call(hass, sync_device, operation="repair_continue")
+    app_client.async_get_travel.assert_not_awaited()
+    freezer.tick(timedelta(seconds=121))
+    final = await call(hass, sync_device, operation="repair_continue")
+    assert all(task["state"] == "complete" for task in final["tasks"])
+    assert all(task["list_complete"] is False for task in final["tasks"])
+    assert app_client.async_get_travel.await_args.args == (SN, "202608")
+    assert not any(value in json.dumps(final) for value in (SN, "token", "latitude"))
+    app_client.async_control.assert_not_awaited()
+
+
+async def test_sparse_cancel_drains_query_without_publishing_result(
+    hass, entry, app_client, sync_device
+):
+    co = entry.runtime_data.coordinator
+    await co.statistics.archive.async_schedule_months(SN, ("202609",), NOW, guard=lambda: True)
+    entered = asyncio.Event()
+
+    async def blocked(sn, month):
+        entered.set()
+        await asyncio.Event().wait()
+
+    app_client.async_get_travel.side_effect = blocked
+    task = asyncio.create_task(co.preservation.months.async_step(SN, 30, NOW))
+    await entered.wait()
+    cancelled = await call(hass, sync_device, operation="repair_cancel", months=["202609"])
+    assert task.cancelled() and cancelled["tasks"][0]["state"] == "cancelled"
+    assert await co.statistics.async_cached_month(SN, "202609") is None
+    assert co.preservation.months._task is None
+
+
+async def test_recent_seed_stops_after_first_week_and_reuses_same_day(
+    hass, entry, app_client, sync_device, freezer
+):
+    co = entry.runtime_data.coordinator
+    freezer.move_to(datetime(2026, 10, 1, tzinfo=UTC))
+    when = datetime(2026, 10, 1, tzinfo=UTC)
+    # Isolate calendar planning from the setup fixture's Oct 8 profile receipt.
+    with patch.object(co, "fresh", return_value=True):
+        await co.preservation.months.async_seed_recent((SN,), when)
+        assert await co.preservation.months.async_step(SN, 30, when)
+        assert app_client.async_get_travel.await_args.args == (SN, "202609")
+        app_client.async_get_travel.reset_mock()
+        await co.preservation.months.async_seed_recent((SN,), when + timedelta(hours=1))
+        assert not await co.preservation.months.async_step(SN, 30, when + timedelta(hours=1))
+        await co.preservation.months.async_seed_recent((SN,), when + timedelta(days=7))
+        assert not await co.preservation.months.async_step(SN, 30, when + timedelta(days=7))
+        app_client.async_get_travel.assert_not_awaited()
