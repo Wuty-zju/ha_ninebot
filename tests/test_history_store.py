@@ -285,3 +285,42 @@ async def test_no_cursor_can_advance_without_its_page_evidence(store):
         await store.async_set_history_plan(SN, forged, initial(), guard=lambda: True)
     assert error.value.kind is ArchiveFailure.SCHEMA
     assert await store.async_history_plan(SN) == initial()
+
+
+async def test_page_rides_and_legacy_job_share_no_checkpoint(store):
+    from custom_components.ninebot.sync_job import SyncJob, SyncState
+
+    old = SyncJob(
+        "c" * 32,
+        vehicle_key(SN),
+        "202609",
+        "202610",
+        "202610",
+        NOW.isoformat(),
+        NOW.isoformat(),
+        state=SyncState.QUERYING,
+    )
+    await store.async_set_sync_job(old, None, guard=lambda: True)
+    first = await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    await store.async_accept_history_page(SN, first.root, record(("ride-two",)), guard=lambda: True)
+    assert await store.async_sync_job() == old
+    page = await store.async_page(SN)
+    assert {row.ride_id for row in page.rides} == {"ride-one", "ride-two"}
+    assert (
+        await store.async_detail_summary(SN, "ride-one", "202610", guard=lambda: True)
+    ).ride_id == "ride-one"
+
+
+async def test_normalization_failure_rolls_back_page_cursor_and_rides(store, monkeypatch):
+    def fail(*args, **kwargs):
+        raise sqlite3.OperationalError("synthetic normalization rollback")
+
+    monkeypatch.setattr(store, "_record_month", fail)
+    with pytest.raises(ArchiveError):
+        await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    assert await store.async_history_plan(SN) == initial()
+    assert not (await store.async_page(SN)).rides
+    assert (
+        await store.async_history_page(SN, initial().plan_id, "202610", 1, guard=lambda: True)
+        is None
+    )

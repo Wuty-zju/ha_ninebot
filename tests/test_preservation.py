@@ -114,7 +114,9 @@ async def test_worker_uses_background_budget_and_persists_full_detail(tmp_path):
             "202609",
         )
         co = SimpleNamespace(
-            config_entry=SimpleNamespace(options={"preserve_history": True}),
+            config_entry=SimpleNamespace(
+                options={"preserve_history": True, "auto_history_sync": False}
+            ),
             _stopping=False,
             _generation=1,
             _ownership={SN: 1},

@@ -286,13 +286,29 @@ class ArchiveStatistics(TravelStatisticsStore):
                 self.record_error(err)
 
     async def async_cached_profiles(self) -> tuple[VehicleProfile, ...]:
+        """Return the stored owned profiles without any network request."""
         if not self.archive_ready:
             return ()
+
         try:
             return await self.archive.async_profiles()
         except ArchiveError as err:
             self.record_error(err)
             return ()
+
+    async def async_history_page_committed(self, sn: str, guard: Callable[[], bool]) -> None:
+        """Refresh projections only after the page/facts transaction has committed."""
+        if not self.archive_ready or not guard():
+            return
+        async with self._archive_lock:
+            try:
+                self._vehicles.add(sn)
+                await self._project(guard, vehicle=sn)
+                self._archive_success()
+            except ArchiveError as err:
+                self.record_error(err)
+                return
+        self._notify_change(sn, guard)
 
     async def async_cached_month(self, sn: str, month: str) -> ArchiveMonth | None:
         if not self.archive_ready:

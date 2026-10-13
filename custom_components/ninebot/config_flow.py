@@ -27,6 +27,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, account_update
+from .bootstrap import CONF_AUTO_HISTORY
 from .compat import validation as vol
 from .const import (
     CONF_ACCOUNT,
@@ -170,12 +171,17 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         title=title,
                         data=data,
                         options={
-                            key: bool(
-                                user_input.get(
-                                    key, DEFAULT_COORDINATES if key == CONF_COORDINATES else False
+                            CONF_PRESERVE: True,
+                            CONF_AUTO_HISTORY: True,
+                            **{
+                                key: bool(
+                                    user_input.get(
+                                        key,
+                                        DEFAULT_COORDINATES if key == CONF_COORDINATES else False,
+                                    )
                                 )
-                            )
-                            for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
+                                for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
+                            },
                         },
                     )
                     await manager.async_finalize(key)

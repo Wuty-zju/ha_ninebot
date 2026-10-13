@@ -16,6 +16,7 @@ import time
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as WorkerTimeout
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -748,7 +749,14 @@ class RideArchive:
         )
 
     def _record_month(
-        self, vehicle: str, travel: TravelMonth, observed: str, backend: str | None, ordered: bool
+        self,
+        vehicle: str,
+        travel: TravelMonth,
+        observed: str,
+        backend: str | None,
+        ordered: bool,
+        *,
+        sync_checkpoint: bool = True,
     ) -> bool:
         # All candidate validation is before the transaction. No raw objects
         # are passed through encoded month data or normalized ride rows.
@@ -781,7 +789,7 @@ class RideArchive:
                     raise ValueError("Conflicting duplicate identity")
                 candidates[ride.ride_id] = ride
         db = self._db(write=True)
-        with db:
+        with nullcontext() if db.in_transaction else db:
             before = db.execute(
                 "SELECT data,observed,revision,backend,ids FROM months WHERE vehicle=? AND month=?",
                 (vehicle, travel.month),
@@ -813,7 +821,8 @@ class RideArchive:
             # Facts and the job checkpoint commit or roll back together.
             job = self._sync_job()
             if (
-                job is not None
+                sync_checkpoint
+                and job is not None
                 and job.state is SyncState.QUERYING
                 and job.vehicle == vehicle
                 and job.next_month == travel.month
@@ -1821,6 +1830,41 @@ class RideArchive:
             try:
                 with db:
                     receipt = accept_page(db, expected, raw)
+                    if receipt.stop != "schema":
+                        from .adapters import travel as parse_month
+
+                        assert raw.query_month is not None
+                        normalized = parse_month(raw.payload(), raw.query_month)
+                        observed = utc_string(raw.received_at)
+                        latest = db.execute(
+                            "SELECT observed FROM months WHERE vehicle=? AND month=?",
+                            (expected.vehicle, raw.query_month),
+                        ).fetchone()
+                        if latest and latest[0] > observed:
+                            changed = False
+                            for ride in normalized.rides:
+                                restored_ride(decoded(encoded(ride_data(ride))))
+                                if ride.ride_id is None:
+                                    continue
+                                changed = (
+                                    self._upsert_ride(expected.vehicle, ride, observed, True)
+                                    or changed
+                                )
+                                db.execute(
+                                    "INSERT OR IGNORE INTO membership VALUES (?,?,?,0)",
+                                    (expected.vehicle, raw.query_month, ride.ride_id),
+                                )
+                            if changed:
+                                self._revision(bump=True)
+                        else:
+                            self._record_month(
+                                expected.vehicle,
+                                normalized,
+                                observed,
+                                raw.backend_version,
+                                True,
+                                sync_checkpoint=False,
+                            )
                 return receipt
             except HistoryConflict:
                 raise ArchiveError(ArchiveFailure.BUSY) from None

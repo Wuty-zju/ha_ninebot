@@ -1,4 +1,4 @@
-"""Opt-in durable known-ID preservation; no implicit full-history scan."""
+"""Durable discovery and detail preservation under one account history budget."""
 
 import asyncio
 import hashlib
@@ -47,10 +47,12 @@ class HistoryPreservation:
     """One bounded background operation at a time, independent of entities."""
 
     def __init__(self, co: "NinebotCoordinator") -> None:
+        from .bootstrap import HistoryBootstrap
         from .month_sync import SparseMonthSync
 
         self.co = co
         self.months = SparseMonthSync(co)
+        self.bootstrap = HistoryBootstrap(co)
         self._remove: Callable[[], None] | None = None
         self._task: asyncio.Task[None] | None = None
         self.status = "disabled"
@@ -91,6 +93,7 @@ class HistoryPreservation:
         budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
         if type(budget) is not int or not 1 <= budget <= 60:
             budget = DEFAULT_BUDGET
+        await self.bootstrap.async_seed(vehicles, now)
         if entry.options.get(CONF_PRESERVE) is True:
             await self.months.async_seed_recent(vehicles, now)
         if turn == "month" and await self._resume_months(vehicles, budget):
@@ -189,7 +192,10 @@ class HistoryPreservation:
             self.status = "idle"
 
     async def _resume_months(self, vehicles: tuple[str, ...], budget: int) -> bool:
-        """Alternate sparse selected months and explicit ranges, without a full-history scan."""
+        """Alternate bootstrap discovery, sparse repairs and explicit range jobs."""
+        if await self.bootstrap.async_step(vehicles, dt_util.utcnow(), budget):
+            self.status = "discovering_history"
+            return True
         if await self.co.statistics.archive.async_month_turn() == "sparse":
             for sn in vehicles:
                 if await self.months.async_step(sn, budget, dt_util.utcnow()):
