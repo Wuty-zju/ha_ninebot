@@ -793,3 +793,5 @@ cloud pagination as confirmed. Actual page repetition and changing totals
 must be verified by the upcoming persistent acquisition layer. M1–M5 will
 add recoverable full-history jobs, incremental triggers and progress entities.
 Existing users need not reset their archive or change entity IDs.
+
+The b60 storage foundation adds private page evidence and full-history checkpoints (archive schema 3). It does not yet enable automatic bootstrap or progress entities. A validated `rides.schema1-*.sqlite3` or `rides.schema2-*.sqlite3` recovery copy is created before migration; an older integration cannot read schema 3, so downgrade requires restoring the appropriate pre-migration archive through a deliberate recovery procedure with Home Assistant stopped. Never overwrite a live archive.
