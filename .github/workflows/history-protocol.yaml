@@ -7,8 +7,12 @@ on:
       - 'custom_components/ninebot/client.py'
       - 'custom_components/ninebot/backend.py'
       - 'custom_components/ninebot/history_plan.py'
+      - 'custom_components/ninebot/history_store.py'
+      - 'custom_components/ninebot/ride_archive.py'
+      - 'custom_components/ninebot/detail_codec.py'
       - 'tests/test_native_history.py'
       - 'tests/test_history_plan.py'
+      - 'tests/test_history_store.py'
       - '.github/workflows/history-protocol.yaml'
 permissions:
   contents: read
@@ -31,3 +35,6 @@ jobs:
           python -m pytest -q tests/test_native_history.py tests/test_backend.py
           tests/test_client.py tests/test_session.py tests/test_query_broker.py
           tests/test_history_plan.py
+          tests/test_history_store.py tests/test_ride_archive.py
+          tests/test_private_detail_archive.py tests/test_archive_lifecycle.py
+          tests/test_archive_validation.py
