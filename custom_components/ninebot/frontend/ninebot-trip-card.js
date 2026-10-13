@@ -1,139 +1,10 @@
-/** Bounded, account-scoped local pages and explicitly requested cloud details. */
+/** Optional local history maps; runtime assets are served by this integration. */
 import { LABELS } from './labels.js';
-
-export function businessDates(now = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(now);
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return [`${values.year}-${values.month}-01`, `${values.year}-${values.month}-${values.day}`];
-}
-
-export function digits(value, fallback = 0) {
-  return Number.isInteger(value) ? Math.max(0, Math.min(6, value)) : fallback;
-}
-
-const SCALARS = ['ride_id', 'detail_id', 'query_month', 'source', 'start_time', 'end_time',
-  'distance_m', 'duration_s', 'duration_h', 'max_speed_m_s', 'average_speed_m_s', 'energy_wh',
-  'used_electricity_raw', 'energy_intensity_wh_per_km', 'received_at', 'parser_contract'];
-export function safeRide(ride) {
-  const result = Object.fromEntries(SCALARS.map(key => [key, ride[key] ?? null]));
-  result.precision = Object.fromEntries(['mileages', 'duration', 'speed', 'ec'].map(
-    key => [key, digits(ride.precision?.[key], key === 'mileages' ? 2 : 0)]));
-  result.field_provenance = Object.fromEntries(['started_at', 'ended_at', 'distance_m',
-    'duration_s', 'server_max_speed_m_s', 'energy_raw'].map(
-    key => [key, String(ride.field_provenance?.[key] ?? '').slice(0, 128)]));
-  result.speed_samples = (Array.isArray(ride.speed_samples) ? ride.speed_samples : [])
-    .slice(0, 500).filter(point => Number.isFinite(point.sequence) && Number.isFinite(point.speed_raw))
-    .map(point => ({ sequence: point.sequence, speed_raw: point.speed_raw }));
-  result.distance_samples = (Array.isArray(ride.distance_samples) ? ride.distance_samples : [])
-    .slice(0, 500).filter(point => Number.isFinite(point.sequence) && Number.isFinite(point.distance_delta_raw))
-    .map(point => ({ sequence: point.sequence, distance_delta_raw: point.distance_delta_raw }));
-  result.track_summary = { total_known: Number.isInteger(ride.track_summary?.total_known) ? ride.track_summary.total_known : null,
-    returned: Number.isInteger(ride.track_summary?.returned) ? ride.track_summary.returned : null,
-    truncated: ride.track_summary?.truncated === true };
-  return result; // Never retain tracks, raw payloads, signed URLs or extra fields.
-}
-
-export function samplePolyline(samples) {
-  if (samples.length < 2) return null;
-  const xs = samples.map(p => p.sequence), ys = samples.map(p => p.speed_raw);
-  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-  if (!Number.isFinite(maxX - minX) || !Number.isFinite(maxY - minY)) return null;
-  return samples.map(p => `${8 + (p.sequence - minX) / (maxX - minX || 1) * 284},${
-    92 - (p.speed_raw - minY) / (maxY - minY || 1) * 84}`).join(' ');
-}
-
-export class TripBrowser {
-  constructor(changed = () => {}) {
-    this.changed = changed; this.epoch = 0; this.active = false; this.details = new Map();
-  }
-  reset() {
-    this.epoch++; this.busy = false; this.page = null; this.details.clear(); this.error = null;
-    this.device = null; this.pageNumber = 0; this.awaitApply = false; this.changed();
-  }
-  configure(config) {
-    if (!config || (!!config.entity === !!config.device_id) ||
-        (config.entity && !/^calendar\.[a-z0-9_]+$/.test(config.entity)) ||
-        (config.device_id && (typeof config.device_id !== 'string' || !config.device_id.trim())) ||
-        (config.limit !== undefined && (!Number.isInteger(config.limit) || config.limit < 1 || config.limit > 100))) {
-      throw new Error('Choose one Ninebot calendar entity or vehicle device_id; limit must be 1–100.');
-    }
-    const defaults = businessDates();
-    const start = config.start_date ?? defaults[0], end = config.end_date ?? defaults[1];
-    if (![start, end].every(value => typeof value === 'string' && /^20\d{2}-\d{2}-\d{2}$/.test(value))) {
-      throw new Error('Use YYYY-MM-DD dates.');
-    }
-    this.config = { ...config, limit: config.limit ?? 20 }; this.start = start; this.end = end;
-    this.reset(); this.startIfReady();
-  }
-  setHass(hass) {
-    const changed = this.hass?.user?.id !== hass?.user?.id || this.hass?.connection !== hass?.connection;
-    const wasConnected = this.hass?.connected !== false;
-    this.hass = hass;
-    if (changed || (wasConnected && hass?.connected === false)) this.reset();
-    this.startIfReady();
-  }
-  connect() { this.active = true; this.startIfReady(); }
-  disconnect() { this.active = false; this.reset(); }
-  startIfReady() {
-    if (this.active && this.config && this.hass?.user?.id && this.hass.connected !== false &&
-        this.hass.callWS && !this.page && !this.busy && !this.error && !this.awaitApply) void this.read();
-  }
-  dates(start, end) { this.start = start; this.end = end; this.reset(); this.awaitApply = true; }
-  current(epoch) { return this.active && epoch === this.epoch; }
-  async invoke(service, data) {
-    const result = await this.hass.callWS({ type: 'call_service', domain: 'ninebot', service,
-      service_data: data, return_response: true });
-    return result.response;
-  }
-  async read(cursor = null) {
-    if (!this.active || this.busy || !this.config || !this.hass?.user?.id || this.hass.connected === false) return;
-    if (cursor && !this.page) return;
-    const epoch = this.epoch;
-    this.busy = true; this.error = null; this.awaitApply = false; this.changed();
-    try {
-      const device = this.device ?? this.config.device_id ?? (await this.hass.callWS({
-        type: 'config/entity_registry/get', entity_id: this.config.entity,
-      })).device_id;
-      if (!this.current(epoch)) return;
-      if (!device) throw new Error('missing_device');
-      this.device = device;
-      const response = await this.invoke('get_recorded_trips', { device_id: device,
-        start_date: this.start, end_date: this.end, limit: this.config.limit,
-        ...(cursor ? { cursor } : {}) });
-      if (!this.current(epoch)) return;
-      if (response?.source_mode !== 'ride_archive' || !Array.isArray(response.rides) ||
-          response.rides.length > this.config.limit) throw new Error('invalid_response');
-      this.page = { rides: response.rides.map(safeRide), next_cursor: response.next_cursor,
-        revision: response.revision, coverage: response.coverage, range: response.range };
-      this.details.clear(); this.pageNumber = cursor ? this.pageNumber + 1 : 1;
-    } catch (error) {
-      if (this.current(epoch)) {
-        this.error = error?.code === 'unauthorized' ? 'denied' :
-          error?.translation_key === 'history_cursor' ? 'cursor_error' : 'read_error';
-        if (cursor && this.page) this.page.next_cursor = null;
-      }
-    } finally { if (this.current(epoch)) { this.busy = false; this.changed(); } }
-  }
-  async detail(ride) {
-    if (!this.active || this.busy || !this.page?.rides.includes(ride) || !ride.ride_id || !ride.detail_id) return;
-    const epoch = this.epoch; this.busy = true; this.error = null; this.changed();
-    try {
-      const response = await this.invoke('get_trip_detail', { device_id: this.device,
-        ride_id: ride.ride_id, query_month: ride.query_month, include_track: false, max_points: 500 });
-      if (!this.current(epoch)) return;
-      if (!response?.ride || response.ride.ride_id !== ride.ride_id ||
-          response.query_month !== ride.query_month) throw new Error('invalid_response');
-      this.details.delete(ride.ride_id);
-      while (this.details.size >= 5) this.details.delete(this.details.keys().next().value);
-      this.details.set(ride.ride_id, { ...safeRide(response.ride), received_at: response.received_at });
-      // Keep the token; the backend explicitly rejects a changed archive revision.
-    } catch (error) {
-      if (this.current(epoch)) this.error = error?.code === 'unauthorized' ? 'denied' : 'detail_error';
-    } finally { if (this.current(epoch)) { this.busy = false; this.changed(); } }
-  }
-}
+import { samplePaths, digits } from './trip-browser.js';
+export { TripBrowser, safeRide, businessDates, digits, samplePolyline, samplePaths } from './trip-browser.js';
+import { FleetBrowser, nativeCards } from './fleet-browser.js';
+import { LocalTracks, trackKey } from './local-tracks.js';
+import { RouteMap, ROUTE_COLORS } from './route-map.js';
 
 function element(tag, text = '', className = '') {
   const result = document.createElement(tag); result.textContent = String(text);
@@ -152,7 +23,11 @@ footer{display:flex;justify-content:space-between;align-items:center;margin-top:
 export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   constructor() {
     super(); this.attachShadow({ mode: 'open' }); this.openRides = new Set();
-    this.browser = new TripBrowser(() => this.render());
+    this.routeMap = new RouteMap(() => { this.mapError = true; this.render(); });
+    this.tracks = new LocalTracks((service, data) => this.browser.invoke(service, data), () => this.render());
+    this.browser = new FleetBrowser(() => this.render(), () => {
+      this.stopPlayback(true); this.tiles = false; this.mapError = false; this.tracks.clear(); this.routeMap.clear();
+    });
   }
   setConfig(config) { this.openRides.clear(); this.browser.configure(config); }
   set hass(hass) {
@@ -162,7 +37,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     if (oldLanguage !== hass.language) this.render();
   }
   connectedCallback() { this.browser.connect(); this.render(); }
-  disconnectedCallback() { this.openRides.clear(); this.browser.disconnect(); }
+  disconnectedCallback() { this.openRides.clear(); this.browser.disconnect(); this.routeMap.clear(); }
   getCardSize() { return 5; }
   getGridOptions() { return { columns: 12, min_columns: 6 }; }
   static getStubConfig(hass) {
@@ -192,7 +67,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     }).format(new Date(value));
   }
   button(text, action) {
-    const button = element('button', text); button.type = 'button'; button.disabled = this.browser.busy;
+    const button = element('button', text); button.type = 'button'; button.disabled = this.browser.busy || this.tracks.busy;
     button.addEventListener('click', action); return button;
   }
   metrics(ride, labels) {
@@ -209,16 +84,85 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     ]) { dl.append(element('dt', name), element('dd', value)); }
     return dl;
   }
+  stopPlayback(clearFocus = false) {
+    clearInterval(this.playback); this.playback = null; this.playKey = null;
+    if (this.playButton) this.playButton.textContent = this.labels().play_points;
+    this.playButton = null;
+    if (clearFocus) this.routeMap?.highlight();
+  }
+  pointControls(key, track, labels) {
+    const controls = element('div', '', 'toolbar'), status = element('p', '', 'note');
+    const label = element('label', labels.point_sequence), input = element('input'); input.type = 'range';
+    input.min = '0'; input.max = String(Math.max(0, track.points.length - 1)); input.step = '1'; input.value = '0';
+    input.setAttribute('aria-label', `${labels.point_sequence} · ${track.label}`);
+    input.disabled = this.browser.busy || this.tracks.busy || !track.points.length;
+    const show = () => {
+      const point = track.points[Number(input.value)];
+      if (!point || !this.tracks.tracks.has(key)) return;
+      status.textContent = `${labels.point_sequence}: ${point.sequence} · ${labels.point_speed}: ${point.speed_raw ?? '—'} · ${labels.point_distance}: ${point.distance_delta_raw ?? '—'}`;
+      this.routeMap.highlight(point);
+    };
+    input.addEventListener('input', () => { this.stopPlayback(); play.textContent = labels.play_points; show(); });
+    const play = this.button(labels.play_points, () => {
+      if (this.playback && this.playKey === key) { this.stopPlayback(); return; }
+      this.stopPlayback(); show(); this.playKey = key; this.playButton = play;
+      play.textContent = labels.pause_points;
+      this.playback = setInterval(() => {
+        if (!input.isConnected || !this.tracks.tracks.has(key) || Number(input.value) >= track.points.length - 1) {
+          this.stopPlayback(); play.textContent = labels.play_points; return;
+        }
+        input.value = String(Number(input.value) + 1); show();
+      }, 500);
+    });
+    play.disabled ||= track.points.length < 2;
+    label.append(input); controls.append(label, play, status, element('p', labels.playback_note, 'note'));
+    return controls;
+  }
+  async readRoute(ride) {
+    if (!this.browser.active || this.browser.busy || !this.browser.page?.rides.includes(ride)) return;
+    if (this.mapError) {
+      this.routeMap.clear(); this.routeMap = new RouteMap(() => { this.mapError = true; this.render(); });
+    }
+    this.mapError = false;
+    await this.tracks.read(ride.device_id, ride);
+    this.render();
+  }
+  curve(parent, title, samples, field) {
+    const paths = samplePaths(samples.filter(point => Number.isFinite(point[field])).map(point =>
+      ({ sequence: point.sequence, speed_raw: point[field], segment: point[field === 'speed_raw' ? 'speed_segment' : 'distance_segment'] })));
+    if (!paths.length) return;
+    parent.append(element('p', title, 'note'));
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 300 100'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', title);
+    for (const points of paths) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      line.setAttribute('points', points); line.setAttribute('fill', 'none');
+      line.setAttribute('stroke', 'var(--primary-color)'); line.setAttribute('stroke-width', '2'); svg.append(line);
+    }
+    parent.append(svg, element('p', `${this.labels().sample_axis}: ${samples[0]?.sequence ?? '—'}–${samples.at(-1)?.sequence ?? '—'}`, 'note'));
+  }
   render() {
+    this.stopPlayback(true);
     const browser = this.browser;
     if (!browser?.config) return;
     const labels = this.labels(), card = element('ha-card');
-    const title = browser.config.title ?? browser.hass?.states?.[browser.config.entity]?.attributes?.friendly_name ?? labels.title;
+    const title = browser.config.title ?? (browser.targets.length === 1 ? browser.hass?.states?.[browser.config.entity]?.attributes?.friendly_name : null) ?? labels.title;
     card.append(element('h2', title));
+    if (browser.targets.length > 1) {
+      const chooser = element('div', '', 'toolbar');
+      browser.targets.forEach((target, index) => {
+        const label = element('label', target.name ?? browser.hass?.states?.[target.entity]?.attributes?.friendly_name ?? target.entity ?? target.device_id);
+        const input = element('input'); input.type = 'checkbox'; input.checked = browser.selected.has(index);
+        input.disabled = browser.busy || this.tracks.busy;
+        input.addEventListener('change', () => { this.openRides.clear(); browser.select(index, input.checked); });
+        label.prepend(input); chooser.append(label);
+      });
+      card.append(chooser);
+    }
     const toolbar = element('div', '', 'toolbar');
     for (const [key, labelText] of [['start', labels.start_date], ['end', labels.end_date]]) {
       const label = element('label', labelText), input = element('input'); input.type = 'date';
-      input.value = browser[key]; input.disabled = browser.busy;
+      input.value = browser[key]; input.disabled = browser.busy || this.tracks.busy;
       input.setAttribute('aria-label', labelText);
       input.addEventListener('change', () => {
         this.openRides.clear(); browser.dates(key === 'start' ? input.value : browser.start,
@@ -231,7 +175,35 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     const zones = displayZone === 'Asia/Shanghai' ? displayZone : `Asia/Shanghai · ${displayZone}`;
     card.append(toolbar, element('p', `${labels.local} · ${zones}`, 'note'));
     if (browser.error) card.append(element('p', labels[browser.error], 'error'));
-    if (browser.busy) card.append(element('p', labels.loading, 'note'));
+    if (browser.busy || this.tracks.busy) card.append(element('p', labels.loading, 'note'));
+    if (this.tracks.error) card.append(element('p', labels[this.tracks.error] ?? labels.track_error, 'error'));
+    const tracks = [...this.tracks.tracks.values()];
+    if (tracks.length) {
+      card.append(element('h3', labels.map), element('p', labels.coordinate_note, 'note'));
+      const controls = element('div', '', 'toolbar');
+      controls.append(this.button(labels.clear_tracks, () => { this.tiles = false; this.tracks.clear(); }),
+        this.button(this.tiles ? labels.disable_tiles : labels.enable_tiles, () => { this.tiles = !this.tiles; this.render(); }));
+      card.append(controls, element('p', labels.tile_privacy, 'note'));
+      if (this.mapError) card.append(element('p', labels.map_error, 'error'));
+      else card.append(this.routeMap.element);
+      for (const [index, track] of tracks.entries()) {
+        const legend = element('p', `${track.label} · ${track.ride_id} · ${labels.track_points}: ${track.valid_read}/${track.total ?? '—'} · ` +
+          (track.kind === 'server_simplified' ? labels.simplified : labels.unverified_track) +
+          (track.capped ? ` · ${labels.display_limit}` : '') + (track.complete ? '' : ` · ${labels.partial_track}`), 'note');
+        legend.style.borderLeft = `4px solid ${ROUTE_COLORS[index]}`;
+        legend.style.paddingLeft = '8px'; card.append(legend);
+        const key = [...this.tracks.tracks.entries()].find(([, value]) => value === track)[0];
+        card.append(this.button(labels.remove_track, () => this.tracks.remove(key)), this.pointControls(key, track, labels));
+        this.curve(card, labels.samples, track.points, 'speed_raw');
+        this.curve(card, labels.distance_samples, track.points, 'distance_delta_raw');
+      }
+    } else this.routeMap.clear();
+    const native = nativeCards(browser.targets.filter((_, index) => browser.selected.has(index)), browser.config.statistics_entities ?? []);
+    if (native.cards.length) {
+      const help = element('details'); help.append(element('summary', labels.native_cards), element('p', labels.native_note, 'note'),
+        element('pre', JSON.stringify(native, null, 2), 'note'));
+      const link = element('a', labels.open_calendar); link.href = '/calendar'; help.append(link); card.append(help);
+    }
     const page = browser.page;
     if (page) {
       const coverage = page.coverage;
@@ -240,20 +212,21 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       if (!page.rides.length) card.append(element('p', labels.empty));
       for (const ride of page.rides) {
         const section = element('details'), summary = element('summary');
-        section.open = this.openRides.has(ride.ride_id);
+        const key = trackKey(ride.device_id, ride);
+        section.open = this.openRides.has(key);
         section.addEventListener('toggle', () => {
           if (!section.isConnected) return;
-          if (section.open) this.openRides.add(ride.ride_id); else this.openRides.delete(ride.ride_id);
+          if (section.open) this.openRides.add(key); else this.openRides.delete(key);
         });
-        summary.append(element('div', this.timestamp(ride.start_time)),
+        summary.append(element('div', `${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`),
           element('div', `${this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')} · ` +
             `${this.duration(ride.duration_h)}`, 'metrics'));
         section.append(summary);
-        const detail = browser.details.get(ride.ride_id), displayed = detail ?? ride;
+        const detail = browser.details.get(key), displayed = detail ?? ride;
         section.append(this.metrics(displayed, labels));
         const sourceInfo = element('details');
         sourceInfo.append(element('summary', labels.source_fields), element('p',
-          `${detail ? labels.cloud : labels.local} · ${displayed.source ?? '—'} · ${displayed.parser_contract ?? '—'} · ${labels.ride_id}: ${displayed.ride_id}`, 'note'));
+          `${detail?.source_mode === 'ninecli' ? labels.cloud : labels.local} · ${displayed.source ?? '—'} · ${displayed.parser_contract ?? '—'} · ${labels.ride_id}: ${displayed.ride_id}`, 'note'));
         const provenance = Object.entries(displayed.field_provenance).filter(([, value]) => value)
           .map(([key, value]) => `${key}: ${value}`).join(' · ');
         if (provenance) sourceInfo.append(element('p', provenance, 'note'));
@@ -262,24 +235,12 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
           `${labels.unknown_units}: ${displayed.used_electricity_raw}`, 'note'));
         if (displayed.track_summary.total_known !== null) section.append(element('p',
           `${labels.track_points}: ${displayed.track_summary.total_known}`, 'note'));
-        for (const [title, samples, field] of [
-          [labels.samples, displayed.speed_samples, 'speed_raw'],
-          [labels.distance_samples, displayed.distance_samples, 'distance_delta_raw'],
-        ]) {
-          const points = samplePolyline(samples.map(point => ({ sequence: point.sequence, speed_raw: point[field] })));
-          if (!points) continue;
-          section.append(element('p', title, 'note'));
-          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          svg.setAttribute('viewBox', '0 0 300 100'); svg.setAttribute('role', 'img');
-          svg.setAttribute('aria-label', title);
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-          line.setAttribute('points', points); line.setAttribute('fill', 'none');
-          line.setAttribute('stroke', 'var(--primary-color)'); line.setAttribute('stroke-width', '2');
-          svg.append(line); section.append(svg);
-          const values = element('details'); values.append(element('summary', title));
-          values.append(element('p', samples.map(p => `${p.sequence}: ${p[field]}`).join(' · '), 'note'));
-          section.append(values);
-        }
+        this.curve(section, labels.samples, displayed.speed_samples, 'speed_raw');
+        this.curve(section, labels.distance_samples, displayed.distance_samples, 'distance_delta_raw');
+        const saved = this.tracks.tracks.get(key);
+        const routeButton = this.button(saved && !saved.complete ? labels.more_track : labels.show_track, () => void this.readRoute(ride));
+        routeButton.disabled ||= saved?.complete || !ride.ride_id;
+        section.append(routeButton);
         const button = this.button(labels.cloud_detail, () => void browser.detail(ride));
         button.disabled ||= !ride.detail_id; section.append(button); card.append(section);
       }
@@ -288,6 +249,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       next.disabled ||= !page.next_cursor; footer.append(next); card.append(footer);
     }
     const style = element('style', CSS); this.shadowRoot.replaceChildren(style, card);
+    if (tracks.length && !this.mapError) void this.routeMap.update(tracks, this.tiles === true);
   }
 }
 
@@ -295,5 +257,5 @@ if (globalThis.customElements && !customElements.get('ninebot-trip-card')) {
   customElements.define('ninebot-trip-card', NinebotTripCard);
   globalThis.customCards ??= [];
   globalThis.customCards.push({ type: 'ninebot-trip-card', name: 'Ninebot Ride History',
-    description: 'Local date pages and explicitly requested cloud detail', preview: true });
+    description: 'Local single/multi-vehicle history, saved tracks and explicit cloud details', preview: true });
 }

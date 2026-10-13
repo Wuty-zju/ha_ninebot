@@ -1,0 +1,81 @@
+name: History browser
+on:
+  pull_request:
+    paths:
+      - 'custom_components/ninebot/services.py'
+      - 'custom_components/ninebot/frontend/**'
+      - 'tests/test_services.py'
+      - 'tests/frontend/**'
+      - 'tests/browser/**'
+      - '.github/workflows/history-browser.yaml'
+permissions:
+  contents: read
+concurrency:
+  group: history-browser-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.scope.outputs.backend }}
+      frontend: ${{ steps.scope.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-paths.txt
+          if grep -Eq '^(custom_components/ninebot/services.py|tests/test_services.py|.github/workflows/history-browser.yaml)$' changed-paths.txt; then
+            echo 'backend=true' >> "$GITHUB_OUTPUT"
+          fi
+          if grep -Eq '^(custom_components/ninebot/frontend/|tests/frontend/|tests/browser/|.github/workflows/history-browser.yaml)' changed-paths.txt; then
+            echo 'frontend=true' >> "$GITHUB_OUTPUT"
+          fi
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install isolated minimum HA environment
+        run: >-
+          python -m pip install pytest-homeassistant-custom-component==0.13.305
+          homeassistant==2026.1.0 ninecli==0.1.7 mypy==2.4.0
+      - run: mypy custom_components/ninebot --follow-imports=silent
+      - name: Replay affected detail and archive boundaries
+        run: >-
+          python -m pytest -q tests/test_services.py tests/test_travel.py
+          tests/test_private_detail_archive.py
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - run: node --test tests/frontend/*.mjs
+      - name: Install isolated browser smoke tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ninebot-browser" --no-save --package-lock=false playwright@1.55.1
+          "$RUNNER_TEMP/ninebot-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Render two synthetic archived vehicle routes
+        env:
+          BROWSER_TEST_DEPS: ${{ runner.temp }}/ninebot-browser
+          BROWSER_TEST_OUTPUT: ${{ runner.temp }}/ninebot-map-smoke
+        run: node tests/browser/history-map.mjs
+      - name: Keep synthetic render evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: synthetic-history-map
+          path: ${{ runner.temp }}/ninebot-map-smoke
+          if-no-files-found: error
+          retention-days: 7

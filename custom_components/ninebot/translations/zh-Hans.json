@@ -669,6 +669,12 @@
     },
     "recorded_range": {
       "message": "按先后顺序选择最多五年的日期；超出读取预算时请缩小范围。"
+    },
+    "query_detail_not_recorded": {
+      "message": "本地尚未保存这次行程的详情。请单独获取云端详情后再查看轨迹。"
+    },
+    "query_local_refresh": {
+      "message": "仅本地读取与云端刷新不能同时启用。"
     }
   },
   "issues": {
@@ -791,6 +797,10 @@
         "point_offset": {
           "name": "原始点起始序号",
           "description": "按原始点序号读取下一段；不转换坐标或推测时间。"
+        },
+        "local_only": {
+          "name": "仅从本地读取",
+          "description": "只读取已保存的详情。缺失时提示，不请求九号云端；不能与云端刷新同时启用。"
         }
       }
     },

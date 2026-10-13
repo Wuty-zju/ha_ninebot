@@ -1,0 +1,42 @@
+{
+  "package": "leaflet",
+  "version": "1.9.4",
+  "license": "BSD-2-Clause",
+  "url": "https://registry.npmjs.org/leaflet/-/leaflet-1.9.4.tgz",
+  "integrity": "sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==",
+  "changes": "Removed unavailable sourceMappingURL comment only; runtime code unchanged.",
+  "files": {
+    "leaflet-src.esm.js": {
+      "sha256": "2abcd871401e657ac4f23b1fe68b8ab35f7ffcc3f4a2cfac1ba51728be2488f7",
+      "bytes": 424546
+    },
+    "leaflet.css": {
+      "sha256": "a7837102824184820dfa198d1ebcd109ff6d0ff9a2672a074b9a1b4d147d04c6",
+      "bytes": 14806
+    },
+    "LICENSE": {
+      "sha256": "53e8dc25862014e4324741ca18fbe3611e11d42ef69f59f86ea8c5389647d4cb",
+      "bytes": 1395
+    },
+    "images/layers.png": {
+      "sha256": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
+      "bytes": 696
+    },
+    "images/layers-2x.png": {
+      "sha256": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
+      "bytes": 1259
+    },
+    "images/marker-icon.png": {
+      "sha256": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
+      "bytes": 1466
+    },
+    "images/marker-icon-2x.png": {
+      "sha256": "00179c4c1ee830d3a108412ae0d294f55776cfeb085c60129a39aa6fc4ae2528",
+      "bytes": 2464
+    },
+    "images/marker-shadow.png": {
+      "sha256": "264f5c640339f042dd729062cfc04c17f8ea0f29882b538e3848ed8f10edb4da",
+      "bytes": 618
+    }
+  }
+}
