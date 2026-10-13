@@ -76,7 +76,7 @@ try {
   await page.getByRole('button', { name: '关闭地图底图', exact: true }).click();
   await page.waitForFunction(() => window.fixtureCard.routeMap.tiles === null);
   await page.evaluate(async () => {
-    fixtureSaved = false; fixtureCard.browser.reset(); await fixtureCard.browser.read();
+    fixtureSaved = false; fixtureCard.openRides.clear(); fixtureCard.browser.reset(); await fixtureCard.browser.read();
   });
   for (const name of ['Synthetic A', 'Synthetic B']) {
     await page.locator('ninebot-trip-card summary').filter({ hasText: name }).click();
