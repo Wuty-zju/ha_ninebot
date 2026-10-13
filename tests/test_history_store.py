@@ -285,3 +285,131 @@ async def test_no_cursor_can_advance_without_its_page_evidence(store):
         await store.async_set_history_plan(SN, forged, initial(), guard=lambda: True)
     assert error.value.kind is ArchiveFailure.SCHEMA
     assert await store.async_history_plan(SN) == initial()
+
+
+async def test_page_rides_and_legacy_job_share_no_checkpoint(store):
+    from custom_components.ninebot.sync_job import SyncJob, SyncState
+
+    old = SyncJob(
+        "c" * 32,
+        vehicle_key(SN),
+        "202609",
+        "202610",
+        "202610",
+        NOW.isoformat(),
+        NOW.isoformat(),
+        state=SyncState.QUERYING,
+    )
+    await store.async_set_sync_job(old, None, guard=lambda: True)
+    first = await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    await store.async_accept_history_page(SN, first.root, record(("ride-two",)), guard=lambda: True)
+    assert await store.async_sync_job() == old
+    page = await store.async_page(SN)
+    assert {row.ride_id for row in page.rides} == {"ride-one", "ride-two"}
+    assert (
+        await store.async_detail_summary(SN, "ride-one", "202610", guard=lambda: True)
+    ).ride_id == "ride-one"
+
+
+async def test_normalization_failure_rolls_back_page_cursor_and_rides(store, monkeypatch):
+    def fail(*args, **kwargs):
+        raise sqlite3.OperationalError("synthetic normalization rollback")
+
+    monkeypatch.setattr(store, "_record_month", fail)
+    with pytest.raises(ArchiveError):
+        await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    assert await store.async_history_plan(SN) == initial()
+    assert not (await store.async_page(SN)).rides
+    assert (
+        await store.async_history_page(SN, initial().plan_id, "202610", 1, guard=lambda: True)
+        is None
+    )
+
+
+async def completed_discovery(store):
+    first = await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    second = await store.async_accept_history_page(
+        SN, first.root, record(("ride-two",)), guard=lambda: True
+    )
+    last = await store.async_accept_history_page(
+        SN, second.root, record((), 0, "202609"), guard=lambda: True
+    )
+    return last.root
+
+
+async def save_track(store, identity, trail, *, simplified=False):
+    from custom_components.ninebot.travel import parse_ride
+
+    body = {"travel_id": identity, "trail": trail, "is_show_simple_point": simplified}
+    raw = build_record(
+        Endpoint.TRIP_DETAIL, body, NOW + timedelta(seconds=3), "202610", backend_version="0.1.7"
+    )
+    ride = parse_ride(body, "202610", source=Endpoint.TRIP_DETAIL)
+    await store.async_record_detail(
+        SN, ride, raw.received_at, guard=lambda: True, ordered=True, raw=raw
+    )
+
+
+async def test_baseline_waits_for_details_and_reports_simplified_geometry(store):
+    from dataclasses import replace
+
+    root = await completed_discovery(store)
+    health = await store.async_history_health(SN, root.plan_id)
+    assert health.discovered == health.missing == 2 and health.saved == 0
+    assert (
+        await store.async_finish_history_baseline(
+            SN, root, NOW + timedelta(seconds=10), guard=lambda: True
+        )
+        == root
+    )
+    with pytest.raises(ArchiveError):
+        await store.async_set_history_plan(
+            SN,
+            replace(root, state=HistoryState.COMPLETE, revision=root.revision + 1),
+            root,
+            guard=lambda: True,
+        )
+    await save_track(store, "ride-one", "120,30,1,1;120.1,30.1,2,2")
+    assert (await store.async_history_health(SN, root.plan_id)).missing == 1
+    await save_track(store, "ride-two", "120,30,0,0", simplified=True)
+    health = await store.async_history_health(SN, root.plan_id)
+    assert health.saved == 2 and health.quality_pending == 0 and health.simplified == 1
+    finished = await store.async_finish_history_baseline(
+        SN, root, NOW + timedelta(seconds=10), guard=lambda: True
+    )
+    assert finished.state is HistoryState.WITH_GAPS
+
+
+async def test_best_geometry_retention_and_local_quality_backfill_need_no_cloud(store):
+    root = await completed_discovery(store)
+    for identity in ("ride-one", "ride-two"):
+        await save_track(store, identity, "120,30,1,1;120.1,30.1,2,2")
+    # A newer simplified response must preserve the previously saved geometry.
+    await save_track(store, "ride-one", "120,30,0,0", simplified=True)
+    health = await store.async_history_health(SN, root.plan_id)
+    assert health.latest_degraded == 1 and health.simplified == 0
+    with closing(sqlite3.connect(store.path)) as db, db:
+        db.execute("DELETE FROM meta WHERE key LIKE 'detail_health:%'")
+    assert (await store.async_history_health(SN, root.plan_id)).quality_pending == 2
+    assert (
+        await store.async_backfill_detail_health(SN, root.plan_id, guard=lambda: True, limit=1) == 1
+    )
+    assert (await store.async_history_health(SN, root.plan_id)).quality_pending == 1
+    assert (
+        await store.async_backfill_detail_health(SN, root.plan_id, guard=lambda: True, limit=1) == 1
+    )
+    assert (
+        await store.async_backfill_detail_health(SN, root.plan_id, guard=lambda: True, limit=1) == 0
+    )
+    finished = await store.async_finish_history_baseline(
+        SN, root, NOW + timedelta(seconds=10), guard=lambda: True
+    )
+    assert finished.state is HistoryState.COMPLETE
+    await store.async_close()
+    recovered = RideArchive(store.path, OWNER)
+    try:
+        await recovered.async_open()
+        assert await recovered.async_history_plan(SN) == finished
+        assert (await recovered.async_history_health(SN, root.plan_id)).latest_degraded == 1
+    finally:
+        await recovered.async_close()

@@ -16,6 +16,7 @@ import time
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as WorkerTimeout
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -50,6 +51,7 @@ from .archive_timeline import (
 )
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .detail_codec import ArchivedDetail, packed, unpacked
+from .detail_health import HistoryHealth
 from .history_plan import HistoryPlan
 from .history_store import PageReceipt
 from .models import TravelMonth, VehicleProfile
@@ -384,7 +386,15 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("month_task:"):
+            if key.startswith("detail_health:"):
+                from .detail_health import key as health_key
+                from .detail_health import validate as validate_health
+
+                _, vehicle, identity = key.split(":", 2)
+                if health_key(vehicle, identity) != key:
+                    raise ValueError("Invalid detail health scope")
+                validate_health(value)
+            elif key.startswith("month_task:"):
                 from .month_tasks import validate_key
 
                 validate_key(key, value)
@@ -748,7 +758,14 @@ class RideArchive:
         )
 
     def _record_month(
-        self, vehicle: str, travel: TravelMonth, observed: str, backend: str | None, ordered: bool
+        self,
+        vehicle: str,
+        travel: TravelMonth,
+        observed: str,
+        backend: str | None,
+        ordered: bool,
+        *,
+        sync_checkpoint: bool = True,
     ) -> bool:
         # All candidate validation is before the transaction. No raw objects
         # are passed through encoded month data or normalized ride rows.
@@ -781,7 +798,7 @@ class RideArchive:
                     raise ValueError("Conflicting duplicate identity")
                 candidates[ride.ride_id] = ride
         db = self._db(write=True)
-        with db:
+        with nullcontext() if db.in_transaction else db:
             before = db.execute(
                 "SELECT data,observed,revision,backend,ids FROM months WHERE vehicle=? AND month=?",
                 (vehicle, travel.month),
@@ -813,7 +830,8 @@ class RideArchive:
             # Facts and the job checkpoint commit or roll back together.
             job = self._sync_job()
             if (
-                job is not None
+                sync_checkpoint
+                and job is not None
                 and job.state is SyncState.QUERYING
                 and job.vehicle == vehicle
                 and job.next_month == travel.month
@@ -896,6 +914,9 @@ class RideArchive:
             return False
         adopt, reason = select_geometry(old.ride, candidate) if old else (True, "initial")
         geometry_hash = digest if adopt or old is None else old.geometry_hash
+        geometry_quality = (
+            candidate.track_quality if adopt or old is None else old.ride.track_quality
+        )
         changed = old is None or old.latest_hash != digest or old.geometry_hash != geometry_hash
         revision = (old.revision if old else 0) + int(changed)
         db.execute(
@@ -921,6 +942,18 @@ class RideArchive:
         db.execute(
             "DELETE FROM detail_payloads WHERE vehicle=? AND ride=? AND hash NOT IN (?,?)",
             (vehicle, ride.ride_id, digest, geometry_hash),
+        )
+        from .detail_health import put as put_health
+
+        assert ride.ride_id is not None
+        put_health(
+            db,
+            vehicle,
+            ride.ride_id,
+            digest,
+            geometry_hash,
+            candidate.track_quality,
+            geometry_quality,
         )
         return changed
 
@@ -1703,6 +1736,112 @@ class RideArchive:
 
         return await self._run(lambda: root(self._db(), vehicle_key(sn)))
 
+    async def async_history_health(self, sn: str, plan_id: str) -> HistoryHealth:
+        from .detail_health import summary
+        from .history_store import root
+
+        def read() -> HistoryHealth:
+            db = self._db()
+            vehicle = vehicle_key(sn)
+            current = root(db, vehicle)
+            if current is None or current.plan_id != plan_id:
+                raise ArchiveError(ArchiveFailure.OWNER)
+            return summary(db, vehicle, plan_id)
+
+        return await self._run(read)
+
+    async def async_backfill_detail_health(
+        self, sn: str, plan_id: str, *, guard: Callable[[], bool], limit: int = 16
+    ) -> int:
+        from .detail_health import put as put_health
+        from .history_store import root
+
+        if type(limit) is not int or not 1 <= limit <= 16:
+            raise ValueError("Invalid detail health batch")
+
+        def backfill() -> int:
+            db = self._db(write=True)
+            vehicle = vehicle_key(sn)
+            current = root(db, vehicle)
+            if current is None or current.plan_id != plan_id:
+                raise ArchiveError(ArchiveFailure.OWNER)
+            rows = db.execute(
+                "SELECT DISTINCT i.ride FROM history_ids i JOIN details d"
+                " ON d.vehicle=i.vehicle AND d.ride=i.ride LEFT JOIN meta m"
+                " ON m.key='detail_health:'||i.vehicle||':'||i.ride WHERE i.vehicle=? AND i.plan=?"
+                " AND (m.value IS NULL OR json_extract(m.value,'$.latest_hash')!=d.latest_hash"
+                " OR json_extract(m.value,'$.geometry_hash')!=d.geometry_hash)"
+                " ORDER BY i.ride LIMIT ?",
+                (vehicle, plan_id, limit),
+            ).fetchall()
+            with db:
+                for (identity,) in rows:
+                    detail = self._private_detail(vehicle, identity, 2000)
+                    if detail is None:
+                        raise ValueError("Missing detail health source")
+                    latest = parse_ride(
+                        detail.latest.payload(),
+                        detail.latest.query_month or detail.ride.query_month,
+                        source=Endpoint.TRIP_DETAIL,
+                        max_points=2000,
+                    )
+                    put_health(
+                        db,
+                        vehicle,
+                        identity,
+                        detail.latest_hash,
+                        detail.geometry_hash,
+                        latest.track_quality,
+                        detail.ride.track_quality,
+                    )
+            return len(rows)
+
+        return await self._run(backfill, guard=guard)
+
+    async def async_finish_history_baseline(
+        self, sn: str, expected: HistoryPlan, now: datetime, *, guard: Callable[[], bool]
+    ) -> HistoryPlan:
+        from .detail_health import summary
+        from .history_plan import HistoryState
+        from .history_store import HistoryConflict, put_root, root
+
+        if expected.vehicle != vehicle_key(sn):
+            raise ValueError("Invalid baseline scope")
+
+        def finish() -> HistoryPlan:
+            db = self._db(write=True)
+            with db:
+                if root(db, expected.vehicle) != expected:
+                    raise ArchiveError(ArchiveFailure.BUSY)
+                if not expected.discovery_complete or expected.state not in {
+                    HistoryState.PRESERVE,
+                    HistoryState.VERIFY,
+                }:
+                    return expected
+                health = summary(db, expected.vehicle, expected.plan_id)
+                if health.missing or health.unmapped or health.quality_pending:
+                    return expected
+                result = replace(
+                    expected,
+                    state=HistoryState.WITH_GAPS
+                    if expected.gap_months or health.archive_has_gaps
+                    else HistoryState.COMPLETE,
+                    revision=expected.revision + 1,
+                    updated_at=utc_string(now),
+                )
+                try:
+                    put_root(db, result, expected)
+                except HistoryConflict:
+                    raise ArchiveError(ArchiveFailure.BUSY) from None
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                    " DO UPDATE SET value=excluded.value",
+                    (f"history_last_success:{expected.vehicle}", utc_string(now)),
+                )
+                return result
+
+        return await self._run(finish, guard=guard)
+
     async def async_set_history_plan(
         self,
         sn: str,
@@ -1821,6 +1960,41 @@ class RideArchive:
             try:
                 with db:
                     receipt = accept_page(db, expected, raw)
+                    if receipt.stop != "schema":
+                        from .adapters import travel as parse_month
+
+                        assert raw.query_month is not None
+                        normalized = parse_month(raw.payload(), raw.query_month)
+                        observed = utc_string(raw.received_at)
+                        latest = db.execute(
+                            "SELECT observed FROM months WHERE vehicle=? AND month=?",
+                            (expected.vehicle, raw.query_month),
+                        ).fetchone()
+                        if latest and latest[0] > observed:
+                            changed = False
+                            for ride in normalized.rides:
+                                restored_ride(decoded(encoded(ride_data(ride))))
+                                if ride.ride_id is None:
+                                    continue
+                                changed = (
+                                    self._upsert_ride(expected.vehicle, ride, observed, True)
+                                    or changed
+                                )
+                                db.execute(
+                                    "INSERT OR IGNORE INTO membership VALUES (?,?,?,0)",
+                                    (expected.vehicle, raw.query_month, ride.ride_id),
+                                )
+                            if changed:
+                                self._revision(bump=True)
+                        else:
+                            self._record_month(
+                                expected.vehicle,
+                                normalized,
+                                observed,
+                                raw.backend_version,
+                                True,
+                                sync_checkpoint=False,
+                            )
                 return receipt
             except HistoryConflict:
                 raise ArchiveError(ArchiveFailure.BUSY) from None

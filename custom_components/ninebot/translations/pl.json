@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Dodaj konto",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. Nowe konta zapisują historię przejazdów i trasy lokalnie w tle. Można to wyłączyć w opcjach.",
         "data": {
           "account": "Konto",
           "password": "Hasło",

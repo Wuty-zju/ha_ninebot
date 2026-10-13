@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Añadir cuenta",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. Las cuentas nuevas guardan el historial y las rutas localmente en segundo plano. Puedes desactivarlo en las opciones.",
         "data": {
           "account": "Cuenta",
           "password": "Contraseña",

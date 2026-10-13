@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Aggiungi account",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. I nuovi account salvano localmente viaggi e percorsi in background. Puoi disattivare questa funzione nelle opzioni.",
         "data": {
           "account": "Account",
           "password": "Password",

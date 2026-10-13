@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Add account",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. New accounts save ride history and tracks locally in the background. You can disable this in options.",
         "data": {
           "account": "Account",
           "password": "Password",

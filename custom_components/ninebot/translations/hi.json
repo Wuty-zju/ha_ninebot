@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "खाता जोड़ें",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. नए खाते पृष्ठभूमि में यात्रा इतिहास और मार्ग स्थानीय रूप से सहेजते हैं। इसे विकल्पों में बंद किया जा सकता है।",
         "data": {
           "account": "खाता",
           "password": "पासवर्ड",

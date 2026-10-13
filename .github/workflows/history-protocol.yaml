@@ -8,11 +8,17 @@ on:
       - 'custom_components/ninebot/backend.py'
       - 'custom_components/ninebot/history_plan.py'
       - 'custom_components/ninebot/history_store.py'
+      - 'custom_components/ninebot/detail_health.py'
+      - 'custom_components/ninebot/bootstrap.py'
+      - 'custom_components/ninebot/coordinator.py'
+      - 'custom_components/ninebot/config_flow.py'
+      - 'custom_components/ninebot/preservation.py'
       - 'custom_components/ninebot/ride_archive.py'
       - 'custom_components/ninebot/detail_codec.py'
       - 'tests/test_native_history.py'
       - 'tests/test_history_plan.py'
       - 'tests/test_history_store.py'
+      - 'tests/test_bootstrap.py'
       - '.github/workflows/history-protocol.yaml'
 permissions:
   contents: read
@@ -38,3 +44,6 @@ jobs:
           tests/test_history_store.py tests/test_ride_archive.py
           tests/test_private_detail_archive.py tests/test_archive_lifecycle.py
           tests/test_archive_validation.py
+          tests/test_bootstrap.py tests/test_config_flow.py tests/test_coordinator.py
+          tests/test_preservation.py
+          tests/test_account_display.py

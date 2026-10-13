@@ -855,6 +855,57 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             sn, Endpoint.TRIP_DETAIL, detail_id, month, refresh=refresh, priority=priority
         )
 
+    async def async_query_history_page(self, sn: str, month: str, page: int) -> RawRecord:
+        """Background paging uses the same broker but never replaces live month raw."""
+        from .native_history import CONTRACT, validate_page
+
+        validate_page(sn, month, page)
+        key = self._key(sn, Endpoint.TRAVEL, f"history:{month}:{page}")
+        if not self._owns(key) or not self.fresh(sn, "profile"):
+            raise NinebotError(ErrorKind.CLOSED)
+        task = asyncio.current_task()
+        if task:
+            self._active.add(task)
+        try:
+
+            async def query() -> BackendResult:
+                if not self.fresh(sn, "profile"):
+                    raise NinebotError(ErrorKind.CLOSED)
+                return await self.backend.async_travel_page(sn, month, page)
+
+            result = await self._read(key, query, Priority.BACKGROUND)
+            if (
+                result.endpoint is not Endpoint.TRAVEL
+                or result.query_month != month
+                or result.page != page
+                or result.provider != "native_history"
+                or result.endpoint_version != CONTRACT
+            ):
+                raise NinebotError(ErrorKind.PROTOCOL)
+            try:
+                record = await self.hass.async_add_executor_job(
+                    partial(
+                        build_record,
+                        result.endpoint,
+                        result.payload,
+                        result.received_at,
+                        month,
+                        backend_version=result.backend_version,
+                        endpoint_version=result.endpoint_version,
+                        schema_salt=self.raw.schema_salt,
+                    )
+                )
+            except RawLimitError:
+                raise NinebotError(ErrorKind.PROTOCOL) from None
+            if not self._owns(key) or not self.fresh(sn, "profile"):
+                raise NinebotError(ErrorKind.CLOSED)
+            return replace(record, request_revision=result.request_revision)
+        except NinebotAuthError as err:
+            raise self._manual_auth_failure() from err
+        finally:
+            if task:
+                self._active.discard(task)
+
     async def _query_record(
         self,
         sn: str,

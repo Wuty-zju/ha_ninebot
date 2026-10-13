@@ -80,6 +80,44 @@ async def test_one_vehicle_failure_leaves_other_groups_available(coordinator):
     assert result["synthetic-two"].status.locked is False
 
 
+async def test_history_page_is_brokered_without_replacing_live_month(coordinator):
+    from zoneinfo import ZoneInfo
+
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot.backend import BackendResult
+    from custom_components.ninebot.const import BUSINESS_TIMEZONE
+    from custom_components.ninebot.native_history import CONTRACT
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    await co._async_update_data()
+    now = dt_util.utcnow()
+    month = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).strftime("%Y%m")
+    before = co.raw.get(Endpoint.TRAVEL, "synthetic-one", month, now=now, query_month=month)
+    snapshot = co.data["synthetic-one"].travel
+    result = BackendResult(
+        {"times": 2, "list": [{"travel_id": "page-one"}]},
+        Endpoint.TRAVEL,
+        now,
+        month,
+        backend_version="0.1.7",
+        endpoint_version=CONTRACT,
+        provider="native_history",
+        page=1,
+    )
+    co.backend.async_travel_page = AsyncMock(return_value=result)
+    record = await co.async_query_history_page("synthetic-one", month, 1)
+    assert record.payload() == result.payload and record.endpoint_version == CONTRACT
+    co.backend.async_travel_page.assert_awaited_once_with("synthetic-one", month, 1)
+    assert co.data["synthetic-one"].travel == snapshot
+    assert co.raw.get(Endpoint.TRAVEL, "synthetic-one", month, now=now, query_month=month) == before
+    co.backend.async_travel_page.return_value = replace(result, provider="unknown")
+    with pytest.raises(NinebotError) as error:
+        await co.async_query_history_page("synthetic-one", month, 1)
+    assert error.value.kind is ErrorKind.PROTOCOL
+
+
 @pytest.mark.parametrize(
     "coordinator",
     [{"enable_controls": True, "control_vehicles": ["synthetic-one", "synthetic-two"]}],
