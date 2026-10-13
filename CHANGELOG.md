@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b59
+
+- Add a history-only encrypted page transport using the pinned ninecli session and shared client lock. Existing telemetry, controls and trip details continue through authenticated loopback serve.
+- Only ninecli can refresh/write the session; account/file-revision fences reject foreign or rotated responses. History transport fixes the upstream host, verifies TLS, refuses redirects and bounds streamed/gzip responses.
+- This is the M0 protocol foundation. Automatic full-history jobs, progress entities and cloud pagination completeness are not delivered in this version; no production cloud tests were performed.
+
 ## 2.0.0b58
 
 - Fix fetching old recorded trip details when the latest monthly response contains only newer rides. Resolve verified vehicle/month memberships directly without rereading the month.

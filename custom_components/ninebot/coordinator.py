@@ -79,7 +79,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         backend: NinebotBackend | None = None,
     ) -> None:
         self.client = client
-        self.backend: NinebotBackend = backend or NinecliBackend(client)
+        self.backend: NinebotBackend = backend or NinecliBackend(
+            client, expected_uid=entry.data.get(CONF_BUSINESS_UID)
+        )
         self.raw = RawStore()
         self.history = HistoryStore()
         self.recorded_cursors = RecordedCursors()
