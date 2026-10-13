@@ -40,6 +40,7 @@ REASONS = frozenset(
 
 class HistoryState(StrEnum):
     DISCOVER = "discover"
+    QUERYING = "querying"
     PRESERVE = "preserve"
     VERIFY = "verify"
     WAITING = "waiting"
@@ -79,6 +80,7 @@ class HistoryPlan:
     discovery_complete: bool = False
     retry_at: str | None = None
     reason: str | None = None
+    attempts: int = 0
 
     @classmethod
     def create(cls, plan_id: str, vehicle: str, start: str, end: str, now: str) -> "HistoryPlan":
@@ -87,7 +89,10 @@ class HistoryPlan:
 
     def page_committed(self, now: str, *, finished: bool, verified: bool) -> "HistoryPlan":
         """Called only in the transaction that persists the accepted page evidence."""
-        if self.state is not HistoryState.DISCOVER or self.next_month is None:
+        if (
+            self.state not in {HistoryState.DISCOVER, HistoryState.QUERYING}
+            or self.next_month is None
+        ):
             raise ValueError("No active discovery checkpoint")
         if not finished:
             if verified or self.next_page >= MAX_PAGES:
@@ -99,6 +104,9 @@ class HistoryPlan:
                         next_page=self.next_page + 1,
                         revision=self.revision + 1,
                         updated_at=now,
+                        state=HistoryState.DISCOVER,
+                        retry_at=None,
+                        attempts=0,
                     )
                 )
             )
@@ -116,6 +124,8 @@ class HistoryPlan:
                     gap_months=self.gap_months + int(not verified),
                     updated_at=now,
                     revision=self.revision + 1,
+                    retry_at=None,
+                    attempts=0,
                 )
             )
         )
@@ -145,6 +155,7 @@ def restored(data: object) -> HistoryPlan:
         ("scanned_months", 0, total),
         ("verified_months", 0, total),
         ("gap_months", 0, total),
+        ("attempts", 0, 255),
     ):
         if type(data[key]) is not int or not minimum <= data[key] <= maximum:
             raise ValueError("Invalid history root count")
@@ -159,7 +170,7 @@ def restored(data: object) -> HistoryPlan:
             raise ValueError("Invalid finished discovery")
     elif complete or month_count(data["start_month"], remaining) != total - data["scanned_months"]:
         raise ValueError("Invalid history cursor")
-    if state is HistoryState.DISCOVER and complete:
+    if state in {HistoryState.DISCOVER, HistoryState.QUERYING} and complete:
         raise ValueError("Invalid discovery phase")
     if (
         state
@@ -180,8 +191,13 @@ def restored(data: object) -> HistoryPlan:
     if (state in {HistoryState.WAITING, HistoryState.PAUSED}) != (reason is not None):
         raise ValueError("Inconsistent history waiting state")
     if data["retry_at"] is not None:
-        if state is not HistoryState.WAITING or stamp(data["retry_at"]) < updated:
+        if (
+            state not in {HistoryState.WAITING, HistoryState.QUERYING}
+            or stamp(data["retry_at"]) < updated
+        ):
             raise ValueError("Invalid history retry")
+    elif state is HistoryState.QUERYING:
+        raise ValueError("Missing history claim lease")
     return HistoryPlan(**{**data, "state": state})
 
 

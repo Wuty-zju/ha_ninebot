@@ -1730,6 +1730,79 @@ class RideArchive:
 
         await self._run(commit, guard=guard)
 
+    async def async_claim_history_page(
+        self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
+    ) -> HistoryPlan | None:
+        from .history_plan import HistoryState
+        from .history_store import put_root, root
+
+        observed = utc_string(now)
+        if type(budget) is not int or not 1 <= budget <= 60:
+            raise ValueError("Invalid history budget")
+
+        def claim() -> HistoryPlan | None:
+            db = self._db(write=True)
+            vehicle = vehicle_key(sn)
+            with db:
+                current = root(db, vehicle)
+                if (
+                    current is None
+                    or current.next_month is None
+                    or current.state
+                    not in {HistoryState.DISCOVER, HistoryState.QUERYING, HistoryState.WAITING}
+                    or current.retry_at is not None
+                    and stamp(current.retry_at) > now
+                ):
+                    return None
+                if not self._reserve_background(db, vehicle, now.timestamp(), budget, "month"):
+                    return None
+                claimed = replace(
+                    current,
+                    state=HistoryState.QUERYING,
+                    reason=None,
+                    updated_at=observed,
+                    revision=current.revision + 1,
+                    attempts=min(255, current.attempts + 1),
+                    retry_at=utc_string(now + timedelta(seconds=120)),
+                )
+                put_root(db, claimed, current)
+                return claimed
+
+        return await self._run(claim, guard=guard)
+
+    async def async_wait_history_page(
+        self,
+        expected: HistoryPlan,
+        now: datetime,
+        reason: str,
+        delay: float,
+        *,
+        guard: Callable[[], bool],
+    ) -> None:
+        from .history_plan import HistoryState
+        from .history_store import HistoryConflict, put_root
+
+        if not isinstance(delay, (int, float)) or not 0 <= delay <= 86400:
+            raise ValueError("Invalid history retry delay")
+        following = replace(
+            expected,
+            state=HistoryState.WAITING,
+            reason=reason,
+            revision=expected.revision + 1,
+            updated_at=utc_string(now),
+            retry_at=utc_string(now + timedelta(seconds=delay)),
+        )
+
+        def wait() -> None:
+            db = self._db(write=True)
+            try:
+                with db:
+                    put_root(db, following, expected)
+            except HistoryConflict:
+                raise ArchiveError(ArchiveFailure.BUSY) from None
+
+        await self._run(wait, guard=guard)
+
     async def async_accept_history_page(
         self,
         sn: str,

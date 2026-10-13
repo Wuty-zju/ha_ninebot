@@ -96,9 +96,24 @@ def put_root(db: sqlite3.Connection, plan: HistoryPlan, expected: HistoryPlan | 
             or plan.end_month != expected.end_month
             or plan.cutoff != expected.cutoff
             or plan.provider != expected.provider
+            or stamp(plan.updated_at) < stamp(expected.updated_at)
         )
     ):
         raise HistoryConflict
+    count, verified = db.execute(
+        "SELECT count(*),coalesce(sum(verified),0) FROM history_months WHERE vehicle=? AND plan=?",
+        (plan.vehicle, plan.plan_id),
+    ).fetchone()
+    if count != plan.scanned_months or verified != plan.verified_months:
+        raise ValueError("Checkpoint has no monthly evidence")
+    if plan.next_month is not None:
+        count, maximum = db.execute(
+            "SELECT count(*),coalesce(max(page),0) FROM history_pages"
+            " WHERE vehicle=? AND plan=? AND month=?",
+            (plan.vehicle, plan.plan_id, plan.next_month),
+        ).fetchone()
+        if count != plan.next_page - 1 or maximum != count:
+            raise ValueError("Checkpoint has no page evidence")
     db.execute(
         "INSERT INTO history_roots VALUES (?,?) ON CONFLICT(vehicle)"
         " DO UPDATE SET data=excluded.data",
@@ -130,7 +145,10 @@ def _shape(data: dict) -> tuple[tuple[str, ...], int | None, str | None]:
 
 
 def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord) -> PageReceipt:
-    if root(db, expected.vehicle) != expected or expected.state is not HistoryState.DISCOVER:
+    if root(db, expected.vehicle) != expected or expected.state not in {
+        HistoryState.DISCOVER,
+        HistoryState.QUERYING,
+    }:
         raise HistoryConflict
     if (
         record.query_month != expected.next_month
@@ -248,6 +266,8 @@ def check(db: sqlite3.Connection) -> None:
             current is None
             or plan != current.plan_id
             or not current.start_month <= month <= current.end_month
+            or current.next_month is not None
+            and month <= current.next_month
             or type(pages) is not int
             or not 1 <= pages <= MAX_PAGES
             or type(known) is not int

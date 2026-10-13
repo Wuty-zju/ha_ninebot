@@ -3,7 +3,7 @@
 import hashlib
 import sqlite3
 from contextlib import closing
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -208,3 +208,54 @@ async def test_free_space_migration_preflight_does_not_touch_original(tmp_path, 
         assert not list(tmp_path.glob("rides.schema2-*.sqlite3"))
     finally:
         await migrated.async_close()
+
+
+async def test_claim_lease_and_shared_budget_survive_restart(store):
+    claimed = await store.async_claim_history_page(SN, NOW, 60, guard=lambda: True)
+    assert claimed.state is HistoryState.QUERYING and claimed.attempts == 1
+    assert (
+        await store.async_claim_history_page(
+            SN, NOW + timedelta(seconds=61), 60, guard=lambda: True
+        )
+        is None
+    )
+    path = store.path
+    await store.async_close()
+    resumed = RideArchive(path, OWNER)
+    try:
+        await resumed.async_open()
+        assert await resumed.async_history_plan(SN) == claimed
+        assert not await resumed.async_background_budget(
+            SN, NOW + timedelta(seconds=10), 60, guard=lambda: True
+        )
+        assert (
+            await resumed.async_claim_history_page(
+                SN, NOW + timedelta(seconds=119), 60, guard=lambda: True
+            )
+            is None
+        )
+        next_claim = await resumed.async_claim_history_page(
+            SN, NOW + timedelta(seconds=121), 60, guard=lambda: True
+        )
+        assert next_claim.next_page == 1 and next_claim.attempts == 2
+        await resumed.async_wait_history_page(
+            next_claim, NOW + timedelta(seconds=122), "connection", 300, guard=lambda: True
+        )
+        waiting = await resumed.async_history_plan(SN)
+        assert waiting.state is HistoryState.WAITING
+        assert (
+            await resumed.async_claim_history_page(
+                SN, NOW + timedelta(seconds=300), 60, guard=lambda: True
+            )
+            is None
+        )
+    finally:
+        await resumed.async_close()
+
+
+async def test_no_cursor_can_advance_without_its_page_evidence(store):
+    forged = initial().page_committed(NOW.isoformat(), finished=True, verified=True)
+    with pytest.raises(ArchiveError) as error:
+        await store.async_set_history_plan(SN, forged, initial(), guard=lambda: True)
+    assert error.value.kind is ArchiveFailure.SCHEMA
+    assert await store.async_history_plan(SN) == initial()
