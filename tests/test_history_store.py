@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from custom_components.ninebot import history_store
+from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.history_plan import HistoryPlan, HistoryState
 from custom_components.ninebot.raw import Endpoint, build_record
 from custom_components.ninebot.ride_archive import (
@@ -138,6 +139,25 @@ async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline
     path = tmp_path / "legacy.sqlite3"
     archive = RideArchive(path, OWNER)
     await archive.async_open()
+    await archive.async_record_month(
+        SN,
+        travel(
+            {
+                "times": 1,
+                "list": [
+                    {
+                        "travel_id": "legacy",
+                        "mileages": 1,
+                        "duration": 60,
+                        "start_time": int(NOW.timestamp()),
+                        "end_time": int(NOW.timestamp()) + 60,
+                    }
+                ],
+            },
+            "202610",
+        ),
+        NOW,
+    )
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
         db.execute("DROP TABLE history_months")
@@ -150,7 +170,11 @@ async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline
         await migrated.async_open()
         assert await migrated.async_history_plan(SN) is None
         copies = list(tmp_path.glob("rides.schema2-*.sqlite3"))
-        assert len(copies) == 1 and copies[0].read_bytes() == before
+        assert len(copies) == 1 and hashlib.sha256(before).hexdigest() in copies[0].name
+        with closing(sqlite3.connect(copies[0])) as backup:
+            assert backup.execute("PRAGMA user_version").fetchone()[0] == 2
+            assert backup.execute("SELECT count(*) FROM rides").fetchone()[0] == 1
+        assert (await migrated.async_month(SN, "202610")).travel.rides[0].ride_id == "legacy"
         with closing(sqlite3.connect(path)) as db:
             assert db.execute("PRAGMA user_version").fetchone()[0] == 3
         await migrated.async_set_history_plan(SN, initial(), None, guard=lambda: True)
