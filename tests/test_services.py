@@ -215,25 +215,29 @@ def test_invalid_inputs_rejected_before_backend(data, freezer):
 
 async def test_ride_lookup_no_guess_cross_month_or_duplicate(hass, entry, app_client, query_device):
     data = {"device_id": query_device, "ride_id": "not-in-index"}
-    with pytest.raises(HomeAssistantError, match="verified detail mapping"):
+    with pytest.raises(HomeAssistantError) as error:
         await call(hass, "get_trip_detail", data)
+    assert error.value.translation_key == "query_ride"
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_get_travel.return_value = {"list": None}
-    with pytest.raises(HomeAssistantError, match="verified detail mapping"):
+    with pytest.raises(HomeAssistantError) as error:
         await call(
             hass, "get_trip_detail", {**data, "ride_id": "fixture-ride-01", "query_month": "202608"}
         )
+    assert error.value.translation_key == "query_ride"
     app_client.async_get_travel.assert_any_await("SyntheticSN", "202608")
     co = entry.runtime_data.coordinator
     co.raw.clear()
     row = {"travel_id": "duplicate", "duration": 1}
     app_client.async_get_travel.return_value = {"list": [row, row]}
-    with pytest.raises(HomeAssistantError, match="verified detail mapping"):
+    with pytest.raises(HomeAssistantError) as error:
         await call(hass, "get_trip_detail", {**data, "ride_id": "duplicate"})
+    assert error.value.translation_key == "query_ride"
     co.raw.clear()
     app_client.async_get_travel.return_value = {"list": [{"id": "legacy-only"}]}
-    with pytest.raises(HomeAssistantError, match="verified detail mapping"):
+    with pytest.raises(HomeAssistantError) as error:
         await call(hass, "get_trip_detail", {**data, "ride_id": "legacy-only"})
+    assert error.value.translation_key == "query_ride"
     app_client.async_get_trip_detail.assert_not_awaited()
 
 
