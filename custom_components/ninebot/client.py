@@ -420,6 +420,44 @@ class NinecliClient:
     async def async_get_battery(self, sn: str) -> Any:
         return await self._request("GET", f"/vehicles/{quote(sn, safe='')}/battery")
 
+    async def async_get_travel_page(
+        self, sn: str, month: str, page: int, *, expected_uid: str
+    ) -> Any:
+        """Native read-only history shares the sole ninecli session lock/writer."""
+        from .native_history import read_session, request_page, validate_page
+
+        validate_page(sn, month, page)
+        async with self._operation():
+            try:
+                async with asyncio.timeout(self._timeout):
+                    for attempt in range(2):
+                        lease = await asyncio.to_thread(read_session, self.config_dir, expected_uid)
+                        try:
+                            result = await request_page(
+                                self._session, lease, sn, month, page, self._timeout
+                            )
+                        except NinebotAuthError:
+                            # Only HTTP401 requests a refresh, through the Go owner.
+                            # A changed/foreign file must not trigger token writes.
+                            current = await asyncio.to_thread(
+                                read_session, self.config_dir, expected_uid
+                            )
+                            if current.fingerprint != lease.fingerprint:
+                                raise NinebotError(ErrorKind.BUSY, retryable=True) from None
+                            if attempt:
+                                raise
+                            await self._request_locked("POST", "/auth/refresh")
+                            continue
+                        current = await asyncio.to_thread(
+                            read_session, self.config_dir, expected_uid
+                        )
+                        if current.fingerprint != lease.fingerprint:
+                            raise NinebotError(ErrorKind.BUSY, retryable=True)
+                        return result
+            except TimeoutError:
+                raise NinebotError(ErrorKind.CONNECTION, retryable=True) from None
+        raise NinebotAuthError()
+
     async def async_get_travel(self, sn: str, month: str) -> Any:
         return await self._request(
             "GET", f"/vehicles/{quote(sn, safe='')}/travel?month={quote(month, safe='')}"

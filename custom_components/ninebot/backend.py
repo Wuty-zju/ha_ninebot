@@ -8,6 +8,7 @@ from typing import Any, Protocol
 
 from .capabilities import CONTROL_ACTIONS
 from .client import NinecliClient
+from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .raw import Endpoint, version_metadata
 
 
@@ -22,6 +23,8 @@ class BackendResult:
     vehicles_complete: bool = True
     started_at: datetime | None = None
     request_revision: int = 0
+    provider: str = "ninecli"
+    page: int | None = None
 
 
 class NinebotBackend(Protocol):
@@ -35,6 +38,7 @@ class NinebotBackend(Protocol):
     async def async_status_once(self, vehicle: str) -> BackendResult: ...
     async def async_battery(self, vehicle: str) -> BackendResult: ...
     async def async_travel_month(self, vehicle: str, month: str) -> BackendResult: ...
+    async def async_travel_page(self, vehicle: str, month: str, page: int) -> BackendResult: ...
     async def async_trip_detail(self, vehicle: str, detail_id: str) -> BackendResult: ...
     async def async_control(self, vehicle: str, action: str) -> None: ...
     async def async_close(self) -> None: ...
@@ -46,8 +50,9 @@ class NinecliBackend:
     endpoints = frozenset(Endpoint)
     control_actions = CONTROL_ACTIONS
 
-    def __init__(self, client: NinecliClient) -> None:
+    def __init__(self, client: NinecliClient, *, expected_uid: str | None = None) -> None:
         self.client = client
+        self._expected_uid = expected_uid
         self._metadata_loaded = False
         self._backend_version: str | None = None
         self._metadata_lock = asyncio.Lock()
@@ -100,6 +105,26 @@ class NinecliBackend:
             datetime.now(UTC),
             month,
             backend_version=await self._version(),
+        )
+
+    async def async_travel_page(self, vehicle: str, month: str, page: int) -> BackendResult:
+        """The history-only adapter does not change existing serve telemetry."""
+        if not self._expected_uid:
+            raise NinebotAuthError()
+        if await self._version() != "0.1.7":
+            raise NinebotError(ErrorKind.PLATFORM)
+        payload = await self.client.async_get_travel_page(
+            vehicle, month, page, expected_uid=self._expected_uid
+        )
+        return BackendResult(
+            payload,
+            Endpoint.TRAVEL,
+            datetime.now(UTC),
+            month,
+            backend_version=await self._version(),
+            endpoint_version="native-history-v1",
+            provider="native_history",
+            page=page,
         )
 
     async def async_trip_detail(self, vehicle: str, detail_id: str) -> BackendResult:

@@ -1,0 +1,13 @@
+{
+  "history_crypto": {
+    "source": "https://github.com/kxn/ninebot-recon/blob/a46124d6290179554e1688c01384a7f4116ac96a/ninebot_crypto.py",
+    "source_sha256": "791d0fcce2874cc45c405ad5048e2e93de8497af3812cf4d246860275b68c72a",
+    "license": "MIT",
+    "changes": [
+      "No CLI/self-test/transport",
+      "typed nested serializer and RSA type check",
+      "HA Core cryptography dependency",
+      "preserved pinned protocol ordering and constants"
+    ]
+  }
+}

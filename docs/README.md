@@ -773,3 +773,23 @@ whether its detail is actually saved. A cloud response alone does not guarantee
 persistence. Older responses without this flag retain the existing behavior.
 Refresh your browser after upgrading. No database/registry edits, historical
 rescans or increased polling intervals are required.
+
+### History page protocol foundation (b59, M0)
+
+The internal backend can request an explicit historical month/page using a
+read-only native encrypted adapter based on the audited MIT recon protocol.
+It uses the existing account session and the same client serialization lock;
+only the managed ninecli server may refresh tokens. Password/SMS flows and
+status, battery, controls and existing detail queries remain unchanged.
+
+The pinned wire contract accepts only ninecli0.1.7 and the reviewed CN/bj
+session schema. There is no configurable upstream host, separate password
+store or second token writer. Replies are bounded, TLS verified, redirects
+refused, and account/file changes discard in-flight data. License/source
+attribution is packaged under the integration's licenses directory.
+
+This milestone does **not** automatically scan all historical months or mark
+cloud pagination as confirmed. Actual page repetition and changing totals
+must be verified by the upcoming persistent acquisition layer. M1–M5 will
+add recoverable full-history jobs, incremental triggers and progress entities.
+Existing users need not reset their archive or change entity IDs.
