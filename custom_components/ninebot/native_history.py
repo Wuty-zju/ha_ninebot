@@ -81,6 +81,7 @@ def read_session(directory: Path, expected_uid: str) -> HistorySession:
             for value, limit in ((token, 8192), (device, 128), (uid, 256))
         ):
             raise ValueError("Session identity")
+        assert isinstance(uid, str) and isinstance(token, str) and isinstance(device, str)
         if tokens.get("region", "bj") != "bj" or config.get("regionx", "bj") != "bj":
             raise NinebotError(ErrorKind.PROTOCOL)
         return HistorySession(
@@ -110,7 +111,7 @@ def prepare(
     validate_page(vehicle, month, page)
     now = int(time.time() * 1000)
     nonce = secrets.token_bytes(16).hex()
-    params = dict(
+    params: dict[str, Any] = dict(
         sys_language="zh-hans-cn",
         client_ver=CLIENT_VERSION,
         device_id=session.device_id,
