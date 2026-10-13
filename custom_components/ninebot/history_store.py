@@ -25,6 +25,9 @@ SCHEMA = (
     " plan TEXT NOT NULL, month TEXT NOT NULL, pages INTEGER NOT NULL, known INTEGER NOT NULL,"
     " total INTEGER, verified INTEGER NOT NULL CHECK(verified IN (0,1)), stop TEXT,"
     " observed TEXT NOT NULL, PRIMARY KEY(vehicle,plan,month))",
+    "CREATE TABLE history_ids (vehicle TEXT NOT NULL REFERENCES history_roots(vehicle),"
+    " plan TEXT NOT NULL, month TEXT NOT NULL, ride TEXT NOT NULL, first_page INTEGER NOT NULL,"
+    " PRIMARY KEY(vehicle,plan,month,ride))",
 )
 COLUMNS = {
     "history_roots": ("vehicle", "data"),
@@ -53,6 +56,7 @@ COLUMNS = {
         "stop",
         "observed",
     ),
+    "history_ids": ("vehicle", "plan", "month", "ride", "first_page"),
 }
 STOP_REASONS = {
     None,
@@ -163,24 +167,36 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
     observed = clean.received_at.isoformat()
     if stamp(observed) < stamp(expected.updated_at):
         raise ValueError("Stale history receipt")
-    previous = db.execute(
-        "SELECT page,ids,total FROM history_pages WHERE vehicle=? AND plan=? AND month=?"
-        " ORDER BY page",
-        (expected.vehicle, expected.plan_id, expected.next_month),
-    ).fetchall()
-    if [row[0] for row in previous] != list(range(1, expected.next_page)):
+    scope = (expected.vehicle, expected.plan_id, expected.next_month)
+    count, maximum = db.execute(
+        "SELECT count(*),coalesce(max(page),0) FROM history_pages"
+        " WHERE vehicle=? AND plan=? AND month=?",
+        scope,
+    ).fetchone()
+    if count != expected.next_page - 1 or maximum != count:
         raise ValueError("Invalid history page checkpoint")
-    seen: set[str] = set()
-    for _, values, previous_total in previous:
-        seen.update(decoded(values)["ids"])
-        if previous_total != total:
-            stop = stop or "unstable_total"
-    if ids and not set(ids) - seen:
-        stop = stop or "repeated_page"
-    seen.update(ids)
-    if total is not None and len(seen) > total:
+    changed_total = db.execute(
+        "SELECT 1 FROM history_pages WHERE vehicle=? AND plan=? AND month=?"
+        " AND (total IS NULL OR total != ?) LIMIT 1",
+        (*scope, total),
+    ).fetchone()
+    if changed_total:
         stop = stop or "unstable_total"
-    verified = stop is None and total == len(seen)
+    before = db.execute(
+        "SELECT count(*) FROM history_ids WHERE vehicle=? AND plan=? AND month=?", scope
+    ).fetchone()[0]
+    db.executemany(
+        "INSERT OR IGNORE INTO history_ids VALUES (?,?,?,?,?)",
+        ((*scope, identity, expected.next_page) for identity in ids),
+    )
+    known = db.execute(
+        "SELECT count(*) FROM history_ids WHERE vehicle=? AND plan=? AND month=?", scope
+    ).fetchone()[0]
+    if ids and known == before:
+        stop = stop or "repeated_page"
+    if total is not None and known > total:
+        stop = stop or "unstable_total"
+    verified = stop is None and total == known
     if not verified and not ids:
         stop = stop or "empty_page"
     if not verified and expected.next_page == MAX_PAGES:
@@ -212,7 +228,7 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
                 expected.plan_id,
                 expected.next_month,
                 expected.next_page,
-                len(seen),
+                known,
                 total,
                 int(verified),
                 stop,
@@ -220,7 +236,7 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
             ),
         )
     put_root(db, following, expected)
-    return PageReceipt(following, len(seen), total, finished, verified, stop)
+    return PageReceipt(following, known, total, finished, verified, stop)
 
 
 def page(
@@ -285,7 +301,27 @@ def check(db: sqlite3.Connection) -> None:
         ).fetchone()
         if count != pages or maximum != pages:
             raise ValueError("Missing history manifest evidence")
+        indexed = db.execute(
+            "SELECT count(*) FROM history_ids WHERE vehicle=? AND plan=? AND month=?",
+            (vehicle, plan, month),
+        ).fetchone()[0]
+        if indexed != known:
+            raise ValueError("Invalid history identity index")
         stamp(observed)
+    if db.execute(
+        "SELECT 1 FROM history_ids i LEFT JOIN history_pages p ON i.vehicle=p.vehicle"
+        " AND i.plan=p.plan AND i.month=p.month AND i.first_page=p.page"
+        " WHERE p.page IS NULL LIMIT 1"
+    ).fetchone():
+        raise ValueError("History identity has no source page")
+    for identity, number in db.execute("SELECT ride,first_page FROM history_ids"):
+        if (
+            not isinstance(identity, str)
+            or opaque_id(identity) != identity
+            or type(number) is not int
+            or not 1 <= number <= MAX_PAGES
+        ):
+            raise ValueError("Invalid history identity index metadata")
     for (
         vehicle,
         plan,

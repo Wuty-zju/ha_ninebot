@@ -160,6 +160,7 @@ async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline
     )
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE history_ids")
         db.execute("DROP TABLE history_months")
         db.execute("DROP TABLE history_pages")
         db.execute("DROP TABLE history_roots")
@@ -217,6 +218,7 @@ async def test_free_space_migration_preflight_does_not_touch_original(tmp_path, 
     await archive.async_open()
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE history_ids")
         db.execute("DROP TABLE history_months")
         db.execute("DROP TABLE history_pages")
         db.execute("DROP TABLE history_roots")
