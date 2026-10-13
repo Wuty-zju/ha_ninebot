@@ -255,6 +255,7 @@ def page(
 
 
 def check(db: sqlite3.Connection) -> None:
+    current: HistoryPlan | None
     for vehicle, value in db.execute("SELECT * FROM history_roots"):
         current = restored(decoded(value))
         if current.vehicle != vehicle:
