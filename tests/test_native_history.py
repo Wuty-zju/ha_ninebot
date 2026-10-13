@@ -14,6 +14,7 @@ from aiohttp import web
 from aiohttp.test_utils import TestServer
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from pytest_socket import enable_socket, socket_allow_hosts
 
 from custom_components.ninebot import history_crypto as crypto
 from custom_components.ninebot import native_history as native
@@ -22,6 +23,13 @@ from custom_components.ninebot.client import NinecliClient
 from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
 
 UID = "synthetic-business"
+
+
+@pytest.fixture(autouse=True)
+def loopback_peer_only(socket_enabled):
+    """Allow the synthetic localhost peer, while keeping Internet blocked."""
+    enable_socket()
+    socket_allow_hosts(["127.0.0.1"])
 
 
 def credentials(directory: Path, uid=UID, token="synthetic-access"):
