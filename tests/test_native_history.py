@@ -21,6 +21,7 @@ from custom_components.ninebot import native_history as native
 from custom_components.ninebot.backend import NinecliBackend
 from custom_components.ninebot.client import NinecliClient
 from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
+from custom_components.ninebot.raw import build_record
 
 UID = "synthetic-business"
 
@@ -110,6 +111,15 @@ async def test_real_crypto_pages_are_distinct_bound_and_do_not_write_session(
             r.provider == "native_history" and r.endpoint_version == native.CONTRACT
             for r in (first, second)
         )
+        retained = build_record(
+            first.endpoint,
+            first.payload,
+            first.received_at,
+            first.query_month,
+            backend_version=first.backend_version,
+            endpoint_version=first.endpoint_version,
+        )
+        assert retained.endpoint_version == native.CONTRACT
         await client.async_close()
     assert [x["page"] for x in seen] == ["1", "2"]
     assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before

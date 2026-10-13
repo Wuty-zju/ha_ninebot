@@ -15,7 +15,7 @@ from .parsing import previous_month
 CONTRACT_VERSION = 1
 MAX_MONTHS = 1200
 MAX_PAGES = 4096
-PROVIDERS = frozenset({"native-history-v1"})
+PROVIDERS = frozenset({"0.1.7+native.history.v1"})
 REASONS = frozenset(
     {
         "auth",
@@ -68,7 +68,7 @@ class HistoryPlan:
     cutoff: str
     created_at: str
     updated_at: str
-    provider: str = "native-history-v1"
+    provider: str = "0.1.7+native.history.v1"
     contract: int = CONTRACT_VERSION
     revision: int = 1
     state: HistoryState = HistoryState.DISCOVER

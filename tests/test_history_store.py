@@ -34,7 +34,7 @@ def record(ids=("ride-one",), total=2, month="202610", **extra):
         NOW,
         month,
         backend_version="0.1.7",
-        endpoint_version="native-history-v1",
+        endpoint_version="0.1.7+native.history.v1",
     )
 
 

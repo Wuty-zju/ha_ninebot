@@ -27,7 +27,7 @@ from .travel import opaque_id
 
 TRAVEL_BASE = "https://cn-cbu-gateway.ninebot.com"
 TRAVEL_PATH = "/app-api/travel/v6/travel-list2"
-CONTRACT = "native-history-v1"
+CONTRACT = "0.1.7+native.history.v1"
 CLIENT_VERSION = "610063322"
 RN_VERSION = "743"
 MAX_PAGE = 4096
