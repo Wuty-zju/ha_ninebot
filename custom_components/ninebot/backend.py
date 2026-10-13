@@ -122,7 +122,7 @@ class NinecliBackend:
             datetime.now(UTC),
             month,
             backend_version=await self._version(),
-            endpoint_version="native-history-v1",
+            endpoint_version="0.1.7+native.history.v1",
             provider="native_history",
             page=page,
         )

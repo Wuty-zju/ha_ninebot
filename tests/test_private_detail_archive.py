@@ -126,6 +126,10 @@ async def test_v1_migration_preserves_legacy_and_recovery_copy(tmp_path):
     await archive.async_close()
     # Construct the exact previous schema using our scalar-only baseline.
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE history_ids")
+        db.execute("DROP TABLE history_months")
+        db.execute("DROP TABLE history_pages")
+        db.execute("DROP TABLE history_roots")
         db.execute("DROP TABLE details")
         db.execute("DROP TABLE detail_payloads")
         db.execute("PRAGMA user_version=1")

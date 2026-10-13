@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b60
+
+- Persist independent full-history roots, page evidence and monthly scan manifests. Commit evidence and checkpoints atomically; repeated/empty pages, changed totals and schema gaps cannot appear as full coverage.
+- Share the existing durable history request budget; preserve in-flight claim leases and retry checkpoints across restarts. Retain unknown safe business fields while redacting credentials.
+- Migrate schema 1/2 with a validated recovery backup and disk-space preflight. Preserve old data when capacity is lowered; support a bounded capacity recheck through the archive API. Default remains 100 MiB.
+- This is the M1 storage foundation, not automatic full-history synchronization or progress entities. Downgrading after schema 3 migration requires restoring the pre-migration archive backup.
+
 ## 2.0.0b59
 
 - Add a history-only encrypted page transport using the pinned ninecli session and shared client lock. Existing telemetry, controls and trip details continue through authenticated loopback serve.

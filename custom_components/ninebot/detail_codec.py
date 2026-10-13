@@ -24,9 +24,15 @@ class ArchivedDetail:
     scalar_observed_at: datetime
 
 
-def packed(record: RawRecord) -> tuple[str, bytes, RawRecord]:
+def packed(
+    record: RawRecord, *, source: Endpoint = Endpoint.TRIP_DETAIL
+) -> tuple[str, bytes, RawRecord]:
     """Reapply redaction even to caller-created records; preserve unknown data."""
-    if record.endpoint is not Endpoint.TRIP_DETAIL or record.query_month is None:
+    if (
+        source not in {Endpoint.TRIP_DETAIL, Endpoint.TRAVEL}
+        or record.endpoint is not source
+        or record.query_month is None
+    ):
         raise ValueError("Invalid private detail scope")
     clean = build_record(
         record.endpoint,
@@ -54,6 +60,8 @@ def unpacked(
     month: str,
     backend: str | None,
     endpoint: str | None,
+    *,
+    source: Endpoint = Endpoint.TRIP_DETAIL,
 ) -> RawRecord:
     """Bound decompression before JSON parsing, and verify payload integrity."""
     if not isinstance(body, bytes) or len(body) > MAX_RESPONSE_BYTES + 1024:
@@ -71,8 +79,10 @@ def unpacked(
         or hashlib.sha256(raw).hexdigest() != digest
     ):
         raise ValueError("Invalid private detail integrity")
+    if source not in {Endpoint.TRIP_DETAIL, Endpoint.TRAVEL}:
+        raise ValueError("Invalid private source")
     record = build_record(
-        Endpoint.TRIP_DETAIL,
+        source,
         json.loads(raw),
         received,
         month,

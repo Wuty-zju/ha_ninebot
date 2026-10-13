@@ -9,8 +9,10 @@ when a subsequent incomplete month response omits previously observed rides.
 import asyncio
 import hashlib
 import os
+import shutil
 import sqlite3
 import tempfile
+import time
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as WorkerTimeout
@@ -48,6 +50,8 @@ from .archive_timeline import (
 )
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .detail_codec import ArchivedDetail, packed, unpacked
+from .history_plan import HistoryPlan
+from .history_store import PageReceipt
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord, version_metadata
@@ -60,8 +64,10 @@ if TYPE_CHECKING:
     from .month_tasks import MonthTask
     from .preservation import PreservationTask
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
+MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
+MIN_FREE_BYTES = 32 * 1024 * 1024
 MAX_PENDING = 16
 MAX_PAGE = 100
 MAX_PROFILES = 128
@@ -206,7 +212,7 @@ class RideArchive:
     def __init__(self, path: Path, owner: str, *, max_bytes: int = DEFAULT_MAX_BYTES) -> None:
         if len(owner) != 64 or any(char not in "0123456789abcdef" for char in owner):
             raise ValueError("Invalid archive owner scope")
-        if type(max_bytes) is not int or not 32768 <= max_bytes <= DEFAULT_MAX_BYTES:
+        if type(max_bytes) is not int or not 32768 <= max_bytes <= MAX_ARCHIVE_BYTES:
             raise ValueError("Invalid archive capacity")
         self.path = path
         self.owner = owner
@@ -220,6 +226,7 @@ class RideArchive:
         self._close_task: asyncio.Task[None] | None = None
         self.write_paused = False
         self.backup_paused = False
+        self._space_checked_at = 0.0
 
     async def _run(
         self,
@@ -292,6 +299,11 @@ class RideArchive:
             raise ArchiveError(ArchiveFailure.CAPACITY)
         if write and self.backup_paused:
             raise ArchiveError(ArchiveFailure.BUSY)
+        if write and time.monotonic() - self._space_checked_at >= 30:
+            if shutil.disk_usage(self.path.parent).free < MIN_FREE_BYTES:
+                self.write_paused = True
+                raise ArchiveError(ArchiveFailure.CAPACITY)
+            self._space_checked_at = time.monotonic()
         return self._connection
 
     async def async_prepare_backup(self) -> None:
@@ -310,6 +322,28 @@ class RideArchive:
     def resume_after_backup(self) -> None:
         """The loop clears a transient barrier, never a capacity failure."""
         self.backup_paused = False
+
+    async def async_set_capacity(self, max_bytes: int, *, guard: Callable[[], bool]) -> bool:
+        """Recheck space/quota without deleting data or bypassing backup fencing."""
+        if type(max_bytes) is not int or not 32768 <= max_bytes <= MAX_ARCHIVE_BYTES:
+            raise ValueError("Invalid archive capacity")
+
+        def update() -> bool:
+            if self.backup_paused:
+                raise ArchiveError(ArchiveFailure.BUSY)
+            db = self._db()
+            page_size = db.execute("PRAGMA page_size").fetchone()[0]
+            pages = db.execute("PRAGMA page_count").fetchone()[0]
+            budget = max_bytes // page_size
+            db.execute(f"PRAGMA max_page_count={max(pages, budget)}")
+            self.max_bytes = max_bytes
+            self.write_paused = (
+                pages > budget or shutil.disk_usage(self.path.parent).free < MIN_FREE_BYTES
+            )
+            self._space_checked_at = time.monotonic()
+            return not self.write_paused
+
+        return await self._run(update, guard=guard)
 
     async def async_open(self) -> None:
         async with self._open_lock:
@@ -330,7 +364,13 @@ class RideArchive:
         if db.execute("PRAGMA user_version").fetchone()[0] != version:
             raise ArchiveError(ArchiveFailure.SCHEMA)
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        columns_by_table = TABLE_COLUMNS | (DETAIL_COLUMNS if version == 2 else {})
+        from .history_store import COLUMNS as HISTORY_COLUMNS
+
+        columns_by_table = (
+            TABLE_COLUMNS
+            | (DETAIL_COLUMNS if version >= 2 else {})
+            | (HISTORY_COLUMNS if version >= 3 else {})
+        )
         if tables != columns_by_table.keys():
             raise ArchiveError(ArchiveFailure.SCHEMA)
         for table, columns in columns_by_table.items():
@@ -410,7 +450,12 @@ class RideArchive:
                 raise ValueError("Invalid archived ride index")
             stamp(observed)
 
-        if version == 2:
+        if version >= 3:
+            from .history_store import check as check_history
+
+            check_history(db)
+
+        if version >= 2:
             for (
                 vehicle,
                 identity,
@@ -462,13 +507,13 @@ class RideArchive:
             probe = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True)
             try:
                 version = probe.execute("PRAGMA user_version").fetchone()[0]
-                if version not in (1, SCHEMA_VERSION):
+                if version not in (1, 2, SCHEMA_VERSION):
                     raise ArchiveError(ArchiveFailure.SCHEMA)
                 self._check(probe, version)
             finally:
                 probe.close()
-            if version == 1:
-                self._migrate_v1()
+            if version < SCHEMA_VERSION:
+                self._migrate(version)
         else:
             self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             os.chmod(self.path.parent, 0o700)
@@ -477,7 +522,9 @@ class RideArchive:
             db = sqlite3.connect(self.path)
             try:
                 with db:
-                    for sql in (*SCHEMA, *DETAIL_SCHEMA):
+                    from .history_store import SCHEMA as HISTORY_SCHEMA
+
+                    for sql in (*SCHEMA, *DETAIL_SCHEMA, *HISTORY_SCHEMA):
                         db.execute(sql)
                     db.executemany(
                         "INSERT INTO meta VALUES (?,?)", (("owner", self.owner), ("revision", "0"))
@@ -501,11 +548,13 @@ class RideArchive:
             db.close()
             raise
 
-    def _migrate_v1(self) -> None:
+    def _migrate(self, version: int) -> None:
         """Validate first, save an exclusive consistent backup, then atomic DDL."""
+        if shutil.disk_usage(self.path.parent).free < self.path.stat().st_size * 2 + MIN_FREE_BYTES:
+            raise ArchiveError(ArchiveFailure.CAPACITY)
         with self.path.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        destination = self.path.with_name(f"rides.schema1-{digest}.sqlite3")
+        destination = self.path.with_name(f"rides.schema{version}-{digest}.sqlite3")
         db = sqlite3.connect(self.path)
         try:
             if not destination.exists():
@@ -518,7 +567,7 @@ class RideArchive:
                     target = sqlite3.connect(temporary)
                     try:
                         db.backup(target)
-                        self._check(target, 1)
+                        self._check(target, version)
                     finally:
                         target.close()
                     with temporary.open("rb") as stream:
@@ -531,7 +580,7 @@ class RideArchive:
             else:
                 target = sqlite3.connect(destination.as_uri() + "?mode=ro", uri=True)
                 try:
-                    self._check(target, 1)
+                    self._check(target, version)
                 finally:
                     target.close()
             pages = db.execute("PRAGMA page_count").fetchone()[0]
@@ -539,7 +588,9 @@ class RideArchive:
             db.execute(f"PRAGMA max_page_count={max(pages, self.max_bytes // size)}")
             db.execute("BEGIN IMMEDIATE")
             try:
-                for sql in DETAIL_SCHEMA:
+                from .history_store import SCHEMA as HISTORY_SCHEMA
+
+                for sql in (*(DETAIL_SCHEMA if version == 1 else ()), *HISTORY_SCHEMA):
                     db.execute(sql)
                 db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._check(db)
@@ -1646,6 +1697,159 @@ class RideArchive:
 
     async def async_sync_job(self) -> SyncJob | None:
         return await self._run(self._sync_job)
+
+    async def async_history_plan(self, sn: str) -> HistoryPlan | None:
+        from .history_store import root
+
+        return await self._run(lambda: root(self._db(), vehicle_key(sn)))
+
+    async def async_set_history_plan(
+        self,
+        sn: str,
+        plan: HistoryPlan,
+        expected: HistoryPlan | None,
+        *,
+        guard: Callable[[], bool],
+    ) -> None:
+        from .history_store import HistoryConflict, put_root
+
+        if plan.vehicle != vehicle_key(sn):
+            raise ValueError("Invalid history plan scope")
+
+        def commit() -> None:
+            db = self._db(write=True)
+            try:
+                with db:
+                    db.execute(
+                        "INSERT OR IGNORE INTO vehicles VALUES (?,NULL,?,0)",
+                        (plan.vehicle, plan.updated_at),
+                    )
+                    put_root(db, plan, expected)
+            except HistoryConflict:
+                raise ArchiveError(ArchiveFailure.BUSY) from None
+
+        await self._run(commit, guard=guard)
+
+    async def async_claim_history_page(
+        self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
+    ) -> HistoryPlan | None:
+        from .history_plan import HistoryState
+        from .history_store import put_root, root
+
+        observed = utc_string(now)
+        if type(budget) is not int or not 1 <= budget <= 60:
+            raise ValueError("Invalid history budget")
+
+        def claim() -> HistoryPlan | None:
+            db = self._db(write=True)
+            vehicle = vehicle_key(sn)
+            with db:
+                current = root(db, vehicle)
+                if (
+                    current is None
+                    or current.next_month is None
+                    or current.state
+                    not in {HistoryState.DISCOVER, HistoryState.QUERYING, HistoryState.WAITING}
+                    or current.retry_at is not None
+                    and stamp(current.retry_at) > now
+                ):
+                    return None
+                if not self._reserve_background(db, vehicle, now.timestamp(), budget, "month"):
+                    return None
+                claimed = replace(
+                    current,
+                    state=HistoryState.QUERYING,
+                    reason=None,
+                    updated_at=observed,
+                    revision=current.revision + 1,
+                    attempts=min(255, current.attempts + 1),
+                    retry_at=utc_string(now + timedelta(seconds=120)),
+                )
+                put_root(db, claimed, current)
+                return claimed
+
+        return await self._run(claim, guard=guard)
+
+    async def async_wait_history_page(
+        self,
+        expected: HistoryPlan,
+        now: datetime,
+        reason: str,
+        delay: float,
+        *,
+        guard: Callable[[], bool],
+    ) -> None:
+        from .history_plan import HistoryState
+        from .history_store import HistoryConflict, put_root
+
+        if not isinstance(delay, (int, float)) or not 0 <= delay <= 86400:
+            raise ValueError("Invalid history retry delay")
+        following = replace(
+            expected,
+            state=HistoryState.WAITING,
+            reason=reason,
+            revision=expected.revision + 1,
+            updated_at=utc_string(now),
+            retry_at=utc_string(now + timedelta(seconds=delay)),
+        )
+
+        def wait() -> None:
+            db = self._db(write=True)
+            try:
+                with db:
+                    put_root(db, following, expected)
+            except HistoryConflict:
+                raise ArchiveError(ArchiveFailure.BUSY) from None
+
+        await self._run(wait, guard=guard)
+
+    async def async_accept_history_page(
+        self,
+        sn: str,
+        expected: HistoryPlan,
+        raw: RawRecord,
+        *,
+        guard: Callable[[], bool],
+    ) -> PageReceipt:
+        from .history_store import HistoryConflict, accept_page
+
+        if expected.vehicle != vehicle_key(sn):
+            raise ValueError("Invalid history page scope")
+
+        def commit() -> PageReceipt:
+            db = self._db(write=True)
+            try:
+                with db:
+                    receipt = accept_page(db, expected, raw)
+                return receipt
+            except HistoryConflict:
+                raise ArchiveError(ArchiveFailure.BUSY) from None
+
+        return await self._run(commit, guard=guard)
+
+    async def async_history_page(
+        self,
+        sn: str,
+        plan_id: str,
+        month: str,
+        number: int,
+        *,
+        guard: Callable[[], bool],
+    ) -> RawRecord | None:
+        from .history_plan import MAX_PAGES
+        from .history_store import page
+
+        previous_month(month)
+        if (
+            type(number) is not int
+            or not 1 <= number <= MAX_PAGES
+            or len(plan_id) != 32
+            or any(c not in "0123456789abcdef" for c in plan_id)
+        ):
+            raise ValueError("Invalid history page query")
+        return await self._run(
+            lambda: page(self._db(), vehicle_key(sn), plan_id, month, number), guard=guard
+        )
 
     async def async_set_sync_job(
         self,
