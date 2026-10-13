@@ -323,6 +323,28 @@ class RideArchive:
         """The loop clears a transient barrier, never a capacity failure."""
         self.backup_paused = False
 
+    async def async_set_capacity(self, max_bytes: int, *, guard: Callable[[], bool]) -> bool:
+        """Recheck space/quota without deleting data or bypassing backup fencing."""
+        if type(max_bytes) is not int or not 32768 <= max_bytes <= MAX_ARCHIVE_BYTES:
+            raise ValueError("Invalid archive capacity")
+
+        def update() -> bool:
+            if self.backup_paused:
+                raise ArchiveError(ArchiveFailure.BUSY)
+            db = self._db()
+            page_size = db.execute("PRAGMA page_size").fetchone()[0]
+            pages = db.execute("PRAGMA page_count").fetchone()[0]
+            budget = max_bytes // page_size
+            db.execute(f"PRAGMA max_page_count={max(pages, budget)}")
+            self.max_bytes = max_bytes
+            self.write_paused = (
+                pages > budget or shutil.disk_usage(self.path.parent).free < MIN_FREE_BYTES
+            )
+            self._space_checked_at = time.monotonic()
+            return not self.write_paused
+
+        return await self._run(update, guard=guard)
+
     async def async_open(self) -> None:
         async with self._open_lock:
             if self.backup_paused:

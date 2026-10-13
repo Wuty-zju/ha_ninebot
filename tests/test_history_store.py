@@ -170,3 +170,41 @@ async def test_capacity_and_backup_barrier_leave_checkpoint_readable(store):
     assert error.value.kind is ArchiveFailure.BUSY
     assert await store.async_history_plan(SN) == initial()
     store.resume_after_backup()
+
+
+async def test_quota_reduction_preserves_data_and_can_be_reopened(store):
+    first = await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    assert not await store.async_set_capacity(32768, guard=lambda: True)
+    assert await store.async_history_plan(SN) == first.root
+    assert await store.async_set_capacity(200 * 1024 * 1024, guard=lambda: True)
+    second = await store.async_accept_history_page(
+        SN, first.root, record(("ride-two",)), guard=lambda: True
+    )
+    assert second.verified
+
+
+async def test_free_space_migration_preflight_does_not_touch_original(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from custom_components.ninebot import ride_archive
+
+    path = tmp_path / "no-space.sqlite3"
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    await archive.async_close()
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE history_months")
+        db.execute("DROP TABLE history_pages")
+        db.execute("DROP TABLE history_roots")
+        db.execute("PRAGMA user_version=2")
+    before = path.read_bytes()
+    monkeypatch.setattr(ride_archive.shutil, "disk_usage", lambda path: SimpleNamespace(free=0))
+    migrated = RideArchive(path, OWNER)
+    try:
+        with pytest.raises(ArchiveError) as error:
+            await migrated.async_open()
+        assert error.value.kind is ArchiveFailure.CAPACITY
+        assert path.read_bytes() == before
+        assert not list(tmp_path.glob("rides.schema2-*.sqlite3"))
+    finally:
+        await migrated.async_close()
