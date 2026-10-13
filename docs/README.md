@@ -757,3 +757,19 @@ finished/cancelled/failed task metadata does not delete rides, raw details or GP
 Backup includes task claims and budget. Cancel/unload drains the active query before
 returning; old sync_history range operations remain supported. No cloud paging,
 coordinate conversion or point-time/unit inference is introduced.
+
+### Recorded detail mapping and saved-route availability (b58)
+
+A recorded older ride can now resolve its verified detail ID from the scoped
+vehicle/month membership even when absent from the latest twenty-row response.
+The lookup is local and bounded; no extra month query is needed. Complete-list
+withdrawals and conflicting detail IDs remain excluded from this mapping.
+
+Recorded pages include `detail_saved` (a Boolean index check, without reading GPS).
+The card explains when detail is not saved and disables the saved-route button;
+use **Get cloud detail** explicitly, or **Read locally** after background
+preservation. Detail queries remain cache-first; a successful response reports
+whether its detail is actually saved. A cloud response alone does not guarantee
+persistence. Older responses without this flag retain the existing behavior.
+Refresh your browser after upgrading. No database/registry edits, historical
+rescans or increased polling intervals are required.

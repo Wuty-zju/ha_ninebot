@@ -227,6 +227,7 @@ async def test_action_offline_pagination_no_cloud_no_large_state(hass, entry, ap
     first = await call(hass, device, limit=1)
     assert first["source_mode"] == "ride_archive"
     assert first["rides"][0]["precision"]["mileages"] == 2
+    assert first["rides"][0]["detail_saved"] is False
     assert first["rides"][0]["received_at"] == (NOW + timedelta(seconds=1)).isoformat()
     assert first["coverage"]["missing_months"] == ["202608"]
     assert not first["coverage"]["all_observed_lists_complete"]

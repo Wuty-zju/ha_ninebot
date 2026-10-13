@@ -3,7 +3,7 @@
 import asyncio
 import json
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -215,25 +215,29 @@ def test_invalid_inputs_rejected_before_backend(data, freezer):
 
 async def test_ride_lookup_no_guess_cross_month_or_duplicate(hass, entry, app_client, query_device):
     data = {"device_id": query_device, "ride_id": "not-in-index"}
-    with pytest.raises(HomeAssistantError, match="verified detail mapping"):
+    with pytest.raises(HomeAssistantError) as error:
         await call(hass, "get_trip_detail", data)
+    assert error.value.translation_key == "query_ride"
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_get_travel.return_value = {"list": None}
-    with pytest.raises(HomeAssistantError, match="verified detail mapping"):
+    with pytest.raises(HomeAssistantError) as error:
         await call(
             hass, "get_trip_detail", {**data, "ride_id": "fixture-ride-01", "query_month": "202608"}
         )
+    assert error.value.translation_key == "query_ride"
     app_client.async_get_travel.assert_any_await("SyntheticSN", "202608")
     co = entry.runtime_data.coordinator
     co.raw.clear()
     row = {"travel_id": "duplicate", "duration": 1}
     app_client.async_get_travel.return_value = {"list": [row, row]}
-    with pytest.raises(HomeAssistantError, match="verified detail mapping"):
+    with pytest.raises(HomeAssistantError) as error:
         await call(hass, "get_trip_detail", {**data, "ride_id": "duplicate"})
+    assert error.value.translation_key == "query_ride"
     co.raw.clear()
     app_client.async_get_travel.return_value = {"list": [{"id": "legacy-only"}]}
-    with pytest.raises(HomeAssistantError, match="verified detail mapping"):
+    with pytest.raises(HomeAssistantError) as error:
         await call(hass, "get_trip_detail", {**data, "ride_id": "legacy-only"})
+    assert error.value.translation_key == "query_ride"
     app_client.async_get_trip_detail.assert_not_awaited()
 
 
@@ -466,4 +470,49 @@ async def test_local_only_unavailable_archive_is_not_reported_as_missing_detail(
             )
         assert error.value.translation_key == "query_unavailable"
     app_client.async_get_trip_detail.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()
+
+
+@pytest.mark.parametrize("refresh", [False, True])
+async def test_old_archived_id_detail_ignores_latest_twenty_row_window(
+    hass, entry, app_client, query_device, freezer, refresh
+):
+    from custom_components.ninebot.adapters import travel
+
+    co = entry.runtime_data.coordinator
+    at = datetime(2026, 9, 26, tzinfo=UTC) + timedelta(seconds=1)
+    # Initial setup has twenty older IDs. A later partial page displaces them.
+    recent = travel(
+        {
+            "times": 40,
+            "list": [
+                {
+                    "travel_id": f"new-{index}",
+                    "start_time": int(at.timestamp()) + index * 100,
+                    "end_time": int(at.timestamp()) + index * 100 + 60,
+                    "mileages": 1,
+                    "duration": 60,
+                }
+                for index in range(20)
+            ],
+        },
+        "202609",
+    )
+    await co.statistics.archive.async_record_month("SyntheticSN", recent, at)
+    freezer.move_to(at + timedelta(seconds=1))
+    current = await co.statistics.archive.async_month("SyntheticSN", "202609")
+    assert current.known_ride_count == 40 and len(current.travel.rides) == 20
+    assert all(ride.ride_id != "fixture-ride-01" for ride in current.travel.rides)
+    app_client.async_get_travel.reset_mock()
+    app_client.async_get_trip_detail.reset_mock()
+    data = {"device_id": query_device, "ride_id": "fixture-ride-01", "query_month": "202609"}
+    with patch.object(co, "async_month_observation", side_effect=AssertionError("No month reread")):
+        result = await call(hass, "get_trip_detail", {**data, "refresh": refresh})
+        assert result["ride"]["ride_id"] == "fixture-ride-01"
+        assert result["ride"]["detail_saved"] is True
+        saved = await call(hass, "get_trip_detail", {**data, "local_only": True})
+        assert saved["source_mode"] == "ride_archive"
+        assert saved["ride"]["detail_saved"] is True
+    app_client.async_get_trip_detail.assert_awaited_once()
+    app_client.async_get_travel.assert_not_awaited()
     app_client.async_control.assert_not_awaited()

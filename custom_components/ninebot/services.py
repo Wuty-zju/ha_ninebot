@@ -489,7 +489,7 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
             "source": "ninecli",
             "source_mode": "ride_archive",
             "backend_version": record.backend_version,
-            "ride": ride_response(detail.ride, include_track),
+            "ride": {**ride_response(detail.ride, include_track), "detail_saved": True},
             "detail_context": detail_context(detail),
         }
     if local_only:
@@ -497,11 +497,26 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
         # trigger month discovery or a cloud detail download on its behalf.
         raise validation_error("query_detail_not_recorded")
     try:
-        observation = await co.async_month_observation(
-            sn, month, prefer_local=not require_live, refresh=require_live
-        )
-        travel = observation.travel
-        rides = travel.rides
+        summary = None
+        if not is_list and co.statistics.archive_ready:
+            summary = await co.statistics.archive.async_detail_summary(
+                sn,
+                call.data["ride_id"],
+                month,
+                guard=lambda: (
+                    co.local_vehicle_available(sn)
+                    and generation == co._generation
+                    and ownership == co._ownership.get(sn, 0)
+                ),
+            )
+        if is_list or summary is None:
+            observation = await co.async_month_observation(
+                sn, month, prefer_local=not require_live, refresh=require_live
+            )
+            travel = observation.travel
+            rides = travel.rides
+        else:
+            rides = (summary,)
         if is_list:
             # Stable local order when verified times exist; retain original order
             # for rows without times rather than inventing server ordering.
@@ -590,6 +605,14 @@ async def async_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
                 "source_mode": detail.source_mode,
                 "detail_context": detail_context(detail),
             }
+            if co.statistics.archive_ready:
+                saved = await co.statistics.archive.async_saved_detail_ids(
+                    sn, (call.data["ride_id"],)
+                )
+                response["ride"]["detail_saved"] = call.data["ride_id"] in saved
+    except ArchiveError as err:
+        co.statistics.record_error(err)
+        raise validation_error("query_unavailable") from err
     except NinebotError as err:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key=err.kind.value) from err
     await async_check_history_access(hass, call, entry.entry_id, include_track=include_track)

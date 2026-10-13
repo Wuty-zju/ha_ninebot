@@ -117,3 +117,11 @@ test('pinned bundled map files match their source inventory and retain the licen
   }
   assert.ok(readFileSync(new URL('LICENSE', base), 'utf8').includes('BSD 2-Clause'));
 });
+
+
+test('saved detail availability is strict and scoped to each response', async () => {
+  const { safeRide } = await import('../../custom_components/ninebot/frontend/trip-browser.js');
+  assert.equal(safeRide({ detail_saved: false }).detail_saved, false);
+  assert.equal(safeRide({ detail_saved: true }).detail_saved, true);
+  for (const value of [undefined, 'false', 0]) assert.equal(safeRide({ detail_saved: value }).detail_saved, null);
+});

@@ -61,7 +61,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -125,7 +126,8 @@ export const LABELS = {
     "point_distance": "距离采样值 · 单位待验证",
     "play_points": "按点播放",
     "pause_points": "暂停播放",
-    "playback_note": "按已读点固定0.5秒逐点播放，不代表实际时间或速度，不请求API。"
+    "playback_note": "按已读点固定0.5秒逐点播放，不代表实际时间或速度，不请求API。",
+    "detail_missing": "尚未保存轨迹详情。先获取详情，或稍后本地读取以查看后台保存进度。"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -189,7 +191,8 @@ export const LABELS = {
     "point_distance": "距離取樣值 · 單位待驗證",
     "play_points": "按點播放",
     "pause_points": "暫停播放",
-    "playback_note": "按已讀點固定0.5秒逐點播放，不代表實際時間或速度，不請求API。"
+    "playback_note": "按已讀點固定0.5秒逐點播放，不代表實際時間或速度，不請求API。",
+    "detail_missing": "尚未儲存軌跡詳情。先取得詳情，或稍後本機讀取以查看背景儲存進度。"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -253,7 +256,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "fr": {
     "title": "Historique des trajets",
@@ -317,7 +321,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "es": {
     "title": "Historial de viajes",
@@ -381,7 +386,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -445,7 +451,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -509,7 +516,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -573,7 +581,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "ru": {
     "title": "История поездок",
@@ -637,7 +646,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "ja": {
     "title": "走行履歴",
@@ -701,7 +711,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "ko": {
     "title": "주행 기록",
@@ -765,7 +776,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -829,7 +841,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -893,7 +906,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "uk": {
     "title": "Історія поїздок",
@@ -957,7 +971,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -1021,7 +1036,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -1085,7 +1101,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -1149,7 +1166,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -1213,7 +1231,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -1277,7 +1296,8 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -1341,6 +1361,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests."
+    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation."
   }
 };

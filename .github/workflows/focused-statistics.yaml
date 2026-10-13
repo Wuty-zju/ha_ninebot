@@ -4,6 +4,7 @@ on:
     paths:
       - 'custom_components/ninebot/*statistics*.py'
       - 'custom_components/ninebot/ride_archive.py'
+      - 'custom_components/ninebot/recorded_actions.py'
       - 'custom_components/ninebot/ride_models.py'
       - 'custom_components/ninebot/detail_codec.py'
       - 'custom_components/ninebot/preservation.py'
@@ -14,6 +15,7 @@ on:
       - 'tests/test_month_tasks.py'
       - 'custom_components/ninebot/backup.py'
       - 'tests/test_private_detail_archive.py'
+      - 'tests/test_recorded_trips.py'
       - 'custom_components/ninebot/travel.py'
       - 'tests/test_travel.py'
       - 'custom_components/ninebot/archive_runtime.py'
@@ -46,6 +48,7 @@ jobs:
           tests/test_query_broker.py
           tests/test_coordinator.py
           tests/test_private_detail_archive.py
+          tests/test_recorded_trips.py
           tests/test_travel.py
           tests/test_services.py
           tests/test_accumulated_statistics.py

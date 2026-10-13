@@ -620,7 +620,7 @@
       "message": "A trip track requires include_detail."
     },
     "query_ride": {
-      "message": "The ride does not have one verified detail mapping in this vehicle and month. Specify the correct month and use Get trips first."
+      "message": "No unique verified trip detail ID is available for this vehicle and month."
     },
     "history_range": {
       "message": "Choose an ordered month range of at most 360 months."

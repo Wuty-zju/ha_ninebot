@@ -74,6 +74,9 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
         page = await statistics.archive.async_recorded_page(
             sn, start, end, now, limit=call.data["limit"], cursor=cursor
         )
+        saved = await statistics.archive.async_saved_detail_ids(
+            sn, tuple(row.ride.ride_id for row in page.records if row.ride.ride_id is not None)
+        )
     except ValueError:
         raise validation_error("recorded_range") from None
     except ArchiveError as err:
@@ -108,7 +111,12 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
             "as_of": cursor.as_of if cursor else iso(now),
         },
         "rides": [
-            {**ride_response(row.ride), "received_at": iso(row.received_at)} for row in page.records
+            {
+                **ride_response(row.ride),
+                "received_at": iso(row.received_at),
+                "detail_saved": row.ride.ride_id in saved,
+            }
+            for row in page.records
         ],
         "months": [
             {
