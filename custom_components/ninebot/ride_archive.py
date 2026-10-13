@@ -386,7 +386,15 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("detail_health:"):
+            if key.startswith("history_paused:"):
+                vehicle = key.removeprefix("history_paused:")
+                if (
+                    len(vehicle) != 64
+                    or any(c not in "0123456789abcdef" for c in vehicle)
+                    or value not in {"0", "1"}
+                ):
+                    raise ValueError("Invalid history pause state")
+            elif key.startswith("detail_health:"):
                 from .detail_health import key as health_key
                 from .detail_health import validate as validate_health
 
@@ -1062,6 +1070,11 @@ class RideArchive:
     def _reserve_background(
         self, db: sqlite3.Connection, vehicle: str, epoch: float, budget: int, kind: str
     ) -> bool:
+        paused = db.execute(
+            "SELECT value FROM meta WHERE key=?", (f"history_paused:{vehicle}",)
+        ).fetchone()
+        if paused is not None and paused[0] == "1":
+            return False
         limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
         if limit is not None and float(limit[0]) > epoch:
             return False
@@ -1220,6 +1233,8 @@ class RideArchive:
         epoch = now.timestamp()
         db = self._db(write=True)
         with db:
+            if self._history_paused(vehicle):
+                return None
             limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
             if limit is not None and float(limit[0]) > epoch:
                 return None
@@ -1736,6 +1751,34 @@ class RideArchive:
 
         return await self._run(lambda: root(self._db(), vehicle_key(sn)))
 
+    def _history_paused(self, vehicle: str) -> bool:
+        row = (
+            self._db()
+            .execute("SELECT value FROM meta WHERE key=?", (f"history_paused:{vehicle}",))
+            .fetchone()
+        )
+        return bool(row and row[0] == "1")
+
+    async def async_history_paused(self, sn: str) -> bool:
+        return await self._run(lambda: self._history_paused(vehicle_key(sn)))
+
+    async def async_set_history_paused(
+        self, sn: str, paused: bool, *, guard: Callable[[], bool]
+    ) -> None:
+        if type(paused) is not bool:
+            raise ValueError("Invalid history pause value")
+
+        def save() -> None:
+            db = self._db(write=True)
+            with db:
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                    " DO UPDATE SET value=excluded.value",
+                    (f"history_paused:{vehicle_key(sn)}", "1" if paused else "0"),
+                )
+
+        await self._run(save, guard=guard)
+
     async def async_history_health(self, sn: str, plan_id: str) -> HistoryHealth:
         from .detail_health import summary
         from .history_store import root
@@ -1959,6 +2002,8 @@ class RideArchive:
             db = self._db(write=True)
             try:
                 with db:
+                    if self._history_paused(expected.vehicle):
+                        raise ArchiveError(ArchiveFailure.BUSY)
                     receipt = accept_page(db, expected, raw)
                     if receipt.stop != "schema":
                         from .adapters import travel as parse_month

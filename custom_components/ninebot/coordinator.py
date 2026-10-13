@@ -861,7 +861,11 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
         validate_page(sn, month, page)
         key = self._key(sn, Endpoint.TRAVEL, f"history:{month}:{page}")
-        if not self._owns(key) or not self.fresh(sn, "profile"):
+        if (
+            not self._owns(key)
+            or not self.fresh(sn, "profile")
+            or sn in self.preservation.bootstrap.paused
+        ):
             raise NinebotError(ErrorKind.CLOSED)
         task = asyncio.current_task()
         if task:
@@ -869,7 +873,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         try:
 
             async def query() -> BackendResult:
-                if not self.fresh(sn, "profile"):
+                if not self.fresh(sn, "profile") or sn in self.preservation.bootstrap.paused:
                     raise NinebotError(ErrorKind.CLOSED)
                 return await self.backend.async_travel_page(sn, month, page)
 
@@ -897,7 +901,11 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 )
             except RawLimitError:
                 raise NinebotError(ErrorKind.PROTOCOL) from None
-            if not self._owns(key) or not self.fresh(sn, "profile"):
+            if (
+                not self._owns(key)
+                or not self.fresh(sn, "profile")
+                or sn in self.preservation.bootstrap.paused
+            ):
                 raise NinebotError(ErrorKind.CLOSED)
             return replace(record, request_revision=result.request_revision)
         except NinebotAuthError as err:

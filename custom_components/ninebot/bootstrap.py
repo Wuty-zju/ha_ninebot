@@ -30,6 +30,7 @@ class HistoryBootstrap:
     def __init__(self, co: "NinebotCoordinator") -> None:
         self.co = co
         self.snapshots: dict[str, tuple[HistoryPlan, HistoryHealth]] = {}
+        self.paused: set[str] = set()
 
     def enabled(self) -> bool:
         entry = self.co.config_entry
@@ -40,7 +41,9 @@ class HistoryBootstrap:
             is True
         )
 
-    def guard(self, sn: str) -> Callable[[], bool]:
+    def guard(
+        self, sn: str, *, require_enabled: bool = True, respect_pause: bool = True
+    ) -> Callable[[], bool]:
         co = self.co
         generation, ownership = co._generation, co._ownership.get(sn, 0)
         return lambda: (
@@ -48,7 +51,8 @@ class HistoryBootstrap:
             and co._generation == generation
             and co._ownership.get(sn, 0) == ownership
             and co.local_vehicle_available(sn)
-            and self.enabled()
+            and (not require_enabled or self.enabled())
+            and (not respect_pause or sn not in self.paused)
         )
 
     async def async_seed(self, vehicles: tuple[str, ...], now: datetime) -> None:
@@ -62,6 +66,10 @@ class HistoryBootstrap:
         }
         end = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).strftime("%Y%m")
         for sn in vehicles:
+            if await archive.async_history_paused(sn):
+                self.paused.add(sn)
+                continue
+            self.paused.discard(sn)
             if not self.co.fresh(sn, "profile"):
                 continue
             plan = await archive.async_history_plan(sn)
@@ -87,7 +95,7 @@ class HistoryBootstrap:
             return False
         co, archive = self.co, self.co.statistics.archive
         for sn in vehicles:
-            if not co.fresh(sn, "profile"):
+            if sn in self.paused or not co.fresh(sn, "profile"):
                 continue
             owns = self.guard(sn)
             claimed = await archive.async_claim_history_page(sn, now, budget, guard=owns)
@@ -135,3 +143,12 @@ class HistoryBootstrap:
                     )
             return True  # One shared budget reservation/wire operation at most.
         return False
+
+    async def async_pause(self, sn: str, paused: bool) -> None:
+        owns = self.guard(sn, require_enabled=False, respect_pause=False)
+        await self.co.statistics.archive.async_set_history_paused(sn, paused, guard=owns)
+        if paused:
+            self.paused.add(sn)
+        else:
+            self.paused.discard(sn)
+        self.co.statistics._notify_change(sn, owns)

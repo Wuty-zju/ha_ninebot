@@ -413,3 +413,44 @@ async def test_best_geometry_retention_and_local_quality_backfill_need_no_cloud(
         assert (await recovered.async_history_health(SN, root.plan_id)).latest_degraded == 1
     finally:
         await recovered.async_close()
+
+
+async def test_pause_is_durable_does_not_reset_root_or_shared_budget(store):
+    claimed = await store.async_claim_history_page(SN, NOW, 60, guard=lambda: True)
+    await store.async_set_history_paused(SN, True, guard=lambda: True)
+    assert await store.async_history_paused(SN)
+    assert (
+        await store.async_claim_history_page(SN, NOW + timedelta(minutes=3), 60, guard=lambda: True)
+        is None
+    )
+    assert not await store.async_background_budget(
+        SN, NOW + timedelta(minutes=3), 60, guard=lambda: True
+    )
+    assert await store.async_history_plan(SN) == claimed
+    path = store.path
+    await store.async_close()
+    recovered = RideArchive(path, OWNER)
+    try:
+        await recovered.async_open()
+        assert await recovered.async_history_paused(SN)
+        assert await recovered.async_history_plan(SN) == claimed
+        await recovered.async_set_history_paused(SN, False, guard=lambda: True)
+        resumed = await recovered.async_claim_history_page(
+            SN, NOW + timedelta(minutes=3), 60, guard=lambda: True
+        )
+        assert resumed.plan_id == claimed.plan_id and resumed.next_page == claimed.next_page
+        assert resumed.attempts == claimed.attempts + 1
+    finally:
+        await recovered.async_close()
+
+
+async def test_paused_actor_rejects_inflight_page_even_if_callers_guard_is_stale(store):
+    await store.async_set_history_paused(SN, True, guard=lambda: True)
+    with pytest.raises(ArchiveError) as error:
+        await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    assert error.value.kind is ArchiveFailure.BUSY
+    assert await store.async_history_plan(SN) == initial()
+    assert (
+        await store.async_history_page(SN, initial().plan_id, "202610", 1, guard=lambda: True)
+        is None
+    )

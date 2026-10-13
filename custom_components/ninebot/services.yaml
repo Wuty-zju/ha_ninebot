@@ -216,6 +216,9 @@ sync_history:
             - repair_continue
             - repair_status
             - repair_cancel
+            - pause
+            - resume
+            - sync_status
     start_month:
       example: "202601"
       selector:

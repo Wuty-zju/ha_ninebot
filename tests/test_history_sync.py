@@ -381,3 +381,18 @@ async def test_recent_seed_stops_after_first_week_and_reuses_same_day(
         await co.preservation.months.async_seed_recent((SN,), when + timedelta(days=7))
         assert not await co.preservation.months.async_step(SN, 30, when + timedelta(days=7))
         app_client.async_get_travel.assert_not_awaited()
+
+
+async def test_pause_resume_status_are_device_scoped_local_only(
+    hass, entry, app_client, sync_device
+):
+    paused = await call(hass, sync_device, operation="pause")
+    assert paused["paused"] and paused["state"] == "paused"
+    assert paused["total_months"] is None and paused["details"] is None
+    status = await call(hass, sync_device, operation="sync_status")
+    assert status["paused"] and not status["background_enabled"]
+    resumed = await call(hass, sync_device, operation="resume")
+    assert not resumed["paused"] and resumed["state"] == "not_started"
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()
+    assert not await entry.runtime_data.coordinator.statistics.archive.async_history_paused(SN)

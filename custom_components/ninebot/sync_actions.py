@@ -42,6 +42,9 @@ SYNC_SCHEMA = vol.Schema(
                 "repair_continue",
                 "repair_status",
                 "repair_cancel",
+                "pause",
+                "resume",
+                "sync_status",
             )
         ),
         vol.Optional("start_month"): query_month,
@@ -65,6 +68,8 @@ async def async_sync_history(hass: HomeAssistant, call: ServiceCall) -> dict[str
     if budget is not None and (type(budget) is not int or not 1 <= budget <= 60):
         budget = DEFAULT_BUDGET
     try:
+        if operation in {"pause", "resume", "sync_status"}:
+            return await async_history_control(hass, call)
         if operation.startswith("repair"):
             return await async_sparse_history(hass, call)
         if operation == "start":
@@ -87,6 +92,37 @@ async def async_sync_history(hass: HomeAssistant, call: ServiceCall) -> dict[str
         raise validation_error("statistics_unavailable") from err
     assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, False, require_live=False)
     return {"schema_version": 1, "operation": operation, **public_progress(job, dt_util.utcnow())}
+
+
+async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    from dataclasses import asdict
+
+    from .history_plan import month_count
+
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
+    co = entry.runtime_data.coordinator
+    runner, archive = co.preservation.bootstrap, co.statistics.archive
+    operation = call.data["operation"]
+    if operation in {"pause", "resume"}:
+        await runner.async_pause(sn, operation == "pause")
+    paused = await archive.async_history_paused(sn)
+    plan = await archive.async_history_plan(sn)
+    health = await archive.async_history_health(sn, plan.plan_id) if plan else None
+    return {
+        "schema_version": 1,
+        "operation": operation,
+        "paused": paused,
+        "background_enabled": entry.options.get(CONF_PRESERVE) is True,
+        "state": "paused" if paused else plan.state.value if plan else "not_started",
+        "scanned_months": plan.scanned_months if plan else None,
+        "total_months": month_count(plan.start_month, plan.end_month) if plan else None,
+        "verified_months": plan.verified_months if plan else None,
+        "gap_months": plan.gap_months if plan else None,
+        "discovery_complete": plan.discovery_complete if plan else False,
+        "details": asdict(health) if health else None,
+        "pagination_basis": "client_page_evidence",
+        "real_cloud_pagination_verified": False,
+    }
 
 
 async def async_sparse_history(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:

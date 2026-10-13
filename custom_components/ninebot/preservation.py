@@ -94,6 +94,7 @@ class HistoryPreservation:
         if type(budget) is not int or not 1 <= budget <= 60:
             budget = DEFAULT_BUDGET
         await self.bootstrap.async_seed(vehicles, now)
+        vehicles = tuple(sn for sn in vehicles if sn not in self.bootstrap.paused)
         if entry.options.get(CONF_PRESERVE) is True:
             await self.months.async_seed_recent(vehicles, now)
         if turn == "month" and await self._resume_months(vehicles, budget):
@@ -110,6 +111,7 @@ class HistoryPreservation:
                     and co._generation == generation
                     and co._ownership.get(vehicle, 0) == epoch
                     and co.local_vehicle_available(vehicle)
+                    and vehicle not in self.bootstrap.paused
                 )
 
             task = await archive.async_preservation_claim(sn, now, budget, guard=owns)

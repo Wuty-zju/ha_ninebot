@@ -288,3 +288,27 @@ async def test_archive_failure_recovery_views_detail_and_guards(hass, freezer):
         assert await store.async_cached_profiles() == ()
     finally:
         await store.async_close()
+
+
+async def test_transient_archive_fences_do_not_disable_healthy_background_writes(hass):
+    store = ArchiveStatistics(hass, "transient-history", "synthetic-business")
+    await store.async_load()
+    try:
+        assert store.writable
+        for kind in (
+            ArchiveFailure.BUSY,
+            ArchiveFailure.CLOSED,
+            ArchiveFailure.CURSOR,
+            ArchiveFailure.BUDGET,
+            ArchiveFailure.OWNER,
+        ):
+            store.record_error(ArchiveError(kind))
+            assert store.error is None and store.writable
+        store.record_error(ArchiveError(ArchiveFailure.STORAGE))
+        assert not store.writable and store.error is ArchiveFailure.STORAGE
+        store.record_error(ArchiveError(ArchiveFailure.BUSY))
+        assert (
+            store.error is ArchiveFailure.STORAGE
+        )  # A transient fence cannot clear a real failure.
+    finally:
+        await store.async_close()

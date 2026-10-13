@@ -34,6 +34,7 @@ async def context(tmp_path, monkeypatch):
             writable=True,
             async_history_page_committed=AsyncMock(),
             record_error=Mock(),
+            _notify_change=Mock(),
         ),
     )
     calls = []
@@ -137,3 +138,20 @@ async def test_disabled_or_stale_profiles_do_not_create_or_query_roots(context):
     await runner.async_seed((SN,), NOW)
     assert await archive.async_history_plan(SN) is None
     assert not calls
+
+
+async def test_pause_resume_preserves_checkpoint_and_stops_background_wire(context):
+    co, archive, clock, calls = context
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    assert await runner.async_step((SN,), NOW, 60)
+    checkpoint = await archive.async_history_plan(SN)
+    await runner.async_pause(SN, True)
+    clock[0] += timedelta(minutes=3)
+    await runner.async_seed((SN,), clock[0])
+    assert not await runner.async_step((SN,), clock[0], 60)
+    assert len(calls) == 1
+    assert await archive.async_history_plan(SN) == checkpoint
+    await runner.async_pause(SN, False)
+    assert await runner.async_step((SN,), clock[0], 60)
+    assert len(calls) == 2 and calls[-1][-1] == 2
