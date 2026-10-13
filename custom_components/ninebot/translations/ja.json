@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "アカウントを追加",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. 新しいアカウントでは、走行履歴と軌跡をバックグラウンドでローカル保存します。オプションで無効にできます。",
         "data": {
           "account": "アカウント",
           "password": "パスワード",

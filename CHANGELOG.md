@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b61
+
+- New accounts enable background full-history discovery for fresh owned vehicles, with lazy month/page checkpoints and the existing shared request budget. Existing explicitly disabled preservation stays disabled.
+- Commit normalized ride memberships with private page evidence; keep live monthly raw data and legacy selected-range jobs separate. Reuse saved details and build quality indexes locally without downloading them again.
+- Complete the baseline only after discovery and detail evidence are resolved; expose internal gap outcomes for simplified, missing or invalid tracks while retaining the best saved geometry. Progress entities and manual synchronization controls follow in later phases.
+- Preserve custom account titles during reauthentication and setup; continue updating automatically generated account titles.
+
 ## 2.0.0b60
 
 - Persist independent full-history roots, page evidence and monthly scan manifests. Commit evidence and checkpoints atomically; repeated/empty pages, changed totals and schema gaps cannot appear as full coverage.

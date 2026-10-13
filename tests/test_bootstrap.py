@@ -92,6 +92,24 @@ async def test_first_scan_really_enumerates_full_client_range_and_preserves_all_
     assert await archive.async_history_plan(SN) == root
     assert not await runner.async_step((SN,), clock[0], 60)
     assert len(calls) == 323
+    from custom_components.ninebot.travel import parse_ride
+
+    for identity in ("ride-1", "ride-2"):
+        body = {"travel_id": identity, "trail": "120,30,1,1;120.1,30.1,2,2"}
+        raw = build_record(Endpoint.TRIP_DETAIL, body, clock[0], "202610", backend_version="0.1.7")
+        await archive.async_record_detail(
+            SN,
+            parse_ride(body, "202610", source=Endpoint.TRIP_DETAIL),
+            clock[0],
+            raw=raw,
+            guard=lambda: True,
+            ordered=True,
+        )
+    await runner.async_seed((SN,), clock[0])
+    finished, health = runner.snapshots[SN]
+    assert finished.state is HistoryState.COMPLETE
+    assert health.discovered == health.saved == 2 and not health.missing
+    assert len(calls) == 323  # Completion verification is entirely local.
 
 
 async def test_shared_budget_prevents_repeated_poll_and_reload_reuses_checkpoint(context):

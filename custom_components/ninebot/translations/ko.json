@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "계정 추가",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. 새 계정은 주행 기록과 경로를 백그라운드에서 로컬에 저장합니다. 옵션에서 끌 수 있습니다.",
         "data": {
           "account": "계정",
           "password": "비밀번호",

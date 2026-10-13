@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Добавить аккаунт",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. Новые аккаунты сохраняют историю поездок и маршруты локально в фоновом режиме. Это можно отключить в настройках.",
         "data": {
           "account": "Аккаунт",
           "password": "Пароль",

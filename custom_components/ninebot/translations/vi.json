@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Thêm tài khoản",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. Tài khoản mới lưu lịch sử chuyến đi và lộ trình cục bộ trong nền. Bạn có thể tắt trong tùy chọn.",
         "data": {
           "account": "Tài khoản",
           "password": "Mật khẩu",

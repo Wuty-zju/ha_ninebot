@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "新增帳號",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. 新帳號預設在背景將行程歷史及軌跡儲存至本機，可在選項中關閉。",
         "data": {
           "account": "帳號",
           "password": "密碼",

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "إضافة حساب",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. تحفظ الحسابات الجديدة سجل الرحلات والمسارات محليًا في الخلفية. يمكنك تعطيل ذلك في الخيارات.",
         "data": {
           "account": "الحساب",
           "password": "كلمة المرور",

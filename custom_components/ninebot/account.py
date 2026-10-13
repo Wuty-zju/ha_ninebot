@@ -47,9 +47,13 @@ def account_update(
     """Retain last known metadata and protect a user-customized entry title."""
     metadata = AccountDisplay.parse(data.get(ACCOUNT_METADATA)).as_dict() | display.as_dict()
     automatic = AccountDisplay.parse(metadata).title(account)
+    previous_account = data.get("account", account)
+    previous_automatic = AccountDisplay.parse(data.get(ACCOUNT_METADATA)).title(previous_account)
     selected = (
         title
-        if not force and title is not None and title not in ("Ninebot", data.get(AUTOMATIC_TITLE))
+        if not force
+        and title is not None
+        and title not in ("Ninebot", data.get(AUTOMATIC_TITLE), previous_automatic)
         else automatic
     )
     return metadata, automatic, selected

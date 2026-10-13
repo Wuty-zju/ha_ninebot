@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "เพิ่มบัญชี",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. บัญชีใหม่จะบันทึกประวัติการเดินทางและเส้นทางไว้ในเครื่องในเบื้องหลัง คุณปิดได้ในตัวเลือก",
         "data": {
           "account": "บัญชี",
           "password": "รหัสผ่าน",

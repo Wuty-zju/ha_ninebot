@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Konto hinzufügen",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. Neue Konten speichern Fahrten und Routen im Hintergrund lokal. Dies lässt sich in den Optionen deaktivieren.",
         "data": {
           "account": "Konto",
           "password": "Passwort",

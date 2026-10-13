@@ -125,7 +125,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
             str(entry.data.get(CONF_ACCOUNT, "")),
             display,
             entry.title,
-            force=True,
         )
         if metadata != entry.data.get(ACCOUNT_METADATA) or entry.title != title:
             hass.config_entries.async_update_entry(

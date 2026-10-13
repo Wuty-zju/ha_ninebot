@@ -14,8 +14,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
 from .const import BUSINESS_TIMEZONE
+from .detail_health import HistoryHealth
 from .exceptions import NinebotError
-from .history_plan import HistoryPlan
+from .history_plan import HistoryPlan, HistoryState
 from .preservation import retry_delay
 from .ride_archive import ArchiveError, ArchiveFailure, vehicle_key
 
@@ -28,6 +29,7 @@ CONF_AUTO_HISTORY = "auto_history_sync"
 class HistoryBootstrap:
     def __init__(self, co: "NinebotCoordinator") -> None:
         self.co = co
+        self.snapshots: dict[str, tuple[HistoryPlan, HistoryHealth]] = {}
 
     def enabled(self) -> bool:
         entry = self.co.config_entry
@@ -53,20 +55,32 @@ class HistoryBootstrap:
         if not self.enabled():
             return
         archive = self.co.statistics.archive
+        self.snapshots = {
+            sn: value
+            for sn, value in self.snapshots.items()
+            if sn in vehicles and self.co.local_vehicle_available(sn)
+        }
         end = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).strftime("%Y%m")
         for sn in vehicles:
             if not self.co.fresh(sn, "profile"):
                 continue
-            if await archive.async_history_plan(sn) is not None:
-                continue  # Reauth/reload cannot replace an existing checkpoint.
-            plan = HistoryPlan.create(
-                secrets.token_hex(16), vehicle_key(sn), "200001", end, now.isoformat()
-            )
-            try:
-                await archive.async_set_history_plan(sn, plan, None, guard=self.guard(sn))
-            except ArchiveError as err:
-                if err.kind is not ArchiveFailure.BUSY:
+            plan = await archive.async_history_plan(sn)
+            if plan is None:
+                plan = HistoryPlan.create(
+                    secrets.token_hex(16), vehicle_key(sn), "200001", end, now.isoformat()
+                )
+                try:
+                    await archive.async_set_history_plan(sn, plan, None, guard=self.guard(sn))
+                except ArchiveError as err:
+                    if err.kind is ArchiveFailure.BUSY:
+                        continue
                     raise
+            owns = self.guard(sn)
+            await archive.async_backfill_detail_health(sn, plan.plan_id, guard=owns)
+            if plan.state in {HistoryState.PRESERVE, HistoryState.VERIFY}:
+                plan = await archive.async_finish_history_baseline(sn, plan, now, guard=owns)
+            if owns():
+                self.snapshots[sn] = (plan, await archive.async_history_health(sn, plan.plan_id))
 
     async def async_step(self, vehicles: tuple[str, ...], now: datetime, budget: int) -> bool:
         if not self.enabled():
@@ -83,6 +97,12 @@ class HistoryBootstrap:
             try:
                 raw = await co.async_query_history_page(sn, claimed.next_month, claimed.next_page)
                 await archive.async_accept_history_page(sn, claimed, raw, guard=owns)
+                plan = await archive.async_history_plan(sn)
+                if plan is not None and owns():
+                    self.snapshots[sn] = (
+                        plan,
+                        await archive.async_history_health(sn, plan.plan_id),
+                    )
                 await co.statistics.async_history_page_committed(sn, owns)
             except (NinebotError, ArchiveError, HomeAssistantError) as err:
                 if isinstance(err, ArchiveError):

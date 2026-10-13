@@ -118,6 +118,18 @@ def put_root(db: sqlite3.Connection, plan: HistoryPlan, expected: HistoryPlan | 
         ).fetchone()
         if count != plan.next_page - 1 or maximum != count:
             raise ValueError("Checkpoint has no page evidence")
+    if plan.state in {HistoryState.COMPLETE, HistoryState.WITH_GAPS}:
+        from .detail_health import summary
+
+        health = summary(db, plan.vehicle, plan.plan_id)
+        if (
+            health.missing
+            or health.unmapped
+            or health.quality_pending
+            or plan.state is HistoryState.COMPLETE
+            and health.archive_has_gaps
+        ):
+            raise ValueError("Baseline has unresolved detail evidence")
     db.execute(
         "INSERT INTO history_roots VALUES (?,?) ON CONFLICT(vehicle)"
         " DO UPDATE SET data=excluded.data",

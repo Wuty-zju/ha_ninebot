@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Account toevoegen",
-        "description": "The password is used only for this login and is not stored in integration configuration.",
+        "description": "The password is used only for this login and is not stored in integration configuration. Nieuwe accounts slaan ritgeschiedenis en routes op de achtergrond lokaal op. Je kunt dit uitschakelen in de opties.",
         "data": {
           "account": "Account",
           "password": "Wachtwoord",
