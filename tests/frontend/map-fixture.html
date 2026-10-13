@@ -10,13 +10,14 @@ const row = { ride_id: 'synthetic-ride', detail_id: 'synthetic-detail', query_mo
   duration_s: 600, duration_h: 1/6, max_speed_m_s: 10, average_speed_m_s: 2, energy_wh: 90,
   precision: { mileages: 1 }, source: 'trip_detail', energy_intensity_wh_per_km: 75 };
 window.fixtureRequests = [];
+window.fixtureSaved = true;
 window.fixtureHass = { user: { id: 'synthetic-reader' }, connection: {}, connected: true, language: 'zh-Hans',
   config: { time_zone: 'Asia/Shanghai' }, states: {}, callWS: async request => {
     window.fixtureRequests.push(request);
     if (request.type === 'config/entity_registry/get') return { device_id: 'synthetic-a' };
     const data = request.service_data;
     if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive',
-      rides: [row], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [] } } };
+      rides: [{ ...row, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [] } } };
     if (request.service !== 'get_trip_detail') throw new Error('Only history reads are allowed');
     const shift = data.device_id === 'synthetic-b' ? 0.002 : 0;
     const all = Array.from({ length: 60 }, (_, sequence) => ({ sequence,
@@ -24,7 +25,7 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection: {}, connect
       speed_raw: 25 + Math.sin(sequence / 4) * 12, distance_delta_raw: 40 + Math.cos(sequence / 5) * 9 }));
     return { response: { source_mode: 'ride_archive', query_month: '202609', received_at: row.end_time,
       detail_context: { source_mode: 'ride_archive', archive_revision: 1, scalar_revision: 1, geometry_received_at: row.end_time },
-      ride: { ...row, track: data.include_track ? all.slice(data.point_offset, data.point_offset + data.max_points) : [],
+      ride: { ...row, detail_saved: true, track: data.include_track ? all.slice(data.point_offset, data.point_offset + data.max_points) : [],
         track_summary: { total_known: 60, offset: data.point_offset, limit: data.max_points,
           next_offset: null, geometry_kind: 'sampled_unverified' } } } };
   } };

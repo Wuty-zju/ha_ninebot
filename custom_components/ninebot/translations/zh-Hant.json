@@ -620,7 +620,7 @@
       "message": "A trip track requires include_detail."
     },
     "query_ride": {
-      "message": "The ride does not have one verified detail mapping in this vehicle and month. Specify the correct month and use Get trips first."
+      "message": "無法在該車輛及月份的行程索引中確認唯一的詳情編號。"
     },
     "history_range": {
       "message": "Choose an ordered month range of at most 360 months."

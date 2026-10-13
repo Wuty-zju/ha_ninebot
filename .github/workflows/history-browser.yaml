@@ -29,7 +29,8 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-paths.txt
-          if grep -Eq '^(custom_components/ninebot/services.py|tests/test_services.py|.github/workflows/history-browser.yaml)$' changed-paths.txt; then
+          # The focused archive suite already covers services when archive code changes.
+          if grep -Eq '^(custom_components/ninebot/services.py|tests/test_services.py|.github/workflows/history-browser.yaml)$' changed-paths.txt && ! grep -Eq '^custom_components/ninebot/ride_archive.py$' changed-paths.txt; then
             echo 'backend=true' >> "$GITHUB_OUTPUT"
           fi
           if grep -Eq '^(custom_components/ninebot/frontend/|tests/frontend/|tests/browser/|.github/workflows/history-browser.yaml)' changed-paths.txt; then

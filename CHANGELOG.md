@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b58
+
+- Fix fetching old recorded trip details when the latest monthly response contains only newer rides. Resolve verified vehicle/month memberships directly without rereading the month.
+- Show saved-detail availability in the trip card; missing routes display guidance instead of sending a predictably failing local request. An explicit detail fetch enables the saved route when persistence succeeds.
+- Keep partial history, account/vehicle guards, conflict and complete-list withdrawal handling, entity identities and archive schema unchanged.
+
 ## 2.0.0b57
 
 - Extend the optional history card with up to five selected vehicles and saved-route overlays, bounded local pages and per-vehicle continuations. Keep existing single-vehicle configuration compatible.

@@ -75,12 +75,27 @@ try {
   assert.ok(external.length > 0); assert.ok(external.every(url => url.startsWith('https://tile.openstreetmap.org/')));
   await page.getByRole('button', { name: '关闭地图底图', exact: true }).click();
   await page.waitForFunction(() => window.fixtureCard.routeMap.tiles === null);
+  await page.evaluate(async () => {
+    fixtureSaved = false; fixtureCard.browser.reset(); await fixtureCard.browser.read();
+  });
+  for (const name of ['Synthetic A', 'Synthetic B']) {
+    await page.locator('ninebot-trip-card summary').filter({ hasText: name }).click();
+  }
+  assert.equal(await page.getByRole('button', { name: '显示已保存轨迹', exact: true }).first().isDisabled(), true);
+  const missingCalls = await page.evaluate(() => fixtureRequests.filter(r => r.service === 'get_trip_detail').length);
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => fixtureRequests.filter(r => r.service === 'get_trip_detail').length), missingCalls);
+  await page.getByRole('button', { name: '获取云端详情', exact: true }).first().click();
+  await page.waitForFunction(() => fixtureCard.browser.busy === false && fixtureCard.browser.details.size === 1);
+  assert.equal(await page.getByRole('button', { name: '显示已保存轨迹', exact: true }).first().isDisabled(), false);
+  await page.getByRole('button', { name: '显示已保存轨迹', exact: true }).first().click();
+  await page.waitForFunction(() => fixtureCard.routeMap.map !== null && fixtureCard.tracks.busy === false);
   await page.evaluate(() => {
     fixtureCard.hass = { ...fixtureHass, user: { id: 'another-synthetic-reader' } };
   });
   await page.waitForFunction(() => fixtureCard.tracks.tracks.size === 0 && fixtureCard.routeMap.map === null && fixtureCard.playback === null);
   assert.deepEqual(errors, []);
-  console.log('Synthetic browser smoke passed: two scoped routes, local assets, tile opt-in, user-change privacy cleanup.');
+  console.log('Synthetic browser smoke passed: two scoped routes, local assets, tile opt-in, missing-detail hint, explicit detail unlock, user-change privacy cleanup.');
 } finally {
   await browser.close(); await new Promise(resolve => server.close(resolve));
 }

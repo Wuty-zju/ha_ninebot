@@ -17,6 +17,7 @@ const SCALARS = ['ride_id', 'detail_id', 'query_month', 'source', 'start_time', 
   'used_electricity_raw', 'energy_intensity_wh_per_km', 'received_at', 'parser_contract'];
 export function safeRide(ride) {
   const result = Object.fromEntries(SCALARS.map(key => [key, ride[key] ?? null]));
+  result.detail_saved = typeof ride.detail_saved === 'boolean' ? ride.detail_saved : null;
   result.precision = Object.fromEntries(['mileages', 'duration', 'speed', 'ec'].map(
     key => [key, digits(ride.precision?.[key], key === 'mileages' ? 2 : 0)]));
   result.field_provenance = Object.fromEntries(['started_at', 'ended_at', 'distance_m',

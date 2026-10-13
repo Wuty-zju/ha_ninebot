@@ -1330,6 +1330,52 @@ class RideArchive:
             result.append(replace(archived, statistics_rides=tuple(rides)))
         return tuple(result)
 
+    async def async_detail_summary(
+        self, sn: str, ride_id: str, month: str, *, guard: Callable[[], bool]
+    ) -> Ride | None:
+        """Resolve one retained membership, not only the latest upstream page."""
+        previous_month(month)
+        if not isinstance(ride_id, str) or opaque_id(ride_id) != ride_id:
+            raise ValueError("Invalid ride identity")
+
+        def read() -> Ride | None:
+            row = (
+                self._db()
+                .execute(
+                    "SELECT r.data FROM rides r JOIN membership m "
+                    "ON m.vehicle=r.vehicle AND m.ride=r.id JOIN months mo "
+                    "ON mo.vehicle=m.vehicle AND mo.month=m.month "
+                    "WHERE r.vehicle=? AND r.id=? AND m.month=? "
+                    "AND (m.latest=1 OR json_extract(mo.data,'$.summary.list_complete') IS NOT 1)",
+                    (vehicle_key(sn), ride_id, month),
+                )
+                .fetchone()
+            )
+            return replace(restored_ride(decoded(row[0])), query_month=month) if row else None
+
+        return await self._run(read, guard=guard)
+
+    async def async_saved_detail_ids(self, sn: str, ids: tuple[str, ...]) -> frozenset[str]:
+        """One bounded index lookup; never decompress detail payloads for a list."""
+        if len(ids) > MAX_PAGE or any(
+            not isinstance(value, str) or opaque_id(value) != value for value in ids
+        ):
+            raise ValueError("Invalid detail status page")
+        if not ids:
+            return frozenset()
+        placeholders = ",".join("?" for _ in ids)
+
+        def read() -> frozenset[str]:
+            return frozenset(
+                row[0]
+                for row in self._db().execute(
+                    f"SELECT ride FROM details WHERE vehicle=? AND ride IN ({placeholders})",
+                    (vehicle_key(sn), *ids),
+                )
+            )
+
+        return await self._run(read)
+
     async def async_month(self, sn: str, month: str) -> ArchiveMonth | None:
         previous_month(month)
         return await self._run(partial(self._month, vehicle_key(sn), month))

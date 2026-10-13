@@ -239,8 +239,9 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         this.curve(section, labels.distance_samples, displayed.distance_samples, 'distance_delta_raw');
         const saved = this.tracks.tracks.get(key);
         const routeButton = this.button(saved && !saved.complete ? labels.more_track : labels.show_track, () => void this.readRoute(ride));
-        routeButton.disabled ||= saved?.complete || !ride.ride_id;
+        routeButton.disabled ||= saved?.complete || !ride.ride_id || displayed.detail_saved === false;
         section.append(routeButton);
+        if (displayed.detail_saved === false) section.append(element('p', labels.detail_missing, 'note'));
         const button = this.button(labels.cloud_detail, () => void browser.detail(ride));
         button.disabled ||= !ride.detail_id; section.append(button); card.append(section);
       }

@@ -214,3 +214,50 @@ async def test_rejected_private_owner_guard_and_stale_receipt_do_not_write(tmp_p
         assert (await archive.async_private_detail(SN, "first")).revision == first.revision
     finally:
         await archive.async_close()
+
+
+async def test_targeted_summary_retained_partial_withdrawn_complete_and_status(tmp_path):
+    archive = await opened(tmp_path)
+    try:
+        partial = travel({"times": 2, "list": [{"travel_id": "second", "mileages": 1}]}, "202609")
+        await archive.async_record_month(SN, partial, NOW + timedelta(seconds=1))
+        summary = await archive.async_detail_summary(SN, "first", "202609", guard=lambda: True)
+        assert summary.detail_id == "first" and summary.query_month == "202609"
+        assert (
+            await archive.async_detail_summary("foreign", "first", "202609", guard=lambda: True)
+            is None
+        )
+        assert await archive.async_detail_summary(SN, "first", "202608", guard=lambda: True) is None
+        with pytest.raises(ArchiveError):
+            await archive.async_detail_summary(SN, "first", "202609", guard=lambda: False)
+        assert not await archive.async_saved_detail_ids(SN, ("first", "second"))
+        raw = record({"trail": "120,30,1,1", "mileages": 1.2}, NOW + timedelta(seconds=2))
+        await archive.async_record_detail(SN, summary, raw.received_at, raw=raw)
+        assert await archive.async_saved_detail_ids(SN, ("first", "second")) == {"first"}
+        assert not await archive.async_saved_detail_ids("foreign", ("first",))
+        assert not await archive.async_saved_detail_ids(SN, ())
+        with pytest.raises(ValueError):
+            await archive.async_saved_detail_ids(SN, ("first",) * 101)
+        complete = travel({"times": 1, "list": [{"travel_id": "second"}]}, "202609")
+        await archive.async_record_month(SN, complete, NOW + timedelta(seconds=3))
+        assert await archive.async_detail_summary(SN, "first", "202609", guard=lambda: True) is None
+        assert (
+            await archive.async_detail_summary(SN, "second", "202609", guard=lambda: True)
+            is not None
+        )
+    finally:
+        await archive.async_close()
+
+
+async def test_targeted_summary_keeps_conflicting_mapping_unusable(tmp_path):
+    archive = await opened(tmp_path)
+    try:
+        conflicting = travel(
+            {"times": 3, "list": [{"travel_id": "first", "detail_id": "other"}]}, "202609"
+        )
+        await archive.async_record_month(SN, conflicting, NOW + timedelta(seconds=1))
+        found = await archive.async_detail_summary(SN, "first", "202609", guard=lambda: True)
+        assert found.detail_id is None
+        assert "conflicting_detail_ids" in found.issues
+    finally:
+        await archive.async_close()
