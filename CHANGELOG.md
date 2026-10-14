@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b65
+
+- Advance local history payload audits in low-priority bounded batches after normal preservation work. Share manual checkpoints, persist vehicle fairness and cool completed scans for a day instead of restarting for every arriving page. Respect automatic-sync opt-out, pause, backup, shutdown and storage/ownership guards; use no cloud request budget.
+- Reserve compressed and decoded byte budgets before opening bodies, load one object at a time, flag oversized objects from metadata and yield between objects after a cooperative time budget. A single bounded decode is not preemptible.
+- Expose cached captured-audit phase/counts/time on existing history progress entities. These are not cloud coverage or current integrity certificates; full incremental audit receipts, reference/index checks and trusted recovery remain subsequent work.
+
 ## 2.0.0b64
 
 - Isolate corrupt saved payloads from healthy archive writes and other vehicles. Preserve damaged bytes, report a separate translated Repair and retain strict database, schema and ownership protections.

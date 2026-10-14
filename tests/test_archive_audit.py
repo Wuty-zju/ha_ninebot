@@ -206,3 +206,132 @@ async def test_old_audit_without_inventory_fence_is_readable_but_not_certified(a
     body["cutoff_inventory"] = True
     with pytest.raises(ValueError, match="inventory revision"):
         restored(json.dumps(body))
+
+
+async def test_local_batch_reserves_decoded_budget_before_opening_next_object(archive):
+    from unittest.mock import patch
+
+    from custom_components.ninebot.const import MAX_RESPONSE_BYTES
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    with patch("custom_components.ninebot.archive_audit.MAX_BATCH_DECODED", MAX_RESPONSE_BYTES):
+        first = await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=8)
+    assert first.checked == 1 and first.phase == "detail"
+    assert (await finish(archive)).payloads_verified
+
+
+async def test_local_batch_yields_between_objects_after_time_budget(archive):
+    from unittest.mock import patch
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    with patch("custom_components.ninebot.archive_audit.time") as clock:
+        clock.monotonic.side_effect = [0, 1]
+        first = await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=8)
+    assert first.checked == 1 and first.phase == "detail"
+    assert (await finish(archive)).payloads_verified
+
+
+async def test_oversized_blob_is_flagged_from_metadata_without_opening_payload(archive):
+    from unittest.mock import patch
+
+    from custom_components.ninebot.archive_audit import MAX_COMPRESSED_OBJECT
+
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        db.execute(
+            "UPDATE detail_payloads SET body=? WHERE ride='ride-0'",
+            (b"x" * (MAX_COMPRESSED_OBJECT + 1),),
+        )
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    with patch("custom_components.ninebot.archive_audit.unpacked") as unpack:
+        plan = await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=1)
+    assert plan.checked == plan.invalid == 1
+    unpack.assert_not_called()
+
+
+async def test_background_audit_fairness_cooldown_restart_and_zero_cloud_budget(archive):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from custom_components.ninebot.preservation import HistoryPreservation
+
+    other = "other-local-audit-vehicle"
+    co = SimpleNamespace(
+        config_entry=SimpleNamespace(options={"preserve_history": True, "auto_history_sync": True}),
+        _stopping=False,
+        _generation=1,
+        _ownership={SN: 1, other: 1},
+        data={SN: object(), other: object()},
+        local_vehicle_available=lambda sn: sn in {SN, other},
+        statistics=SimpleNamespace(
+            archive=archive, writable=True, record_error=Mock(), _notify_change=Mock()
+        ),
+        async_query_detail=AsyncMock(),
+        async_query_month=AsyncMock(),
+        async_query_history_page=AsyncMock(),
+    )
+    co.preservation = HistoryPreservation(co)
+    before = await archive.async_history_evidence(SN, guard=lambda: True)
+    order = await archive.async_audit_order((SN, other))
+    await co.preservation.audit.async_step(NOW)
+    assert await archive.async_history_audit(order[0]) is not None
+    assert await archive.async_history_audit(order[1]) is None
+    # Reconstructing the worker does not reset the durable vehicle turn.
+    co.preservation = HistoryPreservation(co)
+    assert (await archive.async_audit_order((SN, other)))[0] == order[1]
+    await co.preservation.audit.async_step(NOW)
+    assert await archive.async_history_audit(order[1]) is not None
+    for _ in range(4):
+        await co.preservation.audit.async_step(NOW)
+    done = await archive.async_history_audit(SN)
+    assert done.complete and done.invalid == 0
+    await co.preservation.audit.async_step(NOW + timedelta(hours=1))
+    assert await archive.async_history_audit(SN) == done
+    for _ in range(2):
+        await co.preservation.audit.async_step(NOW + timedelta(days=1))
+    assert (await archive.async_history_audit(SN)).started_at != done.started_at
+    after = await archive.async_history_evidence(SN, guard=lambda: True)
+    assert after.budget_at == before.budget_at
+    co.async_query_detail.assert_not_awaited()
+    co.async_query_month.assert_not_awaited()
+    co.async_query_history_page.assert_not_awaited()
+
+
+async def test_background_audit_respects_opt_out_pause_backup_and_local_ownership(archive):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from custom_components.ninebot.preservation import HistoryPreservation
+
+    options = {"preserve_history": True, "auto_history_sync": False}
+    co = SimpleNamespace(
+        config_entry=SimpleNamespace(options=options),
+        _stopping=False,
+        _generation=1,
+        _ownership={SN: 1},
+        data={SN: object()},
+        local_vehicle_available=lambda sn: sn == SN,
+        statistics=SimpleNamespace(
+            archive=archive, writable=True, record_error=Mock(), _notify_change=Mock()
+        ),
+    )
+    co.preservation = HistoryPreservation(co)
+    await co.preservation.audit.async_step(NOW)
+    assert await archive.async_history_audit(SN) is None
+    options["auto_history_sync"] = True
+    await co.preservation.bootstrap.async_pause(SN, True)
+    await co.preservation.audit.async_step(NOW)
+    assert await archive.async_history_audit(SN) is None
+    await co.preservation.bootstrap.async_pause(SN, False)
+    await archive.async_prepare_backup()
+    try:
+        await co.preservation.audit.async_step(NOW)
+        assert await archive.async_history_audit(SN) is None
+    finally:
+        archive.resume_after_backup()
+    co._stopping = True
+    await co.preservation.audit.async_step(NOW)
+    assert await archive.async_history_audit(SN) is None
+    co._stopping = False
+    co.local_vehicle_available = lambda sn: False
+    await co.preservation.audit.async_step(NOW)
+    assert await archive.async_history_audit(SN) is None

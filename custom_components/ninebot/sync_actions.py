@@ -195,6 +195,7 @@ async def async_verify_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
             or plan.cutoff_inventory != inventory_revision
         )
     )
+    co.preservation.audit.publish(sn, plan, owns)
     if plan and plan.invalid:
         co.statistics.record_error(ArchiveError(ArchiveFailure.OBJECT))
     return {

@@ -396,6 +396,10 @@ class RideArchive:
                 from .archive_audit import validate_meta
 
                 validate_meta(key, value)
+            elif key == "history_audit_vehicle":
+                from .archive_audit import scope as audit_scope
+
+                audit_scope(value)
             elif key == "history_payload_revision":
                 from .payload_inventory import validate as validate_inventory
 
@@ -1807,6 +1811,67 @@ class RideArchive:
 
     async def async_sync_job(self) -> SyncJob | None:
         return await self._run(self._sync_job)
+
+    @property
+    def background_idle(self) -> bool:
+        """Admission hint only; the serialized actor and guards remain authoritative."""
+        return (
+            self._opened
+            and not self._closing
+            and not self.write_paused
+            and not self.backup_paused
+            and self._pending == 0
+        )
+
+    async def async_audit_order(self, vehicles: tuple[str, ...]) -> tuple[str, ...]:
+        def read() -> tuple[str, ...]:
+            row = (
+                self._db()
+                .execute("SELECT value FROM meta WHERE key='history_audit_vehicle'")
+                .fetchone()
+            )
+            ordered = sorted(set(vehicles), key=vehicle_key)
+            if row:
+                ordered = [sn for sn in ordered if vehicle_key(sn) > row[0]] + [
+                    sn for sn in ordered if vehicle_key(sn) <= row[0]
+                ]
+            return tuple(ordered)
+
+        return await self._run(read)
+
+    async def async_background_history_audit(
+        self, sn: str, now: datetime, *, guard: Callable[[], bool]
+    ) -> AuditPlan | None:
+        from .archive_audit import get, start, step
+
+        utc_string(now)
+
+        def advance() -> AuditPlan | None:
+            db, vehicle = self._db(write=True), vehicle_key(sn)
+            with db:
+                if self._history_paused(vehicle):
+                    return None
+                plan = get(db, vehicle)
+                # Finish a fixed captured range even if writes make its proof
+                # stale. Never reset an active scan on every arriving cloud page.
+                # Daily scrubbing also checks latent corruption of stable data.
+                if (
+                    plan is not None
+                    and plan.complete
+                    and (now - stamp(plan.updated_at)).total_seconds() < 86400
+                ):
+                    return None
+                if plan is None or plan.complete:
+                    start(db, vehicle, now, restart=True)
+                result = step(db, vehicle, now, 2)
+                db.execute(
+                    "INSERT INTO meta VALUES ('history_audit_vehicle',?)"
+                    " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (vehicle,),
+                )
+                return result
+
+        return await self._run(advance, guard=guard)
 
     async def async_history_audit(self, sn: str) -> AuditPlan | None:
         return (await self.async_history_audit_status(sn))[0]

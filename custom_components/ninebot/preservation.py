@@ -48,6 +48,7 @@ class HistoryPreservation:
     """One bounded background operation at a time, independent of entities."""
 
     def __init__(self, co: "NinebotCoordinator") -> None:
+        from .background_audit import BackgroundAudit
         from .bootstrap import HistoryBootstrap
         from .incremental_sync import IncrementalSync
         from .month_sync import SparseMonthSync
@@ -55,6 +56,7 @@ class HistoryPreservation:
         self.co = co
         self.months = SparseMonthSync(co)
         self.bootstrap = HistoryBootstrap(co)
+        self.audit = BackgroundAudit(co)
         self.incremental = IncrementalSync(co)
         self._remove: Callable[[], None] | None = None
         self._task: asyncio.Task[None] | None = None
@@ -85,6 +87,9 @@ class HistoryPreservation:
         finally:
             try:
                 await self.async_refresh_progress(tuple(self.co.data), now)
+                task = asyncio.current_task()
+                if not self.co._stopping and (task is None or not task.cancelling()):
+                    await self.audit.async_step(now)
             except ArchiveError as err:
                 self.co.statistics.record_error(err)
             finally:
@@ -103,7 +108,9 @@ class HistoryPreservation:
             owns = self.bootstrap.guard(sn, require_enabled=False, respect_pause=False)
             if not owns():
                 self.progress.pop(sn, None)
+                self.audit.views.pop(sn, None)
                 continue
+            self.audit.publish(sn, await co.statistics.archive.async_history_audit(sn), owns)
             evidence = await co.statistics.archive.async_history_evidence(sn, guard=owns)
             value = project_progress(
                 evidence,
