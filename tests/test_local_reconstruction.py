@@ -249,3 +249,142 @@ async def test_backup_refuses_active_transaction_without_committing_it(tmp_path)
         assert not (tmp_path / "active.sqlite3").exists()
     finally:
         await archive.async_close()
+
+
+async def test_job_restart_coalesces_and_reuses_one_recovery_point(tmp_path):
+    archive = await seed(tmp_path, identified=False)
+    await damage(archive)
+    started = await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+    assert (await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)) == started
+    first = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+    assert first.checked == first.repaired == 1 and first.blocked == 0
+    backups = list(tmp_path.glob("*.recovery-*.sqlite3"))
+    assert len(backups) == 1
+    await archive.async_close()
+    archive = RideArchive(tmp_path / "rides.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        finished = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert finished.job_id == started.job_id and finished.state == "complete"
+        assert finished.checked == 1 and not finished.changed
+        assert list(tmp_path.glob("*.recovery-*.sqlite3")) == backups
+        assert (await archive.async_private_detail(SN, "ride-a")).ride.distance_m == 2500
+    finally:
+        await archive.async_close()
+
+
+async def test_job_pause_cancel_and_scope_change_are_honest(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+        job = await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        paused = await archive.async_reconstruction_job(SN, "pause", NOW, guard=lambda: True)
+        assert paused.state == "paused"
+        assert (
+            await archive.async_reconstruction_job(SN, "step", NOW, guard=lambda: True)
+        ) == paused
+        assert not list(tmp_path.glob("*.recovery-*.sqlite3"))
+
+        # A managed archive update invalidates captured completeness even if
+        # all currently selected raw fields agree; never certify changing scope.
+        def change_revision():
+            with archive._db():
+                archive._revision(bump=True)
+
+        await archive._run(change_revision)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        finished = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert finished.job_id == job.job_id and finished.changed and finished.state == "with_gaps"
+        new = await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        assert new.job_id != job.job_id
+        cancelled = await archive.async_reconstruction_job(SN, "cancel", NOW, guard=lambda: True)
+        assert cancelled.state == "cancelled"
+        assert (
+            await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        ) == cancelled
+    finally:
+        await archive.async_close()
+
+
+async def test_job_corrupt_backup_never_changes_more_data(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+        job = await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        backup = next(tmp_path.glob("*.recovery-*.sqlite3"))
+        with backup.open("ab") as stream:
+            stream.write(b"modified recovery point")
+        with pytest.raises(ArchiveError) as error:
+            await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert error.value.kind is ArchiveFailure.STORAGE
+        current = await archive.async_reconstruction_job(SN, "status", NOW, guard=lambda: True)
+        assert current.job_id == job.job_id and current.checked == 1 and current.state == "running"
+    finally:
+        await archive.async_close()
+
+
+async def test_job_records_corrupt_original_gap_without_deleting_it(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+
+        def corrupt():
+            with archive._db() as db:
+                db.execute("UPDATE detail_payloads SET body=?", (b"bad-original",))
+
+        await archive._run(corrupt)
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        first = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert first.blocked == 1 and first.repaired == 0
+        done = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert done.state == "with_gaps"
+        assert (
+            await archive._run(
+                lambda: archive._db().execute("SELECT body FROM detail_payloads").fetchone()[0]
+            )
+            == b"bad-original"
+        )
+    finally:
+        await archive.async_close()
+
+
+async def test_two_repairs_use_one_backup_and_failed_transaction_keeps_checkpoint(
+    tmp_path, monkeypatch
+):
+    archive = await seed(tmp_path)
+    try:
+        second = {
+            **ROW,
+            "travel_id": "ride-b",
+            "start_time": int(NOW.timestamp()) + 1000,
+            "end_time": int(NOW.timestamp()) + 1600,
+        }
+        month = travel({"times": 2, "list": [ROW, second]}, "202610")
+        await archive.async_record_month(SN, month, NOW)
+        raw = build_record(Endpoint.TRIP_DETAIL, second, NOW + timedelta(seconds=1), "202610")
+        ride = merge_detail(
+            month.rides[1], parse_ride(second, "202610", source=Endpoint.TRIP_DETAIL)
+        )
+        await archive.async_record_detail(SN, ride, raw.received_at, raw=raw)
+        await damage(archive)
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        original = archive._upsert_ride
+
+        def fail_after_write(*args, **kwargs):
+            original(*args, **kwargs)
+            raise ArchiveError(ArchiveFailure.STORAGE)
+
+        monkeypatch.setattr(archive, "_upsert_ride", fail_after_write)
+        with pytest.raises(ArchiveError):
+            await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        status = await archive.async_reconstruction_job(SN, "status", NOW, guard=lambda: True)
+        assert status.checked == 0 and status.state == "pending_backup"
+        assert (await archive.async_private_detail(SN, "ride-a")).ride.distance_m == 999
+        monkeypatch.setattr(archive, "_upsert_ride", original)
+        first = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        second_step = await archive.async_reconstruction_job(
+            SN, "continue", NOW, guard=lambda: True
+        )
+        assert first.checked == 1 and second_step.checked == 2
+        assert second_step.repaired == 1  # The already-correct second ride remains unchanged.
+        assert len(list(tmp_path.glob("*.recovery-*.sqlite3"))) == 1
+    finally:
+        await archive.async_close()

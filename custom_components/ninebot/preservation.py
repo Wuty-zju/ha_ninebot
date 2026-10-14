@@ -49,6 +49,7 @@ class HistoryPreservation:
 
     def __init__(self, co: "NinebotCoordinator") -> None:
         from .background_audit import BackgroundAudit
+        from .background_reconstruction import BackgroundReconstruction
         from .bootstrap import HistoryBootstrap
         from .incremental_sync import IncrementalSync
         from .month_sync import SparseMonthSync
@@ -57,6 +58,7 @@ class HistoryPreservation:
         self.months = SparseMonthSync(co)
         self.bootstrap = HistoryBootstrap(co)
         self.audit = BackgroundAudit(co)
+        self.reconstruction = BackgroundReconstruction(co)
         self.incremental = IncrementalSync(co)
         self._remove: Callable[[], None] | None = None
         self._task: asyncio.Task[None] | None = None
@@ -89,6 +91,7 @@ class HistoryPreservation:
                 await self.async_refresh_progress(tuple(self.co.data), now)
                 task = asyncio.current_task()
                 if not self.co._stopping and (task is None or not task.cancelling()):
+                    await self.reconstruction.async_step(now)
                     await self.audit.async_step(now)
             except ArchiveError as err:
                 self.co.statistics.record_error(err)

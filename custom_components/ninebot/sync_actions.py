@@ -49,6 +49,11 @@ SYNC_SCHEMA = vol.Schema(
                 "verify",
                 "verify_continue",
                 "verify_status",
+                "reconstruct",
+                "reconstruct_continue",
+                "reconstruct_status",
+                "reconstruct_pause",
+                "reconstruct_cancel",
             )
         ),
         vol.Optional("start_month"): query_month,
@@ -73,6 +78,8 @@ async def async_sync_history(hass: HomeAssistant, call: ServiceCall) -> dict[str
     if budget is not None and (type(budget) is not int or not 1 <= budget <= 60):
         budget = DEFAULT_BUDGET
     try:
+        if operation.startswith("reconstruct"):
+            return await async_reconstruct_history(hass, call)
         if operation.startswith("verify"):
             return await async_verify_history(hass, call)
         if operation in {"pause", "resume", "sync_status", "synchronize"}:
@@ -272,3 +279,22 @@ async def async_sparse_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
         "upstream_pagination_verified": False,
         "coverage_note": "A successful month read may remain partial; no cloud page support.",
     }
+
+
+async def async_reconstruct_history(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    from .background_reconstruction import public
+
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
+    co = entry.runtime_data.coordinator
+    owns = co.preservation.bootstrap.guard(sn, require_enabled=False, respect_pause=False)
+    now = dt_util.utcnow()
+    operation = call.data["operation"]
+    suffix = operation.removeprefix("reconstruct").removeprefix("_") or "start"
+    archive = co.statistics.archive
+    current = await archive.async_reconstruction_job(sn, "status", now, guard=owns)
+    if call.data.get("job_id") and (current is None or current.job_id != call.data["job_id"]):
+        raise validation_error("sync_job")
+    job = await archive.async_reconstruction_job(sn, suffix, now, guard=owns)
+    await co.preservation.reconstruction.publish(sn, job)
+    assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, False, require_live=False)
+    return {"schema_version": 1, "operation": operation, **public(job)}

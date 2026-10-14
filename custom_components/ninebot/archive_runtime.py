@@ -331,6 +331,14 @@ class ArchiveStatistics(TravelStatisticsStore):
             self.record_error(err)
             return ()
 
+    async def async_reconstruction_committed(self, sn: str, guard: Callable[[], bool]) -> None:
+        """Publish local derived changes without clearing an unrelated Repair."""
+        if not self.archive_ready or not guard():
+            return
+        async with self._archive_lock:
+            await self._project(guard, vehicle=sn)
+        self._notify_change(sn, guard)
+
     async def async_history_page_committed(self, sn: str, guard: Callable[[], bool]) -> None:
         """Refresh projections only after the page/facts transaction has committed."""
         if not self.archive_ready or not guard():

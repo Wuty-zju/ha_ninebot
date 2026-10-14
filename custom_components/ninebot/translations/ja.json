@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "走行履歴を同期",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct は専用の復元ポイントを作成し、ローカルの数値を修復します。reconstruct_continue/status/pause/cancel で再開、確認、一時停止、取消ができます。クラウドへの要求や車両操作は行いません。",
       "fields": {
         "device_id": {
           "name": "Vehicle"

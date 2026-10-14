@@ -704,7 +704,7 @@ async def async_scoped_action(
         or (
             call.service == "sync_history"
             and call.data["operation"]
-            not in {"status", "repair_status", "sync_status", "verify_status"}
+            not in {"status", "repair_status", "sync_status", "verify_status", "reconstruct_status"}
         )
         else POLICY_READ
     )

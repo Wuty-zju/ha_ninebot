@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "同步行程檔案",
-      "description": "synchronize 觸發增量同步；指定月份或 force 重新掃描列表，重用已儲存詳情。pause/resume 暫停或恢復背景歷史同步，sync_status 唯讀本地進度。保留原範圍及 repair 操作。",
+      "description": "synchronize 觸發增量同步；指定月份或 force 重新掃描列表，重用已儲存詳情。pause/resume 暫停或恢復背景歷史同步，sync_status 唯讀本地進度。保留原範圍及 repair 操作。 reconstruct 建立含私有復原點的本地標量修復工作；reconstruct_continue/status/pause/cancel 用於繼續、查看、暫停或取消。不請求雲端或控制車輛。",
       "fields": {
         "device_id": {
           "name": "Vehicle"

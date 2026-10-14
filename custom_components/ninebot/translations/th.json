@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "ซิงค์คลังประวัติการเดินทาง",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct เริ่มซ่อมข้อมูลในเครื่องพร้อมจุดกู้คืนส่วนตัว ใช้ reconstruct_continue/status/pause/cancel เพื่อทำต่อ ดูสถานะ พัก หรือยกเลิก ไม่มีการเรียกคลาวด์หรือสั่งรถ",
       "fields": {
         "device_id": {
           "name": "Vehicle"

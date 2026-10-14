@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "Sincronizza archivio viaggi",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct avvia una riparazione locale con un punto di recupero privato; reconstruct_continue/status/pause/cancel riprende, consulta, sospende o annulla. Nessuna richiesta cloud o comando al veicolo.",
       "fields": {
         "device_id": {
           "name": "Vehicle"

@@ -48,6 +48,7 @@ jobs:
           tests/test_query_broker.py
           tests/test_coordinator.py
           tests/test_private_detail_archive.py
+          tests/test_local_reconstruction.py
           tests/test_recorded_trips.py
           tests/test_travel.py
           tests/test_services.py

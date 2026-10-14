@@ -577,3 +577,24 @@ async def test_local_partial_detail_preserves_usable_track_without_cloud_repair(
             db.execute("SELECT body FROM detail_payloads WHERE hash=?", (digest,)).fetchone()[0]
             == damaged
         )
+
+
+async def test_local_reconstruction_actions_do_not_call_cloud_or_controls(
+    hass, entry, app_client, query_device
+):
+    co = entry.runtime_data.coordinator
+    before = app_client.async_get_travel.call_count
+    started = await call(
+        hass, "sync_history", {"device_id": query_device, "operation": "reconstruct"}
+    )
+    assert started["scope"] == "captured_local_details"
+    assert started["cloud_queries"] == 0
+    assert started["all_normalized_fields_verified"] is False
+    status = await call(
+        hass, "sync_history", {"device_id": query_device, "operation": "reconstruct_status"}
+    )
+    assert status["job_id"] == started["job_id"]
+    assert "upper" not in status and "after" not in status and "backup_hash" not in status
+    assert app_client.async_get_travel.call_count == before
+    app_client.async_control.assert_not_awaited()
+    assert "SyntheticSN" in co.preservation.reconstruction.views

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b68
+
+- Add explicit local reconstruction operations to `sync_history`: start, continue, status, pause and cancel. Rebuild only scalar/time-index facts supported by trusted saved originals; require recorded identity evidence for ID-less details and refuse stale source data.
+- Persist bounded per-vehicle jobs and resume requested work on the existing low-priority tick, with one ride per batch, restart-safe fairness and one checked private recovery point per job. Commit repaired indexes and checkpoints together; preserve raw bytes and receipt times. Ordinary startup and backup checks remain strict.
+- Refresh local projections after successful repairs and expose safe cached recovery counts on existing sync entities. Preserve unresolved Repairs, explicitly report changing scopes and unverified fields; this does not prove all references or complete cloud history. No cloud requests, vehicle commands, new entity identities or Recorder migration.
+
 ## 2.0.0b67
 
 - Upgrade archives explicitly to schema5 with a validated source-schema recovery copy and atomic rollback. Preserve business payloads/checkpoints, expire pre-upgrade scan certificates and require the matching backup for older-version rollback.

@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "Synchroniser les trajets archivés",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct lance une réparation locale avec un point de restauration privé ; reconstruct_continue/status/pause/cancel permet de reprendre, consulter, suspendre ou annuler. Aucun appel cloud ni commande au véhicule.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
