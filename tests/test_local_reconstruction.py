@@ -53,7 +53,7 @@ async def seed(tmp_path, *, identified=True, witness=True):
             ),
             guard=lambda: True,
         )
-    payload = {**ROW, "mileages": 2.5, "ec": 50, "trail": "120,30,1;120.001,30.001,2"}
+    payload = {**ROW, "mileages": 2.5, "ec": 50, "trail": "120,30,1,1;120.001,30.001,2,2"}
     if not identified:
         payload.pop("travel_id")
     detail = parse_ride(payload, "202610", source=Endpoint.TRIP_DETAIL)
