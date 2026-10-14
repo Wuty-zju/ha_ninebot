@@ -1827,6 +1827,8 @@ class RideArchive:
         from .archive_audit import step
 
         utc_string(now)
+        if type(limit) is not int or not 1 <= limit <= 8:
+            raise ValueError("Invalid audit batch")
 
         def advance() -> AuditPlan | None:
             db = self._db(write=True)

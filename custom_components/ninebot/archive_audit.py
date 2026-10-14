@@ -202,6 +202,9 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
                 invalid=plan.invalid + int(reason is not None),
             )
             remaining -= 1
+        upper = plan.detail_upper if plan.phase == "detail" else plan.page_upper
+        if plan.after == upper:
+            plan = replace(plan, phase="page" if plan.phase == "detail" else "complete", after=0)
     plan = replace(
         plan,
         updated_at=now.isoformat(),
