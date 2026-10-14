@@ -891,7 +891,7 @@
     },
     "sync_history": {
       "name": "同步行程檔案",
-      "description": "按范围补齐缺月，或用 repair 指定 1–12 个散月重新读取。repair_status 查看，repair_continue 续接，repair_cancel 取消；部分列表不会变为全量。",
+      "description": "synchronize 觸發增量同步；指定月份或 force 重新掃描列表，重用已儲存詳情。pause/resume 暫停或恢復背景歷史同步，sync_status 唯讀本地進度。保留原範圍及 repair 操作。",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -909,8 +909,11 @@
           "name": "結束月份（YYYYMM）"
         },
         "months": {
-          "name": "修复月份（YYYYMM 数组）",
+          "name": "指定月份（YYYYMM 列表）",
           "description": "用于散月修复与取消；一次最多 12 个不同月份。"
+        },
+        "force": {
+          "name": "重新掃描月份列表"
         }
       }
     },

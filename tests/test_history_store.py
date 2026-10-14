@@ -160,6 +160,7 @@ async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline
     )
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE history_payloads")
         db.execute("DROP TABLE history_ids")
         db.execute("DROP TABLE history_months")
         db.execute("DROP TABLE history_pages")
@@ -177,7 +178,7 @@ async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline
             assert backup.execute("SELECT count(*) FROM rides").fetchone()[0] == 1
         assert (await migrated.async_month(SN, "202610")).travel.rides[0].ride_id == "legacy"
         with closing(sqlite3.connect(path)) as db:
-            assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 4
         await migrated.async_set_history_plan(SN, initial(), None, guard=lambda: True)
     finally:
         await migrated.async_close()
@@ -218,6 +219,7 @@ async def test_free_space_migration_preflight_does_not_touch_original(tmp_path, 
     await archive.async_open()
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE history_payloads")
         db.execute("DROP TABLE history_ids")
         db.execute("DROP TABLE history_months")
         db.execute("DROP TABLE history_pages")
@@ -413,3 +415,176 @@ async def test_best_geometry_retention_and_local_quality_backfill_need_no_cloud(
         assert (await recovered.async_history_health(SN, root.plan_id)).latest_degraded == 1
     finally:
         await recovered.async_close()
+
+
+async def test_pause_is_durable_does_not_reset_root_or_shared_budget(store):
+    claimed = await store.async_claim_history_page(SN, NOW, 60, guard=lambda: True)
+    await store.async_set_history_paused(SN, True, guard=lambda: True)
+    assert await store.async_history_paused(SN)
+    assert (
+        await store.async_claim_history_page(SN, NOW + timedelta(minutes=3), 60, guard=lambda: True)
+        is None
+    )
+    assert not await store.async_background_budget(
+        SN, NOW + timedelta(minutes=3), 60, guard=lambda: True
+    )
+    assert await store.async_history_plan(SN) == claimed
+    path = store.path
+    await store.async_close()
+    recovered = RideArchive(path, OWNER)
+    try:
+        await recovered.async_open()
+        assert await recovered.async_history_paused(SN)
+        assert await recovered.async_history_plan(SN) == claimed
+        await recovered.async_set_history_paused(SN, False, guard=lambda: True)
+        resumed = await recovered.async_claim_history_page(
+            SN, NOW + timedelta(minutes=3), 60, guard=lambda: True
+        )
+        assert resumed.plan_id == claimed.plan_id and resumed.next_page == claimed.next_page
+        assert resumed.attempts == claimed.attempts + 1
+    finally:
+        await recovered.async_close()
+
+
+async def test_paused_actor_rejects_inflight_page_even_if_callers_guard_is_stale(store):
+    await store.async_set_history_paused(SN, True, guard=lambda: True)
+    with pytest.raises(ArchiveError) as error:
+        await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    assert error.value.kind is ArchiveFailure.BUSY
+    assert await store.async_history_plan(SN) == initial()
+    assert (
+        await store.async_history_page(SN, initial().plan_id, "202610", 1, guard=lambda: True)
+        is None
+    )
+
+
+async def test_incremental_month_run_coalesces_and_never_replaces_initial_baseline(store):
+    baseline = await store.async_history_plan(SN)
+    now = datetime(2026, 11, 1, tzinfo=UTC)
+    run = await store.async_schedule_history_run(SN, "202611", now, guard=lambda: True)
+    repeated = await store.async_schedule_history_run(SN, "202611", now, guard=lambda: True)
+    assert run == repeated and run.plan_id != baseline.plan_id
+    claimed = await store.async_claim_history_page(
+        SN, now, 60, plan_id=run.plan_id, guard=lambda: True
+    )
+    raw = build_record(
+        Endpoint.TRAVEL,
+        {"times": 0, "list": []},
+        now,
+        "202611",
+        backend_version="0.1.7",
+        endpoint_version=run.provider,
+    )
+    receipt = await store.async_accept_history_page(SN, claimed, raw, guard=lambda: True)
+    finished = await store.async_finish_history_baseline(SN, receipt.root, now, guard=lambda: True)
+    assert finished.state is HistoryState.COMPLETE
+    assert await store.async_history_plan(SN) == baseline
+    assert (await store.async_history_run(SN, run.plan_id)).state is HistoryState.COMPLETE
+    path = store.path
+    await store.async_close()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        assert await reopened.async_history_plan(SN) == baseline
+        assert await reopened.async_history_run(SN, run.plan_id) == finished
+        assert (
+            await reopened.async_history_page(SN, run.plan_id, "202611", 1, guard=lambda: True)
+        ).payload()["times"] == 0
+    finally:
+        await reopened.async_close()
+
+
+async def test_schema3_migration_preserves_baseline_and_saves_recovery_copy(store):
+    path = store.path
+    await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    baseline = await store.async_history_plan(SN)
+    await store.async_close()
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute(
+            "UPDATE history_pages SET body=(SELECT h.body FROM history_payloads h"
+            " WHERE h.digest=history_pages.digest)"
+        )
+        db.execute("DROP TABLE history_payloads")
+        db.execute("PRAGMA user_version=3")
+    source_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        assert await reopened.async_history_plan(SN) == baseline
+        assert (
+            await reopened.async_history_page(SN, baseline.plan_id, "202610", 1, guard=lambda: True)
+        ).payload()["times"] == 2
+        backups = list(path.parent.glob(f"rides.schema3-{source_hash}.sqlite3"))
+        assert len(backups) == 1
+        with closing(sqlite3.connect(backups[0])) as db:
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+        with closing(sqlite3.connect(path)) as db:
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 4
+    finally:
+        await reopened.async_close()
+
+
+async def test_identical_page_payload_is_stored_once_across_independent_runs(store):
+    now = datetime(2026, 11, 1, tzinfo=UTC)
+    for _ in range(2):
+        run = await store.async_schedule_history_run(SN, "202611", now, guard=lambda: True)
+        raw = build_record(
+            Endpoint.TRAVEL,
+            {"times": 0, "list": []},
+            now,
+            "202611",
+            backend_version="0.1.7",
+            endpoint_version=run.provider,
+        )
+        result = await store.async_accept_history_page(SN, run, raw, guard=lambda: True)
+        await store.async_finish_history_baseline(SN, result.root, now, guard=lambda: True)
+    with closing(sqlite3.connect(store.path)) as db:
+        assert db.execute("SELECT count(*) FROM history_payloads").fetchone()[0] == 1
+        assert db.execute("SELECT count(*) FROM history_pages").fetchone()[0] == 2
+        assert db.execute("SELECT sum(length(body)) FROM history_pages").fetchone()[0] == 0
+    assert (
+        await store.async_history_page(SN, run.plan_id, "202611", 1, guard=lambda: True)
+    ).payload()["times"] == 0
+
+
+async def test_reconciliation_coalesces_dirty_requests_and_skips_known_months(store):
+    baseline = await store.async_history_plan(SN)
+    now = datetime(2026, 11, 1, tzinfo=UTC)
+    first = await store.async_reconcile_history_month(
+        SN, "202611", now, "a" * 64, False, guard=lambda: True
+    )
+    assert (
+        await store.async_reconcile_history_month(
+            SN, "202611", now, "a" * 64, False, guard=lambda: True
+        )
+        == first
+    )
+    assert (
+        await store.async_reconcile_history_month(
+            SN, "202611", now, "b" * 64, False, guard=lambda: True
+        )
+        == first
+    )
+    assert len(await store.async_active_history_runs(SN)) == 1
+    assert (
+        await store.async_reconcile_history_month(
+            SN, "202611", now, "b" * 64, True, guard=lambda: True
+        )
+        is None
+    )
+    assert not await store.async_active_history_runs(SN)
+    assert (await store.async_history_run(SN, first.plan_id)).state is HistoryState.RECONCILED
+    assert await store.async_history_plan(SN) == baseline
+
+
+async def test_history_family_rotation_is_durable_without_budget_reset(store):
+    await store.async_set_history_family_turn(2)
+    assert await store.async_history_family_turn() == 2
+    path = store.path
+    await store.async_close()
+    restored = RideArchive(path, OWNER)
+    try:
+        await restored.async_open()
+        assert await restored.async_history_family_turn() == 2
+    finally:
+        await restored.async_close()

@@ -90,13 +90,17 @@ class ArchiveStatistics(TravelStatisticsStore):
             self.record_error(err, opening=True)
 
     def record_error(self, err: ArchiveError, *, opening: bool = False) -> None:
-        if err.kind is ArchiveFailure.BUDGET:
-            return  # A display query limit does not disable healthy archive writes.
-        self.error = err.kind
-        if err.kind in {ArchiveFailure.BUSY, ArchiveFailure.CLOSED} or (
-            err.kind is ArchiveFailure.OWNER and not opening
-        ):
+        if opening and err.kind in {ArchiveFailure.BUSY, ArchiveFailure.CLOSED}:
+            self.error = err.kind
+            return  # Not opened yet; preserve the lifecycle reason without a Repair.
+        if err.kind in {
+            ArchiveFailure.BUDGET,
+            ArchiveFailure.BUSY,
+            ArchiveFailure.CLOSED,
+            ArchiveFailure.CURSOR,
+        } or (err.kind is ArchiveFailure.OWNER and not opening):
             return  # Lifecycle/queue/ownership is not an actionable storage Repair.
+        self.error = err.kind
         ir.async_create_issue(
             self.hass,
             DOMAIN,

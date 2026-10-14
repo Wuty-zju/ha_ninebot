@@ -911,6 +911,9 @@
         "months": {
           "name": "Repair months (YYYYMM list)",
           "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+        },
+        "force": {
+          "name": "إعادة فحص قوائم الأشهر"
         }
       }
     },

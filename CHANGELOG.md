@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b62
+
+- Separate the fixed first-history baseline from coalesced single-month incremental scans. Reconcile recent observations locally before requesting extra pages; rotate baseline, incremental and legacy tasks under shared budgets.
+- Add synchronize, pause, resume and local sync_status history operations. Explicit months all enter durable work; manual requests continue across restarts even when automatic seeding is off. Preservation and per-vehicle pause still govern execution.
+- Deduplicate page bodies by content while retaining independent receipts and legacy inline evidence. Schema 3 upgrades save a validated recovery copy before schema 4 changes.
+- Keep transient runtime fences from disabling healthy archive writes. Progress entities and user capacity options are separate follow-up milestones; real cloud pagination remains unverified.
+
 ## 2.0.0b61
 
 - New accounts enable background full-history discovery for fresh owned vehicles, with lazy month/page checkpoints and the existing shared request budget. Existing explicitly disabled preservation stays disabled.

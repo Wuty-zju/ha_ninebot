@@ -13,7 +13,7 @@ from .history_plan import MAX_PAGES, HistoryPlan, HistoryState, plan_data, resto
 from .raw import Endpoint, RawRecord
 from .travel import MAX_RIDES, opaque_id
 
-SCHEMA = (
+SCHEMA: tuple[str, ...] = (
     "CREATE TABLE history_roots (vehicle TEXT PRIMARY KEY REFERENCES vehicles(vehicle),"
     " data TEXT NOT NULL)",
     "CREATE TABLE history_pages (vehicle TEXT NOT NULL REFERENCES history_roots(vehicle),"
@@ -58,6 +58,10 @@ COLUMNS = {
     ),
     "history_ids": ("vehicle", "plan", "month", "ride", "first_page"),
 }
+LEGACY_COLUMNS = COLUMNS
+PAYLOAD_SCHEMA = ("CREATE TABLE history_payloads (digest TEXT PRIMARY KEY, body BLOB NOT NULL)",)
+SCHEMA = (*SCHEMA, *PAYLOAD_SCHEMA)
+COLUMNS = {**COLUMNS, "history_payloads": ("digest", "body")}
 STOP_REASONS = {
     None,
     "schema",
@@ -88,9 +92,20 @@ def root(db: sqlite3.Connection, vehicle: str) -> HistoryPlan | None:
     return restored(decoded(row[0])) if row else None
 
 
+def resolve(db: sqlite3.Connection, vehicle: str, identity: str) -> HistoryPlan | None:
+    baseline = root(db, vehicle)
+    if baseline is not None and baseline.plan_id == identity:
+        return baseline
+    from .incremental_runs import get
+
+    return get(db, vehicle, identity)
+
+
 def put_root(db: sqlite3.Connection, plan: HistoryPlan, expected: HistoryPlan | None) -> None:
     value = encoded(plan_data(plan))
-    current = root(db, plan.vehicle)
+    current = (
+        root(db, plan.vehicle) if expected is None else resolve(db, plan.vehicle, plan.plan_id)
+    )
     if current != expected or (
         expected is not None
         and (
@@ -130,6 +145,16 @@ def put_root(db: sqlite3.Connection, plan: HistoryPlan, expected: HistoryPlan | 
             and health.archive_has_gaps
         ):
             raise ValueError("Baseline has unresolved detail evidence")
+    baseline = root(db, plan.vehicle)
+    if (
+        baseline is None or baseline.plan_id == plan.plan_id
+    ) and plan.state is HistoryState.RECONCILED:
+        raise ValueError("First baseline cannot be locally skipped")
+    if baseline is not None and baseline.plan_id != plan.plan_id:
+        from .incremental_runs import put
+
+        put(db, plan)
+        return
     db.execute(
         "INSERT INTO history_roots VALUES (?,?) ON CONFLICT(vehicle)"
         " DO UPDATE SET data=excluded.data",
@@ -161,7 +186,7 @@ def _shape(data: dict) -> tuple[tuple[str, ...], int | None, str | None]:
 
 
 def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord) -> PageReceipt:
-    if root(db, expected.vehicle) != expected or expected.state not in {
+    if resolve(db, expected.vehicle, expected.plan_id) != expected or expected.state not in {
         HistoryState.DISCOVER,
         HistoryState.QUERYING,
     }:
@@ -173,6 +198,27 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
     ):
         raise ValueError("Invalid history page source")
     digest, body, clean = packed(record, source=Endpoint.TRAVEL)
+    assert clean.query_month is not None
+    previous_body = db.execute(
+        "SELECT body FROM history_payloads WHERE digest=?", (digest,)
+    ).fetchone()
+    if previous_body is None:
+        previous_body = db.execute(
+            "SELECT body FROM history_pages WHERE digest=? AND length(body)>0 LIMIT 1", (digest,)
+        ).fetchone()
+    if previous_body is None:
+        db.execute("INSERT INTO history_payloads VALUES (?,?)", (digest, body))
+    else:
+        # Verify reuse; a damaged legacy blob must not masquerade as a newly saved page.
+        unpacked(
+            previous_body[0],
+            digest,
+            clean.received_at,
+            clean.query_month,
+            clean.backend_version,
+            clean.endpoint_version,
+            source=Endpoint.TRAVEL,
+        )
     payload = clean.payload()
     assert isinstance(payload, dict)
     ids, total, stop = _shape(payload)
@@ -222,7 +268,7 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
             expected.next_month,
             expected.next_page,
             digest,
-            body,
+            b"",
             observed,
             clean.backend_version,
             clean.endpoint_version,
@@ -255,8 +301,11 @@ def page(
     db: sqlite3.Connection, vehicle: str, plan: str, month: str, number: int
 ) -> RawRecord | None:
     row = db.execute(
-        "SELECT body,digest,observed,backend,endpoint FROM history_pages"
-        " WHERE vehicle=? AND plan=? AND month=? AND page=?",
+        "SELECT CASE WHEN length(p.body)>0 THEN p.body ELSE coalesce(h.body,"
+        " (SELECT old.body FROM history_pages old WHERE old.digest=p.digest"
+        " AND length(old.body)>0 LIMIT 1)) END,p.digest,p.observed,p.backend,p.endpoint"
+        " FROM history_pages p LEFT JOIN history_payloads h ON h.digest=p.digest"
+        " WHERE p.vehicle=? AND p.plan=? AND p.month=? AND p.page=?",
         (vehicle, plan, month, number),
     ).fetchone()
     return (
@@ -266,10 +315,23 @@ def page(
     )
 
 
-def check(db: sqlite3.Connection) -> None:
+def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
     current: HistoryPlan | None
-    for vehicle, value in db.execute("SELECT * FROM history_roots"):
+    roots = list(db.execute("SELECT * FROM history_roots"))
+    if allow_runs:
+        roots.extend(
+            (restored(decoded(value)).vehicle, value)
+            for (value,) in db.execute("SELECT value FROM meta WHERE key LIKE 'history_run:%'")
+        )
+    for vehicle, value in roots:
         current = restored(decoded(value))
+        baseline = root(db, vehicle)
+        if (
+            baseline is not None
+            and baseline.plan_id == current.plan_id
+            and current.state is HistoryState.RECONCILED
+        ):
+            raise ValueError("First baseline cannot be locally skipped")
         if current.vehicle != vehicle:
             raise ValueError("Invalid history root identity")
         count, verified = db.execute(
@@ -290,7 +352,7 @@ def check(db: sqlite3.Connection) -> None:
     for vehicle, plan, month, pages, known, total, verified, stop, observed in db.execute(
         "SELECT * FROM history_months"
     ):
-        current = root(db, vehicle)
+        current = resolve(db, vehicle, plan)
         if (
             current is None
             or plan != current.plan_id
@@ -353,7 +415,7 @@ def check(db: sqlite3.Connection) -> None:
         "SELECT vehicle,plan,month,page,digest,typeof(body),length(body),observed,backend,"
         "endpoint,ids,total,stop FROM history_pages"
     ):
-        current = root(db, vehicle)
+        current = resolve(db, vehicle, plan)
         if (
             current is None
             or plan != current.plan_id
@@ -361,7 +423,9 @@ def check(db: sqlite3.Connection) -> None:
             or type(number) is not int
             or not 1 <= number <= MAX_PAGES
             or kind != "blob"
-            or not 0 < size <= 1024 * 1024 + 1024
+            or not (
+                0 <= size <= 1024 * 1024 + 1024 if allow_runs else 0 < size <= 1024 * 1024 + 1024
+            )
             or endpoint != current.provider
             or backend != "0.1.7"
             or not isinstance(digest, str)
@@ -382,3 +446,21 @@ def check(db: sqlite3.Connection) -> None:
             and (type(total) is not int or not 0 <= total <= 1_000_000)
         ):
             raise ValueError("Invalid history page identities")
+    if allow_runs:
+        if db.execute(
+            "SELECT 1 FROM history_pages p LEFT JOIN history_payloads h ON h.digest=p.digest"
+            " WHERE length(p.body)=0 AND h.digest IS NULL AND NOT EXISTS"
+            " (SELECT 1 FROM history_pages old WHERE old.digest=p.digest"
+            " AND length(old.body)>0) LIMIT 1"
+        ).fetchone():
+            raise ValueError("Missing shared page payload")
+        for digest, kind, size in db.execute(
+            "SELECT digest,typeof(body),length(body) FROM history_payloads"
+        ):
+            if (
+                len(digest) != 64
+                or any(c not in "0123456789abcdef" for c in digest)
+                or kind != "blob"
+                or not 0 < size <= 1024 * 1024 + 1024
+            ):
+                raise ValueError("Invalid shared page payload")

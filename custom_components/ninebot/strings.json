@@ -891,7 +891,7 @@
     },
     "sync_history": {
       "name": "Sync history archive",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "synchronize queues incremental history work; selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Legacy range and repair operations remain supported.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -909,8 +909,11 @@
           "name": "End month (YYYYMM)"
         },
         "months": {
-          "name": "Repair months (YYYYMM list)",
-          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+          "name": "Selected months (YYYYMM list)",
+          "description": "For synchronize, sparse repair or cancellation; at most 12 distinct months. Active scans coalesce."
+        },
+        "force": {
+          "name": "Rescan month lists"
         }
       }
     },

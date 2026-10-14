@@ -47,6 +47,7 @@ class HistoryState(StrEnum):
     PAUSED = "paused"
     COMPLETE = "complete"
     WITH_GAPS = "completed_with_gaps"
+    RECONCILED = "locally_reconciled"
 
 
 def month_count(start: str, end: str) -> int:

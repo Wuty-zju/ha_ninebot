@@ -66,7 +66,7 @@ if TYPE_CHECKING:
     from .month_tasks import MonthTask
     from .preservation import PreservationTask
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_BYTES = 32 * 1024 * 1024
@@ -367,11 +367,12 @@ class RideArchive:
             raise ArchiveError(ArchiveFailure.SCHEMA)
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         from .history_store import COLUMNS as HISTORY_COLUMNS
+        from .history_store import LEGACY_COLUMNS
 
         columns_by_table = (
             TABLE_COLUMNS
             | (DETAIL_COLUMNS if version >= 2 else {})
-            | (HISTORY_COLUMNS if version >= 3 else {})
+            | (HISTORY_COLUMNS if version >= 4 else LEGACY_COLUMNS if version == 3 else {})
         )
         if tables != columns_by_table.keys():
             raise ArchiveError(ArchiveFailure.SCHEMA)
@@ -386,7 +387,50 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("detail_health:"):
+            if key == "history_family_turn" and value not in {"0", "1", "2"}:
+                raise ValueError("Invalid history family turn")
+            elif key.startswith("history_incremental_seen:") or key.startswith(
+                "history_run_signature:"
+            ):
+                if (
+                    version < 4
+                    or len(value) != 64
+                    or any(c not in "0123456789abcdef" for c in value)
+                ):
+                    raise ValueError("Invalid incremental signature")
+                _, vehicle, scope = key.split(":", 2)
+                if len(vehicle) != 64 or any(c not in "0123456789abcdef" for c in vehicle):
+                    raise ValueError("Invalid incremental signature scope")
+                if key.startswith("history_incremental_seen:"):
+                    previous_month(scope)
+                elif len(scope) != 32 or any(c not in "0123456789abcdef" for c in scope):
+                    raise ValueError("Invalid run signature scope")
+                elif key.startswith("history_run_signature:"):
+                    from .incremental_runs import get
+
+                    if get(db, vehicle, scope) is None:
+                        raise ValueError("Missing signed incremental run")
+            elif key.startswith("history_run_active:"):
+                if version < 4:
+                    raise ValueError("Unsupported incremental evidence version")
+                from .incremental_runs import validate_active
+
+                validate_active(db, key, value)
+            elif key.startswith("history_run:"):
+                if version < 4:
+                    raise ValueError("Unsupported incremental evidence version")
+                from .incremental_runs import validate_key
+
+                validate_key(key, value)
+            elif key.startswith(("history_paused:", "history_requested:")):
+                vehicle = key.split(":", 1)[1]
+                if (
+                    len(vehicle) != 64
+                    or any(c not in "0123456789abcdef" for c in vehicle)
+                    or value not in {"0", "1"}
+                ):
+                    raise ValueError("Invalid history pause state")
+            elif key.startswith("detail_health:"):
                 from .detail_health import key as health_key
                 from .detail_health import validate as validate_health
 
@@ -463,7 +507,7 @@ class RideArchive:
         if version >= 3:
             from .history_store import check as check_history
 
-            check_history(db)
+            check_history(db, allow_runs=version >= 4)
 
         if version >= 2:
             for (
@@ -517,7 +561,7 @@ class RideArchive:
             probe = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True)
             try:
                 version = probe.execute("PRAGMA user_version").fetchone()[0]
-                if version not in (1, 2, SCHEMA_VERSION):
+                if version not in (1, 2, 3, SCHEMA_VERSION):
                     raise ArchiveError(ArchiveFailure.SCHEMA)
                 self._check(probe, version)
             finally:
@@ -598,9 +642,13 @@ class RideArchive:
             db.execute(f"PRAGMA max_page_count={max(pages, self.max_bytes // size)}")
             db.execute("BEGIN IMMEDIATE")
             try:
+                from .history_store import PAYLOAD_SCHEMA
                 from .history_store import SCHEMA as HISTORY_SCHEMA
 
-                for sql in (*(DETAIL_SCHEMA if version == 1 else ()), *HISTORY_SCHEMA):
+                for sql in (
+                    *(DETAIL_SCHEMA if version == 1 else ()),
+                    *(HISTORY_SCHEMA if version < 3 else PAYLOAD_SCHEMA),
+                ):
                     db.execute(sql)
                 db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._check(db)
@@ -1062,6 +1110,11 @@ class RideArchive:
     def _reserve_background(
         self, db: sqlite3.Connection, vehicle: str, epoch: float, budget: int, kind: str
     ) -> bool:
+        paused = db.execute(
+            "SELECT value FROM meta WHERE key=?", (f"history_paused:{vehicle}",)
+        ).fetchone()
+        if paused is not None and paused[0] == "1":
+            return False
         limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
         if limit is not None and float(limit[0]) > epoch:
             return False
@@ -1220,6 +1273,8 @@ class RideArchive:
         epoch = now.timestamp()
         db = self._db(write=True)
         with db:
+            if self._history_paused(vehicle):
+                return None
             limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
             if limit is not None and float(limit[0]) > epoch:
                 return None
@@ -1736,14 +1791,203 @@ class RideArchive:
 
         return await self._run(lambda: root(self._db(), vehicle_key(sn)))
 
+    def _history_paused(self, vehicle: str) -> bool:
+        row = (
+            self._db()
+            .execute("SELECT value FROM meta WHERE key=?", (f"history_paused:{vehicle}",))
+            .fetchone()
+        )
+        return bool(row and row[0] == "1")
+
+    async def async_history_paused(self, sn: str) -> bool:
+        return await self._run(lambda: self._history_paused(vehicle_key(sn)))
+
+    async def async_schedule_history_run(
+        self, sn: str, month: str, now: datetime, *, guard: Callable[[], bool]
+    ) -> HistoryPlan:
+        from .history_store import root
+        from .incremental_runs import RunCapacity, schedule
+
+        previous_month(month)
+        utc_string(now)
+
+        def commit() -> HistoryPlan:
+            db = self._db(write=True)
+            vehicle = vehicle_key(sn)
+            with db:
+                if root(db, vehicle) is None:
+                    raise ArchiveError(ArchiveFailure.OWNER)
+                try:
+                    return schedule(db, vehicle, month, now)
+                except RunCapacity:
+                    raise ArchiveError(ArchiveFailure.BUSY) from None
+
+        return await self._run(commit, guard=guard)
+
+    async def async_history_run(self, sn: str, identity: str) -> HistoryPlan | None:
+        from .incremental_runs import get
+
+        return await self._run(lambda: get(self._db(), vehicle_key(sn), identity))
+
+    async def async_history_family_turn(self) -> int:
+        def read() -> int:
+            row = (
+                self._db()
+                .execute("SELECT value FROM meta WHERE key='history_family_turn'")
+                .fetchone()
+            )
+            return int(row[0]) if row else 0
+
+        return await self._run(read)
+
+    async def async_set_history_family_turn(self, turn: int) -> None:
+        if type(turn) is not int or not 0 <= turn < 3:
+            raise ValueError("Invalid history family turn")
+
+        def save() -> None:
+            db = self._db(write=True)
+            with db:
+                db.execute(
+                    "INSERT INTO meta VALUES ('history_family_turn',?) ON CONFLICT(key)"
+                    " DO UPDATE SET value=excluded.value",
+                    (str(turn),),
+                )
+
+        await self._run(save)
+
+    async def async_active_history_runs(self, sn: str) -> tuple[HistoryPlan, ...]:
+        from .incremental_runs import active
+
+        return await self._run(lambda: active(self._db(), vehicle_key(sn)))
+
+    async def async_reconcile_history_month(
+        self,
+        sn: str,
+        month: str,
+        now: datetime,
+        signature: str,
+        complete: bool,
+        *,
+        guard: Callable[[], bool],
+    ) -> HistoryPlan | None:
+        from .history_plan import HistoryState
+        from .history_store import root
+        from .incremental_runs import RunCapacity, get, put, schedule
+
+        previous_month(month)
+        if (
+            len(signature) != 64
+            or any(c not in "0123456789abcdef" for c in signature)
+            or type(complete) is not bool
+        ):
+            raise ValueError("Invalid incremental reconciliation")
+
+        def reconcile() -> HistoryPlan | None:
+            db = self._db(write=True)
+            vehicle = vehicle_key(sn)
+            marker = f"history_incremental_seen:{vehicle}:{month}"
+            with db:
+                if root(db, vehicle) is None:
+                    raise ArchiveError(ArchiveFailure.OWNER)
+                previous = db.execute("SELECT value FROM meta WHERE key=?", (marker,)).fetchone()
+                active = db.execute(
+                    "SELECT value FROM meta WHERE key=?", (f"history_run_active:{vehicle}:{month}",)
+                ).fetchone()
+                old = get(db, vehicle, active[0]) if active else None
+                if complete:
+                    if (
+                        old is not None
+                        and old.state in {HistoryState.DISCOVER, HistoryState.WAITING}
+                        and old.next_page == 1
+                    ):
+                        put(
+                            db,
+                            replace(
+                                old,
+                                state=HistoryState.RECONCILED,
+                                reason=None,
+                                retry_at=None,
+                                updated_at=utc_string(now),
+                                revision=old.revision + 1,
+                            ),
+                        )
+                    db.execute(
+                        "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                        " DO UPDATE SET value=excluded.value",
+                        (marker, signature),
+                    )
+                    return None
+                if previous and previous[0] == signature:
+                    return old
+                try:
+                    plan = schedule(db, vehicle, month, now)
+                except RunCapacity:
+                    raise ArchiveError(ArchiveFailure.BUSY) from None
+                token_key = f"history_run_signature:{vehicle}:{plan.plan_id}"
+                token = db.execute("SELECT value FROM meta WHERE key=?", (token_key,)).fetchone()
+                if token is None:
+                    db.execute("INSERT INTO meta VALUES (?,?)", (token_key, signature))
+                    token = (signature,)
+                if token[0] == signature:
+                    db.execute(
+                        "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                        " DO UPDATE SET value=excluded.value",
+                        (marker, signature),
+                    )
+                return plan
+
+        return await self._run(reconcile, guard=guard)
+
+    async def async_history_requested(self, sn: str) -> bool:
+        def read() -> bool:
+            found = (
+                self._db()
+                .execute(
+                    "SELECT value FROM meta WHERE key=?", (f"history_requested:{vehicle_key(sn)}",)
+                )
+                .fetchone()
+            )
+            return found is not None and found[0] == "1"
+
+        return await self._run(read)
+
+    async def async_request_history(self, sn: str, *, guard: Callable[[], bool]) -> None:
+        def save() -> None:
+            db = self._db(write=True)
+            with db:
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                    " DO UPDATE SET value=excluded.value",
+                    (f"history_requested:{vehicle_key(sn)}", "1"),
+                )
+
+        await self._run(save, guard=guard)
+
+    async def async_set_history_paused(
+        self, sn: str, paused: bool, *, guard: Callable[[], bool]
+    ) -> None:
+        if type(paused) is not bool:
+            raise ValueError("Invalid history pause value")
+
+        def save() -> None:
+            db = self._db(write=True)
+            with db:
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                    " DO UPDATE SET value=excluded.value",
+                    (f"history_paused:{vehicle_key(sn)}", "1" if paused else "0"),
+                )
+
+        await self._run(save, guard=guard)
+
     async def async_history_health(self, sn: str, plan_id: str) -> HistoryHealth:
         from .detail_health import summary
-        from .history_store import root
+        from .history_store import resolve
 
         def read() -> HistoryHealth:
             db = self._db()
             vehicle = vehicle_key(sn)
-            current = root(db, vehicle)
+            current = resolve(db, vehicle, plan_id)
             if current is None or current.plan_id != plan_id:
                 raise ArchiveError(ArchiveFailure.OWNER)
             return summary(db, vehicle, plan_id)
@@ -1754,7 +1998,7 @@ class RideArchive:
         self, sn: str, plan_id: str, *, guard: Callable[[], bool], limit: int = 16
     ) -> int:
         from .detail_health import put as put_health
-        from .history_store import root
+        from .history_store import resolve
 
         if type(limit) is not int or not 1 <= limit <= 16:
             raise ValueError("Invalid detail health batch")
@@ -1762,7 +2006,7 @@ class RideArchive:
         def backfill() -> int:
             db = self._db(write=True)
             vehicle = vehicle_key(sn)
-            current = root(db, vehicle)
+            current = resolve(db, vehicle, plan_id)
             if current is None or current.plan_id != plan_id:
                 raise ArchiveError(ArchiveFailure.OWNER)
             rows = db.execute(
@@ -1803,7 +2047,7 @@ class RideArchive:
     ) -> HistoryPlan:
         from .detail_health import summary
         from .history_plan import HistoryState
-        from .history_store import HistoryConflict, put_root, root
+        from .history_store import HistoryConflict, put_root, resolve
 
         if expected.vehicle != vehicle_key(sn):
             raise ValueError("Invalid baseline scope")
@@ -1811,7 +2055,7 @@ class RideArchive:
         def finish() -> HistoryPlan:
             db = self._db(write=True)
             with db:
-                if root(db, expected.vehicle) != expected:
+                if resolve(db, expected.vehicle, expected.plan_id) != expected:
                     raise ArchiveError(ArchiveFailure.BUSY)
                 if not expected.discovery_complete or expected.state not in {
                     HistoryState.PRESERVE,
@@ -1870,10 +2114,16 @@ class RideArchive:
         await self._run(commit, guard=guard)
 
     async def async_claim_history_page(
-        self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
+        self,
+        sn: str,
+        now: datetime,
+        budget: int,
+        *,
+        guard: Callable[[], bool],
+        plan_id: str | None = None,
     ) -> HistoryPlan | None:
         from .history_plan import HistoryState
-        from .history_store import put_root, root
+        from .history_store import put_root, resolve, root
 
         observed = utc_string(now)
         if type(budget) is not int or not 1 <= budget <= 60:
@@ -1883,7 +2133,9 @@ class RideArchive:
             db = self._db(write=True)
             vehicle = vehicle_key(sn)
             with db:
-                current = root(db, vehicle)
+                current = (
+                    resolve(db, vehicle, plan_id) if plan_id is not None else root(db, vehicle)
+                )
                 if (
                     current is None
                     or current.next_month is None
@@ -1959,6 +2211,8 @@ class RideArchive:
             db = self._db(write=True)
             try:
                 with db:
+                    if self._history_paused(expected.vehicle):
+                        raise ArchiveError(ArchiveFailure.BUSY)
                     receipt = accept_page(db, expected, raw)
                     if receipt.stop != "schema":
                         from .adapters import travel as parse_month

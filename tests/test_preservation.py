@@ -129,6 +129,7 @@ async def test_worker_uses_background_budget_and_persists_full_detail(tmp_path):
             async_query_detail=AsyncMock(return_value=result),
         )
         worker = HistoryPreservation(co)
+        co.preservation = worker
         await worker.async_tick(NOW)
         assert co.async_query_detail.await_count == 1
         assert co.async_query_detail.await_args.kwargs["priority"] is Priority.BACKGROUND

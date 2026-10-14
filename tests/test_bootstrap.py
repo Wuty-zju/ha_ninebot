@@ -3,7 +3,7 @@
 import hashlib
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -34,6 +34,7 @@ async def context(tmp_path, monkeypatch):
             writable=True,
             async_history_page_committed=AsyncMock(),
             record_error=Mock(),
+            _notify_change=Mock(),
         ),
     )
     calls = []
@@ -137,3 +138,106 @@ async def test_disabled_or_stale_profiles_do_not_create_or_query_roots(context):
     await runner.async_seed((SN,), NOW)
     assert await archive.async_history_plan(SN) is None
     assert not calls
+
+
+async def test_pause_resume_preserves_checkpoint_and_stops_background_wire(context):
+    co, archive, clock, calls = context
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    assert await runner.async_step((SN,), NOW, 60)
+    checkpoint = await archive.async_history_plan(SN)
+    await runner.async_pause(SN, True)
+    clock[0] += timedelta(minutes=3)
+    await runner.async_seed((SN,), clock[0])
+    assert not await runner.async_step((SN,), clock[0], 60)
+    assert len(calls) == 1
+    assert await archive.async_history_plan(SN) == checkpoint
+    await runner.async_pause(SN, False)
+    assert await runner.async_step((SN,), clock[0], 60)
+    assert len(calls) == 2 and calls[-1][-1] == 2
+
+
+async def test_incremental_runner_queries_only_registered_month_and_preserves_baseline(context):
+    co, archive, clock, calls = context
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    baseline = await archive.async_history_plan(SN)
+    run = await archive.async_schedule_history_run(SN, "202609", NOW, guard=lambda: True)
+    assert await runner.async_step((SN,), NOW, 60, incremental=True)
+    assert calls == [(SN, "202609", 1)]
+    clock[0] += timedelta(seconds=61)
+    assert not await runner.async_step((SN,), clock[0], 60, incremental=True)
+    assert (await archive.async_history_run(SN, run.plan_id)).state is HistoryState.COMPLETE
+    assert await archive.async_history_plan(SN) == baseline
+
+
+async def test_incremental_seed_isolates_full_vehicle_queue_and_skips_baseline_month(context):
+    from custom_components.ninebot.incremental_sync import IncrementalSync
+    from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure
+
+    co, archive, clock, calls = context
+    runner = HistoryBootstrap(co)
+    co.preservation = SimpleNamespace(bootstrap=runner)
+    await runner.async_seed((SN,), NOW)
+    sync = IncrementalSync(co)
+    with patch.object(
+        archive, "async_reconcile_history_month", new_callable=AsyncMock
+    ) as reconcile:
+        await sync.async_seed((SN,), NOW)
+        reconcile.assert_not_awaited()  # First baseline already has this month queued.
+        later = datetime(2026, 11, 2, tzinfo=UTC)
+        co.local_vehicle_available = lambda sn: True
+        co._ownership["other"] = 1
+        baseline = await archive.async_history_plan(SN)
+        with patch.object(archive, "async_history_plan", AsyncMock(return_value=baseline)):
+            reconcile.side_effect = [ArchiveError(ArchiveFailure.BUSY), None]
+            await sync.async_seed((SN, "other"), later)
+        assert [call.args[:2] for call in reconcile.await_args_list] == [
+            (SN, "202611"),
+            ("other", "202611"),
+        ]
+    assert not calls
+
+
+async def test_month_family_rotation_gives_each_pending_family_a_turn(context):
+    from custom_components.ninebot.preservation import HistoryPreservation
+
+    co, archive, clock, calls = context
+    worker = HistoryPreservation(co)
+    co.preservation = worker
+    worker.bootstrap.async_step = AsyncMock(return_value=True)
+    worker.incremental.async_step = AsyncMock(return_value=True)
+    worker._legacy_month_step = AsyncMock(return_value=True)
+    for _ in range(3):
+        assert await worker._resume_months((SN,), 30)
+    assert worker.bootstrap.async_step.await_count == 1
+    assert worker.incremental.async_step.await_count == 1
+    assert worker._legacy_month_step.await_count == 1
+    assert await archive.async_history_family_turn() == 0
+
+
+async def test_manual_request_survives_restart_with_automatic_seeding_disabled(context):
+    co, archive, clock, calls = context
+    co.config_entry.options["auto_history_sync"] = False
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    assert await archive.async_history_plan(SN) is None
+    assert not await runner.async_step((SN,), NOW, 60)
+    await runner.async_request(SN)
+    await runner.async_seed((SN,), NOW)
+    assert await runner.async_step((SN,), NOW, 60)
+    checkpoint = await archive.async_history_plan(SN)
+    runner = HistoryBootstrap(co)  # New runtime reconstructs persisted manual permission.
+    clock[0] += timedelta(minutes=3)
+    await runner.async_seed((SN,), clock[0])
+    assert not runner.enabled() and runner.enabled(SN)
+    assert await archive.async_history_plan(SN) == checkpoint
+    assert await runner.async_step((SN,), clock[0], 60)
+    assert calls[-1] == (SN, "202610", 2)
+    await runner.async_pause(SN, True)
+    clock[0] += timedelta(minutes=3)
+    assert not await runner.async_step((SN,), clock[0], 60)
+    co.config_entry.options["preserve_history"] = False
+    await runner.async_pause(SN, False)
+    assert not await runner.async_step((SN,), clock[0], 60)
+    assert len(calls) == 2
