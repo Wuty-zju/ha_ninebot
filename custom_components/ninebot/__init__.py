@@ -143,9 +143,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         )
         await async_migrate_entity_ids(hass, entry)
         async_audit_device_identities(hass, entry)
-        await coordinator.preservation.async_refresh_progress(
-            tuple(coordinator.data), dt_util.utcnow()
-        )
+        if any(sn not in coordinator.preservation.progress for sn in coordinator.data):
+            await coordinator.preservation.async_refresh_progress(
+                tuple(coordinator.data), dt_util.utcnow()
+            )
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         coordinator.preservation.start()
     except BaseException:

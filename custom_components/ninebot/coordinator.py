@@ -452,6 +452,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self._committed.get(("", "profile")) == result.request_revision
         ):
             self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, True)
+            await self.preservation.async_refresh_progress(tuple(self.data), finished)
 
     async def _group(
         self,

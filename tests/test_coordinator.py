@@ -1298,3 +1298,14 @@ async def test_adjacent_query_latency_does_not_renew_current_month_receipt(coord
         co.statistics.month("synthetic-one", "202609").received_at
         == (now + timedelta(seconds=30)).isoformat()
     )
+
+
+async def test_new_vehicle_gets_local_progress_even_when_background_history_is_off(coordinator):
+    from homeassistant.util import dt as dt_util
+
+    co = coordinator
+    co.client.async_list_vehicles.return_value.append({"wnumber": "new-history-vehicle"})
+    co._next_attempt[("", "profile")] = 0
+    await co._list(dt_util.utcnow())
+    assert co.preservation.progress["new-history-vehicle"].state == "disabled"
+    assert co.preservation.progress["new-history-vehicle"].scan_percent is None
