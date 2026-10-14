@@ -186,7 +186,12 @@ async def async_verify_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
         await archive.async_start_history_audit(sn, now, guard=owns, restart=True)
     if operation != "verify_status":
         await archive.async_step_history_audit(sn, now, guard=owns)
-    plan, current_revision, inventory_revision = await archive.async_history_audit_status(sn)
+    (
+        plan,
+        current_revision,
+        inventory_revision,
+        checks,
+    ) = await archive.async_history_verification_status(sn)
     changed = bool(
         plan
         and (
@@ -201,6 +206,19 @@ async def async_verify_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
     return {
         "schema_version": 1,
         "contract": "local_payload_integrity_v1",
+        "object_checks": {
+            "contract": "scoped_payload_receipts_v1",
+            "scope": "present_payload_objects",
+            "semantics": "verified_at_receipt_time",
+            "references_verified": False,
+            "normalized_metrics_verified": False,
+            "total": checks.total,
+            "verified": checks.verified,
+            "invalid": checks.invalid,
+            "pending": checks.pending,
+            "quarantined": checks.quarantined,
+            "receipts_complete": checks.receipts_complete,
+        },
         "operation": operation,
         "state": plan.phase if plan else "not_started",
         "captured_total": plan.total if plan else None,

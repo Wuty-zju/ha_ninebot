@@ -22,11 +22,26 @@ def revision(db: sqlite3.Connection) -> int:
     return validate(row[0]) if row else 0
 
 
-def advance(db: sqlite3.Connection) -> None:
+def vehicle_revision(db: sqlite3.Connection, vehicle: str) -> int:
+    if len(vehicle) != 64 or any(c not in "0123456789abcdef" for c in vehicle):
+        raise ValueError("Invalid payload vehicle scope")
+    row = db.execute("SELECT value FROM meta WHERE key=?", (f"{KEY}:{vehicle}",)).fetchone()
+    return validate(row[0]) if row else 0
+
+
+def advance(db: sqlite3.Connection, vehicle: str) -> None:
     value = revision(db)
     if value == MAX_REVISION:
         raise ValueError("Payload inventory revision exhausted")
     db.execute(
         "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (KEY, str(value + 1)),
+    )
+
+    scoped = vehicle_revision(db, vehicle)
+    if scoped == MAX_REVISION:
+        raise ValueError("Payload vehicle revision exhausted")
+    db.execute(
+        "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (f"{KEY}:{vehicle}", str(scoped + 1)),
     )

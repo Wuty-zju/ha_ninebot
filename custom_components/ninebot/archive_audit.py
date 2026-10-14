@@ -5,6 +5,7 @@ A completed payload scan does not prove normalized indexes or cloud completeness
 """
 
 import hashlib
+import json
 import sqlite3
 import time
 from dataclasses import asdict, dataclass, replace
@@ -12,8 +13,7 @@ from datetime import datetime
 
 from .archive_codec import decoded, encoded, stamp
 from .const import MAX_RESPONSE_BYTES
-from .detail_codec import CorruptPayload, unpacked
-from .history_store import page
+from .object_checks import ObjectSummary, sources, summary, verify
 from .payload_inventory import revision as inventory_revision
 
 PREFIX = "history_audit:"
@@ -192,28 +192,19 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
     deadline = time.monotonic() + MAX_BATCH_SECONDS
     exhausted = False
     while remaining and not plan.complete and not exhausted:
-        if plan.phase == "detail":
-            rows = db.execute(
-                "SELECT rowid,hash,length(body),observed,month,backend,endpoint"
-                " FROM detail_payloads"
-                " WHERE vehicle=? AND rowid>? AND rowid<=? ORDER BY rowid LIMIT ?",
-                (vehicle, plan.after, plan.detail_upper, remaining),
-            ).fetchall()
-        else:
-            rows = db.execute(
-                "SELECT p.rowid,p.plan,p.month,p.page,CASE WHEN length(p.body)>0"
-                " THEN length(p.body) ELSE coalesce((SELECT length(h.body)"
-                " FROM history_payloads h WHERE h.digest=p.digest),"
-                " (SELECT length(old.body) FROM history_pages old WHERE old.digest=p.digest"
-                " AND length(old.body)>0 LIMIT 1),0) END FROM history_pages p WHERE p.vehicle=?"
-                " AND p.rowid>? AND p.rowid<=? ORDER BY p.rowid LIMIT ?",
-                (vehicle, plan.after, plan.page_upper, remaining),
-            ).fetchall()
+        rows = sources(
+            db,
+            vehicle,
+            "detail" if plan.phase == "detail" else "page",
+            after=plan.after,
+            upper=plan.detail_upper if plan.phase == "detail" else plan.page_upper,
+            limit=remaining,
+        )
         if not rows:
             plan = replace(plan, phase="page" if plan.phase == "detail" else "complete", after=0)
             continue
         for row in rows:
-            size = row[2] if plan.phase == "detail" else row[4]
+            size = row.size
             # Reserve the maximum decoded size before opening a blob. SQLite
             # length() metadata does not materialize all candidate bodies.
             charge = size if isinstance(size, int) and 0 <= size <= MAX_COMPRESSED_OBJECT else 0
@@ -226,24 +217,13 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
                 break
             compressed += charge
             decoded_bytes += MAX_RESPONSE_BYTES
-            token = hashlib.sha256(str(row[1]).encode()).hexdigest()
-            key = fault_key(vehicle, plan.phase, row[0], token)
-            reason = None
-            try:
-                if not isinstance(size, int) or not 0 < size <= MAX_COMPRESSED_OBJECT:
-                    raise CorruptPayload("Invalid audit object byte budget")
-                if plan.phase == "detail":
-                    body = db.execute(
-                        "SELECT body FROM detail_payloads WHERE vehicle=? AND rowid=?",
-                        (vehicle, row[0]),
-                    ).fetchone()[0]
-                    unpacked(body, row[1], stamp(row[3]), row[4], row[5], row[6])
-                elif page(db, vehicle, row[1], row[2], row[3]) is None:
-                    raise ValueError("Missing audit page")
-            except CorruptPayload:
-                reason = "payload"
-            except (ValueError, TypeError, KeyError, OverflowError):
-                reason = "metadata"
+            # Preserve existing legacy fault keys; integrity reuse uses logical identities.
+            legacy = json.loads(row.identity)
+            token = hashlib.sha256(
+                str(row.digest if row.kind == "detail" else legacy[0]).encode()
+            ).hexdigest()
+            key = fault_key(vehicle, plan.phase, row.ordinal, token)
+            reason = verify(db, row, now)
             if reason:
                 db.execute(
                     "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
@@ -256,7 +236,7 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
                 )  # Derived fault flag, never original evidence.
             plan = replace(
                 plan,
-                after=row[0],
+                after=row.ordinal,
                 checked=plan.checked + 1,
                 invalid=plan.invalid + int(reason is not None),
             )
@@ -273,3 +253,32 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
     )
     put(db, vehicle, plan)
     return plan
+
+
+def delta_step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> ObjectSummary:
+    """Only unmatched identity/digest/metadata/contract receipts, no old-body decode."""
+    if type(limit) is not int or not 1 <= limit <= 8:
+        raise ValueError("Invalid delta batch")
+    deadline = time.monotonic() + MAX_BATCH_SECONDS
+    processed = 0
+    compressed = decoded_bytes = 0
+    for kind in ("detail", "page"):
+        for obj in sources(db, vehicle, kind, limit=limit - processed, pending=True):
+            charge = (
+                obj.size
+                if isinstance(obj.size, int) and 0 <= obj.size <= MAX_COMPRESSED_OBJECT
+                else 0
+            )
+            if processed and (
+                time.monotonic() >= deadline
+                or compressed + charge > MAX_BATCH_COMPRESSED
+                or decoded_bytes + MAX_RESPONSE_BYTES > MAX_BATCH_DECODED
+            ):
+                return summary(db, vehicle)
+            verify(db, obj, now)
+            compressed += charge
+            decoded_bytes += MAX_RESPONSE_BYTES
+            processed += 1
+            if processed == limit:
+                return summary(db, vehicle)
+    return summary(db, vehicle)

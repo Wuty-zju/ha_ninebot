@@ -57,6 +57,7 @@ from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
 from .models import TravelMonth, VehicleProfile
+from .object_checks import ObjectSummary
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord, version_metadata
 from .ride_models import Ride
@@ -68,7 +69,7 @@ if TYPE_CHECKING:
     from .month_tasks import MonthTask
     from .preservation import PreservationTask
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_BYTES = 32 * 1024 * 1024
@@ -373,11 +374,13 @@ class RideArchive:
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         from .history_store import COLUMNS as HISTORY_COLUMNS
         from .history_store import LEGACY_COLUMNS
+        from .object_checks import COLUMNS as CHECK_COLUMNS
 
         columns_by_table = (
             TABLE_COLUMNS
             | (DETAIL_COLUMNS if version >= 2 else {})
             | (HISTORY_COLUMNS if version >= 4 else LEGACY_COLUMNS if version == 3 else {})
+            | (CHECK_COLUMNS if version >= 5 else {})
         )
         if tables != columns_by_table.keys():
             raise ArchiveError(ArchiveFailure.SCHEMA)
@@ -400,6 +403,23 @@ class RideArchive:
                 from .archive_audit import scope as audit_scope
 
                 audit_scope(value)
+            elif key.startswith("history_delta_seen:"):
+                from .archive_audit import scope as audit_scope
+                from .payload_inventory import validate as validate_inventory
+
+                audit_scope(key.removeprefix("history_delta_seen:"))
+                parts = value.split(":")
+                if len(parts) != 2:
+                    raise ValueError("Invalid delta receipt fence")
+                validate_inventory(parts[0])
+                if not parts[1].isdigit() or not 1 <= int(parts[1]) <= 2**31 - 1:
+                    raise ValueError("Invalid delta receipt contract")
+            elif key.startswith("history_payload_revision:"):
+                from .archive_audit import scope as audit_scope
+                from .payload_inventory import validate as validate_inventory
+
+                audit_scope(key.removeprefix("history_payload_revision:"))
+                validate_inventory(value)
             elif key == "history_payload_revision":
                 from .payload_inventory import validate as validate_inventory
 
@@ -526,6 +546,11 @@ class RideArchive:
                 raise ValueError("Invalid archived ride index")
             stamp(observed)
 
+        if version >= 5:
+            from .object_checks import check as check_objects
+
+            check_objects(db)
+
         if version >= 3:
             from .history_store import check as check_history
 
@@ -553,7 +578,7 @@ class RideArchive:
                     or len(digest) != 64
                     or any(c not in "0123456789abcdef" for c in digest)
                     or body_type != "blob"
-                    or body_size > MAX_RESPONSE_BYTES + 1024
+                    or body_size < 0
                     or (backend is not None and version_metadata(backend) != backend)
                     or (endpoint is not None and version_metadata(endpoint) != endpoint)
                 ):
@@ -583,7 +608,7 @@ class RideArchive:
             probe = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True)
             try:
                 version = probe.execute("PRAGMA user_version").fetchone()[0]
-                if version not in (1, 2, 3, SCHEMA_VERSION):
+                if version not in (1, 2, 3, 4, SCHEMA_VERSION):
                     raise ArchiveError(ArchiveFailure.SCHEMA)
                 self._check(probe, version)
             finally:
@@ -599,8 +624,9 @@ class RideArchive:
             try:
                 with db:
                     from .history_store import SCHEMA as HISTORY_SCHEMA
+                    from .object_checks import SCHEMA as CHECK_SCHEMA
 
-                    for sql in (*SCHEMA, *DETAIL_SCHEMA, *HISTORY_SCHEMA):
+                    for sql in (*SCHEMA, *DETAIL_SCHEMA, *HISTORY_SCHEMA, *CHECK_SCHEMA):
                         db.execute(sql)
                     db.executemany(
                         "INSERT INTO meta VALUES (?,?)", (("owner", self.owner), ("revision", "0"))
@@ -666,12 +692,27 @@ class RideArchive:
             try:
                 from .history_store import PAYLOAD_SCHEMA
                 from .history_store import SCHEMA as HISTORY_SCHEMA
+                from .object_checks import SCHEMA as CHECK_SCHEMA
 
                 for sql in (
                     *(DETAIL_SCHEMA if version == 1 else ()),
-                    *(HISTORY_SCHEMA if version < 3 else PAYLOAD_SCHEMA),
+                    *(HISTORY_SCHEMA if version < 3 else PAYLOAD_SCHEMA if version == 3 else ()),
+                    *CHECK_SCHEMA,
                 ):
                     db.execute(sql)
+                # Preserve cursors/counts, but don't promote a pre-schema5 scan
+                # into a certificate for the new stable-identity receipt store.
+                from .archive_audit import put as put_audit
+                from .archive_audit import restored as restored_audit
+
+                for key, value in db.execute(
+                    "SELECT key,value FROM meta WHERE key LIKE 'history_audit:%'"
+                ).fetchall():
+                    put_audit(
+                        db,
+                        key.removeprefix("history_audit:"),
+                        replace(restored_audit(value), changed=True),
+                    )
                 db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._check(db)
                 db.commit()
@@ -1009,6 +1050,13 @@ class RideArchive:
             "observed=excluded.observed,revision=excluded.revision,selection=excluded.selection",
             (vehicle, ride.ride_id, digest, geometry_hash, observed, revision, reason),
         )
+        # Derived receipts for discarded ordinary bodies are no longer current.
+        db.execute(
+            "DELETE FROM payload_checks WHERE vehicle=? AND kind='detail'"
+            " AND identity IN (SELECT json_array(ride,hash) FROM detail_payloads"
+            " WHERE vehicle=? AND ride=? AND hash NOT IN (?,?))",
+            (vehicle, vehicle, ride.ride_id, digest, geometry_hash),
+        )
         # Bound storage to latest candidate plus selected geometry, not every poll.
         removed = db.execute(
             "DELETE FROM detail_payloads WHERE vehicle=? AND ride=? AND hash NOT IN (?,?)",
@@ -1017,7 +1065,7 @@ class RideArchive:
         if inserted.rowcount or removed.rowcount:
             from .payload_inventory import advance as advance_inventory
 
-            advance_inventory(db)
+            advance_inventory(db, vehicle)
         from .detail_health import put as put_health
 
         assert ride.ride_id is not None
@@ -1891,12 +1939,14 @@ class RideArchive:
 
     async def async_background_history_audit(
         self, sn: str, now: datetime, *, guard: Callable[[], bool]
-    ) -> AuditPlan | None:
-        from .archive_audit import get, start, step
+    ) -> AuditPlan | ObjectSummary | None:
+        from .archive_audit import delta_step, get, start, step
+        from .object_checks import CONTRACT
+        from .payload_inventory import vehicle_revision
 
         utc_string(now)
 
-        def advance() -> AuditPlan | None:
+        def advance() -> AuditPlan | ObjectSummary | None:
             db, vehicle = self._db(write=True), vehicle_key(sn)
             with db:
                 if self._history_paused(vehicle):
@@ -1905,15 +1955,29 @@ class RideArchive:
                 # Finish a fixed captured range even if writes make its proof
                 # stale. Never reset an active scan on every arriving cloud page.
                 # Daily scrubbing also checks latent corruption of stable data.
+                result: AuditPlan | ObjectSummary | None
                 if (
                     plan is not None
                     and plan.complete
                     and (now - stamp(plan.updated_at)).total_seconds() < 86400
                 ):
-                    return None
-                if plan is None or plan.complete:
-                    start(db, vehicle, now, restart=True)
-                result = step(db, vehicle, now, 2)
+                    seen = db.execute(
+                        "SELECT value FROM meta WHERE key=?", (f"history_delta_seen:{vehicle}",)
+                    ).fetchone()
+                    current = vehicle_revision(db, vehicle)
+                    if seen and seen[0] == f"{current}:{CONTRACT}":
+                        return None
+                    result = delta_step(db, vehicle, now, 2)
+                    if result.pending == 0:
+                        db.execute(
+                            "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                            " DO UPDATE SET value=excluded.value",
+                            (f"history_delta_seen:{vehicle}", f"{current}:{CONTRACT}"),
+                        )
+                else:
+                    if plan is None or plan.complete:
+                        start(db, vehicle, now, restart=True)
+                    result = step(db, vehicle, now, 2)
                 db.execute(
                     "INSERT INTO meta VALUES ('history_audit_vehicle',?)"
                     " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -1922,6 +1986,11 @@ class RideArchive:
                 return result
 
         return await self._run(advance, guard=guard)
+
+    async def async_object_checks(self, sn: str) -> ObjectSummary:
+        from .object_checks import summary
+
+        return await self._run(lambda: summary(self._db(), vehicle_key(sn)))
 
     async def async_history_audit(self, sn: str) -> AuditPlan | None:
         return (await self.async_history_audit_status(sn))[0]
@@ -1936,6 +2005,20 @@ class RideArchive:
                 self._revision(),
                 inventory_revision(self._db()),
             )
+
+        return await self._run(read)
+
+    async def async_history_verification_status(
+        self, sn: str
+    ) -> tuple[AuditPlan | None, int, int, ObjectSummary]:
+        """One actor snapshot for fences and receipts; no await between its reads."""
+        from .archive_audit import get
+        from .object_checks import summary
+        from .payload_inventory import revision as inventory_revision
+
+        def read() -> tuple[AuditPlan | None, int, int, ObjectSummary]:
+            db, vehicle = self._db(), vehicle_key(sn)
+            return get(db, vehicle), self._revision(), inventory_revision(db), summary(db, vehicle)
 
         return await self._run(read)
 
@@ -2439,7 +2522,7 @@ class RideArchive:
                     receipt = accept_page(db, expected, raw)
                     from .payload_inventory import advance as advance_inventory
 
-                    advance_inventory(db)
+                    advance_inventory(db, expected.vehicle)
                     if receipt.stop != "schema":
                         from .adapters import travel as parse_month
 

@@ -160,6 +160,8 @@ async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline
     )
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE payload_checks")
+        db.execute("DROP TABLE payload_quarantine")
         db.execute("DROP TABLE history_payloads")
         db.execute("DROP TABLE history_ids")
         db.execute("DROP TABLE history_months")
@@ -178,7 +180,7 @@ async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline
             assert backup.execute("SELECT count(*) FROM rides").fetchone()[0] == 1
         assert (await migrated.async_month(SN, "202610")).travel.rides[0].ride_id == "legacy"
         with closing(sqlite3.connect(path)) as db:
-            assert db.execute("PRAGMA user_version").fetchone()[0] == 4
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 5
         await migrated.async_set_history_plan(SN, initial(), None, guard=lambda: True)
     finally:
         await migrated.async_close()
@@ -219,6 +221,8 @@ async def test_free_space_migration_preflight_does_not_touch_original(tmp_path, 
     await archive.async_open()
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE payload_checks")
+        db.execute("DROP TABLE payload_quarantine")
         db.execute("DROP TABLE history_payloads")
         db.execute("DROP TABLE history_ids")
         db.execute("DROP TABLE history_months")
@@ -504,6 +508,8 @@ async def test_schema3_migration_preserves_baseline_and_saves_recovery_copy(stor
             "UPDATE history_pages SET body=(SELECT h.body FROM history_payloads h"
             " WHERE h.digest=history_pages.digest)"
         )
+        db.execute("DROP TABLE payload_checks")
+        db.execute("DROP TABLE payload_quarantine")
         db.execute("DROP TABLE history_payloads")
         db.execute("PRAGMA user_version=3")
     source_hash = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -519,7 +525,7 @@ async def test_schema3_migration_preserves_baseline_and_saves_recovery_copy(stor
         with closing(sqlite3.connect(backups[0])) as db:
             assert db.execute("PRAGMA user_version").fetchone()[0] == 3
         with closing(sqlite3.connect(path)) as db:
-            assert db.execute("PRAGMA user_version").fetchone()[0] == 4
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 5
     finally:
         await reopened.async_close()
 

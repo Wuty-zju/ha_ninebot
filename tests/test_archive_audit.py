@@ -242,7 +242,7 @@ async def test_oversized_blob_is_flagged_from_metadata_without_opening_payload(a
             (b"x" * (MAX_COMPRESSED_OBJECT + 1),),
         )
     await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
-    with patch("custom_components.ninebot.archive_audit.unpacked") as unpack:
+    with patch("custom_components.ninebot.object_checks.unpacked") as unpack:
         plan = await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=1)
     assert plan.checked == plan.invalid == 1
     unpack.assert_not_called()
@@ -335,3 +335,280 @@ async def test_background_audit_respects_opt_out_pause_backup_and_local_ownershi
     co.local_vehicle_available = lambda sn: False
     await co.preservation.audit.async_step(NOW)
     assert await archive.async_history_audit(SN) is None
+
+
+async def test_scoped_receipts_reuse_old_bodies_and_only_decode_new_unknown_fields(archive):
+    from unittest.mock import patch
+
+    from custom_components.ninebot.object_checks import ObjectSummary, unpacked
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await finish(archive)
+    checks = await archive.async_object_checks(SN)
+    assert checks.receipts_complete and checks.verified == checks.total == 4
+    with patch("custom_components.ninebot.object_checks.unpacked", wraps=unpacked) as decode:
+        result = await archive.async_background_history_audit(SN, NOW, guard=lambda: True)
+        assert isinstance(result, ObjectSummary) and result.pending == 0
+        decode.assert_not_called()
+        saved = await archive.async_private_detail(SN, "ride-0")
+        body = {**saved.latest.payload(), "unknown_safe_extra": "new evidence"}
+        raw = build_record(
+            Endpoint.TRIP_DETAIL,
+            body,
+            NOW + timedelta(seconds=1),
+            "202610",
+            backend_version="0.1.7",
+        )
+        assert await archive.async_record_detail(
+            SN,
+            merge_detail(saved.ride, parse_ride(body, "202610", source=Endpoint.TRIP_DETAIL)),
+            raw.received_at,
+            raw=raw,
+        )
+        assert (await archive.async_object_checks(SN)).pending == 1
+        result = await archive.async_background_history_audit(
+            SN,
+            NOW + timedelta(seconds=2),
+            guard=lambda: True,
+        )
+        assert isinstance(result, ObjectSummary) and result.receipts_complete
+        assert decode.call_count == 1
+        assert (
+            await archive.async_background_history_audit(
+                SN,
+                NOW + timedelta(seconds=3),
+                guard=lambda: True,
+            )
+            is None
+        )
+        assert decode.call_count == 1
+
+
+async def test_receipt_contract_change_invalidates_seen_fence_without_raw_changes(archive):
+    from unittest.mock import patch
+
+    from custom_components.ninebot.object_checks import ObjectSummary, unpacked
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await finish(archive)
+    await archive.async_background_history_audit(SN, NOW, guard=lambda: True)
+    with (
+        patch("custom_components.ninebot.object_checks.CONTRACT", 2),
+        patch("custom_components.ninebot.object_checks.unpacked", wraps=unpacked) as decode,
+    ):
+        first = await archive.async_background_history_audit(SN, NOW, guard=lambda: True)
+        assert isinstance(first, ObjectSummary) and first.pending == 2
+        second = await archive.async_background_history_audit(SN, NOW, guard=lambda: True)
+        assert isinstance(second, ObjectSummary) and second.receipts_complete
+        assert decode.call_count == 4
+    assert (await archive.async_object_checks(SN)).pending == 4
+
+
+async def test_receipts_bind_metadata_and_cannot_be_reused_by_a_replaced_rowid(archive):
+    from unittest.mock import patch
+
+    from custom_components.ninebot.object_checks import ObjectSummary, unpacked
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await finish(archive)
+    # A metadata change is a new check scope even when body/hash/rowid are the same.
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        db.execute("UPDATE detail_payloads SET endpoint='0.1.7' WHERE ride='ride-0'")
+    assert (await archive.async_object_checks(SN)).pending == 1
+    with patch("custom_components.ninebot.object_checks.unpacked", wraps=unpacked) as decode:
+        result = await archive.async_background_history_audit(SN, NOW, guard=lambda: True)
+        assert isinstance(result, ObjectSummary) and result.receipts_complete
+        assert decode.call_count == 1
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        row = db.execute("SELECT rowid,hash FROM detail_payloads WHERE ride='ride-1'").fetchone()
+        # Deliberate synthetic out-of-band row replacement; the old receipt must not match.
+        db.execute("UPDATE detail_payloads SET hash=? WHERE rowid=?", ("f" * 64, row[0]))
+    checks = await archive.async_object_checks(SN)
+    assert checks.pending == 1 and not checks.receipts_complete
+
+
+async def test_quarantine_deduplicates_real_bad_bytes_and_survives_consistent_backup(
+    archive, tmp_path
+):
+    damaged = b"preserve-this-exact-corrupt-object"
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        db.execute("UPDATE detail_payloads SET body=? WHERE ride='ride-1'", (damaged,))
+    for _ in range(2):
+        await archive.async_start_history_audit(SN, NOW, guard=lambda: True, restart=True)
+        done = await finish(archive)
+        assert done.invalid == 1
+    checks = await archive.async_object_checks(SN)
+    assert checks.invalid == checks.quarantined == 1 and not checks.receipts_complete
+    with closing(sqlite3.connect(archive.path)) as db:
+        rows = db.execute(
+            "SELECT storage_mode,body,body_hash,source_size FROM payload_quarantine"
+        ).fetchall()
+        assert rows == [("copied", damaged, hashlib.sha256(damaged).hexdigest(), len(damaged))]
+        assert (
+            db.execute("SELECT body FROM detail_payloads WHERE ride='ride-1'").fetchone()[0]
+            == damaged
+        )
+    path = tmp_path / "quarantine-backup.sqlite3"
+    await archive.async_backup(path)
+    restored = RideArchive(path, OWNER)
+    try:
+        await restored.async_open()
+        assert (await restored.async_object_checks(SN)).quarantined == 1
+        assert await restored.async_private_detail(SN, "ride-0") is not None
+        with closing(sqlite3.connect(path)) as db:
+            assert db.execute("SELECT body FROM payload_quarantine").fetchone()[0] == damaged
+    finally:
+        await restored.async_close()
+
+
+async def test_oversized_source_is_pinned_in_place_and_missing_page_is_not_claimed_copied(archive):
+    from custom_components.ninebot.archive_audit import MAX_COMPRESSED_OBJECT
+
+    size = MAX_COMPRESSED_OBJECT + 1
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        db.execute("UPDATE detail_payloads SET body=? WHERE ride='ride-0'", (b"x" * size,))
+        db.execute("DELETE FROM history_payloads")
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    done = await finish(archive)
+    assert done.invalid == 2
+    with closing(sqlite3.connect(archive.path)) as db:
+        rows = db.execute(
+            "SELECT kind,storage_mode,body,body_hash,source_size FROM payload_quarantine"
+            " ORDER BY kind"
+        ).fetchall()
+        assert rows == [
+            ("detail", "in_place", None, None, size),
+            ("page", "missing", None, None, 0),
+        ]
+        assert (
+            db.execute("SELECT length(body) FROM detail_payloads WHERE ride='ride-0'").fetchone()[0]
+            == size
+        )
+
+
+async def test_schema4_migration_preserves_payloads_cursor_and_old_schema_backup(archive, tmp_path):
+    import shutil
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    checkpoint = await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=1)
+    path = archive.path
+    await archive.async_close()
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE payload_checks")
+        db.execute("DROP TABLE payload_quarantine")
+        db.execute("PRAGMA user_version=4")
+        originals = db.execute(
+            "SELECT vehicle,ride,hash,body FROM detail_payloads ORDER BY ride"
+        ).fetchall()
+    original_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    migrated = RideArchive(path, OWNER)
+    try:
+        await migrated.async_open()
+        after = await migrated.async_history_audit(SN)
+        assert after.checked == checkpoint.checked and after.after == checkpoint.after
+        assert after.changed and not after.payloads_verified
+        assert (await migrated.async_object_checks(SN)).pending == 4
+        with closing(sqlite3.connect(path)) as db:
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 5
+            assert (
+                db.execute(
+                    "SELECT vehicle,ride,hash,body FROM detail_payloads ORDER BY ride"
+                ).fetchall()
+                == originals
+            )
+        copies = list(path.parent.glob(f"rides.schema4-{original_hash}.sqlite3"))
+        assert len(copies) == 1
+        with closing(sqlite3.connect(copies[0])) as db:
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 4
+            assert (
+                db.execute(
+                    "SELECT vehicle,ride,hash,body FROM detail_payloads ORDER BY ride"
+                ).fetchall()
+                == originals
+            )
+        # Restore by copying, never migrating the only recovery original in place.
+        restored_path = tmp_path / "restored" / "rides.sqlite3"
+        restored_path.parent.mkdir()
+        shutil.copyfile(copies[0], restored_path)
+        restored = RideArchive(restored_path, OWNER)
+        try:
+            await restored.async_open()
+            assert (await restored.async_private_detail(SN, "ride-0")).latest is not None
+        finally:
+            await restored.async_close()
+    finally:
+        await migrated.async_close()
+
+
+async def test_schema5_failed_ddl_rolls_back_original_with_recovery_copy(archive, monkeypatch):
+    from custom_components.ninebot import object_checks
+
+    path = archive.path
+    await archive.async_close()
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE payload_checks")
+        db.execute("DROP TABLE payload_quarantine")
+        db.execute("PRAGMA user_version=4")
+        bodies = db.execute("SELECT body FROM detail_payloads ORDER BY ride").fetchall()
+    monkeypatch.setattr(object_checks, "SCHEMA", (object_checks.SCHEMA[0], "INVALID MIGRATION DDL"))
+    migrated = RideArchive(path, OWNER)
+    try:
+        with pytest.raises(ArchiveError) as error:
+            await migrated.async_open()
+        assert error.value.kind is ArchiveFailure.STORAGE
+        with closing(sqlite3.connect(path)) as db:
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 4
+            assert db.execute("SELECT body FROM detail_payloads ORDER BY ride").fetchall() == bodies
+            assert not db.execute(
+                "SELECT name FROM sqlite_master WHERE name='payload_checks'"
+            ).fetchall()
+        assert len(list(path.parent.glob("rides.schema4-*.sqlite3"))) == 1
+    finally:
+        await migrated.async_close()
+
+
+async def test_pinned_oversized_blob_does_not_block_healthy_reads_after_restart(archive):
+    from custom_components.ninebot.archive_audit import MAX_COMPRESSED_OBJECT
+
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        db.execute(
+            "UPDATE detail_payloads SET body=? WHERE ride='ride-0'",
+            (b"x" * (MAX_COMPRESSED_OBJECT + 1),),
+        )
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await finish(archive)
+    path = archive.path
+    await archive.async_close()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        assert await reopened.async_private_detail(SN, "ride-1") is not None
+        with pytest.raises(ArchiveError) as error:
+            await reopened.async_private_detail(SN, "ride-0")
+        assert error.value.kind is ArchiveFailure.OBJECT
+        assert (await reopened.async_object_checks(SN)).quarantined == 1
+        with closing(sqlite3.connect(path)) as db:
+            assert (
+                db.execute(
+                    "SELECT length(body) FROM detail_payloads WHERE ride='ride-0'"
+                ).fetchone()[0]
+                == MAX_COMPRESSED_OBJECT + 1
+            )
+    finally:
+        await reopened.async_close()
+
+
+async def test_per_vehicle_delta_fence_avoids_rechecking_unrelated_car(archive):
+    from unittest.mock import patch
+
+    from custom_components.ninebot.payload_inventory import advance
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await finish(archive)
+    await archive.async_background_history_audit(SN, NOW, guard=lambda: True)
+    # A different car's managed raw mutation must not schedule an identical delta scan.
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        advance(db, vehicle_key("other-car"))
+    with patch("custom_components.ninebot.archive_audit.delta_step") as delta:
+        assert await archive.async_background_history_audit(SN, NOW, guard=lambda: True) is None
+        delta.assert_not_called()
