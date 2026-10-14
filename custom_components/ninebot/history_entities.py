@@ -70,12 +70,13 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
         value = self.coordinator.preservation.progress.get(self.sn)
         if value is None:
             return None
-        return {
+        values: dict[str, str | int | datetime | None] = {
             "history_sync_state": value.state,
             "history_scan_progress": value.scan_percent,
             "history_detail_progress": value.detail_percent,
             "history_sync_last_success": value.last_success,
-        }[self.key]
+        }
+        return values[self.key]
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
