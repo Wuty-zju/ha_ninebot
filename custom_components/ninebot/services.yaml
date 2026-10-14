@@ -220,6 +220,9 @@ sync_history:
             - resume
             - sync_status
             - synchronize
+            - verify
+            - verify_continue
+            - verify_status
     start_month:
       example: "202601"
       selector:

@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 from zoneinfo import ZoneInfo
 
+from .archive_audit import AuditPlan
 from .archive_browse import RecordedCursor, RecordedCursorMismatch, RecordedPage, recorded_page
 from .archive_codec import (
     decoded,
@@ -391,7 +392,11 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key == "history_family_turn" and value not in {"0", "1", "2"}:
+            if key.startswith(("history_audit:", "history_audit_fault:")):
+                from .archive_audit import validate_meta
+
+                validate_meta(key, value)
+            elif key == "history_family_turn" and value not in {"0", "1", "2"}:
                 raise ValueError("Invalid history family turn")
             elif key.startswith("history_incremental_seen:") or key.startswith(
                 "history_run_signature:"
@@ -1794,6 +1799,41 @@ class RideArchive:
 
     async def async_sync_job(self) -> SyncJob | None:
         return await self._run(self._sync_job)
+
+    async def async_history_audit(self, sn: str) -> AuditPlan | None:
+        from .archive_audit import get
+
+        return await self._run(lambda: get(self._db(), vehicle_key(sn)))
+
+    async def async_start_history_audit(
+        self, sn: str, now: datetime, *, guard: Callable[[], bool], restart: bool = False
+    ) -> AuditPlan:
+        from .archive_audit import start
+
+        utc_string(now)
+        if type(restart) is not bool:
+            raise ValueError("Invalid audit restart")
+
+        def begin() -> AuditPlan:
+            db = self._db(write=True)
+            with db:
+                return start(db, vehicle_key(sn), now, restart=restart)
+
+        return await self._run(begin, guard=guard)
+
+    async def async_step_history_audit(
+        self, sn: str, now: datetime, *, guard: Callable[[], bool], limit: int = 8
+    ) -> AuditPlan | None:
+        from .archive_audit import step
+
+        utc_string(now)
+
+        def advance() -> AuditPlan | None:
+            db = self._db(write=True)
+            with db:
+                return step(db, vehicle_key(sn), now, limit)
+
+        return await self._run(advance, guard=guard)
 
     async def async_history_plan(self, sn: str) -> HistoryPlan | None:
         from .history_store import root

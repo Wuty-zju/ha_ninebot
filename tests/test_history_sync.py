@@ -438,3 +438,24 @@ async def test_resume_rechecks_capacity_before_attempting_to_write_pause_metadat
     assert not co.statistics.archive.write_paused
     app_client.async_get_travel.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
+
+
+async def test_local_verification_actions_do_not_query_cloud_or_change_wire_budget(
+    hass, entry, app_client, sync_device
+):
+    co = entry.runtime_data.coordinator
+    before = await co.statistics.archive.async_history_evidence(SN, guard=lambda: True)
+    result = await call(hass, sync_device, operation="verify")
+    assert result["contract"] == "local_payload_integrity_v1"
+    assert result["cloud_requests"] == 0
+    assert result["normalization_and_cloud_coverage_verified"] is False
+    assert "SyntheticSN" not in json.dumps(result)
+    status = await call(hass, sync_device, operation="verify_status")
+    assert status["checked"] == result["checked"]
+    continued = await call(hass, sync_device, operation="verify_continue")
+    assert continued["checked"] >= status["checked"]
+    after = await co.statistics.archive.async_history_evidence(SN, guard=lambda: True)
+    assert after.budget_at == before.budget_at
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_get_trip_detail.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()
