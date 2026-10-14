@@ -304,3 +304,92 @@ async def test_bad_object_does_not_destroy_other_details_or_block_healthy_writes
             )
     finally:
         await reopened.async_close()
+
+
+@pytest.mark.parametrize("role", ["latest", "selected_geometry"])
+async def test_partial_view_preserves_independent_payloads_scalars_and_damaged_bytes(
+    tmp_path, role
+):
+    archive = await opened(tmp_path)
+    try:
+        await save(
+            archive,
+            {
+                "trail": "120,30,1,1;120.01,30.01,2,2;120.02,30.02,3,3",
+                "mileages": 2,
+                "is_show_simple_point": False,
+            },
+            NOW + timedelta(seconds=1),
+        )
+        await save(
+            archive,
+            {"trail": "120,30,0,0", "mileages": 3, "is_show_simple_point": True},
+            NOW + timedelta(seconds=2),
+        )
+        before = await archive.async_private_detail(SN, "first")
+        assert before.latest_hash != before.geometry_hash
+        digest = before.latest_hash if role == "latest" else before.geometry_hash
+        damaged = b"forensic-original-do-not-delete"
+        with closing(sqlite3.connect(archive.path)) as db, db:
+            db.execute("UPDATE detail_payloads SET body=? WHERE hash=?", (damaged, digest))
+        with pytest.raises(ArchiveError) as denied:
+            await archive.async_private_detail(SN, "first")
+        assert denied.value.kind is ArchiveFailure.OBJECT
+        partial = await archive.async_private_detail(SN, "first", allow_partial=True, max_points=1)
+        assert (
+            partial.ride.distance_m == 3000
+        )  # Independent normalized scalar snapshot remains current.
+        assert partial.faults == (f"{role}_payload_unavailable",)
+        if role == "latest":
+            assert partial.latest is None and partial.geometry is not None
+            assert partial.geometry.received_at == NOW + timedelta(seconds=1)
+            assert partial.ride.total_track_points == 3
+            assert partial.geometry_source == "selected_geometry"
+        else:
+            assert partial.geometry is None and partial.latest is not None
+            assert partial.latest.received_at == NOW + timedelta(seconds=2)
+            assert partial.ride.total_track_points == 1
+            assert partial.geometry_source == "latest_payload"
+            assert partial.ride.geometry_selection == "fallback_latest_payload"
+        # A tolerant read does not license a writer to erase the damaged original.
+        with pytest.raises(ArchiveError) as blocked:
+            await save(archive, {"trail": "120,30,1,1", "mileages": 4}, NOW + timedelta(seconds=3))
+        assert blocked.value.kind is ArchiveFailure.OBJECT
+        again = await archive.async_private_detail(SN, "first", allow_partial=True)
+        assert again.ride.distance_m == 3000 and again.latest_hash == before.latest_hash
+        with closing(sqlite3.connect(archive.path)) as db:
+            assert (
+                db.execute("SELECT body FROM detail_payloads WHERE hash=?", (digest,)).fetchone()[0]
+                == damaged
+            )
+    finally:
+        await archive.async_close()
+    reopened = RideArchive(archive.path, OWNER)
+    try:
+        await reopened.async_open()
+        found = await reopened.async_private_detail(SN, "first", allow_partial=True)
+        assert found.faults == (f"{role}_payload_unavailable",) and found.ride.distance_m == 3000
+    finally:
+        await reopened.async_close()
+
+
+async def test_partial_view_refuses_two_bad_roles_and_does_not_hide_invalid_scope(tmp_path):
+    archive = await opened(tmp_path)
+    try:
+        await save(archive, {"trail": "120,30,1,1"}, NOW + timedelta(seconds=1))
+        with closing(sqlite3.connect(archive.path)) as db, db:
+            db.execute("UPDATE detail_payloads SET body=?", (b"unrecoverable-single-object",))
+        with pytest.raises(ArchiveError) as bad:
+            await archive.async_private_detail(SN, "first", allow_partial=True)
+        assert bad.value.kind is ArchiveFailure.OBJECT
+        assert (
+            await archive.async_private_detail("foreign-vehicle", "first", allow_partial=True)
+            is None
+        )
+        with closing(sqlite3.connect(archive.path)) as db, db:
+            db.execute("UPDATE detail_payloads SET month='202608'")
+        with pytest.raises(ArchiveError) as invalid:
+            await archive.async_private_detail(SN, "first", allow_partial=True)
+        assert invalid.value.kind is ArchiveFailure.SCHEMA
+    finally:
+        await archive.async_close()

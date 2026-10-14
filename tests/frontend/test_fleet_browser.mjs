@@ -125,3 +125,15 @@ test('saved detail availability is strict and scoped to each response', async ()
   assert.equal(safeRide({ detail_saved: true }).detail_saved, true);
   for (const value of [undefined, 'false', 0]) assert.equal(safeRide({ detail_saved: value }).detail_saved, null);
 });
+
+
+test('partial archive status is retained without keeping raw context or payloads', async () => {
+  const { browser } = setup(request => request.service === 'get_recorded_trips' ? page(null) :
+    { source_mode: 'ride_archive', query_month: row.query_month, ride: row,
+      detail_context: { local_integrity: { partial: true }, raw_secret: 'must-not-retain' } });
+  await tick();
+  await browser.detail(browser.page.rides[0]);
+  const detail = browser.details.get(trackKey('device-a', row));
+  assert.equal(detail.local_partial, true);
+  assert.ok(!JSON.stringify(detail).includes('must-not-retain'));
+});

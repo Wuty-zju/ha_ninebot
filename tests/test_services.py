@@ -516,3 +516,64 @@ async def test_old_archived_id_detail_ignores_latest_twenty_row_window(
     app_client.async_get_trip_detail.assert_awaited_once()
     app_client.async_get_travel.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
+
+
+@pytest.mark.parametrize("role", ["latest", "selected_geometry"])
+async def test_local_partial_detail_preserves_usable_track_without_cloud_repair(
+    hass, entry, app_client, query_device, role
+):
+    import sqlite3
+    from contextlib import closing
+
+    hass.config_entries.async_update_entry(entry, options={"enable_coordinates": True})
+    await hass.async_block_till_done()
+    data = {"device_id": query_device, "ride_id": "fixture-ride-01", "query_month": "202609"}
+    full = {
+        **app_client.async_get_trip_detail.return_value,
+        "trail": "120,30,1,1;120.01,30.01,2,2;120.02,30.02,3,3",
+        "is_show_simple_point": False,
+    }
+    app_client.async_get_trip_detail.return_value = full
+    await call(hass, "get_trip_detail", data)
+    app_client.async_get_trip_detail.return_value = {
+        **full,
+        "trail": "120,30,0,0",
+        "is_show_simple_point": True,
+        "ec": "6",
+    }
+    await call(hass, "get_trip_detail", {**data, "refresh": True})
+    co = entry.runtime_data.coordinator
+    before = await co.statistics.archive.async_private_detail("SyntheticSN", data["ride_id"])
+    assert before.latest_hash != before.geometry_hash
+    digest = before.latest_hash if role == "latest" else before.geometry_hash
+    damaged = b"local-corrupt-evidence-retained"
+    with closing(sqlite3.connect(co.statistics.archive.path)) as db, db:
+        db.execute("UPDATE detail_payloads SET body=? WHERE hash=?", (damaged, digest))
+    app_client.async_get_trip_detail.reset_mock()
+    app_client.async_get_travel.reset_mock()
+    with patch.object(co, "fresh", return_value=False):
+        result = await call(hass, "get_trip_detail", {**data, "local_only": True})
+        integrity = result["detail_context"]["local_integrity"]
+        assert integrity["partial"] and integrity["faults"] == [f"{role}_payload_unavailable"]
+        assert integrity["payload_evidence_source"] == (
+            "selected_geometry" if role == "latest" else "latest_payload"
+        )
+        assert result["ride"]["energy_wh"] == 6
+        assert result["ride"]["track_summary"]["total_known"] == (3 if role == "latest" else 1)
+        assert "track" not in result["ride"]
+        track = await call(
+            hass,
+            "get_trip_detail",
+            {**data, "local_only": True, "include_track": True, "max_points": 1},
+        )
+        assert len(track["ride"]["track"]) == 1
+        assert track["detail_context"]["local_integrity"] == integrity
+    assert co.statistics.error is None and co.statistics.writable
+    app_client.async_get_trip_detail.assert_not_awaited()
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()
+    with closing(sqlite3.connect(co.statistics.archive.path)) as db:
+        assert (
+            db.execute("SELECT body FROM detail_payloads WHERE hash=?", (digest,)).fetchone()[0]
+            == damaged
+        )

@@ -286,6 +286,19 @@ def detail_context(detail: RideDetail) -> dict[str, Any]:
         "scalar_observed_at": iso(detail.scalar_observed_at),
         "geometry_received_at": iso(detail.geometry_received_at),
         "mixed_geometry_revision": detail.mixed_geometry_revision,
+        "local_integrity": (
+            {
+                "partial": bool(detail.local_payload_faults),
+                "faults": list(detail.local_payload_faults),
+                "latest_payload_available": detail.latest_payload_available,
+                "selected_geometry_available": detail.selected_geometry_available,
+                "payload_evidence_source": detail.payload_evidence_source,
+                "geometry_evidence_source": detail.geometry_evidence_source,
+                "scalar_source": "normalized_archive_index",
+            }
+            if detail.source_mode == "ride_archive"
+            else None
+        ),
     }
 
 
@@ -306,6 +319,7 @@ async def cached_detail(
             ride_id,
             max_points=max_points,
             point_offset=offset,
+            allow_partial=True,
             guard=lambda: (
                 co.local_vehicle_available(sn)
                 and generation == co._generation
@@ -321,20 +335,32 @@ async def cached_detail(
         return None
     if month is not None and found.ride.query_month != month:
         raise validation_error("query_ride")
+    if found.faults:
+        co.statistics.record_error(ArchiveError(ArchiveFailure.OBJECT))
+    evidence = found.latest or found.geometry
+    geometry_evidence = found.geometry or found.latest
+    assert evidence is not None and geometry_evidence is not None
     return RideDetail(
         found.ride.detail_id or ride_id,
         found.ride.query_month,
-        found.latest.received_at,
+        evidence.received_at,
         found.ride,
-        found.latest.backend_version,
-        found.latest.endpoint_version,
+        evidence.backend_version,
+        evidence.endpoint_version,
         source_mode="ride_archive",
         archive_revision=found.revision,
         scalar_revision=found.scalar_revision,
         scalar_observed_at=found.scalar_observed_at,
-        geometry_received_at=found.geometry.received_at,
+        geometry_received_at=geometry_evidence.received_at,
         mixed_geometry_revision=found.latest_hash != found.geometry_hash,
-    ), found.latest
+        local_payload_faults=found.faults,
+        latest_payload_available=found.latest is not None,
+        selected_geometry_available=found.geometry is not None,
+        payload_evidence_source=(
+            "latest_payload" if found.latest is not None else "selected_geometry"
+        ),
+        geometry_evidence_source=found.geometry_source,
+    ), evidence
 
 
 async def detail_ride(

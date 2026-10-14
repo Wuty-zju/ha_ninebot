@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b66
+
+- Recover read-only local detail views from independently validated latest or selected-geometry payloads. Preserve normalized scalar snapshots, explicit unavailable-role/evidence provenance and real receipt times; refuse when neither object survives.
+- Keep archive writers and quality backfill strict, preserve corrupt bytes and Repairs, and flag missing payload objects without weakening database/schema/account checks. Bound local blob reads before opening oversized bodies.
+- Show localized partial-data notices in the history card and include evidence-role changes in track chunk fences to prevent mixed routes. No implicit cloud repair, entity identity or Recorder changes; full trusted reconstruction and incremental audit receipts remain follow-up work.
+
 ## 2.0.0b65
 
 - Advance local history payload audits in low-priority bounded batches after normal preservation work. Share manual checkpoints, persist vehicle fairness and cool completed scans for a day instead of restarting for every arriving page. Respect automatic-sync opt-out, pause, backup, shutdown and storage/ownership guards; use no cloud request budget.

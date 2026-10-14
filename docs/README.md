@@ -926,3 +926,35 @@ current inventory-fenced result.
 关闭自动同步后仍可手动校验；暂停/备份/不可写/卸载守卫继续生效。
 新增原件即使没有改变实体数值，也会使旧的当前校验证明失效；旧扫描结果保留作为历史证据。
 原件完整性通过不代表云端历史已枚举完整，也不代表全部派生索引已验证。
+
+
+### Partially damaged local detail evidence
+
+Local detail Actions independently validate latest and selected-geometry payloads.
+If only one survives, they return a read-only partial view: normalized archive
+scalars remain distinct from geometry, and `detail_context.local_integrity`
+reports unavailable roles, actual payload/geometry evidence sources and the
+normalized-index scalar source. The response timestamp belongs to the returned
+readable payload; older geometry is never stamped as the unavailable latest
+receipt. These flags are not a certificate that every normalized scalar has
+been reconciled against raw evidence. Cloud results have no local-integrity view.
+
+Maps can read the surviving selected geometry, or fall back to geometry actually
+present in the verified latest payload. Chunk fingerprints include evidence-role
+availability so a change between selected/fallback geometry cannot splice routes.
+The card shows a localized partial-original warning, without retaining arbitrary
+raw context. Coordinate opt-in, user/device/account permissions and bounded
+local-only reads remain unchanged. No implicit cloud repair occurs.
+
+If neither payload survives, the normal object-corruption error remains. Writers
+and quality-index backfill still require strict complete reads: a tolerant view
+does not authorize replacing or deleting damaged bytes. Healthy other objects
+remain usable and a Repair is recorded; successful partial reads do not clear it.
+Missing payload references are object errors when encountered in an already-open
+archive; startup foreign-key/schema/ownership protections remain strict. This is
+read recovery, not automatic index reconstruction or a forensic quarantine store.
+
+简中：本地详情独立验证最新原件与已选轨迹原件，只展示仍可用的部分，并注明来源。
+旧轨迹不会冒充最新响应，标量仍来自独立的本地索引；轨迹块来源变化会中止拼接。
+卡片提示部分原件不可用，坐标权限保持不变，不自动请求云端修复。
+两份都不可读仍报错；写入和质量回填保持严格，不覆盖坏字节，不自动清除修复提示。
