@@ -1397,9 +1397,11 @@ class RideArchive:
                         raise CorruptPayload("Missing private payload object")
                     if blob[2] != summary[0].query_month:
                         raise ValueError("Invalid private payload month scope")
-                    record = unpacked(blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4])
+                    decoded_record = unpacked(
+                        blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]
+                    )
                     scoped = parse_ride(
-                        record.payload(),
+                        decoded_record.payload(),
                         blob[2],
                         source=Endpoint.TRIP_DETAIL,
                         max_points=1,
@@ -1413,7 +1415,7 @@ class RideArchive:
                         )
                     ):
                         raise CorruptPayload("Private detail identity contradiction")
-                    decoded_payloads[digest] = record
+                    decoded_payloads[digest] = decoded_record
                     decoded_qualities[digest] = scoped.track_quality
                 except CorruptPayload:
                     decoded_payloads[digest] = None
