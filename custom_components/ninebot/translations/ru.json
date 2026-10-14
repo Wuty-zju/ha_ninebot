@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "Синхронизировать архив поездок",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct запускает локальное восстановление с приватной точкой восстановления; reconstruct_continue/status/pause/cancel продолжает, проверяет, приостанавливает или отменяет его. Без облачных запросов и команд автомобилю.",
       "fields": {
         "device_id": {
           "name": "Vehicle"

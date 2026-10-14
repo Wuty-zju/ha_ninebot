@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "यात्रा संग्रह सिंक करें",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct निजी पुनर्प्राप्ति बिंदु के साथ स्थानीय मानों की मरम्मत शुरू करता है; reconstruct_continue/status/pause/cancel से जारी रखें, देखें, रोकें या रद्द करें। कोई क्लाउड अनुरोध या वाहन आदेश नहीं।",
       "fields": {
         "device_id": {
           "name": "Vehicle"

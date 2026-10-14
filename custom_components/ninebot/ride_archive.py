@@ -56,10 +56,12 @@ from .detail_health import HistoryHealth
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
+from .local_reconstruction import Reconstruction
 from .models import TravelMonth, VehicleProfile
 from .object_checks import ObjectSummary
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord, version_metadata
+from .reconstruction_job import ReconstructionJob
 from .ride_models import Ride
 from .statistics_store import StoredMonth, StoredRide
 from .sync_job import SyncJob, SyncState, job_data, restored_job
@@ -233,6 +235,7 @@ class RideArchive:
         self.write_paused = False
         self.backup_paused = False
         self._space_checked_at = 0.0
+        self._recovery_seals: dict[str, tuple[tuple[int, int, int], float]] = {}
 
     async def _run(
         self,
@@ -368,7 +371,13 @@ class RideArchive:
                 raise
             self._opened = True
 
-    def _check(self, db: sqlite3.Connection, version: int = SCHEMA_VERSION) -> None:
+    def _check(
+        self,
+        db: sqlite3.Connection,
+        version: int = SCHEMA_VERSION,
+        *,
+        allow_time_index_drift: bool = False,
+    ) -> None:
         if db.execute("PRAGMA user_version").fetchone()[0] != version:
             raise ArchiveError(ArchiveFailure.SCHEMA)
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -395,10 +404,20 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith(("history_audit:", "history_audit_fault:")):
+            if key.startswith("local_reconstruction:"):
+                from .reconstruction_job import restored as restored_reconstruction
+                from .reconstruction_job import scope as reconstruction_scope
+
+                reconstruction_scope(key.removeprefix("local_reconstruction:"))
+                restored_reconstruction(value)
+            elif key.startswith(("history_audit:", "history_audit_fault:")):
                 from .archive_audit import validate_meta
 
                 validate_meta(key, value)
+            elif key == "reconstruction_vehicle":
+                from .reconstruction_job import scope as reconstruction_scope
+
+                reconstruction_scope(value)
             elif key == "history_audit_vehicle":
                 from .archive_audit import scope as audit_scope
 
@@ -540,8 +559,13 @@ class RideArchive:
             if (
                 ride.ride_id != key
                 or revision < 1
-                or started != (utc_string(ride.started_at) if ride.started_at else "")
-                or ended != (utc_string(ride.ended_at) if ride.ended_at else None)
+                or (
+                    not allow_time_index_drift
+                    and (
+                        started != (utc_string(ride.started_at) if ride.started_at else "")
+                        or ended != (utc_string(ride.ended_at) if ride.ended_at else None)
+                    )
+                )
             ):
                 raise ValueError("Invalid archived ride index")
             stamp(observed)
@@ -1079,6 +1103,204 @@ class RideArchive:
             geometry_quality,
         )
         return changed
+
+    async def async_reconstruct_ride(
+        self,
+        sn: str,
+        ride_id: str,
+        *,
+        guard: Callable[[], bool],
+        repair: bool = False,
+    ) -> Reconstruction:
+        """Explicit bounded local repair; backup precedes any derived mutation.
+
+        This primitive does not close Repairs, fix missing source references or
+        claim full verification. A resumable job will orchestrate these steps.
+        """
+        if opaque_id(ride_id) != ride_id or type(repair) is not bool:
+            raise ValueError("Invalid reconstruction query")
+
+        loop = asyncio.get_running_loop()
+
+        def reconstruct() -> Reconstruction:
+            db, vehicle = self._db(write=repair), vehicle_key(sn)
+            result, candidate, observed = self._reconstruction_sources(vehicle, ride_id)
+            if not repair or result.status != "repairable" or candidate is None:
+                return result
+            # The one actor prevents another managed writer from changing the
+            # evidence between assessment, consistent backup and commit.
+            required = self.path.stat().st_size * 2 + MIN_FREE_BYTES
+            if shutil.disk_usage(self.path.parent).free < required:
+                raise ArchiveError(ArchiveFailure.CAPACITY)
+            destination = self.path.with_name(
+                f"{self.path.stem}.recovery-{os.urandom(16).hex()}.sqlite3"
+            )
+            self._backup(destination, recovery=True)
+            if not self._worker_owned(loop, guard):
+                raise ArchiveError(ArchiveFailure.OWNER)
+            assert observed is not None
+            with db:
+                self._upsert_ride(vehicle, candidate, observed, ordered=True)
+                # Derived time indexes may be wrong even if normalized JSON
+                # matches, so invalidate consumers in either repair case.
+                self._revision(bump=True)
+            return replace(result, repaired=True)
+
+        return await self._run(reconstruct, guard=guard)
+
+    def _reconstruction_sources(
+        self, vehicle: str, ride_id: str
+    ) -> tuple[Reconstruction, Ride | None, str | None]:
+        from .local_reconstruction import proposal
+
+        before = self._ride(vehicle, ride_id)
+        if before is None:
+            return Reconstruction("not_saved"), None, None
+        try:
+            stored = self._private_detail(vehicle, ride_id, 1)
+        except CorruptPayload:
+            return Reconstruction("corrupt"), None, None
+        if stored is None:
+            return Reconstruction("not_saved"), None, None
+        result, candidate = proposal(self._db(), vehicle, before[0], stamp(before[1]), stored)
+        return result, candidate, before[1]
+
+    def _worker_owned(self, loop: asyncio.AbstractEventLoop, guard: Callable[[], bool]) -> bool:
+        permitted: Future[bool] = Future()
+
+        def check() -> None:
+            try:
+                permitted.set_result(not self._closing and guard())
+            except Exception:
+                permitted.set_result(False)
+
+        loop.call_soon_threadsafe(check)
+        try:
+            return permitted.result(timeout=5)
+        except WorkerTimeout:
+            return False
+
+    def _reconstruction_backup(self, vehicle: str, job: ReconstructionJob) -> str:
+        from .reconstruction_job import RecoveryPointError, get
+
+        path = self.path.with_name(f"{self.path.stem}.recovery-{job.job_id}.sqlite3")
+        if path.is_symlink():
+            raise RecoveryPointError("Unverified local recovery point")
+        if not path.exists():
+            if job.backup_hash is not None:
+                raise RecoveryPointError("Unverified local recovery point")
+            if shutil.disk_usage(path.parent).free < self.path.stat().st_size * 2 + MIN_FREE_BYTES:
+                raise ArchiveError(ArchiveFailure.CAPACITY)
+            self._backup(path, recovery=True)
+        try:
+            stat = path.stat()
+        except OSError:
+            raise RecoveryPointError("Unreadable local recovery point") from None
+        fingerprint = (stat.st_ino, stat.st_size, stat.st_mtime_ns)
+        sealed = self._recovery_seals.get(job.job_id)
+        if (
+            job.backup_hash
+            and sealed
+            and sealed[0] == fingerprint
+            and time.monotonic() - sealed[1] < 86400
+        ):
+            return job.backup_hash
+        if not 0 < stat.st_size <= MAX_ARCHIVE_BYTES:
+            raise RecoveryPointError("Unverified local recovery point")
+        try:
+            with path.open("rb") as stream:
+                digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        except OSError:
+            raise RecoveryPointError("Unreadable local recovery point") from None
+        if job.backup_hash is not None and digest != job.backup_hash:
+            raise RecoveryPointError("Unverified local recovery point")
+        try:
+            target = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
+        except sqlite3.DatabaseError:
+            raise RecoveryPointError("Unreadable local recovery point") from None
+        try:
+            # Crash between backup publication and recording its hash: reuse
+            # only a structurally checked copy carrying this exact job/scope.
+            self._check(target, allow_time_index_drift=True)
+            captured = get(target, vehicle)
+            if captured is None or captured.job_id != job.job_id:
+                raise RecoveryPointError("Unverified local recovery scope")
+        except (ValueError, sqlite3.DatabaseError, ArchiveError):
+            raise RecoveryPointError("Unverified local recovery point") from None
+        finally:
+            target.close()
+        if len(self._recovery_seals) >= MAX_PROFILES:
+            self._recovery_seals.clear()
+        self._recovery_seals[job.job_id] = (fingerprint, time.monotonic())
+        return digest
+
+    async def async_reconstruction_job(
+        self, sn: str, operation: str, now: datetime, *, guard: Callable[[], bool]
+    ) -> ReconstructionJob | None:
+        from .reconstruction_job import RecoveryPointError, get, put, start, step
+
+        if operation not in {"start", "continue", "status", "pause", "cancel", "step"}:
+            raise ValueError("Invalid local reconstruction operation")
+        utc_string(now)
+        loop = asyncio.get_running_loop()
+
+        def run() -> ReconstructionJob | None:
+            db, vehicle = self._db(write=operation != "status"), vehicle_key(sn)
+            job = get(db, vehicle)
+            if operation == "status":
+                return job
+            if operation == "start":
+                with db:
+                    return start(db, vehicle, now)
+            if job is None or job.terminal:
+                return job
+            if operation in {"pause", "cancel"}:
+                with db:
+                    job = replace(
+                        job,
+                        state="paused" if operation == "pause" else "cancelled",
+                        updated_at=now.isoformat(),
+                    )
+                    put(db, vehicle, job)
+                return job
+            if job.state == "blocked_recovery" and operation != "continue":
+                return job
+            if job.state == "paused":
+                if operation != "continue":
+                    return job
+                job = replace(job, state="running" if job.backup_hash else "pending_backup")
+            try:
+                checksum = self._reconstruction_backup(vehicle, job)
+            except RecoveryPointError:
+                if not self._worker_owned(loop, guard):
+                    raise ArchiveError(ArchiveFailure.OWNER) from None
+                with db:
+                    job = replace(job, state="blocked_recovery", updated_at=now.isoformat())
+                    put(db, vehicle, job)
+                return job  # No retry loop or account-wide writer failure.
+            if not self._worker_owned(loop, guard):
+                raise ArchiveError(ArchiveFailure.OWNER)
+            with db:
+                job = replace(
+                    job, state="running", backup_hash=checksum, updated_at=now.isoformat()
+                )
+                put(db, vehicle, job)
+
+                def evaluate(ride_id: str) -> Reconstruction:
+                    result, candidate, observed = self._reconstruction_sources(vehicle, ride_id)
+                    if (
+                        result.status == "repairable"
+                        and candidate is not None
+                        and observed is not None
+                    ):
+                        self._upsert_ride(vehicle, candidate, observed, ordered=True)
+                        self._revision(bump=True)
+                        return replace(result, repaired=True)
+                    return result
+
+                return step(db, vehicle, now, evaluate)
+
+        return await self._run(run, guard=guard)
 
     async def async_private_detail(
         self,
@@ -1921,6 +2143,22 @@ class RideArchive:
             and self._pending == 0
         )
 
+    async def async_reconstruction_order(self, vehicles: tuple[str, ...]) -> tuple[str, ...]:
+        def read() -> tuple[str, ...]:
+            row = (
+                self._db()
+                .execute("SELECT value FROM meta WHERE key='reconstruction_vehicle'")
+                .fetchone()
+            )
+            ordered = sorted(set(vehicles), key=vehicle_key)
+            if row:
+                ordered = [sn for sn in ordered if vehicle_key(sn) > row[0]] + [
+                    sn for sn in ordered if vehicle_key(sn) <= row[0]
+                ]
+            return tuple(ordered)
+
+        return await self._run(read)
+
     async def async_audit_order(self, vehicles: tuple[str, ...]) -> tuple[str, ...]:
         def read() -> tuple[str, ...]:
             row = (
@@ -2635,7 +2873,11 @@ class RideArchive:
     async def async_backup(self, destination: Path) -> None:
         await self._run(partial(self._backup, destination))
 
-    def _backup(self, destination: Path) -> None:
+    def _backup(self, destination: Path, *, recovery: bool = False) -> None:
+        # SQLite backup on its own uncommitted writer can wait indefinitely.
+        # Never commit someone else's transaction or silently roll it back.
+        if self._db().in_transaction:
+            raise ArchiveError(ArchiveFailure.BUSY)
         # Never overwrite an existing user backup, and never copy a live file
         # with its transaction journal omitted.
         if destination == self.path or destination.exists() or destination.is_symlink():
@@ -2647,7 +2889,10 @@ class RideArchive:
             target = sqlite3.connect(temporary)
             try:
                 self._db().backup(target)
-                self._check(target)
+                # A recovery copy preserves damaged derived time indexes;
+                # source/schema/owner checks still apply. Ordinary backup and
+                # startup remain strict; this is not a certified restore image.
+                self._check(target, allow_time_index_drift=recovery)
             finally:
                 target.close()
             with temporary.open("rb") as stream:

@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "Sürüş arşivini eşitle",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct özel kurtarma noktasıyla yerel değer onarımını başlatır; reconstruct_continue/status/pause/cancel devam ettirir, gösterir, duraklatır veya iptal eder. Bulut isteği veya araç komutu göndermez.",
       "fields": {
         "device_id": {
           "name": "Vehicle"

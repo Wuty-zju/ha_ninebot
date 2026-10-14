@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "Sync history archive",
-      "description": "synchronize queues incremental history work; selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Legacy range and repair operations remain supported.",
+      "description": "synchronize queues incremental history work; selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Legacy range and repair operations remain supported. reconstruct starts local scalar recovery with a private recovery point; reconstruct_continue/status/pause/cancel resume, inspect, pause or cancel it. No cloud requests or vehicle commands.",
       "fields": {
         "device_id": {
           "name": "Vehicle"

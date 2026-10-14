@@ -110,3 +110,29 @@ An optional packaged [ride detail card](docs/README.md#optional-ride-detail-card
 See the [b44 naming/display migration](docs/README.md#b44-display-and-naming-update) for forced existing-ID renames, presentation and account-header limitations.
 
 [b45 calendar and ride presentation](docs/README.md#b45-calendar-battery-and-ride-presentation)
+
+
+Local archive recovery uses `ninebot.sync_history` with a vehicle `device_id` and
+`operation: reconstruct`. It creates a durable local scalar-reconstruction job;
+`reconstruct_continue` processes one ride or resumes a paused job,
+`reconstruct_status` reads progress, and `reconstruct_pause` / `reconstruct_cancel`
+pause or stop it. When history preservation is enabled, requested jobs continue
+on the existing background tick. These operations send no cloud requests or
+vehicle controls and require history-control permission except status reads.
+
+Each job retains one private `.recovery-<job_id>.sqlite3` recovery point beside
+its account archive. Space is checked before copying; existing recovery points
+are never overwritten or automatically deleted. A recovery point may preserve
+an invalid derived time index and is **not** a certified ready-to-load restore
+image. The job checks its hash on first use, after restart or changed file
+metadata, and daily during a long run. Repair uses trusted current originals;
+missing fields, stale receipts, unreadable objects and changing scan scopes are
+reported rather than guessed. Results describe captured local details, not all
+cloud rides or every normalized field/reference. Corrupt source objects and
+unresolved Repairs remain for subsequent recovery work.
+
+If a recovery point is missing or fails verification, the job enters
+`blocked_recovery` and stops automatic retries. Healthy archive reads/writes
+remain available. Restore the matching private recovery point before explicitly
+continuing; the integration never replaces it silently or clears its Repair just
+because another record is readable.

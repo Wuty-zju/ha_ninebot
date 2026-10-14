@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "주행 기록 동기화",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct는 비공개 복구 지점과 함께 로컬 값 복구를 시작합니다. reconstruct_continue/status/pause/cancel로 재개, 조회, 일시 중지 또는 취소합니다. 클라우드 요청이나 차량 명령은 없습니다.",
       "fields": {
         "device_id": {
           "name": "Vehicle"

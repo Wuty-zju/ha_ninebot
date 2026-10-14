@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "مزامنة أرشيف الرحلات",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. يبدأ reconstruct إصلاح القيم محليًا مع نقطة استعادة خاصة؛ وتتيح reconstruct_continue/status/pause/cancel المتابعة أو العرض أو الإيقاف المؤقت أو الإلغاء. لا طلبات سحابية ولا أوامر للمركبة.",
       "fields": {
         "device_id": {
           "name": "Vehicle"

@@ -223,6 +223,11 @@ sync_history:
             - verify
             - verify_continue
             - verify_status
+            - reconstruct
+            - reconstruct_continue
+            - reconstruct_status
+            - reconstruct_pause
+            - reconstruct_cancel
     start_month:
       example: "202601"
       selector:

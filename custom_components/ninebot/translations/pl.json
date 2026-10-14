@@ -940,7 +940,7 @@
     },
     "sync_history": {
       "name": "Synchronizuj archiwum przejazdów",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial.",
+      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct rozpoczyna lokalną naprawę z prywatnym punktem przywracania; reconstruct_continue/status/pause/cancel wznawia, sprawdza, wstrzymuje lub anuluje. Bez żądań do chmury i poleceń pojazdu.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
