@@ -312,3 +312,23 @@ async def test_transient_archive_fences_do_not_disable_healthy_background_writes
         )  # A transient fence cannot clear a real failure.
     finally:
         await store.async_close()
+
+
+async def test_capacity_option_and_recheck_do_not_clear_other_storage_errors(hass):
+    from unittest.mock import AsyncMock
+
+    store = ArchiveStatistics(hass, "capacity-entry", "capacity-owner", max_bytes=32 * 1024 * 1024)
+    await store.async_load()
+    try:
+        assert store.archive.max_bytes == 32 * 1024 * 1024
+        store.record_error(ArchiveError(ArchiveFailure.CAPACITY))
+        assert not store.writable
+        await store.async_recheck_capacity(lambda: True)
+        assert store.writable and store.error is None
+        store.record_error(ArchiveError(ArchiveFailure.SCHEMA))
+        with patch.object(store.archive, "async_set_capacity", AsyncMock()) as recheck:
+            await store.async_recheck_capacity(lambda: True)
+            recheck.assert_not_awaited()
+        assert store.error is ArchiveFailure.SCHEMA and not store.writable
+    finally:
+        await store.async_close()

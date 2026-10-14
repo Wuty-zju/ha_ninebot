@@ -45,6 +45,7 @@ from .control_targets import LOCK_TARGETS
 from .demand import ConsumerContext, Group, Need, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
+from .history_capacity import history_capacity_bytes
 from .history_sync import HistorySync
 from .models import Freshness, TravelMonth, VehicleSnapshot
 from .parsing import integer
@@ -89,7 +90,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.preservation = HistoryPreservation(self)
         self.ride_lifecycles: dict[str, RideLifecycle] = {}
         self.statistics = ArchiveStatistics(
-            hass, entry.entry_id, str(entry.data[CONF_BUSINESS_UID])
+            hass,
+            entry.entry_id,
+            str(entry.data[CONF_BUSINESS_UID]),
+            max_bytes=history_capacity_bytes(entry.options),
         )
         self.control_results = ControlResults()
         self.interval = max(

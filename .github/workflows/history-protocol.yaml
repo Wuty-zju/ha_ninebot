@@ -8,6 +8,8 @@ on:
       - 'custom_components/ninebot/backend.py'
       - 'custom_components/ninebot/history_plan.py'
       - 'custom_components/ninebot/history_progress.py'
+      - 'custom_components/ninebot/history_capacity.py'
+      - 'tests/test_history_capacity.py'
       - 'custom_components/ninebot/history_entities.py'
       - 'tests/test_history_entities.py'
       - 'tests/test_history_progress.py'
@@ -47,7 +49,7 @@ jobs:
           python -m pytest -q tests/test_native_history.py tests/test_backend.py
           tests/test_client.py tests/test_session.py tests/test_query_broker.py
           tests/test_history_plan.py tests/test_history_progress.py
-          tests/test_history_entities.py tests/test_translations.py tests/test_demand.py
+          tests/test_history_entities.py tests/test_history_capacity.py tests/test_translations.py tests/test_demand.py
           tests/test_history_store.py tests/test_ride_archive.py
           tests/test_private_detail_archive.py tests/test_archive_lifecycle.py
           tests/test_archive_validation.py

@@ -106,6 +106,10 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
     runner, archive = co.preservation.bootstrap, co.statistics.archive
     operation = call.data["operation"]
     performed = False
+    if operation in {"resume", "synchronize"}:
+        await co.statistics.async_recheck_capacity(
+            runner.guard(sn, require_enabled=False, respect_pause=False)
+        )
     if operation == "synchronize" and entry.options.get(CONF_PRESERVE) is True:
         from .adapters import month_at
         from .query_broker import Priority
@@ -141,6 +145,7 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
     paused = await archive.async_history_paused(sn)
     plan = await archive.async_history_plan(sn)
     health = await archive.async_history_health(sn, plan.plan_id) if plan else None
+    view = co.preservation.progress.get(sn)
     return {
         "schema_version": 1,
         "operation": operation,
@@ -148,6 +153,10 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         "background_enabled": entry.options.get(CONF_PRESERVE) is True,
         "automatic_sync_enabled": runner.enabled(),
         "manual_sync_requested": await archive.async_history_requested(sn),
+        "sync_state": view.state if view else None,
+        "scan_progress": view.scan_percent if view else None,
+        "detail_progress": view.detail_percent if view else None,
+        "last_success": view.last_success.isoformat() if view and view.last_success else None,
         "operation_performed": performed,
         "state": "paused" if paused else plan.state.value if plan else "not_started",
         "scanned_months": plan.scanned_months if plan else None,

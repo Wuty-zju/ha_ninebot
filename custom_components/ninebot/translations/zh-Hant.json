@@ -101,15 +101,19 @@
           "configure_model": "配置電池額定參數",
           "enable_calendar": "啟用行程日曆",
           "preserve_history": "后台保全行程详情",
-          "history_requests_per_hour": "每账号每小时详情请求限额"
+          "history_requests_per_hour": "每账号每小时详情请求限额",
+          "auto_history_sync": "自動同步歷史行程",
+          "history_storage_mib": "歷史儲存額度（MiB）"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
           "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "開關每輛車的本地行程日曆。關閉不刪除歷史；重新開啟沿用原實體。瀏覽不請求雲端。",
-          "preserve_history": "默认关闭。保全已知行程、续接用户选定范围与散月任务，并在月初首周有限复核上月；云端覆盖仍可能不完整。",
-          "history_requests_per_hour": "每个账号的后台月份与详情查询共享此预算；ninecli 内部重试不计在此逻辑请求数内。"
+          "preserve_history": "私有儲存可得的行程詳情和軌跡。關閉後停止背景任務，不刪除已有檔案。",
+          "history_requests_per_hour": "每个账号的后台月份与详情查询共享此预算；ninecli 内部重试不计在此逻辑请求数内。",
+          "auto_history_sync": "為帳號內所有歸屬車輛發現可得歷史，隨後背景增量同步。",
+          "history_storage_mib": "每帳號32–2048 MiB，預設100。降低額度不刪除已存記錄，超額時暫停寫入。"
         }
       },
       "model_vehicle": {

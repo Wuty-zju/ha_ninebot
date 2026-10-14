@@ -101,15 +101,19 @@
           "configure_model": "Configure rated battery parameters",
           "enable_calendar": "Enable ride calendar",
           "preserve_history": "Preserve trip details in background",
-          "history_requests_per_hour": "Detail request budget per account/hour"
+          "history_requests_per_hour": "Detail request budget per account/hour",
+          "auto_history_sync": "Automatic history synchronization",
+          "history_storage_mib": "History storage limit (MiB)"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
           "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
-          "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations."
+          "preserve_history": "Save available trip details and tracks privately. Disabling suspends background work without deleting the archive.",
+          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "auto_history_sync": "Discover available history for all owned vehicles, then sync changes in background.",
+          "history_storage_mib": "32–2048 MiB per account, default 100. Lowering the limit preserves saved records and may pause writes."
         }
       },
       "model_vehicle": {

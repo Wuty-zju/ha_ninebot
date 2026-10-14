@@ -422,3 +422,19 @@ async def test_manual_synchronize_registers_all_selected_old_months_and_coalesce
     app_client.async_get_travel.assert_not_awaited()
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
+
+
+async def test_resume_rechecks_capacity_before_attempting_to_write_pause_metadata(
+    hass, entry, app_client, sync_device
+):
+    from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure
+
+    co = entry.runtime_data.coordinator
+    await call(hass, sync_device, operation="pause")
+    co.statistics.archive.write_paused = True
+    co.statistics.record_error(ArchiveError(ArchiveFailure.CAPACITY))
+    result = await call(hass, sync_device, operation="resume")
+    assert not result["paused"] and co.statistics.writable
+    assert not co.statistics.archive.write_paused
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()
