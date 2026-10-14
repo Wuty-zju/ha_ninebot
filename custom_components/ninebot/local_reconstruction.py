@@ -70,7 +70,7 @@ def proposal(
                     continue
                 witnesses.extend(
                     ride
-                    for ride in parse_rides(raw.payload().get("list"), month)
+                    for ride in parse_rides(raw.payload(), month)
                     if ride.ride_id == current.ride_id
                 )
         except (CorruptPayload, NinebotError, ValueError):
