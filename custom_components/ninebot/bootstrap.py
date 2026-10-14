@@ -31,6 +31,7 @@ class HistoryBootstrap:
         self.co = co
         self.snapshots: dict[str, tuple[HistoryPlan, HistoryHealth]] = {}
         self.paused: set[str] = set()
+        self.incremental_snapshots: dict[str, tuple[HistoryPlan, HistoryHealth]] = {}
 
     def enabled(self) -> bool:
         entry = self.co.config_entry
@@ -90,7 +91,9 @@ class HistoryBootstrap:
             if owns():
                 self.snapshots[sn] = (plan, await archive.async_history_health(sn, plan.plan_id))
 
-    async def async_step(self, vehicles: tuple[str, ...], now: datetime, budget: int) -> bool:
+    async def async_step(
+        self, vehicles: tuple[str, ...], now: datetime, budget: int, *, incremental: bool = False
+    ) -> bool:
         if not self.enabled():
             return False
         co, archive = self.co, self.co.statistics.archive
@@ -98,16 +101,40 @@ class HistoryBootstrap:
             if sn in self.paused or not co.fresh(sn, "profile"):
                 continue
             owns = self.guard(sn)
-            claimed = await archive.async_claim_history_page(sn, now, budget, guard=owns)
+            identity = None
+            if incremental:
+                runs = await archive.async_active_history_runs(sn)
+                for plan in runs:
+                    if plan.discovery_complete:
+                        await archive.async_backfill_detail_health(sn, plan.plan_id, guard=owns)
+                        saved = await archive.async_finish_history_baseline(
+                            sn, plan, now, guard=owns
+                        )
+                        self.incremental_snapshots[sn] = (
+                            saved,
+                            await archive.async_history_health(sn, plan.plan_id),
+                        )
+                    elif identity is None:
+                        identity = plan.plan_id
+                if identity is None:
+                    continue
+            claimed = await archive.async_claim_history_page(
+                sn, now, budget, guard=owns, plan_id=identity
+            )
             if claimed is None:
                 continue
             assert claimed.next_month is not None
             try:
                 raw = await co.async_query_history_page(sn, claimed.next_month, claimed.next_page)
                 await archive.async_accept_history_page(sn, claimed, raw, guard=owns)
-                plan = await archive.async_history_plan(sn)
+                plan = (
+                    await archive.async_history_run(sn, claimed.plan_id)
+                    if incremental
+                    else await archive.async_history_plan(sn)
+                )
                 if plan is not None and owns():
-                    self.snapshots[sn] = (
+                    cache = self.incremental_snapshots if incremental else self.snapshots
+                    cache[sn] = (
                         plan,
                         await archive.async_history_health(sn, plan.plan_id),
                     )

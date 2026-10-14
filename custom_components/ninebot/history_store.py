@@ -13,7 +13,7 @@ from .history_plan import MAX_PAGES, HistoryPlan, HistoryState, plan_data, resto
 from .raw import Endpoint, RawRecord
 from .travel import MAX_RIDES, opaque_id
 
-SCHEMA = (
+SCHEMA: tuple[str, ...] = (
     "CREATE TABLE history_roots (vehicle TEXT PRIMARY KEY REFERENCES vehicles(vehicle),"
     " data TEXT NOT NULL)",
     "CREATE TABLE history_pages (vehicle TEXT NOT NULL REFERENCES history_roots(vehicle),"
@@ -146,6 +146,10 @@ def put_root(db: sqlite3.Connection, plan: HistoryPlan, expected: HistoryPlan | 
         ):
             raise ValueError("Baseline has unresolved detail evidence")
     baseline = root(db, plan.vehicle)
+    if (
+        baseline is None or baseline.plan_id == plan.plan_id
+    ) and plan.state is HistoryState.RECONCILED:
+        raise ValueError("First baseline cannot be locally skipped")
     if baseline is not None and baseline.plan_id != plan.plan_id:
         from .incremental_runs import put
 
@@ -321,6 +325,13 @@ def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
         )
     for vehicle, value in roots:
         current = restored(decoded(value))
+        baseline = root(db, vehicle)
+        if (
+            baseline is not None
+            and baseline.plan_id == current.plan_id
+            and current.state is HistoryState.RECONCILED
+        ):
+            raise ValueError("First baseline cannot be locally skipped")
         if current.vehicle != vehicle:
             raise ValueError("Invalid history root identity")
         count, verified = db.execute(

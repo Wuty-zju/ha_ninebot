@@ -219,6 +219,7 @@ sync_history:
             - pause
             - resume
             - sync_status
+            - synchronize
     start_month:
       example: "202601"
       selector:
@@ -234,3 +235,7 @@ sync_history:
       example: ["202601", "202603"]
       selector:
         object:
+    force:
+      default: false
+      selector:
+        boolean:

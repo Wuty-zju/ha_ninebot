@@ -9,6 +9,11 @@ from .history_plan import HistoryPlan, HistoryState, plan_data, restored
 from .parsing import previous_month
 
 PREFIX = "history_run:"
+TERMINAL = {HistoryState.COMPLETE, HistoryState.WITH_GAPS, HistoryState.RECONCILED}
+
+
+class RunCapacity(Exception):
+    """Too many active months; keep existing work and evidence intact."""
 
 
 def run_key(vehicle: str, identity: str) -> str:
@@ -45,8 +50,10 @@ def schedule(db: sqlite3.Connection, vehicle: str, month: str, now: datetime) ->
         old = get(db, vehicle, row[0])
         if old is None:
             raise ValueError("Missing incremental run")
-        if old.state not in {HistoryState.COMPLETE, HistoryState.WITH_GAPS}:
+        if old.state not in TERMINAL:
             return old  # Automatic/manual requests coalesce, including retry/paused work.
+    if len(active(db, vehicle)) >= 12:
+        raise RunCapacity
     plan = HistoryPlan.create(secrets.token_hex(16), vehicle, month, month, now.isoformat())
     put(db, plan)
     db.execute(
@@ -74,3 +81,14 @@ def validate_active(db: sqlite3.Connection, key: str, value: str) -> None:
     plan = get(db, vehicle, value)
     if plan is None or plan.start_month != month or plan.end_month != month:
         raise ValueError("Invalid incremental run pointer")
+
+
+def active(db: sqlite3.Connection, vehicle: str) -> tuple[HistoryPlan, ...]:
+    values = db.execute(
+        "SELECT r.value FROM meta a JOIN meta r ON r.key='history_run:'||?||':'||a.value"
+        " WHERE a.key LIKE ? AND json_extract(r.value,'$.state') NOT IN"
+        " ('complete','completed_with_gaps','locally_reconciled')"
+        " ORDER BY json_extract(r.value,'$.created_at') LIMIT 12",
+        (vehicle, f"history_run_active:{vehicle}:%"),
+    )
+    return tuple(restored(decoded(value)) for (value,) in values)

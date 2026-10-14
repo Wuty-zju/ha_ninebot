@@ -545,3 +545,46 @@ async def test_identical_page_payload_is_stored_once_across_independent_runs(sto
     assert (
         await store.async_history_page(SN, run.plan_id, "202611", 1, guard=lambda: True)
     ).payload()["times"] == 0
+
+
+async def test_reconciliation_coalesces_dirty_requests_and_skips_known_months(store):
+    baseline = await store.async_history_plan(SN)
+    now = datetime(2026, 11, 1, tzinfo=UTC)
+    first = await store.async_reconcile_history_month(
+        SN, "202611", now, "a" * 64, False, guard=lambda: True
+    )
+    assert (
+        await store.async_reconcile_history_month(
+            SN, "202611", now, "a" * 64, False, guard=lambda: True
+        )
+        == first
+    )
+    assert (
+        await store.async_reconcile_history_month(
+            SN, "202611", now, "b" * 64, False, guard=lambda: True
+        )
+        == first
+    )
+    assert len(await store.async_active_history_runs(SN)) == 1
+    assert (
+        await store.async_reconcile_history_month(
+            SN, "202611", now, "b" * 64, True, guard=lambda: True
+        )
+        is None
+    )
+    assert not await store.async_active_history_runs(SN)
+    assert (await store.async_history_run(SN, first.plan_id)).state is HistoryState.RECONCILED
+    assert await store.async_history_plan(SN) == baseline
+
+
+async def test_history_family_rotation_is_durable_without_budget_reset(store):
+    await store.async_set_history_family_turn(2)
+    assert await store.async_history_family_turn() == 2
+    path = store.path
+    await store.async_close()
+    restored = RideArchive(path, OWNER)
+    try:
+        await restored.async_open()
+        assert await restored.async_history_family_turn() == 2
+    finally:
+        await restored.async_close()

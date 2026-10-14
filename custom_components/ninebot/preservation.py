@@ -48,11 +48,13 @@ class HistoryPreservation:
 
     def __init__(self, co: "NinebotCoordinator") -> None:
         from .bootstrap import HistoryBootstrap
+        from .incremental_sync import IncrementalSync
         from .month_sync import SparseMonthSync
 
         self.co = co
         self.months = SparseMonthSync(co)
         self.bootstrap = HistoryBootstrap(co)
+        self.incremental = IncrementalSync(co)
         self._remove: Callable[[], None] | None = None
         self._task: asyncio.Task[None] | None = None
         self.status = "disabled"
@@ -95,6 +97,7 @@ class HistoryPreservation:
             budget = DEFAULT_BUDGET
         await self.bootstrap.async_seed(vehicles, now)
         vehicles = tuple(sn for sn in vehicles if sn not in self.bootstrap.paused)
+        await self.incremental.async_seed(vehicles, now)
         if entry.options.get(CONF_PRESERVE) is True:
             await self.months.async_seed_recent(vehicles, now)
         if turn == "month" and await self._resume_months(vehicles, budget):
@@ -195,9 +198,25 @@ class HistoryPreservation:
 
     async def _resume_months(self, vehicles: tuple[str, ...], budget: int) -> bool:
         """Alternate bootstrap discovery, sparse repairs and explicit range jobs."""
-        if await self.bootstrap.async_step(vehicles, dt_util.utcnow(), budget):
-            self.status = "discovering_history"
-            return True
+        families = (self.bootstrap.async_step, self.incremental.async_step, self._legacy_month_step)
+        turn = await self.co.statistics.archive.async_history_family_turn()
+        for offset in range(3):
+            index = (turn + offset) % 3
+            if await families[index](vehicles, dt_util.utcnow(), budget):
+                await self.co.statistics.archive.async_set_history_family_turn((index + 1) % 3)
+                self.status = (
+                    "discovering_history"
+                    if index == 0
+                    else "incremental_history"
+                    if index == 1
+                    else "syncing_months"
+                )
+                return True
+        return False
+
+    async def _legacy_month_step(
+        self, vehicles: tuple[str, ...], now: datetime, budget: int
+    ) -> bool:
         if await self.co.statistics.archive.async_month_turn() == "sparse":
             for sn in vehicles:
                 if await self.months.async_step(sn, budget, dt_util.utcnow()):

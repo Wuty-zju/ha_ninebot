@@ -45,12 +45,14 @@ SYNC_SCHEMA = vol.Schema(
                 "pause",
                 "resume",
                 "sync_status",
+                "synchronize",
             )
         ),
         vol.Optional("start_month"): query_month,
         vol.Optional("end_month"): query_month,
         vol.Optional("job_id"): sync_job_id,
         vol.Optional("months"): selected_months,
+        vol.Optional("force", default=False): bool,
     }
 )
 
@@ -68,7 +70,7 @@ async def async_sync_history(hass: HomeAssistant, call: ServiceCall) -> dict[str
     if budget is not None and (type(budget) is not int or not 1 <= budget <= 60):
         budget = DEFAULT_BUDGET
     try:
-        if operation in {"pause", "resume", "sync_status"}:
+        if operation in {"pause", "resume", "sync_status", "synchronize"}:
             return await async_history_control(hass, call)
         if operation.startswith("repair"):
             return await async_sparse_history(hass, call)
@@ -103,6 +105,35 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
     co = entry.runtime_data.coordinator
     runner, archive = co.preservation.bootstrap, co.statistics.archive
     operation = call.data["operation"]
+    performed = False
+    if operation == "synchronize" and runner.enabled():
+        from .adapters import month_at
+        from .query_broker import Priority
+
+        await runner.async_pause(sn, False)
+        now = dt_util.utcnow()
+        await runner.async_seed((sn,), now)
+        baseline = await archive.async_history_plan(sn)
+        budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
+        if type(budget) is not int or not 1 <= budget <= 60:
+            budget = DEFAULT_BUDGET
+        selected = call.data.get("months")
+        if selected is not None or call.data.get("force"):
+            # Explicit months become durable work, including old months and all selections.
+            # Repeated clicks join an existing run; page/detail work keeps the shared budget.
+            for month in selected or (month_at(now),):
+                await archive.async_schedule_history_run(sn, month, now, guard=runner.guard(sn))
+            performed = await co.preservation.incremental.async_step((sn,), now, budget)
+        elif baseline is not None and not baseline.discovery_complete:
+            performed = await runner.async_step((sn,), now, budget)
+        else:
+            months = call.data.get("months", (month_at(now),))
+            if await archive.async_background_budget(sn, now, budget, guard=runner.guard(sn)):
+                await co.async_query_month(
+                    sn, months[0], priority=Priority.INTERACTIVE, refresh=True
+                )
+                performed = True
+            await co.preservation.incremental.async_seed((sn,), dt_util.utcnow())
     if operation in {"pause", "resume"}:
         await runner.async_pause(sn, operation == "pause")
     paused = await archive.async_history_paused(sn)
@@ -113,6 +144,7 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         "operation": operation,
         "paused": paused,
         "background_enabled": entry.options.get(CONF_PRESERVE) is True,
+        "operation_performed": performed,
         "state": "paused" if paused else plan.state.value if plan else "not_started",
         "scanned_months": plan.scanned_months if plan else None,
         "total_months": month_count(plan.start_month, plan.end_month) if plan else None,

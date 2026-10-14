@@ -396,3 +396,29 @@ async def test_pause_resume_status_are_device_scoped_local_only(
     app_client.async_get_travel.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
     assert not await entry.runtime_data.coordinator.statistics.archive.async_history_paused(SN)
+
+
+async def test_manual_synchronize_registers_all_selected_old_months_and_coalesces(
+    hass, entry, app_client, sync_device
+):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    co = entry.runtime_data.coordinator
+    configured = SimpleNamespace(
+        options={**entry.options, "preserve_history": True, "auto_history_sync": True}
+    )
+    months = ["202604", "202608"]
+    with (
+        patch.object(co, "config_entry", configured),
+        patch.object(co.preservation.incremental, "async_step", AsyncMock(return_value=False)),
+    ):
+        result = await call(hass, sync_device, operation="synchronize", months=months)
+        first = await co.statistics.archive.async_active_history_runs(SN)
+        assert {run.start_month for run in first} == set(months)
+        assert not result["operation_performed"]
+        await call(hass, sync_device, operation="synchronize", months=months)
+        assert await co.statistics.archive.async_active_history_runs(SN) == first
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_get_trip_detail.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()

@@ -387,7 +387,30 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("history_run_active:"):
+            if key == "history_family_turn" and value not in {"0", "1", "2"}:
+                raise ValueError("Invalid history family turn")
+            elif key.startswith("history_incremental_seen:") or key.startswith(
+                "history_run_signature:"
+            ):
+                if (
+                    version < 4
+                    or len(value) != 64
+                    or any(c not in "0123456789abcdef" for c in value)
+                ):
+                    raise ValueError("Invalid incremental signature")
+                _, vehicle, scope = key.split(":", 2)
+                if len(vehicle) != 64 or any(c not in "0123456789abcdef" for c in vehicle):
+                    raise ValueError("Invalid incremental signature scope")
+                if key.startswith("history_incremental_seen:"):
+                    previous_month(scope)
+                elif len(scope) != 32 or any(c not in "0123456789abcdef" for c in scope):
+                    raise ValueError("Invalid run signature scope")
+                elif key.startswith("history_run_signature:"):
+                    from .incremental_runs import get
+
+                    if get(db, vehicle, scope) is None:
+                        raise ValueError("Missing signed incremental run")
+            elif key.startswith("history_run_active:"):
                 if version < 4:
                     raise ValueError("Unsupported incremental evidence version")
                 from .incremental_runs import validate_active
@@ -1783,7 +1806,7 @@ class RideArchive:
         self, sn: str, month: str, now: datetime, *, guard: Callable[[], bool]
     ) -> HistoryPlan:
         from .history_store import root
-        from .incremental_runs import schedule
+        from .incremental_runs import RunCapacity, schedule
 
         previous_month(month)
         utc_string(now)
@@ -1794,7 +1817,10 @@ class RideArchive:
             with db:
                 if root(db, vehicle) is None:
                     raise ArchiveError(ArchiveFailure.OWNER)
-                return schedule(db, vehicle, month, now)
+                try:
+                    return schedule(db, vehicle, month, now)
+                except RunCapacity:
+                    raise ArchiveError(ArchiveFailure.BUSY) from None
 
         return await self._run(commit, guard=guard)
 
@@ -1802,6 +1828,115 @@ class RideArchive:
         from .incremental_runs import get
 
         return await self._run(lambda: get(self._db(), vehicle_key(sn), identity))
+
+    async def async_history_family_turn(self) -> int:
+        def read() -> int:
+            row = (
+                self._db()
+                .execute("SELECT value FROM meta WHERE key='history_family_turn'")
+                .fetchone()
+            )
+            return int(row[0]) if row else 0
+
+        return await self._run(read)
+
+    async def async_set_history_family_turn(self, turn: int) -> None:
+        if type(turn) is not int or not 0 <= turn < 3:
+            raise ValueError("Invalid history family turn")
+
+        def save() -> None:
+            db = self._db(write=True)
+            with db:
+                db.execute(
+                    "INSERT INTO meta VALUES ('history_family_turn',?) ON CONFLICT(key)"
+                    " DO UPDATE SET value=excluded.value",
+                    (str(turn),),
+                )
+
+        await self._run(save)
+
+    async def async_active_history_runs(self, sn: str) -> tuple[HistoryPlan, ...]:
+        from .incremental_runs import active
+
+        return await self._run(lambda: active(self._db(), vehicle_key(sn)))
+
+    async def async_reconcile_history_month(
+        self,
+        sn: str,
+        month: str,
+        now: datetime,
+        signature: str,
+        complete: bool,
+        *,
+        guard: Callable[[], bool],
+    ) -> HistoryPlan | None:
+        from .history_plan import HistoryState
+        from .history_store import root
+        from .incremental_runs import RunCapacity, get, put, schedule
+
+        previous_month(month)
+        if (
+            len(signature) != 64
+            or any(c not in "0123456789abcdef" for c in signature)
+            or type(complete) is not bool
+        ):
+            raise ValueError("Invalid incremental reconciliation")
+
+        def reconcile() -> HistoryPlan | None:
+            db = self._db(write=True)
+            vehicle = vehicle_key(sn)
+            marker = f"history_incremental_seen:{vehicle}:{month}"
+            with db:
+                if root(db, vehicle) is None:
+                    raise ArchiveError(ArchiveFailure.OWNER)
+                previous = db.execute("SELECT value FROM meta WHERE key=?", (marker,)).fetchone()
+                active = db.execute(
+                    "SELECT value FROM meta WHERE key=?", (f"history_run_active:{vehicle}:{month}",)
+                ).fetchone()
+                old = get(db, vehicle, active[0]) if active else None
+                if complete:
+                    if (
+                        old is not None
+                        and old.state in {HistoryState.DISCOVER, HistoryState.WAITING}
+                        and old.next_page == 1
+                    ):
+                        put(
+                            db,
+                            replace(
+                                old,
+                                state=HistoryState.RECONCILED,
+                                reason=None,
+                                retry_at=None,
+                                updated_at=utc_string(now),
+                                revision=old.revision + 1,
+                            ),
+                        )
+                    db.execute(
+                        "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                        " DO UPDATE SET value=excluded.value",
+                        (marker, signature),
+                    )
+                    return None
+                if previous and previous[0] == signature:
+                    return old
+                try:
+                    plan = schedule(db, vehicle, month, now)
+                except RunCapacity:
+                    raise ArchiveError(ArchiveFailure.BUSY) from None
+                token_key = f"history_run_signature:{vehicle}:{plan.plan_id}"
+                token = db.execute("SELECT value FROM meta WHERE key=?", (token_key,)).fetchone()
+                if token is None:
+                    db.execute("INSERT INTO meta VALUES (?,?)", (token_key, signature))
+                    token = (signature,)
+                if token[0] == signature:
+                    db.execute(
+                        "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                        " DO UPDATE SET value=excluded.value",
+                        (marker, signature),
+                    )
+                return plan
+
+        return await self._run(reconcile, guard=guard)
 
     async def async_set_history_paused(
         self, sn: str, paused: bool, *, guard: Callable[[], bool]
