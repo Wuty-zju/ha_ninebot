@@ -177,7 +177,7 @@ async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline
             assert backup.execute("SELECT count(*) FROM rides").fetchone()[0] == 1
         assert (await migrated.async_month(SN, "202610")).travel.rides[0].ride_id == "legacy"
         with closing(sqlite3.connect(path)) as db:
-            assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 4
         await migrated.async_set_history_plan(SN, initial(), None, guard=lambda: True)
     finally:
         await migrated.async_close()
@@ -454,3 +454,60 @@ async def test_paused_actor_rejects_inflight_page_even_if_callers_guard_is_stale
         await store.async_history_page(SN, initial().plan_id, "202610", 1, guard=lambda: True)
         is None
     )
+
+
+async def test_incremental_month_run_coalesces_and_never_replaces_initial_baseline(store):
+    baseline = await store.async_history_plan(SN)
+    now = datetime(2026, 11, 1, tzinfo=UTC)
+    run = await store.async_schedule_history_run(SN, "202611", now, guard=lambda: True)
+    repeated = await store.async_schedule_history_run(SN, "202611", now, guard=lambda: True)
+    assert run == repeated and run.plan_id != baseline.plan_id
+    claimed = await store.async_claim_history_page(
+        SN, now, 60, plan_id=run.plan_id, guard=lambda: True
+    )
+    raw = build_record(
+        Endpoint.TRAVEL,
+        {"times": 0, "list": []},
+        now,
+        "202611",
+        backend_version="0.1.7",
+        endpoint_version=run.provider,
+    )
+    receipt = await store.async_accept_history_page(SN, claimed, raw, guard=lambda: True)
+    finished = await store.async_finish_history_baseline(SN, receipt.root, now, guard=lambda: True)
+    assert finished.state is HistoryState.COMPLETE
+    assert await store.async_history_plan(SN) == baseline
+    assert (await store.async_history_run(SN, run.plan_id)).state is HistoryState.COMPLETE
+    path = store.path
+    await store.async_close()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        assert await reopened.async_history_plan(SN) == baseline
+        assert await reopened.async_history_run(SN, run.plan_id) == finished
+        assert (
+            await reopened.async_history_page(SN, run.plan_id, "202611", 1, guard=lambda: True)
+        ).payload()["times"] == 0
+    finally:
+        await reopened.async_close()
+
+
+async def test_schema3_migration_preserves_baseline_and_saves_recovery_copy(store):
+    path = store.path
+    baseline = await store.async_history_plan(SN)
+    await store.async_close()
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("PRAGMA user_version=3")
+    source_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        assert await reopened.async_history_plan(SN) == baseline
+        backups = list(path.parent.glob(f"rides.schema3-{source_hash}.sqlite3"))
+        assert len(backups) == 1
+        with closing(sqlite3.connect(backups[0])) as db:
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+        with closing(sqlite3.connect(path)) as db:
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 4
+    finally:
+        await reopened.async_close()

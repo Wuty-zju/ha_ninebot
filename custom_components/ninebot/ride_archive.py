@@ -66,7 +66,7 @@ if TYPE_CHECKING:
     from .month_tasks import MonthTask
     from .preservation import PreservationTask
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_BYTES = 32 * 1024 * 1024
@@ -386,7 +386,13 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("history_paused:"):
+            if key.startswith("history_run:"):
+                if version < 4:
+                    raise ValueError("Unsupported incremental evidence version")
+                from .incremental_runs import validate_key
+
+                validate_key(key, value)
+            elif key.startswith("history_paused:"):
                 vehicle = key.removeprefix("history_paused:")
                 if (
                     len(vehicle) != 64
@@ -471,7 +477,7 @@ class RideArchive:
         if version >= 3:
             from .history_store import check as check_history
 
-            check_history(db)
+            check_history(db, allow_runs=version >= 4)
 
         if version >= 2:
             for (
@@ -525,7 +531,7 @@ class RideArchive:
             probe = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True)
             try:
                 version = probe.execute("PRAGMA user_version").fetchone()[0]
-                if version not in (1, 2, SCHEMA_VERSION):
+                if version not in (1, 2, 3, SCHEMA_VERSION):
                     raise ArchiveError(ArchiveFailure.SCHEMA)
                 self._check(probe, version)
             finally:
@@ -608,7 +614,10 @@ class RideArchive:
             try:
                 from .history_store import SCHEMA as HISTORY_SCHEMA
 
-                for sql in (*(DETAIL_SCHEMA if version == 1 else ()), *HISTORY_SCHEMA):
+                for sql in (
+                    *(DETAIL_SCHEMA if version == 1 else ()),
+                    *(HISTORY_SCHEMA if version < 3 else ()),
+                ):
                     db.execute(sql)
                 db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self._check(db)
@@ -1762,6 +1771,30 @@ class RideArchive:
     async def async_history_paused(self, sn: str) -> bool:
         return await self._run(lambda: self._history_paused(vehicle_key(sn)))
 
+    async def async_schedule_history_run(
+        self, sn: str, month: str, now: datetime, *, guard: Callable[[], bool]
+    ) -> HistoryPlan:
+        from .history_store import root
+        from .incremental_runs import schedule
+
+        previous_month(month)
+        utc_string(now)
+
+        def commit() -> HistoryPlan:
+            db = self._db(write=True)
+            vehicle = vehicle_key(sn)
+            with db:
+                if root(db, vehicle) is None:
+                    raise ArchiveError(ArchiveFailure.OWNER)
+                return schedule(db, vehicle, month, now)
+
+        return await self._run(commit, guard=guard)
+
+    async def async_history_run(self, sn: str, identity: str) -> HistoryPlan | None:
+        from .incremental_runs import get
+
+        return await self._run(lambda: get(self._db(), vehicle_key(sn), identity))
+
     async def async_set_history_paused(
         self, sn: str, paused: bool, *, guard: Callable[[], bool]
     ) -> None:
@@ -1781,12 +1814,12 @@ class RideArchive:
 
     async def async_history_health(self, sn: str, plan_id: str) -> HistoryHealth:
         from .detail_health import summary
-        from .history_store import root
+        from .history_store import resolve
 
         def read() -> HistoryHealth:
             db = self._db()
             vehicle = vehicle_key(sn)
-            current = root(db, vehicle)
+            current = resolve(db, vehicle, plan_id)
             if current is None or current.plan_id != plan_id:
                 raise ArchiveError(ArchiveFailure.OWNER)
             return summary(db, vehicle, plan_id)
@@ -1797,7 +1830,7 @@ class RideArchive:
         self, sn: str, plan_id: str, *, guard: Callable[[], bool], limit: int = 16
     ) -> int:
         from .detail_health import put as put_health
-        from .history_store import root
+        from .history_store import resolve
 
         if type(limit) is not int or not 1 <= limit <= 16:
             raise ValueError("Invalid detail health batch")
@@ -1805,7 +1838,7 @@ class RideArchive:
         def backfill() -> int:
             db = self._db(write=True)
             vehicle = vehicle_key(sn)
-            current = root(db, vehicle)
+            current = resolve(db, vehicle, plan_id)
             if current is None or current.plan_id != plan_id:
                 raise ArchiveError(ArchiveFailure.OWNER)
             rows = db.execute(
@@ -1846,7 +1879,7 @@ class RideArchive:
     ) -> HistoryPlan:
         from .detail_health import summary
         from .history_plan import HistoryState
-        from .history_store import HistoryConflict, put_root, root
+        from .history_store import HistoryConflict, put_root, resolve
 
         if expected.vehicle != vehicle_key(sn):
             raise ValueError("Invalid baseline scope")
@@ -1854,7 +1887,7 @@ class RideArchive:
         def finish() -> HistoryPlan:
             db = self._db(write=True)
             with db:
-                if root(db, expected.vehicle) != expected:
+                if resolve(db, expected.vehicle, expected.plan_id) != expected:
                     raise ArchiveError(ArchiveFailure.BUSY)
                 if not expected.discovery_complete or expected.state not in {
                     HistoryState.PRESERVE,
@@ -1913,10 +1946,16 @@ class RideArchive:
         await self._run(commit, guard=guard)
 
     async def async_claim_history_page(
-        self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
+        self,
+        sn: str,
+        now: datetime,
+        budget: int,
+        *,
+        guard: Callable[[], bool],
+        plan_id: str | None = None,
     ) -> HistoryPlan | None:
         from .history_plan import HistoryState
-        from .history_store import put_root, root
+        from .history_store import put_root, resolve, root
 
         observed = utc_string(now)
         if type(budget) is not int or not 1 <= budget <= 60:
@@ -1926,7 +1965,9 @@ class RideArchive:
             db = self._db(write=True)
             vehicle = vehicle_key(sn)
             with db:
-                current = root(db, vehicle)
+                current = (
+                    resolve(db, vehicle, plan_id) if plan_id is not None else root(db, vehicle)
+                )
                 if (
                     current is None
                     or current.next_month is None

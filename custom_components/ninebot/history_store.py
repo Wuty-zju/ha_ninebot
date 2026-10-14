@@ -88,9 +88,20 @@ def root(db: sqlite3.Connection, vehicle: str) -> HistoryPlan | None:
     return restored(decoded(row[0])) if row else None
 
 
+def resolve(db: sqlite3.Connection, vehicle: str, identity: str) -> HistoryPlan | None:
+    baseline = root(db, vehicle)
+    if baseline is not None and baseline.plan_id == identity:
+        return baseline
+    from .incremental_runs import get
+
+    return get(db, vehicle, identity)
+
+
 def put_root(db: sqlite3.Connection, plan: HistoryPlan, expected: HistoryPlan | None) -> None:
     value = encoded(plan_data(plan))
-    current = root(db, plan.vehicle)
+    current = (
+        root(db, plan.vehicle) if expected is None else resolve(db, plan.vehicle, plan.plan_id)
+    )
     if current != expected or (
         expected is not None
         and (
@@ -130,6 +141,12 @@ def put_root(db: sqlite3.Connection, plan: HistoryPlan, expected: HistoryPlan | 
             and health.archive_has_gaps
         ):
             raise ValueError("Baseline has unresolved detail evidence")
+    baseline = root(db, plan.vehicle)
+    if baseline is not None and baseline.plan_id != plan.plan_id:
+        from .incremental_runs import put
+
+        put(db, plan)
+        return
     db.execute(
         "INSERT INTO history_roots VALUES (?,?) ON CONFLICT(vehicle)"
         " DO UPDATE SET data=excluded.data",
@@ -161,7 +178,7 @@ def _shape(data: dict) -> tuple[tuple[str, ...], int | None, str | None]:
 
 
 def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord) -> PageReceipt:
-    if root(db, expected.vehicle) != expected or expected.state not in {
+    if resolve(db, expected.vehicle, expected.plan_id) != expected or expected.state not in {
         HistoryState.DISCOVER,
         HistoryState.QUERYING,
     }:
@@ -266,9 +283,15 @@ def page(
     )
 
 
-def check(db: sqlite3.Connection) -> None:
+def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
     current: HistoryPlan | None
-    for vehicle, value in db.execute("SELECT * FROM history_roots"):
+    roots = list(db.execute("SELECT * FROM history_roots"))
+    if allow_runs:
+        roots.extend(
+            (restored(decoded(value)).vehicle, value)
+            for (value,) in db.execute("SELECT value FROM meta WHERE key LIKE 'history_run:%'")
+        )
+    for vehicle, value in roots:
         current = restored(decoded(value))
         if current.vehicle != vehicle:
             raise ValueError("Invalid history root identity")
@@ -290,7 +313,7 @@ def check(db: sqlite3.Connection) -> None:
     for vehicle, plan, month, pages, known, total, verified, stop, observed in db.execute(
         "SELECT * FROM history_months"
     ):
-        current = root(db, vehicle)
+        current = resolve(db, vehicle, plan)
         if (
             current is None
             or plan != current.plan_id
@@ -353,7 +376,7 @@ def check(db: sqlite3.Connection) -> None:
         "SELECT vehicle,plan,month,page,digest,typeof(body),length(body),observed,backend,"
         "endpoint,ids,total,stop FROM history_pages"
     ):
-        current = root(db, vehicle)
+        current = resolve(db, vehicle, plan)
         if (
             current is None
             or plan != current.plan_id
