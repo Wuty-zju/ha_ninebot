@@ -291,7 +291,7 @@ def summary(db: sqlite3.Connection, vehicle: str) -> ObjectSummary:
     quarantined = db.execute(
         "SELECT count(*) FROM payload_quarantine WHERE vehicle=?", (vehicle,)
     ).fetchone()[0]
-    return ObjectSummary(*row, quarantined)
+    return ObjectSummary(int(row[0]), int(row[1]), int(row[2]), int(row[3]), int(quarantined))
 
 
 def check(db: sqlite3.Connection) -> None:
