@@ -50,7 +50,7 @@ from .archive_timeline import (
     timeline_query,
 )
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
-from .detail_codec import ArchivedDetail, packed, unpacked
+from .detail_codec import ArchivedDetail, CorruptPayload, packed, unpacked
 from .detail_health import HistoryHealth
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
@@ -86,6 +86,7 @@ class ArchiveFailure(StrEnum):
     OWNER = "owner"
     CURSOR = "cursor"
     BUDGET = "budget"
+    OBJECT = "corrupt_object"
 
 
 class ArchiveError(Exception):
@@ -290,6 +291,8 @@ class RideArchive:
             raise ArchiveError(ArchiveFailure.STORAGE) from None
         except OSError:
             raise ArchiveError(ArchiveFailure.STORAGE) from None
+        except CorruptPayload:
+            raise ArchiveError(ArchiveFailure.OBJECT) from None
         except (ValueError, TypeError, KeyError, OverflowError):
             raise ArchiveError(ArchiveFailure.SCHEMA) from None
         finally:

@@ -7,8 +7,12 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from .const import MAX_RESPONSE_BYTES
-from .raw import Endpoint, RawRecord, build_record
+from .raw import Endpoint, RawLimitError, RawRecord, build_record
 from .ride_models import Ride
+
+
+class CorruptPayload(ValueError):
+    """An individual stored business object failed bounded integrity validation."""
 
 
 @dataclass(frozen=True)
@@ -65,12 +69,12 @@ def unpacked(
 ) -> RawRecord:
     """Bound decompression before JSON parsing, and verify payload integrity."""
     if not isinstance(body, bytes) or len(body) > MAX_RESPONSE_BYTES + 1024:
-        raise ValueError("Private detail compressed budget")
+        raise CorruptPayload("Private detail compressed budget")
     decoder = zlib.decompressobj()
     try:
         raw = decoder.decompress(body, MAX_RESPONSE_BYTES + 1)
-    except zlib.error as err:
-        raise ValueError("Invalid private detail compression") from err
+    except zlib.error:
+        raise CorruptPayload("Invalid private detail compression") from None
     if (
         len(raw) > MAX_RESPONSE_BYTES
         or not decoder.eof
@@ -78,17 +82,24 @@ def unpacked(
         or decoder.unconsumed_tail
         or hashlib.sha256(raw).hexdigest() != digest
     ):
-        raise ValueError("Invalid private detail integrity")
+        raise CorruptPayload("Invalid private detail integrity")
     if source not in {Endpoint.TRIP_DETAIL, Endpoint.TRAVEL}:
         raise ValueError("Invalid private source")
-    record = build_record(
-        source,
-        json.loads(raw),
-        received,
-        month,
-        backend_version=backend,
-        endpoint_version=endpoint,
-    )
+    try:
+        payload = json.loads(raw)
+    except (ValueError, UnicodeError):
+        raise CorruptPayload("Invalid private detail JSON") from None
+    try:
+        record = build_record(
+            source,
+            payload,
+            received,
+            month,
+            backend_version=backend,
+            endpoint_version=endpoint,
+        )
+    except RawLimitError:
+        raise CorruptPayload("Invalid private detail structure") from None
     if not isinstance(record.payload(), dict):
-        raise ValueError("Invalid private detail shape")
+        raise CorruptPayload("Invalid private detail shape")
     return record

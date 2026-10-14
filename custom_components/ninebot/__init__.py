@@ -202,6 +202,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
             return
         ir.async_delete_issue(hass, DOMAIN, f"ride_archive_remove_{entry.entry_id}")
         ir.async_delete_issue(hass, DOMAIN, f"ride_archive_{entry.entry_id}")
+        ir.async_delete_issue(hass, DOMAIN, f"ride_archive_objects_{entry.entry_id}")
 
     if not defer_removal(hass, remove):
         await remove()
