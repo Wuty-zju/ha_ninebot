@@ -43,7 +43,14 @@ async def seed(tmp_path, *, identified=True, witness=True):
         await archive.async_accept_history_page(
             SN,
             claimed,
-            build_record(Endpoint.TRAVEL, {"times": 1, "list": [ROW]}, NOW, "202610"),
+            build_record(
+                Endpoint.TRAVEL,
+                {"times": 1, "list": [ROW]},
+                NOW,
+                "202610",
+                backend_version="0.1.7",
+                endpoint_version=root.provider,
+            ),
             guard=lambda: True,
         )
     payload = {**ROW, "mileages": 2.5, "ec": 50, "trail": "120,30,1;120.001,30.001,2"}
