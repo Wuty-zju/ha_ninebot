@@ -435,7 +435,7 @@ async def test_legacy_cycle_entity_recovers_supported_values_without_duplicate(
     co._next_attempt[("SyntheticSN", "battery")] = 0
     await co.async_refresh()
     await hass.async_block_till_done()
-    assert hass.states.get(current_id(hass, old)).state == "unsupported"
+    assert hass.states.get(current_id(hass, old)).state == "unknown"
 
 
 async def test_options_preserve_selected_missing_and_removed_vehicle_choices(
