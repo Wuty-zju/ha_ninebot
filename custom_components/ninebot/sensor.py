@@ -37,6 +37,7 @@ from .compat import unrecorded_attributes
 from .const import BUSINESS_TIMEZONE, CONF_DEBUG, CONF_ESTIMATION, DETAIL_INTERVAL
 from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
+from .history_entities import HISTORY_SENSORS, HistoryProgressSensor
 from .models import LastRide, TravelMonth, VehicleSnapshot
 from .observations import ENTITY_FIELDS, RawField
 from .parsing import boolean, display_scalar, integer, number
@@ -899,6 +900,7 @@ async def async_setup_entry(
         )
         yield ControlAvailabilitySensor(entry, sn)
         yield RawDataSummarySensor(entry, sn)
+        yield from (HistoryProgressSensor(entry, sn, key) for key in HISTORY_SENSORS)
         yield from (DayStatisticsSensor(entry, sn, key) for key in DAY_FIELDS)
         if entry.options.get(CONF_ESTIMATION):
             yield RatedEnergySensor(entry, sn)

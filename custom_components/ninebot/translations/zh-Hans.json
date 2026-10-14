@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "AI 预估续航"
+      },
+      "history_sync_state": {
+        "name": "历史同步状态",
+        "state": {
+          "disabled": "已关闭",
+          "paused": "已暂停",
+          "storage_full": "存储已满",
+          "storage_error": "存储错误",
+          "needs_login": "需要重新登录",
+          "waiting_connection": "等待连接",
+          "not_started": "尚未开始",
+          "waiting_retry": "等待重试",
+          "waiting_budget": "等待请求额度",
+          "discovering": "正在发现历史",
+          "preserving": "正在保存详情",
+          "verifying": "正在校验记录",
+          "incremental": "增量同步中",
+          "with_gaps": "已完成，有缺口",
+          "synced": "本地同步完成"
+        }
+      },
+      "history_scan_progress": {
+        "name": "历史月份扫描进度"
+      },
+      "history_detail_progress": {
+        "name": "行程详情保存进度"
+      },
+      "history_sync_last_success": {
+        "name": "最近成功同步"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "远程关闭"
+      },
+      "history_sync": {
+        "name": "同步历史行程"
+      },
+      "history_pause": {
+        "name": "暂停历史同步"
+      },
+      "history_resume": {
+        "name": "恢复历史同步"
       }
     },
     "image": {

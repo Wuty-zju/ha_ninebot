@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Yapay zekâ tahmini menzil"
+      },
+      "history_sync_state": {
+        "name": "Geçmiş eşitleme durumu",
+        "state": {
+          "disabled": "Devre dışı",
+          "paused": "Duraklatıldı",
+          "storage_full": "Depolama dolu",
+          "storage_error": "Depolama hatası",
+          "needs_login": "Giriş gerekli",
+          "waiting_connection": "Bağlantı bekleniyor",
+          "not_started": "Başlamadı",
+          "waiting_retry": "Yeniden deneme bekleniyor",
+          "waiting_budget": "İstek kotası bekleniyor",
+          "discovering": "Geçmiş aranıyor",
+          "preserving": "Ayrıntılar kaydediliyor",
+          "verifying": "Kayıtlar doğrulanıyor",
+          "incremental": "Artımlı eşitleme",
+          "with_gaps": "Eksiklerle tamamlandı",
+          "synced": "Yerel eşitleme tamamlandı"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Aylık tarama ilerlemesi"
+      },
+      "history_detail_progress": {
+        "name": "Kaydedilen yolculuk ayrıntıları"
+      },
+      "history_sync_last_success": {
+        "name": "Son başarılı eşitleme"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Uzaktan kilitle"
+      },
+      "history_sync": {
+        "name": "Geçmişi eşitle"
+      },
+      "history_pause": {
+        "name": "Eşitlemeyi duraklat"
+      },
+      "history_resume": {
+        "name": "Eşitlemeye devam et"
       }
     },
     "image": {

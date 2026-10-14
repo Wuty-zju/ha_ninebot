@@ -65,10 +65,10 @@ def project_progress(
     plan, health = evidence.baseline, evidence.health
     pending = plan is not None and plan.state not in TERMINAL
     current = plan if pending else next(iter(evidence.active), plan)
-    if not enabled:
-        state = "disabled"
-    elif paused:
+    if paused:
         state = "paused"
+    elif not enabled:
+        state = "disabled"
     elif storage_error:
         state = "storage_full" if storage_error == "capacity" else "storage_error"
     elif authentication_required:

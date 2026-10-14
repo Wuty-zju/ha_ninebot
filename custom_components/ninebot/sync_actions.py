@@ -137,6 +137,7 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
             await co.preservation.incremental.async_seed((sn,), dt_util.utcnow())
     if operation in {"pause", "resume"}:
         await runner.async_pause(sn, operation == "pause")
+    await co.preservation.async_refresh_progress((sn,), dt_util.utcnow())
     paused = await archive.async_history_paused(sn)
     plan = await archive.async_history_plan(sn)
     health = await archive.async_history_health(sn, plan.plan_id) if plan else None

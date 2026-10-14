@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "AI 預估續航"
+      },
+      "history_sync_state": {
+        "name": "歷史同步狀態",
+        "state": {
+          "disabled": "已關閉",
+          "paused": "已暫停",
+          "storage_full": "儲存已滿",
+          "storage_error": "儲存錯誤",
+          "needs_login": "需要重新登入",
+          "waiting_connection": "等待連線",
+          "not_started": "尚未開始",
+          "waiting_retry": "等待重試",
+          "waiting_budget": "等待請求額度",
+          "discovering": "正在發現歷史",
+          "preserving": "正在儲存詳情",
+          "verifying": "正在校驗記錄",
+          "incremental": "增量同步中",
+          "with_gaps": "已完成，有缺口",
+          "synced": "本地同步完成"
+        }
+      },
+      "history_scan_progress": {
+        "name": "歷史月份掃描進度"
+      },
+      "history_detail_progress": {
+        "name": "行程詳情儲存進度"
+      },
+      "history_sync_last_success": {
+        "name": "最近成功同步"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "遠端關閉"
+      },
+      "history_sync": {
+        "name": "同步歷史行程"
+      },
+      "history_pause": {
+        "name": "暫停歷史同步"
+      },
+      "history_resume": {
+        "name": "恢復歷史同步"
       }
     },
     "image": {

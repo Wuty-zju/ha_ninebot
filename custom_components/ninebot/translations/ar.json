@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "مدى السير المقدر بالذكاء الاصطناعي"
+      },
+      "history_sync_state": {
+        "name": "حالة مزامنة السجل",
+        "state": {
+          "disabled": "معطلة",
+          "paused": "متوقفة مؤقتًا",
+          "storage_full": "التخزين ممتلئ",
+          "storage_error": "خطأ في التخزين",
+          "needs_login": "يلزم تسجيل الدخول",
+          "waiting_connection": "انتظار الاتصال",
+          "not_started": "لم تبدأ",
+          "waiting_retry": "انتظار إعادة المحاولة",
+          "waiting_budget": "انتظار حصة الطلبات",
+          "discovering": "اكتشاف السجل",
+          "preserving": "حفظ التفاصيل",
+          "verifying": "التحقق من السجلات",
+          "incremental": "مزامنة تزايدية",
+          "with_gaps": "اكتملت مع فجوات",
+          "synced": "تمت المزامنة محليًا"
+        }
+      },
+      "history_scan_progress": {
+        "name": "تقدم فحص الأشهر"
+      },
+      "history_detail_progress": {
+        "name": "تفاصيل الرحلات المحفوظة"
+      },
+      "history_sync_last_success": {
+        "name": "آخر مزامنة ناجحة"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "القفل عن بُعد"
+      },
+      "history_sync": {
+        "name": "مزامنة السجل"
+      },
+      "history_pause": {
+        "name": "إيقاف المزامنة مؤقتًا"
+      },
+      "history_resume": {
+        "name": "استئناف المزامنة"
       }
     },
     "image": {

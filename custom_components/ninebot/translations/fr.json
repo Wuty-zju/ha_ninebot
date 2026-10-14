@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Autonomie estimée par IA"
+      },
+      "history_sync_state": {
+        "name": "État de synchronisation historique",
+        "state": {
+          "disabled": "Désactivée",
+          "paused": "Suspendue",
+          "storage_full": "Stockage plein",
+          "storage_error": "Erreur de stockage",
+          "needs_login": "Connexion au compte requise",
+          "waiting_connection": "En attente de connexion",
+          "not_started": "Non démarrée",
+          "waiting_retry": "En attente de nouvelle tentative",
+          "waiting_budget": "En attente du quota",
+          "discovering": "Découverte de l’historique",
+          "preserving": "Enregistrement des détails",
+          "verifying": "Vérification des données",
+          "incremental": "Synchronisation incrémentale",
+          "with_gaps": "Terminée avec des lacunes",
+          "synced": "Synchronisée localement"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Progression des mois analysés"
+      },
+      "history_detail_progress": {
+        "name": "Détails des trajets enregistrés"
+      },
+      "history_sync_last_success": {
+        "name": "Dernière synchronisation historique réussie"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Verrouiller à distance"
+      },
+      "history_sync": {
+        "name": "Synchroniser l’historique"
+      },
+      "history_pause": {
+        "name": "Suspendre la synchronisation"
+      },
+      "history_resume": {
+        "name": "Reprendre la synchronisation"
       }
     },
     "image": {

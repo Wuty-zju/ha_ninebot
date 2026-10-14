@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "AI-geschat rijbereik"
+      },
+      "history_sync_state": {
+        "name": "Status van historieksynchronisatie",
+        "state": {
+          "disabled": "Uitgeschakeld",
+          "paused": "Gepauzeerd",
+          "storage_full": "Opslag vol",
+          "storage_error": "Opslagfout",
+          "needs_login": "Aanmelden vereist",
+          "waiting_connection": "Wachten op verbinding",
+          "not_started": "Niet gestart",
+          "waiting_retry": "Wachten op nieuwe poging",
+          "waiting_budget": "Wachten op aanvraagbudget",
+          "discovering": "Historiek zoeken",
+          "preserving": "Details opslaan",
+          "verifying": "Records controleren",
+          "incremental": "Incrementele synchronisatie",
+          "with_gaps": "Voltooid met hiaten",
+          "synced": "Lokaal gesynchroniseerd"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Voortgang maandcontrole"
+      },
+      "history_detail_progress": {
+        "name": "Opgeslagen ritdetails"
+      },
+      "history_sync_last_success": {
+        "name": "Laatste geslaagde synchronisatie"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Op afstand vergrendelen"
+      },
+      "history_sync": {
+        "name": "Historiek synchroniseren"
+      },
+      "history_pause": {
+        "name": "Synchronisatie pauzeren"
+      },
+      "history_resume": {
+        "name": "Synchronisatie hervatten"
       }
     },
     "image": {

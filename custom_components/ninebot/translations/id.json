@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Perkiraan jarak tempuh AI"
+      },
+      "history_sync_state": {
+        "name": "Status sinkronisasi riwayat",
+        "state": {
+          "disabled": "Dinonaktifkan",
+          "paused": "Dijeda",
+          "storage_full": "Penyimpanan penuh",
+          "storage_error": "Kesalahan penyimpanan",
+          "needs_login": "Perlu masuk",
+          "waiting_connection": "Menunggu koneksi",
+          "not_started": "Belum dimulai",
+          "waiting_retry": "Menunggu percobaan ulang",
+          "waiting_budget": "Menunggu kuota permintaan",
+          "discovering": "Menemukan riwayat",
+          "preserving": "Menyimpan detail",
+          "verifying": "Memverifikasi catatan",
+          "incremental": "Sinkronisasi inkremental",
+          "with_gaps": "Selesai dengan kekurangan",
+          "synced": "Tersinkron secara lokal"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Kemajuan pemeriksaan bulan"
+      },
+      "history_detail_progress": {
+        "name": "Detail perjalanan tersimpan"
+      },
+      "history_sync_last_success": {
+        "name": "Sinkronisasi terakhir berhasil"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Kunci jarak jauh"
+      },
+      "history_sync": {
+        "name": "Sinkronkan riwayat"
+      },
+      "history_pause": {
+        "name": "Jeda sinkronisasi"
+      },
+      "history_resume": {
+        "name": "Lanjutkan sinkronisasi"
       }
     },
     "image": {

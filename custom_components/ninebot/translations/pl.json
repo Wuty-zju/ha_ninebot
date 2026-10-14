@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Zasięg szacowany przez AI"
+      },
+      "history_sync_state": {
+        "name": "Stan synchronizacji historii",
+        "state": {
+          "disabled": "Wyłączona",
+          "paused": "Wstrzymana",
+          "storage_full": "Pamięć pełna",
+          "storage_error": "Błąd pamięci",
+          "needs_login": "Wymagane logowanie",
+          "waiting_connection": "Oczekiwanie na połączenie",
+          "not_started": "Nierozpoczęta",
+          "waiting_retry": "Oczekiwanie na ponowienie",
+          "waiting_budget": "Oczekiwanie na limit zapytań",
+          "discovering": "Wyszukiwanie historii",
+          "preserving": "Zapisywanie szczegółów",
+          "verifying": "Sprawdzanie danych",
+          "incremental": "Synchronizacja przyrostowa",
+          "with_gaps": "Zakończona z brakami",
+          "synced": "Zsynchronizowano lokalnie"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Postęp sprawdzania miesięcy"
+      },
+      "history_detail_progress": {
+        "name": "Zapisane szczegóły przejazdów"
+      },
+      "history_sync_last_success": {
+        "name": "Ostatnia udana synchronizacja"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Zablokuj zdalnie"
+      },
+      "history_sync": {
+        "name": "Synchronizuj historię"
+      },
+      "history_pause": {
+        "name": "Wstrzymaj synchronizację"
+      },
+      "history_resume": {
+        "name": "Wznów synchronizację"
       }
     },
     "image": {

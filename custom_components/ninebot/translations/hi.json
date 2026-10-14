@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "AI अनुमानित शेष दूरी"
+      },
+      "history_sync_state": {
+        "name": "इतिहास सिंक स्थिति",
+        "state": {
+          "disabled": "बंद",
+          "paused": "रुका हुआ",
+          "storage_full": "भंडारण भरा हुआ",
+          "storage_error": "भंडारण त्रुटि",
+          "needs_login": "लॉगिन आवश्यक",
+          "waiting_connection": "कनेक्शन की प्रतीक्षा",
+          "not_started": "शुरू नहीं हुआ",
+          "waiting_retry": "पुनः प्रयास की प्रतीक्षा",
+          "waiting_budget": "अनुरोध सीमा की प्रतीक्षा",
+          "discovering": "इतिहास खोज रहे हैं",
+          "preserving": "विवरण सहेज रहे हैं",
+          "verifying": "रिकॉर्ड जाँच रहे हैं",
+          "incremental": "नई जानकारी सिंक हो रही है",
+          "with_gaps": "कुछ रिकॉर्ड अधूरे हैं",
+          "synced": "स्थानीय सिंक पूरा"
+        }
+      },
+      "history_scan_progress": {
+        "name": "मासिक इतिहास जाँच की प्रगति"
+      },
+      "history_detail_progress": {
+        "name": "सहेजे गए यात्रा विवरण"
+      },
+      "history_sync_last_success": {
+        "name": "अंतिम सफल इतिहास सिंक"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "दूर से लॉक करें"
+      },
+      "history_sync": {
+        "name": "इतिहास सिंक करें"
+      },
+      "history_pause": {
+        "name": "इतिहास सिंक रोकें"
+      },
+      "history_resume": {
+        "name": "इतिहास सिंक फिर शुरू करें"
       }
     },
     "image": {

@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "AI estimated range"
+      },
+      "history_sync_state": {
+        "name": "History sync status",
+        "state": {
+          "disabled": "Disabled",
+          "paused": "Paused",
+          "storage_full": "Storage full",
+          "storage_error": "Storage error",
+          "needs_login": "Login required",
+          "waiting_connection": "Waiting for connection",
+          "not_started": "Not started",
+          "waiting_retry": "Waiting to retry",
+          "waiting_budget": "Waiting for request budget",
+          "discovering": "Discovering history",
+          "preserving": "Saving details",
+          "verifying": "Verifying records",
+          "incremental": "Incremental sync",
+          "with_gaps": "Completed with gaps",
+          "synced": "Synced locally"
+        }
+      },
+      "history_scan_progress": {
+        "name": "History month scan progress"
+      },
+      "history_detail_progress": {
+        "name": "Discovered trip details saved"
+      },
+      "history_sync_last_success": {
+        "name": "Last successful history sync"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Remote lock"
+      },
+      "history_sync": {
+        "name": "Sync history"
+      },
+      "history_pause": {
+        "name": "Pause history sync"
+      },
+      "history_resume": {
+        "name": "Resume history sync"
       }
     },
     "image": {

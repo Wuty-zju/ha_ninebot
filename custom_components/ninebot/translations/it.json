@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Autonomia stimata con IA"
+      },
+      "history_sync_state": {
+        "name": "Stato sincronizzazione cronologia",
+        "state": {
+          "disabled": "Disattivata",
+          "paused": "Sospesa",
+          "storage_full": "Spazio esaurito",
+          "storage_error": "Errore di archiviazione",
+          "needs_login": "Accesso richiesto",
+          "waiting_connection": "In attesa di connessione",
+          "not_started": "Non avviata",
+          "waiting_retry": "In attesa di riprovare",
+          "waiting_budget": "In attesa del limite richieste",
+          "discovering": "Ricerca della cronologia",
+          "preserving": "Salvataggio dettagli",
+          "verifying": "Verifica dei dati",
+          "incremental": "Sincronizzazione incrementale",
+          "with_gaps": "Completata con lacune",
+          "synced": "Sincronizzata localmente"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Avanzamento scansione mensile"
+      },
+      "history_detail_progress": {
+        "name": "Dettagli viaggi salvati"
+      },
+      "history_sync_last_success": {
+        "name": "Ultima sincronizzazione riuscita"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Blocca da remoto"
+      },
+      "history_sync": {
+        "name": "Sincronizza cronologia"
+      },
+      "history_pause": {
+        "name": "Sospendi sincronizzazione"
+      },
+      "history_resume": {
+        "name": "Riprendi sincronizzazione"
       }
     },
     "image": {

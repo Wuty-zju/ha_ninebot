@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Autonomía estimada por IA"
+      },
+      "history_sync_state": {
+        "name": "Estado de sincronización histórica",
+        "state": {
+          "disabled": "Desactivado",
+          "paused": "En pausa",
+          "storage_full": "Almacenamiento lleno",
+          "storage_error": "Error de almacenamiento",
+          "needs_login": "Inicio de sesión requerido",
+          "waiting_connection": "Esperando conexión",
+          "not_started": "Sin iniciar",
+          "waiting_retry": "Esperando reintento",
+          "waiting_budget": "Esperando cuota de consultas",
+          "discovering": "Buscando historial",
+          "preserving": "Guardando detalles",
+          "verifying": "Verificando registros",
+          "incremental": "Sincronización incremental",
+          "with_gaps": "Completado con lagunas",
+          "synced": "Sincronizado localmente"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Progreso de meses consultados"
+      },
+      "history_detail_progress": {
+        "name": "Detalles de viajes guardados"
+      },
+      "history_sync_last_success": {
+        "name": "Última sincronización histórica correcta"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Bloquear a distancia"
+      },
+      "history_sync": {
+        "name": "Sincronizar historial"
+      },
+      "history_pause": {
+        "name": "Pausar sincronización"
+      },
+      "history_resume": {
+        "name": "Reanudar sincronización"
       }
     },
     "image": {

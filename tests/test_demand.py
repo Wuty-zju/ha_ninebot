@@ -107,3 +107,8 @@ def test_removed_vehicle_never_creates_demand_even_for_model_and_event():
 )
 def test_entity_context_preserves_the_actual_function_dependency(platform, key, group, need):
     assert entity_context("one", platform, key, group) == ConsumerContext("one", need)
+
+
+@pytest.mark.parametrize("key", ["history_sync", "history_pause", "history_resume"])
+def test_history_controls_only_need_profile_context(key):
+    assert entity_context("one", "button", key, "profile").need is Need.PROFILE

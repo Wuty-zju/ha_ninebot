@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Phạm vi di chuyển ước tính bằng AI"
+      },
+      "history_sync_state": {
+        "name": "Trạng thái đồng bộ lịch sử",
+        "state": {
+          "disabled": "Đã tắt",
+          "paused": "Đã tạm dừng",
+          "storage_full": "Bộ nhớ đầy",
+          "storage_error": "Lỗi lưu trữ",
+          "needs_login": "Cần đăng nhập",
+          "waiting_connection": "Đang chờ kết nối",
+          "not_started": "Chưa bắt đầu",
+          "waiting_retry": "Đang chờ thử lại",
+          "waiting_budget": "Đang chờ hạn mức truy vấn",
+          "discovering": "Đang tìm lịch sử",
+          "preserving": "Đang lưu chi tiết",
+          "verifying": "Đang kiểm tra dữ liệu",
+          "incremental": "Đang đồng bộ phần mới",
+          "with_gaps": "Hoàn tất nhưng còn thiếu",
+          "synced": "Đã đồng bộ cục bộ"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Tiến độ kiểm tra tháng"
+      },
+      "history_detail_progress": {
+        "name": "Chi tiết chuyến đi đã lưu"
+      },
+      "history_sync_last_success": {
+        "name": "Lần đồng bộ thành công gần nhất"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Khóa từ xa"
+      },
+      "history_sync": {
+        "name": "Đồng bộ lịch sử"
+      },
+      "history_pause": {
+        "name": "Tạm dừng đồng bộ"
+      },
+      "history_resume": {
+        "name": "Tiếp tục đồng bộ"
       }
     },
     "image": {

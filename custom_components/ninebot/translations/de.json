@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "KI-geschätzte Reichweite"
+      },
+      "history_sync_state": {
+        "name": "Status der Verlaufssynchronisierung",
+        "state": {
+          "disabled": "Deaktiviert",
+          "paused": "Pausiert",
+          "storage_full": "Speicher voll",
+          "storage_error": "Speicherfehler",
+          "needs_login": "Anmeldung erforderlich",
+          "waiting_connection": "Warten auf Verbindung",
+          "not_started": "Nicht gestartet",
+          "waiting_retry": "Warten auf Wiederholung",
+          "waiting_budget": "Warten auf Anfragebudget",
+          "discovering": "Verlauf wird erfasst",
+          "preserving": "Details werden gespeichert",
+          "verifying": "Datensätze werden geprüft",
+          "incremental": "Inkrementelle Synchronisierung",
+          "with_gaps": "Mit Lücken abgeschlossen",
+          "synced": "Lokal synchronisiert"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Fortschritt der Monatsprüfung"
+      },
+      "history_detail_progress": {
+        "name": "Gespeicherte Fahrtdetails"
+      },
+      "history_sync_last_success": {
+        "name": "Letzte erfolgreiche Verlaufssynchronisierung"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Aus der Ferne verriegeln"
+      },
+      "history_sync": {
+        "name": "Verlauf synchronisieren"
+      },
+      "history_pause": {
+        "name": "Verlaufssynchronisierung pausieren"
+      },
+      "history_resume": {
+        "name": "Verlaufssynchronisierung fortsetzen"
       }
     },
     "image": {

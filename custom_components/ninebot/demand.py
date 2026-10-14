@@ -50,6 +50,8 @@ def entity_context(vehicle: str, platform: str, key: str, group: str) -> Consume
         need = Need.MONTH  # Dates are local reads; no adjacent-month cloud backfill.
     elif platform == "event" and key == "ride":
         need = Need.RIDE_EVENT
+    elif platform == "button" and key.startswith("history_"):
+        need = Need.PROFILE  # Local history work has its own explicit queue/budget.
     elif platform == "button" and key != "refresh":
         need = Need.CONTROL
     elif group == "travel":

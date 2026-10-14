@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Запас хода по оценке ИИ"
+      },
+      "history_sync_state": {
+        "name": "Состояние синхронизации истории",
+        "state": {
+          "disabled": "Отключена",
+          "paused": "Приостановлена",
+          "storage_full": "Хранилище заполнено",
+          "storage_error": "Ошибка хранилища",
+          "needs_login": "Требуется вход",
+          "waiting_connection": "Ожидание соединения",
+          "not_started": "Не начата",
+          "waiting_retry": "Ожидание повтора",
+          "waiting_budget": "Ожидание квоты запросов",
+          "discovering": "Поиск истории",
+          "preserving": "Сохранение сведений",
+          "verifying": "Проверка записей",
+          "incremental": "Добавочная синхронизация",
+          "with_gaps": "Завершена с пропусками",
+          "synced": "Локальная синхронизация завершена"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Ход проверки месяцев"
+      },
+      "history_detail_progress": {
+        "name": "Сохранённые сведения о поездках"
+      },
+      "history_sync_last_success": {
+        "name": "Последняя успешная синхронизация"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Заблокировать удалённо"
+      },
+      "history_sync": {
+        "name": "Синхронизировать историю"
+      },
+      "history_pause": {
+        "name": "Приостановить синхронизацию"
+      },
+      "history_resume": {
+        "name": "Продолжить синхронизацию"
       }
     },
     "image": {

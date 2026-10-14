@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "Запас ходу за оцінкою ШІ"
+      },
+      "history_sync_state": {
+        "name": "Стан синхронізації історії",
+        "state": {
+          "disabled": "Вимкнено",
+          "paused": "Призупинено",
+          "storage_full": "Сховище заповнене",
+          "storage_error": "Помилка сховища",
+          "needs_login": "Потрібен вхід",
+          "waiting_connection": "Очікування з’єднання",
+          "not_started": "Не розпочато",
+          "waiting_retry": "Очікування повтору",
+          "waiting_budget": "Очікування квоти запитів",
+          "discovering": "Пошук історії",
+          "preserving": "Збереження деталей",
+          "verifying": "Перевірка записів",
+          "incremental": "Додаткова синхронізація",
+          "with_gaps": "Завершено з пропусками",
+          "synced": "Локальна синхронізація завершена"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Перебіг перевірки місяців"
+      },
+      "history_detail_progress": {
+        "name": "Збережені деталі поїздок"
+      },
+      "history_sync_last_success": {
+        "name": "Остання успішна синхронізація"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "Заблокувати дистанційно"
+      },
+      "history_sync": {
+        "name": "Синхронізувати історію"
+      },
+      "history_pause": {
+        "name": "Призупинити синхронізацію"
+      },
+      "history_resume": {
+        "name": "Продовжити синхронізацію"
       }
     },
     "image": {

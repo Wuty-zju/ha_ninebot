@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "AI 推定航続距離"
+      },
+      "history_sync_state": {
+        "name": "履歴同期状態",
+        "state": {
+          "disabled": "無効",
+          "paused": "一時停止",
+          "storage_full": "ストレージ容量不足",
+          "storage_error": "ストレージエラー",
+          "needs_login": "再ログインが必要",
+          "waiting_connection": "接続待機中",
+          "not_started": "未開始",
+          "waiting_retry": "再試行待機中",
+          "waiting_budget": "リクエスト枠の回復待ち",
+          "discovering": "履歴を取得中",
+          "preserving": "詳細を保存中",
+          "verifying": "記録を検証中",
+          "incremental": "差分同期中",
+          "with_gaps": "一部不足で完了",
+          "synced": "ローカル同期完了"
+        }
+      },
+      "history_scan_progress": {
+        "name": "月別履歴の取得進捗"
+      },
+      "history_detail_progress": {
+        "name": "走行詳細の保存進捗"
+      },
+      "history_sync_last_success": {
+        "name": "履歴同期の最終成功日時"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "遠隔施錠"
+      },
+      "history_sync": {
+        "name": "走行履歴を同期"
+      },
+      "history_pause": {
+        "name": "履歴同期を一時停止"
+      },
+      "history_resume": {
+        "name": "履歴同期を再開"
       }
     },
     "image": {

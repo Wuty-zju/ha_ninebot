@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "ระยะทางคงเหลือที่ AI ประเมิน"
+      },
+      "history_sync_state": {
+        "name": "สถานะการซิงค์ประวัติ",
+        "state": {
+          "disabled": "ปิดใช้งาน",
+          "paused": "พักชั่วคราว",
+          "storage_full": "พื้นที่จัดเก็บเต็ม",
+          "storage_error": "ข้อผิดพลาดพื้นที่จัดเก็บ",
+          "needs_login": "ต้องเข้าสู่ระบบ",
+          "waiting_connection": "รอการเชื่อมต่อ",
+          "not_started": "ยังไม่เริ่ม",
+          "waiting_retry": "รอลองใหม่",
+          "waiting_budget": "รอโควตาคำขอ",
+          "discovering": "กำลังค้นหาประวัติ",
+          "preserving": "กำลังบันทึกรายละเอียด",
+          "verifying": "กำลังตรวจสอบบันทึก",
+          "incremental": "กำลังซิงค์ข้อมูลเพิ่ม",
+          "with_gaps": "เสร็จพร้อมข้อมูลบางส่วนขาดหาย",
+          "synced": "ซิงค์ในเครื่องเสร็จแล้ว"
+        }
+      },
+      "history_scan_progress": {
+        "name": "ความคืบหน้าการตรวจสอบรายเดือน"
+      },
+      "history_detail_progress": {
+        "name": "รายละเอียดการเดินทางที่บันทึก"
+      },
+      "history_sync_last_success": {
+        "name": "การซิงค์สำเร็จล่าสุด"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "ล็อกจากระยะไกล"
+      },
+      "history_sync": {
+        "name": "ซิงค์ประวัติ"
+      },
+      "history_pause": {
+        "name": "พักการซิงค์"
+      },
+      "history_resume": {
+        "name": "ดำเนินการซิงค์ต่อ"
       }
     },
     "image": {

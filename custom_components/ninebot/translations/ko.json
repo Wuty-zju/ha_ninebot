@@ -475,6 +475,35 @@
       },
       "range_ai": {
         "name": "AI 예상 주행 가능 거리"
+      },
+      "history_sync_state": {
+        "name": "기록 동기화 상태",
+        "state": {
+          "disabled": "비활성화",
+          "paused": "일시 중지",
+          "storage_full": "저장 공간 부족",
+          "storage_error": "저장 오류",
+          "needs_login": "다시 로그인 필요",
+          "waiting_connection": "연결 대기",
+          "not_started": "시작 전",
+          "waiting_retry": "재시도 대기",
+          "waiting_budget": "요청 한도 대기",
+          "discovering": "기록 검색 중",
+          "preserving": "상세 저장 중",
+          "verifying": "기록 검증 중",
+          "incremental": "증분 동기화 중",
+          "with_gaps": "누락된 기록 있음",
+          "synced": "로컬 동기화 완료"
+        }
+      },
+      "history_scan_progress": {
+        "name": "월별 기록 조회 진행률"
+      },
+      "history_detail_progress": {
+        "name": "주행 상세 저장 진행률"
+      },
+      "history_sync_last_success": {
+        "name": "마지막 기록 동기화 성공"
       }
     },
     "binary_sensor": {
@@ -514,6 +543,15 @@
       },
       "engine_stop": {
         "name": "원격 잠금"
+      },
+      "history_sync": {
+        "name": "주행 기록 동기화"
+      },
+      "history_pause": {
+        "name": "기록 동기화 일시 중지"
+      },
+      "history_resume": {
+        "name": "기록 동기화 재개"
       }
     },
     "image": {
