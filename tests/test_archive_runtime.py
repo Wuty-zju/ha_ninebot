@@ -332,3 +332,20 @@ async def test_capacity_option_and_recheck_do_not_clear_other_storage_errors(has
         assert store.error is ArchiveFailure.SCHEMA and not store.writable
     finally:
         await store.async_close()
+
+
+async def test_object_error_creates_scoped_repair_without_disabling_healthy_writer(hass):
+    from homeassistant.helpers import issue_registry as ir
+
+    store = ArchiveStatistics(hass, "object-fault-entry", "object-fault-owner")
+    await store.async_load()
+    try:
+        store.record_error(ArchiveError(ArchiveFailure.OBJECT))
+        assert store.writable and store.error is None
+        issue = ir.async_get(hass).issues[("ninebot", store._archive_object_issue)]
+        assert issue.translation_key == "ride_archive_object_corrupt"
+        store.record_error(ArchiveError(ArchiveFailure.STORAGE))
+        store.record_error(ArchiveError(ArchiveFailure.OBJECT))
+        assert store.error is ArchiveFailure.STORAGE and not store.writable
+    finally:
+        await store.async_close()

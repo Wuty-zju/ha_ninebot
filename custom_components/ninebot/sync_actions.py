@@ -9,7 +9,7 @@ from homeassistant.util import dt as dt_util
 from .compat import validation as vol
 from .month_tasks import MAX_SELECTED_MONTHS, progress
 from .preservation import CONF_BUDGET, CONF_PRESERVE, DEFAULT_BUDGET
-from .ride_archive import ArchiveError
+from .ride_archive import ArchiveError, ArchiveFailure
 from .services import assert_query_scope, query_month, resolve_vehicle, validation_error
 from .sync_job import public_progress
 
@@ -46,6 +46,9 @@ SYNC_SCHEMA = vol.Schema(
                 "resume",
                 "sync_status",
                 "synchronize",
+                "verify",
+                "verify_continue",
+                "verify_status",
             )
         ),
         vol.Optional("start_month"): query_month,
@@ -70,6 +73,8 @@ async def async_sync_history(hass: HomeAssistant, call: ServiceCall) -> dict[str
     if budget is not None and (type(budget) is not int or not 1 <= budget <= 60):
         budget = DEFAULT_BUDGET
     try:
+        if operation.startswith("verify"):
+            return await async_verify_history(hass, call)
         if operation in {"pause", "resume", "sync_status", "synchronize"}:
             return await async_history_control(hass, call)
         if operation.startswith("repair"):
@@ -167,6 +172,49 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         "details": asdict(health) if health else None,
         "pagination_basis": "client_page_evidence",
         "real_cloud_pagination_verified": False,
+    }
+
+
+async def async_verify_history(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    """Explicit bounded local checks; no implicit cloud repair or raw output."""
+    entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
+    co = entry.runtime_data.coordinator
+    archive = co.statistics.archive
+    owns = co.preservation.bootstrap.guard(sn, require_enabled=False, respect_pause=False)
+    now, operation = dt_util.utcnow(), call.data["operation"]
+    if operation == "verify":
+        await archive.async_start_history_audit(sn, now, guard=owns, restart=True)
+    if operation != "verify_status":
+        await archive.async_step_history_audit(sn, now, guard=owns)
+    plan, current_revision, inventory_revision = await archive.async_history_audit_status(sn)
+    changed = bool(
+        plan
+        and (
+            plan.changed
+            or plan.cutoff_revision != current_revision
+            or plan.cutoff_inventory != inventory_revision
+        )
+    )
+    if plan and plan.invalid:
+        co.statistics.record_error(ArchiveError(ArchiveFailure.OBJECT))
+    return {
+        "schema_version": 1,
+        "contract": "local_payload_integrity_v1",
+        "operation": operation,
+        "state": plan.phase if plan else "not_started",
+        "captured_total": plan.total if plan else None,
+        "checked": plan.checked if plan else 0,
+        "invalid": plan.invalid if plan else 0,
+        "archive_changed": changed,
+        "payloads_verified": bool(plan and plan.payloads_verified and not changed),
+        "captured_payloads_verified": plan.payloads_verified if plan else False,
+        "cutoff_revision": plan.cutoff_revision if plan else None,
+        "current_revision": current_revision,
+        "cutoff_inventory": plan.cutoff_inventory if plan else None,
+        "current_inventory": inventory_revision,
+        "updated_at": plan.updated_at if plan else None,
+        "cloud_requests": 0,
+        "normalization_and_cloud_coverage_verified": False,
     }
 
 

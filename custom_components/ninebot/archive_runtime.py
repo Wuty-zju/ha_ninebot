@@ -51,6 +51,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self.archive_ready = False
         self.error: ArchiveFailure | None = None
         self._archive_issue = f"ride_archive_{entry_id}"
+        self._archive_object_issue = f"ride_archive_objects_{entry_id}"
         self._entry_scope = entry_id
         self._archive_lock = asyncio.Lock()
         self._vehicles: set[str] = set()
@@ -100,6 +101,16 @@ class ArchiveStatistics(TravelStatisticsStore):
             self.record_error(err, opening=True)
 
     def record_error(self, err: ArchiveError, *, opening: bool = False) -> None:
+        if err.kind is ArchiveFailure.OBJECT:
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                self._archive_object_issue,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="ride_archive_object_corrupt",
+            )
+            return  # Refuse this object, preserve the healthy account writer and existing bytes.
         if opening and err.kind in {ArchiveFailure.BUSY, ArchiveFailure.CLOSED}:
             self.error = err.kind
             return  # Not opened yet; preserve the lifecycle reason without a Repair.

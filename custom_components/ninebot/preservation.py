@@ -77,7 +77,10 @@ class HistoryPreservation:
         self._task = asyncio.current_task()
         try:
             await self._step(now)
-        except (ArchiveError, HomeAssistantError, NinebotError):
+        except ArchiveError as err:
+            self.co.statistics.record_error(err)
+            self.status = "waiting"
+        except (HomeAssistantError, NinebotError):
             self.status = "waiting"  # Ordinary failures do not generate repeated logs.
         finally:
             try:

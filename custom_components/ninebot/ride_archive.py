@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 from zoneinfo import ZoneInfo
 
+from .archive_audit import AuditPlan
 from .archive_browse import RecordedCursor, RecordedCursorMismatch, RecordedPage, recorded_page
 from .archive_codec import (
     decoded,
@@ -50,7 +51,7 @@ from .archive_timeline import (
     timeline_query,
 )
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
-from .detail_codec import ArchivedDetail, packed, unpacked
+from .detail_codec import ArchivedDetail, CorruptPayload, packed, unpacked
 from .detail_health import HistoryHealth
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
@@ -86,6 +87,7 @@ class ArchiveFailure(StrEnum):
     OWNER = "owner"
     CURSOR = "cursor"
     BUDGET = "budget"
+    OBJECT = "corrupt_object"
 
 
 class ArchiveError(Exception):
@@ -290,6 +292,8 @@ class RideArchive:
             raise ArchiveError(ArchiveFailure.STORAGE) from None
         except OSError:
             raise ArchiveError(ArchiveFailure.STORAGE) from None
+        except CorruptPayload:
+            raise ArchiveError(ArchiveFailure.OBJECT) from None
         except (ValueError, TypeError, KeyError, OverflowError):
             raise ArchiveError(ArchiveFailure.SCHEMA) from None
         finally:
@@ -388,7 +392,15 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key == "history_family_turn" and value not in {"0", "1", "2"}:
+            if key.startswith(("history_audit:", "history_audit_fault:")):
+                from .archive_audit import validate_meta
+
+                validate_meta(key, value)
+            elif key == "history_payload_revision":
+                from .payload_inventory import validate as validate_inventory
+
+                validate_inventory(value)
+            elif key == "history_family_turn" and value not in {"0", "1", "2"}:
                 raise ValueError("Invalid history family turn")
             elif key.startswith("history_incremental_seen:") or key.startswith(
                 "history_run_signature:"
@@ -973,7 +985,7 @@ class RideArchive:
         )
         changed = old is None or old.latest_hash != digest or old.geometry_hash != geometry_hash
         revision = (old.revision if old else 0) + int(changed)
-        db.execute(
+        inserted = db.execute(
             "INSERT OR IGNORE INTO detail_payloads VALUES (?,?,?,?,?,?,?,?)",
             (
                 vehicle,
@@ -993,10 +1005,14 @@ class RideArchive:
             (vehicle, ride.ride_id, digest, geometry_hash, observed, revision, reason),
         )
         # Bound storage to latest candidate plus selected geometry, not every poll.
-        db.execute(
+        removed = db.execute(
             "DELETE FROM detail_payloads WHERE vehicle=? AND ride=? AND hash NOT IN (?,?)",
             (vehicle, ride.ride_id, digest, geometry_hash),
         )
+        if inserted.rowcount or removed.rowcount:
+            from .payload_inventory import advance as advance_inventory
+
+            advance_inventory(db)
         from .detail_health import put as put_health
 
         assert ride.ride_id is not None
@@ -1792,6 +1808,54 @@ class RideArchive:
     async def async_sync_job(self) -> SyncJob | None:
         return await self._run(self._sync_job)
 
+    async def async_history_audit(self, sn: str) -> AuditPlan | None:
+        return (await self.async_history_audit_status(sn))[0]
+
+    async def async_history_audit_status(self, sn: str) -> tuple[AuditPlan | None, int, int]:
+        from .archive_audit import get
+        from .payload_inventory import revision as inventory_revision
+
+        def read() -> tuple[AuditPlan | None, int, int]:
+            return (
+                get(self._db(), vehicle_key(sn)),
+                self._revision(),
+                inventory_revision(self._db()),
+            )
+
+        return await self._run(read)
+
+    async def async_start_history_audit(
+        self, sn: str, now: datetime, *, guard: Callable[[], bool], restart: bool = False
+    ) -> AuditPlan:
+        from .archive_audit import start
+
+        utc_string(now)
+        if type(restart) is not bool:
+            raise ValueError("Invalid audit restart")
+
+        def begin() -> AuditPlan:
+            db = self._db(write=True)
+            with db:
+                return start(db, vehicle_key(sn), now, restart=restart)
+
+        return await self._run(begin, guard=guard)
+
+    async def async_step_history_audit(
+        self, sn: str, now: datetime, *, guard: Callable[[], bool], limit: int = 8
+    ) -> AuditPlan | None:
+        from .archive_audit import step
+
+        utc_string(now)
+        if type(limit) is not int or not 1 <= limit <= 8:
+            raise ValueError("Invalid audit batch")
+
+        def advance() -> AuditPlan | None:
+            db = self._db(write=True)
+            with db:
+                return step(db, vehicle_key(sn), now, limit)
+
+        return await self._run(advance, guard=guard)
+
     async def async_history_plan(self, sn: str) -> HistoryPlan | None:
         from .history_store import root
 
@@ -2257,6 +2321,9 @@ class RideArchive:
                     if self._history_paused(expected.vehicle):
                         raise ArchiveError(ArchiveFailure.BUSY)
                     receipt = accept_page(db, expected, raw)
+                    from .payload_inventory import advance as advance_inventory
+
+                    advance_inventory(db)
                     if receipt.stop != "schema":
                         from .adapters import travel as parse_month
 

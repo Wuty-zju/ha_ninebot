@@ -192,7 +192,7 @@ async def test_private_payload_hash_corruption_is_refused_on_read(tmp_path):
         await reopened.async_open()
         with pytest.raises(ArchiveError) as err:
             await reopened.async_private_detail(SN, "first")
-        assert err.value.kind is ArchiveFailure.SCHEMA
+        assert err.value.kind is ArchiveFailure.OBJECT
     finally:
         await reopened.async_close()
 
@@ -266,3 +266,41 @@ async def test_targeted_summary_keeps_conflicting_mapping_unusable(tmp_path):
         assert "conflicting_detail_ids" in found.issues
     finally:
         await archive.async_close()
+
+
+async def test_bad_object_does_not_destroy_other_details_or_block_healthy_writes(tmp_path):
+    archive = await opened(tmp_path)
+    at = NOW + timedelta(seconds=1)
+    await save(archive, {"trail": "120,30,1,1"}, at)
+    month = await archive.async_month(SN, "202609")
+    second = next(ride for ride in month.travel.rides if ride.ride_id == "second")
+    raw = record({"travel_id": "second", "trail": "121,31,1,1"}, at)
+    await archive.async_record_detail(
+        SN,
+        merge_detail(second, parse_ride(raw.payload(), "202609", source=Endpoint.TRIP_DETAIL)),
+        at,
+        raw=raw,
+    )
+    await archive.async_close()
+    damaged = b"corrupt-object-keep-original-bytes"
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        db.execute("UPDATE detail_payloads SET body=? WHERE ride='first'", (damaged,))
+    reopened = RideArchive(archive.path, OWNER)
+    try:
+        await reopened.async_open()
+        with pytest.raises(ArchiveError) as error:
+            await reopened.async_private_detail(SN, "first")
+        assert error.value.kind is ArchiveFailure.OBJECT
+        assert not reopened.write_paused
+        assert (await reopened.async_private_detail(SN, "second")).geometry.payload()[
+            "trail"
+        ] == "121,31,1,1"
+        assert await reopened.async_record_month("other-vehicle", sample(), at)
+        assert await reopened.async_month("other-vehicle", "202609") is not None
+        with closing(sqlite3.connect(archive.path)) as db:
+            assert (
+                db.execute("SELECT body FROM detail_payloads WHERE ride='first'").fetchone()[0]
+                == damaged
+            )
+    finally:
+        await reopened.async_close()

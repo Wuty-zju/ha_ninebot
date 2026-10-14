@@ -717,6 +717,9 @@
     },
     "query_local_refresh": {
       "message": "僅本機讀取與雲端重新整理不能同時啟用。"
+    },
+    "history_object_corrupt": {
+      "message": "部分本地行程資料校驗失敗"
     }
   },
   "issues": {
@@ -771,6 +774,10 @@
     "ride_archive_invalid": {
       "title": "行程統計儲存無法使用",
       "description": "私人歷史統計檔案無效或版本不受支援，原始檔案未被覆寫，目前車輛遙測仍可使用。請保留設定備份，檢查儲存權限和整合版本，再還原相容備份。"
+    },
+    "ride_archive_object_corrupt": {
+      "title": "部分本地行程資料校驗失敗",
+      "description": "其他記錄仍可使用。請保留備份並校驗受影響的本地檔案物件，不要刪除檔案。"
     }
   },
   "services": {

@@ -261,3 +261,22 @@ async def test_cached_progress_only_notifies_changed_scalar_views(context):
     await worker.bootstrap.async_pause(SN, True)
     await worker.async_refresh_progress((SN,), NOW)
     assert worker.progress[SN].state == "paused" and not calls
+
+
+async def test_local_bad_object_backfill_does_not_block_other_vehicle_seed(context):
+    from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure
+
+    co, archive, clock, calls = context
+    co.local_vehicle_available = lambda sn: True
+    co._ownership["other-vehicle"] = 1
+    runner = HistoryBootstrap(co)
+    with patch.object(
+        archive,
+        "async_backfill_detail_health",
+        AsyncMock(side_effect=[ArchiveError(ArchiveFailure.OBJECT), 0]),
+    ):
+        await runner.async_seed((SN, "other-vehicle"), NOW)
+    co.statistics.record_error.assert_called_once()
+    assert "other-vehicle" in runner.snapshots and not calls
+    assert await archive.async_history_plan(SN) is not None
+    assert await archive.async_history_plan("other-vehicle") is not None

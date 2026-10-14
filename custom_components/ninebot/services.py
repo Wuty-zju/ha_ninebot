@@ -26,7 +26,7 @@ from .identity import device_sn
 from .models import TravelMonth
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord
-from .ride_archive import ArchiveError
+from .ride_archive import ArchiveError, ArchiveFailure
 from .ride_models import Ride, RideDetail
 from .runtime import NinebotConfigEntry
 from .travel import MAX_TRACK_POINTS, merge_detail, opaque_id, parse_ride
@@ -314,7 +314,9 @@ async def cached_detail(
         )
     except ArchiveError as err:
         co.statistics.record_error(err)
-        raise validation_error("query_unavailable") from err
+        raise validation_error(
+            "history_object_corrupt" if err.kind is ArchiveFailure.OBJECT else "query_unavailable"
+        ) from err
     if found is None:
         return None
     if month is not None and found.ride.query_month != month:
@@ -675,7 +677,8 @@ async def async_scoped_action(
         if call.service == "import_statistics"
         or (
             call.service == "sync_history"
-            and call.data["operation"] not in {"status", "repair_status", "sync_status"}
+            and call.data["operation"]
+            not in {"status", "repair_status", "sync_status", "verify_status"}
         )
         else POLICY_READ
     )

@@ -717,6 +717,9 @@
     },
     "query_local_refresh": {
       "message": "仅本地读取与云端刷新不能同时启用。"
+    },
+    "history_object_corrupt": {
+      "message": "部分本地行程数据校验失败"
     }
   },
   "issues": {
@@ -771,6 +774,10 @@
     "ride_archive_invalid": {
       "title": "行程统计存储不可用",
       "description": "私有历史统计文件无效或版本不受支持，原文件未被覆盖，当前车辆遥测仍可使用。请保留配置备份，检查存储权限和集成版本，再恢复兼容的备份。"
+    },
+    "ride_archive_object_corrupt": {
+      "title": "部分本地行程数据校验失败",
+      "description": "其他记录仍可使用。请保留备份并校验受影响的本地档案对象，不要删除档案。"
     }
   },
   "services": {

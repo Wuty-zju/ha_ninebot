@@ -717,6 +717,9 @@
     },
     "query_local_refresh": {
       "message": "Local-only reading cannot be combined with cloud refresh."
+    },
+    "history_object_corrupt": {
+      "message": "فشل التحقق من بعض بيانات الرحلات المحفوظة"
     }
   },
   "issues": {
@@ -771,6 +774,10 @@
     "ride_archive_invalid": {
       "title": "Travel statistics storage unavailable",
       "description": "The private history statistics file is invalid or uses an unsupported version. It has not been overwritten. Current vehicle telemetry continues. Keep configuration backups and check storage permissions and the integration version before restoring a compatible backup."
+    },
+    "ride_archive_object_corrupt": {
+      "title": "فشل التحقق من بعض بيانات الرحلات المحفوظة",
+      "description": "تبقى السجلات الأخرى متاحة. احتفظ بالنسخ الاحتياطية وتحقق من العناصر المحلية المتأثرة، ولا تحذف الأرشيف."
     }
   },
   "services": {

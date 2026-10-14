@@ -90,11 +90,20 @@ class HistoryBootstrap:
                         continue
                     raise
             owns = self.guard(sn)
-            await archive.async_backfill_detail_health(sn, plan.plan_id, guard=owns)
-            if plan.state in {HistoryState.PRESERVE, HistoryState.VERIFY}:
-                plan = await archive.async_finish_history_baseline(sn, plan, now, guard=owns)
-            if owns():
-                self.snapshots[sn] = (plan, await archive.async_history_health(sn, plan.plan_id))
+            try:
+                await archive.async_backfill_detail_health(sn, plan.plan_id, guard=owns)
+                if plan.state in {HistoryState.PRESERVE, HistoryState.VERIFY}:
+                    plan = await archive.async_finish_history_baseline(sn, plan, now, guard=owns)
+                if owns():
+                    self.snapshots[sn] = (
+                        plan,
+                        await archive.async_history_health(sn, plan.plan_id),
+                    )
+            except ArchiveError as err:
+                if err.kind is not ArchiveFailure.OBJECT:
+                    raise
+                self.co.statistics.record_error(err)
+                continue  # A bad local object in this vehicle cannot block other baselines.
 
     async def async_step(
         self, vehicles: tuple[str, ...], now: datetime, budget: int, *, incremental: bool = False
@@ -109,7 +118,13 @@ class HistoryBootstrap:
                 runs = await archive.async_active_history_runs(sn)
                 for run in runs:
                     if run.discovery_complete:
-                        await archive.async_backfill_detail_health(sn, run.plan_id, guard=owns)
+                        try:
+                            await archive.async_backfill_detail_health(sn, run.plan_id, guard=owns)
+                        except ArchiveError as err:
+                            if err.kind is not ArchiveFailure.OBJECT:
+                                raise
+                            co.statistics.record_error(err)
+                            continue
                         saved = await archive.async_finish_history_baseline(
                             sn, run, now, guard=owns
                         )

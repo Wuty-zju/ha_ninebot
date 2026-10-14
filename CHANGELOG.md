@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b64
+
+- Isolate corrupt saved payloads from healthy archive writes and other vehicles. Preserve damaged bytes, report a separate translated Repair and retain strict database, schema and ownership protections.
+- Add explicit local verify, verify_continue and verify_status history operations with persisted checkpoints and at most eight objects per batch. They use no cloud requests and do not imply complete cloud coverage or normalized-index verification.
+- Fence audit validity against both projection revisions and transactional raw-inventory changes, including raw-only page receipts. Preserve earlier scan evidence, expire current proofs after later writes and treat older unfenced checkpoints as unverified.
+- Document the bounded manual verification workflow. Automatic deep audit, proven recovery and map/calendar/statistics consistency remain subsequent M5 work; real cloud pagination is still unverified.
+
 ## 2.0.0b63
 
 - Add four enabled local history sensors: sync status, verified month scan progress, saved discovered-detail progress and last successful synchronization. Keep unknown denominators and distinct completion stages; properties never query the archive or cloud.
