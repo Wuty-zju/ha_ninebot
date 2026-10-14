@@ -104,18 +104,18 @@ class HistoryBootstrap:
             identity = None
             if incremental:
                 runs = await archive.async_active_history_runs(sn)
-                for plan in runs:
-                    if plan.discovery_complete:
-                        await archive.async_backfill_detail_health(sn, plan.plan_id, guard=owns)
+                for run in runs:
+                    if run.discovery_complete:
+                        await archive.async_backfill_detail_health(sn, run.plan_id, guard=owns)
                         saved = await archive.async_finish_history_baseline(
-                            sn, plan, now, guard=owns
+                            sn, run, now, guard=owns
                         )
                         self.incremental_snapshots[sn] = (
                             saved,
-                            await archive.async_history_health(sn, plan.plan_id),
+                            await archive.async_history_health(sn, run.plan_id),
                         )
                     elif identity is None:
-                        identity = plan.plan_id
+                        identity = run.plan_id
                 if identity is None:
                     continue
             claimed = await archive.async_claim_history_page(
