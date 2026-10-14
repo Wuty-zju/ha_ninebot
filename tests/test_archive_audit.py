@@ -27,7 +27,9 @@ OWNER = hashlib.sha256(b"synthetic-audit-owner").hexdigest()
 async def archive(tmp_path):
     store = RideArchive(tmp_path / "audit.sqlite3", OWNER)
     await store.async_open()
-    root = HistoryPlan.create("a" * 32, vehicle_key(SN), "202610", "202610", NOW.isoformat())
+    root = HistoryPlan.create(
+        "a" * 32, vehicle_key(SN), "202610", "202610", (NOW - timedelta(seconds=1)).isoformat()
+    )
     await store.async_set_history_plan(SN, root, None, guard=lambda: True)
     rows = [
         {
@@ -43,7 +45,7 @@ async def archive(tmp_path):
     raw = build_record(
         Endpoint.TRAVEL,
         {"times": 3, "list": rows},
-        NOW,
+        NOW - timedelta(seconds=1),
         "202610",
         backend_version="0.1.7",
         endpoint_version=root.provider,
@@ -54,7 +56,7 @@ async def archive(tmp_path):
         body = {**row, "trail": "120,30,1,1;120.01,30.01,2,2"}
         raw = build_record(Endpoint.TRIP_DETAIL, body, NOW, "202610", backend_version="0.1.7")
         matched = next(item for item in month.travel.rides if item.ride_id == row["travel_id"])
-        await store.async_record_detail(
+        assert await store.async_record_detail(
             SN,
             merge_detail(matched, parse_ride(body, "202610", source=Endpoint.TRIP_DETAIL)),
             NOW,
