@@ -136,3 +136,16 @@ If a recovery point is missing or fails verification, the job enters
 remain available. Restore the matching private recovery point before explicitly
 continuing; the integration never replaces it silently or clears its Repair just
 because another record is readable.
+
+
+Reconstruction checker v2 also compares the derived track-quality index with
+readable latest and selected-geometry originals. A quality-only correction
+preserves newer scalar observations and the selected raw geometry. Explicit
+ride/detail identity contradictions make that source role unavailable; a healthy
+other role can still be read through the existing partial-data view.
+ID-less legacy originals retain their recorded query-scope provenance; this is
+not independent proof of every reference or all cloud history.
+Old checker-v1 jobs keep their cursor. If some records were processed before
+v2, continuing the old job reports `with_gaps`; start a new reconstruction job
+to cover the enlarged local check scope. No missing raw originals are guessed or
+silently downloaded, and unresolved Repairs remain.

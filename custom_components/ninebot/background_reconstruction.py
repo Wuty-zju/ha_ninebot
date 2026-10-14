@@ -3,6 +3,8 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from homeassistant.util import dt as dt_util
+
 from .reconstruction_job import ReconstructionJob
 from .ride_archive import ArchiveError, ArchiveFailure
 
@@ -12,7 +14,10 @@ if TYPE_CHECKING:
 
 def public(job: ReconstructionJob | None) -> dict:
     return {
-        "contract": "local_scalar_reconstruction_v1",
+        "contract": "local_scalar_quality_reconstruction_v2"
+        if job and job.contract == 2
+        else "local_scalar_reconstruction_v1",
+        "checker_contract": job.contract if job else None,
         "scope": "captured_local_details",
         "state": job.state if job else "not_started",
         "job_id": job.job_id if job else None,
@@ -49,6 +54,7 @@ class BackgroundReconstruction:
         if before != job:
             if job.repaired > (before.repaired if before else 0):
                 await self.co.statistics.async_reconstruction_committed(sn, owns)
+                await self.co.preservation.async_refresh_progress((sn,), dt_util.utcnow())
             if owns():
                 self.views[sn] = job
                 self.co.statistics._notify_change(sn, owns)

@@ -60,16 +60,9 @@ def validate(value: str) -> dict:
     return data
 
 
-def put(
-    db: sqlite3.Connection,
-    vehicle: str,
-    ride: str,
-    latest_hash: str,
-    geometry_hash: str,
-    latest: TrackQuality,
-    geometry: TrackQuality,
-) -> None:
-    data = encoded(
+def data(latest_hash: str, geometry_hash: str, latest: TrackQuality, geometry: TrackQuality) -> str:
+    """Canonical derived quality facts, recomputable from retained originals."""
+    return encoded(
         {
             "latest_hash": latest_hash,
             "geometry_hash": geometry_hash,
@@ -82,10 +75,22 @@ def put(
             "latest_simplified": latest.server_simplified,
         }
     )
-    validate(data)
+
+
+def put(
+    db: sqlite3.Connection,
+    vehicle: str,
+    ride: str,
+    latest_hash: str,
+    geometry_hash: str,
+    latest: TrackQuality,
+    geometry: TrackQuality,
+) -> None:
+    value = data(latest_hash, geometry_hash, latest, geometry)
+    validate(value)
     db.execute(
         "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-        (key(vehicle, ride), data),
+        (key(vehicle, ride), value),
     )
 
 

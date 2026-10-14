@@ -395,3 +395,72 @@ async def test_partial_view_refuses_two_bad_roles_and_does_not_hide_invalid_scop
         assert invalid.value.kind is ArchiveFailure.SCHEMA
     finally:
         await archive.async_close()
+
+
+@pytest.mark.parametrize("role", ["latest", "geometry", "both"])
+async def test_explicit_wrong_ride_in_valid_blob_is_isolated_by_role(tmp_path, role):
+    from custom_components.ninebot.detail_codec import packed
+    from custom_components.ninebot.ride_archive import vehicle_key
+
+    archive = await opened(tmp_path)
+    try:
+        raw = {"travel_id": "first", "trail": "120,30,1;120.001,30.001,2"}
+        await save(archive, raw, NOW + timedelta(seconds=1))
+        good = await archive.async_private_detail(SN, "first")
+        wrong = record({"travel_id": "other-ride", "trail": "121,31,9"}, NOW + timedelta(seconds=2))
+        digest, body, clean = packed(wrong)
+
+        def misreference():
+            with archive._db() as db:
+                db.execute(
+                    "INSERT INTO detail_payloads VALUES (?,?,?,?,?,?,?,?)",
+                    (
+                        vehicle_key(SN),
+                        "first",
+                        digest,
+                        body,
+                        clean.received_at.isoformat(),
+                        clean.query_month,
+                        clean.backend_version,
+                        clean.endpoint_version,
+                    ),
+                )
+                for column in ("latest", "geometry") if role == "both" else (role,):
+                    db.execute(
+                        f"UPDATE details SET {column}_hash=? WHERE vehicle=? AND ride='first'",
+                        (digest, vehicle_key(SN)),
+                    )
+
+        await archive._run(misreference)
+        with pytest.raises(ArchiveError) as error:
+            await archive.async_private_detail(SN, "first")
+        assert error.value.kind is ArchiveFailure.OBJECT
+        if role == "both":
+            with pytest.raises(ArchiveError) as partial_error:
+                await archive.async_private_detail(SN, "first", allow_partial=True)
+            assert partial_error.value.kind is ArchiveFailure.OBJECT
+        else:
+            partial = await archive.async_private_detail(SN, "first", allow_partial=True)
+            assert (partial.latest is None) is (role == "latest")
+            assert (partial.geometry is None) is (role == "geometry")
+            assert len(partial.ride.track_points) == 2
+            expected_role = "latest" if role == "latest" else "selected_geometry"
+            assert partial.faults == (f"{expected_role}_payload_unavailable",)
+            if role == "latest":
+                assert partial.geometry_hash == good.geometry_hash
+                assert partial.latest_quality is None and partial.selected_quality is not None
+            else:
+                assert partial.latest_hash == good.latest_hash
+                assert partial.latest_quality is not None and partial.selected_quality is None
+        assert (
+            await archive._run(
+                lambda: (
+                    archive._db()
+                    .execute("SELECT body FROM detail_payloads WHERE hash=?", (digest,))
+                    .fetchone()[0]
+                )
+            )
+            == body
+        )
+    finally:
+        await archive.async_close()
