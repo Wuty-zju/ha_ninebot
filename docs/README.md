@@ -958,3 +958,50 @@ read recovery, not automatic index reconstruction or a forensic quarantine store
 旧轨迹不会冒充最新响应，标量仍来自独立的本地索引；轨迹块来源变化会中止拼接。
 卡片提示部分原件不可用，坐标权限保持不变，不自动请求云端修复。
 两份都不可读仍报错；写入和质量回填保持严格，不覆盖坏字节，不自动清除修复提示。
+
+
+### Scoped object receipts and private quarantine (schema5)
+
+Archive schema5 adds two tables to the existing per-account SQLite actor. Upgrade
+first validates the old schema, checks free space, creates an exclusive consistent
+`rides.schema<old>-<source_digest>.sqlite3` recovery copy, then commits DDL atomically.
+A failed migration rolls back. Business/raw rows and old scan cursors remain;
+pre-upgrade scan certificates are marked changed rather than certified under the
+new receipt model. To roll back to b66 or older, copy the matching pre-upgrade
+backup into a separate recovery location; an older integration cannot open schema5
+and that old snapshot does not include data saved after the upgrade. Never migrate
+the only recovery original in place.
+
+`payload_checks` binds a logical detail identity (ride/hash) or page identity
+(run/month/page), expected digest, exact source metadata and checker contract.
+Matching receipts avoid decoding unchanged objects. Changed digest/metadata or
+contract requires a new bounded check, regardless of physical SQLite rowid reuse.
+Within the completed-scan cooldown, background work checks unmatched objects;
+per-vehicle mutation fences avoid rescanning another car for unrelated writes.
+Daily bounded deep scans still read stable objects for latent disk corruption.
+Receipts describe checks at receipt time, not a guarantee of current unseen bytes.
+
+`payload_quarantine` retains bounded corrupt originals, a compressed-byte hash,
+source size/metadata and first capture time. Identical evidence is stored once,
+without deleting the source. Oversized objects are recorded as `in_place`, missing
+objects as `missing`, and neither is falsely reported as a copied byte snapshot.
+Both tables share archive quota/backup/transaction fences. Quota failures roll back
+receipt/quarantine changes; they never delete history to make verification pass.
+Oversized BLOBs remain readable as metadata, with bounded decoders refusing that
+object while healthy objects continue. Table schema, ownership, relationships and
+non-BLOB/invalid source metadata checks remain strict.
+
+`verify_status` includes safe `object_checks` totals: verified, invalid, pending,
+quarantined and receipt coverage. Its scope is **present payload objects**;
+references, normalized metrics and cloud coverage remain explicitly unverified.
+Scan fences and receipt counts are read in one actor snapshot. Current receipt
+views on existing sensors use `local_audit_scope: current_object_receipts`; a deep
+scan uses `captured_scan`. No raw IDs, payloads, quarantine bytes or GPS enter state
+or diagnostics. Quarantine is evidence retention, not automatic repair. Trusted
+index reconstruction and reference/projection recovery remain follow-up work.
+
+简中：schema5在原账号库内保存按业务身份/摘要/来源/校验契约绑定的凭据与私有异常副本。
+升级先留旧schema一致备份，再原子提交；失败回滚，旧数据和游标保留但旧校验证明失效。
+增量只补未匹配对象，每车变更序号避免其他车辆更新带来的重复检查，定期深扫仍保留。
+正常大小的坏字节有界复制去重；超大原件原位保留，缺失只登记，不冒充已复制。
+状态只显示安全计数，凭据覆盖率不证明引用、派生统计或云历史完整，不自动修复或重抓。

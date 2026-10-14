@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b67
+
+- Upgrade archives explicitly to schema5 with a validated source-schema recovery copy and atomic rollback. Preserve business payloads/checkpoints, expire pre-upgrade scan certificates and require the matching backup for older-version rollback.
+- Bind reusable object-check receipts to account/vehicle, logical identity, digest, source metadata and checker contract. Between daily deep scans, verify only unmatched receipts; per-vehicle mutation fences avoid unrelated-car rescans. Report receipt scope separately from cloud/reference/normalized completeness.
+- Preserve bounded corrupt bytes and their compressed hashes in a private deduplicated quarantine, without deleting originals. Oversized objects remain pinned in place; missing bytes are recorded explicitly. All blob reads remain bounded before materialization, and an oversized object no longer blocks healthy reads on reopen.
+- Expose only safe receipt counts/scope through verification Actions and cached audit scope on existing progress entities. Trusted index reconstruction and complete projection/reference recovery remain subsequent M5 work.
+
 ## 2.0.0b66
 
 - Recover read-only local detail views from independently validated latest or selected-geometry payloads. Preserve normalized scalar snapshots, explicit unavailable-role/evidence provenance and real receipt times; refuse when neither object survives.

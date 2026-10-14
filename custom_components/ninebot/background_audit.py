@@ -19,6 +19,7 @@ class AuditView:
     total: int
     invalid: int
     observed_at: str
+    scope: str = "captured_scan"
 
 
 class BackgroundAudit:
@@ -33,6 +34,14 @@ class BackgroundAudit:
         if plan is None:
             return
         # Counts describe the captured local scan, not a current/cloud certificate.
+        previous = self.views.get(sn)
+        if (
+            previous is not None
+            and previous.scope == "current_object_receipts"
+            and previous.observed_at > plan.updated_at
+            and plan.complete
+        ):
+            return
         value = AuditView(plan.phase, plan.checked, plan.total, plan.invalid, plan.updated_at)
         if self.views.get(sn) != value:
             self.views[sn] = value
@@ -61,7 +70,20 @@ class BackgroundAudit:
                 continue
             result = await archive.async_background_history_audit(sn, now, guard=owns)
             if result is not None:
-                self.publish(sn, result, owns)
+                if isinstance(result, AuditPlan):
+                    self.publish(sn, result, owns)
+                elif owns():
+                    value = AuditView(
+                        "delta",
+                        result.total - result.pending,
+                        result.total,
+                        result.invalid,
+                        now.isoformat(),
+                        "current_object_receipts",
+                    )
+                    if self.views.get(sn) != value:
+                        self.views[sn] = value
+                        co.statistics._notify_change(sn, owns)
                 if result.invalid:
                     co.statistics.record_error(ArchiveError(ArchiveFailure.OBJECT))
                 return  # One vehicle/batch, then yield to live work and other actors.

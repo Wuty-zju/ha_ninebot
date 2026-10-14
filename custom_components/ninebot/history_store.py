@@ -8,6 +8,7 @@ import sqlite3
 from dataclasses import dataclass
 
 from .archive_codec import decoded, encoded, stamp
+from .const import MAX_RESPONSE_BYTES
 from .detail_codec import packed, unpacked
 from .history_plan import MAX_PAGES, HistoryPlan, HistoryState, plan_data, restored
 from .raw import Endpoint, RawRecord
@@ -200,11 +201,14 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
     digest, body, clean = packed(record, source=Endpoint.TRAVEL)
     assert clean.query_month is not None
     previous_body = db.execute(
-        "SELECT body FROM history_payloads WHERE digest=?", (digest,)
+        "SELECT CASE WHEN length(body)<=? THEN body END FROM history_payloads WHERE digest=?",
+        (MAX_RESPONSE_BYTES + 1024, digest),
     ).fetchone()
     if previous_body is None:
         previous_body = db.execute(
-            "SELECT body FROM history_pages WHERE digest=? AND length(body)>0 LIMIT 1", (digest,)
+            "SELECT CASE WHEN length(body)<=? THEN body END FROM history_pages"
+            " WHERE digest=? AND length(body)>0 LIMIT 1",
+            (MAX_RESPONSE_BYTES + 1024, digest),
         ).fetchone()
     if previous_body is None:
         db.execute("INSERT INTO history_payloads VALUES (?,?)", (digest, body))
@@ -300,13 +304,16 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
 def page(
     db: sqlite3.Connection, vehicle: str, plan: str, month: str, number: int
 ) -> RawRecord | None:
+    cap = MAX_RESPONSE_BYTES + 1024
     row = db.execute(
-        "SELECT CASE WHEN length(p.body)>0 THEN p.body ELSE coalesce(h.body,"
-        " (SELECT old.body FROM history_pages old WHERE old.digest=p.digest"
-        " AND length(old.body)>0 LIMIT 1)) END,p.digest,p.observed,p.backend,p.endpoint"
-        " FROM history_pages p LEFT JOIN history_payloads h ON h.digest=p.digest"
+        "SELECT CASE WHEN length(p.body)>0 THEN CASE WHEN length(p.body)<=? THEN p.body END"
+        " ELSE CASE WHEN h.digest IS NOT NULL THEN CASE WHEN length(h.body)<=? THEN h.body END"
+        " ELSE (SELECT old.body FROM history_pages old WHERE old.digest=p.digest"
+        " AND length(old.body)>0 AND length(old.body)<=? LIMIT 1) END END,"
+        " p.digest,p.observed,p.backend,p.endpoint FROM history_pages p"
+        " LEFT JOIN history_payloads h ON h.digest=p.digest"
         " WHERE p.vehicle=? AND p.plan=? AND p.month=? AND p.page=?",
-        (vehicle, plan, month, number),
+        (cap, cap, cap, vehicle, plan, month, number),
     ).fetchone()
     return (
         unpacked(row[0], row[1], stamp(row[2]), month, row[3], row[4], source=Endpoint.TRAVEL)
@@ -423,9 +430,7 @@ def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
             or type(number) is not int
             or not 1 <= number <= MAX_PAGES
             or kind != "blob"
-            or not (
-                0 <= size <= 1024 * 1024 + 1024 if allow_runs else 0 < size <= 1024 * 1024 + 1024
-            )
+            or size < 0
             or endpoint != current.provider
             or backend != "0.1.7"
             or not isinstance(digest, str)
@@ -461,6 +466,6 @@ def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
                 len(digest) != 64
                 or any(c not in "0123456789abcdef" for c in digest)
                 or kind != "blob"
-                or not 0 < size <= 1024 * 1024 + 1024
+                or size < 0
             ):
                 raise ValueError("Invalid shared page payload")

@@ -86,6 +86,7 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
         audit = self.coordinator.preservation.audit.views.get(self.sn)
         return {
             "local_audit_phase": audit.phase if audit else None,
+            "local_audit_scope": audit.scope if audit else None,
             "local_audit_checked": audit.checked if audit else None,
             "local_audit_total": audit.total if audit else None,
             "local_audit_invalid": audit.invalid if audit else None,
