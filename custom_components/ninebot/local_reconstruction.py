@@ -62,7 +62,7 @@ def proposal(
                 latest.received_at.isoformat(timespec="microseconds"),
             ),
         ).fetchall()
-        witnesses = []
+        witnesses: list[Ride] = []
         try:
             for plan, month, number in rows:
                 raw = page(db, vehicle, plan, month, number)
