@@ -831,7 +831,7 @@ unsent, and paused/stale results are fenced before archive commit. Page bodies
 are content-addressed while separate immutable receipts retain scope/provenance;
 schema 3 migration retains the old inline evidence and a validated recovery copy.
 There is no automatic archive TTL. Capacity exhaustion preserves data and pauses
-writes. New progress entities and capacity options are planned separately.
+writes. Synchronization visibility and capacity options are described below.
 
 简中：启用历史保存和自动同步后，首次后台发现历史范围；此后优先本地对账，只补新增、变化和缺口。同步操作可指定最多12个散月，重复触发合并；暂停/恢复保留游标和预算。force仅重扫月份列表，不破坏已保存的完整轨迹。首次基线、单次列表返回占比和已发现详情保存进度含义不同；当前不能以本地回放宣称真实云分页已验证。
 
@@ -842,3 +842,31 @@ does not enable automatic current/new-month seeding. Pause or disable preservati
 to suspend execution. After queued work completes, it makes no new scan requests
 by itself. Status reports automatic_sync_enabled and manual_sync_requested
 separately.
+
+
+### History synchronization progress and storage options
+
+Each vehicle has four enabled history sensors: sync status, verified month-scan
+progress, saved discovered-detail progress, and last successful history sync.
+Months processed, verified and with gaps remain separate counts. A 100% detail
+value only means all discovered rides have saved details; discovery may still be
+running. Missing denominators stay unknown. The last-success timestamp is written
+only when a baseline or incremental scan finishes, including a declared gap outcome.
+These sensors read cached scalar views and remain independent of live telemetry
+freshness. No trail, raw JSON, account identifiers or ride-ID arrays enter them.
+
+Vehicle configuration has Sync history, Pause history sync and Resume history sync
+buttons. They use the existing scoped history Action, preserve the initiating user
+context and share request budgets. Vehicle physical control permission/settings
+do not enable or disable historical work. Normal HA user permissions still apply.
+
+Integration options now expose Automatic history synchronization and History storage
+limit, 32–2048 MiB per account (default100). Existing explicit automatic-sync-off
+settings survive unrelated option edits. History preservation must be enabled for
+background storage; turning it off retains recorded history. A lower quota never
+deletes data: reads remain available and writes pause if saved data exceeds the
+quota. Raise the quota through options to reload safely, or free disk space and
+press Resume to recheck it. A space recheck cannot clear schema or other archive
+errors. Migration recovery copies also require disk space; no automatic TTL applies.
+
+简中：每车增加历史同步状态、月份扫描进度、详情保存进度、最近成功时间，以及同步/暂停/恢复按钮。月份处理完不等于全部校验通过；详情100%也不等于全历史已发现。配置可开关自动同步并设置每账号32–2048 MiB额度。降低额度不删档，超额暂停写入；释放磁盘后可恢复重检。实体只读缓存，不因打开设备页面额外请求云端。

@@ -6,12 +6,12 @@ from typing import Any
 
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
+from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from .battery import battery_summary
 from .capabilities import CONTROL_ACTIONS
 from .compat import child_registry_api_available
-from .const import VERSION
 from .runtime import NinebotConfigEntry
 
 
@@ -59,7 +59,7 @@ async def async_get_config_entry_diagnostics(
             }
         )
     return {
-        "integration_version": VERSION,
+        "integration_version": str((await async_get_integration(hass, entry.domain)).version),
         "ninecli_version": version("ninecli"),
         "ha_version": HA_VERSION,
         "python_version": platform.python_version(),

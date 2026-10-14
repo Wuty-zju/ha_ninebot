@@ -101,7 +101,9 @@
           "configure_model": "Configurar parámetros nominales",
           "enable_calendar": "Trayectos",
           "preserve_history": "Preserve trip details in background",
-          "history_requests_per_hour": "Detail request budget per account/hour"
+          "history_requests_per_hour": "Detail request budget per account/hour",
+          "auto_history_sync": "Sincronización histórica automática",
+          "history_storage_mib": "Límite de almacenamiento histórico (MiB)"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
@@ -109,7 +111,9 @@
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations."
+          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "auto_history_sync": "Descubrir el historial disponible de todos los vehículos propios y sincronizar los cambios en segundo plano.",
+          "history_storage_mib": "32–2048 MiB por cuenta, 100 por defecto. Reducir el límite conserva los datos y puede pausar las escrituras."
         }
       },
       "model_vehicle": {
@@ -475,6 +479,35 @@
       },
       "range_ai": {
         "name": "Autonomía estimada por IA"
+      },
+      "history_sync_state": {
+        "name": "Estado de sincronización histórica",
+        "state": {
+          "disabled": "Desactivado",
+          "paused": "En pausa",
+          "storage_full": "Almacenamiento lleno",
+          "storage_error": "Error de almacenamiento",
+          "needs_login": "Inicio de sesión requerido",
+          "waiting_connection": "Esperando conexión",
+          "not_started": "Sin iniciar",
+          "waiting_retry": "Esperando reintento",
+          "waiting_budget": "Esperando cuota de consultas",
+          "discovering": "Buscando historial",
+          "preserving": "Guardando detalles",
+          "verifying": "Verificando registros",
+          "incremental": "Sincronización incremental",
+          "with_gaps": "Completado con lagunas",
+          "synced": "Sincronizado localmente"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Progreso de meses consultados"
+      },
+      "history_detail_progress": {
+        "name": "Detalles de viajes guardados"
+      },
+      "history_sync_last_success": {
+        "name": "Última sincronización histórica correcta"
       }
     },
     "binary_sensor": {
@@ -514,6 +547,15 @@
       },
       "engine_stop": {
         "name": "Bloquear a distancia"
+      },
+      "history_sync": {
+        "name": "Sincronizar historial"
+      },
+      "history_pause": {
+        "name": "Pausar sincronización"
+      },
+      "history_resume": {
+        "name": "Reanudar sincronización"
       }
     },
     "image": {

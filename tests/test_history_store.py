@@ -588,3 +588,26 @@ async def test_history_family_rotation_is_durable_without_budget_reset(store):
         assert await restored.async_history_family_turn() == 2
     finally:
         await restored.async_close()
+
+
+async def test_progress_metadata_is_local_persistent_and_success_is_not_last_attempt(store):
+    assert (await store.async_history_evidence(SN, guard=lambda: True)).last_success is None
+    first = await store.async_accept_history_page(SN, initial(), record((), 0), guard=lambda: True)
+    second = await store.async_accept_history_page(
+        SN, first.root, record((), 0, "202609"), guard=lambda: True
+    )
+    finished = await store.async_finish_history_baseline(SN, second.root, NOW, guard=lambda: True)
+    await store.async_request_history(SN, guard=lambda: True)
+    await store.async_set_history_paused(SN, True, guard=lambda: True)
+    value = await store.async_history_evidence(SN, guard=lambda: True)
+    assert value.baseline == finished and value.last_success == NOW
+    assert value.health.discovered == value.health.saved == 0
+    assert value.paused and value.requested and not value.active
+    path = store.path
+    await store.async_close()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        assert await reopened.async_history_evidence(SN, guard=lambda: True) == value
+    finally:
+        await reopened.async_close()

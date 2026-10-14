@@ -376,3 +376,23 @@ async def test_two_account_entries_keep_metadata_and_token_directories_separate(
     assert first.title == "Rider-one：one[bj]" and second.title == "Rider-two：two[bj]"
     for entry in results:
         assert session_uid(flow_manager.path(entry.data["session_key"])) == entry.unique_id
+
+
+async def test_history_options_expose_capacity_and_keep_explicit_auto_off(
+    hass, entry, flow_manager
+):
+    from custom_components.ninebot.history_capacity import history_capacity_bytes
+
+    hass.config_entries.async_update_entry(
+        entry,
+        options={"preserve_history": True, "auto_history_sync": False, "history_storage_mib": 256},
+    )
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    defaults = form["data_schema"]({"poll_interval": 120})
+    assert defaults["auto_history_sync"] is False and defaults["history_storage_mib"] == 256
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {"poll_interval": 150}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["auto_history_sync"] is False
+    assert history_capacity_bytes(entry.options) == 256 * 1024 * 1024

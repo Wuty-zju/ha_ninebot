@@ -3,7 +3,6 @@
 from homeassistant.const import Platform
 
 DOMAIN = "ninebot"
-VERSION = "2.0.0b50"
 PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,

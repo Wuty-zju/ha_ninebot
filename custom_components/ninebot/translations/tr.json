@@ -101,7 +101,9 @@
           "configure_model": "Nominal parametreleri ayarla",
           "enable_calendar": "Sürüşler",
           "preserve_history": "Preserve trip details in background",
-          "history_requests_per_hour": "Detail request budget per account/hour"
+          "history_requests_per_hour": "Detail request budget per account/hour",
+          "auto_history_sync": "Otomatik geçmiş eşitleme",
+          "history_storage_mib": "Geçmiş depolama sınırı (MiB)"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
@@ -109,7 +111,9 @@
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations."
+          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "auto_history_sync": "Hesaba ait tüm araçların mevcut geçmişini bul, ardından değişiklikleri arka planda eşitle.",
+          "history_storage_mib": "Hesap başına32–2048 MiB, varsayılan100. Sınırı düşürmek kayıtları silmez; yazmayı duraklatabilir."
         }
       },
       "model_vehicle": {
@@ -475,6 +479,35 @@
       },
       "range_ai": {
         "name": "Yapay zekâ tahmini menzil"
+      },
+      "history_sync_state": {
+        "name": "Geçmiş eşitleme durumu",
+        "state": {
+          "disabled": "Devre dışı",
+          "paused": "Duraklatıldı",
+          "storage_full": "Depolama dolu",
+          "storage_error": "Depolama hatası",
+          "needs_login": "Giriş gerekli",
+          "waiting_connection": "Bağlantı bekleniyor",
+          "not_started": "Başlamadı",
+          "waiting_retry": "Yeniden deneme bekleniyor",
+          "waiting_budget": "İstek kotası bekleniyor",
+          "discovering": "Geçmiş aranıyor",
+          "preserving": "Ayrıntılar kaydediliyor",
+          "verifying": "Kayıtlar doğrulanıyor",
+          "incremental": "Artımlı eşitleme",
+          "with_gaps": "Eksiklerle tamamlandı",
+          "synced": "Yerel eşitleme tamamlandı"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Aylık tarama ilerlemesi"
+      },
+      "history_detail_progress": {
+        "name": "Kaydedilen yolculuk ayrıntıları"
+      },
+      "history_sync_last_success": {
+        "name": "Son başarılı eşitleme"
       }
     },
     "binary_sensor": {
@@ -514,6 +547,15 @@
       },
       "engine_stop": {
         "name": "Uzaktan kilitle"
+      },
+      "history_sync": {
+        "name": "Geçmişi eşitle"
+      },
+      "history_pause": {
+        "name": "Eşitlemeyi duraklat"
+      },
+      "history_resume": {
+        "name": "Eşitlemeye devam et"
       }
     },
     "image": {

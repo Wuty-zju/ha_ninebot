@@ -120,6 +120,18 @@
       },
       "range_ai": {
         "default": "mdi:map-marker-distance"
+      },
+      "history_sync_state": {
+        "default": "mdi:sync"
+      },
+      "history_scan_progress": {
+        "default": "mdi:calendar-check-outline"
+      },
+      "history_detail_progress": {
+        "default": "mdi:content-save-check-outline"
+      },
+      "history_sync_last_success": {
+        "default": "mdi:clock-check-outline"
       }
     },
     "event": {
@@ -142,6 +154,15 @@
       },
       "engine_stop": {
         "default": "mdi:power-off"
+      },
+      "history_sync": {
+        "default": "mdi:sync"
+      },
+      "history_pause": {
+        "default": "mdi:pause-circle-outline"
+      },
+      "history_resume": {
+        "default": "mdi:play-circle-outline"
       }
     },
     "number": {

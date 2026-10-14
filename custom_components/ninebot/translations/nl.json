@@ -101,7 +101,9 @@
           "configure_model": "Nominale parameters instellen",
           "enable_calendar": "Ritten",
           "preserve_history": "Preserve trip details in background",
-          "history_requests_per_hour": "Detail request budget per account/hour"
+          "history_requests_per_hour": "Detail request budget per account/hour",
+          "auto_history_sync": "Automatische historieksynchronisatie",
+          "history_storage_mib": "Opslaglimiet historiek (MiB)"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
@@ -109,7 +111,9 @@
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations."
+          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "auto_history_sync": "Beschikbare historiek van alle eigen voertuigen ontdekken en wijzigingen op de achtergrond synchroniseren.",
+          "history_storage_mib": "32–2048 MiB per account, standaard100. Verlaging bewaart gegevens en kan schrijven pauzeren."
         }
       },
       "model_vehicle": {
@@ -475,6 +479,35 @@
       },
       "range_ai": {
         "name": "AI-geschat rijbereik"
+      },
+      "history_sync_state": {
+        "name": "Status van historieksynchronisatie",
+        "state": {
+          "disabled": "Uitgeschakeld",
+          "paused": "Gepauzeerd",
+          "storage_full": "Opslag vol",
+          "storage_error": "Opslagfout",
+          "needs_login": "Aanmelden vereist",
+          "waiting_connection": "Wachten op verbinding",
+          "not_started": "Niet gestart",
+          "waiting_retry": "Wachten op nieuwe poging",
+          "waiting_budget": "Wachten op aanvraagbudget",
+          "discovering": "Historiek zoeken",
+          "preserving": "Details opslaan",
+          "verifying": "Records controleren",
+          "incremental": "Incrementele synchronisatie",
+          "with_gaps": "Voltooid met hiaten",
+          "synced": "Lokaal gesynchroniseerd"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Voortgang maandcontrole"
+      },
+      "history_detail_progress": {
+        "name": "Opgeslagen ritdetails"
+      },
+      "history_sync_last_success": {
+        "name": "Laatste geslaagde synchronisatie"
       }
     },
     "binary_sensor": {
@@ -514,6 +547,15 @@
       },
       "engine_stop": {
         "name": "Op afstand vergrendelen"
+      },
+      "history_sync": {
+        "name": "Historiek synchroniseren"
+      },
+      "history_pause": {
+        "name": "Synchronisatie pauzeren"
+      },
+      "history_resume": {
+        "name": "Synchronisatie hervatten"
       }
     },
     "image": {

@@ -10,6 +10,13 @@ from custom_components.ninebot.diagnostics import async_get_config_entry_diagnos
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
+def current_id(hass, row):
+    """Registry entries are immutable snapshots; user-requested ID migration keeps the UID."""
+    value = er.async_get(hass).async_get_entity_id(row.domain, row.platform, row.unique_id)
+    assert value is not None
+    return value
+
+
 async def test_manual_auth_failure_updates_entities_and_starts_ui_reauth(hass, entry, app_client):
     from homeassistant.exceptions import ConfigEntryAuthFailed
 
@@ -79,6 +86,10 @@ async def test_full_setup_physical_values_and_unload(hass, entry, app_client):
     assert registry.async_get(raw_id).unit_of_measurement == "Wh"
     assert float(hass.states.get(raw_id).state) == 0
     diag = await async_get_config_entry_diagnostics(hass, entry)
+    from pathlib import Path
+
+    manifest = Path(__file__).parents[1] / "custom_components/ninebot/manifest.json"
+    assert diag["integration_version"] == json.loads(manifest.read_text())["version"]
     serialized = json.dumps(diag)
     for private in (
         "SyntheticSN",
@@ -118,8 +129,8 @@ async def test_preserve_valid_legacy_identity_and_remove_obsolete_identity(hass,
     )
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert float(hass.states.get(old.entity_id).state) == 80
-    assert registry.async_get(old.entity_id).name == "My battery"
+    assert float(hass.states.get(current_id(hass, old)).state) == 80
+    assert registry.async_get(current_id(hass, old)).name == "My battery"
     assert registry.async_get(deprecated.entity_id) is None
     assert registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_battery") is None
 
@@ -251,7 +262,7 @@ def test_multiple_batteries_need_stable_identity():
     ]
     assert len(descriptions) == 6
     values = [d.value(identified) for d in descriptions]
-    assert values == [72, 25, 10, 73, 26, None]
+    assert values == [72, 25, 10, 73, 26, "unsupported"]
     unknown = VehicleSnapshot(identified.profile, battery=batteries({"battery_list": [{}, {}]}))
     assert battery_descriptions(unknown) == []
 
@@ -382,7 +393,7 @@ async def test_unmatched_device_keeps_identity_and_repairs_clear_after_confirmed
     assert ("ninebot", issue_id) in ir.async_get(hass).issues
     assert "DifferentLegacySN" not in issue_id
     assert er.async_get(hass).async_get(old.entity_id).unique_id == old.unique_id
-    assert hass.states.get(old.entity_id).state == "unavailable"
+    assert hass.states.get(current_id(hass, old)).state == "unavailable"
     assert er.async_get(hass).async_get_entity_id("sensor", "ninebot", "SyntheticSN_battery")
     # Persistent repairs must clear even if a new runtime has lost its in-memory set.
     entry.runtime_data.identity_conflicts.clear()
@@ -393,7 +404,7 @@ async def test_unmatched_device_keeps_identity_and_repairs_clear_after_confirmed
     await hass.async_block_till_done()
     async_audit_device_identities(hass, entry)
     assert ("ninebot", issue_id) not in ir.async_get(hass).issues
-    assert float(hass.states.get(old.entity_id).state) == 80
+    assert float(hass.states.get(current_id(hass, old)).state) == 80
 
 
 async def test_legacy_cycle_entity_recovers_supported_values_without_duplicate(
@@ -408,7 +419,7 @@ async def test_legacy_cycle_entity_recovers_supported_values_without_duplicate(
     )
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get(old.entity_id).state == "unknown"
+    assert hass.states.get(current_id(hass, old)).state == "unsupported"
     app_client.async_get_battery.return_value = {
         "battery_list": [{"bms_cycle": 12, "have_bms_cycle_support": True}]
     }
@@ -416,15 +427,15 @@ async def test_legacy_cycle_entity_recovers_supported_values_without_duplicate(
     co._next_attempt[("SyntheticSN", "battery")] = 0
     await co.async_refresh()
     await hass.async_block_till_done()
-    assert float(hass.states.get(old.entity_id).state) == 12
-    assert (
-        registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_bms_cycles") == old.entity_id
-    )
+    assert float(hass.states.get(current_id(hass, old)).state) == 12
+    assert registry.async_get_entity_id(
+        "sensor", "ninebot", "SyntheticSN_bms_cycles"
+    ) == current_id(hass, old)
     app_client.async_get_battery.return_value = {"battery_list": [{}, {}]}
     co._next_attempt[("SyntheticSN", "battery")] = 0
     await co.async_refresh()
     await hass.async_block_till_done()
-    assert hass.states.get(old.entity_id).state == "unknown"
+    assert hass.states.get(current_id(hass, old)).state == "unknown"
 
 
 async def test_options_preserve_selected_missing_and_removed_vehicle_choices(
@@ -663,9 +674,13 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.coordinator.demand("SyntheticSN").groups == {"status", "battery"}
-    assert float(hass.states.get(rows[0].entity_id).state) == 75.3
-    assert registry.async_get(rows[1].entity_id).disabled_by is er.RegistryEntryDisabler.USER
-    assert registry.async_get(rows[2].entity_id).disabled_by is er.RegistryEntryDisabler.USER
+    assert float(hass.states.get(current_id(hass, rows[0])).state) == 75.3
+    assert (
+        registry.async_get(current_id(hass, rows[1])).disabled_by is er.RegistryEntryDisabler.USER
+    )
+    assert (
+        registry.async_get(current_id(hass, rows[2])).disabled_by is er.RegistryEntryDisabler.USER
+    )
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -710,7 +725,7 @@ async def test_native_gps_tracker_uses_zones_and_removes_coordinates_on_opt_out(
     )
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    state = hass.states.get(row.entity_id)
+    state = hass.states.get(current_id(hass, row))
     assert state.state == "home"
     assert state.attributes["source_type"] == "gps"
     assert state.attributes["latitude"] == hass.config.latitude
@@ -721,21 +736,21 @@ async def test_native_gps_tracker_uses_zones_and_removes_coordinates_on_opt_out(
         {"SyntheticSN": replace(original, status=status({"loc": {"lat": 12.3456, "lon": 45.6789}}))}
     )
     await hass.async_block_till_done()
-    state = hass.states.get(row.entity_id)
+    state = hass.states.get(current_id(hass, row))
     assert state.state == "not_home"
     assert state.attributes["latitude"] == 12.3456 and state.attributes["longitude"] == 45.6789
     co.async_set_updated_data(
         {"SyntheticSN": replace(original, status=status({"loc": {"lat": 91, "lon": 45.6789}}))}
     )
     await hass.async_block_till_done()
-    assert hass.states.get(row.entity_id).state == "unavailable"
+    assert hass.states.get(current_id(hass, row)).state == "unavailable"
     # Actual options reload, not a monkey-patched tracker property.
     hass.config_entries.async_update_entry(entry, options={"enable_coordinates": False})
     await hass.async_block_till_done()
-    state = hass.states.get(row.entity_id)
+    state = hass.states.get(current_id(hass, row))
     assert state.state == "unavailable"
     assert "latitude" not in state.attributes and "longitude" not in state.attributes
-    assert registry.async_get(row.entity_id).unique_id == row.unique_id
+    assert registry.async_get(current_id(hass, row)).unique_id == row.unique_id
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 

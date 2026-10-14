@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b63
+
+- Add four enabled local history sensors: sync status, verified month scan progress, saved discovered-detail progress and last successful synchronization. Keep unknown denominators and distinct completion stages; properties never query the archive or cloud.
+- Add history sync/pause/resume buttons through scoped Actions, preserve user context and keep historical work independent of physical controls. Update cached views immediately after operations and for newly discovered vehicles.
+- Expose automatic history sync and per-account archive quota (32–2048 MiB, default 100). Preserve unedited options, never delete data on quota decrease, and recheck capacity before resuming writes.
+- Add names/states/icons in 21 locales; diagnostics now obtains the actual installed integration version from the HA loader. Real cloud pagination remains unverified; resumable deep archive verification is M5 follow-up work.
+
 ## 2.0.0b62
 
 - Separate the fixed first-history baseline from coalesced single-month incremental scans. Reconcile recent observations locally before requesting extra pages; rotate baseline, incremental and legacy tasks under shared budgets.

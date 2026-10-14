@@ -101,7 +101,9 @@
           "configure_model": "ตั้งค่าพิกัดแบตเตอรี่",
           "enable_calendar": "ประวัติการเดินทาง",
           "preserve_history": "Preserve trip details in background",
-          "history_requests_per_hour": "Detail request budget per account/hour"
+          "history_requests_per_hour": "Detail request budget per account/hour",
+          "auto_history_sync": "ซิงค์ประวัติอัตโนมัติ",
+          "history_storage_mib": "ขีดจำกัดพื้นที่เก็บประวัติ (MiB)"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
@@ -109,7 +111,9 @@
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations."
+          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "auto_history_sync": "ค้นหาประวัติที่มีของรถทั้งหมดในบัญชี จากนั้นซิงค์ส่วนที่เปลี่ยนในเบื้องหลัง",
+          "history_storage_mib": "32–2048 MiB ต่อบัญชี ค่าเริ่มต้น100 ลดขีดจำกัดไม่ลบข้อมูลเดิม แต่อาจพักการเขียน"
         }
       },
       "model_vehicle": {
@@ -475,6 +479,35 @@
       },
       "range_ai": {
         "name": "ระยะทางคงเหลือที่ AI ประเมิน"
+      },
+      "history_sync_state": {
+        "name": "สถานะการซิงค์ประวัติ",
+        "state": {
+          "disabled": "ปิดใช้งาน",
+          "paused": "พักชั่วคราว",
+          "storage_full": "พื้นที่จัดเก็บเต็ม",
+          "storage_error": "ข้อผิดพลาดพื้นที่จัดเก็บ",
+          "needs_login": "ต้องเข้าสู่ระบบ",
+          "waiting_connection": "รอการเชื่อมต่อ",
+          "not_started": "ยังไม่เริ่ม",
+          "waiting_retry": "รอลองใหม่",
+          "waiting_budget": "รอโควตาคำขอ",
+          "discovering": "กำลังค้นหาประวัติ",
+          "preserving": "กำลังบันทึกรายละเอียด",
+          "verifying": "กำลังตรวจสอบบันทึก",
+          "incremental": "กำลังซิงค์ข้อมูลเพิ่ม",
+          "with_gaps": "เสร็จพร้อมข้อมูลบางส่วนขาดหาย",
+          "synced": "ซิงค์ในเครื่องเสร็จแล้ว"
+        }
+      },
+      "history_scan_progress": {
+        "name": "ความคืบหน้าการตรวจสอบรายเดือน"
+      },
+      "history_detail_progress": {
+        "name": "รายละเอียดการเดินทางที่บันทึก"
+      },
+      "history_sync_last_success": {
+        "name": "การซิงค์สำเร็จล่าสุด"
       }
     },
     "binary_sensor": {
@@ -514,6 +547,15 @@
       },
       "engine_stop": {
         "name": "ล็อกจากระยะไกล"
+      },
+      "history_sync": {
+        "name": "ซิงค์ประวัติ"
+      },
+      "history_pause": {
+        "name": "พักการซิงค์"
+      },
+      "history_resume": {
+        "name": "ดำเนินการซิงค์ต่อ"
       }
     },
     "image": {

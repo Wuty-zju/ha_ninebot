@@ -101,7 +101,9 @@
           "configure_model": "Налаштувати номінальні параметри",
           "enable_calendar": "Поїздки",
           "preserve_history": "Preserve trip details in background",
-          "history_requests_per_hour": "Detail request budget per account/hour"
+          "history_requests_per_hour": "Detail request budget per account/hour",
+          "auto_history_sync": "Автоматична синхронізація історії",
+          "history_storage_mib": "Ліміт сховища історії (MiB)"
         },
         "data_description": {
           "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
@@ -109,7 +111,9 @@
           "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations."
+          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "auto_history_sync": "Зібрати доступну історію всіх транспортних засобів облікового запису, далі синхронізувати зміни у фоні.",
+          "history_storage_mib": "32–2048 MiB на обліковий запис, типово100. Зменшення ліміту не видаляє дані та може зупинити запис."
         }
       },
       "model_vehicle": {
@@ -475,6 +479,35 @@
       },
       "range_ai": {
         "name": "Запас ходу за оцінкою ШІ"
+      },
+      "history_sync_state": {
+        "name": "Стан синхронізації історії",
+        "state": {
+          "disabled": "Вимкнено",
+          "paused": "Призупинено",
+          "storage_full": "Сховище заповнене",
+          "storage_error": "Помилка сховища",
+          "needs_login": "Потрібен вхід",
+          "waiting_connection": "Очікування з’єднання",
+          "not_started": "Не розпочато",
+          "waiting_retry": "Очікування повтору",
+          "waiting_budget": "Очікування квоти запитів",
+          "discovering": "Пошук історії",
+          "preserving": "Збереження деталей",
+          "verifying": "Перевірка записів",
+          "incremental": "Додаткова синхронізація",
+          "with_gaps": "Завершено з пропусками",
+          "synced": "Локальна синхронізація завершена"
+        }
+      },
+      "history_scan_progress": {
+        "name": "Перебіг перевірки місяців"
+      },
+      "history_detail_progress": {
+        "name": "Збережені деталі поїздок"
+      },
+      "history_sync_last_success": {
+        "name": "Остання успішна синхронізація"
       }
     },
     "binary_sensor": {
@@ -514,6 +547,15 @@
       },
       "engine_stop": {
         "name": "Заблокувати дистанційно"
+      },
+      "history_sync": {
+        "name": "Синхронізувати історію"
+      },
+      "history_pause": {
+        "name": "Призупинити синхронізацію"
+      },
+      "history_resume": {
+        "name": "Продовжити синхронізацію"
       }
     },
     "image": {

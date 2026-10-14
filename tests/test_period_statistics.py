@@ -238,12 +238,18 @@ async def test_visible_entities_native_metadata_historical_cache_and_retirement(
 def test_all_new_fields_have_names_and_icons_and_no_history_placeholders():
     from pathlib import Path
 
+    from custom_components.ninebot.history_entities import HISTORY_SENSORS
+
     root = Path(__file__).parents[1] / "custom_components/ninebot"
-    keys = set(DAY_FIELDS) | {d.key for d in SENSORS if d.key.endswith("intensity")}
+    keys = (
+        set(DAY_FIELDS)
+        | {d.key for d in SENSORS if d.key.endswith("intensity")}
+        | set(HISTORY_SENSORS)
+    )
     for path in [root / "strings.json", *(root / "translations").glob("*.json")]:
         sensors = json.loads(path.read_text())["entity"]["sensor"]
         assert all(sensors[key]["name"] for key in keys)
-        assert not any(key.startswith("history_") for key in sensors)
+        assert {key for key in sensors if key.startswith("history_")} == set(HISTORY_SENSORS)
     icons = json.loads((root / "icons.json").read_text())["entity"]["sensor"]
     assert all(icons[key]["default"] for key in keys)
 

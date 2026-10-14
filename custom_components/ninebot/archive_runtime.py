@@ -20,7 +20,7 @@ from .const import BUSINESS_TIMEZONE, DOMAIN
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
 from .raw import RawRecord
-from .ride_archive import ArchiveError, ArchiveFailure, ArchiveMonth, RideArchive
+from .ride_archive import DEFAULT_MAX_BYTES, ArchiveError, ArchiveFailure, ArchiveMonth, RideArchive
 from .ride_models import Ride
 from .statistics_store import StoredMonth, StoredRide, TravelStatisticsStore
 
@@ -34,10 +34,19 @@ def archive_path(hass: HomeAssistant, entry_id: str) -> Path:
 class ArchiveStatistics(TravelStatisticsStore):
     """The old API is a current/previous-month projection, not a second writer."""
 
-    def __init__(self, hass: HomeAssistant, entry_id: str, business_uid: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry_id: str,
+        business_uid: str,
+        *,
+        max_bytes: int = DEFAULT_MAX_BYTES,
+    ) -> None:
         super().__init__(hass, entry_id)
         self.archive = RideArchive(
-            archive_path(hass, entry_id), hashlib.sha256(business_uid.encode()).hexdigest()
+            archive_path(hass, entry_id),
+            hashlib.sha256(business_uid.encode()).hexdigest(),
+            max_bytes=max_bytes,
         )
         self.archive_ready = False
         self.error: ArchiveFailure | None = None
@@ -74,6 +83,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         try:
             await self.archive.async_open()
             self.archive_ready = True
+            await self.async_recheck_capacity(lambda: True)
             if self.available:
                 try:
                     await self.archive.async_import_legacy(self.months, self.rides)
@@ -121,6 +131,16 @@ class ArchiveStatistics(TravelStatisticsStore):
         if not self.archive.write_paused:
             self.error = None
             ir.async_delete_issue(self.hass, DOMAIN, self._archive_issue)
+
+    async def async_recheck_capacity(self, guard: Callable[[], bool]) -> None:
+        if self.archive_ready and self.error in {None, ArchiveFailure.CAPACITY}:
+            try:
+                if await self.archive.async_set_capacity(self.archive.max_bytes, guard=guard):
+                    self._archive_success()
+                else:
+                    self.record_error(ArchiveError(ArchiveFailure.CAPACITY))
+            except ArchiveError as err:
+                self.record_error(err)
 
     def projection_needs_refresh(self, now: datetime) -> bool:
         return self.archive_ready and self._projection_month != now.astimezone(

@@ -46,6 +46,12 @@ from .const import (
     DOMAIN,
 )
 from .exceptions import ErrorKind, NinebotError
+from .history_capacity import (
+    CONF_HISTORY_CAPACITY,
+    MAX_HISTORY_MIB,
+    MIN_HISTORY_MIB,
+    history_capacity_mib,
+)
 from .identity import IDENTITY_VERSION
 from .parsing import number
 from .preservation import CONF_BUDGET, CONF_PRESERVE, DEFAULT_BUDGET
@@ -455,7 +461,7 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            self._pending_options = dict(user_input)
+            self._pending_options = {**self.config_entry.options, **user_input}
             configure_model = self._pending_options.pop("configure_model", False)
             if configure_model:
                 return await self.async_step_model_vehicle()
@@ -491,6 +497,15 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
                     vol.Optional(CONF_CALENDAR, default=options.get(CONF_CALENDAR, True)): bool,
                     vol.Optional(CONF_PRESERVE, default=options.get(CONF_PRESERVE, False)): bool,
+                    vol.Optional(
+                        CONF_AUTO_HISTORY,
+                        default=options.get(CONF_AUTO_HISTORY, options.get(CONF_PRESERVE, False)),
+                    ): bool,
+                    vol.Optional(
+                        CONF_HISTORY_CAPACITY, default=history_capacity_mib(options)
+                    ): vol.All(
+                        vol.Coerce(int), vol.Range(min=MIN_HISTORY_MIB, max=MAX_HISTORY_MIB)
+                    ),
                     vol.Optional(
                         CONF_BUDGET, default=options.get(CONF_BUDGET, DEFAULT_BUDGET)
                     ): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
