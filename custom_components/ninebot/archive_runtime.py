@@ -90,6 +90,9 @@ class ArchiveStatistics(TravelStatisticsStore):
             self.record_error(err, opening=True)
 
     def record_error(self, err: ArchiveError, *, opening: bool = False) -> None:
+        if opening and err.kind in {ArchiveFailure.BUSY, ArchiveFailure.CLOSED}:
+            self.error = err.kind
+            return  # Not opened yet; preserve the lifecycle reason without a Repair.
         if err.kind in {
             ArchiveFailure.BUDGET,
             ArchiveFailure.BUSY,
