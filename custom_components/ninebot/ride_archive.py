@@ -62,7 +62,7 @@ from .object_checks import ObjectSummary
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord, version_metadata
 from .reconstruction_job import ReconstructionJob
-from .ride_models import Ride
+from .ride_models import Ride, TrackQuality
 from .statistics_store import StoredMonth, StoredRide
 from .sync_job import SyncJob, SyncState, job_data, restored_job
 from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
@@ -1124,8 +1124,8 @@ class RideArchive:
 
         def reconstruct() -> Reconstruction:
             db, vehicle = self._db(write=repair), vehicle_key(sn)
-            result, candidate, observed = self._reconstruction_sources(vehicle, ride_id)
-            if not repair or result.status != "repairable" or candidate is None:
+            result, candidate, observed, quality = self._reconstruction_sources(vehicle, ride_id)
+            if not repair or result.status != "repairable":
                 return result
             # The one actor prevents another managed writer from changing the
             # evidence between assessment, consistent backup and commit.
@@ -1138,9 +1138,8 @@ class RideArchive:
             self._backup(destination, recovery=True)
             if not self._worker_owned(loop, guard):
                 raise ArchiveError(ArchiveFailure.OWNER)
-            assert observed is not None
             with db:
-                self._upsert_ride(vehicle, candidate, observed, ordered=True)
+                self._apply_reconstruction(vehicle, ride_id, candidate, observed, quality)
                 # Derived time indexes may be wrong even if normalized JSON
                 # matches, so invalidate consumers in either repair case.
                 self._revision(bump=True)
@@ -1150,20 +1149,43 @@ class RideArchive:
 
     def _reconstruction_sources(
         self, vehicle: str, ride_id: str
-    ) -> tuple[Reconstruction, Ride | None, str | None]:
-        from .local_reconstruction import proposal
+    ) -> tuple[Reconstruction, Ride | None, str | None, str | None]:
+        from .local_reconstruction import proposal, quality_patch
 
         before = self._ride(vehicle, ride_id)
         if before is None:
-            return Reconstruction("not_saved"), None, None
+            return Reconstruction("not_saved"), None, None, None
         try:
             stored = self._private_detail(vehicle, ride_id, 1)
         except CorruptPayload:
-            return Reconstruction("corrupt"), None, None
+            return Reconstruction("corrupt"), None, None, None
         if stored is None:
-            return Reconstruction("not_saved"), None, None
+            return Reconstruction("not_saved"), None, None, None
         result, candidate = proposal(self._db(), vehicle, before[0], stamp(before[1]), stored)
-        return result, candidate, before[1]
+        quality = quality_patch(self._db(), vehicle, stored)
+        if quality is not None:
+            result = replace(result, status="repairable", fields=result.fields + ("quality_index",))
+        result = replace(result, checked_fields=result.checked_fields + ("quality_index",))
+        return result, candidate, before[1], quality
+
+    def _apply_reconstruction(
+        self,
+        vehicle: str,
+        ride_id: str,
+        candidate: Ride | None,
+        observed: str | None,
+        quality: str | None,
+    ) -> None:
+        from .detail_health import key, validate
+
+        if candidate is not None and observed is not None:
+            self._upsert_ride(vehicle, candidate, observed, ordered=True)
+        if quality is not None:
+            validate(quality)
+            self._db().execute(
+                "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key(vehicle, ride_id), quality),
+            )
 
     def _worker_owned(self, loop: asyncio.AbstractEventLoop, guard: Callable[[], bool]) -> bool:
         permitted: Future[bool] = Future()
@@ -1287,13 +1309,11 @@ class RideArchive:
                 put(db, vehicle, job)
 
                 def evaluate(ride_id: str) -> Reconstruction:
-                    result, candidate, observed = self._reconstruction_sources(vehicle, ride_id)
-                    if (
-                        result.status == "repairable"
-                        and candidate is not None
-                        and observed is not None
-                    ):
-                        self._upsert_ride(vehicle, candidate, observed, ordered=True)
+                    result, candidate, observed, quality = self._reconstruction_sources(
+                        vehicle, ride_id
+                    )
+                    if result.status == "repairable":
+                        self._apply_reconstruction(vehicle, ride_id, candidate, observed, quality)
                         self._revision(bump=True)
                         return replace(result, repaired=True)
                     return result
@@ -1359,6 +1379,7 @@ class RideArchive:
         records: list[RawRecord | None] = []
         faults: list[str] = []
         decoded_payloads: dict[str, RawRecord | None] = {}
+        decoded_qualities: dict[str, TrackQuality] = {}
         for role, digest in zip(("latest", "selected_geometry"), row[:2], strict=True):
             if digest not in decoded_payloads:
                 try:
@@ -1376,13 +1397,30 @@ class RideArchive:
                         raise CorruptPayload("Missing private payload object")
                     if blob[2] != summary[0].query_month:
                         raise ValueError("Invalid private payload month scope")
-                    decoded_payloads[digest] = unpacked(
+                    decoded_record = unpacked(
                         blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]
                     )
+                    scoped = parse_ride(
+                        decoded_record.payload(),
+                        blob[2],
+                        source=Endpoint.TRIP_DETAIL,
+                        max_points=1,
+                    )
+                    if (
+                        {"conflicting_ride_ids", "conflicting_detail_ids"} & set(scoped.issues)
+                        or (scoped.ride_id is not None and scoped.ride_id != ride_id)
+                        or (
+                            scoped.detail_id is not None
+                            and scoped.detail_id != summary[0].detail_id
+                        )
+                    ):
+                        raise CorruptPayload("Private detail identity contradiction")
+                    decoded_payloads[digest] = decoded_record
+                    decoded_qualities[digest] = scoped.track_quality
                 except CorruptPayload:
+                    decoded_payloads[digest] = None
                     if not allow_partial:
                         raise
-                    decoded_payloads[digest] = None
             record = decoded_payloads[digest]
             if record is None:
                 faults.append(f"{role}_payload_unavailable")
@@ -1428,6 +1466,8 @@ class RideArchive:
             stamp(summary[1]),
             tuple(faults),
             "selected_geometry" if geometry is not None else "latest_payload",
+            decoded_qualities.get(row[0]) if latest is not None else None,
+            decoded_qualities.get(row[1]) if geometry is not None else None,
         )
 
     async def async_preservation_order(

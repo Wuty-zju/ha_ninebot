@@ -8,7 +8,7 @@ from datetime import datetime
 
 from .const import MAX_RESPONSE_BYTES
 from .raw import Endpoint, RawLimitError, RawRecord, build_record
-from .ride_models import Ride
+from .ride_models import Ride, TrackQuality
 
 
 class CorruptPayload(ValueError):
@@ -28,6 +28,8 @@ class ArchivedDetail:
     scalar_observed_at: datetime
     faults: tuple[str, ...] = ()
     geometry_source: str = "selected_geometry"
+    latest_quality: TrackQuality | None = None
+    selected_quality: TrackQuality | None = None
 
 
 def packed(

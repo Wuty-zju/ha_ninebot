@@ -53,7 +53,7 @@ async def seed(tmp_path, *, identified=True, witness=True):
             ),
             guard=lambda: True,
         )
-    payload = {**ROW, "mileages": 2.5, "ec": 50, "trail": "120,30,1;120.001,30.001,2"}
+    payload = {**ROW, "mileages": 2.5, "ec": 50, "trail": "120,30,1,1;120.001,30.001,2,2"}
     if not identified:
         payload.pop("travel_id")
     detail = parse_ride(payload, "202610", source=Endpoint.TRIP_DETAIL)
@@ -410,6 +410,7 @@ async def test_projection_failure_keeps_publication_pending_for_retry():
     co = SimpleNamespace(
         statistics=statistics,
         preservation=SimpleNamespace(
+            async_refresh_progress=AsyncMock(),
             bootstrap=SimpleNamespace(guard=lambda *args, **kwargs: lambda: True),
         ),
     )
@@ -434,3 +435,82 @@ async def test_projection_failure_keeps_publication_pending_for_retry():
     assert publisher.views[SN] == job
     assert statistics.async_reconstruction_committed.await_count == 2
     statistics._notify_change.assert_called_once()
+
+
+async def test_quality_index_rebuilt_without_changing_stale_scalar(tmp_path):
+    from custom_components.ninebot.detail_health import key, validate
+
+    archive = await seed(tmp_path)
+    try:
+
+        def drift():
+            with archive._db() as db:
+                health = json.loads(
+                    db.execute(
+                        "SELECT value FROM meta WHERE key=?", (key(vehicle_key(SN), "ride-a"),)
+                    ).fetchone()[0]
+                )
+                health["valid_points"] = 1
+                health["geometry_kind"] = "single_point"
+                db.execute(
+                    "UPDATE meta SET value=? WHERE key=?",
+                    (json.dumps(health), key(vehicle_key(SN), "ride-a")),
+                )
+                db.execute(
+                    "UPDATE rides SET observed=?", ((NOW + timedelta(seconds=20)).isoformat(),)
+                )
+
+        await archive._run(drift)
+        before = await archive.async_private_detail(SN, "ride-a")
+        assessment = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True)
+        assert assessment.fields == ("quality_index",) and assessment.checked_fields == (
+            "quality_index",
+        )
+        repaired = await archive.async_reconstruct_ride(
+            SN, "ride-a", guard=lambda: True, repair=True
+        )
+        assert repaired.repaired
+        after = await archive.async_private_detail(SN, "ride-a")
+        assert after.scalar_revision == before.scalar_revision
+        assert after.scalar_observed_at == before.scalar_observed_at
+        assert (
+            after.latest_hash == before.latest_hash and after.geometry_hash == before.geometry_hash
+        )
+        health = await archive._run(
+            lambda: validate(
+                archive._db()
+                .execute("SELECT value FROM meta WHERE key=?", (key(vehicle_key(SN), "ride-a"),))
+                .fetchone()[0]
+            )
+        )
+        assert health["valid_points"] == 2 and health["geometry_kind"] == "sampled_unverified"
+    finally:
+        await archive.async_close()
+
+
+async def test_old_checker_checkpoint_not_claimed_as_full_new_quality_scan(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+
+        def legacy():
+            with archive._db() as db:
+                row = db.execute(
+                    "SELECT value FROM meta WHERE key=?",
+                    ("local_reconstruction:" + vehicle_key(SN),),
+                ).fetchone()
+                data = json.loads(row[0])
+                data["contract"] = 1
+                db.execute(
+                    "UPDATE meta SET value=? WHERE key=?",
+                    (json.dumps(data), "local_reconstruction:" + vehicle_key(SN)),
+                )
+
+        await archive._run(legacy)
+        await archive._run(lambda: archive._check(archive._db()))
+        resumed = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert resumed.contract == 2 and resumed.changed and resumed.state == "with_gaps"
+        assert resumed.checked == 1  # No fake rewind or duplicate progress.
+    finally:
+        await archive.async_close()

@@ -17,7 +17,7 @@ from .payload_inventory import revision as raw_revision
 from .travel import opaque_id
 
 PREFIX = "local_reconstruction:"
-CONTRACT = 1
+CONTRACT = 2
 MAX_INTEGER = 2**63 - 1
 STATES = {
     "pending_backup",
@@ -79,7 +79,7 @@ def restored(value: str) -> ReconstructionJob:
     if (
         type(data["changed"]) is not bool
         or type(data["contract"]) is not int
-        or data["contract"] != CONTRACT
+        or data["contract"] not in {1, CONTRACT}
         or data["state"] not in STATES
         or data["repaired"] + data["blocked"] > data["checked"]
         or data["corrupt"] > data["blocked"]
@@ -146,6 +146,8 @@ def step(
     job = get(db, vehicle)
     if job is None or job.state != "running":
         return job
+    if job.contract != CONTRACT:
+        job = replace(job, contract=CONTRACT, changed=job.changed or job.checked > 0)
     current = fences(db)
     job = replace(job, changed=job.changed or current != (job.revision, job.inventory))
     row = db.execute(

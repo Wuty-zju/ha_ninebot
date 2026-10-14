@@ -129,3 +129,21 @@ def proposal(
     return Reconstruction(
         "repairable" if fields else "healthy", fields, checked_fields=checked
     ), candidate
+
+
+def quality_patch(db: sqlite3.Connection, vehicle: str, stored: ArchivedDetail) -> str | None:
+    from .detail_health import data, key, validate
+
+    if (
+        stored.ride.ride_id is None
+        or stored.latest_quality is None
+        or stored.selected_quality is None
+    ):
+        return None
+    value = data(
+        stored.latest_hash, stored.geometry_hash, stored.latest_quality, stored.selected_quality
+    )
+    row = db.execute(
+        "SELECT value FROM meta WHERE key=?", (key(vehicle, stored.ride.ride_id),)
+    ).fetchone()
+    return value if row is None or validate(row[0]) != validate(value) else None

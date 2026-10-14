@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b69
+
+- Verify explicit ride/detail identities when reading retained latest and selected-geometry originals. Refuse contradictory originals per role, preserve their bytes and keep a readable surviving role through the existing partial-view contract.
+- Extend local reconstruction to recompute and restore derived track-quality indexes from independently decoded role originals. Quality-only repairs do not replace newer scalar observations, change geometry selection or invent coordinates, timestamps or units; reuse bounded role-quality parsing.
+- Version the reconstruction checker and preserve older job cursors. A partially processed older scan finishes with a declared gap rather than claiming new checks covered earlier records. Refresh cached history progress after repair without clearing unresolved Repairs.
+
 ## 2.0.0b68
 
 - Add explicit local reconstruction operations to `sync_history`: start, continue, status, pause and cancel. Rebuild only scalar/time-index facts supported by trusted saved originals; require recorded identity evidence for ID-less details and refuse stale source data.
