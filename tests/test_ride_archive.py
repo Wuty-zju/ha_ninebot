@@ -326,10 +326,15 @@ async def test_backup_restore_and_future_owner_corrupt_files_untouched(archive, 
 
 
 async def test_capacity_rolls_back_whole_batch_preserves_old_rows_and_allows_reads(tmp_path):
-    store = RideArchive(tmp_path / "limited.sqlite3", OWNER, max_bytes=128 * 1024)
+    store = RideArchive(tmp_path / "limited.sqlite3", OWNER)
     try:
         await store.async_open()
         await store.async_record_month(SN, sample(), NOW)
+        with closing(sqlite3.connect(store.path)) as db:
+            pages = db.execute("PRAGMA page_count").fetchone()[0]
+            page_size = db.execute("PRAGMA page_size").fetchone()[0]
+        # Exercise real batch rollback independently of evolving schema overhead.
+        assert await store.async_set_capacity((pages + 4) * page_size, guard=lambda: True)
         revision = (await store.async_page(SN)).revision
         with pytest.raises(ArchiveError) as err:
             await store.async_record_month(
