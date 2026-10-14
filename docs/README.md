@@ -870,3 +870,33 @@ press Resume to recheck it. A space recheck cannot clear schema or other archive
 errors. Migration recovery copies also require disk space; no automatic TTL applies.
 
 简中：每车增加历史同步状态、月份扫描进度、详情保存进度、最近成功时间，以及同步/暂停/恢复按钮。月份处理完不等于全部校验通过；详情100%也不等于全历史已发现。配置可开关自动同步并设置每账号32–2048 MiB额度。降低额度不删档，超额暂停写入；释放磁盘后可恢复重检。实体只读缓存，不因打开设备页面额外请求云端。
+
+
+### Local payload verification
+
+Use `ninebot.sync_history` with a vehicle `device_id` and `operation: verify`
+to start a local payload audit and check the first bounded batch. Use
+`verify_continue` for subsequent batches and `verify_status` to read progress.
+Each call checks at most eight saved objects and makes zero cloud requests.
+Active repeated starts coalesce; starting after completion captures a new scan.
+This is currently an explicit operation, not a scheduled background verifier.
+
+The response separates captured results from current validity. Managed raw page
+receipts and detail payload insertion/removal advance a persistent inventory
+fence in the same transaction, even when normalized values do not change.
+Later writes make `payloads_verified` false until a new stable audit completes;
+`captured_payloads_verified` only describes the earlier captured scan. The fence
+is account-wide and may conservatively invalidate another vehicle's proof.
+It does not detect external file edits or future disk corruption without reading
+the affected objects. Old audit checkpoints without a fence remain readable but
+cannot certify the current inventory.
+
+Corrupt payloads are reported without deleting their original bytes or blocking
+healthy objects. This audit does not yet verify every normalized index, restore
+records, or prove cloud history completeness. It never repairs by downloading
+cloud data implicitly; ordinary storage/schema/ownership errors remain strict.
+
+简中：历史操作的verify开始本地分批校验，verify_continue继续，verify_status查看。
+每批最多8个对象，不请求云端；当前需显式继续，尚不是自动后台完整校验。
+新增原件即使没有改变实体数值，也会使旧的当前校验证明失效；旧扫描结果保留作为历史证据。
+原件完整性通过不代表云端历史已枚举完整，也不代表全部派生索引已验证。

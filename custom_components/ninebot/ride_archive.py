@@ -396,6 +396,10 @@ class RideArchive:
                 from .archive_audit import validate_meta
 
                 validate_meta(key, value)
+            elif key == "history_payload_revision":
+                from .payload_inventory import validate as validate_inventory
+
+                validate_inventory(value)
             elif key == "history_family_turn" and value not in {"0", "1", "2"}:
                 raise ValueError("Invalid history family turn")
             elif key.startswith("history_incremental_seen:") or key.startswith(
@@ -981,7 +985,7 @@ class RideArchive:
         )
         changed = old is None or old.latest_hash != digest or old.geometry_hash != geometry_hash
         revision = (old.revision if old else 0) + int(changed)
-        db.execute(
+        inserted = db.execute(
             "INSERT OR IGNORE INTO detail_payloads VALUES (?,?,?,?,?,?,?,?)",
             (
                 vehicle,
@@ -1001,10 +1005,14 @@ class RideArchive:
             (vehicle, ride.ride_id, digest, geometry_hash, observed, revision, reason),
         )
         # Bound storage to latest candidate plus selected geometry, not every poll.
-        db.execute(
+        removed = db.execute(
             "DELETE FROM detail_payloads WHERE vehicle=? AND ride=? AND hash NOT IN (?,?)",
             (vehicle, ride.ride_id, digest, geometry_hash),
         )
+        if inserted.rowcount or removed.rowcount:
+            from .payload_inventory import advance as advance_inventory
+
+            advance_inventory(db)
         from .detail_health import put as put_health
 
         assert ride.ride_id is not None
@@ -1801,9 +1809,20 @@ class RideArchive:
         return await self._run(self._sync_job)
 
     async def async_history_audit(self, sn: str) -> AuditPlan | None:
-        from .archive_audit import get
+        return (await self.async_history_audit_status(sn))[0]
 
-        return await self._run(lambda: get(self._db(), vehicle_key(sn)))
+    async def async_history_audit_status(self, sn: str) -> tuple[AuditPlan | None, int, int]:
+        from .archive_audit import get
+        from .payload_inventory import revision as inventory_revision
+
+        def read() -> tuple[AuditPlan | None, int, int]:
+            return (
+                get(self._db(), vehicle_key(sn)),
+                self._revision(),
+                inventory_revision(self._db()),
+            )
+
+        return await self._run(read)
 
     async def async_start_history_audit(
         self, sn: str, now: datetime, *, guard: Callable[[], bool], restart: bool = False
@@ -2302,6 +2321,9 @@ class RideArchive:
                     if self._history_paused(expected.vehicle):
                         raise ArchiveError(ArchiveFailure.BUSY)
                     receipt = accept_page(db, expected, raw)
+                    from .payload_inventory import advance as advance_inventory
+
+                    advance_inventory(db)
                     if receipt.stop != "schema":
                         from .adapters import travel as parse_month
 

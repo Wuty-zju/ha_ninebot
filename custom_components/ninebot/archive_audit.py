@@ -12,6 +12,7 @@ from datetime import datetime
 from .archive_codec import decoded, encoded, stamp
 from .detail_codec import CorruptPayload, unpacked
 from .history_store import page
+from .payload_inventory import revision as inventory_revision
 
 PREFIX = "history_audit:"
 FAULT_PREFIX = "history_audit_fault:"
@@ -33,6 +34,7 @@ class AuditPlan:
     cutoff_revision: int
     started_at: str
     updated_at: str
+    cutoff_inventory: int | None = None
     phase: str = "detail"
     after: int = 0
     checked: int = 0
@@ -45,11 +47,22 @@ class AuditPlan:
 
     @property
     def payloads_verified(self) -> bool:
-        return self.complete and self.total > 0 and not self.changed and self.invalid == 0
+        return (
+            self.complete
+            and self.total > 0
+            and self.cutoff_inventory is not None
+            and not self.changed
+            and self.invalid == 0
+        )
 
 
 def restored(value: str) -> AuditPlan:
     data = decoded(value)
+    if type(data.get("changed")) is not bool:
+        raise ValueError("Invalid audit change flag")
+    if set(data) == set(AuditPlan.__dataclass_fields__) - {"cutoff_inventory"}:
+        data["cutoff_inventory"] = None
+        data["changed"] = True  # Legacy scans cannot certify the managed raw inventory.
     if set(data) != set(AuditPlan.__dataclass_fields__):
         raise ValueError("Invalid audit fields")
     for key in (
@@ -63,6 +76,13 @@ def restored(value: str) -> AuditPlan:
     ):
         if type(data[key]) is not int or not 0 <= data[key] <= MAX_INTEGER:
             raise ValueError("Invalid audit count")
+    if data["cutoff_inventory"] is not None and (
+        type(data["cutoff_inventory"]) is not int
+        or not 0 <= data["cutoff_inventory"] <= MAX_INTEGER
+    ):
+        raise ValueError("Invalid audit inventory revision")
+    if data["version"] == 1 and data["cutoff_inventory"] is None:
+        data["changed"] = True
     if type(data["version"]) is not int or data["version"] != 1:
         raise ValueError("Unsupported audit contract")
     if data["phase"] not in {"detail", "page", "complete"}:
@@ -118,6 +138,7 @@ def start(
         revision,
         now.isoformat(),
         now.isoformat(),
+        cutoff_inventory=inventory_revision(db),
     )
     put(db, vehicle, plan)
     return plan
@@ -154,7 +175,12 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
     if stamp(plan.updated_at) > now:
         return plan  # A backwards wall-clock adjustment is not database corruption.
     revision = int(db.execute("SELECT value FROM meta WHERE key='revision'").fetchone()[0])
-    plan = replace(plan, changed=plan.changed or revision != plan.cutoff_revision)
+    plan = replace(
+        plan,
+        changed=plan.changed
+        or revision != plan.cutoff_revision
+        or inventory_revision(db) != plan.cutoff_inventory,
+    )
     remaining = limit
     while remaining and not plan.complete:
         if plan.phase == "detail":

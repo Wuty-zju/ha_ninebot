@@ -184,10 +184,16 @@ async def async_verify_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
     now, operation = dt_util.utcnow(), call.data["operation"]
     if operation == "verify":
         await archive.async_start_history_audit(sn, now, guard=owns, restart=True)
-    plan = (
-        await archive.async_history_audit(sn)
-        if operation == "verify_status"
-        else await archive.async_step_history_audit(sn, now, guard=owns)
+    if operation != "verify_status":
+        await archive.async_step_history_audit(sn, now, guard=owns)
+    plan, current_revision, inventory_revision = await archive.async_history_audit_status(sn)
+    changed = bool(
+        plan
+        and (
+            plan.changed
+            or plan.cutoff_revision != current_revision
+            or plan.cutoff_inventory != inventory_revision
+        )
     )
     if plan and plan.invalid:
         co.statistics.record_error(ArchiveError(ArchiveFailure.OBJECT))
@@ -199,9 +205,13 @@ async def async_verify_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
         "captured_total": plan.total if plan else None,
         "checked": plan.checked if plan else 0,
         "invalid": plan.invalid if plan else 0,
-        "archive_changed": plan.changed if plan else False,
-        "payloads_verified": plan.payloads_verified if plan else False,
+        "archive_changed": changed,
+        "payloads_verified": bool(plan and plan.payloads_verified and not changed),
+        "captured_payloads_verified": plan.payloads_verified if plan else False,
         "cutoff_revision": plan.cutoff_revision if plan else None,
+        "current_revision": current_revision,
+        "cutoff_inventory": plan.cutoff_inventory if plan else None,
+        "current_inventory": inventory_revision,
         "updated_at": plan.updated_at if plan else None,
         "cloud_requests": 0,
         "normalization_and_cloud_coverage_verified": False,

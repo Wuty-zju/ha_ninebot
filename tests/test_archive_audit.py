@@ -142,3 +142,67 @@ async def test_guard_and_backup_barriers_do_not_advance_audit(archive):
     finally:
         archive.resume_after_backup()
     assert await archive.async_history_audit(SN) == before
+
+
+async def test_completed_audit_status_exposes_later_changes_without_rewriting_its_evidence(archive):
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    completed = await finish(archive)
+    before, revision, inventory = await archive.async_history_audit_status(SN)
+    assert before == completed and revision == completed.cutoff_revision
+    assert inventory == completed.cutoff_inventory
+    await archive.async_record_month(
+        "later-vehicle",
+        (await archive.async_month(SN, "202610")).travel,
+        NOW + timedelta(seconds=1),
+    )
+    after, revision, inventory = await archive.async_history_audit_status(SN)
+    assert after == completed and revision > completed.cutoff_revision
+
+
+async def test_raw_only_page_receipt_invalidates_completed_audit_without_projection_change(archive):
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    done = await finish(archive)
+    _, before_revision, before_inventory = await archive.async_history_audit_status(SN)
+    # A deliberately older receipt can add raw evidence without changing newer normalized rides.
+    when = NOW - timedelta(seconds=2)
+    run = await archive.async_schedule_history_run(SN, "202610", when, guard=lambda: True)
+    raw = build_record(
+        Endpoint.TRAVEL,
+        {"times": 0, "list": [], "unknown_safe_field": "new raw evidence"},
+        when,
+        "202610",
+        backend_version="0.1.7",
+        endpoint_version=run.provider,
+    )
+    await archive.async_accept_history_page(SN, run, raw, guard=lambda: True)
+    after, projection, inventory = await archive.async_history_audit_status(SN)
+    assert after == done and projection == before_revision
+    assert inventory > before_inventory == done.cutoff_inventory
+    path = archive.path
+    await archive.async_close()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        after, projection, persisted_inventory = await reopened.async_history_audit_status(SN)
+        assert after == done and persisted_inventory == inventory
+    finally:
+        await reopened.async_close()
+
+
+async def test_old_audit_without_inventory_fence_is_readable_but_not_certified(archive):
+    import json
+
+    from custom_components.ninebot.archive_audit import PREFIX, restored
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await finish(archive)
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        key = PREFIX + vehicle_key(SN)
+        body = json.loads(db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()[0])
+        del body["cutoff_inventory"]
+        db.execute("UPDATE meta SET value=? WHERE key=?", (json.dumps(body), key))
+    legacy = await archive.async_history_audit(SN)
+    assert legacy.complete and legacy.changed and not legacy.payloads_verified
+    body["cutoff_inventory"] = True
+    with pytest.raises(ValueError, match="inventory revision"):
+        restored(json.dumps(body))
