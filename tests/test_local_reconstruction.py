@@ -391,3 +391,46 @@ async def test_two_repairs_use_one_backup_and_failed_transaction_keeps_checkpoin
         assert len(list(tmp_path.glob("*.recovery-*.sqlite3"))) == 1
     finally:
         await archive.async_close()
+
+
+async def test_projection_failure_keeps_publication_pending_for_retry():
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from custom_components.ninebot.background_reconstruction import BackgroundReconstruction
+    from custom_components.ninebot.reconstruction_job import ReconstructionJob
+
+    statistics = SimpleNamespace(
+        async_reconstruction_committed=AsyncMock(
+            side_effect=[ArchiveError(ArchiveFailure.BUSY), None]
+        ),
+        _notify_change=Mock(),
+        record_error=Mock(),
+    )
+    co = SimpleNamespace(
+        statistics=statistics,
+        preservation=SimpleNamespace(
+            bootstrap=SimpleNamespace(guard=lambda *args, **kwargs: lambda: True),
+        ),
+    )
+    publisher = BackgroundReconstruction(co)
+    job = ReconstructionJob(
+        "a" * 32,
+        "ride-a",
+        1,
+        2,
+        0,
+        NOW.isoformat(),
+        NOW.isoformat(),
+        state="running",
+        checked=1,
+        repaired=1,
+        backup_hash="b" * 64,
+    )
+    with pytest.raises(ArchiveError):
+        await publisher.publish(SN, job)
+    assert SN not in publisher.views
+    await publisher.publish(SN, job)
+    assert publisher.views[SN] == job
+    assert statistics.async_reconstruction_committed.await_count == 2
+    statistics._notify_change.assert_called_once()

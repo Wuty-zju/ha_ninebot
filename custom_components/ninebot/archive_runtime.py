@@ -337,7 +337,6 @@ class ArchiveStatistics(TravelStatisticsStore):
             return
         async with self._archive_lock:
             await self._project(guard, vehicle=sn)
-        self._notify_change(sn, guard)
 
     async def async_history_page_committed(self, sn: str, guard: Callable[[], bool]) -> None:
         """Refresh projections only after the page/facts transaction has committed."""

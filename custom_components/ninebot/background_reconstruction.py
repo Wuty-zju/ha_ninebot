@@ -42,7 +42,6 @@ class BackgroundReconstruction:
         if not owns():
             return
         before = self.views.get(sn)
-        self.views[sn] = job
         if (job.corrupt and (before is None or job.corrupt != before.corrupt)) or (
             job.state == "blocked_recovery" and (before is None or before.state != job.state)
         ):
@@ -50,7 +49,9 @@ class BackgroundReconstruction:
         if before != job:
             if job.repaired > (before.repaired if before else 0):
                 await self.co.statistics.async_reconstruction_committed(sn, owns)
-            self.co.statistics._notify_change(sn, owns)
+            if owns():
+                self.views[sn] = job
+                self.co.statistics._notify_change(sn, owns)
 
     async def async_step(self, now: datetime) -> None:
         co, archive = self.co, self.co.statistics.archive
