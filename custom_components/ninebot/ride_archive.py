@@ -56,6 +56,7 @@ from .detail_health import HistoryHealth
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
+from .local_reconstruction import Reconstruction
 from .models import TravelMonth, VehicleProfile
 from .object_checks import ObjectSummary
 from .parsing import previous_month
@@ -1079,6 +1080,75 @@ class RideArchive:
             geometry_quality,
         )
         return changed
+
+    async def async_reconstruct_ride(
+        self,
+        sn: str,
+        ride_id: str,
+        *,
+        guard: Callable[[], bool],
+        repair: bool = False,
+    ) -> Reconstruction:
+        """Explicit bounded local repair; backup precedes any derived mutation.
+
+        This primitive does not close Repairs, fix missing source references or
+        claim full verification. A resumable job will orchestrate these steps.
+        """
+        from .local_reconstruction import proposal
+
+        if opaque_id(ride_id) != ride_id or type(repair) is not bool:
+            raise ValueError("Invalid reconstruction query")
+
+        loop = asyncio.get_running_loop()
+
+        def still_owned() -> bool:
+            permitted: Future[bool] = Future()
+
+            def check() -> None:
+                try:
+                    permitted.set_result(not self._closing and guard())
+                except Exception:
+                    permitted.set_result(False)
+
+            loop.call_soon_threadsafe(check)
+            try:
+                return permitted.result(timeout=5)
+            except WorkerTimeout:
+                return False
+
+        def reconstruct() -> Reconstruction:
+            db, vehicle = self._db(write=repair), vehicle_key(sn)
+            before = self._ride(vehicle, ride_id)
+            if before is None:
+                return Reconstruction("not_saved")
+            try:
+                stored = self._private_detail(vehicle, ride_id, 1)
+            except CorruptPayload:
+                return Reconstruction("corrupt")
+            if stored is None:
+                return Reconstruction("not_saved")
+            result, candidate = proposal(db, vehicle, before[0], stamp(before[1]), stored)
+            if not repair or result.status != "repairable" or candidate is None:
+                return result
+            # The one actor prevents another managed writer from changing the
+            # evidence between assessment, consistent backup and commit.
+            required = self.path.stat().st_size * 2 + MIN_FREE_BYTES
+            if shutil.disk_usage(self.path.parent).free < required:
+                raise ArchiveError(ArchiveFailure.CAPACITY)
+            destination = self.path.with_name(
+                f"{self.path.stem}.recovery-{os.urandom(16).hex()}.sqlite3"
+            )
+            self._backup(destination)
+            if not still_owned():
+                raise ArchiveError(ArchiveFailure.OWNER)
+            with db:
+                self._upsert_ride(vehicle, candidate, before[1], ordered=True)
+                # Derived time indexes may be wrong even if normalized JSON
+                # matches, so invalidate consumers in either repair case.
+                self._revision(bump=True)
+            return replace(result, repaired=True)
+
+        return await self._run(reconstruct, guard=guard)
 
     async def async_private_detail(
         self,
