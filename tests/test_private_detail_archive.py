@@ -407,7 +407,9 @@ async def test_explicit_wrong_ride_in_valid_blob_is_isolated_by_role(tmp_path, r
         raw = {"travel_id": "first", "trail": "120,30,1,1;120.001,30.001,2,2"}
         await save(archive, raw, NOW + timedelta(seconds=1))
         good = await archive.async_private_detail(SN, "first")
-        wrong = record({"travel_id": "other-ride", "trail": "121,31,9,1"}, NOW + timedelta(seconds=2))
+        wrong = record(
+            {"travel_id": "other-ride", "trail": "121,31,9,1"}, NOW + timedelta(seconds=2)
+        )
         digest, body, clean = packed(wrong)
 
         def misreference():
