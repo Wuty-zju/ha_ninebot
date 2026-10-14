@@ -448,6 +448,7 @@ async def test_local_verification_actions_do_not_query_cloud_or_change_wire_budg
     result = await call(hass, sync_device, operation="verify")
     assert result["contract"] == "local_payload_integrity_v1"
     assert result["cloud_requests"] == 0
+    assert co.preservation.audit.views[SN].checked == result["checked"]
     assert result["normalization_and_cloud_coverage_verified"] is False
     assert "SyntheticSN" not in json.dumps(result)
     status = await call(hass, sync_device, operation="verify_status")

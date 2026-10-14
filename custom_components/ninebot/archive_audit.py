@@ -6,10 +6,12 @@ A completed payload scan does not prove normalized indexes or cloud completeness
 
 import hashlib
 import sqlite3
+import time
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 
 from .archive_codec import decoded, encoded, stamp
+from .const import MAX_RESPONSE_BYTES
 from .detail_codec import CorruptPayload, unpacked
 from .history_store import page
 from .payload_inventory import revision as inventory_revision
@@ -17,6 +19,10 @@ from .payload_inventory import revision as inventory_revision
 PREFIX = "history_audit:"
 FAULT_PREFIX = "history_audit_fault:"
 MAX_INTEGER = 2**63 - 1
+MAX_COMPRESSED_OBJECT = MAX_RESPONSE_BYTES + 1024
+MAX_BATCH_COMPRESSED = 4 * MAX_COMPRESSED_OBJECT
+MAX_BATCH_DECODED = 4 * MAX_RESPONSE_BYTES
+MAX_BATCH_SECONDS = 0.05
 
 
 def scope(vehicle: str) -> str:
@@ -182,29 +188,56 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
         or inventory_revision(db) != plan.cutoff_inventory,
     )
     remaining = limit
-    while remaining and not plan.complete:
+    compressed = decoded_bytes = 0
+    deadline = time.monotonic() + MAX_BATCH_SECONDS
+    exhausted = False
+    while remaining and not plan.complete and not exhausted:
         if plan.phase == "detail":
             rows = db.execute(
-                "SELECT rowid,hash,body,observed,month,backend,endpoint FROM detail_payloads"
+                "SELECT rowid,hash,length(body),observed,month,backend,endpoint"
+                " FROM detail_payloads"
                 " WHERE vehicle=? AND rowid>? AND rowid<=? ORDER BY rowid LIMIT ?",
                 (vehicle, plan.after, plan.detail_upper, remaining),
             ).fetchall()
         else:
             rows = db.execute(
-                "SELECT rowid,plan,month,page FROM history_pages WHERE vehicle=?"
-                " AND rowid>? AND rowid<=? ORDER BY rowid LIMIT ?",
+                "SELECT p.rowid,p.plan,p.month,p.page,CASE WHEN length(p.body)>0"
+                " THEN length(p.body) ELSE coalesce((SELECT length(h.body)"
+                " FROM history_payloads h WHERE h.digest=p.digest),"
+                " (SELECT length(old.body) FROM history_pages old WHERE old.digest=p.digest"
+                " AND length(old.body)>0 LIMIT 1),0) END FROM history_pages p WHERE p.vehicle=?"
+                " AND p.rowid>? AND p.rowid<=? ORDER BY p.rowid LIMIT ?",
                 (vehicle, plan.after, plan.page_upper, remaining),
             ).fetchall()
         if not rows:
             plan = replace(plan, phase="page" if plan.phase == "detail" else "complete", after=0)
             continue
         for row in rows:
+            size = row[2] if plan.phase == "detail" else row[4]
+            # Reserve the maximum decoded size before opening a blob. SQLite
+            # length() metadata does not materialize all candidate bodies.
+            charge = size if isinstance(size, int) and 0 <= size <= MAX_COMPRESSED_OBJECT else 0
+            if limit != remaining and (
+                time.monotonic() >= deadline
+                or compressed + charge > MAX_BATCH_COMPRESSED
+                or decoded_bytes + MAX_RESPONSE_BYTES > MAX_BATCH_DECODED
+            ):
+                exhausted = True
+                break
+            compressed += charge
+            decoded_bytes += MAX_RESPONSE_BYTES
             token = hashlib.sha256(str(row[1]).encode()).hexdigest()
             key = fault_key(vehicle, plan.phase, row[0], token)
             reason = None
             try:
+                if not isinstance(size, int) or not 0 < size <= MAX_COMPRESSED_OBJECT:
+                    raise CorruptPayload("Invalid audit object byte budget")
                 if plan.phase == "detail":
-                    unpacked(row[2], row[1], stamp(row[3]), row[4], row[5], row[6])
+                    body = db.execute(
+                        "SELECT body FROM detail_payloads WHERE vehicle=? AND rowid=?",
+                        (vehicle, row[0]),
+                    ).fetchone()[0]
+                    unpacked(body, row[1], stamp(row[3]), row[4], row[5], row[6])
                 elif page(db, vehicle, row[1], row[2], row[3]) is None:
                     raise ValueError("Missing audit page")
             except CorruptPayload:

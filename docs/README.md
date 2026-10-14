@@ -879,7 +879,16 @@ to start a local payload audit and check the first bounded batch. Use
 `verify_continue` for subsequent batches and `verify_status` to read progress.
 Each call checks at most eight saved objects and makes zero cloud requests.
 Active repeated starts coalesce; starting after completion captures a new scan.
-This is currently an explicit operation, not a scheduled background verifier.
+With history preservation and automatic history sync enabled, the existing
+60-second preservation timer also advances one low-priority local batch after
+its normal work. Each background batch checks at most two objects for one
+vehicle; a durable vehicle turn prevents a large archive from starving others.
+Manual verification and background work share the same persisted checkpoint.
+A captured scan finishes without restarting for each new page; after completion,
+a daily cooldown avoids hot full-rescans during imports. Newly written payloads
+already undergo bounded write validation. Changed inventories are not certified
+by an older scan. Per-object incremental audit receipts and full reference/index
+verification remain follow-up work.
 
 The response separates captured results from current validity. Managed raw page
 receipts and detail payload insertion/removal advance a persistent inventory
@@ -896,7 +905,24 @@ healthy objects. This audit does not yet verify every normalized index, restore
 records, or prove cloud history completeness. It never repairs by downloading
 cloud data implicitly; ordinary storage/schema/ownership errors remain strict.
 
+All batches reserve a bounded compressed-byte budget and maximum decoded bytes
+before opening payloads, read only one body at a time, and yield between objects
+after a 50ms cooperative deadline. A single bounded decode cannot be preempted
+mid-object, so this is not a hard wall-clock guarantee. Oversized stored bodies
+are flagged using length metadata rather than loaded into memory. The actor and
+HA loop remain separate; backup, pause, shutdown, storage availability and
+ownership guards still apply. Background local checks consume no cloud budget.
+
+The four history progress sensors expose only cached `local_audit_phase`,
+`local_audit_checked`, `local_audit_total`, `local_audit_invalid` and
+`local_audit_observed_at` attributes. These describe a captured local scan, not
+cloud completeness or a live integrity certificate. Use verify_status for the
+current inventory-fenced result.
+
 简中：历史操作的verify开始本地分批校验，verify_continue继续，verify_status查看。
-每批最多8个对象，不请求云端；当前需显式继续，尚不是自动后台完整校验。
+开启历史保全与自动同步后，现有保全任务也在每轮云任务之后低优先级推进校验；
+每轮最多一车两个对象，按车轮转、断点持久、与手动操作合并，完成后冷却一天。
+字节预算与对象间协作式耗时预算避免批量读取大原件；单个解码不可中途抢占。
+关闭自动同步后仍可手动校验；暂停/备份/不可写/卸载守卫继续生效。
 新增原件即使没有改变实体数值，也会使旧的当前校验证明失效；旧扫描结果保留作为历史证据。
 原件完整性通过不代表云端历史已枚举完整，也不代表全部派生索引已验证。
