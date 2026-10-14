@@ -79,6 +79,10 @@ async def test_full_setup_physical_values_and_unload(hass, entry, app_client):
     assert registry.async_get(raw_id).unit_of_measurement == "Wh"
     assert float(hass.states.get(raw_id).state) == 0
     diag = await async_get_config_entry_diagnostics(hass, entry)
+    from pathlib import Path
+
+    manifest = Path(__file__).parents[1] / "custom_components/ninebot/manifest.json"
+    assert diag["integration_version"] == json.loads(manifest.read_text())["version"]
     serialized = json.dumps(diag)
     for private in (
         "SyntheticSN",
