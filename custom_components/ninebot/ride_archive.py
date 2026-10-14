@@ -53,6 +53,7 @@ from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .detail_codec import ArchivedDetail, packed, unpacked
 from .detail_health import HistoryHealth
 from .history_plan import HistoryPlan
+from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
@@ -430,6 +431,11 @@ class RideArchive:
                     or value not in {"0", "1"}
                 ):
                     raise ValueError("Invalid history pause state")
+            elif key.startswith("history_last_success:"):
+                vehicle = key.split(":", 1)[1]
+                if len(vehicle) != 64 or any(c not in "0123456789abcdef" for c in vehicle):
+                    raise ValueError("Invalid history success scope")
+                stamp(value)
             elif key.startswith("detail_health:"):
                 from .detail_health import key as health_key
                 from .detail_health import validate as validate_health
@@ -1979,6 +1985,43 @@ class RideArchive:
                 )
 
         await self._run(save, guard=guard)
+
+    async def async_history_evidence(
+        self, sn: str, *, guard: Callable[[], bool]
+    ) -> HistoryEvidence:
+        """Read metadata/counts together on the actor; never decompress payloads."""
+        from .detail_health import summary
+        from .history_store import root
+        from .incremental_runs import active
+
+        def read() -> HistoryEvidence:
+            db = self._db()
+            vehicle = vehicle_key(sn)
+            plan = root(db, vehicle)
+            rows = dict(
+                db.execute(
+                    "SELECT key,value FROM meta WHERE key IN (?,?,?,?)",
+                    (
+                        f"history_last_success:{vehicle}",
+                        "preservation_budget",
+                        f"history_paused:{vehicle}",
+                        f"history_requested:{vehicle}",
+                    ),
+                )
+            )
+            success = rows.get(f"history_last_success:{vehicle}")
+            budget = rows.get("preservation_budget")
+            return HistoryEvidence(
+                plan,
+                summary(db, vehicle, plan.plan_id) if plan else None,
+                active(db, vehicle),
+                stamp(success) if success else None,
+                datetime.fromtimestamp(float(budget), UTC) if budget else None,
+                rows.get(f"history_paused:{vehicle}") == "1",
+                rows.get(f"history_requested:{vehicle}") == "1",
+            )
+
+        return await self._run(read, guard=guard)
 
     async def async_history_health(self, sn: str, plan_id: str) -> HistoryHealth:
         from .detail_health import summary

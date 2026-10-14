@@ -8,6 +8,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.util import dt as dt_util
 
 from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, AccountDisplay, account_update
 from .archive_lifecycle import async_remove_archive
@@ -142,6 +143,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         )
         await async_migrate_entity_ids(hass, entry)
         async_audit_device_identities(hass, entry)
+        await coordinator.preservation.async_refresh_progress(
+            tuple(coordinator.data), dt_util.utcnow()
+        )
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         coordinator.preservation.start()
     except BaseException:

@@ -88,7 +88,7 @@ def test_invalid_persistent_task_is_not_silently_recreated():
 
 async def test_worker_uses_background_budget_and_persists_full_detail(tmp_path):
     from types import SimpleNamespace
-    from unittest.mock import AsyncMock
+    from unittest.mock import AsyncMock, Mock
 
     from custom_components.ninebot.preservation import HistoryPreservation
     from custom_components.ninebot.query_broker import Priority
@@ -123,7 +123,16 @@ async def test_worker_uses_background_budget_and_persists_full_detail(tmp_path):
             data={SN: object()},
             local_vehicle_available=lambda sn: sn == SN,
             fresh=lambda sn, group: True,
-            statistics=SimpleNamespace(archive=archive, writable=True, async_record_detail=save),
+            _authenticated=True,
+            statistics=SimpleNamespace(
+                archive=archive,
+                writable=True,
+                async_record_detail=save,
+                archive_ready=True,
+                error=None,
+                record_error=Mock(),
+                _notify_change=Mock(),
+            ),
             raw=RawStore(),
             hass=SimpleNamespace(async_add_executor_job=executor),
             async_query_detail=AsyncMock(return_value=result),

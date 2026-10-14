@@ -241,3 +241,23 @@ async def test_manual_request_survives_restart_with_automatic_seeding_disabled(c
     await runner.async_pause(SN, False)
     assert not await runner.async_step((SN,), clock[0], 60)
     assert len(calls) == 2
+
+
+async def test_cached_progress_only_notifies_changed_scalar_views(context):
+    from custom_components.ninebot.preservation import HistoryPreservation
+
+    co, archive, clock, calls = context
+    co._authenticated = True
+    co.statistics.archive_ready = True
+    co.statistics.error = None
+    worker = HistoryPreservation(co)
+    co.preservation = worker
+    await worker.bootstrap.async_seed((SN,), NOW)
+    await worker.async_refresh_progress((SN,), NOW)
+    assert worker.progress[SN].state == "discovering"
+    co.statistics._notify_change.assert_called_once()
+    await worker.async_refresh_progress((SN,), NOW + timedelta(seconds=1))
+    co.statistics._notify_change.assert_called_once()
+    await worker.bootstrap.async_pause(SN, True)
+    await worker.async_refresh_progress((SN,), NOW)
+    assert worker.progress[SN].state == "paused" and not calls

@@ -16,6 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from .archive_codec import RIDE_VALUES, ride_data
 from .exceptions import NinebotError
+from .history_progress import HistoryProgress, project_progress
 from .query_broker import Priority
 from .raw import Endpoint
 from .ride_archive import ArchiveError
@@ -58,6 +59,8 @@ class HistoryPreservation:
         self._remove: Callable[[], None] | None = None
         self._task: asyncio.Task[None] | None = None
         self.status = "disabled"
+        self.progress: dict[str, HistoryProgress] = {}
+        self._progress_lock = asyncio.Lock()
 
     def start(self) -> None:
         entry = self.co.config_entry
@@ -77,7 +80,44 @@ class HistoryPreservation:
         except (ArchiveError, HomeAssistantError, NinebotError):
             self.status = "waiting"  # Ordinary failures do not generate repeated logs.
         finally:
-            self._task = None
+            try:
+                await self.async_refresh_progress(tuple(self.co.data), now)
+            except ArchiveError as err:
+                self.co.statistics.record_error(err)
+            finally:
+                self._task = None
+
+    async def async_refresh_progress(self, vehicles: tuple[str, ...], now: datetime) -> None:
+        """Publish changed cached views after committed work, not from entity properties."""
+        async with self._progress_lock:
+            await self._refresh_progress(vehicles, now)
+
+    async def _refresh_progress(self, vehicles: tuple[str, ...], now: datetime) -> None:
+        co = self.co
+        if not co.statistics.archive_ready:
+            return
+        for sn in vehicles:
+            owns = self.bootstrap.guard(sn, require_enabled=False, respect_pause=False)
+            if not owns():
+                self.progress.pop(sn, None)
+                continue
+            evidence = await co.statistics.archive.async_history_evidence(sn, guard=owns)
+            value = project_progress(
+                evidence,
+                now,
+                enabled=self.bootstrap.enabled()
+                or (
+                    co.config_entry is not None
+                    and co.config_entry.options.get(CONF_PRESERVE) is True
+                    and evidence.requested
+                ),
+                paused=evidence.paused,
+                authenticated=co._authenticated,
+                storage_error=co.statistics.error.value if co.statistics.error else None,
+            )
+            if owns() and self.progress.get(sn) != value:
+                self.progress[sn] = value
+                co.statistics._notify_change(sn, owns)
 
     async def _step(self, now: datetime) -> None:
         co, archive = self.co, self.co.statistics.archive
