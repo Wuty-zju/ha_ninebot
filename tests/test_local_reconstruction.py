@@ -155,9 +155,9 @@ async def test_ownership_revoked_during_backup_prevents_commit(tmp_path, monkeyp
         await damage(archive)
         original = archive._backup
 
-        def backup(destination):
+        def backup(destination, *, recovery=False):
             nonlocal permitted
-            original(destination)
+            original(destination, recovery=recovery)
             permitted = False
 
         monkeypatch.setattr(archive, "_backup", backup)
@@ -174,7 +174,7 @@ async def test_backup_failure_preserves_index(tmp_path, monkeypatch):
     try:
         await damage(archive)
 
-        def failed(destination):
+        def failed(destination, *, recovery=False):
             raise ArchiveError(ArchiveFailure.STORAGE)
 
         monkeypatch.setattr(archive, "_backup", failed)
@@ -198,5 +198,25 @@ async def test_missing_detail_field_not_certified_or_erased(tmp_path):
         assert (
             await archive.async_private_detail(SN, "ride-a")
         ).ride.server_average_speed_raw == 42
+    finally:
+        await archive.async_close()
+
+
+async def test_time_index_rebuilt_and_recovery_copy_keeps_bad_index(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+        await archive._run(
+            lambda: archive._db().execute(
+                "UPDATE rides SET started=?", ((NOW - timedelta(days=1)).isoformat(),)
+            )
+        )
+        result = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True, repair=True)
+        assert result.repaired and result.fields == ("time_index",)
+        await archive._run(lambda: archive._check(archive._db()))
+        with sqlite3.connect(next(tmp_path.glob("*.recovery-*.sqlite3"))) as db:
+            assert (
+                db.execute("SELECT started FROM rides").fetchone()[0]
+                == (NOW - timedelta(days=1)).isoformat()
+            )
     finally:
         await archive.async_close()

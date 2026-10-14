@@ -55,7 +55,12 @@ def proposal(
             " ON p.vehicle=i.vehicle AND p.plan=i.plan AND p.month=i.month"
             " AND p.page=i.first_page WHERE i.vehicle=? AND i.ride=? AND i.month=?"
             " AND p.observed<=? ORDER BY p.observed DESC,i.plan LIMIT 2",
-            (vehicle, current.ride_id, current.query_month, latest.received_at.isoformat()),
+            (
+                vehicle,
+                current.ride_id,
+                current.query_month,
+                latest.received_at.isoformat(timespec="microseconds"),
+            ),
         ).fetchall()
         witnesses = []
         try:

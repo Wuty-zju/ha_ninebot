@@ -369,7 +369,13 @@ class RideArchive:
                 raise
             self._opened = True
 
-    def _check(self, db: sqlite3.Connection, version: int = SCHEMA_VERSION) -> None:
+    def _check(
+        self,
+        db: sqlite3.Connection,
+        version: int = SCHEMA_VERSION,
+        *,
+        allow_time_index_drift: bool = False,
+    ) -> None:
         if db.execute("PRAGMA user_version").fetchone()[0] != version:
             raise ArchiveError(ArchiveFailure.SCHEMA)
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -541,8 +547,13 @@ class RideArchive:
             if (
                 ride.ride_id != key
                 or revision < 1
-                or started != (utc_string(ride.started_at) if ride.started_at else "")
-                or ended != (utc_string(ride.ended_at) if ride.ended_at else None)
+                or (
+                    not allow_time_index_drift
+                    and (
+                        started != (utc_string(ride.started_at) if ride.started_at else "")
+                        or ended != (utc_string(ride.ended_at) if ride.ended_at else None)
+                    )
+                )
             ):
                 raise ValueError("Invalid archived ride index")
             stamp(observed)
@@ -1138,7 +1149,7 @@ class RideArchive:
             destination = self.path.with_name(
                 f"{self.path.stem}.recovery-{os.urandom(16).hex()}.sqlite3"
             )
-            self._backup(destination)
+            self._backup(destination, recovery=True)
             if not still_owned():
                 raise ArchiveError(ArchiveFailure.OWNER)
             with db:
@@ -2705,7 +2716,7 @@ class RideArchive:
     async def async_backup(self, destination: Path) -> None:
         await self._run(partial(self._backup, destination))
 
-    def _backup(self, destination: Path) -> None:
+    def _backup(self, destination: Path, *, recovery: bool = False) -> None:
         # Never overwrite an existing user backup, and never copy a live file
         # with its transaction journal omitted.
         if destination == self.path or destination.exists() or destination.is_symlink():
@@ -2717,7 +2728,10 @@ class RideArchive:
             target = sqlite3.connect(temporary)
             try:
                 self._db().backup(target)
-                self._check(target)
+                # A recovery copy preserves damaged derived time indexes;
+                # source/schema/owner checks still apply. Ordinary backup and
+                # startup remain strict; this is not a certified restore image.
+                self._check(target, allow_time_index_drift=recovery)
             finally:
                 target.close()
             with temporary.open("rb") as stream:
