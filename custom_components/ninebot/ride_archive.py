@@ -2717,6 +2717,10 @@ class RideArchive:
         await self._run(partial(self._backup, destination))
 
     def _backup(self, destination: Path, *, recovery: bool = False) -> None:
+        # SQLite backup on its own uncommitted writer can wait indefinitely.
+        # Never commit someone else's transaction or silently roll it back.
+        if self._db().in_transaction:
+            raise ArchiveError(ArchiveFailure.BUSY)
         # Never overwrite an existing user backup, and never copy a live file
         # with its transaction journal omitted.
         if destination == self.path or destination.exists() or destination.is_symlink():

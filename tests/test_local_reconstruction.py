@@ -212,11 +212,12 @@ async def test_missing_detail_field_not_certified_or_erased(tmp_path):
 async def test_time_index_rebuilt_and_recovery_copy_keeps_bad_index(tmp_path):
     archive = await seed(tmp_path)
     try:
-        await archive._run(
-            lambda: archive._db().execute(
-                "UPDATE rides SET started=?", ((NOW - timedelta(days=1)).isoformat(),)
-            )
-        )
+
+        def damage_index():
+            with archive._db() as db:
+                db.execute("UPDATE rides SET started=?", ((NOW - timedelta(days=1)).isoformat(),))
+
+        await archive._run(damage_index)
         result = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True, repair=True)
         assert result.repaired and result.fields == ("time_index",)
         await archive._run(lambda: archive._check(archive._db()))
@@ -225,5 +226,26 @@ async def test_time_index_rebuilt_and_recovery_copy_keeps_bad_index(tmp_path):
                 db.execute("SELECT started FROM rides").fetchone()[0]
                 == (NOW - timedelta(days=1)).isoformat()
             )
+    finally:
+        await archive.async_close()
+
+
+async def test_backup_refuses_active_transaction_without_committing_it(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+
+        def active():
+            db = archive._db()
+            db.execute("UPDATE rides SET observed=observed")
+            try:
+                with pytest.raises(ArchiveError) as err:
+                    archive._backup(tmp_path / "active.sqlite3")
+                assert err.value.kind is ArchiveFailure.BUSY
+                assert db.in_transaction
+            finally:
+                db.rollback()
+
+        await archive._run(active)
+        assert not (tmp_path / "active.sqlite3").exists()
     finally:
         await archive.async_close()
