@@ -22,6 +22,7 @@ def view(evidence, **kwargs):
         enabled=kwargs.get("enabled", True),
         paused=kwargs.get("paused", False),
         authenticated=kwargs.get("authenticated", True),
+        authentication_required=kwargs.get("authentication_required", False),
         storage_error=kwargs.get("storage_error"),
     )
 
@@ -55,7 +56,8 @@ def test_scanned_failed_month_is_not_verified_progress():
     [
         ({"enabled": False}, "disabled"),
         ({"paused": True}, "paused"),
-        ({"authenticated": False}, "needs_login"),
+        ({"authenticated": False}, "waiting_connection"),
+        ({"authenticated": False, "authentication_required": True}, "needs_login"),
         ({"storage_error": "capacity"}, "storage_full"),
         ({"storage_error": "storage"}, "storage_error"),
     ],

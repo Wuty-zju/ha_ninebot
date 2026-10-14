@@ -59,6 +59,7 @@ def project_progress(
     enabled: bool,
     paused: bool,
     authenticated: bool,
+    authentication_required: bool = False,
     storage_error: str | None = None,
 ) -> HistoryProgress:
     plan, health = evidence.baseline, evidence.health
@@ -70,8 +71,10 @@ def project_progress(
         state = "paused"
     elif storage_error:
         state = "storage_full" if storage_error == "capacity" else "storage_error"
-    elif not authenticated:
+    elif authentication_required:
         state = "needs_login"
+    elif not authenticated:
+        state = "waiting_connection"
     elif current is None:
         state = "not_started"
     elif current.state is HistoryState.WAITING:

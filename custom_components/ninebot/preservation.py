@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
@@ -113,6 +113,9 @@ class HistoryPreservation:
                 ),
                 paused=evidence.paused,
                 authenticated=co._authenticated,
+                authentication_required=isinstance(
+                    getattr(co, "last_exception", None), ConfigEntryAuthFailed
+                ),
                 storage_error=co.statistics.error.value if co.statistics.error else None,
             )
             if owns() and self.progress.get(sn) != value:
