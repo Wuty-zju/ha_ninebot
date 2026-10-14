@@ -501,7 +501,8 @@ async def test_schema3_migration_preserves_baseline_and_saves_recovery_copy(stor
     await store.async_close()
     with closing(sqlite3.connect(path)) as db, db:
         db.execute(
-            "UPDATE history_pages SET body=(SELECT h.body FROM history_payloads h WHERE h.digest=history_pages.digest)"
+            "UPDATE history_pages SET body=(SELECT h.body FROM history_payloads h"
+            " WHERE h.digest=history_pages.digest)"
         )
         db.execute("DROP TABLE history_payloads")
         db.execute("PRAGMA user_version=3")
