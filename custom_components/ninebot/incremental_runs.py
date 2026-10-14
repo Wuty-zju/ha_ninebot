@@ -66,3 +66,11 @@ def validate_key(key: str, value: str) -> None:
         or plan.start_month != plan.end_month
     ):
         raise ValueError("Invalid incremental run metadata")
+
+
+def validate_active(db: sqlite3.Connection, key: str, value: str) -> None:
+    _, vehicle, month = key.split(":", 2)
+    previous_month(month)
+    plan = get(db, vehicle, value)
+    if plan is None or plan.start_month != month or plan.end_month != month:
+        raise ValueError("Invalid incremental run pointer")

@@ -386,7 +386,13 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("history_run:"):
+            if key.startswith("history_run_active:"):
+                if version < 4:
+                    raise ValueError("Unsupported incremental evidence version")
+                from .incremental_runs import validate_active
+
+                validate_active(db, key, value)
+            elif key.startswith("history_run:"):
                 if version < 4:
                     raise ValueError("Unsupported incremental evidence version")
                 from .incremental_runs import validate_key
