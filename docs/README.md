@@ -799,3 +799,38 @@ The b60 storage foundation adds private page evidence and full-history checkpoin
 New accounts in b61 enable background ride/track preservation. Existing accounts with preservation explicitly disabled remain disabled; enable preservation in integration options to start it. Each fresh owned vehicle gets a durable first scan covering the client range from 2000-01 through its bootstrap month; this is a client range, not an official server retention promise. Months/pages and details share the background budget, so initial scans may take hours. Stable saved details are reused. Reloads resume checkpoints; disabling preservation stops background work without deleting saved data.
 
 The first baseline is complete only after discovery and saved-detail checks finish. Simplified/empty/invalid geometry is distinguished from a complete local sampled track; unknown units and coordinate reference stay unverified. Local quality indexes can be rebuilt from existing details without cloud queries. This release does not add progress entities or the new manual pause/resume interface yet. Real cloud pagination has not been validated by this development run.
+
+
+### Incremental history and synchronization controls
+
+With history preservation and automatic history synchronization enabled, first
+configuration discovers all available months in the client range for each owned
+vehicle. The first baseline remains fixed across restarts; new months use separate
+scans. Current-month observations are reconciled locally before extra pagination;
+month rollover checks and sparse gaps do not rescan stable old history. Stable
+saved details are reused. Real upstream pagination is still unverified by a live
+cloud test; local reconciliation is not proof of a cloud snapshot.
+
+Use `ninebot.sync_history` with a vehicle `device_id` and:
+
+- `operation: synchronize`: continue first discovery or request incremental work.
+  Optional `months: ["202604", "202608"]` registers every selected month (maximum
+  twelve), including old months. Repeated requests join active scans.
+- `force: true`: explicitly scan selected month lists, or the current month if none
+  is selected. This does not discard or force-download protected saved details.
+- `operation: pause` / `resume`: persistently pause or resume background history
+  for that vehicle. Resuming retains cursors and request budgets.
+- `operation: sync_status`: read small local baseline/detail counts without a cloud
+  request. This response is distinct from the latest single-list coverage entity.
+
+Automatic/manual work shares the background request budget; a request can be
+queued without performing a network operation immediately. Existing `start`,
+`continue`, `repair` and their status operations remain supported. Pausing history
+does not pause normal status/battery telemetry. In-flight cloud work cannot be
+unsent, and paused/stale results are fenced before archive commit. Page bodies
+are content-addressed while separate immutable receipts retain scope/provenance;
+schema 3 migration retains the old inline evidence and a validated recovery copy.
+There is no automatic archive TTL. Capacity exhaustion preserves data and pauses
+writes. New progress entities and capacity options are planned separately.
+
+简中：启用历史保存和自动同步后，首次后台发现历史范围；此后优先本地对账，只补新增、变化和缺口。同步操作可指定最多12个散月，重复触发合并；暂停/恢复保留游标和预算。force仅重扫月份列表，不破坏已保存的完整轨迹。首次基线、单次列表返回占比和已发现详情保存进度含义不同；当前不能以本地回放宣称真实云分页已验证。
