@@ -186,6 +186,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       card.append(controls, element('p', labels.tile_privacy, 'note'));
       if (this.mapError) card.append(element('p', labels.map_error, 'error'));
       else card.append(this.routeMap.element);
+      if (tracks.some(track => track.partial)) card.append(element('p', labels.partial_archive, 'note'));
       for (const [index, track] of tracks.entries()) {
         const legend = element('p', `${track.label} · ${track.ride_id} · ${labels.track_points}: ${track.valid_read}/${track.total ?? '—'} · ` +
           (track.kind === 'server_simplified' ? labels.simplified : labels.unverified_track) +
@@ -224,6 +225,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         section.append(summary);
         const detail = browser.details.get(key), displayed = detail ?? ride;
         section.append(this.metrics(displayed, labels));
+        if (displayed.local_partial) section.append(element('p', labels.partial_archive, 'note'));
         const sourceInfo = element('details');
         sourceInfo.append(element('summary', labels.source_fields), element('p',
           `${detail?.source_mode === 'ninecli' ? labels.cloud : labels.local} · ${displayed.source ?? '—'} · ${displayed.parser_contract ?? '—'} · ${labels.ride_id}: ${displayed.ride_id}`, 'note'));

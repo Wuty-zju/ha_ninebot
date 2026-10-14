@@ -116,7 +116,9 @@ export class FleetBrowser extends TripBrowser {
       this.details.delete(key);
       while (this.details.size >= 5) this.details.delete(this.details.keys().next().value);
       this.details.set(key, { ...safeRide(response.ride), received_at: response.received_at,
-        source_mode: response.source_mode, device_id: ride.device_id, vehicle_label: ride.vehicle_label });
+        source_mode: response.source_mode,
+        local_partial: response.detail_context?.local_integrity?.partial === true,
+        device_id: ride.device_id, vehicle_label: ride.vehicle_label });
     } catch (error) {
       if (this.current(epoch)) {
         this.cleared?.(); this.details.clear();

@@ -144,7 +144,8 @@ export class TripBrowser {
           response.query_month !== ride.query_month) throw new Error('invalid_response');
       this.details.delete(ride.ride_id);
       while (this.details.size >= 5) this.details.delete(this.details.keys().next().value);
-      this.details.set(ride.ride_id, { ...safeRide(response.ride), received_at: response.received_at });
+      this.details.set(ride.ride_id, { ...safeRide(response.ride), received_at: response.received_at,
+        local_partial: response.detail_context?.local_integrity?.partial === true });
       // Keep the token; the backend explicitly rejects a changed archive revision.
     } catch (error) {
       if (this.current(epoch)) this.error = error?.code === 'unauthorized' ? 'denied' : 'detail_error';

@@ -145,3 +145,8 @@ class RideDetail:
     scalar_observed_at: datetime | None = None
     geometry_received_at: datetime | None = None
     mixed_geometry_revision: bool = False
+    local_payload_faults: tuple[str, ...] = ()
+    latest_payload_available: bool = True
+    selected_geometry_available: bool = True
+    payload_evidence_source: str = "latest_payload"
+    geometry_evidence_source: str = "selected_geometry"

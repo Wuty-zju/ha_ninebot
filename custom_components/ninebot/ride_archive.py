@@ -980,7 +980,8 @@ class RideArchive:
             raise ValueError("Invalid private detail identity")
         db = self._db()
         old = self._private_detail(vehicle, ride.ride_id, 2000)
-        if old and utc_string(old.latest.received_at) > observed:
+        assert old is None or old.latest is not None  # Internal writers require strict reads.
+        if old and old.latest is not None and utc_string(old.latest.received_at) > observed:
             return False
         adopt, reason = select_geometry(old.ride, candidate) if old else (True, "initial")
         geometry_hash = digest if adopt or old is None else old.geometry_hash
@@ -1039,9 +1040,11 @@ class RideArchive:
         max_points: int = 500,
         point_offset: int = 0,
         guard: Callable[[], bool] | None = None,
+        allow_partial: bool = False,
     ) -> ArchivedDetail | None:
         if (
-            type(point_offset) is not int
+            type(allow_partial) is not bool
+            or type(point_offset) is not int
             or not 0 <= point_offset <= MAX_RESPONSE_BYTES
             or opaque_id(ride_id) != ride_id
             or type(max_points) is not int
@@ -1049,12 +1052,25 @@ class RideArchive:
         ):
             raise ValueError("Invalid private detail query")
         return await self._run(
-            partial(self._private_detail, vehicle_key(sn), ride_id, max_points, point_offset),
+            partial(
+                self._private_detail,
+                vehicle_key(sn),
+                ride_id,
+                max_points,
+                point_offset,
+                allow_partial=allow_partial,
+            ),
             guard=guard,
         )
 
     def _private_detail(
-        self, vehicle: str, ride_id: str | None, max_points: int, point_offset: int = 0
+        self,
+        vehicle: str,
+        ride_id: str | None,
+        max_points: int,
+        point_offset: int = 0,
+        *,
+        allow_partial: bool = False,
     ) -> ArchivedDetail | None:
         row = (
             self._db()
@@ -1070,26 +1086,50 @@ class RideArchive:
         summary = self._ride(vehicle, ride_id) if ride_id is not None else None
         if summary is None:
             raise ValueError("Missing private detail summary")
-        records = []
-        for digest in row[:2]:
-            blob = (
-                self._db()
-                .execute(
-                    "SELECT body,observed,month,backend,endpoint FROM detail_payloads "
-                    "WHERE vehicle=? AND ride=? AND hash=?",
-                    (vehicle, ride_id, digest),
-                )
-                .fetchone()
-            )
-            if blob is None:
-                raise ValueError("Missing private payload")
-            records.append(unpacked(blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]))
+        records: list[RawRecord | None] = []
+        faults: list[str] = []
+        decoded_payloads: dict[str, RawRecord | None] = {}
+        for role, digest in zip(("latest", "selected_geometry"), row[:2], strict=True):
+            if digest not in decoded_payloads:
+                try:
+                    blob = (
+                        self._db()
+                        .execute(
+                            "SELECT CASE WHEN length(body)<=? THEN body END,observed,month,"
+                            "backend,endpoint"
+                            " FROM detail_payloads WHERE vehicle=? AND ride=? AND hash=?",
+                            (MAX_RESPONSE_BYTES + 1024, vehicle, ride_id, digest),
+                        )
+                        .fetchone()
+                    )
+                    if blob is None:
+                        raise CorruptPayload("Missing private payload object")
+                    if blob[2] != summary[0].query_month:
+                        raise ValueError("Invalid private payload month scope")
+                    decoded_payloads[digest] = unpacked(
+                        blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]
+                    )
+                except CorruptPayload:
+                    if not allow_partial:
+                        raise
+                    decoded_payloads[digest] = None
+            record = decoded_payloads[digest]
+            if record is None:
+                faults.append(f"{role}_payload_unavailable")
+            records.append(record)
         latest, geometry = records
-        # Last successful receipt updates even if the content hash is unchanged.
-        latest = replace(latest, received_at=stamp(row[2]))
+        if latest is None and geometry is None:
+            raise CorruptPayload("No usable private payload evidence")
+        # Receipt time belongs to the latest object only. Never stamp older
+        # selected geometry as if it were the new/latest cloud response.
+        if latest is not None:
+            latest = replace(latest, received_at=stamp(row[2]))
+        geometry_evidence = geometry or latest
+        assert geometry_evidence is not None
+        selection = row[4] if geometry is not None else "fallback_latest_payload"
         parsed = parse_ride(
-            geometry.payload(),
-            geometry.query_month or summary[0].query_month,
+            geometry_evidence.payload(),
+            geometry_evidence.query_month or summary[0].query_month,
             source=Endpoint.TRIP_DETAIL,
             max_points=max_points,
             point_offset=point_offset,
@@ -1102,12 +1142,22 @@ class RideArchive:
             total_track_points=parsed.total_track_points,
             track_truncated=parsed.track_truncated,
             track_quality=parsed.track_quality,
-            geometry_selection=row[4],
+            geometry_selection=selection,
             track_offset=point_offset,
             track_limit=max_points,
         )
         return ArchivedDetail(
-            result, latest, geometry, row[3], row[4], row[0], row[1], summary[2], stamp(summary[1])
+            result,
+            latest,
+            geometry,
+            row[3],
+            selection,
+            row[0],
+            row[1],
+            summary[2],
+            stamp(summary[1]),
+            tuple(faults),
+            "selected_geometry" if geometry is not None else "latest_payload",
         )
 
     async def async_preservation_order(
@@ -2195,6 +2245,7 @@ class RideArchive:
                     detail = self._private_detail(vehicle, identity, 2000)
                     if detail is None:
                         raise ValueError("Missing detail health source")
+                    assert detail.latest is not None  # Strict source required for quality indexing.
                     latest = parse_ride(
                         detail.latest.payload(),
                         detail.latest.query_month or detail.ride.query_month,

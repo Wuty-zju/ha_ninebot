@@ -208,7 +208,7 @@ class HistoryPreservation:
                 if not co.statistics.writable:
                     raise HomeAssistantError("Archive write paused")
                 stored = await archive.async_private_detail(sn, task.ride.ride_id or "", guard=owns)
-                if stored is None:
+                if stored is None or stored.latest is None:
                     raise HomeAssistantError("Detail not retained")
                 ended = ride.ended_at
                 mutable = ended is not None and (now - ended).total_seconds() < 86400

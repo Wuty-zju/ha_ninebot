@@ -18,14 +18,16 @@ class CorruptPayload(ValueError):
 @dataclass(frozen=True)
 class ArchivedDetail:
     ride: Ride
-    latest: RawRecord
-    geometry: RawRecord
+    latest: RawRecord | None
+    geometry: RawRecord | None
     revision: int
     selection: str
     latest_hash: str
     geometry_hash: str
     scalar_revision: int
     scalar_observed_at: datetime
+    faults: tuple[str, ...] = ()
+    geometry_source: str = "selected_geometry"
 
 
 def packed(

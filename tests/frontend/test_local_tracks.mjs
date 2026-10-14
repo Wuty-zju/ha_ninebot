@@ -106,3 +106,25 @@ test('only five selected route projections survive and no extra raw fields are r
   assert.equal(reader.tracks.size, 5); assert.ok(!reader.tracks.has(trackKey('device-0', ride)));
   assert.ok(!JSON.stringify([...reader.tracks]).includes('discard-me'));
 });
+
+
+test('partial local tracks retain an explicit warning and never mix geometry evidence roles', async () => {
+  const reader = new LocalTracks(async (_, data) => {
+    const value = chunk(data.point_offset, 3);
+    value.detail_context.local_integrity = { partial: true, latest_payload_available: false,
+      selected_geometry_available: true, geometry_evidence_source: 'selected_geometry' };
+    return value;
+  });
+  await reader.read('device-a', ride);
+  assert.equal(reader.tracks.get(trackKey('device-a', ride)).partial, true);
+  const changing = new LocalTracks(async (_, data) => {
+    const value = chunk(data.point_offset);
+    value.detail_context.local_integrity = { partial: true, latest_payload_available: true,
+      selected_geometry_available: data.point_offset === 0,
+      geometry_evidence_source: data.point_offset === 0 ? 'selected_geometry' : 'latest_payload' };
+    return value;
+  });
+  await changing.read('device-a', ride);
+  assert.equal(changing.tracks.size, 0);
+  assert.equal(changing.error, 'track_revision_changed');
+});

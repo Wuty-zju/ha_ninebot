@@ -41,8 +41,12 @@ function checkedChunk(response, ride, offset) {
       distance_delta_raw: Number.isFinite(point.distance_delta_raw) ? point.distance_delta_raw : null };
   });
   return { points, next, total, kind: summary.geometry_kind,
+    partial: context.local_integrity?.partial === true,
     fingerprint: JSON.stringify([context.archive_revision, context.scalar_revision,
-      context.geometry_received_at, total, summary.geometry_kind]) };
+      context.geometry_received_at, total, summary.geometry_kind,
+      context.local_integrity?.geometry_evidence_source ?? 'selected_geometry',
+      context.local_integrity?.latest_payload_available ?? true,
+      context.local_integrity?.selected_geometry_available ?? true]) };
 }
 
 /** Gaps remain separate: never draw a road across rejected/missing source rows. */
@@ -108,6 +112,7 @@ export class LocalTracks {
         item = { ...item, fingerprint: chunk.fingerprint, total: chunk.total, kind: chunk.kind,
           points: step === 1 ? points : points.filter((_, i) => i === 0 || i === points.length - 1 || i % step === 0),
           next: chunk.next, complete: chunk.next === null, bounds,
+          partial: item.partial || chunk.partial,
           valid_read: item.valid_read + chunk.points.length, capped: item.capped || step > 1 };
         if (item.complete) break;
       }
