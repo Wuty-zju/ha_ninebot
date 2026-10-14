@@ -19,7 +19,19 @@ from .travel import opaque_id
 PREFIX = "local_reconstruction:"
 CONTRACT = 1
 MAX_INTEGER = 2**63 - 1
-STATES = {"pending_backup", "running", "paused", "cancelled", "complete", "with_gaps"}
+STATES = {
+    "pending_backup",
+    "running",
+    "paused",
+    "cancelled",
+    "complete",
+    "with_gaps",
+    "blocked_recovery",
+}
+
+
+class RecoveryPointError(ValueError):
+    """The private rollback object is unavailable; the main archive remains usable."""
 
 
 @dataclass(frozen=True)

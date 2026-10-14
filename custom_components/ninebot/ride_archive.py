@@ -1181,18 +1181,21 @@ class RideArchive:
             return False
 
     def _reconstruction_backup(self, vehicle: str, job: ReconstructionJob) -> str:
-        from .reconstruction_job import get
+        from .reconstruction_job import RecoveryPointError, get
 
         path = self.path.with_name(f"{self.path.stem}.recovery-{job.job_id}.sqlite3")
         if path.is_symlink():
-            raise ArchiveError(ArchiveFailure.STORAGE)
+            raise RecoveryPointError("Unverified local recovery point")
         if not path.exists():
             if job.backup_hash is not None:
-                raise ArchiveError(ArchiveFailure.STORAGE)
+                raise RecoveryPointError("Unverified local recovery point")
             if shutil.disk_usage(path.parent).free < self.path.stat().st_size * 2 + MIN_FREE_BYTES:
                 raise ArchiveError(ArchiveFailure.CAPACITY)
             self._backup(path, recovery=True)
-        stat = path.stat()
+        try:
+            stat = path.stat()
+        except OSError:
+            raise RecoveryPointError("Unreadable local recovery point") from None
         fingerprint = (stat.st_ino, stat.st_size, stat.st_mtime_ns)
         sealed = self._recovery_seals.get(job.job_id)
         if (
@@ -1203,19 +1206,27 @@ class RideArchive:
         ):
             return job.backup_hash
         if not 0 < stat.st_size <= MAX_ARCHIVE_BYTES:
-            raise ArchiveError(ArchiveFailure.STORAGE)
-        with path.open("rb") as stream:
-            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+            raise RecoveryPointError("Unverified local recovery point")
+        try:
+            with path.open("rb") as stream:
+                digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        except OSError:
+            raise RecoveryPointError("Unreadable local recovery point") from None
         if job.backup_hash is not None and digest != job.backup_hash:
-            raise ArchiveError(ArchiveFailure.STORAGE)
-        target = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
+            raise RecoveryPointError("Unverified local recovery point")
+        try:
+            target = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
+        except sqlite3.DatabaseError:
+            raise RecoveryPointError("Unreadable local recovery point") from None
         try:
             # Crash between backup publication and recording its hash: reuse
             # only a structurally checked copy carrying this exact job/scope.
             self._check(target, allow_time_index_drift=True)
             captured = get(target, vehicle)
             if captured is None or captured.job_id != job.job_id:
-                raise ArchiveError(ArchiveFailure.OWNER)
+                raise RecoveryPointError("Unverified local recovery scope")
+        except (ValueError, sqlite3.DatabaseError, ArchiveError):
+            raise RecoveryPointError("Unverified local recovery point") from None
         finally:
             target.close()
         if len(self._recovery_seals) >= MAX_PROFILES:
@@ -1226,7 +1237,7 @@ class RideArchive:
     async def async_reconstruction_job(
         self, sn: str, operation: str, now: datetime, *, guard: Callable[[], bool]
     ) -> ReconstructionJob | None:
-        from .reconstruction_job import get, put, start, step
+        from .reconstruction_job import RecoveryPointError, get, put, start, step
 
         if operation not in {"start", "continue", "status", "pause", "cancel", "step"}:
             raise ValueError("Invalid local reconstruction operation")
@@ -1252,11 +1263,21 @@ class RideArchive:
                     )
                     put(db, vehicle, job)
                 return job
+            if job.state == "blocked_recovery" and operation != "continue":
+                return job
             if job.state == "paused":
                 if operation != "continue":
                     return job
                 job = replace(job, state="running" if job.backup_hash else "pending_backup")
-            checksum = self._reconstruction_backup(vehicle, job)
+            try:
+                checksum = self._reconstruction_backup(vehicle, job)
+            except RecoveryPointError:
+                if not self._worker_owned(loop, guard):
+                    raise ArchiveError(ArchiveFailure.OWNER) from None
+                with db:
+                    job = replace(job, state="blocked_recovery", updated_at=now.isoformat())
+                    put(db, vehicle, job)
+                return job  # No retry loop or account-wide writer failure.
             if not self._worker_owned(loop, guard):
                 raise ArchiveError(ArchiveFailure.OWNER)
             with db:

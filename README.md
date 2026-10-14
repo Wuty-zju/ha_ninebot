@@ -130,3 +130,9 @@ missing fields, stale receipts, unreadable objects and changing scan scopes are
 reported rather than guessed. Results describe captured local details, not all
 cloud rides or every normalized field/reference. Corrupt source objects and
 unresolved Repairs remain for subsequent recovery work.
+
+If a recovery point is missing or fails verification, the job enters
+`blocked_recovery` and stops automatic retries. Healthy archive reads/writes
+remain available. Restore the matching private recovery point before explicitly
+continuing; the integration never replaces it silently or clears its Repair just
+because another record is readable.

@@ -21,7 +21,7 @@ def public(job: ReconstructionJob | None) -> dict:
         "repaired": job.repaired if job else 0,
         "blocked": job.blocked if job else 0,
         "corrupt": job.corrupt if job else 0,
-        "recovery_point_ready": bool(job and job.backup_hash),
+        "recovery_point_ready": bool(job and job.backup_hash and job.state != "blocked_recovery"),
         "archive_changed": job.changed if job else False,
         "updated_at": job.updated_at if job else None,
         "references_verified": False,
@@ -43,7 +43,9 @@ class BackgroundReconstruction:
             return
         before = self.views.get(sn)
         self.views[sn] = job
-        if job.corrupt and (before is None or job.corrupt != before.corrupt):
+        if (job.corrupt and (before is None or job.corrupt != before.corrupt)) or (
+            job.state == "blocked_recovery" and (before is None or before.state != job.state)
+        ):
             self.co.statistics.record_error(ArchiveError(ArchiveFailure.OBJECT))
         if before != job:
             if job.repaired > (before.repaired if before else 0):
@@ -61,7 +63,7 @@ class BackgroundReconstruction:
             or not archive.background_idle
         ):
             return
-        vehicles = sorted(sn for sn in co.data if co.local_vehicle_available(sn))
+        vehicles = tuple(sorted(sn for sn in co.data if co.local_vehicle_available(sn)))
         for sn in tuple(self.views):
             if sn not in vehicles:
                 self.views.pop(sn, None)
@@ -72,7 +74,7 @@ class BackgroundReconstruction:
                 continue
             job = await archive.async_reconstruction_job(sn, "status", now, guard=owns)
             await self.publish(sn, job)
-            if job is None or job.terminal or job.state == "paused":
+            if job is None or job.terminal or job.state in {"paused", "blocked_recovery"}:
                 continue
             result = await archive.async_reconstruction_job(sn, "step", now, guard=owns)
             await self.publish(sn, result)

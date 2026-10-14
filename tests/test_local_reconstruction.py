@@ -313,11 +313,12 @@ async def test_job_corrupt_backup_never_changes_more_data(tmp_path):
         backup = next(tmp_path.glob("*.recovery-*.sqlite3"))
         with backup.open("ab") as stream:
             stream.write(b"modified recovery point")
-        with pytest.raises(ArchiveError) as error:
-            await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
-        assert error.value.kind is ArchiveFailure.STORAGE
+        blocked = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert blocked.state == "blocked_recovery"
         current = await archive.async_reconstruction_job(SN, "status", NOW, guard=lambda: True)
-        assert current.job_id == job.job_id and current.checked == 1 and current.state == "running"
+        assert current.job_id == job.job_id and current.checked == 1
+        assert not archive.write_paused
+        assert (await archive.async_private_detail(SN, "ride-a")).latest is not None
     finally:
         await archive.async_close()
 
