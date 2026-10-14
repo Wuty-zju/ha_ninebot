@@ -58,6 +58,10 @@ COLUMNS = {
     ),
     "history_ids": ("vehicle", "plan", "month", "ride", "first_page"),
 }
+LEGACY_COLUMNS = COLUMNS
+PAYLOAD_SCHEMA = ("CREATE TABLE history_payloads (digest TEXT PRIMARY KEY, body BLOB NOT NULL)",)
+SCHEMA = (*SCHEMA, *PAYLOAD_SCHEMA)
+COLUMNS = {**COLUMNS, "history_payloads": ("digest", "body")}
 STOP_REASONS = {
     None,
     "schema",
@@ -190,6 +194,27 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
     ):
         raise ValueError("Invalid history page source")
     digest, body, clean = packed(record, source=Endpoint.TRAVEL)
+    assert clean.query_month is not None
+    previous_body = db.execute(
+        "SELECT body FROM history_payloads WHERE digest=?", (digest,)
+    ).fetchone()
+    if previous_body is None:
+        previous_body = db.execute(
+            "SELECT body FROM history_pages WHERE digest=? AND length(body)>0 LIMIT 1", (digest,)
+        ).fetchone()
+    if previous_body is None:
+        db.execute("INSERT INTO history_payloads VALUES (?,?)", (digest, body))
+    else:
+        # Verify reuse; a damaged legacy blob must not masquerade as a newly saved page.
+        unpacked(
+            previous_body[0],
+            digest,
+            clean.received_at,
+            clean.query_month,
+            clean.backend_version,
+            clean.endpoint_version,
+            source=Endpoint.TRAVEL,
+        )
     payload = clean.payload()
     assert isinstance(payload, dict)
     ids, total, stop = _shape(payload)
@@ -239,7 +264,7 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
             expected.next_month,
             expected.next_page,
             digest,
-            body,
+            b"",
             observed,
             clean.backend_version,
             clean.endpoint_version,
@@ -272,8 +297,11 @@ def page(
     db: sqlite3.Connection, vehicle: str, plan: str, month: str, number: int
 ) -> RawRecord | None:
     row = db.execute(
-        "SELECT body,digest,observed,backend,endpoint FROM history_pages"
-        " WHERE vehicle=? AND plan=? AND month=? AND page=?",
+        "SELECT CASE WHEN length(p.body)>0 THEN p.body ELSE coalesce(h.body,"
+        " (SELECT old.body FROM history_pages old WHERE old.digest=p.digest"
+        " AND length(old.body)>0 LIMIT 1)) END,p.digest,p.observed,p.backend,p.endpoint"
+        " FROM history_pages p LEFT JOIN history_payloads h ON h.digest=p.digest"
+        " WHERE p.vehicle=? AND p.plan=? AND p.month=? AND p.page=?",
         (vehicle, plan, month, number),
     ).fetchone()
     return (
@@ -384,7 +412,9 @@ def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
             or type(number) is not int
             or not 1 <= number <= MAX_PAGES
             or kind != "blob"
-            or not 0 < size <= 1024 * 1024 + 1024
+            or not (
+                0 <= size <= 1024 * 1024 + 1024 if allow_runs else 0 < size <= 1024 * 1024 + 1024
+            )
             or endpoint != current.provider
             or backend != "0.1.7"
             or not isinstance(digest, str)
@@ -405,3 +435,21 @@ def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
             and (type(total) is not int or not 0 <= total <= 1_000_000)
         ):
             raise ValueError("Invalid history page identities")
+    if allow_runs:
+        if db.execute(
+            "SELECT 1 FROM history_pages p LEFT JOIN history_payloads h ON h.digest=p.digest"
+            " WHERE length(p.body)=0 AND h.digest IS NULL AND NOT EXISTS"
+            " (SELECT 1 FROM history_pages old WHERE old.digest=p.digest"
+            " AND length(old.body)>0) LIMIT 1"
+        ).fetchone():
+            raise ValueError("Missing shared page payload")
+        for digest, kind, size in db.execute(
+            "SELECT digest,typeof(body),length(body) FROM history_payloads"
+        ):
+            if (
+                len(digest) != 64
+                or any(c not in "0123456789abcdef" for c in digest)
+                or kind != "blob"
+                or not 0 < size <= 1024 * 1024 + 1024
+            ):
+                raise ValueError("Invalid shared page payload")

@@ -367,11 +367,12 @@ class RideArchive:
             raise ArchiveError(ArchiveFailure.SCHEMA)
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         from .history_store import COLUMNS as HISTORY_COLUMNS
+        from .history_store import LEGACY_COLUMNS
 
         columns_by_table = (
             TABLE_COLUMNS
             | (DETAIL_COLUMNS if version >= 2 else {})
-            | (HISTORY_COLUMNS if version >= 3 else {})
+            | (HISTORY_COLUMNS if version >= 4 else LEGACY_COLUMNS if version == 3 else {})
         )
         if tables != columns_by_table.keys():
             raise ArchiveError(ArchiveFailure.SCHEMA)
@@ -618,11 +619,12 @@ class RideArchive:
             db.execute(f"PRAGMA max_page_count={max(pages, self.max_bytes // size)}")
             db.execute("BEGIN IMMEDIATE")
             try:
+                from .history_store import PAYLOAD_SCHEMA
                 from .history_store import SCHEMA as HISTORY_SCHEMA
 
                 for sql in (
                     *(DETAIL_SCHEMA if version == 1 else ()),
-                    *(HISTORY_SCHEMA if version < 3 else ()),
+                    *(HISTORY_SCHEMA if version < 3 else PAYLOAD_SCHEMA),
                 ):
                     db.execute(sql)
                 db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
