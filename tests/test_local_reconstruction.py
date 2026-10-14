@@ -350,7 +350,8 @@ async def test_job_records_corrupt_original_gap_without_deleting_it(tmp_path):
 async def test_two_repairs_use_one_backup_and_failed_transaction_keeps_checkpoint(
     tmp_path, monkeypatch
 ):
-    archive = await seed(tmp_path)
+    archive = RideArchive(tmp_path / "rides.sqlite3", OWNER)
+    await archive.async_open()
     try:
         second = {
             **ROW,
@@ -360,11 +361,12 @@ async def test_two_repairs_use_one_backup_and_failed_transaction_keeps_checkpoin
         }
         month = travel({"times": 2, "list": [ROW, second]}, "202610")
         await archive.async_record_month(SN, month, NOW)
-        raw = build_record(Endpoint.TRIP_DETAIL, second, NOW + timedelta(seconds=1), "202610")
-        ride = merge_detail(
-            month.rides[1], parse_ride(second, "202610", source=Endpoint.TRIP_DETAIL)
-        )
-        await archive.async_record_detail(SN, ride, raw.received_at, raw=raw)
+        for index, payload in enumerate(({**ROW, "mileages": 2.5}, second)):
+            raw = build_record(Endpoint.TRIP_DETAIL, payload, NOW + timedelta(seconds=1), "202610")
+            ride = merge_detail(
+                month.rides[index], parse_ride(payload, "202610", source=Endpoint.TRIP_DETAIL)
+            )
+            await archive.async_record_detail(SN, ride, raw.received_at, raw=raw)
         await damage(archive)
         await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
         original = archive._upsert_ride
