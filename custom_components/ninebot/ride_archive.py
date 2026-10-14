@@ -422,8 +422,8 @@ class RideArchive:
                 from .incremental_runs import validate_key
 
                 validate_key(key, value)
-            elif key.startswith("history_paused:"):
-                vehicle = key.removeprefix("history_paused:")
+            elif key.startswith(("history_paused:", "history_requested:")):
+                vehicle = key.split(":", 1)[1]
                 if (
                     len(vehicle) != 64
                     or any(c not in "0123456789abcdef" for c in vehicle)
@@ -1937,6 +1937,31 @@ class RideArchive:
                 return plan
 
         return await self._run(reconcile, guard=guard)
+
+    async def async_history_requested(self, sn: str) -> bool:
+        def read() -> bool:
+            found = (
+                self._db()
+                .execute(
+                    "SELECT value FROM meta WHERE key=?", (f"history_requested:{vehicle_key(sn)}",)
+                )
+                .fetchone()
+            )
+            return found is not None and found[0] == "1"
+
+        return await self._run(read)
+
+    async def async_request_history(self, sn: str, *, guard: Callable[[], bool]) -> None:
+        def save() -> None:
+            db = self._db(write=True)
+            with db:
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
+                    " DO UPDATE SET value=excluded.value",
+                    (f"history_requested:{vehicle_key(sn)}", "1"),
+                )
+
+        await self._run(save, guard=guard)
 
     async def async_set_history_paused(
         self, sn: str, paused: bool, *, guard: Callable[[], bool]

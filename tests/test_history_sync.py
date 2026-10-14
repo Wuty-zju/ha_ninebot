@@ -401,16 +401,16 @@ async def test_pause_resume_status_are_device_scoped_local_only(
 async def test_manual_synchronize_registers_all_selected_old_months_and_coalesces(
     hass, entry, app_client, sync_device
 ):
-    from types import SimpleNamespace
     from unittest.mock import AsyncMock
 
     co = entry.runtime_data.coordinator
-    configured = SimpleNamespace(
-        options={**entry.options, "preserve_history": True, "auto_history_sync": True}
-    )
+    with patch.object(hass.config_entries, "async_reload", AsyncMock(return_value=True)):
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, "preserve_history": True, "auto_history_sync": False}
+        )
+        await hass.async_block_till_done()
     months = ["202604", "202608"]
     with (
-        patch.object(co, "config_entry", configured),
         patch.object(co.preservation.incremental, "async_step", AsyncMock(return_value=False)),
     ):
         result = await call(hass, sync_device, operation="synchronize", months=months)

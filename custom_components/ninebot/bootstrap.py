@@ -31,13 +31,14 @@ class HistoryBootstrap:
         self.co = co
         self.snapshots: dict[str, tuple[HistoryPlan, HistoryHealth]] = {}
         self.paused: set[str] = set()
+        self.requested: set[str] = set()
         self.incremental_snapshots: dict[str, tuple[HistoryPlan, HistoryHealth]] = {}
 
-    def enabled(self) -> bool:
+    def enabled(self, sn: str | None = None) -> bool:
         entry = self.co.config_entry
-        if entry is None:
+        if entry is None or entry.options.get("preserve_history") is not True:
             return False
-        return (
+        return (sn is not None and sn in self.requested) or (
             entry.options.get(CONF_AUTO_HISTORY, entry.options.get("preserve_history", False))
             is True
         )
@@ -52,13 +53,11 @@ class HistoryBootstrap:
             and co._generation == generation
             and co._ownership.get(sn, 0) == ownership
             and co.local_vehicle_available(sn)
-            and (not require_enabled or self.enabled())
+            and (not require_enabled or self.enabled(sn))
             and (not respect_pause or sn not in self.paused)
         )
 
     async def async_seed(self, vehicles: tuple[str, ...], now: datetime) -> None:
-        if not self.enabled():
-            return
         archive = self.co.statistics.archive
         self.snapshots = {
             sn: value
@@ -67,10 +66,16 @@ class HistoryBootstrap:
         }
         end = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).strftime("%Y%m")
         for sn in vehicles:
+            if await archive.async_history_requested(sn):
+                self.requested.add(sn)
+            else:
+                self.requested.discard(sn)
             if await archive.async_history_paused(sn):
                 self.paused.add(sn)
                 continue
             self.paused.discard(sn)
+            if not self.enabled(sn):
+                continue
             if not self.co.fresh(sn, "profile"):
                 continue
             plan = await archive.async_history_plan(sn)
@@ -94,11 +99,9 @@ class HistoryBootstrap:
     async def async_step(
         self, vehicles: tuple[str, ...], now: datetime, budget: int, *, incremental: bool = False
     ) -> bool:
-        if not self.enabled():
-            return False
         co, archive = self.co, self.co.statistics.archive
         for sn in vehicles:
-            if sn in self.paused or not co.fresh(sn, "profile"):
+            if not self.enabled(sn) or sn in self.paused or not co.fresh(sn, "profile"):
                 continue
             owns = self.guard(sn)
             identity = None
@@ -179,3 +182,9 @@ class HistoryBootstrap:
         else:
             self.paused.discard(sn)
         self.co.statistics._notify_change(sn, owns)
+
+    async def async_request(self, sn: str) -> None:
+        """Persist explicit permission to finish manual work with automatic seeding off."""
+        owns = self.guard(sn, require_enabled=False)
+        await self.co.statistics.archive.async_request_history(sn, guard=owns)
+        self.requested.add(sn)

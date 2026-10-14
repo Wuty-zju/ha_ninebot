@@ -834,3 +834,11 @@ There is no automatic archive TTL. Capacity exhaustion preserves data and pauses
 writes. New progress entities and capacity options are planned separately.
 
 简中：启用历史保存和自动同步后，首次后台发现历史范围；此后优先本地对账，只补新增、变化和缺口。同步操作可指定最多12个散月，重复触发合并；暂停/恢复保留游标和预算。force仅重扫月份列表，不破坏已保存的完整轨迹。首次基线、单次列表返回占比和已发现详情保存进度含义不同；当前不能以本地回放宣称真实云分页已验证。
+
+Manual synchronize requires history preservation, but works with automatic history
+synchronization disabled. Its vehicle-scoped permission persists across restart
+so explicitly queued baseline/month work can finish under the shared budget. It
+does not enable automatic current/new-month seeding. Pause or disable preservation
+to suspend execution. After queued work completes, it makes no new scan requests
+by itself. Status reports automatic_sync_enabled and manual_sync_requested
+separately.

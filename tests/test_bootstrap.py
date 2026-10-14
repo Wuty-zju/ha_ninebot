@@ -214,3 +214,30 @@ async def test_month_family_rotation_gives_each_pending_family_a_turn(context):
     assert worker.incremental.async_step.await_count == 1
     assert worker._legacy_month_step.await_count == 1
     assert await archive.async_history_family_turn() == 0
+
+
+async def test_manual_request_survives_restart_with_automatic_seeding_disabled(context):
+    co, archive, clock, calls = context
+    co.config_entry.options["auto_history_sync"] = False
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    assert await archive.async_history_plan(SN) is None
+    assert not await runner.async_step((SN,), NOW, 60)
+    await runner.async_request(SN)
+    await runner.async_seed((SN,), NOW)
+    assert await runner.async_step((SN,), NOW, 60)
+    checkpoint = await archive.async_history_plan(SN)
+    runner = HistoryBootstrap(co)  # New runtime reconstructs persisted manual permission.
+    clock[0] += timedelta(minutes=3)
+    await runner.async_seed((SN,), clock[0])
+    assert not runner.enabled() and runner.enabled(SN)
+    assert await archive.async_history_plan(SN) == checkpoint
+    assert await runner.async_step((SN,), clock[0], 60)
+    assert calls[-1] == (SN, "202610", 2)
+    await runner.async_pause(SN, True)
+    clock[0] += timedelta(minutes=3)
+    assert not await runner.async_step((SN,), clock[0], 60)
+    co.config_entry.options["preserve_history"] = False
+    await runner.async_pause(SN, False)
+    assert not await runner.async_step((SN,), clock[0], 60)
+    assert len(calls) == 2

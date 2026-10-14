@@ -106,11 +106,12 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
     runner, archive = co.preservation.bootstrap, co.statistics.archive
     operation = call.data["operation"]
     performed = False
-    if operation == "synchronize" and runner.enabled():
+    if operation == "synchronize" and entry.options.get(CONF_PRESERVE) is True:
         from .adapters import month_at
         from .query_broker import Priority
 
         await runner.async_pause(sn, False)
+        await runner.async_request(sn)
         now = dt_util.utcnow()
         await runner.async_seed((sn,), now)
         baseline = await archive.async_history_plan(sn)
@@ -144,6 +145,8 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         "operation": operation,
         "paused": paused,
         "background_enabled": entry.options.get(CONF_PRESERVE) is True,
+        "automatic_sync_enabled": runner.enabled(),
+        "manual_sync_requested": await archive.async_history_requested(sn),
         "operation_performed": performed,
         "state": "paused" if paused else plan.state.value if plan else "not_started",
         "scanned_months": plan.scanned_months if plan else None,
