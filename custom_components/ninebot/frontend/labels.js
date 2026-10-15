@@ -63,7 +63,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Some local originals are unavailable. Showing the remaining readable data."
+    "partial_archive": "Some local originals are unavailable. Showing the remaining readable data.",
+    "enumerated": "Enumerated months"
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -129,7 +130,8 @@ export const LABELS = {
     "pause_points": "暂停播放",
     "playback_note": "按已读点固定0.5秒逐点播放，不代表实际时间或速度，不请求API。",
     "detail_missing": "尚未保存轨迹详情。先获取详情，或稍后本地读取以查看后台保存进度。",
-    "partial_archive": "部分本地原件不可用，正在显示仍可读取的数据。"
+    "partial_archive": "部分本地原件不可用，正在显示仍可读取的数据。",
+    "enumerated": "已枚举月份"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -195,7 +197,8 @@ export const LABELS = {
     "pause_points": "暫停播放",
     "playback_note": "按已讀點固定0.5秒逐點播放，不代表實際時間或速度，不請求API。",
     "detail_missing": "尚未儲存軌跡詳情。先取得詳情，或稍後本機讀取以查看背景儲存進度。",
-    "partial_archive": "部分本機原件無法使用，正在顯示仍可讀取的資料。"
+    "partial_archive": "部分本機原件無法使用，正在顯示仍可讀取的資料。",
+    "enumerated": "已列舉月份"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -261,7 +264,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Einige lokale Originaldaten sind nicht verfügbar. Die übrigen lesbaren Daten werden angezeigt."
+    "partial_archive": "Einige lokale Originaldaten sind nicht verfügbar. Die übrigen lesbaren Daten werden angezeigt.",
+    "enumerated": "Erfasste Monate"
   },
   "fr": {
     "title": "Historique des trajets",
@@ -327,7 +331,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Certaines données locales sont indisponibles. Les données encore lisibles sont affichées."
+    "partial_archive": "Certaines données locales sont indisponibles. Les données encore lisibles sont affichées.",
+    "enumerated": "Mois recensés"
   },
   "es": {
     "title": "Historial de viajes",
@@ -393,7 +398,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Algunos originales locales no están disponibles. Se muestran los datos que aún se pueden leer."
+    "partial_archive": "Algunos originales locales no están disponibles. Se muestran los datos que aún se pueden leer.",
+    "enumerated": "Meses enumerados"
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -459,7 +465,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Alcuni originali locali non sono disponibili. Sono mostrati i dati ancora leggibili."
+    "partial_archive": "Alcuni originali locali non sono disponibili. Sono mostrati i dati ancora leggibili.",
+    "enumerated": "Mesi enumerati"
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -525,7 +532,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Alguns originais locais estão indisponíveis. São apresentados os dados ainda legíveis."
+    "partial_archive": "Alguns originais locais estão indisponíveis. São apresentados os dados ainda legíveis.",
+    "enumerated": "Meses enumerados"
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -591,7 +599,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Alguns originais locais estão indisponíveis. Exibindo os dados que ainda podem ser lidos."
+    "partial_archive": "Alguns originais locais estão indisponíveis. Exibindo os dados que ainda podem ser lidos.",
+    "enumerated": "Meses enumerados"
   },
   "ru": {
     "title": "История поездок",
@@ -657,7 +666,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Часть локальных оригиналов недоступна. Показаны оставшиеся читаемые данные."
+    "partial_archive": "Часть локальных оригиналов недоступна. Показаны оставшиеся читаемые данные.",
+    "enumerated": "Перечисленные месяцы"
   },
   "ja": {
     "title": "走行履歴",
@@ -723,7 +733,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "一部のローカル原本を利用できません。読み取り可能なデータを表示しています。"
+    "partial_archive": "一部のローカル原本を利用できません。読み取り可能なデータを表示しています。",
+    "enumerated": "列挙済みの月"
   },
   "ko": {
     "title": "주행 기록",
@@ -789,7 +800,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "일부 로컬 원본을 사용할 수 없습니다. 읽을 수 있는 데이터를 표시합니다."
+    "partial_archive": "일부 로컬 원본을 사용할 수 없습니다. 읽을 수 있는 데이터를 표시합니다.",
+    "enumerated": "열거된 월"
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -855,7 +867,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Sommige lokale originelen zijn niet beschikbaar. De overige leesbare gegevens worden getoond."
+    "partial_archive": "Sommige lokale originelen zijn niet beschikbaar. De overige leesbare gegevens worden getoond.",
+    "enumerated": "Geïnventariseerde maanden"
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -921,7 +934,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Niektóre lokalne oryginały są niedostępne. Wyświetlane są pozostałe czytelne dane."
+    "partial_archive": "Niektóre lokalne oryginały są niedostępne. Wyświetlane są pozostałe czytelne dane.",
+    "enumerated": "Zestawione miesiące"
   },
   "uk": {
     "title": "Історія поїздок",
@@ -987,7 +1001,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Частина локальних оригіналів недоступна. Показано решту доступних для читання даних."
+    "partial_archive": "Частина локальних оригіналів недоступна. Показано решту доступних для читання даних.",
+    "enumerated": "Перелічені місяці"
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -1053,7 +1068,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Bazı yerel özgün veriler kullanılamıyor. Okunabilen diğer veriler gösteriliyor."
+    "partial_archive": "Bazı yerel özgün veriler kullanılamıyor. Okunabilen diğer veriler gösteriliyor.",
+    "enumerated": "Listelenen aylar"
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -1119,7 +1135,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "कुछ स्थानीय मूल डेटा उपलब्ध नहीं हैं। शेष पढ़ने योग्य डेटा दिखाया जा रहा है।"
+    "partial_archive": "कुछ स्थानीय मूल डेटा उपलब्ध नहीं हैं। शेष पढ़ने योग्य डेटा दिखाया जा रहा है।",
+    "enumerated": "गणना किए गए महीने"
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -1185,7 +1202,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Sebagian data asli lokal tidak tersedia. Menampilkan data lain yang masih dapat dibaca."
+    "partial_archive": "Sebagian data asli lokal tidak tersedia. Menampilkan data lain yang masih dapat dibaca.",
+    "enumerated": "Bulan yang terdata"
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -1251,7 +1269,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "ข้อมูลต้นฉบับในเครื่องบางส่วนไม่พร้อมใช้งาน กำลังแสดงข้อมูลที่ยังอ่านได้"
+    "partial_archive": "ข้อมูลต้นฉบับในเครื่องบางส่วนไม่พร้อมใช้งาน กำลังแสดงข้อมูลที่ยังอ่านได้",
+    "enumerated": "เดือนที่แจกแจงแล้ว"
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -1317,7 +1336,8 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "Một số dữ liệu gốc cục bộ không khả dụng. Đang hiển thị dữ liệu còn đọc được."
+    "partial_archive": "Một số dữ liệu gốc cục bộ không khả dụng. Đang hiển thị dữ liệu còn đọc được.",
+    "enumerated": "Tháng đã liệt kê"
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -1383,6 +1403,7 @@ export const LABELS = {
     "pause_points": "Pause points",
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
-    "partial_archive": "بعض البيانات الأصلية المحلية غير متاحة. يتم عرض البيانات المتبقية القابلة للقراءة."
+    "partial_archive": "بعض البيانات الأصلية المحلية غير متاحة. يتم عرض البيانات المتبقية القابلة للقراءة.",
+    "enumerated": "الأشهر المحصورة"
   }
 };

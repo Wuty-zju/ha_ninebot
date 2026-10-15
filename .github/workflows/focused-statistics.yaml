@@ -5,6 +5,8 @@ on:
       - 'custom_components/ninebot/*statistics*.py'
       - 'custom_components/ninebot/ride_archive.py'
       - 'custom_components/ninebot/history_references.py'
+      - 'custom_components/ninebot/month_enumeration.py'
+      - 'custom_components/ninebot/archive_browse.py'
       - 'custom_components/ninebot/membership_recovery.py'
       - 'custom_components/ninebot/recorded_actions.py'
       - 'custom_components/ninebot/ride_models.py'

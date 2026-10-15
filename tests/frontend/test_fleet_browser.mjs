@@ -137,3 +137,16 @@ test('partial archive status is retained without keeping raw context or payloads
   assert.equal(detail.local_partial, true);
   assert.ok(!JSON.stringify(detail).includes('must-not-retain'));
 });
+
+
+test('enumeration months remain vehicle-scoped and mixed older backends stay unknown', async () => {
+  const supported = setup(() => ({ ...page(null), coverage: {
+    ...page(null).coverage, enumerated_months: ['202609'] } }));
+  await tick();
+  assert.deepEqual(supported.browser.page.coverage.enumerated_months,
+    ['device-a:202609', 'device-b:202609']);
+  const mixed = setup(request => request.service_data.device_id === 'device-a' ?
+    ({ ...page(null), coverage: { ...page(null).coverage, enumerated_months: ['202609'] } }) : page(null));
+  await tick();
+  assert.equal(mixed.browser.page.coverage.enumerated_months, undefined);
+});

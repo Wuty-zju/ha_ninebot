@@ -15,6 +15,7 @@ from .archive_timeline import (
     current_selection,
     valid_timed_ride,
 )
+from .month_enumeration import RecordedEnumeration, recorded_enumeration
 
 
 class RecordedCursorMismatch(Exception):
@@ -40,6 +41,7 @@ class RecordedMonth:
     list_complete: bool | None
     reported_count: int | None
     returned_count: int
+    enumeration: RecordedEnumeration | None = None
 
 
 @dataclass(frozen=True)
@@ -152,6 +154,7 @@ def recorded_page(
                 summary.list_complete,
                 summary.ride_count,
                 summary.returned_count,
+                recorded_enumeration(db, vehicle, month, observed, summary.ride_count, as_of),
             )
         )
     ids = tuple(row.ride.ride_id for row in records if row.ride.ride_id is not None)

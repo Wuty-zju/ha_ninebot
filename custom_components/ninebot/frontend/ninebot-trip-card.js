@@ -209,7 +209,8 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     if (page) {
       const coverage = page.coverage;
       card.append(element('p', `${labels.coverage} · ${labels.missing}: ${coverage?.missing_months?.length ?? '—'} · ` +
-        `${labels.partial}: ${coverage?.partial_months?.length ?? '—'} · ${labels.unknown}: ${coverage?.unknown_months?.length ?? '—'}`, 'note'));
+        `${labels.partial}: ${coverage?.partial_months?.length ?? '—'} · ${labels.unknown}: ${coverage?.unknown_months?.length ?? '—'} · ` +
+        `${labels.enumerated}: ${coverage?.enumerated_months?.length ?? '—'}`, 'note'));
       if (!page.rides.length) card.append(element('p', labels.empty));
       for (const ride of page.rides) {
         const section = element('details'), summary = element('summary');
