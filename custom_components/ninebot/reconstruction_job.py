@@ -17,7 +17,7 @@ from .payload_inventory import revision as raw_revision
 from .travel import opaque_id
 
 PREFIX = "local_reconstruction:"
-CONTRACT = 2
+CONTRACT = 3
 MAX_INTEGER = 2**63 - 1
 STATES = {
     "pending_backup",
@@ -102,7 +102,7 @@ def restored(value: str) -> ReconstructionJob:
         or type(data["pending_repaired"]) is not bool
         or (data["pending_repaired"] and not data["searching"])
         or type(data["contract"]) is not int
-        or data["contract"] not in {1, CONTRACT}
+        or data["contract"] not in {1, 2, CONTRACT}
         or data["state"] not in STATES
         or data["repaired"] + data["blocked"] > data["checked"]
         or data["corrupt"] > data["blocked"]

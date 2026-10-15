@@ -14,9 +14,11 @@ if TYPE_CHECKING:
 
 def public(job: ReconstructionJob | None) -> dict:
     return {
-        "contract": "local_scalar_quality_reconstruction_v2"
-        if job and job.contract == 2
-        else "local_scalar_reconstruction_v1",
+        "contract": {
+            1: "local_scalar_reconstruction_v1",
+            2: "local_scalar_quality_reconstruction_v2",
+            3: "local_scalar_quality_membership_reconstruction_v3",
+        }.get(job.contract if job else 1),
         "checker_contract": job.contract if job else None,
         "scope": "captured_local_details",
         "state": job.state if job else "not_started",

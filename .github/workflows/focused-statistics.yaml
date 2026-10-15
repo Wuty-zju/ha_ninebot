@@ -4,6 +4,7 @@ on:
     paths:
       - 'custom_components/ninebot/*statistics*.py'
       - 'custom_components/ninebot/ride_archive.py'
+      - 'custom_components/ninebot/membership_recovery.py'
       - 'custom_components/ninebot/recorded_actions.py'
       - 'custom_components/ninebot/ride_models.py'
       - 'custom_components/ninebot/detail_codec.py'
