@@ -40,6 +40,7 @@ try {
   });
   await page.goto(origin);
   await page.waitForFunction(() => window.fixtureCard?.browser.page?.rides.length === 2);
+  assert.equal(await page.getByText('已枚举月份: 2', { exact: false }).count(), 1);
   for (const name of ['Synthetic A', 'Synthetic B']) {
     await page.locator('ninebot-trip-card summary').filter({ hasText: name }).click();
     await page.getByRole('button', { name: '显示已保存轨迹', exact: true, disabled: false }).click();
