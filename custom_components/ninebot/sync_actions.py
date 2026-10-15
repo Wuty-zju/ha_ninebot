@@ -144,13 +144,18 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         elif baseline is not None and not baseline.discovery_complete:
             performed = await runner.async_step((sn,), now, budget)
         else:
-            months = call.data.get("months", (month_at(now),))
-            if await archive.async_background_budget(sn, now, budget, guard=runner.guard(sn)):
-                await co.async_query_month(
-                    sn, months[0], priority=Priority.INTERACTIVE, refresh=True
-                )
-                performed = True
-            await co.preservation.incremental.async_seed((sn,), dt_util.utcnow())
+            month = month_at(now)
+            active = await archive.async_active_history_runs(sn)
+            if any(run.start_month == month and not run.discovery_complete for run in active):
+                # Join a pending/retrying page run rather than fetching the same serve window.
+                performed = await co.preservation.incremental.async_step((sn,), now, budget)
+            else:
+                if await archive.async_background_budget(sn, now, budget, guard=runner.guard(sn)):
+                    await co.async_query_month(
+                        sn, month, priority=Priority.INTERACTIVE, refresh=True
+                    )
+                    performed = True
+                await co.preservation.incremental.async_seed((sn,), dt_util.utcnow(), manual=True)
     if operation in {"pause", "resume"}:
         await runner.async_pause(sn, operation == "pause")
     await co.preservation.async_refresh_progress((sn,), dt_util.utcnow())

@@ -460,3 +460,52 @@ async def test_local_verification_actions_do_not_query_cloud_or_change_wire_budg
     app_client.async_get_travel.assert_not_awaited()
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
+
+
+async def test_manual_default_sync_joins_current_incremental_run_without_repeating_serve_window(
+    hass, entry, app_client, sync_device
+):
+    from unittest.mock import AsyncMock
+
+    from custom_components.ninebot.history_plan import HistoryPlan
+    from custom_components.ninebot.raw import Endpoint, build_record
+    from custom_components.ninebot.ride_archive import vehicle_key
+
+    co = entry.runtime_data.coordinator
+    with patch.object(hass.config_entries, "async_reload", AsyncMock(return_value=True)):
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, "preserve_history": True, "auto_history_sync": False}
+        )
+        await hass.async_block_till_done()
+    archive = co.statistics.archive
+    baseline = HistoryPlan.create("c" * 32, vehicle_key(SN), "202609", "202609", NOW.isoformat())
+    await archive.async_set_history_plan(SN, baseline, None, guard=lambda: True)
+    claimed = await archive.async_claim_history_page(SN, NOW, 30, guard=lambda: True)
+    await archive.async_accept_history_page(
+        SN,
+        claimed,
+        build_record(
+            Endpoint.TRAVEL,
+            {"times": 0, "list": []},
+            NOW,
+            "202609",
+            backend_version="0.1.7",
+            endpoint_version=baseline.provider,
+        ),
+        guard=lambda: True,
+    )
+    run = await archive.async_schedule_history_run(SN, "202610", NOW, guard=lambda: True)
+    with (
+        patch.object(
+            co.preservation.incremental, "async_step", AsyncMock(return_value=False)
+        ) as advance,
+        patch.object(archive, "async_background_budget", AsyncMock(return_value=True)) as reserve,
+        patch.object(co, "async_query_month", AsyncMock()) as window,
+    ):
+        await call(hass, sync_device, operation="synchronize")
+        await call(hass, sync_device, operation="synchronize")
+        assert advance.await_count == 2
+        reserve.assert_not_awaited()
+        window.assert_not_awaited()
+    assert [item.plan_id for item in await archive.async_active_history_runs(SN)] == [run.plan_id]
+    app_client.async_control.assert_not_awaited()

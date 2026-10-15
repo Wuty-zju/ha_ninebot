@@ -183,3 +183,6 @@ When schema-5 startup fails only because referenced detail originals are missing
 ### Recent ride follow-up
 
 Recently saved details may still be incomplete. Background preservation can compare another response after ten minutes; changing scalars or detail content resets the stable-observation count. Unchanged recent details settle after two matching observations; older unchanged history remains cached. This is a bounded local follow-up policy, not a claim that the cloud marks a ride final. Account request budgets, pause and restart continuity still apply.
+
+
+Manual history requests are scoped to the selected vehicle even when automatic synchronization is off. Default sync joins an existing current-month page run; an earlier month waiting for retry does not block another due month. Explicit old-month selections remain separately scheduled priority work. All requests continue to share the account budget.

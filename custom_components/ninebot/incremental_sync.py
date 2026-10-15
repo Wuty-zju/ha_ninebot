@@ -19,15 +19,17 @@ class IncrementalSync:
     def __init__(self, co: "NinebotCoordinator") -> None:
         self.co = co
 
-    async def async_seed(self, vehicles: tuple[str, ...], now: datetime) -> None:
+    async def async_seed(
+        self, vehicles: tuple[str, ...], now: datetime, *, manual: bool = False
+    ) -> None:
         runner, archive = self.co.preservation.bootstrap, self.co.statistics.archive
-        if not runner.enabled():
-            return
+        if not runner.enabled() and not manual:
+            return  # Finish already registered manual runs without enabling future automatic work.
         local = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE))
         current = local.strftime("%Y%m")
         months = (current, previous_month(current)) if local.day <= 7 else (current,)
         for sn in vehicles:
-            if sn in runner.paused or not self.co.fresh(sn, "profile"):
+            if not runner.enabled(sn) or sn in runner.paused or not self.co.fresh(sn, "profile"):
                 continue
             baseline = await archive.async_history_plan(sn)
             if baseline is None:

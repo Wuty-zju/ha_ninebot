@@ -280,3 +280,54 @@ async def test_local_bad_object_backfill_does_not_block_other_vehicle_seed(conte
     assert "other-vehicle" in runner.snapshots and not calls
     assert await archive.async_history_plan(SN) is not None
     assert await archive.async_history_plan("other-vehicle") is not None
+
+
+async def test_manual_permission_seeds_incremental_only_for_requested_vehicle_with_auto_off(
+    context,
+):
+    from custom_components.ninebot.incremental_sync import IncrementalSync
+
+    co, archive, clock, calls = context
+    co.config_entry.options["auto_history_sync"] = False
+    co.local_vehicle_available = lambda sn: True
+    co._ownership["other"] = 1
+    runner = HistoryBootstrap(co)
+    co.preservation = SimpleNamespace(bootstrap=runner)
+    await runner.async_request(SN)
+    await runner.async_seed((SN, "other"), NOW)
+    baseline = await archive.async_history_plan(SN)
+    # Current first-baseline month is already queued and is not duplicated.
+    with patch.object(archive, "async_reconcile_history_month", AsyncMock()) as reconcile:
+        await IncrementalSync(co).async_seed((SN, "other"), NOW)
+        reconcile.assert_not_awaited()
+        later = datetime(2026, 11, 2, tzinfo=UTC)
+        with patch.object(archive, "async_history_plan", AsyncMock(return_value=baseline)):
+            await IncrementalSync(co).async_seed((SN, "other"), later)
+            reconcile.assert_not_awaited()  # Auto off must not seed future background work.
+            await IncrementalSync(co).async_seed((SN, "other"), later, manual=True)
+        assert [call.args[:2] for call in reconcile.await_args_list] == [(SN, "202611")]
+    assert not runner.enabled() and runner.enabled(SN) and not runner.enabled("other")
+    assert not calls
+
+
+async def test_waiting_month_does_not_block_other_due_month_and_shared_budget_still_applies(
+    context,
+):
+    co, archive, clock, calls = context
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    waiting = await archive.async_schedule_history_run(SN, "202609", NOW, guard=lambda: True)
+    claimed = await archive.async_claim_history_page(
+        SN, NOW, 60, guard=lambda: True, plan_id=waiting.plan_id
+    )
+    await archive.async_wait_history_page(claimed, NOW, "connection", 3600, guard=lambda: True)
+    ready = await archive.async_schedule_history_run(
+        SN, "202608", NOW + timedelta(seconds=1), guard=lambda: True
+    )
+    clock[0] += timedelta(seconds=61)
+    assert await runner.async_step((SN,), clock[0], 60, incremental=True)
+    assert calls == [(SN, "202608", 1)]
+    assert (await archive.async_history_run(SN, waiting.plan_id)).state is HistoryState.WAITING
+    assert (await archive.async_history_run(SN, ready.plan_id)).discovery_complete
+    assert not await runner.async_step((SN,), clock[0], 60, incremental=True)
+    assert len(calls) == 1
