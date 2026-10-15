@@ -434,6 +434,13 @@ class RideArchive:
 
                 reconstruction_scope(key.removeprefix("local_reconstruction:"))
                 restored_reconstruction(value)
+            elif key.startswith("page_reference_audit:"):
+                from .page_reference_audit import key as reference_key
+                from .page_reference_audit import restored as reference_restored
+
+                if reference_key(key.removeprefix("page_reference_audit:")) != key:
+                    raise ValueError("Invalid page reference scope")
+                reference_restored(value)
             elif key.startswith(("history_audit:", "history_audit_fault:")):
                 from .archive_audit import validate_meta
 
@@ -2471,7 +2478,14 @@ class RideArchive:
 
         def read() -> tuple[AuditPlan | None, int, int, ObjectSummary]:
             db, vehicle = self._db(), vehicle_key(sn)
-            return get(db, vehicle), self._revision(), inventory_revision(db), summary(db, vehicle)
+            from .page_reference_audit import summary as reference_summary
+
+            plan, revision, inventory = get(db, vehicle), self._revision(), inventory_revision(db)
+            checks = replace(
+                summary(db, vehicle),
+                page_references=reference_summary(db, vehicle, plan, revision, inventory),
+            )
+            return plan, revision, inventory, checks
 
         return await self._run(read)
 

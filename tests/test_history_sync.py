@@ -450,6 +450,10 @@ async def test_local_verification_actions_do_not_query_cloud_or_change_wire_budg
     assert result["cloud_requests"] == 0
     assert co.preservation.audit.views[SN].checked == result["checked"]
     assert result["normalization_and_cloud_coverage_verified"] is False
+    assert result["object_checks"]["references_verified"] is False
+    assert result["page_reference_checks"]["all_references_verified"] is False
+    assert result["page_reference_checks"]["total"] == 0
+    assert result["page_reference_checks"]["captured_links_verified"] is False
     assert "SyntheticSN" not in json.dumps(result)
     status = await call(hass, sync_device, operation="verify_status")
     assert status["checked"] == result["checked"]
