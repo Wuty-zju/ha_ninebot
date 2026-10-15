@@ -34,6 +34,7 @@ on:
       - 'custom_components/ninebot/coordinator.py'
       - 'custom_components/ninebot/config_flow.py'
       - 'custom_components/ninebot/preservation.py'
+      - 'custom_components/ninebot/detail_followup.py'
       - 'custom_components/ninebot/ride_archive.py'
       - 'custom_components/ninebot/detail_codec.py'
       - 'tests/test_native_history.py'

@@ -30,6 +30,12 @@ CONF_BUDGET = "history_requests_per_hour"
 DEFAULT_BUDGET = 30
 
 
+def mutable_detail(ride: Ride, now: datetime) -> bool:
+    """Local follow-up policy, not an upstream finality claim."""
+    anchor = ride.ended_at or ride.started_at
+    return anchor is not None and (now - anchor).total_seconds() < 86400
+
+
 def fingerprint(ride: Ride) -> str:
     raw = ride_data(ride)
     content = {key: raw[key] for key in ("detail_id", *RIDE_VALUES)}
@@ -213,9 +219,10 @@ class HistoryPreservation:
                 stored = await archive.async_private_detail(sn, task.ride.ride_id or "", guard=owns)
                 if stored is None or stored.latest is None:
                     raise HomeAssistantError("Detail not retained")
-                ended = ride.ended_at
-                mutable = ended is not None and (now - ended).total_seconds() < 86400
-                again = mutable and stored.latest.payload().get("is_show_simple_point") is not True
+                again = (
+                    mutable_detail(ride, now)
+                    and stored.latest.payload().get("is_show_simple_point") is not True
+                )
                 await archive.async_preservation_finish(
                     sn,
                     task,
