@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b74
+
+- Continue vehicle-scoped manual incremental work when automatic synchronization is disabled.
+- Skip months waiting for retry so another due month can use the shared history budget.
+- Join an existing current-month page run on repeated default sync requests instead of fetching another serve window.
+
+
 ## 2.0.0b73
 
 - Follow up recently saved ride details instead of treating an early response as final.

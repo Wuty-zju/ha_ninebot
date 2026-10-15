@@ -113,7 +113,7 @@ class HistoryBootstrap:
             if not self.enabled(sn) or sn in self.paused or not co.fresh(sn, "profile"):
                 continue
             owns = self.guard(sn)
-            identity = None
+            claimed = None
             if incremental:
                 runs = await archive.async_active_history_runs(sn)
                 for run in runs:
@@ -132,13 +132,14 @@ class HistoryBootstrap:
                             saved,
                             await archive.async_history_health(sn, run.plan_id),
                         )
-                    elif identity is None:
-                        identity = run.plan_id
-                if identity is None:
-                    continue
-            claimed = await archive.async_claim_history_page(
-                sn, now, budget, guard=owns, plan_id=identity
-            )
+                    elif claimed is None:
+                        claimed = await archive.async_claim_history_page(
+                            sn, now, budget, guard=owns, plan_id=run.plan_id
+                        )
+                        # A not-yet-due retry/lease must not block another month.
+                        # Once claimed, keep checking completed local runs but no more claims.
+            else:
+                claimed = await archive.async_claim_history_page(sn, now, budget, guard=owns)
             if claimed is None:
                 continue
             assert claimed.next_month is not None
