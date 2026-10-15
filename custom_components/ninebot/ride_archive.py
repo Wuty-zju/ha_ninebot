@@ -405,7 +405,11 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("preservation_detail:"):
+            if key.startswith("history_reuse:"):
+                from .history_reuse import check as check_reuse
+
+                check_reuse(db, key, value)
+            elif key.startswith("preservation_detail:"):
                 from .detail_followup import check as check_followup
 
                 check_followup(key, value)
@@ -2794,6 +2798,22 @@ class RideArchive:
                 raise ArchiveError(ArchiveFailure.BUSY) from None
 
         await self._run(commit, guard=guard)
+
+    async def async_reuse_history_month(
+        self, sn: str, now: datetime, *, guard: Callable[[], bool]
+    ) -> bool:
+        from .history_reuse import reuse
+
+        utc_string(now)
+
+        def commit() -> bool:
+            db = self._db(write=True)
+            with db:
+                if self._history_paused(vehicle_key(sn)):
+                    return False
+                return reuse(db, vehicle_key(sn), now)
+
+        return await self._run(commit, guard=guard)
 
     async def async_claim_history_page(
         self,

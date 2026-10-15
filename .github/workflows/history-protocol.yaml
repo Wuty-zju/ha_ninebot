@@ -27,6 +27,7 @@ on:
       - 'tests/test_history_entities.py'
       - 'tests/test_history_progress.py'
       - 'custom_components/ninebot/history_store.py'
+      - 'custom_components/ninebot/history_reuse.py'
       - 'custom_components/ninebot/incremental_sync.py'
       - 'custom_components/ninebot/incremental_runs.py'
       - 'custom_components/ninebot/detail_health.py'
