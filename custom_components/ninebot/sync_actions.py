@@ -155,7 +155,7 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
                         sn, month, priority=Priority.INTERACTIVE, refresh=True
                     )
                     performed = True
-                await co.preservation.incremental.async_seed((sn,), dt_util.utcnow())
+                await co.preservation.incremental.async_seed((sn,), dt_util.utcnow(), manual=True)
     if operation in {"pause", "resume"}:
         await runner.async_pause(sn, operation == "pause")
     await co.preservation.async_refresh_progress((sn,), dt_util.utcnow())

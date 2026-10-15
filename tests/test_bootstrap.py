@@ -303,6 +303,8 @@ async def test_manual_permission_seeds_incremental_only_for_requested_vehicle_wi
         later = datetime(2026, 11, 2, tzinfo=UTC)
         with patch.object(archive, "async_history_plan", AsyncMock(return_value=baseline)):
             await IncrementalSync(co).async_seed((SN, "other"), later)
+            reconcile.assert_not_awaited()  # Auto off must not seed future background work.
+            await IncrementalSync(co).async_seed((SN, "other"), later, manual=True)
         assert [call.args[:2] for call in reconcile.await_args_list] == [(SN, "202611")]
     assert not runner.enabled() and runner.enabled(SN) and not runner.enabled("other")
     assert not calls
