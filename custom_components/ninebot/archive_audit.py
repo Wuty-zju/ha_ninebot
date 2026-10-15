@@ -14,8 +14,9 @@ from datetime import datetime
 from . import page_reference_audit as page_references
 from .archive_codec import decoded, encoded, stamp
 from .const import MAX_RESPONSE_BYTES
-from .object_checks import ObjectSummary, sources, summary, verify
+from .object_checks import ObjectSummary, StoredObject, sources, summary, verify
 from .payload_inventory import revision as inventory_revision
+from .raw import RawRecord
 
 PREFIX = "history_audit:"
 FAULT_PREFIX = "history_audit_fault:"
@@ -229,14 +230,15 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
             key = fault_key(vehicle, plan.phase, row.ordinal, token)
             if row.kind == "page" and check_pages:
                 outcomes: list[str] = []
-                reason = verify(
-                    db,
-                    row,
-                    now,
-                    on_page=lambda record, obj=row, results=outcomes: results.append(
-                        page_references.assess(db, obj, record)
-                    ),
-                )
+
+                def check_page(
+                    record: RawRecord,
+                    obj: StoredObject = row,
+                    results: list[str] = outcomes,
+                ) -> None:
+                    results.append(page_references.assess(db, obj, record))
+
+                reason = verify(db, row, now, on_page=check_page)
                 page_references.observe(
                     db, vehicle, plan, row, outcomes[0] if outcomes else "unverifiable", now
                 )
