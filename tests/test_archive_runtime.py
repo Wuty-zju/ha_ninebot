@@ -387,7 +387,8 @@ async def test_projection_keeps_month_metrics_and_latest_on_one_revision_during_
         await store.async_refresh_projection()
         assert store._projection_revisions[SN] == timeline.revision
         assert store.latest_ride(SN).ride.ride_id == "r-1"
-        day = day_summary(store, SN, datetime(2026, 9, 20).date(), NOW)
+        # The new receipt is NOW+1; querying it as of NOW is correctly unobserved.
+        day = day_summary(store, SN, datetime(2026, 9, 20).date(), NOW + timedelta(seconds=1))
         assert (day.ride_count, day.duration_s, day.distance_km, day.energy_wh) == (2, 120, 2, 100)
         published = store._projection, store._latest, store._projection_revisions
         assert await store.archive.async_record_month(SN, many_rides(3), NOW + timedelta(seconds=2))
