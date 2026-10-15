@@ -174,6 +174,12 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         "scan_progress": view.scan_percent if view else None,
         "detail_progress": view.detail_percent if view else None,
         "last_success": view.last_success.isoformat() if view and view.last_success else None,
+        "next_request_at": view.next_request_at.isoformat()
+        if view and view.next_request_at
+        else None,
+        "retry_at": view.retry_at.isoformat() if view and view.retry_at else None,
+        "sync_phase": view.phase if view else None,
+        "last_completed": view.last_completed.isoformat() if view and view.last_completed else None,
         "operation_performed": performed,
         "state": "paused" if paused else plan.state.value if plan else "not_started",
         "scanned_months": plan.scanned_months if plan else None,

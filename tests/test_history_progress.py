@@ -89,3 +89,34 @@ def test_budget_retry_and_incremental_are_distinct_from_success():
     gaps = replace(complete, state=HistoryState.WITH_GAPS, verified_months=1, gap_months=1)
     assert view(HistoryEvidence(gaps, HEALTH)).state == "with_gaps"
     assert view(HistoryEvidence(gaps, HEALTH)).scan_percent == 50
+
+
+def test_progress_exposes_local_deadlines_phase_and_completed_separately():
+    budget = NOW + timedelta(seconds=30)
+    retry = NOW + timedelta(seconds=90)
+    plan = replace(
+        PLAN, state=HistoryState.WAITING, reason="connection", retry_at=retry.isoformat()
+    )
+    value = view(
+        HistoryEvidence(plan, HEALTH, last_success=NOW, budget_at=budget, multi_page_months=1)
+    )
+    assert value.state == "waiting_retry"
+    assert value.next_request_at == value.retry_at == retry
+    assert value.phase == "discovering" and value.multi_page_months == 1
+    assert value.last_success == NOW and value.last_completed is None
+    assert (
+        view(HistoryEvidence(plan, HEALTH, budget_at=budget), paused=True).next_request_at is None
+    )
+
+
+def test_active_request_is_visible_instead_of_its_reserved_future_budget():
+    value = project_progress(
+        HistoryEvidence(PLAN, HEALTH, budget_at=NOW + timedelta(seconds=60)),
+        NOW,
+        enabled=True,
+        paused=False,
+        authenticated=True,
+        active_phase="preserving",
+    )
+    assert value.state == value.phase == "preserving"
+    assert value.next_request_at == NOW + timedelta(seconds=60)

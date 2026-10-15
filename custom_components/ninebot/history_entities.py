@@ -120,5 +120,10 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
             "simplified_tracks": value.simplified,
             "discovery_complete": value.discovery_complete,
             "active_months": value.active_months,
-            "real_cloud_pagination_verified": False,
+            "next_request_at": value.next_request_at.isoformat() if value.next_request_at else None,
+            "retry_at": value.retry_at.isoformat() if value.retry_at else None,
+            "sync_phase": value.phase,
+            "last_completed": value.last_completed.isoformat() if value.last_completed else None,
+            "recorded_multi_page_months": value.multi_page_months,
+            "real_cloud_pagination_verified": None,
         }

@@ -186,3 +186,8 @@ Recently saved details may still be incomplete. Background preservation can comp
 
 
 Manual history requests are scoped to the selected vehicle even when automatic synchronization is off. Default sync joins an existing current-month page run; an earlier month waiting for retry does not block another due month. Explicit old-month selections remain separately scheduled priority work. All requests continue to share the account budget.
+
+
+### History progress and local rate limiting
+
+The history request budget is shared by the account, not an application for upstream permission. Progress exposes `next_request_at`, `retry_at`, and `sync_phase`; a request in flight publishes its active phase. “Last successful sync” updates after an accepted page/detail commit, while `last_completed` records full-task completion. Recorded stable-total multi-page month counts describe saved evidence; they do not certify the upstream history boundary or every model. The legacy `real_cloud_pagination_verified` attribute is unknown rather than hardcoded false.

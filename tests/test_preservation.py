@@ -362,3 +362,95 @@ def test_recent_ride_without_end_remains_eligible_for_followup():
     ride = parse_ride({"travel_id": "open", "start_time": int(NOW.timestamp()) - 60}, "202609")
     assert mutable_detail(ride, NOW)
     assert not mutable_detail(ride, NOW + timedelta(days=2))
+
+
+async def test_detail_uses_current_clock_after_seed_and_publishes_active_phase(
+    tmp_path, monkeypatch
+):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from custom_components.ninebot.preservation import HistoryPreservation
+    from custom_components.ninebot.raw import Endpoint, RawStore, build_record
+
+    archive = RideArchive(tmp_path / "clock.sqlite3", OWNER)
+    await archive.async_open()
+    clock = [NOW]
+    monkeypatch.setattr("custom_components.ninebot.preservation.dt_util.utcnow", lambda: clock[0])
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        deadline = NOW + timedelta(milliseconds=200)
+
+        def budget():
+            with archive._db() as db:
+                db.execute(
+                    "INSERT INTO meta VALUES ('preservation_budget',?)",
+                    (str(deadline.timestamp()),),
+                )
+
+        await archive._run(budget)
+        # This is the old detail decision: timer timestamp is just before the gate.
+        assert await archive.async_preservation_claim(SN, NOW, 60, guard=lambda: True) is None
+
+        async def executor(fn, *args):
+            return fn(*args)
+
+        async def save(sn, ride, received, guard, raw=None):
+            await archive.async_record_detail(sn, ride, received, guard=guard, raw=raw)
+
+        co = SimpleNamespace(
+            config_entry=SimpleNamespace(
+                options={
+                    "preserve_history": True,
+                    "auto_history_sync": True,
+                    "history_requests_per_hour": 60,
+                }
+            ),
+            _stopping=False,
+            _generation=1,
+            _ownership={SN: 1},
+            data={SN: object()},
+            local_vehicle_available=lambda sn: sn == SN,
+            fresh=lambda sn, group: True,
+            _authenticated=True,
+            statistics=SimpleNamespace(
+                archive=archive,
+                writable=True,
+                async_record_detail=save,
+                archive_ready=True,
+                error=None,
+                record_error=Mock(),
+                _notify_change=Mock(),
+            ),
+            raw=RawStore(),
+            hass=SimpleNamespace(async_add_executor_job=executor),
+        )
+        worker = HistoryPreservation(co)
+        co.preservation = worker
+
+        async def seed(*args):
+            clock[0] = NOW + timedelta(milliseconds=300)
+
+        worker.bootstrap.async_seed = seed
+        worker.incremental.async_seed = AsyncMock()
+        worker.months.async_seed_recent = AsyncMock()
+        worker._resume_months = AsyncMock(return_value=True)
+
+        async def query(*args, **kwargs):
+            assert worker.progress[SN].state == "preserving"
+            return build_record(
+                Endpoint.TRIP_DETAIL,
+                {"mileages": 1, "duration": 600, "trail": "120,30,1,1;120.1,30.1,2,2"},
+                clock[0],
+                "202609",
+            )
+
+        co.async_query_detail = AsyncMock(side_effect=query)
+        await worker._step(NOW)
+        co.async_query_detail.assert_awaited_once()
+        worker._resume_months.assert_not_awaited()
+        assert worker._active_query is None
+        evidence = await archive.async_history_evidence(SN, guard=lambda: True)
+        assert evidence.last_success == clock[0] and evidence.last_completed is None
+    finally:
+        await archive.async_close()

@@ -62,7 +62,7 @@ class HistoryPreservation:
 
         self.co = co
         self.months = SparseMonthSync(co)
-        self.bootstrap = HistoryBootstrap(co)
+        self.bootstrap = HistoryBootstrap(co, on_query=self._async_query_phase)
         self.audit = BackgroundAudit(co)
         self.reconstruction = BackgroundReconstruction(co)
         self.incremental = IncrementalSync(co)
@@ -71,6 +71,7 @@ class HistoryPreservation:
         self.status = "disabled"
         self.progress: dict[str, HistoryProgress] = {}
         self._progress_lock = asyncio.Lock()
+        self._active_query: tuple[str, str] | None = None
 
     def start(self) -> None:
         entry = self.co.config_entry
@@ -94,7 +95,7 @@ class HistoryPreservation:
             self.status = "waiting"  # Ordinary failures do not generate repeated logs.
         finally:
             try:
-                await self.async_refresh_progress(tuple(self.co.data), now)
+                await self.async_refresh_progress(tuple(self.co.data), max(now, dt_util.utcnow()))
                 task = asyncio.current_task()
                 if not self.co._stopping and (task is None or not task.cancelling()):
                     await self.reconstruction.async_step(now)
@@ -103,6 +104,13 @@ class HistoryPreservation:
                 self.co.statistics.record_error(err)
             finally:
                 self._task = None
+
+    async def _async_query_phase(self, sn: str, phase: str | None) -> None:
+        if phase is not None:
+            self._active_query = (sn, phase)
+        elif self._active_query is not None and self._active_query[0] == sn:
+            self._active_query = None
+        await self.async_refresh_progress((sn,), dt_util.utcnow())
 
     async def async_refresh_progress(self, vehicles: tuple[str, ...], now: datetime) -> None:
         """Publish changed cached views after committed work, not from entity properties."""
@@ -124,6 +132,9 @@ class HistoryPreservation:
             value = project_progress(
                 evidence,
                 now,
+                active_phase=self._active_query[1]
+                if self._active_query and self._active_query[0] == sn
+                else None,
                 enabled=self.bootstrap.enabled()
                 or (
                     co.config_entry is not None
@@ -179,11 +190,13 @@ class HistoryPreservation:
                     and vehicle not in self.bootstrap.paused
                 )
 
+            now = max(now, dt_util.utcnow())
             task = await archive.async_preservation_claim(sn, now, budget, guard=owns)
             if task is None:
                 continue
             self.status = "querying"
             try:
+                await self._async_query_phase(sn, "preserving")
                 # Missing detail can reuse an unpersisted response after a storage interruption.
                 cached = co.raw.get(
                     Endpoint.TRIP_DETAIL,
@@ -255,6 +268,8 @@ class HistoryPreservation:
                         guard=owns,
                     )
                 self.status = "waiting"
+            finally:
+                await self._async_query_phase(sn, None)
             return  # At most one logical endpoint operation per tick/account budget.
         if not await self._resume_months(vehicles, budget):
             self.status = "idle"
