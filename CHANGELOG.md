@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b72
+
+- Recover narrowly scoped missing detail originals at startup only when verified receipts and matching account-local sources prove identity and provenance.
+- Validate a temporary database before publication and preserve the damaged original file bytes; unsupported or incomplete recovery leaves the original untouched.
+
+
 ## 2.0.0b71
 
 - Persist per-role recovery-source search cursors instead of repeatedly inspecting only the newest eight copies. Inspect at most eight source copies per ride batch; continue through a captured managed-name interval across restart, pause and ordinary background ticks.

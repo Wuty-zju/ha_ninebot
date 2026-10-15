@@ -377,6 +377,7 @@ class RideArchive:
         version: int = SCHEMA_VERSION,
         *,
         allow_time_index_drift: bool = False,
+        allow_missing_detail_payloads: bool = False,
     ) -> None:
         if db.execute("PRAGMA user_version").fetchone()[0] != version:
             raise ArchiveError(ArchiveFailure.SCHEMA)
@@ -525,11 +526,17 @@ class RideArchive:
             raise ValueError("Invalid month task count")
         if "sync_job" in meta:
             restored_job(decoded(meta["sync_job"]))
-        if (
-            db.execute("PRAGMA quick_check").fetchone()[0] != "ok"
-            or db.execute("PRAGMA foreign_key_check").fetchone()
-        ):
+        if db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise ArchiveError(ArchiveFailure.SCHEMA)
+        failures = db.execute("PRAGMA foreign_key_check")
+        for table, _, parent, _ in failures:
+            if not (
+                allow_missing_detail_payloads
+                and version == SCHEMA_VERSION
+                and table == "details"
+                and parent == "detail_payloads"
+            ):
+                raise ArchiveError(ArchiveFailure.SCHEMA)
         # Read-only validation before any PRAGMA writes/migration. Disk facts
         # must pass the same strict codec as new observations.
         for vehicle, profile, observed, present in db.execute("SELECT * FROM vehicles"):
@@ -638,9 +645,28 @@ class RideArchive:
                 version = probe.execute("PRAGMA user_version").fetchone()[0]
                 if version not in (1, 2, 3, 4, SCHEMA_VERSION):
                     raise ArchiveError(ArchiveFailure.SCHEMA)
-                self._check(probe, version)
+                missing_details = False
+                try:
+                    self._check(probe, version)
+                except ArchiveError as err:
+                    if err.kind is not ArchiveFailure.SCHEMA or version != SCHEMA_VERSION:
+                        raise
+                    # Every other structural, owner and normalized check remains strict.
+                    self._check(probe, version, allow_missing_detail_payloads=True)
+                    missing_details = True
             finally:
                 probe.close()
+            if missing_details:
+                from .startup_recovery import recover
+
+                if not recover(
+                    self.path,
+                    self.owner,
+                    self._check,
+                    minimum_free=MIN_FREE_BYTES,
+                    max_bytes=self.max_bytes,
+                ):
+                    raise ArchiveError(ArchiveFailure.SCHEMA)
             if version < SCHEMA_VERSION:
                 self._migrate(version)
         else:

@@ -173,3 +173,8 @@ pending; `searching_sources`, `source_copy_checks` and `pending_role_recovery`
 explain progress without exposing file paths or raw data. Previously recovered
 roles stay readable, and final repaired/partial/blocked counts advance once per
 ride after source search finishes.
+
+
+### Missing local detail originals
+
+When schema-5 startup fails only because referenced detail originals are missing, the integration can recover up to eight originals from up to eight managed local recovery copies. Existing verified receipts must match the account, vehicle, ride, digest and source metadata; the entire staged database must pass strict validation. The original file is preserved before atomic publication. This does not repair arbitrary schema/index damage or fetch cloud data; absent proof or unsupported cases retain the original and report a storage error.
