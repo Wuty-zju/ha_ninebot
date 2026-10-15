@@ -514,3 +514,151 @@ async def test_old_checker_checkpoint_not_claimed_as_full_new_quality_scan(tmp_p
         assert resumed.checked == 1  # No fake rewind or duplicate progress.
     finally:
         await archive.async_close()
+
+
+async def test_exact_backup_restores_bad_bytes_preserves_quarantine_and_receipt(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+        before = await archive.async_private_detail(SN, "ride-a")
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+
+        def damage_body():
+            with archive._db() as db:
+                db.execute("UPDATE detail_payloads SET body=?", (b"damaged-original",))
+
+        await archive._run(damage_body)
+        await archive.async_start_history_audit(SN, NOW, guard=lambda: True, restart=True)
+        await archive.async_step_history_audit(SN, NOW, guard=lambda: True)
+        assert (await archive.async_object_checks(SN)).invalid == 1
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        recovered = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert recovered.repaired == 1 and recovered.blocked == recovered.partially_repaired == 0
+        after = await archive.async_private_detail(SN, "ride-a")
+        assert (
+            after.latest_hash == before.latest_hash and after.geometry_hash == before.geometry_hash
+        )
+        assert after.latest.received_at == before.latest.received_at
+        checks = await archive.async_object_checks(SN)
+        assert checks.invalid == 0 and checks.verified >= 1 and checks.quarantined == 1
+        evidence = await archive._run(
+            lambda: (
+                archive._db()
+                .execute(
+                    "SELECT body,body_hash FROM payload_quarantine WHERE kind='detail'"
+                    " AND storage_mode='copied'"
+                )
+                .fetchone()
+            )
+        )
+        assert (
+            evidence[0] == b"damaged-original"
+            and hashlib.sha256(evidence[0]).hexdigest() == evidence[1]
+        )
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("fault", ["owner", "receipt", "bytes"])
+async def test_invalid_copy_cannot_repair_even_when_reference_matches(tmp_path, fault):
+    archive = await seed(tmp_path)
+    try:
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        copy = next(tmp_path.glob("*.recovery-*.sqlite3"))
+        with sqlite3.connect(copy) as db:
+            if fault == "owner":
+                db.execute("UPDATE meta SET value=? WHERE key='owner'", ("f" * 64,))
+            elif fault == "receipt":
+                db.execute(
+                    "UPDATE detail_payloads SET observed=?",
+                    ((NOW + timedelta(seconds=30)).isoformat(),),
+                )
+            else:
+                db.execute("UPDATE detail_payloads SET body=?", (b"wrong-copy",))
+
+        def damage_body():
+            with archive._db() as db:
+                db.execute("UPDATE detail_payloads SET body=?", (b"damaged-original",))
+
+        await archive._run(damage_body)
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        failed = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert failed.repaired == 0 and failed.blocked == failed.corrupt == 1
+        assert (
+            await archive._run(
+                lambda: archive._db().execute("SELECT body FROM detail_payloads").fetchone()[0]
+            )
+            == b"damaged-original"
+        )
+    finally:
+        await archive.async_close()
+
+
+async def test_one_role_recovered_is_partial_not_false_complete(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+        summary = (await archive.async_private_detail(SN, "ride-a")).ride
+        payload = {**ROW, "mileages": 3, "trail": "120,30,1,1", "is_show_simple_point": True}
+        raw = build_record(Endpoint.TRIP_DETAIL, payload, NOW + timedelta(seconds=2), "202610")
+        incoming = merge_detail(summary, parse_ride(payload, "202610", source=Endpoint.TRIP_DETAIL))
+        await archive.async_record_detail(SN, incoming, raw.received_at, raw=raw)
+        before = await archive.async_private_detail(SN, "ride-a")
+        assert before.latest_hash != before.geometry_hash
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        source = next(tmp_path.glob("*.recovery-*.sqlite3"))
+        with sqlite3.connect(source) as db:
+            db.execute("DELETE FROM detail_payloads WHERE hash=?", (before.geometry_hash,))
+
+        def damage_both():
+            with archive._db() as db:
+                db.execute("UPDATE detail_payloads SET body=?", (b"damaged-original",))
+
+        await archive._run(damage_both)
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        partial = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert partial.repaired == 0 and partial.partially_repaired == partial.blocked == 1
+        view = await archive.async_private_detail(SN, "ride-a", allow_partial=True)
+        assert view.latest is not None and view.geometry is None
+        finished = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert finished.state == "with_gaps"
+    finally:
+        await archive.async_close()
+
+
+async def test_restoration_failure_rolls_back_bytes_quarantine_and_checkpoint(
+    tmp_path, monkeypatch
+):
+    from custom_components.ninebot import payload_restore
+
+    archive = await seed(tmp_path)
+    try:
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+
+        def damage_body():
+            with archive._db() as db:
+                db.execute("UPDATE detail_payloads SET body=?", (b"damaged-original",))
+
+        await archive._run(damage_body)
+        await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+        monkeypatch.setattr(payload_restore, "verify", lambda *args: "payload")
+        with pytest.raises(ArchiveError) as error:
+            await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert error.value.kind is ArchiveFailure.OBJECT
+        status = await archive.async_reconstruction_job(SN, "status", NOW, guard=lambda: True)
+        assert status.checked == 0 and status.state == "pending_backup"
+        body, quarantined = await archive._run(
+            lambda: (
+                archive._db().execute("SELECT body FROM detail_payloads").fetchone()[0],
+                archive._db().execute("SELECT count(*) FROM payload_quarantine").fetchone()[0],
+            )
+        )
+        assert body == b"damaged-original" and quarantined == 0
+    finally:
+        await archive.async_close()

@@ -107,3 +107,21 @@ def unpacked(
     if not isinstance(record.payload(), dict):
         raise CorruptPayload("Invalid private detail shape")
     return record
+
+
+def scoped_ride(record: RawRecord, current: Ride) -> Ride:
+    """Reject explicit identity contradictions; retain ID-less query provenance."""
+    from .travel import parse_ride
+
+    if record.query_month != current.query_month:
+        raise CorruptPayload("Private detail month contradiction")
+    parsed = parse_ride(
+        record.payload(), current.query_month, source=Endpoint.TRIP_DETAIL, max_points=1
+    )
+    if (
+        {"conflicting_ride_ids", "conflicting_detail_ids"} & set(parsed.issues)
+        or (parsed.ride_id is not None and parsed.ride_id != current.ride_id)
+        or (parsed.detail_id is not None and parsed.detail_id != current.detail_id)
+    ):
+        raise CorruptPayload("Private detail identity contradiction")
+    return parsed

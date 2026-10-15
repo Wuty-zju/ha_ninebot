@@ -51,7 +51,7 @@ from .archive_timeline import (
     timeline_query,
 )
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
-from .detail_codec import ArchivedDetail, CorruptPayload, packed, unpacked
+from .detail_codec import ArchivedDetail, CorruptPayload, packed, scoped_ride, unpacked
 from .detail_health import HistoryHealth
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
@@ -1312,10 +1312,24 @@ class RideArchive:
                     result, candidate, observed, quality = self._reconstruction_sources(
                         vehicle, ride_id
                     )
+                    recovered = 0
+                    if result.status == "corrupt":
+                        from .payload_restore import restore
+
+                        recovered = restore(db, self.path, self.owner, vehicle, ride_id, now)
+                        if recovered:
+                            result, candidate, observed, quality = self._reconstruction_sources(
+                                vehicle, ride_id
+                            )
                     if result.status == "repairable":
                         self._apply_reconstruction(vehicle, ride_id, candidate, observed, quality)
+                    if result.status == "repairable" or recovered:
                         self._revision(bump=True)
-                        return replace(result, repaired=True)
+                        return replace(
+                            result,
+                            repaired=True,
+                            fields=result.fields + (("payload_bytes",) if recovered else ()),
+                        )
                     return result
 
                 return step(db, vehicle, now, evaluate)
@@ -1400,21 +1414,7 @@ class RideArchive:
                     decoded_record = unpacked(
                         blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]
                     )
-                    scoped = parse_ride(
-                        decoded_record.payload(),
-                        blob[2],
-                        source=Endpoint.TRIP_DETAIL,
-                        max_points=1,
-                    )
-                    if (
-                        {"conflicting_ride_ids", "conflicting_detail_ids"} & set(scoped.issues)
-                        or (scoped.ride_id is not None and scoped.ride_id != ride_id)
-                        or (
-                            scoped.detail_id is not None
-                            and scoped.detail_id != summary[0].detail_id
-                        )
-                    ):
-                        raise CorruptPayload("Private detail identity contradiction")
+                    scoped = scoped_ride(decoded_record, summary[0])
                     decoded_payloads[digest] = decoded_record
                     decoded_qualities[digest] = scoped.track_quality
                 except CorruptPayload:
