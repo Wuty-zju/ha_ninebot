@@ -199,3 +199,6 @@ First discovery can reuse an independently enumerated old month already stored i
 
 
 If an accepted account list no longer contains a known vehicle, history sync status shows **Vehicle missing from account list**. This describes the latest accepted discovery result, not proof of physical unbinding or account deletion. Vehicle-specific queries/actions stay blocked and saved data is retained. Normal account discovery continues; a positive rediscovery resumes the existing baseline. The status exposes only list freshness metadata while the vehicle is absent, not cached ride counts or GPS. Check the account/vehicle list if the condition persists; this status does not prove why the upstream list changed.
+
+
+Within the existing 150–180 day local preservation risk band, pending details are now selected by oldest confirmed ride end first. Other pending history stays newest-first, with deterministic ride-ID ties. Missing end times are not assigned guessed deadlines. This is a local scheduling policy, not a guaranteed server deletion date or a local retention limit; shared budgets, vehicle rotation, saved-detail reuse and persisted retries still apply.

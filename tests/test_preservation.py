@@ -454,3 +454,168 @@ async def test_detail_uses_current_clock_after_seed_and_publishes_active_phase(
         assert evidence.last_success == clock[0] and evidence.last_completed is None
     finally:
         await archive.async_close()
+
+
+def aged_row(identity, age, *, duration=600, has_end=True):
+    end = NOW - timedelta(days=age)
+    row = {
+        "travel_id": identity,
+        "mileages": 1,
+        "duration": duration,
+        "start_time": int((end - timedelta(seconds=duration)).timestamp()),
+    }
+    if has_end:
+        row["end_time"] = int(end.timestamp())
+    return row
+
+
+async def record_aged_rows(archive, sn, rows):
+    from zoneinfo import ZoneInfo
+
+    from custom_components.ninebot.const import BUSINESS_TIMEZONE
+
+    months = {}
+    for row in rows:
+        month = (
+            datetime.fromtimestamp(row["start_time"], UTC)
+            .astimezone(ZoneInfo(BUSINESS_TIMEZONE))
+            .strftime("%Y%m")
+        )
+        months.setdefault(month, []).append(row)
+    for month, items in months.items():
+        await archive.async_record_month(
+            sn, travel({"times": len(items), "list": items}, month), NOW
+        )
+
+
+async def test_risk_band_uses_oldest_confirmed_end_but_keeps_other_history_newest_first(tmp_path):
+    archive = RideArchive(tmp_path / "risk-order.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await record_aged_rows(
+            archive,
+            SN,
+            [aged_row(f"age-{age}", age) for age in (149, 150, 151, 175, 179, 180, 200)],
+        )
+        for index, age in enumerate((180, 179, 175, 151, 150, 149, 200)):
+            at = NOW + timedelta(seconds=index * 121)
+            task = await archive.async_preservation_claim(SN, at, 30, guard=lambda: True)
+            assert task.ride.ride_id == f"age-{age}"
+            await archive.async_preservation_finish(SN, task, at, success=True, guard=lambda: True)
+        assert not await archive.async_preservation_claim(
+            SN, NOW + timedelta(hours=1), 30, guard=lambda: True
+        )
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("count", [3, 130])
+async def test_oldest_risk_detail_is_included_before_the_bounded_candidate_limit(tmp_path, count):
+    archive = RideArchive(tmp_path / "risk-limit.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await record_aged_rows(
+            archive,
+            SN,
+            [
+                aged_row(f"risk-{index:03}", 150 + 29 * index / (count - 1))
+                for index in range(count)
+            ],
+        )
+        task = await archive.async_preservation_claim(SN, NOW, 30, guard=lambda: True)
+        assert task.ride.ride_id == f"risk-{count - 1:03}"
+        assert task.ride.ended_at == NOW - timedelta(days=179)
+    finally:
+        await archive.async_close()
+
+
+async def test_risk_uses_confirmed_end_not_start_or_inferred_missing_end(tmp_path):
+    archive = RideArchive(tmp_path / "risk-ends.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await record_aged_rows(
+            archive,
+            SN,
+            [
+                aged_row("long-old", 179, duration=20 * 86400),
+                aged_row("short-young", 151),
+                aged_row("unknown-end", 170, has_end=False),
+                aged_row("zeta", 1),
+                aged_row("alpha", 1),
+            ],
+        )
+        for index, identity in enumerate(
+            ("long-old", "short-young", "alpha", "zeta", "unknown-end")
+        ):
+            at = NOW + timedelta(seconds=121 * index)
+            task = await archive.async_preservation_claim(SN, at, 30, guard=lambda: True)
+            assert task.ride.ride_id == identity
+            if identity == "unknown-end":
+                assert task.ride.ended_at is None
+            await archive.async_preservation_finish(SN, task, at, success=True, guard=lambda: True)
+    finally:
+        await archive.async_close()
+
+
+async def test_risk_retry_and_vehicle_rotation_survive_restart_without_bypassing_budget(tmp_path):
+    path = tmp_path / "risk-restart.sqlite3"
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        await record_aged_rows(archive, "A", [aged_row("a-old", 179), aged_row("a-young", 151)])
+        await record_aged_rows(archive, "B", [aged_row("b-old", 178)])
+        first = await archive.async_preservation_claim("A", NOW, 30, guard=lambda: True)
+        assert first.ride.ride_id == "a-old"
+        with patch("custom_components.ninebot.preservation.random.uniform", return_value=1):
+            await archive.async_preservation_finish(
+                "A",
+                first,
+                NOW,
+                success=False,
+                retry_after=600,
+                reason="service",
+                guard=lambda: True,
+            )
+        assert not await archive.async_preservation_claim("B", NOW, 30, guard=lambda: True)
+    finally:
+        await archive.async_close()
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        order, _ = await archive.async_preservation_order(("A", "B"))
+        assert order == ("B", "A")
+        at = NOW + timedelta(seconds=121)
+        other = await archive.async_preservation_claim(order[0], at, 30, guard=lambda: True)
+        assert other.ride.ride_id == "b-old"
+        await archive.async_preservation_finish("B", other, at, success=True, guard=lambda: True)
+        assert (await archive.async_preservation_order(("A", "B")))[0] == ("A", "B")
+        at += timedelta(seconds=121)
+        ready = await archive.async_preservation_claim("A", at, 30, guard=lambda: True)
+        assert ready.ride.ride_id == "a-young"  # Oldest is still in persisted backoff.
+        await archive.async_preservation_finish("A", ready, at, success=True, guard=lambda: True)
+        retry = await archive.async_preservation_claim(
+            "A", NOW + timedelta(seconds=601), 30, guard=lambda: True
+        )
+        assert retry.ride.ride_id == "a-old" and retry.attempts == 2
+    finally:
+        await archive.async_close()
+
+
+async def test_saved_mature_risk_detail_is_reused_instead_of_requeried(tmp_path):
+    from custom_components.ninebot.raw import Endpoint, build_record
+
+    archive = RideArchive(tmp_path / "risk-reuse.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        saved = aged_row("saved-risk", 179)
+        await record_aged_rows(archive, SN, [saved, aged_row("missing-risk", 151)])
+        month = (NOW - timedelta(days=179)).strftime("%Y%m")
+        normalized = travel({"times": 1, "list": [saved]}, month).rides[0]
+        raw = build_record(Endpoint.TRIP_DETAIL, saved, NOW, month)
+        await archive.async_record_detail(SN, normalized, NOW, raw=raw)
+        task = await archive.async_preservation_claim(SN, NOW, 30, guard=lambda: True)
+        assert task.ride.ride_id == "missing-risk"
+        detail = await archive.async_private_detail(SN, "saved-risk")
+        assert detail.latest.received_at == NOW and detail.latest.payload() == saved
+    finally:
+        await archive.async_close()
