@@ -80,6 +80,7 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
                 "times": len(found),
                 "total_mileages": len(found),
                 "ec": 10 * len(found),
+                "duration": 60 * len(found),
                 "list": found[page - 1 : page],
             },
             clock[0],
@@ -209,7 +210,10 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
             response = await async_recorded_query(hass, call)
         assert {ride["ride_id"] for ride in response["rides"]} == expected
         assert all(ride["detail_saved"] for ride in response["rides"])
-        assert response["coverage"]["all_observed_lists_complete"]
+        # Each cloud page is partial even after the separate paginated run has
+        # proved enumeration complete. Preserve that raw observation contract.
+        assert not response["coverage"]["all_observed_lists_complete"]
+        assert response["coverage"]["partial_months"] == ["202610"]
         view = await statistics.async_view(sn, ("202609", "202610"))
         metrics = statistics_response(view, sn, ("202610",), clock[0], True)
         month = metrics["months"][0]
