@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b78
+
+- Preserve the oldest confirmed ride ends first within the existing 150–180 day local risk band, instead of selecting younger trips first.
+- Keep newest-first ordering outside that band and use deterministic ride-ID ties; unknown end times do not receive an inferred deadline.
+- Preserve per-account budgets, vehicle rotation, stable detail reuse and persisted retries without changing historical range or retention.
+
 ## 2.0.0b77
 
 - Show an explicit history-sync reason when an accepted account vehicle list no longer includes a retained vehicle, instead of only an unavailable status.

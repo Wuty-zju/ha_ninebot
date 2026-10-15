@@ -1731,21 +1731,24 @@ class RideArchive:
                 "SELECT r.id,r.data,r.revision,m.value,h.value FROM rides r LEFT JOIN meta m "
                 "ON m.key='preservation:'||r.vehicle||':'||r.id LEFT JOIN meta h "
                 "ON h.key='preservation_detail:'||r.vehicle||':'||r.id "
-                "WHERE r.vehicle=? AND (m.value IS NULL OR "
+                "WHERE r.vehicle=:vehicle AND (m.value IS NULL OR "
                 "json_extract(m.value,'$.revision')!=r.revision OR "
-                "json_extract(m.value,'$.next_attempt')<=? OR "
+                "json_extract(m.value,'$.next_attempt')<=:epoch OR "
                 "(h.value IS NULL AND "
-                "(r.ended>=? OR (r.ended IS NULL AND r.started>=?)))) "
-                "ORDER BY CASE WHEN r.ended>=? AND r.ended<=? THEN 0 ELSE 1 END, "
-                "r.started DESC LIMIT 128",
-                (
-                    vehicle,
-                    epoch,
-                    utc_string(now - timedelta(days=1)),
-                    utc_string(now - timedelta(days=1)),
-                    utc_string(now - timedelta(days=180)),
-                    utc_string(now - timedelta(days=150)),
-                ),
+                "(r.ended>=:recent OR (r.ended IS NULL AND r.started>=:recent)))) "
+                # Oldest confirmed end first within the existing local risk band;
+                # do not infer a deadline for missing ends or change other ordering.
+                "ORDER BY CASE WHEN r.ended>=:risk_start AND r.ended<=:risk_end "
+                "THEN 0 ELSE 1 END, "
+                "CASE WHEN r.ended>=:risk_start AND r.ended<=:risk_end THEN r.ended END, "
+                "r.started DESC,r.id LIMIT 128",
+                {
+                    "vehicle": vehicle,
+                    "epoch": epoch,
+                    "recent": utc_string(now - timedelta(days=1)),
+                    "risk_start": utc_string(now - timedelta(days=180)),
+                    "risk_end": utc_string(now - timedelta(days=150)),
+                },
             ).fetchall()
             for identity, data, revision, value, content_marker in rows:
                 ride = restored_ride(decoded(data))
