@@ -202,3 +202,6 @@ If an accepted account list no longer contains a known vehicle, history sync sta
 
 
 Within the existing 150–180 day local preservation risk band, pending details are now selected by oldest confirmed ride end first. Other pending history stays newest-first, with deterministic ride-ID ties. Missing end times are not assigned guessed deadlines. This is a local scheduling policy, not a guaranteed server deletion date or a local retention limit; shared budgets, vehicle rotation, saved-detail reuse and persisted retries still apply.
+
+
+Cached statistical months and the latest ride now come from one per-vehicle archive read. Local history pages capture their detail-saved flags together with their rows and revision. Background writes cannot split those reads into mixed versions. Separate calendar/list/detail requests still observe their own read time; this is not a database snapshot token across requests or the whole fleet. Browsing remains local and bounded.

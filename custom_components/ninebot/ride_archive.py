@@ -141,6 +141,16 @@ class ArchivePage:
     next_cursor: ArchiveCursor | None
 
 
+@dataclass(frozen=True)
+class ArchiveProjection:
+    """One vehicle's month facts and latest ride from a single actor read."""
+
+    months: tuple[ArchiveMonth, ...]
+    latest: ArchivedRide | None
+    revision: int
+    latest_limited: bool = False
+
+
 def vehicle_key(sn: str) -> str:
     if not isinstance(sn, str) or opaque_id(sn) != sn:
         raise ValueError("Invalid vehicle identity")
@@ -1950,6 +1960,27 @@ class RideArchive:
                 rides.append(replace(restored_ride(decoded(data[0])), query_month=month))
             result.append(replace(archived, statistics_rides=tuple(rides)))
         return tuple(result)
+
+    async def async_projection(
+        self, sn: str, months: tuple[str, ...], now: datetime
+    ) -> ArchiveProjection:
+        """No await between month selection, latest selection and revision capture."""
+        if not 1 <= len(months) <= 7 or len(set(months)) != len(months):
+            raise ValueError("Invalid projection month range")
+        for month in months:
+            previous_month(month)
+        vehicle, as_of = vehicle_key(sn), utc_string(now)
+
+        def read() -> ArchiveProjection:
+            records = self._statistics_months(vehicle, months)
+            limited = False
+            try:
+                latest = latest_query(self._db(), vehicle, as_of)
+            except TimelineLimitError:
+                latest, limited = None, True  # Never substitute an arbitrary older ride.
+            return ArchiveProjection(records, latest, self._revision(), limited)
+
+        return await self._run(read)
 
     async def async_detail_summary(
         self, sn: str, ride_id: str, month: str, *, guard: Callable[[], bool]

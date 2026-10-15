@@ -49,6 +49,7 @@ class RecordedPage:
     next_cursor: RecordedCursor | None
     months: tuple[RecordedMonth, ...]
     skipped_conflicting_times: int
+    saved_detail_ids: frozenset[str] = frozenset()
 
 
 class RecordedCursors:
@@ -153,4 +154,17 @@ def recorded_page(
                 summary.returned_count,
             )
         )
-    return RecordedPage(tuple(records), revision, next_cursor, tuple(months), skipped)
+    ids = tuple(row.ride.ride_id for row in records if row.ride.ride_id is not None)
+    saved = (
+        frozenset(
+            row[0]
+            for row in db.execute(
+                "SELECT ride FROM details WHERE vehicle=? AND ride IN "
+                f"({','.join('?' for _ in ids)})",
+                (vehicle, *ids),
+            )
+        )
+        if ids
+        else frozenset()
+    )
+    return RecordedPage(tuple(records), revision, next_cursor, tuple(months), skipped, saved)

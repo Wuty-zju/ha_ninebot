@@ -374,3 +374,41 @@ def test_schema_no_cloud_or_track_switches():
     for extra in ({"include_track": True}, {"refresh": True}, {"limit": True}):
         with pytest.raises(vol.Invalid):
             RECORDED_SCHEMA(data("synthetic-device", **extra))
+
+
+async def test_page_detail_flags_share_rows_revision_when_a_detail_is_saved_after_read(
+    hass, entry, app_client, device, monkeypatch
+):
+    from custom_components.ninebot.raw import Endpoint, build_record
+
+    archive = entry.runtime_data.coordinator.statistics.archive
+    original = archive.async_recorded_page
+    injected = False
+
+    async def interleave(*args, **kwargs):
+        nonlocal injected
+        result = await original(*args, **kwargs)
+        if not injected:
+            injected = True
+            ride = result.records[0].ride
+            received = NOW + timedelta(seconds=5)
+            raw = build_record(
+                Endpoint.TRIP_DETAIL,
+                {"travel_id": ride.ride_id, "mileages": 1.2},
+                received,
+                ride.query_month,
+            )
+            assert await archive.async_record_detail(SN, ride, received, raw=raw)
+        return result
+
+    monkeypatch.setattr(archive, "async_recorded_page", interleave)
+    first = await call(hass, device, limit=1)
+    assert injected and first["rides"][0]["detail_saved"] is False
+    second = await call(hass, device, limit=1)
+    assert second["revision"] > first["revision"]
+    assert second["rides"][0]["detail_saved"] is True
+    with pytest.raises(HomeAssistantError) as err:
+        await call(hass, device, cursor=first["next_cursor"])
+    assert err.value.translation_key == "history_cursor"
+    app_client.async_get_trip_detail.assert_not_awaited()
+    app_client.async_control.assert_not_awaited()
