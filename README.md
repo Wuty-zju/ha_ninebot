@@ -196,3 +196,6 @@ The history request budget is shared by the account, not an application for upst
 ### Reusing verified history months
 
 First discovery can reuse an independently enumerated old month already stored in this account archive. All original pages must verify within eight pages and 4 MiB of decoded JSON, with matching totals, ride membership and source timestamps no earlier than the baseline cutoff. Current and previous months, newer observations or incomplete evidence use normal discovery. This local reuse preserves original receipt times, consumes no cloud request budget and does not mark missing ride details complete. It does not infer an earliest historical month from empty results.
+
+
+If an accepted account list no longer contains a known vehicle, history sync status shows **Vehicle missing from account list**. This describes the latest accepted discovery result, not proof of physical unbinding or account deletion. Vehicle-specific queries/actions stay blocked and saved data is retained. Normal account discovery continues; a positive rediscovery resumes the existing baseline. The status exposes only list freshness metadata while the vehicle is absent, not cached ride counts or GPS. Check the account/vehicle list if the condition persists; this status does not prove why the upstream list changed.

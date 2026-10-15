@@ -497,7 +497,8 @@
           "verifying": "Memverifikasi catatan",
           "incremental": "Sinkronisasi inkremental",
           "with_gaps": "Selesai dengan kekurangan",
-          "synced": "Tersinkron secara lokal"
+          "synced": "Tersinkron secara lokal",
+          "vehicle_not_present": "Kendaraan tidak ada di daftar akun"
         }
       },
       "history_scan_progress": {

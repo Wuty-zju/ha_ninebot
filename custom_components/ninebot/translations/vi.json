@@ -497,7 +497,8 @@
           "verifying": "Đang kiểm tra dữ liệu",
           "incremental": "Đang đồng bộ phần mới",
           "with_gaps": "Hoàn tất nhưng còn thiếu",
-          "synced": "Đã đồng bộ cục bộ"
+          "synced": "Đã đồng bộ cục bộ",
+          "vehicle_not_present": "Không có xe trong danh sách tài khoản"
         }
       },
       "history_scan_progress": {

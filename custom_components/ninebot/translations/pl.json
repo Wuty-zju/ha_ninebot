@@ -497,7 +497,8 @@
           "verifying": "Sprawdzanie danych",
           "incremental": "Synchronizacja przyrostowa",
           "with_gaps": "Zakończona z brakami",
-          "synced": "Zsynchronizowano lokalnie"
+          "synced": "Zsynchronizowano lokalnie",
+          "vehicle_not_present": "Brak pojazdu na liście konta"
         }
       },
       "history_scan_progress": {

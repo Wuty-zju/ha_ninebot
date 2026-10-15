@@ -497,7 +497,8 @@
           "verifying": "Records controleren",
           "incremental": "Incrementele synchronisatie",
           "with_gaps": "Voltooid met hiaten",
-          "synced": "Lokaal gesynchroniseerd"
+          "synced": "Lokaal gesynchroniseerd",
+          "vehicle_not_present": "Voertuig ontbreekt in de accountlijst"
         }
       },
       "history_scan_progress": {

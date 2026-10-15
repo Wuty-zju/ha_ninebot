@@ -497,7 +497,8 @@
           "verifying": "Kayıtlar doğrulanıyor",
           "incremental": "Artımlı eşitleme",
           "with_gaps": "Eksiklerle tamamlandı",
-          "synced": "Yerel eşitleme tamamlandı"
+          "synced": "Yerel eşitleme tamamlandı",
+          "vehicle_not_present": "Araç hesap listesinde yok"
         }
       },
       "history_scan_progress": {
