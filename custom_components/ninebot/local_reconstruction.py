@@ -6,7 +6,7 @@ values. A successful assessment is not a cloud/reference completeness proof.
 """
 
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from .archive_codec import RIDE_VALUES, merged_ride, stamp
@@ -100,16 +100,11 @@ def proposal(
                     return Reconstruction("unverifiable"), None
     # Bind reviewed facts to existing identity; do not reconstruct missing
     # detail properties from a stale list or change meaningful entity identity.
-    from dataclasses import replace
-
     incoming = replace(detail, ride_id=current.ride_id, detail_id=current.detail_id)
-    candidate = merged_ride(current, incoming)
     checked = tuple(field for field in RIDE_VALUES if getattr(detail, field) is not None)
     if not checked:
         return Reconstruction("unverifiable"), None
-    fields = tuple(
-        field for field in checked if getattr(current, field) != getattr(candidate, field)
-    )
+    candidate, fields, metadata_checked = scalar_candidate(current, incoming, checked)
     index = db.execute(
         "SELECT started,ended FROM rides WHERE vehicle=? AND id=?",
         (vehicle, current.ride_id),
@@ -129,8 +124,79 @@ def proposal(
     if actual != normalized:
         fields += ("time_index",)
     return Reconstruction(
-        "repairable" if fields else "healthy", fields, checked_fields=checked
+        "repairable" if fields else "healthy", fields, checked_fields=checked + metadata_checked
     ), candidate
+
+
+def scalar_candidate(
+    current: Ride, incoming: Ride, checked: tuple[str, ...]
+) -> tuple[Ride, tuple[str, ...], tuple[str, ...]]:
+    """Patch proven scalar facts only; do not rewrite unrelated observation state.
+
+    A later list can retain an older detail value while reporting it missing.
+    Its aggregate presence state is legitimate and cannot be repaired from that
+    detail. Precision proves a floor, not that earlier extra digits were false.
+    """
+    merged = merged_ride(current, incoming)
+    fields = tuple(field for field in checked if getattr(current, field) != getattr(merged, field))
+    metadata_checked: list[str] = []
+    metadata = {
+        name: dict(getattr(current, name))
+        for name in ("field_provenance", "field_sources", "field_states", "detail_field_states")
+    }
+    incoming_states = dict(incoming.field_states)
+    for field in checked:
+        owned_by_detail = (
+            current.source is Endpoint.TRIP_DETAIL
+            or metadata["field_sources"].get(field) == Endpoint.TRIP_DETAIL.value
+            or field in fields
+        )
+        for name in metadata:
+            if name in {"field_provenance", "field_sources"}:
+                if not owned_by_detail:
+                    continue  # A valid list source is not an erroneous detail source.
+                expected = dict(getattr(merged, name))
+            else:
+                if name == "field_states" and current.source is not Endpoint.TRIP_DETAIL:
+                    continue  # Keep the last aggregate/list observation's presence.
+                expected = incoming_states
+            label = f"{name}.{field}"
+            metadata_checked.append(label)
+            before, after = metadata[name].get(field), expected.get(field)
+            if before != after:
+                fields += (label,)
+            if field in expected:
+                metadata[name][field] = expected[field]
+            else:
+                metadata[name].pop(field, None)
+    precision = dict(current.precision)
+    available_precision = dict(incoming.precision)
+    merged_precision = dict(merged.precision)
+    for field, raw_key in (
+        ("distance_m", "mileages"),
+        ("duration_s", "duration"),
+        ("energy_raw", "ec"),
+        ("speed_raw", "speed"),
+    ):
+        if field not in checked or raw_key not in available_precision:
+            continue
+        label = f"precision_floor.{raw_key}"
+        metadata_checked.append(label)
+        if precision.get(raw_key) != merged_precision.get(raw_key):
+            fields += (label,)
+            precision[raw_key] = merged_precision[raw_key]
+    # Preserve global parser/identity/source and unrelated issues. The existing
+    # archive merge still recomputes the duration/time consistency invariant.
+    candidate = replace(
+        current,
+        **{field: getattr(merged, field) for field in checked},
+        field_provenance=tuple(sorted(metadata["field_provenance"].items())),
+        field_sources=tuple(sorted(metadata["field_sources"].items())),
+        field_states=tuple(sorted(metadata["field_states"].items())),
+        detail_field_states=tuple(sorted(metadata["detail_field_states"].items())),
+        precision=tuple(sorted(precision.items())),
+    )
+    return candidate, fields, tuple(metadata_checked)
 
 
 def quality_patch(db: sqlite3.Connection, vehicle: str, stored: ArchivedDetail) -> str | None:

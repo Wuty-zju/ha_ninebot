@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b87
+
+- Local ride reconstruction now detects applicable scalar provenance/source/presence metadata conflicts even when the numeric values match, and restores precision below the retained detail's proven floor.
+- Limit repairs to detail-supported fields. Preserve unrelated presence states, provenance, parser identity and retained higher precision; a later list's missing-field state is not overwritten from an older detail.
+- Keep existing identity witnesses, backups, ownership/transaction guards, original raw and geometry selection. No database schema, dependency, entity identity or cloud-request changes; this does not certify all ride metadata.
+
 ## 2.0.0b86
 
 - With history preservation enabled, retain one private current raw source per recorded month alongside its normalized projection, including ordinary, fallback, action and native-page receipts. No additional cloud queries.
