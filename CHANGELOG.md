@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b84
+
+- Add separate captured-page reference checks to the existing bounded local archive audit: compare verified raw page IDs/counts with page headers, identity indexes and ride/month membership presence.
+- Reuse each decoded page, persist progress atomically with the original audit, and report conflicts/unverifiable pages separately from raw-byte integrity. Old raw-only scans remain raw-only.
+- Expose scoped results through existing local verification actions; no automatic index repair, cloud requests, schema or entity identity changes. Whole-reference/normalized/cloud certification remains false.
+
 ## 2.0.0b83
 
 - Rotate vehicles independently for detail preservation and month discovery, avoiding a fixed vehicle/request-family pairing when both queues stay busy.

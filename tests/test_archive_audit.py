@@ -612,3 +612,156 @@ async def test_per_vehicle_delta_fence_avoids_rechecking_unrelated_car(archive):
     with patch("custom_components.ninebot.archive_audit.delta_step") as delta:
         assert await archive.async_background_history_audit(SN, NOW, guard=lambda: True) is None
         delta.assert_not_called()
+
+
+async def page_check_status(store):
+    return (await store.async_history_verification_status(SN))[3].page_references
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "header_ids",
+        "header_total",
+        "missing_index",
+        "first_page",
+        "extra_index",
+        "missing_membership",
+        "missing_ride",
+        "invalid_header",
+    ],
+)
+async def test_good_raw_bytes_do_not_certify_conflicting_page_links(archive, fault):
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        originals = db.execute("SELECT digest,body FROM history_payloads").fetchall()
+        if fault == "header_ids":
+            db.execute("UPDATE history_pages SET ids=?", ('{"ids":["wrong"]}',))
+        elif fault == "header_total":
+            db.execute("UPDATE history_pages SET total=4")
+        elif fault == "missing_index":
+            db.execute("DELETE FROM history_ids WHERE ride='ride-0'")
+        elif fault == "first_page":
+            db.execute("UPDATE history_ids SET first_page=2 WHERE ride='ride-0'")
+        elif fault == "extra_index":
+            row = db.execute("SELECT vehicle,plan,month FROM history_ids LIMIT 1").fetchone()
+            db.execute("INSERT INTO history_ids VALUES (?,?,?,?,1)", (*row, "unexpected"))
+        elif fault == "missing_membership":
+            db.execute("DELETE FROM membership WHERE ride='ride-0'")
+        elif fault == "missing_ride":
+            db.execute("DELETE FROM rides WHERE id='ride-0'")
+        else:
+            db.execute("UPDATE history_pages SET ids='{' ")
+        damaged_headers = db.execute("SELECT ids,total FROM history_pages").fetchall()
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    raw = await finish(archive)
+    assert raw.payloads_verified  # It remains a raw-bytes contract, not index proof.
+    checks = await page_check_status(archive)
+    assert checks.complete and checks.total == checks.checked == checks.conflicts == 1
+    assert not checks.unverifiable and not checks.captured_links_verified
+    assert (await archive.async_object_checks(SN)).receipts_complete
+    with closing(sqlite3.connect(archive.path)) as db:
+        assert db.execute("SELECT digest,body FROM history_payloads").fetchall() == originals
+        assert db.execute("SELECT ids,total FROM history_pages").fetchall() == damaged_headers
+        assert not db.execute("SELECT * FROM payload_quarantine").fetchall()
+
+
+async def test_page_reference_checkpoint_survives_restart_without_second_raw_decode(archive):
+    from unittest.mock import patch
+
+    from custom_components.ninebot import object_checks
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=1)
+    before = await page_check_status(archive)
+    assert before.total == 1 and before.checked == 0 and not before.complete
+    active = await archive.async_history_audit(SN)
+    assert (
+        await archive.async_start_history_audit(SN, NOW, guard=lambda: True, restart=True) == active
+    )
+    assert await page_check_status(archive) == before  # Active start coalesces.
+    path = archive.path
+    await archive.async_close()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        assert await page_check_status(reopened) == before
+        with patch(
+            "custom_components.ninebot.object_checks.unpacked", wraps=object_checks.unpacked
+        ) as decode:
+            assert (await finish(reopened)).payloads_verified
+        # Two remaining details plus one page; page references reused the one decode.
+        assert decode.call_count == 3
+        checks = await page_check_status(reopened)
+        assert checks.complete and checks.captured_links_verified
+        assert checks.total == checks.checked == 1
+        assert not checks.conflicts and not checks.unverifiable
+    finally:
+        await reopened.async_close()
+
+
+async def test_legacy_raw_scan_does_not_gain_a_partial_page_reference_certificate(archive):
+    from custom_components.ninebot.page_reference_audit import key
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=1)
+
+    def remove_new_checkpoint():
+        db = archive._db(write=True)
+        with db:
+            db.execute("DELETE FROM meta WHERE key=?", (key(vehicle_key(SN)),))
+
+    await archive._run(remove_new_checkpoint)
+    assert (await finish(archive)).payloads_verified
+    assert await page_check_status(archive) is None
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True, restart=True)
+    await finish(archive)
+    assert (await page_check_status(archive)).captured_links_verified
+
+
+async def test_page_reference_failure_rolls_back_raw_receipt_and_both_checkpoints(
+    archive, monkeypatch
+):
+    from custom_components.ninebot import page_reference_audit
+
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    for _ in range(3):
+        await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=1)
+    before = await archive.async_history_audit(SN)
+    references = await page_check_status(archive)
+
+    def fail(*args):
+        raise ValueError("Synthetic page checkpoint failure")
+
+    monkeypatch.setattr(page_reference_audit, "put", fail)
+    with pytest.raises(ArchiveError):
+        await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=1)
+    assert await archive.async_history_audit(SN) == before
+    assert await page_check_status(archive) == references
+    receipts = await archive.async_object_checks(SN)
+    assert receipts.verified == 3 and receipts.pending == 1
+
+
+@pytest.mark.parametrize("fault", ["unsupported", "damaged_payload"])
+async def test_unverifiable_page_is_not_mislabeled_as_reference_conflict(archive, fault):
+    with closing(sqlite3.connect(archive.path)) as db, db:
+        if fault == "unsupported":
+            db.execute("UPDATE history_pages SET endpoint='0.2.0+unknown'")
+        else:
+            db.execute("UPDATE history_payloads SET body=?", (b"broken",))
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await finish(archive)
+    checks = await page_check_status(archive)
+    assert checks.unverifiable == 1 and checks.conflicts == 0
+    assert not checks.captured_links_verified
+
+
+async def test_reference_summary_does_not_certify_changed_archive_scope(archive):
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True)
+    await archive.async_step_history_audit(SN, NOW, guard=lambda: True, limit=1)
+    await archive.async_record_month(
+        "other-car", (await archive.async_month(SN, "202610")).travel, NOW + timedelta(seconds=1)
+    )
+    await finish(archive)
+    checks = await page_check_status(archive)
+    assert checks.complete and not checks.conflicts and not checks.unverifiable
+    assert not checks.scope_unchanged and not checks.captured_links_verified

@@ -8,16 +8,21 @@ No normalized metrics, cloud coverage, coordinates or credentials are exported.
 import hashlib
 import json
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from .archive_codec import stamp
 from .const import MAX_RESPONSE_BYTES
 from .detail_codec import CorruptPayload, unpacked
 from .history_plan import MAX_PAGES
 from .parsing import previous_month
-from .raw import Endpoint, version_metadata
+from .raw import Endpoint, RawRecord, version_metadata
 from .travel import opaque_id
+
+if TYPE_CHECKING:
+    from .page_reference_audit import PageReferenceSummary
 
 CONTRACT = 1
 MAX_COMPRESSED = MAX_RESPONSE_BYTES + 1024
@@ -151,6 +156,7 @@ class ObjectSummary:
     invalid: int
     pending: int
     quarantined: int
+    page_references: "PageReferenceSummary | None" = None
 
     @property
     def receipts_complete(self) -> bool:
@@ -234,9 +240,16 @@ def quarantine(
     )
 
 
-def verify(db: sqlite3.Connection, obj: StoredObject, now: datetime) -> str | None:
+def verify(
+    db: sqlite3.Connection,
+    obj: StoredObject,
+    now: datetime,
+    *,
+    on_page: Callable[[RawRecord], None] | None = None,
+) -> str | None:
     body = None
     result = "verified"
+    record = None
     try:
         identity(obj.kind, obj.identity)
         digest(obj.vehicle)
@@ -247,7 +260,7 @@ def verify(db: sqlite3.Connection, obj: StoredObject, now: datetime) -> str | No
         body = load_body(db, obj)
         if body is None:
             raise CorruptPayload("Missing private object bytes")
-        unpacked(
+        record = unpacked(
             body,
             obj.digest,
             stamp(meta[0]),
@@ -277,6 +290,9 @@ def verify(db: sqlite3.Connection, obj: StoredObject, now: datetime) -> str | No
             CONTRACT,
         ),
     )
+    if result == "verified" and obj.kind == "page" and on_page is not None:
+        assert record is not None
+        on_page(record)
     return None if result == "verified" else result
 
 

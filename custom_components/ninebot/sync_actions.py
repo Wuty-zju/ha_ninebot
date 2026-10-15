@@ -1,6 +1,7 @@
 """Durable history sync Action, separate from runtime pagination cursors."""
 
 import re
+from dataclasses import asdict
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -237,6 +238,15 @@ async def async_verify_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
             "quarantined": checks.quarantined,
             "receipts_complete": checks.receipts_complete,
         },
+        "page_reference_checks": {
+            "contract": "captured_page_links_v1",
+            "scope": "captured_raw_pages_to_index_and_membership",
+            "month_parent_metadata_verified": False,
+            "all_references_verified": False,
+            **asdict(checks.page_references),
+        }
+        if checks.page_references is not None
+        else None,
         "operation": operation,
         "state": plan.phase if plan else "not_started",
         "captured_total": plan.total if plan else None,

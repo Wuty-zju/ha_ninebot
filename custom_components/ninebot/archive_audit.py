@@ -11,10 +11,12 @@ import time
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 
+from . import page_reference_audit as page_references
 from .archive_codec import decoded, encoded, stamp
 from .const import MAX_RESPONSE_BYTES
-from .object_checks import ObjectSummary, sources, summary, verify
+from .object_checks import ObjectSummary, StoredObject, sources, summary, verify
 from .payload_inventory import revision as inventory_revision
+from .raw import RawRecord
 
 PREFIX = "history_audit:"
 FAULT_PREFIX = "history_audit_fault:"
@@ -147,6 +149,7 @@ def start(
         cutoff_inventory=inventory_revision(db),
     )
     put(db, vehicle, plan)
+    page_references.start(db, vehicle, plan, page_count)
     return plan
 
 
@@ -187,6 +190,8 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
         or revision != plan.cutoff_revision
         or inventory_revision(db) != plan.cutoff_inventory,
     )
+    reference_scan = page_references.get(db, vehicle)
+    check_pages = reference_scan is not None and page_references.matches(reference_scan, plan)
     remaining = limit
     compressed = decoded_bytes = 0
     deadline = time.monotonic() + MAX_BATCH_SECONDS
@@ -223,7 +228,22 @@ def step(db: sqlite3.Connection, vehicle: str, now: datetime, limit: int) -> Aud
                 str(row.digest if row.kind == "detail" else legacy[0]).encode()
             ).hexdigest()
             key = fault_key(vehicle, plan.phase, row.ordinal, token)
-            reason = verify(db, row, now)
+            if row.kind == "page" and check_pages:
+                outcomes: list[str] = []
+
+                def check_page(
+                    record: RawRecord,
+                    obj: StoredObject = row,
+                    results: list[str] = outcomes,
+                ) -> None:
+                    results.append(page_references.assess(db, obj, record))
+
+                reason = verify(db, row, now, on_page=check_page)
+                page_references.observe(
+                    db, vehicle, plan, row, outcomes[0] if outcomes else "unverifiable", now
+                )
+            else:
+                reason = verify(db, row, now)
             if reason:
                 db.execute(
                     "INSERT INTO meta VALUES (?,?) ON CONFLICT(key)"
