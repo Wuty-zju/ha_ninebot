@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b73
+
+- Follow up recently saved ride details instead of treating an early response as final.
+- Count unchanged scalar and saved detail content as stable observations; growing geometry resets the follow-up count, and retries survive restart.
+- Keep mature unchanged details cached, preserve the existing task checkpoint shape and shared request budget.
+
+
 ## 2.0.0b72
 
 - Recover narrowly scoped missing detail originals at startup only when verified receipts and matching account-local sources prove identity and provenance.

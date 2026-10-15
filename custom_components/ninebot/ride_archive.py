@@ -405,7 +405,11 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("payload_search:"):
+            if key.startswith("preservation_detail:"):
+                from .detail_followup import check as check_followup
+
+                check_followup(key, value)
+            elif key.startswith("payload_search:"):
                 from .recovery_search import check as check_recovery_search
 
                 check_recovery_search(key, value)
@@ -1693,7 +1697,8 @@ class RideArchive:
     def _preservation_claim(
         self, vehicle: str, now: datetime, budget: int
     ) -> "PreservationTask | None":
-        from .preservation import PreservationTask, fingerprint, task_state
+        from .detail_followup import put as put_followup
+        from .preservation import PreservationTask, fingerprint, mutable_detail, task_state
 
         epoch = now.timestamp()
         db = self._db(write=True)
@@ -1704,23 +1709,29 @@ class RideArchive:
             if limit is not None and float(limit[0]) > epoch:
                 return None
             rows = db.execute(
-                "SELECT r.id,r.data,r.revision,m.value FROM rides r LEFT JOIN meta m "
-                "ON m.key='preservation:'||r.vehicle||':'||r.id "
+                "SELECT r.id,r.data,r.revision,m.value,h.value FROM rides r LEFT JOIN meta m "
+                "ON m.key='preservation:'||r.vehicle||':'||r.id LEFT JOIN meta h "
+                "ON h.key='preservation_detail:'||r.vehicle||':'||r.id "
                 "WHERE r.vehicle=? AND (m.value IS NULL OR "
                 "json_extract(m.value,'$.revision')!=r.revision OR "
-                "json_extract(m.value,'$.next_attempt')<=?) "
+                "json_extract(m.value,'$.next_attempt')<=? OR "
+                "(h.value IS NULL AND "
+                "(r.ended>=? OR (r.ended IS NULL AND r.started>=?)))) "
                 "ORDER BY CASE WHEN r.ended>=? AND r.ended<=? THEN 0 ELSE 1 END, "
                 "r.started DESC LIMIT 128",
                 (
                     vehicle,
                     epoch,
+                    utc_string(now - timedelta(days=1)),
+                    utc_string(now - timedelta(days=1)),
                     utc_string(now - timedelta(days=180)),
                     utc_string(now - timedelta(days=150)),
                 ),
             ).fetchall()
-            for identity, data, revision, value in rows:
+            for identity, data, revision, value, content_marker in rows:
                 ride = restored_ride(decoded(data))
                 if ride.detail_id is None:
+                    put_followup(db, vehicle, identity, None)
                     ignored = {
                         "fingerprint": fingerprint(ride),
                         "attempts": 0,
@@ -1750,15 +1761,26 @@ class RideArchive:
                         "revision": revision,
                     }
                 )
-                if (
-                    before is None
-                    and db.execute(
-                        "SELECT 1 FROM details WHERE vehicle=? AND ride=?", (vehicle, identity)
+                persisted = (
+                    db.execute(
+                        "SELECT latest_hash,observed FROM details WHERE vehicle=? AND ride=?",
+                        (vehicle, identity),
                     ).fetchone()
-                ):
-                    # Seed known persisted details without downloading them again.
-                    state["observations"] = 2
-                    state["next_attempt"] = 4102444800
+                    if before is None
+                    or (content_marker is None and before["fingerprint"] == signature)
+                    else None
+                )
+                if persisted is not None:
+                    # A saved recent response may still be an early/partial ride.
+                    # Mature history stays reusable without another cloud request.
+                    recent = mutable_detail(ride, now)
+                    put_followup(db, vehicle, identity, persisted[0])
+                    state["observations"] = 1 if recent else 2
+                    state["next_attempt"] = (
+                        stamp(persisted[1]).timestamp() + 600 if recent else 4102444800
+                    )
+                if content_marker is None and persisted is None:
+                    put_followup(db, vehicle, identity, None)
                 state["revision"] = revision
                 if state["next_attempt"] > epoch:
                     db.execute(
@@ -1816,6 +1838,8 @@ class RideArchive:
         retry_after: float | None,
         reason: str,
     ) -> None:
+        from .detail_followup import get as get_followup
+        from .detail_followup import put as put_followup
         from .preservation import fingerprint, retry_delay, task_state
 
         if task.ride.ride_id is None:
@@ -1831,8 +1855,19 @@ class RideArchive:
             if state["fingerprint"] != task.fingerprint or state["attempts"] != task.attempts:
                 return
             if success:
-                state["fingerprint"] = fingerprint(current[0])
-                state["observations"] = min(2, state["observations"] + 1)
+                signature = fingerprint(current[0])
+                saved = db.execute(
+                    "SELECT latest_hash FROM details WHERE vehicle=? AND ride=?",
+                    (vehicle, task.ride.ride_id),
+                ).fetchone()
+                content_hash = saved[0] if saved else None
+                unchanged = signature == task.fingerprint and content_hash == get_followup(
+                    db, vehicle, task.ride.ride_id
+                )
+                state["fingerprint"] = signature
+                put_followup(db, vehicle, task.ride.ride_id, content_hash)
+                # Two successful downloads are not two equal observations.
+                state["observations"] = min(2, state["observations"] + 1) if unchanged else 1
                 state["attempts"] = 0
                 state["reason"] = None
                 state["next_attempt"] = (

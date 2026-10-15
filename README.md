@@ -178,3 +178,8 @@ ride after source search finishes.
 ### Missing local detail originals
 
 When schema-5 startup fails only because referenced detail originals are missing, the integration can recover up to eight originals from up to eight managed local recovery copies. Existing verified receipts must match the account, vehicle, ride, digest and source metadata; the entire staged database must pass strict validation. The original file is preserved before atomic publication. This does not repair arbitrary schema/index damage or fetch cloud data; absent proof or unsupported cases retain the original and report a storage error.
+
+
+### Recent ride follow-up
+
+Recently saved details may still be incomplete. Background preservation can compare another response after ten minutes; changing scalars or detail content resets the stable-observation count. Unchanged recent details settle after two matching observations; older unchanged history remains cached. This is a bounded local follow-up policy, not a claim that the cloud marks a ride final. Account request budgets, pause and restart continuity still apply.
