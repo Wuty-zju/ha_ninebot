@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b76
+
+- Reuse complete, verified independent old-month page evidence during first history discovery, without consuming another cloud request.
+- Validate bounded raw pages, hashes, timestamps, totals and indexed ride membership before atomic promotion; keep original receipts and separate local acceptance provenance.
+- Fall back to normal discovery for recent, incomplete, stale or oversized evidence; preserve shared budgets, detail completeness and entity identity.
+
 ## 2.0.0b75
 
 - Use the current decision time for detail claims so timer jitter cannot favor later month claims at the budget boundary.

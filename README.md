@@ -3,7 +3,7 @@
 [中文说明](README_zh.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [Development entry](docs/README.md)
 
 An independent, unofficial Ninebot vehicle integration using pinned `ninecli==0.1.7`.
-Version 2 replaces the OpenClaw backend. The current b59 code is a prerelease;
+Version 2 replaces the OpenClaw backend. The current code is a prerelease;
 vendor API availability can change. It targets the Chinese App service; other regions are unverified.
 
 ## Installation and account
@@ -191,3 +191,8 @@ Manual history requests are scoped to the selected vehicle even when automatic s
 ### History progress and local rate limiting
 
 The history request budget is shared by the account, not an application for upstream permission. Progress exposes `next_request_at`, `retry_at`, and `sync_phase`; a request in flight publishes its active phase. “Last successful sync” updates after an accepted page/detail commit, while `last_completed` records full-task completion. Recorded stable-total multi-page month counts describe saved evidence; they do not certify the upstream history boundary or every model. The legacy `real_cloud_pagination_verified` attribute is unknown rather than hardcoded false.
+
+
+### Reusing verified history months
+
+First discovery can reuse an independently enumerated old month already stored in this account archive. All original pages must verify within eight pages and 4 MiB of decoded JSON, with matching totals, ride membership and source timestamps no earlier than the baseline cutoff. Current and previous months, newer observations or incomplete evidence use normal discovery. This local reuse preserves original receipt times, consumes no cloud request budget and does not mark missing ride details complete. It does not infer an earliest historical month from empty results.
