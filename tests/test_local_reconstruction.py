@@ -662,3 +662,62 @@ async def test_restoration_failure_rolls_back_bytes_quarantine_and_checkpoint(
         assert body == b"damaged-original" and quarantined == 0
     finally:
         await archive.async_close()
+
+
+async def test_recovery_search_restarts_past_eight_bad_newer_copies(tmp_path):
+    import shutil
+
+    archive = await seed(tmp_path)
+    await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+    await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+    await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+    original = next(tmp_path.glob("*.recovery-*.sqlite3"))
+    good = tmp_path / ("rides.recovery-" + "f" * 32 + ".sqlite3")
+    original.rename(good)
+    for index in range(9):
+        bad = tmp_path / f"rides.recovery-{index:032x}.sqlite3"
+        shutil.copyfile(good, bad)
+        with sqlite3.connect(bad) as db:
+            db.execute("UPDATE detail_payloads SET body=?", (b"wrong-copy",))
+
+    def damage_body():
+        with archive._db() as db:
+            db.execute("UPDATE detail_payloads SET body=?", (b"damaged-original",))
+
+    await archive._run(damage_body)
+    await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+    first = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+    assert first.searching and first.checked == first.blocked == 0
+    assert first.source_copy_checks == 8
+    await archive.async_close()
+    archive = RideArchive(tmp_path / "rides.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        second = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert not second.searching and second.checked == second.repaired == 1
+        assert second.blocked == 0 and 10 <= second.source_copy_checks <= 16
+        assert (await archive.async_private_detail(SN, "ride-a")).latest is not None
+        # The cursor prevents another visit to the first eight source files.
+        done = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert done.state == "complete" and done.source_copy_checks == second.source_copy_checks
+    finally:
+        await archive.async_close()
+
+
+def test_legacy_reconstruction_checkpoint_adds_only_known_search_defaults():
+    from dataclasses import asdict
+
+    from custom_components.ninebot.reconstruction_job import ReconstructionJob, restored
+
+    values = asdict(
+        ReconstructionJob(
+            "a" * 32, None, 0, 0, 0, NOW.isoformat(), NOW.isoformat(), state="complete"
+        )
+    )
+    for name in ("searching", "pending_repaired", "source_copy_checks", "partially_repaired"):
+        values.pop(name)
+    job = restored(json.dumps(values))
+    assert not job.searching and not job.pending_repaired and job.source_copy_checks == 0
+    values.pop("revision")
+    with pytest.raises(ValueError):
+        restored(json.dumps(values))

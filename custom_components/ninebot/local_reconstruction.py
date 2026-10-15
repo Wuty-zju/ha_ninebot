@@ -24,6 +24,7 @@ class Reconstruction:
     fields: tuple[str, ...] = ()
     repaired: bool = False
     checked_fields: tuple[str, ...] = ()
+    source_copy_checks: int = 0
 
 
 def proposal(

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b71
+
+- Persist per-role recovery-source search cursors instead of repeatedly inspecting only the newest eight copies. Inspect at most eight source copies per ride batch; continue through a captured managed-name interval across restart, pause and ordinary background ticks.
+- Keep a ride pending while local source search has more work. Report source-copy checks and pending recovered roles without incrementing completed/failed ride counts early. Retain and publish partial recovery while waiting for the other role, then account for that ride once.
+- Preserve old checkpoints through explicit additive defaults, use no arbitrary paths or cloud requests, and do not claim an immutable filesystem snapshot or recovery of future copies. Payload digest/owner/metadata verification and forensic preservation remain unchanged.
+
 ## 2.0.0b70
 
 - Recover byte-corrupt referenced detail objects from bounded managed account-local recovery copies, only when owner, vehicle/ride, exact existing digest and all source metadata match. Validate decompression, identity and current redaction rules before copying; never change reference hashes, selected geometry or receipt timestamps.

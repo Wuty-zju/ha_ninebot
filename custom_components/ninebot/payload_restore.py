@@ -7,11 +7,9 @@ bounded, not an assertion that every possible recovery copy was exhausted.
 """
 
 import hashlib
-import heapq
 import json
-import os
-import re
 import sqlite3
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -21,30 +19,14 @@ from .object_checks import MAX_COMPRESSED, StoredObject, quarantine, verify
 from .payload_inventory import advance
 
 MAX_COPIES = 8
-MAX_SCAN_BYTES = 16 * MAX_COMPRESSED
 COLUMNS = ("vehicle", "ride", "hash", "body", "observed", "month", "backend", "endpoint")
 
 
-def candidates(path: Path) -> tuple[Path, ...]:
-    pattern = re.compile(re.escape(path.stem) + r"\.recovery-[0-9a-f]{32}\.sqlite3")
-    items: list[tuple[int, str]] = []
-    try:
-        with os.scandir(path.parent) as entries:
-            for entry in entries:
-                if not pattern.fullmatch(entry.name):
-                    continue
-                try:
-                    if entry.is_file(follow_symlinks=False) and not entry.is_symlink():
-                        item = (entry.stat(follow_symlinks=False).st_mtime_ns, entry.name)
-                        if len(items) < MAX_COPIES:
-                            heapq.heappush(items, item)
-                        else:
-                            heapq.heappushpop(items, item)
-                except OSError:
-                    continue
-    except OSError:
-        return ()
-    return tuple(path.with_name(name) for _, name in sorted(items, reverse=True))
+@dataclass(frozen=True)
+class RestoreResult:
+    recovered: int = 0
+    pending: bool = False
+    examined: int = 0
 
 
 def copied_body(
@@ -86,18 +68,25 @@ def copied_body(
 
 
 def restore(
-    db: sqlite3.Connection, path: Path, owner: str, vehicle: str, ride: str, now: datetime
-) -> int:
+    db: sqlite3.Connection,
+    path: Path,
+    owner: str,
+    vehicle: str,
+    ride: str,
+    now: datetime,
+    job_id: str,
+) -> RestoreResult:
+    from .recovery_search import get, key, page, put
+
     row = db.execute("SELECT data FROM rides WHERE vehicle=? AND id=?", (vehicle, ride)).fetchone()
     pointers = db.execute(
         "SELECT latest_hash,geometry_hash FROM details WHERE vehicle=? AND ride=?", (vehicle, ride)
     ).fetchone()
     if row is None or pointers is None:
-        return 0
+        return RestoreResult()
     current = restored_ride(decoded(row[0]))
-    copies: tuple[Path, ...] | None = None
-    read_bytes = 0
-    restored = 0
+    recovered, examined = 0, 0
+    pending = False
     for digest in dict.fromkeys(pointers):
         original = db.execute(
             "SELECT CASE WHEN length(body)<=? THEN body END,length(body),observed,month,"
@@ -116,15 +105,25 @@ def restore(
             continue
         except CorruptPayload:
             pass
-        if copies is None:
-            copies = candidates(path)
-        for copy in copies:
+        scope = key(vehicle, ride, digest)
+        try:
+            search = get(db, scope, path, job_id)
+            if search.finished:
+                put(db, scope, search)
+                continue
+            files, more = (
+                page(path, search, MAX_COPIES - examined) if examined < MAX_COPIES else ((), True)
+            )
+        except OSError:
+            pending = True  # No false exhaustion from a transient directory failure.
+            continue
+        for identity in files:
+            copy = path.with_name(f"{path.stem}.recovery-{identity}.sqlite3")
+            search = replace(search, after=identity, checked=search.checked + 1)
+            examined += 1
             body = copied_body(copy, owner, vehicle, ride, digest, metadata)
             if body is None:
                 continue
-            read_bytes += len(body)
-            if read_bytes > MAX_SCAN_BYTES:
-                return restored
             try:
                 record = unpacked(
                     body, digest, stamp(metadata[0]), metadata[1], metadata[2], metadata[3]
@@ -166,6 +165,11 @@ def restore(
             if verify(db, updated, now) is not None:
                 raise CorruptPayload("Recovered original failed verification")
             advance(db, vehicle)
-            restored += 1
+            recovered += 1
+            search = replace(search, finished=True)
             break
-    return restored
+        else:
+            search = replace(search, finished=not more)
+        put(db, scope, search)
+        pending = pending or not search.finished
+    return RestoreResult(recovered, pending, examined)
