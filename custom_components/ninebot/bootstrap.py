@@ -140,12 +140,14 @@ class HistoryBootstrap:
                         )
                     elif claimed is None:
                         claimed = await archive.async_claim_history_page(
-                            sn, now, budget, guard=owns, plan_id=run.plan_id
+                            sn, max(now, dt_util.utcnow()), budget, guard=owns, plan_id=run.plan_id
                         )
                         # A not-yet-due retry/lease must not block another month.
                         # Once claimed, keep checking completed local runs but no more claims.
             else:
-                claimed = await archive.async_claim_history_page(sn, now, budget, guard=owns)
+                claimed = await archive.async_claim_history_page(
+                    sn, max(now, dt_util.utcnow()), budget, guard=owns
+                )
             if claimed is None:
                 continue
             assert claimed.next_month is not None
