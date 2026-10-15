@@ -4,10 +4,12 @@ One actor SELECT returns a scalar count of affected rides. It never opens raw
 BLOBs, returns identity data, changes selections or reconstructs missing parents.
 """
 
+import json
 import sqlite3
 
 QUERY = (
-    "WITH targets AS (SELECT month,ride FROM history_ids WHERE vehicle=? AND plan=?),"
+    "WITH targets AS (SELECT month,ride FROM history_ids WHERE vehicle=?"
+    " AND plan IN (SELECT value FROM json_each(?))),"
     " items AS (SELECT mo.month,j.value,j.type,"
     " CASE WHEN json_valid(mo.ids) THEN json_type(mo.ids,'$.ids') IS NOT 'array'"
     " ELSE 1 END AS bad_shape FROM months mo"
@@ -28,6 +30,17 @@ QUERY = (
 )
 
 
-def issues(db: sqlite3.Connection, vehicle: str, plan: str) -> int:
+def issues(db: sqlite3.Connection, vehicle: str, plan: str, *, plans: str | None = None) -> int:
     """All referenced months are checked; count each affected ride only once."""
-    return int(db.execute(QUERY, (vehicle, plan, vehicle, vehicle, vehicle)).fetchone()[0])
+    return int(
+        db.execute(
+            QUERY,
+            (
+                vehicle,
+                plans if plans is not None else json.dumps((plan,)),
+                vehicle,
+                vehicle,
+                vehicle,
+            ),
+        ).fetchone()[0]
+    )

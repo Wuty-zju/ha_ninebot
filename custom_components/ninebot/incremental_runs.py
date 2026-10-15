@@ -42,7 +42,14 @@ def put(db: sqlite3.Connection, plan: HistoryPlan) -> None:
     )
 
 
-def schedule(db: sqlite3.Connection, vehicle: str, month: str, now: datetime) -> HistoryPlan:
+def schedule(
+    db: sqlite3.Connection,
+    vehicle: str,
+    month: str,
+    now: datetime,
+    *,
+    retry_discovery: bool = False,
+) -> HistoryPlan:
     previous_month(month)
     active_key = f"history_run_active:{vehicle}:{month}"
     row = db.execute("SELECT value FROM meta WHERE key=?", (active_key,)).fetchone()
@@ -50,7 +57,9 @@ def schedule(db: sqlite3.Connection, vehicle: str, month: str, now: datetime) ->
         old = get(db, vehicle, row[0])
         if old is None:
             raise ValueError("Missing incremental run")
-        if old.state not in TERMINAL:
+        if old.state not in TERMINAL and not (
+            retry_discovery and old.discovery_complete and old.gap_months > 0
+        ):
             return old  # Automatic/manual requests coalesce, including retry/paused work.
     if len(active(db, vehicle)) >= 12:
         raise RunCapacity

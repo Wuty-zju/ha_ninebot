@@ -419,7 +419,11 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("history_reuse:"):
+            if key.startswith(("history_gap:", "history_gap_cursor:")):
+                from .gap_recovery import validate as validate_gap
+
+                validate_gap(db, key, value)
+            elif key.startswith("history_reuse:"):
                 from .history_reuse import check as check_reuse
 
                 check_reuse(db, key, value)
@@ -2571,6 +2575,34 @@ class RideArchive:
     async def async_history_paused(self, sn: str) -> bool:
         return await self._run(lambda: self._history_paused(vehicle_key(sn)))
 
+    async def async_seed_history_gap(
+        self, sn: str, now: datetime, *, guard: Callable[[], bool], month: str | None = None
+    ) -> HistoryPlan | None:
+        from .gap_recovery import seed
+        from .incremental_runs import RunCapacity
+
+        utc_string(now)
+        if month is not None:
+            previous_month(month)
+
+        def commit() -> HistoryPlan | None:
+            db = self._db(write=True)
+            try:
+                with db:
+                    if self._history_paused(vehicle_key(sn)):
+                        return None
+                    return seed(db, vehicle_key(sn), now, only_month=month)
+            except RunCapacity:
+                return None  # Other tasks drain before more gap work is registered.
+
+        return await self._run(commit, guard=guard)
+
+    async def async_history_gap_unresolved(self, sn: str, month: str) -> bool:
+        from .gap_recovery import unresolved
+
+        previous_month(month)
+        return await self._run(lambda: unresolved(self._db(), vehicle_key(sn), month))
+
     async def async_schedule_history_run(
         self, sn: str, month: str, now: datetime, *, guard: Callable[[], bool]
     ) -> HistoryPlan:
@@ -2754,6 +2786,7 @@ class RideArchive:
     ) -> HistoryEvidence:
         """Read metadata/counts together on the actor; never decompress payloads."""
         from .detail_health import summary
+        from .gap_recovery import coverage as gap_coverage
         from .history_store import root
         from .incremental_runs import active
 
@@ -2791,6 +2824,7 @@ class RideArchive:
                     " AND verified=1 AND pages>1 AND total=known",
                     (vehicle,),
                 ).fetchone()[0],
+                gap_coverage(db, vehicle, plan.plan_id)[0] if plan else None,
             )
 
         return await self._run(read, guard=guard)
@@ -3092,6 +3126,11 @@ class RideArchive:
                                 sync_checkpoint=False,
                                 raw=raw,
                             )
+                    if receipt.verified:
+                        from .gap_recovery import link_completed
+
+                        assert raw.query_month is not None
+                        link_completed(db, receipt.root, raw.query_month, raw.received_at)
                 return receipt
             except HistoryConflict:
                 raise ArchiveError(ArchiveFailure.BUSY) from None
