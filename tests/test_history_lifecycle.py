@@ -189,6 +189,7 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
         )
         expected = {item["travel_id"] for item in rows[(sn, "202610")]}
         call = ServiceCall(
+            hass,
             "ninebot",
             "get_recorded_trips",
             {
