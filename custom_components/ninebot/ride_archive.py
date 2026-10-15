@@ -495,7 +495,7 @@ class RideArchive:
                     or value not in {"0", "1"}
                 ):
                     raise ValueError("Invalid history pause state")
-            elif key.startswith("history_last_success:"):
+            elif key.startswith(("history_last_success:", "history_last_commit:")):
                 vehicle = key.split(":", 1)[1]
                 if len(vehicle) != 64 or any(c not in "0123456789abcdef" for c in vehicle):
                     raise ValueError("Invalid history success scope")
@@ -1032,6 +1032,16 @@ class RideArchive:
             guard=guard,
         )
 
+    def _history_committed(self, vehicle: str, observed: str) -> None:
+        db = self._db()
+        key = f"history_last_commit:{vehicle}"
+        prior = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        if prior is None or stamp(observed) > stamp(prior[0]):
+            db.execute(
+                "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, observed),
+            )
+
     def _record_detail(
         self, vehicle: str, ride: Ride, observed: str, ordered: bool, raw: RawRecord | None = None
     ) -> bool:
@@ -1055,6 +1065,11 @@ class RideArchive:
             changed = self._upsert_ride(vehicle, ride, observed, ordered)
             if raw is not None:
                 changed = self._save_private_detail(vehicle, ride, raw, observed) or changed
+                if db.execute(
+                    "SELECT observed FROM details WHERE vehicle=? AND ride=?",
+                    (vehicle, ride.ride_id),
+                ).fetchone() == (observed,):
+                    self._history_committed(vehicle, observed)
             if changed:
                 self._revision(bump=True)
         return changed
@@ -2614,9 +2629,10 @@ class RideArchive:
             plan = root(db, vehicle)
             rows = dict(
                 db.execute(
-                    "SELECT key,value FROM meta WHERE key IN (?,?,?,?)",
+                    "SELECT key,value FROM meta WHERE key IN (?,?,?,?,?)",
                     (
                         f"history_last_success:{vehicle}",
+                        f"history_last_commit:{vehicle}",
                         "preservation_budget",
                         f"history_paused:{vehicle}",
                         f"history_requested:{vehicle}",
@@ -2624,15 +2640,23 @@ class RideArchive:
                 )
             )
             success = rows.get(f"history_last_success:{vehicle}")
+            committed = rows.get(f"history_last_commit:{vehicle}")
+            successes = [stamp(value) for value in (success, committed) if value]
             budget = rows.get("preservation_budget")
             return HistoryEvidence(
                 plan,
                 summary(db, vehicle, plan.plan_id) if plan else None,
                 active(db, vehicle),
-                stamp(success) if success else None,
+                max(successes) if successes else None,
                 datetime.fromtimestamp(float(budget), UTC) if budget else None,
                 rows.get(f"history_paused:{vehicle}") == "1",
                 rows.get(f"history_requested:{vehicle}") == "1",
+                stamp(success) if success else None,
+                db.execute(
+                    "SELECT count(DISTINCT month) FROM history_months WHERE vehicle=?"
+                    " AND verified=1 AND pages>1 AND total=known",
+                    (vehicle,),
+                ).fetchone()[0],
             )
 
         return await self._run(read, guard=guard)
@@ -2872,6 +2896,8 @@ class RideArchive:
                     if self._history_paused(expected.vehicle):
                         raise ArchiveError(ArchiveFailure.BUSY)
                     receipt = accept_page(db, expected, raw)
+                    if receipt.stop is None:
+                        self._history_committed(expected.vehicle, utc_string(raw.received_at))
                     from .payload_inventory import advance as advance_inventory
 
                     advance_inventory(db, expected.vehicle)

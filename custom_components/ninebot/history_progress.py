@@ -18,6 +18,8 @@ class HistoryEvidence:
     budget_at: datetime | None = None
     paused: bool = False
     requested: bool = False
+    last_completed: datetime | None = None
+    multi_page_months: int = 0
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,11 @@ class HistoryProgress:
     discovery_complete: bool
     active_months: int
     last_success: datetime | None
+    last_completed: datetime | None = None
+    next_request_at: datetime | None = None
+    retry_at: datetime | None = None
+    phase: str | None = None
+    multi_page_months: int = 0
 
     @property
     def scan_percent(self) -> int | None:
@@ -61,10 +68,23 @@ def project_progress(
     authenticated: bool,
     authentication_required: bool = False,
     storage_error: str | None = None,
+    active_phase: str | None = None,
 ) -> HistoryProgress:
     plan, health = evidence.baseline, evidence.health
     pending = plan is not None and plan.state not in TERMINAL
     current = plan if pending else next(iter(evidence.active), plan)
+    phase = (
+        active_phase
+        or ("discovering" if current and current.next_month is not None else None)
+        or ("preserving" if pending else "incremental" if evidence.active else None)
+    )
+    retry = (
+        datetime.fromisoformat(current.retry_at)
+        if current and current.state is HistoryState.WAITING and current.retry_at
+        else None
+    )
+    deadlines = [value for value in (evidence.budget_at, retry) if value and value > now]
+    next_request = max(deadlines) if deadlines else None
     if paused:
         state = "paused"
     elif not enabled:
@@ -75,6 +95,8 @@ def project_progress(
         state = "needs_login"
     elif not authenticated:
         state = "waiting_connection"
+    elif active_phase is not None:
+        state = active_phase
     elif current is None:
         state = "not_started"
     elif current.state is HistoryState.WAITING:
@@ -113,4 +135,11 @@ def project_progress(
         discovery_complete=plan.discovery_complete if plan else False,
         active_months=len(evidence.active),
         last_success=evidence.last_success,
+        last_completed=evidence.last_completed,
+        next_request_at=next_request
+        if enabled and not paused and authenticated and not storage_error
+        else None,
+        retry_at=retry,
+        phase=phase,
+        multi_page_months=evidence.multi_page_months,
     )

@@ -491,7 +491,7 @@
           "waiting_connection": "等待连接",
           "not_started": "尚未开始",
           "waiting_retry": "等待重试",
-          "waiting_budget": "等待请求额度",
+          "waiting_budget": "本地限速等待",
           "discovering": "正在发现历史",
           "preserving": "正在保存详情",
           "verifying": "正在校验记录",

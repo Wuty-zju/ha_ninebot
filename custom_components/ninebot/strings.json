@@ -491,7 +491,7 @@
           "waiting_connection": "Waiting for connection",
           "not_started": "Not started",
           "waiting_retry": "Waiting to retry",
-          "waiting_budget": "Waiting for request budget",
+          "waiting_budget": "Waiting for local request interval",
           "discovering": "Discovering history",
           "preserving": "Saving details",
           "verifying": "Verifying records",

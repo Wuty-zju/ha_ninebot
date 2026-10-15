@@ -5,7 +5,7 @@ It only advances one claimed page; detail preservation uses the existing queue.
 """
 
 import secrets
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
@@ -27,8 +27,14 @@ CONF_AUTO_HISTORY = "auto_history_sync"
 
 
 class HistoryBootstrap:
-    def __init__(self, co: "NinebotCoordinator") -> None:
+    def __init__(
+        self,
+        co: "NinebotCoordinator",
+        *,
+        on_query: Callable[[str, str | None], Awaitable[None]] | None = None,
+    ) -> None:
         self.co = co
+        self.on_query = on_query
         self.snapshots: dict[str, tuple[HistoryPlan, HistoryHealth]] = {}
         self.paused: set[str] = set()
         self.requested: set[str] = set()
@@ -134,16 +140,20 @@ class HistoryBootstrap:
                         )
                     elif claimed is None:
                         claimed = await archive.async_claim_history_page(
-                            sn, now, budget, guard=owns, plan_id=run.plan_id
+                            sn, max(now, dt_util.utcnow()), budget, guard=owns, plan_id=run.plan_id
                         )
                         # A not-yet-due retry/lease must not block another month.
                         # Once claimed, keep checking completed local runs but no more claims.
             else:
-                claimed = await archive.async_claim_history_page(sn, now, budget, guard=owns)
+                claimed = await archive.async_claim_history_page(
+                    sn, max(now, dt_util.utcnow()), budget, guard=owns
+                )
             if claimed is None:
                 continue
             assert claimed.next_month is not None
             try:
+                if self.on_query:
+                    await self.on_query(sn, "incremental" if incremental else "discovering")
                 raw = await co.async_query_history_page(sn, claimed.next_month, claimed.next_page)
                 await archive.async_accept_history_page(sn, claimed, raw, guard=owns)
                 plan = (
@@ -187,6 +197,9 @@ class HistoryBootstrap:
                         min(86400, retry_delay(claimed.attempts, retry)),
                         guard=owns,
                     )
+            finally:
+                if self.on_query:
+                    await self.on_query(sn, None)
             return True  # One shared budget reservation/wire operation at most.
         return False
 

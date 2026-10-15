@@ -597,7 +597,7 @@ async def test_history_family_rotation_is_durable_without_budget_reset(store):
 
 
 async def test_progress_metadata_is_local_persistent_and_success_is_not_last_attempt(store):
-    assert (await store.async_history_evidence(SN, guard=lambda: True)).last_success is None
+    assert (await store.async_history_evidence(SN, guard=lambda: True)).last_completed is None
     first = await store.async_accept_history_page(SN, initial(), record((), 0), guard=lambda: True)
     second = await store.async_accept_history_page(
         SN, first.root, record((), 0, "202609"), guard=lambda: True
@@ -617,3 +617,39 @@ async def test_progress_metadata_is_local_persistent_and_success_is_not_last_att
         assert await reopened.async_history_evidence(SN, guard=lambda: True) == value
     finally:
         await reopened.async_close()
+
+
+async def test_successful_page_activity_is_atomic_and_distinct_from_completed_task(
+    store, monkeypatch
+):
+    await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    first = await store.async_history_evidence(SN, guard=lambda: True)
+    assert first.last_success == NOW and first.last_completed is None
+    expected = await store.async_history_plan(SN)
+    second = build_record(
+        Endpoint.TRAVEL,
+        {"times": 2, "list": [{"travel_id": "ride-two"}]},
+        NOW + timedelta(seconds=1),
+        "202610",
+        backend_version="0.1.7",
+        endpoint_version=expected.provider,
+    )
+    original = store._record_month
+
+    def fail(*args, **kwargs):
+        raise ValueError("synthetic transaction failure after activity marker")
+
+    monkeypatch.setattr(store, "_record_month", fail)
+    with pytest.raises(ArchiveError):
+        await store.async_accept_history_page(SN, expected, second, guard=lambda: True)
+    assert (await store.async_history_evidence(SN, guard=lambda: True)).last_success == NOW
+    assert (
+        await store.async_history_page(SN, expected.plan_id, "202610", 2, guard=lambda: True)
+        is None
+    )
+    monkeypatch.setattr(store, "_record_month", original)
+    await store.async_accept_history_page(SN, expected, second, guard=lambda: True)
+    after = await store.async_history_evidence(SN, guard=lambda: True)
+    assert after.last_success == NOW + timedelta(seconds=1)
+    assert after.last_completed is None and after.multi_page_months == 1
+    await store._run(lambda: store._check(store._db()))

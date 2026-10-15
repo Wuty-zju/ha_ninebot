@@ -491,7 +491,7 @@
           "waiting_connection": "等待連線",
           "not_started": "尚未開始",
           "waiting_retry": "等待重試",
-          "waiting_budget": "等待請求額度",
+          "waiting_budget": "等待本機請求間隔",
           "discovering": "正在發現歷史",
           "preserving": "正在儲存詳情",
           "verifying": "正在校驗記錄",

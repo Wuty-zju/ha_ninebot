@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b75
+
+- Use the current decision time for detail claims so timer jitter cannot favor later month claims at the budget boundary.
+- Publish active history phases, next local request/retry timestamps and successful page/detail commits separately from full-task completion.
+- Expose recorded multi-page month counts instead of a hardcoded false real-world verification claim; keep rate limits and entity identity unchanged.
+
+
 ## 2.0.0b74
 
 - Continue vehicle-scoped manual incremental work when automatic synchronization is disabled.
