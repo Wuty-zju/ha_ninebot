@@ -134,4 +134,15 @@ def summary(db: sqlite3.Connection, vehicle: str, plan: str) -> HistoryHealth:
     ).fetchone()
     from .history_references import issues
 
-    return HistoryHealth(*row, reference_issues=issues(db, vehicle, plan))
+    return HistoryHealth(
+        discovered=row[0],
+        saved=row[1],
+        missing=row[2],
+        unmapped=row[3],
+        quality_pending=row[4],
+        simplified=row[5],
+        single_point=row[6],
+        unavailable_track=row[7],
+        latest_degraded=row[8],
+        reference_issues=issues(db, vehicle, plan),
+    )
