@@ -205,3 +205,6 @@ Within the existing 150–180 day local preservation risk band, pending details 
 
 
 Cached statistical months and the latest ride now come from one per-vehicle archive read. Local history pages capture their detail-saved flags together with their rows and revision. Background writes cannot split those reads into mixed versions. Separate calendar/list/detail requests still observe their own read time; this is not a database snapshot token across requests or the whole fleet. Browsing remains local and bounded.
+
+
+Local reconstruction can restore a missing ride/month link only when retained original pages prove the same ride/detail identity and exact start time. It checks at most eight missing months/eight page candidates and 4 MiB decoded evidence, then uses the existing private recovery backup, ownership fence and atomic commit. Existing links and complete-list withdrawals are not rewritten. Missing parents, unproven identity/time or over-budget evidence stay blocked; no cloud fetch is used. This is a narrow repair, not certification of all memberships or normalized fields. The repair starts when the normalized ride’s current query-month link is missing; older-only link losses are not a full-audit claim.

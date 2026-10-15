@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b80
+
+- Recover missing ride/month membership links only when bounded original page evidence proves the same identity and start time.
+- Use existing local reconstruction backups, ownership guards and atomic checkpoints; preserve current complete/partial-list selection and all raw originals.
+- Version the expanded reconstruction contract while accepting old checkpoints; unproven links stay blocked and global reference-completeness claims remain false.
+
 ## 2.0.0b79
 
 - Read per-vehicle statistical month facts, the latest ride and their archive revision in one actor operation, preventing mixed versions during background writes.

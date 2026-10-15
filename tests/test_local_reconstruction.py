@@ -31,7 +31,7 @@ ROW = {
 }
 
 
-async def seed(tmp_path, *, identified=True, witness=True):
+async def seed(tmp_path, *, identified=True, witness=True, witness_row=None):
     archive = RideArchive(tmp_path / "rides.sqlite3", OWNER)
     await archive.async_open()
     month = travel({"times": 1, "list": [ROW]}, "202610")
@@ -45,7 +45,7 @@ async def seed(tmp_path, *, identified=True, witness=True):
             claimed,
             build_record(
                 Endpoint.TRAVEL,
-                {"times": 1, "list": [ROW]},
+                {"times": 1, "list": [witness_row or ROW]},
                 NOW,
                 "202610",
                 backend_version="0.1.7",
@@ -510,7 +510,7 @@ async def test_old_checker_checkpoint_not_claimed_as_full_new_quality_scan(tmp_p
         await archive._run(legacy)
         await archive._run(lambda: archive._check(archive._db()))
         resumed = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
-        assert resumed.contract == 2 and resumed.changed and resumed.state == "with_gaps"
+        assert resumed.contract == 3 and resumed.changed and resumed.state == "with_gaps"
         assert resumed.checked == 1  # No fake rewind or duplicate progress.
     finally:
         await archive.async_close()
@@ -845,3 +845,191 @@ async def test_startup_publication_failure_preserves_source_and_forensic_copy(
     preserved = [p for p in tmp_path.glob("*.recovery-*.sqlite3") if p != source]
     assert len(preserved) == 1 and preserved[0].read_bytes() == original
     assert not list(tmp_path.glob(".ninebot-*"))
+
+
+async def drop_membership(archive):
+    def edit():
+        with archive._db() as db:
+            db.execute("DELETE FROM membership WHERE ride='ride-a'")
+
+    await archive._run(edit)
+
+
+async def test_missing_month_link_is_proved_backed_up_and_restored_without_cloud(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+        original = await archive.async_private_detail(SN, "ride-a")
+        await drop_membership(archive)
+        assert not (await archive.async_timeline(SN, NOW - timedelta(days=1), NOW)).records
+        result = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True)
+        assert result.status == "repairable" and result.fields == ("month_membership",)
+        assert result.membership_updates == (("202610", 1),)
+        assert "page_membership_identity" in result.checked_fields
+        assert not list(tmp_path.glob("*.recovery-*.sqlite3"))
+        repaired = await archive.async_reconstruct_ride(
+            SN, "ride-a", guard=lambda: True, repair=True
+        )
+        assert repaired.repaired
+        assert len((await archive.async_timeline(SN, NOW - timedelta(days=1), NOW)).records) == 1
+        after = await archive.async_private_detail(SN, "ride-a")
+        assert (after.latest_hash, after.geometry_hash) == (
+            original.latest_hash,
+            original.geometry_hash,
+        )
+        assert after.latest.encoded == original.latest.encoded
+        backups = list(tmp_path.glob("*.recovery-*.sqlite3"))
+        assert len(backups) == 1
+        with sqlite3.connect(backups[0]) as db:
+            assert db.execute("SELECT count(*) FROM membership").fetchone()[0] == 0
+        await archive._run(lambda: archive._check(archive._db()))
+        assert (
+            await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True)
+        ).status == "healthy"
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("complete", [False, True])
+async def test_restored_old_month_link_preserves_current_partial_or_withdrawn_selection(
+    tmp_path, complete
+):
+    archive = await seed(tmp_path)
+    try:
+        await archive.async_record_month(
+            SN,
+            travel({"times": 0 if complete else 1, "list": []}, "202610"),
+            NOW + timedelta(seconds=2),
+        )
+        # Existing latest=0 withdrawal must never be rewritten.
+        existing = await archive.async_reconstruct_ride(
+            SN, "ride-a", guard=lambda: True, repair=True
+        )
+        assert not existing.repaired
+        await drop_membership(archive)
+        result = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True, repair=True)
+        assert result.repaired and result.membership_updates == (("202610", 0),)
+        rows = await archive.async_timeline(SN, NOW - timedelta(days=1), NOW)
+        assert len(rows.records) == (0 if complete else 1)
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "no_witness",
+        "start",
+        "bytes",
+        "future",
+        "backend",
+        "parent",
+        "selection",
+        "page_budget",
+        "byte_budget",
+    ],
+)
+async def test_missing_month_link_is_not_invented_without_bounded_identity_proof(
+    tmp_path, monkeypatch, reason
+):
+    from custom_components.ninebot import membership_recovery
+
+    archive = await seed(
+        tmp_path,
+        witness=reason != "no_witness",
+        witness_row={**ROW, "start_time": ROW["start_time"] - 1} if reason == "start" else None,
+    )
+    try:
+        await drop_membership(archive)
+
+        def alter():
+            with archive._db() as db:
+                if reason == "bytes":
+                    db.execute("UPDATE history_payloads SET body=?", (b"broken-page",))
+                elif reason == "future":
+                    db.execute(
+                        "UPDATE history_pages SET observed=?",
+                        ((NOW + timedelta(seconds=20)).isoformat(),),
+                    )
+                elif reason == "backend":
+                    db.execute("UPDATE history_pages SET backend='9.9.9'")
+                elif reason == "parent":
+                    db.execute("DELETE FROM months")
+                elif reason == "selection":
+                    db.execute("UPDATE months SET ids=?", ('{"ids":[null]}',))
+
+        await archive._run(alter)
+        if reason == "page_budget":
+            monkeypatch.setattr(membership_recovery, "MAX_PAGES", 0)
+        if reason == "byte_budget":
+            monkeypatch.setattr(membership_recovery, "MAX_BYTES", 1)
+        result = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True, repair=True)
+        assert result.status == "unverifiable" and not result.repaired
+        assert not list(tmp_path.glob("*.recovery-*.sqlite3"))
+        assert (
+            await archive._run(
+                lambda: archive._db().execute("SELECT count(*) FROM membership").fetchone()[0]
+            )
+            == 0
+        )
+    finally:
+        await archive.async_close()
+
+
+async def test_membership_transaction_rolls_back_if_revision_commit_fails(tmp_path, monkeypatch):
+    archive = await seed(tmp_path)
+    try:
+        await drop_membership(archive)
+        original = archive._revision
+
+        def fail(*, bump=False):
+            if bump:
+                raise ValueError("synthetic revision failure")
+            return original()
+
+        monkeypatch.setattr(archive, "_revision", fail)
+        with pytest.raises(ArchiveError):
+            await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True, repair=True)
+        assert (
+            await archive._run(
+                lambda: archive._db().execute("SELECT count(*) FROM membership").fetchone()[0]
+            )
+            == 0
+        )
+    finally:
+        await archive.async_close()
+
+
+async def test_membership_job_checkpoint_and_old_contracts_survive_restart(tmp_path):
+    from custom_components.ninebot.background_reconstruction import public
+    from custom_components.ninebot.reconstruction_job import ReconstructionJob
+
+    archive = await seed(tmp_path)
+    await drop_membership(archive)
+    await archive.async_reconstruction_job(SN, "start", NOW, guard=lambda: True)
+    first = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+    assert first.contract == 3 and first.repaired == first.checked == 1
+    await archive.async_close()
+    archive = RideArchive(archive.path, OWNER)
+    await archive.async_open()
+    try:
+        done = await archive.async_reconstruction_job(SN, "continue", NOW, guard=lambda: True)
+        assert done.state == "complete" and done.repaired == 1
+        assert public(done)["references_verified"] is False
+        for contract, label in [
+            (1, "local_scalar_reconstruction_v1"),
+            (2, "local_scalar_quality_reconstruction_v2"),
+        ]:
+            legacy = ReconstructionJob(
+                "f" * 32,
+                None,
+                0,
+                0,
+                0,
+                NOW.isoformat(),
+                NOW.isoformat(),
+                state="complete",
+                contract=contract,
+            )
+            assert public(legacy)["contract"] == label
+    finally:
+        await archive.async_close()

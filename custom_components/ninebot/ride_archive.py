@@ -53,6 +53,7 @@ from .archive_timeline import (
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .detail_codec import ArchivedDetail, CorruptPayload, packed, scoped_ride, unpacked
 from .detail_health import HistoryHealth
+from .exceptions import NinebotError
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
@@ -1202,7 +1203,9 @@ class RideArchive:
             if not self._worker_owned(loop, guard):
                 raise ArchiveError(ArchiveFailure.OWNER)
             with db:
-                self._apply_reconstruction(vehicle, ride_id, candidate, observed, quality)
+                self._apply_reconstruction(
+                    vehicle, ride_id, candidate, observed, quality, result.membership_updates
+                )
                 # Derived time indexes may be wrong even if normalized JSON
                 # matches, so invalidate consumers in either repair case.
                 self._revision(bump=True)
@@ -1229,6 +1232,25 @@ class RideArchive:
         if quality is not None:
             result = replace(result, status="repairable", fields=result.fields + ("quality_index",))
         result = replace(result, checked_fields=result.checked_fields + ("quality_index",))
+        from .membership_recovery import proposal as membership_proposal
+
+        assert stored.latest is not None  # Strict local reconstruction requires both roles.
+        try:
+            memberships = membership_proposal(
+                self._db(), vehicle, before[0], candidate, stored.latest.received_at
+            )
+        except (CorruptPayload, NinebotError, ValueError, TypeError, KeyError):
+            memberships = None
+        if memberships is None:
+            return replace(result, status="unverifiable"), None, before[1], None
+        if memberships:
+            result = replace(
+                result,
+                status="repairable",
+                fields=result.fields + ("month_membership",),
+                checked_fields=result.checked_fields + ("page_membership_identity",),
+                membership_updates=memberships,
+            )
         return result, candidate, before[1], quality
 
     def _apply_reconstruction(
@@ -1238,6 +1260,7 @@ class RideArchive:
         candidate: Ride | None,
         observed: str | None,
         quality: str | None,
+        memberships: tuple[tuple[str, int], ...] = (),
     ) -> None:
         from .detail_health import key, validate
 
@@ -1249,6 +1272,11 @@ class RideArchive:
                 "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (key(vehicle, ride_id), quality),
             )
+
+        self._db().executemany(
+            "INSERT INTO membership VALUES (?,?,?,?)",
+            ((vehicle, month, ride_id, latest) for month, latest in memberships),
+        )
 
     def _worker_owned(self, loop: asyncio.AbstractEventLoop, guard: Callable[[], bool]) -> bool:
         permitted: Future[bool] = Future()
@@ -1392,7 +1420,14 @@ class RideArchive:
                                 vehicle, ride_id
                             )
                     if result.status == "repairable":
-                        self._apply_reconstruction(vehicle, ride_id, candidate, observed, quality)
+                        self._apply_reconstruction(
+                            vehicle,
+                            ride_id,
+                            candidate,
+                            observed,
+                            quality,
+                            result.membership_updates,
+                        )
                     mutated = result.status == "repairable" or recovered > 0
                     if mutated:
                         self._revision(bump=True)
