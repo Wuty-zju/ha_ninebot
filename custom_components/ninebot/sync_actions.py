@@ -146,7 +146,7 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         else:
             month = month_at(now)
             active = await archive.async_active_history_runs(sn)
-            if any(run.start_month == month for run in active):
+            if any(run.start_month == month and not run.discovery_complete for run in active):
                 # Join a pending/retrying page run rather than fetching the same serve window.
                 performed = await co.preservation.incremental.async_step((sn,), now, budget)
             else:
