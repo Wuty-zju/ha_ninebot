@@ -3,14 +3,21 @@
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
+
+from homeassistant.core import ServiceCall
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.archive_runtime import ArchiveStatistics
+from custom_components.ninebot.calendar import NinebotRideCalendar
 from custom_components.ninebot.exceptions import ErrorKind, NinebotError
 from custom_components.ninebot.history_plan import HistoryState
 from custom_components.ninebot.preservation import HistoryPreservation
 from custom_components.ninebot.raw import Endpoint, RawStore, build_record
+from custom_components.ninebot.recorded_actions import async_recorded_query
+from custom_components.ninebot.services import cached_detail, ride_response
+from custom_components.ninebot.statistics_actions import statistics_response
 
 NOW = datetime(2026, 10, 15, tzinfo=UTC)
 VEHICLES = ("synthetic-worker-A", "synthetic-worker-B")
@@ -73,6 +80,7 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
                 "times": len(found),
                 "total_mileages": len(found),
                 "ec": 10 * len(found),
+                "duration": 60 * len(found),
                 "list": found[page - 1 : page],
             },
             clock[0],
@@ -157,14 +165,80 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
         for _ in range(20):
             await worker.async_tick(clock[0])
             clock[0] += timedelta(seconds=61)
-            if await statistics.archive.async_private_detail(sn, "new-incremental") is not None:
+            if await statistics.archive.async_private_detail(
+                sn, "new-incremental"
+            ) is not None and not await statistics.archive.async_active_history_runs(sn):
                 break
         assert await statistics.archive.async_private_detail(sn, "new-incremental") is not None
+        assert not await statistics.archive.async_active_history_runs(sn)
+        incremental = worker.bootstrap.incremental_snapshots[sn]
+        assert incremental[0].state is HistoryState.COMPLETE
+        assert incremental[1].discovered == incremental[1].saved == 3
+        assert not incremental[1].reference_issues
         for identity, count in stable_detail_calls.items():
             assert Counter(calls)[identity] == count
         for vehicle in VEHICLES:
             root = await statistics.archive.async_history_plan(vehicle)
             assert root.plan_id == baseline_ids[vehicle] and root.state is HistoryState.COMPLETE
+        # Consume exactly these saved facts through the real local response,
+        # calendar and map-detail code. Device routing is isolated here; the
+        # service permission/registry suite covers actual HA admission separately.
+        before_reads = list(calls)
+        entry = MockConfigEntry(domain="ninebot", entry_id="synthetic-lifecycle", data={})
+        entry.runtime_data = SimpleNamespace(
+            coordinator=co, identities=None, identity_conflicts=set()
+        )
+        expected = {item["travel_id"] for item in rows[(sn, "202610")]}
+        call = ServiceCall(
+            hass,
+            "ninebot",
+            "get_recorded_trips",
+            {
+                "device_id": "synthetic-device",
+                "start_date": "2026-10-01",
+                "end_date": "2026-10-02",
+                "limit": 100,
+            },
+        )
+        with (
+            patch(
+                "custom_components.ninebot.recorded_actions.resolve_vehicle",
+                return_value=(entry, sn),
+            ),
+            patch("custom_components.ninebot.recorded_actions.assert_query_scope"),
+        ):
+            response = await async_recorded_query(hass, call)
+        assert {ride["ride_id"] for ride in response["rides"]} == expected
+        assert all(ride["detail_saved"] for ride in response["rides"])
+        # Each cloud page is partial even after the separate paginated run has
+        # proved enumeration complete. Preserve that raw observation contract.
+        assert not response["coverage"]["all_observed_lists_complete"]
+        assert response["coverage"]["partial_months"] == ["202610"]
+        view = await statistics.async_view(sn, ("202609", "202610"))
+        metrics = statistics_response(view, sn, ("202610",), clock[0], True)
+        month = metrics["months"][0]
+        assert (month["ride_count"], month["distance_km"], month["energy_wh"]) == (3, 3, 30)
+        day = next(value for value in metrics["days"] if value["date"] == "2026-10-01")
+        assert (day["ride_count"], day["distance_km"], day["duration_s"], day["energy_wh"]) == (
+            3,
+            3,
+            180,
+            30,
+        )
+        calendar = NinebotRideCalendar(entry, sn)
+        calendar._attr_name = "Synthetic rides"
+        start = datetime(2026, 10, 1, tzinfo=UTC)
+        events = await calendar.async_get_events(hass, start, start + timedelta(days=2))
+        assert len(events) == 3 and len({event.uid for event in events}) == 3
+        assert all((event.end - event.start).total_seconds() == 60 for event in events)
+        for identity in expected:
+            detail, _ = await cached_detail(co, sn, identity, "202610", 500)
+            payload = ride_response(detail.ride, include_track=True)
+            assert payload["ride_id"] == identity and len(payload["track"]) == 2
+            assert payload["distance_m"] == 1000 and payload["duration_s"] == 60
+            assert [point["speed_raw"] for point in payload["track"]] == [1, 2]
+            assert payload["coordinate_system"] == "unknown"
+        assert calls == before_reads  # Browsing saved data never queries the cloud.
         co.async_query_month.assert_not_awaited()
         assert statistics.error is None
     finally:
