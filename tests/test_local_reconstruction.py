@@ -1078,3 +1078,127 @@ async def test_old_completed_reference_gap_still_opens_backs_up_and_repairs(tmp_
         )
     finally:
         await archive.async_close()
+
+
+@pytest.mark.parametrize(
+    "family,key,value,label",
+    [
+        ("field_provenance", "distance_m", "wrong-unit", "field_provenance.distance_m"),
+        ("field_sources", "distance_m", "travel", "field_sources.distance_m"),
+        ("field_states", "distance_m", "null", "field_states.distance_m"),
+        ("detail_field_states", "distance_m", "missing", "detail_field_states.distance_m"),
+        ("precision", "mileages", 0, "precision_floor.mileages"),
+    ],
+)
+async def test_equal_values_do_not_hide_proven_scalar_metadata_conflicts(
+    tmp_path, family, key, value, label
+):
+    archive = await seed(tmp_path)
+    try:
+        original = await archive.async_private_detail(SN, "ride-a")
+
+        def drift():
+            with archive._db() as db:
+                data = json.loads(db.execute("SELECT data FROM rides").fetchone()[0])
+                values = dict(data[family])
+                values[key] = value
+                data[family] = sorted(values.items())
+                db.execute("UPDATE rides SET data=?", (json.dumps(data),))
+
+        await archive._run(drift)
+        checked = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True)
+        assert checked.status == "repairable" and label in checked.fields
+        assert label in checked.checked_fields
+        assert (await archive.async_private_detail(SN, "ride-a")).ride.distance_m == 2500
+        repaired = await archive.async_reconstruct_ride(
+            SN, "ride-a", guard=lambda: True, repair=True
+        )
+        assert repaired.repaired
+        after = await archive.async_private_detail(SN, "ride-a")
+        assert dict(getattr(after.ride, family))[key] == dict(getattr(original.ride, family))[key]
+        assert (
+            after.latest_hash == original.latest_hash
+            and after.geometry_hash == original.geometry_hash
+        )
+        assert after.latest.encoded == original.latest.encoded
+        assert (
+            await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True)
+        ).status == "healthy"
+    finally:
+        await archive.async_close()
+
+
+async def test_scalar_repair_preserves_unproven_presence_provenance_parser_and_extra_precision(
+    tmp_path,
+):
+    archive = await seed(tmp_path)
+    try:
+
+        def drift():
+            with archive._db() as db:
+                data = json.loads(db.execute("SELECT data FROM rides").fetchone()[0])
+                data["distance_m"] = 999
+                data["server_average_speed_raw"] = 42  # Never supplied by retained detail.
+                data["parser_contract"] = "retained-legacy-parser"
+                data["issues"].append("unverified-retained-issue")
+                for name, value in (
+                    ("field_sources", "travel"),
+                    ("field_provenance", "retained-list-fact"),
+                    ("field_states", "null"),
+                    ("detail_field_states", "missing"),
+                ):
+                    values = dict(data[name])
+                    values["server_average_speed_raw"] = value
+                    data[name] = sorted(values.items())
+                precision = dict(data["precision"])
+                precision["ec"] = 3
+                data["precision"] = sorted(precision.items())
+                db.execute("UPDATE rides SET data=?", (json.dumps(data),))
+                return data
+
+        before = await archive._run(drift)
+        checked = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True)
+        assert checked.fields == ("distance_m",)
+        assert "server_average_speed_raw" not in checked.checked_fields
+        assert "precision_floor.ec" in checked.checked_fields
+        await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True, repair=True)
+        after = await archive._run(
+            lambda: json.loads(archive._db().execute("SELECT data FROM rides").fetchone()[0])
+        )
+        assert after["distance_m"] == 2500 and after["server_average_speed_raw"] == 42
+        assert after["parser_contract"] == before["parser_contract"]
+        assert "unverified-retained-issue" in after["issues"]
+        for family in ("field_sources", "field_provenance", "field_states", "detail_field_states"):
+            assert (
+                dict(after[family])["server_average_speed_raw"]
+                == dict(before[family])["server_average_speed_raw"]
+            )
+        assert dict(after["precision"])["ec"] == 3
+    finally:
+        await archive.async_close()
+
+
+async def test_list_presence_state_is_not_rewritten_from_an_older_retained_detail(tmp_path):
+    archive = await seed(tmp_path)
+    try:
+
+        def mark_list_observation():
+            with archive._db() as db:
+                data = json.loads(db.execute("SELECT data FROM rides").fetchone()[0])
+                data["source"] = "travel"
+                states = dict(data["field_states"])
+                states["distance_m"] = "missing"
+                data["field_states"] = sorted(states.items())
+                db.execute("UPDATE rides SET data=?", (json.dumps(data),))
+
+        await archive._run(mark_list_observation)
+        checked = await archive.async_reconstruct_ride(SN, "ride-a", guard=lambda: True)
+        assert checked.status == "healthy" and not checked.fields
+        assert "field_states.distance_m" not in checked.checked_fields
+        assert "field_provenance.distance_m" in checked.checked_fields
+        assert (
+            dict((await archive.async_private_detail(SN, "ride-a")).ride.field_states)["distance_m"]
+            == "missing"
+        )
+    finally:
+        await archive.async_close()
