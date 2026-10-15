@@ -69,10 +69,11 @@ from .sync_job import SyncJob, SyncState, job_data, restored_job
 from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
 
 if TYPE_CHECKING:
+    from .month_source import MonthSourceCheck
     from .month_tasks import MonthTask
     from .preservation import PreservationTask
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_BYTES = 32 * 1024 * 1024
@@ -395,6 +396,7 @@ class RideArchive:
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         from .history_store import COLUMNS as HISTORY_COLUMNS
         from .history_store import LEGACY_COLUMNS
+        from .month_source import COLUMNS as SOURCE_COLUMNS
         from .object_checks import COLUMNS as CHECK_COLUMNS
 
         columns_by_table = (
@@ -402,6 +404,7 @@ class RideArchive:
             | (DETAIL_COLUMNS if version >= 2 else {})
             | (HISTORY_COLUMNS if version >= 4 else LEGACY_COLUMNS if version == 3 else {})
             | (CHECK_COLUMNS if version >= 5 else {})
+            | (SOURCE_COLUMNS if version >= 6 else {})
         )
         if tables != columns_by_table.keys():
             raise ArchiveError(ArchiveFailure.SCHEMA)
@@ -560,7 +563,7 @@ class RideArchive:
         for table, _, parent, _ in failures:
             if not (
                 allow_missing_detail_payloads
-                and version == SCHEMA_VERSION
+                and version >= 5
                 and table == "details"
                 and parent == "detail_payloads"
             ):
@@ -608,6 +611,11 @@ class RideArchive:
             ):
                 raise ValueError("Invalid archived ride index")
             stamp(observed)
+
+        if version >= 6:
+            from .month_source import check as check_month_sources
+
+            check_month_sources(db)
 
         if version >= 5:
             from .object_checks import check as check_objects
@@ -671,13 +679,13 @@ class RideArchive:
             probe = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True)
             try:
                 version = probe.execute("PRAGMA user_version").fetchone()[0]
-                if version not in (1, 2, 3, 4, SCHEMA_VERSION):
+                if version not in (1, 2, 3, 4, 5, SCHEMA_VERSION):
                     raise ArchiveError(ArchiveFailure.SCHEMA)
                 missing_details = False
                 try:
                     self._check(probe, version)
                 except ArchiveError as err:
-                    if err.kind is not ArchiveFailure.SCHEMA or version != SCHEMA_VERSION:
+                    if err.kind is not ArchiveFailure.SCHEMA or version < 5:
                         raise
                     # Every other structural, owner and normalized check remains strict.
                     self._check(probe, version, allow_missing_detail_payloads=True)
@@ -690,7 +698,7 @@ class RideArchive:
                 if not recover(
                     self.path,
                     self.owner,
-                    self._check,
+                    partial(self._check, version=version),
                     minimum_free=MIN_FREE_BYTES,
                     max_bytes=self.max_bytes,
                 ):
@@ -706,9 +714,16 @@ class RideArchive:
             try:
                 with db:
                     from .history_store import SCHEMA as HISTORY_SCHEMA
+                    from .month_source import SCHEMA as SOURCE_SCHEMA
                     from .object_checks import SCHEMA as CHECK_SCHEMA
 
-                    for sql in (*SCHEMA, *DETAIL_SCHEMA, *HISTORY_SCHEMA, *CHECK_SCHEMA):
+                    for sql in (
+                        *SCHEMA,
+                        *DETAIL_SCHEMA,
+                        *HISTORY_SCHEMA,
+                        *CHECK_SCHEMA,
+                        *SOURCE_SCHEMA,
+                    ):
                         db.execute(sql)
                     db.executemany(
                         "INSERT INTO meta VALUES (?,?)", (("owner", self.owner), ("revision", "0"))
@@ -774,12 +789,14 @@ class RideArchive:
             try:
                 from .history_store import PAYLOAD_SCHEMA
                 from .history_store import SCHEMA as HISTORY_SCHEMA
+                from .month_source import SCHEMA as SOURCE_SCHEMA
                 from .object_checks import SCHEMA as CHECK_SCHEMA
 
                 for sql in (
                     *(DETAIL_SCHEMA if version == 1 else ()),
                     *(HISTORY_SCHEMA if version < 3 else PAYLOAD_SCHEMA if version == 3 else ()),
-                    *CHECK_SCHEMA,
+                    *(CHECK_SCHEMA if version < 5 else ()),
+                    *SOURCE_SCHEMA,
                 ):
                     db.execute(sql)
                 # Preserve cursors/counts, but don't promote a pre-schema5 scan
@@ -935,6 +952,7 @@ class RideArchive:
         *,
         guard: Callable[[], bool] | None = None,
         ordered: bool = False,
+        raw: RawRecord | None = None,
     ) -> bool:
         if type(ordered) is not bool or (ordered and guard is None):
             raise ValueError("Ordered receipts require an ownership/revision fence")
@@ -946,6 +964,7 @@ class RideArchive:
                 utc_string(received),
                 backend_version,
                 ordered,
+                raw=raw,
             ),
             guard=guard,
         )
@@ -959,6 +978,7 @@ class RideArchive:
         ordered: bool,
         *,
         sync_checkpoint: bool = True,
+        raw: RawRecord | None = None,
     ) -> bool:
         # All candidate validation is before the transaction. No raw objects
         # are passed through encoded month data or normalized ride rows.
@@ -1007,6 +1027,9 @@ class RideArchive:
                 "data=excluded.data,observed=excluded.observed,revision=excluded.revision,backend=excluded.backend,ids=excluded.ids",
                 (vehicle, travel.month, data, observed, revision, backend, ids_data),
             )
+            from .month_source import put as put_month_source
+
+            put_month_source(db, vehicle, travel.month, observed, backend, raw)
             db.execute(
                 "UPDATE membership SET latest=0 WHERE vehicle=? AND month=?",
                 (vehicle, travel.month),
@@ -1343,7 +1366,10 @@ class RideArchive:
         try:
             # Crash between backup publication and recording its hash: reuse
             # only a structurally checked copy carrying this exact job/scope.
-            self._check(target, allow_time_index_drift=True)
+            source_version = target.execute("PRAGMA user_version").fetchone()[0]
+            if source_version not in (5, SCHEMA_VERSION):
+                raise RecoveryPointError("Unverified local recovery schema")
+            self._check(target, source_version, allow_time_index_drift=True)
             captured = get(target, vehicle)
             if captured is None or captured.job_id != job.job_id:
                 raise RecoveryPointError("Unverified local recovery scope")
@@ -2082,6 +2108,14 @@ class RideArchive:
             )
 
         return await self._run(read)
+
+    async def async_month_source_check(
+        self, sn: str, month: str, *, guard: Callable[[], bool]
+    ) -> "MonthSourceCheck":
+        from .month_source import inspect
+
+        previous_month(month)
+        return await self._run(lambda: inspect(self._db(), vehicle_key(sn), month), guard=guard)
 
     async def async_month(self, sn: str, month: str) -> ArchiveMonth | None:
         previous_month(month)
@@ -3056,6 +3090,7 @@ class RideArchive:
                                 raw.backend_version,
                                 True,
                                 sync_checkpoint=False,
+                                raw=raw,
                             )
                 return receipt
             except HistoryConflict:

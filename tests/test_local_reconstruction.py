@@ -953,6 +953,9 @@ async def test_missing_month_link_is_not_invented_without_bounded_identity_proof
                 elif reason == "backend":
                     db.execute("UPDATE history_pages SET backend='9.9.9'")
                 elif reason == "parent":
+                    # Remove the current source with its parent; the retained
+                    # immutable history page still cannot invent a parent row.
+                    db.execute("DELETE FROM month_sources")
                     db.execute("DELETE FROM months")
                 elif reason == "selection":
                     db.execute("UPDATE months SET ids=?", ('{"ids":[null]}',))

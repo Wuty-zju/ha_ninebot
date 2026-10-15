@@ -222,9 +222,15 @@ async def async_verify_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
     co.preservation.audit.publish(sn, plan, owns)
     if plan and plan.invalid:
         co.statistics.record_error(ArchiveError(ArchiveFailure.OBJECT))
+    source_check = (
+        await archive.async_month_source_check(sn, call.data["start_month"], guard=owns)
+        if "start_month" in call.data
+        else None
+    )
     return {
         "schema_version": 1,
         "contract": "local_payload_integrity_v1",
+        "month_source_check": asdict(source_check) if source_check is not None else None,
         "object_checks": {
             "contract": "scoped_payload_receipts_v1",
             "scope": "present_payload_objects",

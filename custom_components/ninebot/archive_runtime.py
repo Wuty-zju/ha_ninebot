@@ -275,6 +275,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         *,
         guard: Callable[[], bool] | None = None,
         receipt_ordered: bool = False,
+        raw: RawRecord | None = None,
     ) -> None:
         if not self.archive_ready:
             return
@@ -284,7 +285,13 @@ class ArchiveStatistics(TravelStatisticsStore):
                 return
             try:
                 changed = await self.archive.async_record_month(
-                    sn, travel, received, backend_version, guard=guard, ordered=receipt_ordered
+                    sn,
+                    travel,
+                    received,
+                    backend_version,
+                    guard=guard,
+                    ordered=receipt_ordered,
+                    raw=raw,
                 )
                 if guard is not None and not guard():
                     return
