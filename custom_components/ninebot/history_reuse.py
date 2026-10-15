@@ -149,7 +149,7 @@ def reuse(db: sqlite3.Connection, vehicle: str, now: datetime) -> bool:
         payload = raw.payload()
         if not isinstance(payload, dict):
             return False
-        ids, total, stop = _shape(payload)
+        ids, total, stop = _shape(payload, month=month)
         if (
             receipt[0] != number
             or receipt[3] != "0.1.7"

@@ -217,3 +217,5 @@ Local history coverage distinguishes a partial source page from a month with a m
 Background synchronization rotates vehicles independently for month requests and detail downloads. This prevents alternating families and vehicles from locking one vehicle into month discovery while another receives all detail slots. Both rotations survive restart and share the same configured account request budget.
 
 Local verification responses now include `page_reference_checks`. This separate captured-page check compares raw page IDs/counts with stored page headers, identity indexes and membership presence while reusing the raw audit’s one decode. Conflicts do not rewrite indexes or invalidate otherwise intact raw bytes. Monthly parent metadata, orphan indexes outside captured pages, normalized metrics and cloud completeness remain outside this certificate. A pre-upgrade active raw scan must finish before starting a fresh combined audit.
+
+Explicitly contradictory history response months are retained as unverified schema-gap evidence without importing their rides; scanning can continue after restart. They do not certify the month or repair an upstream response.
