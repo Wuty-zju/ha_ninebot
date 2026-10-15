@@ -8,7 +8,7 @@ import pytest
 
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.preservation import task_state
-from custom_components.ninebot.ride_archive import ArchiveError, RideArchive
+from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OWNER = hashlib.sha256(b"synthetic-account").hexdigest()
@@ -761,6 +761,11 @@ async def test_family_cursor_values_are_validated_without_rewriting_archive(tmp_
     await archive._run(corrupt)
     await archive.async_close()
     original = archive.path.read_bytes()
-    with pytest.raises(ArchiveError):
-        await archive.async_open()
+    reopened = RideArchive(archive.path, OWNER)
+    try:
+        with pytest.raises(ArchiveError) as caught:
+            await reopened.async_open()
+        assert caught.value.kind is ArchiveFailure.SCHEMA
+    finally:
+        await reopened.async_close()
     assert archive.path.read_bytes() == original
