@@ -20,7 +20,7 @@ def row(identity, month):
     started = datetime.strptime(month + "01", "%Y%m%d").replace(tzinfo=UTC)
     return {
         "travel_id": identity,
-        "id": "detail-" + identity,
+        "id": identity,
         "start_time": int(started.timestamp()),
         "end_time": int(started.timestamp()) + 60,
         "duration": 60,
@@ -106,6 +106,9 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
             clock[0] += timedelta(seconds=61)
         roots = {sn: await statistics.archive.async_history_plan(sn) for sn in VEHICLES}
         assert all(root and not root.discovery_complete for root in roots.values())
+        for sn, root in roots.items():
+            health = await statistics.archive.async_history_health(sn, root.plan_id)
+            assert not health.unmapped
         before_restart = list(calls)
         await worker.async_close()
         await statistics.async_close()
@@ -121,7 +124,12 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
             roots = {sn: await statistics.archive.async_history_plan(sn) for sn in VEHICLES}
             if all(root.state is HistoryState.COMPLETE for root in roots.values()):
                 break
-        assert all(root.state is HistoryState.COMPLETE for root in roots.values())
+        assert all(root.state is HistoryState.COMPLETE for root in roots.values()), (
+            roots,
+            worker.progress,
+            Counter(call[0] for call in calls),
+            statistics.error,
+        )
         for sn, root in roots.items():
             assert root.start_month == "200001" and root.scanned_months == 322
             assert root.verified_months == 322 and not root.gap_months
