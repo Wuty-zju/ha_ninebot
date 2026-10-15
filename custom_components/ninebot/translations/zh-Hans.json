@@ -497,7 +497,8 @@
           "verifying": "正在校验记录",
           "incremental": "增量同步中",
           "with_gaps": "已完成，有缺口",
-          "synced": "本地同步完成"
+          "synced": "本地同步完成",
+          "vehicle_not_present": "账号车辆列表未包含此车"
         }
       },
       "history_scan_progress": {

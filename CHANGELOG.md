@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b77
+
+- Show an explicit history-sync reason when an accepted account vehicle list no longer includes a retained vehicle, instead of only an unavailable status.
+- Keep history reads, network requests and controls blocked for absent vehicles; retain the original baseline and resume it when the vehicle is positively rediscovered.
+- Include only safe vehicle-list freshness metadata in the absence state, with translations for every supported locale.
+
 ## 2.0.0b76
 
 - Reuse complete, verified independent old-month page evidence during first history discovery, without consuming another cloud request.

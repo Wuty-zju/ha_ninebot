@@ -497,7 +497,8 @@
           "verifying": "التحقق من السجلات",
           "incremental": "مزامنة تزايدية",
           "with_gaps": "اكتملت مع فجوات",
-          "synced": "تمت المزامنة محليًا"
+          "synced": "تمت المزامنة محليًا",
+          "vehicle_not_present": "المركبة غير موجودة في قائمة الحساب"
         }
       },
       "history_scan_progress": {

@@ -497,7 +497,8 @@
           "verifying": "기록 검증 중",
           "incremental": "증분 동기화 중",
           "with_gaps": "누락된 기록 있음",
-          "synced": "로컬 동기화 완료"
+          "synced": "로컬 동기화 완료",
+          "vehicle_not_present": "계정 차량 목록에 없음"
         }
       },
       "history_scan_progress": {

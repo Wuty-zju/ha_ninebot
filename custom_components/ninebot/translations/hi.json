@@ -497,7 +497,8 @@
           "verifying": "रिकॉर्ड जाँच रहे हैं",
           "incremental": "नई जानकारी सिंक हो रही है",
           "with_gaps": "कुछ रिकॉर्ड अधूरे हैं",
-          "synced": "स्थानीय सिंक पूरा"
+          "synced": "स्थानीय सिंक पूरा",
+          "vehicle_not_present": "खाते की सूची में वाहन नहीं है"
         }
       },
       "history_scan_progress": {

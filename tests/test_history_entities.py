@@ -74,3 +74,100 @@ async def test_history_buttons_pause_resume_and_sync_without_physical_controls(
     assert await co.statistics.archive.async_history_requested(SN)
     assert await co.statistics.archive.async_history_plan(SN) is not None
     app_client.async_control.assert_not_awaited()
+
+
+async def test_missing_account_vehicle_is_explicit_and_original_history_resumes(
+    hass, entry, app_client
+):
+    from datetime import timedelta
+
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot.exceptions import ErrorKind, NinebotError
+    from custom_components.ninebot.history_plan import HistoryState
+    from custom_components.ninebot.raw import Endpoint, build_record
+    from custom_components.ninebot.ride_archive import vehicle_key
+
+    hass.config_entries.async_update_entry(
+        entry, options={"preserve_history": True, "auto_history_sync": True}
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = entry.runtime_data.coordinator
+    now = dt_util.utcnow()
+    baseline = HistoryPlan.create("c" * 32, vehicle_key(SN), "202608", "202608", now.isoformat())
+    await co.statistics.archive.async_set_history_plan(SN, baseline, None, guard=lambda: True)
+    await co.preservation.async_refresh_progress((SN,), now)
+    registry = er.async_get(hass)
+    status_id = registry.async_get_entity_id("sensor", "ninebot", f"{SN}_history_sync_state")
+    original_ownership = co._ownership.get(SN, 0)
+    app_client.async_list_vehicles.return_value = []
+    co._next_attempt[("", "profile")] = 0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert not co.local_vehicle_available(SN)
+    assert co._ownership[SN] > original_ownership
+    state = hass.states.get(status_id)
+    assert state.state == "vehicle_not_present"
+    assert state.attributes["vehicle_present"] is False
+    assert state.attributes["vehicle_list_complete"] is True
+    assert state.attributes["vehicle_list_last_success"] is not None
+    assert "saved_details" not in state.attributes and "discovered_rides" not in state.attributes
+    for key in HISTORY_SENSORS[1:]:
+        identity = registry.async_get_entity_id("sensor", "ninebot", f"{SN}_{key}")
+        assert hass.states.get(identity).state == "unavailable"
+    with pytest.raises(NinebotError) as err:
+        await co.async_query_history_page(SN, "202608", 1)
+    assert err.value.kind is ErrorKind.CLOSED
+    assert not await co.preservation.bootstrap.async_step((SN,), now, 60)
+    assert await co.statistics.archive.async_history_plan(SN) == baseline
+    app_client.async_control.assert_not_awaited()
+
+    # A later positive list is required; no timer or cached status grants ownership.
+    app_client.async_list_vehicles.return_value = [{"wnumber": SN}]
+    co._next_attempt[("", "profile")] = 0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.local_vehicle_available(SN)
+    assert hass.states.get(status_id).state == "discovering"
+    assert await co.statistics.archive.async_history_plan(SN) == baseline
+    when = dt_util.utcnow() + timedelta(seconds=3)
+    response = build_record(
+        Endpoint.TRAVEL,
+        {"times": 0, "list": []},
+        when,
+        "202608",
+        backend_version="0.1.7",
+        endpoint_version=baseline.provider,
+    )
+    with patch.object(co, "async_query_history_page", AsyncMock(return_value=response)) as query:
+        assert await co.preservation.bootstrap.async_step((SN,), when, 60)
+    query.assert_awaited_once_with(SN, "202608", 1)
+    saved = await co.statistics.archive.async_history_plan(SN)
+    assert saved.plan_id == baseline.plan_id and saved.cutoff == baseline.cutoff
+    assert saved.discovery_complete and saved.state is HistoryState.PRESERVE
+    assert saved.verified_months == 1
+    assert (
+        registry.async_get_entity_id("sensor", "ninebot", f"{SN}_history_sync_state") == status_id
+    )
+
+
+async def test_absence_status_does_not_override_shutdown_or_identity_guard(hass, entry, app_client):
+    from dataclasses import replace
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = entry.runtime_data.coordinator
+    co.data[SN] = replace(co.data[SN], present=False)
+    sensor = HistoryProgressSensor(entry, SN, "history_sync_state")
+    assert sensor.available and sensor.native_value == "vehicle_not_present"
+    sensor._identity_blocked = True
+    assert not sensor.available
+    sensor._identity_blocked = False
+    co._stopping = True
+    try:
+        assert not sensor.available
+    finally:
+        co._stopping = False
+    co.data.pop(SN)
+    assert not sensor.available

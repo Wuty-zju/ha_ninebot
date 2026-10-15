@@ -17,6 +17,7 @@ HISTORY_STATES = (
     "storage_error",
     "needs_login",
     "waiting_connection",
+    "vehicle_not_present",
     "not_started",
     "waiting_retry",
     "waiting_budget",
@@ -60,6 +61,12 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
+        # A retained identity may be absent from an accepted account list. Only
+        # the reason remains visible; archived data and actions stay guarded.
+        if self.coordinator._stopping or self._identity_blocked or self.snapshot is None:
+            return False
+        if self.key == "history_sync_state" and not self.snapshot.present:
+            return True
         return (
             self.coordinator.local_vehicle_available(self.sn)
             and self.sn in self.coordinator.preservation.progress
@@ -67,6 +74,8 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | int | datetime | None:
+        if self.snapshot is not None and not self.snapshot.present:
+            return "vehicle_not_present" if self.key == "history_sync_state" else None
         value = self.coordinator.preservation.progress.get(self.sn)
         if value is None:
             return None
@@ -80,6 +89,15 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        if self.snapshot is not None and not self.snapshot.present:
+            if self.key != "history_sync_state":
+                return {}
+            discovery = self.coordinator.discovery_diagnostics()
+            return {
+                "vehicle_present": False,
+                "vehicle_list_complete": discovery["complete"],
+                "vehicle_list_last_success": discovery["succeeded_at"],
+            }
         value = self.coordinator.preservation.progress.get(self.sn)
         if value is None:
             return {}

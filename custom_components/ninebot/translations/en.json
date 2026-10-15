@@ -497,7 +497,8 @@
           "verifying": "Verifying records",
           "incremental": "Incremental sync",
           "with_gaps": "Completed with gaps",
-          "synced": "Synced locally"
+          "synced": "Synced locally",
+          "vehicle_not_present": "Vehicle missing from account list"
         }
       },
       "history_scan_progress": {
