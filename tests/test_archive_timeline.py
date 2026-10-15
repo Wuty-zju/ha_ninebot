@@ -265,16 +265,19 @@ async def test_latest_memory_projection_is_scoped_invalidated_on_budget_and_clos
         old = sample(month="202401", start=datetime(2024, 1, 1, tzinfo=UTC))
         await store.async_record(SN, old, NOW)
         await store.async_record("another-vehicle", sample(), NOW)
-        original = store.archive.async_latest
+        from custom_components.ninebot import ride_archive
+        from custom_components.ninebot.ride_archive import vehicle_key
+
+        original = ride_archive.latest_query
         assert store.latest_ride(SN).ride.query_month == "202401"
         other = store.latest_ride("another-vehicle")
 
-        async def bounded(sn, now):
-            if sn == SN:
-                raise ArchiveError(ArchiveFailure.BUDGET)
-            return await original(sn, now)
+        def bounded(db, vehicle, now):
+            if vehicle == vehicle_key(SN):
+                raise archive_timeline.TimelineLimitError
+            return original(db, vehicle, now)
 
-        monkeypatch.setattr(store.archive, "async_latest", bounded)
+        monkeypatch.setattr(ride_archive, "latest_query", bounded)
         await store.async_record(SN, sample(), NOW)
         assert store.latest_ride(SN) is None  # No arbitrary stale fallback.
         assert store.latest_ride("another-vehicle") is other

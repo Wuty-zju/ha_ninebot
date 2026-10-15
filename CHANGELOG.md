@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b79
+
+- Read per-vehicle statistical month facts, the latest ride and their archive revision in one actor operation, preventing mixed versions during background writes.
+- Capture historical list detail-saved flags within the same read as its rows, coverage and cursor revision.
+- Keep bounded reads, latest-query budget fallback, ownership checks, entity identity and offline browsing behavior unchanged.
+
 ## 2.0.0b78
 
 - Preserve the oldest confirmed ride ends first within the existing 150–180 day local risk band, instead of selecting younger trips first.

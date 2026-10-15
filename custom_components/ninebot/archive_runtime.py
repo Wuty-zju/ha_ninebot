@@ -58,6 +58,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection = ArchiveStatisticsView()
         self._projection_month = ""
         self._latest: dict[str, ArchivedRide | None] = {}
+        self._projection_revisions: dict[str, int] = {}
         self.persistence_enabled = False
         register_archive(hass, self.archive)
 
@@ -217,24 +218,25 @@ class ArchiveStatistics(TravelStatisticsStore):
             blocked_metrics = dict(self._projection.blocked_metrics)
             bases = dict(self._projection.completeness_bases)
             latest = dict(self._latest)
+            revisions = dict(self._projection_revisions)
             vehicles = (vehicle,)
         else:
             records, selections, blocked_metrics, bases = {}, {}, {}, {}
-            latest = {}
+            latest, revisions = {}, {}
             vehicles = tuple(sorted(self._vehicles))
         for sn in vehicles:
-            view = await self.async_view(sn, (previous_month(month), month))
-            assert isinstance(view, ArchiveStatisticsView)
+            snapshot = await self.archive.async_projection(
+                sn, (previous_month(month), month), local
+            )
+            view = await self.hass.async_add_executor_job(
+                ArchiveStatisticsView.from_months, sn, snapshot.months
+            )
             records.update(view.records)
             selections.update(view.selections)
             blocked_metrics.update(view.blocked_metrics)
             bases.update(view.completeness_bases)
-            try:
-                latest[sn] = await self.archive.async_latest(sn, local)
-            except ArchiveError as err:
-                if err.kind is not ArchiveFailure.BUDGET:
-                    raise
-                latest[sn] = None  # Do not silently select an arbitrary older record.
+            latest[sn] = snapshot.latest
+            revisions[sn] = snapshot.revision
         if guard is not None and not guard():
             return
         projection = ArchiveStatisticsView(
@@ -253,6 +255,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection_month = month
         self.months, self.rides = months, rides
         self._latest = latest
+        self._projection_revisions = revisions
 
     async def async_refresh_projection(self) -> None:
         if not self.archive_ready:
@@ -394,3 +397,4 @@ class ArchiveStatistics(TravelStatisticsStore):
             unregister_archive(self.hass, self.archive)
             self.archive_ready = False
             self._latest.clear()
+            self._projection_revisions.clear()

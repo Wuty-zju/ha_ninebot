@@ -272,7 +272,7 @@ async def test_archive_failure_recovery_views_detail_and_guards(hass, freezer):
                 lambda: store.async_record_detail(SN, detail, NOW, lambda: True),
             ),
             ("async_profiles", store.async_cached_profiles),
-            ("async_months", store.async_refresh_projection),
+            ("async_projection", store.async_refresh_projection),
         ):
             with patch.object(
                 store.archive, method, side_effect=ArchiveError(ArchiveFailure.STORAGE)
@@ -349,3 +349,51 @@ async def test_object_error_creates_scoped_repair_without_disabling_healthy_writ
         assert store.error is ArchiveFailure.STORAGE and not store.writable
     finally:
         await store.async_close()
+
+
+async def test_projection_keeps_month_metrics_and_latest_on_one_revision_during_write(
+    hass, freezer, monkeypatch
+):
+    """A direct page-writer commit during conversion must not tear the cached view."""
+    freezer.move_to(NOW)
+    store = ArchiveStatistics(hass, "coherent-projection", "owner")
+    try:
+        await store.async_load()
+        await store.async_record(SN, many_rides(1), NOW)
+        before = dict(store._projection_revisions)
+        executor = hass.async_add_executor_job
+        injected = False
+
+        async def interleave(fn, *args):
+            nonlocal injected
+            if not injected and getattr(fn, "__qualname__", "").endswith(".from_months"):
+                injected = True
+                # Page commits use the same actor, independently of the projection lock.
+                assert await store.archive.async_record_month(
+                    SN, many_rides(2), NOW + timedelta(seconds=1)
+                )
+            return await executor(fn, *args)
+
+        monkeypatch.setattr(hass, "async_add_executor_job", interleave)
+        await store.async_refresh_projection()
+        assert injected
+        assert store._projection_revisions == before
+        assert store.latest_ride(SN).ride.ride_id == "r-0"
+        day = day_summary(store, SN, datetime(2026, 9, 20).date(), NOW)
+        assert (day.ride_count, day.duration_s, day.distance_km, day.energy_wh) == (1, 60, 1, 50)
+        # An independent calendar/list read legitimately observes the later commit.
+        timeline = await store.archive.async_timeline(SN, NOW - timedelta(days=20), NOW)
+        assert len(timeline.records) == 2 and timeline.revision > before[SN]
+        await store.async_refresh_projection()
+        assert store._projection_revisions[SN] == timeline.revision
+        assert store.latest_ride(SN).ride.ride_id == "r-1"
+        day = day_summary(store, SN, datetime(2026, 9, 20).date(), NOW)
+        assert (day.ride_count, day.duration_s, day.distance_km, day.energy_wh) == (2, 120, 2, 100)
+        published = store._projection, store._latest, store._projection_revisions
+        assert await store.archive.async_record_month(SN, many_rides(3), NOW + timedelta(seconds=2))
+        await store._project(lambda: False)
+        assert store._projection is published[0]
+        assert store._latest is published[1] and store._projection_revisions is published[2]
+    finally:
+        await store.async_close()
+    assert not store._projection_revisions
