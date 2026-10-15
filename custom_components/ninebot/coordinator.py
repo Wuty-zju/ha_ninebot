@@ -640,6 +640,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                             result.backend_version,
                             guard=lambda: self._current_read(previous_key, previous_revision),
                             receipt_ordered=True,
+                            raw=self._retained_month_source(fallback_record),
                         )
                         if include_last_ride and travel.last_ride is None:
                             travel = replace(travel, last_ride=fallback.last_ride)
@@ -664,7 +665,13 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 if not current_month():
                     return
                 await self.statistics.async_record(
-                    sn, travel, observed, travel_version, guard=current_month, receipt_ordered=True
+                    sn,
+                    travel,
+                    observed,
+                    travel_version,
+                    guard=current_month,
+                    receipt_ordered=True,
+                    raw=self._retained_month_source(record),
                 )
                 if not current_month():
                     return
@@ -740,6 +747,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             (cached_success if success and cached_success else dt_util.utcnow()).timestamp(),
             self.interval if group == "status" else DETAIL_INTERVAL,
             success,
+        )
+
+    def _retained_month_source(self, record: RawRecord | None) -> RawRecord | None:
+        # Persisting unknown month fields may retain location data. Use the
+        # existing explicit history-preservation consent, not a new default.
+        return (
+            record
+            if self.config_entry and self.config_entry.options.get(CONF_PRESERVE) is True
+            else None
         )
 
     async def _capture(
@@ -1006,6 +1022,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     record.backend_version,
                     guard=lambda: self._current_read(key, record.request_revision),
                     receipt_ordered=True,
+                    raw=self._retained_month_source(record),
                 )
             if not self._owns(key) or not self.fresh(sn, "profile"):
                 raise HomeAssistantError(

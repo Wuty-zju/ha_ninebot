@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b86
+
+- With history preservation enabled, retain one private current raw source per recorded month alongside its normalized projection, including ordinary, fallback, action and native-page receipts. No additional cloud queries.
+- Migrate archives to schema 6 with a validated schema-specific recovery copy; retain schema 5 missing-detail startup recovery and prior reconstruction checkpoints. No historical page/detail deletion or entity identity changes.
+- Existing local `sync_history` verification actions can replay one month selected by `start_month`, returning `month_source_check` for summary, precision and returned IDs. Missing, stale, unsupported, corrupt and conflicting sources remain distinct; no raw payload is returned.
+- Current sources are bounded replaceable snapshots, not a log of every poll. Legacy uncaptured responses cannot be recreated. Raw page/detail receipt certificates retain their original scope.
+
 ## 2.0.0b85
 
 - Preserve a history response that explicitly reports a different month as an unverified schema-gap page, instead of rolling back its evidence and retrying the same page indefinitely.

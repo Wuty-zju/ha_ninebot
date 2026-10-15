@@ -513,3 +513,25 @@ async def test_manual_default_sync_joins_current_incremental_run_without_repeati
         window.assert_not_awaited()
     assert [item.plan_id for item in await archive.async_active_history_runs(SN)] == [run.plan_id]
     app_client.async_control.assert_not_awaited()
+
+
+async def test_verify_status_replays_one_selected_month_without_cloud(
+    hass, entry, app_client, sync_device
+):
+    from custom_components.ninebot.adapters import travel
+    from custom_components.ninebot.raw import Endpoint, build_record
+
+    co = entry.runtime_data.coordinator
+    raw = build_record(
+        Endpoint.TRAVEL, {"times": 0, "list": []}, NOW, "202609", backend_version="0.1.7"
+    )
+    await co.statistics.archive.async_record_month(
+        SN, travel(raw.payload(), "202609"), NOW, "0.1.7", raw=raw, guard=lambda: True, ordered=True
+    )
+    app_client.async_get_travel.reset_mock()
+    result = await call(hass, sync_device, operation="verify_status", start_month="202609")
+    assert result["month_source_check"]["status"] == "match"
+    assert result["month_source_check"]["projection_verified"]
+    assert result["month_source_check"]["scope"] == "current_month_summary_precision_and_ids"
+    assert not result["object_checks"]["normalized_metrics_verified"]
+    app_client.async_get_travel.assert_not_awaited()

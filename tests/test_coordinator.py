@@ -1309,3 +1309,30 @@ async def test_new_vehicle_gets_local_progress_even_when_background_history_is_o
     await co._list(dt_util.utcnow())
     assert co.preservation.progress["new-history-vehicle"].state == "disabled"
     assert co.preservation.progress["new-history-vehicle"].scan_percent is None
+
+
+@pytest.mark.parametrize("coordinator", [{"preserve_history": True}, {}], indirect=True)
+async def test_current_fallback_and_action_month_sources_follow_history_consent(coordinator):
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot.adapters import month_at, previous_month
+
+    co = coordinator
+    await co._async_update_data()
+    current = month_at(dt_util.utcnow())
+    previous = previous_month(current)
+    consent = co.config_entry.options.get("preserve_history") is True
+    for month in (current, previous):
+        check = await co.statistics.archive.async_month_source_check(
+            "synthetic-one", month, guard=lambda: True
+        )
+        assert (check.status != "missing") is consent
+        if consent:
+            assert check.raw_payload_integrity_verified and check.status != "stale"
+    await co.async_query_month("synthetic-one", "202608", refresh=True)
+    check = await co.statistics.archive.async_month_source_check(
+        "synthetic-one", "202608", guard=lambda: True
+    )
+    assert (check.status != "missing") is consent
+    if consent:
+        assert check.raw_payload_integrity_verified and check.status != "stale"

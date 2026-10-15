@@ -494,6 +494,7 @@ async def test_schema4_migration_preserves_payloads_cursor_and_old_schema_backup
     path = archive.path
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE month_sources")
         db.execute("DROP TABLE payload_checks")
         db.execute("DROP TABLE payload_quarantine")
         db.execute("PRAGMA user_version=4")
@@ -509,7 +510,7 @@ async def test_schema4_migration_preserves_payloads_cursor_and_old_schema_backup
         assert after.changed and not after.payloads_verified
         assert (await migrated.async_object_checks(SN)).pending == 4
         with closing(sqlite3.connect(path)) as db:
-            assert db.execute("PRAGMA user_version").fetchone()[0] == 5
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 6
             assert (
                 db.execute(
                     "SELECT vehicle,ride,hash,body FROM detail_payloads ORDER BY ride"
@@ -546,6 +547,7 @@ async def test_schema5_failed_ddl_rolls_back_original_with_recovery_copy(archive
     path = archive.path
     await archive.async_close()
     with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE month_sources")
         db.execute("DROP TABLE payload_checks")
         db.execute("DROP TABLE payload_quarantine")
         db.execute("PRAGMA user_version=4")
