@@ -59,8 +59,15 @@ def recorded_enumeration(
         return None
     candidates = db.execute(
         "SELECT plan,pages,known FROM history_months WHERE vehicle=? AND month=?"
-        " AND observed=? AND verified=1 AND stop IS NULL AND known=total AND total=? LIMIT 2",
-        (vehicle, month, observed, reported),
+        " AND observed IN (?,?) AND verified=1 AND stop IS NULL AND known=total"
+        " AND total=? LIMIT 2",
+        (
+            vehicle,
+            month,
+            observed_at.isoformat(),
+            observed_at.isoformat(timespec="microseconds"),
+            reported,
+        ),
     ).fetchall()
     if len(candidates) != 1:
         return None

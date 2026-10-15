@@ -27,11 +27,11 @@ def initial():
     return HistoryPlan.create("a" * 32, vehicle_key(SN), "202609", "202610", NOW.isoformat())
 
 
-def record(ids=("ride-one",), total=2, month="202610", **extra):
+def record(ids=("ride-one",), total=2, month="202610", *, received_at=NOW, **extra):
     return build_record(
         Endpoint.TRAVEL,
         {"times": total, "list": [{"travel_id": i} for i in ids], **extra},
-        NOW,
+        received_at,
         month,
         backend_version="0.1.7",
         endpoint_version="0.1.7+native.history.v1",
@@ -981,18 +981,26 @@ async def enumerated_month(store):
     )
 
 
-async def test_recorded_enumeration_matches_receipt_without_rewriting_partial_source(store):
-    first = await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+@pytest.mark.parametrize("offset_us", [0, 123456])
+async def test_recorded_enumeration_matches_receipt_without_rewriting_partial_source(
+    store, offset_us
+):
+    source_time = NOW + timedelta(microseconds=offset_us)
+    first = await store.async_accept_history_page(
+        SN, initial(), record(received_at=source_time), guard=lambda: True
+    )
     assert (await enumeration_page(store)).months[0].enumeration is None
     second = await store.async_accept_history_page(
-        SN, first.root, record(("ride-two",)), guard=lambda: True
+        SN, first.root, record(("ride-two",), received_at=source_time), guard=lambda: True
     )
     before = store.path.read_bytes()
-    page = await enumeration_page(store)
+    page = await enumeration_page(store, as_of=source_time)
     assert page.months[0].list_complete is False
     assert page.months[0].returned_count == 1
     evidence = page.months[0].enumeration
-    assert evidence and evidence.pages == evidence.rides == 2 and evidence.received_at == NOW
+    assert (
+        evidence and evidence.pages == evidence.rides == 2 and evidence.received_at == source_time
+    )
     assert store.path.read_bytes() == before
     assert (await enumeration_page(store, as_of=NOW - timedelta(seconds=1))).months[
         0
