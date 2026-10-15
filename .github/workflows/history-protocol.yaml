@@ -11,6 +11,7 @@ on:
       - 'custom_components/ninebot/archive_audit.py'
       - 'custom_components/ninebot/object_checks.py'
       - 'custom_components/ninebot/local_reconstruction.py'
+      - 'custom_components/ninebot/payload_restore.py'
       - 'custom_components/ninebot/reconstruction_job.py'
       - 'custom_components/ninebot/background_reconstruction.py'
       - 'tests/test_local_reconstruction.py'

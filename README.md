@@ -149,3 +149,16 @@ Old checker-v1 jobs keep their cursor. If some records were processed before
 v2, continuing the old job reports `with_gaps`; start a new reconstruction job
 to cover the enlarged local check scope. No missing raw originals are guessed or
 silently downloaded, and unresolved Repairs remain.
+
+
+The local reconstruction job can also recover byte-corrupt referenced originals
+from up to eight recent managed recovery copies in the same private account
+folder. It requires the exact existing content digest, matching owner/vehicle/
+ride and unchanged source metadata, then validates decoding, explicit identities
+and redaction. Damaged bounded bytes are copied and verified in quarantine before
+replacement. Receipt times and reference hashes are preserved; current integrity
+receipts are refreshed. No arbitrary path or cloud request is accepted.
+A recovered readable role is kept even if another role remains bad; progress
+reports `partially_repaired` and finishes with gaps. Missing rows, oversized pinned
+objects, reference remapping, startup corruption and recovery sources beyond the
+bounded search require further recovery work. They are never guessed or deleted.

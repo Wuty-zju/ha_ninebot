@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b70
+
+- Recover byte-corrupt referenced detail objects from bounded managed account-local recovery copies, only when owner, vehicle/ride, exact existing digest and all source metadata match. Validate decompression, identity and current redaction rules before copying; never change reference hashes, selected geometry or receipt timestamps.
+- Preserve and verify bounded damaged bytes in quarantine before replacement, update matching integrity receipts and raw-inventory fences, and commit recovery with the existing per-ride checkpoint. A readable recovered role can be retained even if another role remains unavailable; report partial repair and gaps rather than full success.
+- Keep foreign, unreadable, locked, absent and oversized sources isolated. No arbitrary backup path, implicit cloud repair, source deletion, entity identity or Recorder change. The newest-eight-copy search is bounded; a missing candidate is not proof every historical copy was exhausted.
+
 ## 2.0.0b69
 
 - Verify explicit ride/detail identities when reading retained latest and selected-geometry originals. Refuse contradictory originals per role, preserve their bytes and keep a readable surviving role through the existing partial-view contract.

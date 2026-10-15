@@ -47,6 +47,7 @@ class ReconstructionJob:
     after: str | None = None
     checked: int = 0
     repaired: int = 0
+    partially_repaired: int = 0
     blocked: int = 0
     corrupt: int = 0
     changed: bool = False
@@ -66,6 +67,8 @@ def scope(vehicle: str) -> str:
 
 def restored(value: str) -> ReconstructionJob:
     data = decoded(value)
+    if set(data) == set(ReconstructionJob.__dataclass_fields__) - {"partially_repaired"}:
+        data["partially_repaired"] = 0  # Explicit additive legacy checkpoint compatibility.
     if set(data) != set(ReconstructionJob.__dataclass_fields__):
         raise ValueError("Invalid local reconstruction fields")
     if not isinstance(data["job_id"], str) or not re.fullmatch("[0-9a-f]{32}", data["job_id"]):
@@ -73,7 +76,16 @@ def restored(value: str) -> ReconstructionJob:
     for field in ("upper", "after"):
         if data[field] is not None and opaque_id(data[field]) != data[field]:
             raise ValueError("Invalid local reconstruction cursor")
-    for field in ("total", "revision", "inventory", "checked", "repaired", "blocked", "corrupt"):
+    for field in (
+        "total",
+        "revision",
+        "inventory",
+        "checked",
+        "repaired",
+        "partially_repaired",
+        "blocked",
+        "corrupt",
+    ):
         if type(data[field]) is not int or not 0 <= data[field] <= MAX_INTEGER:
             raise ValueError("Invalid local reconstruction count")
     if (
@@ -83,6 +95,7 @@ def restored(value: str) -> ReconstructionJob:
         or data["state"] not in STATES
         or data["repaired"] + data["blocked"] > data["checked"]
         or data["corrupt"] > data["blocked"]
+        or data["partially_repaired"] > data["blocked"]
         or (not data["changed"] and data["checked"] > data["total"])
         or (data["after"] is not None and (data["upper"] is None or data["after"] > data["upper"]))
         or stamp(data["updated_at"]) < stamp(data["started_at"])
@@ -161,7 +174,10 @@ def step(
             job,
             after=row[0],
             checked=job.checked + 1,
-            repaired=job.repaired + int(result.repaired),
+            repaired=job.repaired
+            + int(result.repaired and result.status in {"healthy", "repairable"}),
+            partially_repaired=job.partially_repaired
+            + int(result.repaired and result.status not in {"healthy", "repairable"}),
             blocked=job.blocked + int(result.status not in {"healthy", "repairable"}),
             corrupt=job.corrupt + int(result.status == "corrupt"),
         )
