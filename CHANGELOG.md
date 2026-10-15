@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b85
+
+- Preserve a history response that explicitly reports a different month as an unverified schema-gap page, instead of rolling back its evidence and retrying the same page indefinitely.
+- Do not import its ride IDs or month summary. Continue scanning subsequent months, retaining the gap across restart; local page reuse and reference checks apply the same month constraint.
+- No extra cloud requests, database schema, dependency or entity identity changes. A saved anomalous response is not a complete or verified month.
+
 ## 2.0.0b84
 
 - Add separate captured-page reference checks to the existing bounded local archive audit: compare verified raw page IDs/counts with page headers, identity indexes and ride/month membership presence.

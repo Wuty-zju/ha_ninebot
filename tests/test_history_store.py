@@ -1103,3 +1103,69 @@ async def test_empty_enumerated_month_has_explicit_zero_count(store):
     )
     evidence = page.months[0].enumeration
     assert evidence and evidence.pages == 1 and evidence.rides == 0
+
+
+@pytest.mark.parametrize("reported", ["202609", "not-a-month"])
+async def test_contradictory_body_month_is_retained_as_gap_without_indexing(store, reported):
+    payload = {"month": reported, "times": 1, "list": [{"travel_id": "wrong-month-ride"}]}
+    raw = build_record(
+        Endpoint.TRAVEL,
+        payload,
+        NOW,
+        "202610",
+        backend_version="0.1.7",
+        endpoint_version=initial().provider,
+    )
+    result = await store.async_accept_history_page(SN, initial(), raw, guard=lambda: True)
+    assert result.stop == "schema" and result.finished and not result.verified
+    assert result.unique_count == 0 and result.root.gap_months == 1
+    assert result.root.next_month == "202609" and not result.root.discovery_complete
+    saved = await store.async_history_page(SN, initial().plan_id, "202610", 1, guard=lambda: True)
+    assert saved.payload() == payload
+    assert await store.async_month(SN, "202610") is None
+    await store.async_start_history_audit(SN, NOW, guard=lambda: True)
+    audit = await store.async_step_history_audit(SN, NOW, guard=lambda: True)
+    assert audit.complete and audit.payloads_verified
+    checks = (await store.async_history_verification_status(SN))[3].page_references
+    assert checks.complete and checks.unverifiable == 1 and checks.conflicts == 0
+    assert not checks.captured_links_verified
+    with closing(sqlite3.connect(store.path)) as db:
+        assert db.execute("SELECT count(*) FROM rides").fetchone()[0] == 0
+        assert db.execute("SELECT count(*) FROM history_ids").fetchone()[0] == 0
+    path = store.path
+    await store.async_close()
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        assert await reopened.async_history_plan(SN) == result.root
+        assert (
+            await reopened.async_history_page(
+                SN, initial().plan_id, "202610", 1, guard=lambda: True
+            )
+        ).payload() == payload
+        following = await reopened.async_accept_history_page(
+            SN,
+            result.root,
+            record((), 0, "202609", received_at=NOW + timedelta(seconds=1)),
+            guard=lambda: True,
+        )
+        assert following.verified and following.root.discovery_complete
+        assert following.root.gap_months == 1 and following.root.verified_months == 1
+        assert following.root.state is HistoryState.PRESERVE
+    finally:
+        await reopened.async_close()
+
+
+async def test_matching_reported_body_month_keeps_normal_history_projection(store):
+    raw = build_record(
+        Endpoint.TRAVEL,
+        {"month": "202610", "times": 1, "list": [{"travel_id": "matching-month-ride"}]},
+        NOW,
+        "202610",
+        backend_version="0.1.7",
+        endpoint_version=initial().provider,
+    )
+    receipt = await store.async_accept_history_page(SN, initial(), raw, guard=lambda: True)
+    assert receipt.verified and receipt.stop is None
+    month = await store.async_month(SN, "202610")
+    assert month is not None and month.travel.rides[0].ride_id == "matching-month-ride"

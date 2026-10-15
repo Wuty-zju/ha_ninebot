@@ -141,7 +141,7 @@ def assess(db: sqlite3.Connection, obj: "StoredObject", record: RawRecord) -> st
     body = record.payload()
     if not isinstance(body, dict):
         return "unverifiable"
-    ids, total, stop = _shape(body)
+    ids, total, stop = _shape(body, month=month)
     if stop is not None:
         return "unverifiable"  # Preserve unknown upstream schemas as raw evidence.
     row = db.execute(
