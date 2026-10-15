@@ -611,11 +611,14 @@ async def test_saved_mature_risk_detail_is_reused_instead_of_requeried(tmp_path)
         await record_aged_rows(archive, SN, [saved, aged_row("missing-risk", 151)])
         month = (NOW - timedelta(days=179)).strftime("%Y%m")
         normalized = travel({"times": 1, "list": [saved]}, month).rides[0]
-        raw = build_record(Endpoint.TRIP_DETAIL, saved, NOW, month)
-        await archive.async_record_detail(SN, normalized, NOW, raw=raw)
-        task = await archive.async_preservation_claim(SN, NOW, 30, guard=lambda: True)
+        received = NOW + timedelta(seconds=1)
+        raw = build_record(Endpoint.TRIP_DETAIL, saved, received, month)
+        assert await archive.async_record_detail(SN, normalized, received, raw=raw)
+        task = await archive.async_preservation_claim(
+            SN, NOW + timedelta(seconds=2), 30, guard=lambda: True
+        )
         assert task.ride.ride_id == "missing-risk"
         detail = await archive.async_private_detail(SN, "saved-risk")
-        assert detail.latest.received_at == NOW and detail.latest.payload() == saved
+        assert detail.latest.received_at == received and detail.latest.payload() == saved
     finally:
         await archive.async_close()
