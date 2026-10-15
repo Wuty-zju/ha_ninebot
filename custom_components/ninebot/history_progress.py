@@ -96,10 +96,10 @@ def project_progress(
         state = "needs_login"
     elif not authenticated:
         state = "waiting_connection"
-    elif health and health.reference_issues:
-        state = "verifying"  # A historical completion timestamp is not current consistency proof.
     elif active_phase is not None:
         state = active_phase
+    elif health and health.reference_issues:
+        state = "verifying"  # A historical completion timestamp is not current consistency proof.
     elif current is None:
         state = "not_started"
     elif current.state is HistoryState.WAITING:

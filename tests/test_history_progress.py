@@ -133,3 +133,15 @@ def test_reference_gap_overrides_old_completion_but_keeps_explicit_saved_percent
     assert view(evidence, paused=True).state == "paused"
     assert view(evidence, authenticated=False).state == "waiting_connection"
     assert view(evidence, storage_error="capacity").state == "storage_full"
+
+    assert (
+        project_progress(
+            evidence,
+            NOW,
+            enabled=True,
+            paused=False,
+            authenticated=True,
+            active_phase="preserving",
+        ).state
+        == "preserving"
+    )
