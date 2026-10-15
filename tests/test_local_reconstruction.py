@@ -721,3 +721,127 @@ def test_legacy_reconstruction_checkpoint_adds_only_known_search_defaults():
     values.pop("revision")
     with pytest.raises(ValueError):
         restored(json.dumps(values))
+
+
+async def startup_fixture(tmp_path):
+    import shutil
+
+    archive = await seed(tmp_path)
+    await archive.async_start_history_audit(SN, NOW, guard=lambda: True, restart=True)
+    for _ in range(4):
+        await archive.async_step_history_audit(SN, NOW, guard=lambda: True)
+    before = await archive.async_private_detail(SN, "ride-a")
+    await archive.async_close()
+    path = tmp_path / "rides.sqlite3"
+    source = path.with_name("rides.recovery-" + "1" * 32 + ".sqlite3")
+    shutil.copyfile(path, source)
+    with sqlite3.connect(path) as db:
+        assert (
+            db.execute(
+                "SELECT count(*) FROM payload_checks WHERE kind='detail' AND result='verified'"
+            ).fetchone()[0]
+            == 1
+        )
+        db.execute("DELETE FROM detail_payloads")
+    return path, source, before
+
+
+async def test_startup_restores_exact_missing_payload_and_preserves_original_bytes(tmp_path):
+    path, source, before = await startup_fixture(tmp_path)
+    original = path.read_bytes()
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        after = await archive.async_private_detail(SN, "ride-a")
+        assert after.latest_hash == before.latest_hash
+        assert after.geometry_hash == before.geometry_hash
+        assert after.latest.received_at == before.latest.received_at
+        assert after.ride == before.ride
+        assert (await archive.async_object_checks(SN)).verified >= 1
+        await archive._run(lambda: archive._check(archive._db()))
+        forensic = [p for p in tmp_path.glob("*.recovery-*.sqlite3") if p != source]
+        assert len(forensic) == 1 and forensic[0].read_bytes() == original
+        with sqlite3.connect(forensic[0]) as db:
+            assert db.execute("SELECT count(*) FROM detail_payloads").fetchone()[0] == 0
+    finally:
+        await archive.async_close()
+    reopened = RideArchive(path, OWNER)
+    await reopened.async_open()
+    await reopened.async_close()
+    assert len(list(tmp_path.glob("*.recovery-*.sqlite3"))) == 2
+    assert not list(tmp_path.glob(".ninebot-*"))
+
+
+@pytest.mark.parametrize(
+    "failure",
+    ["receipt", "foreign", "payload", "metadata", "index", "owner", "reference", "verify", "space"],
+)
+async def test_startup_missing_payload_rejects_unproven_repair_without_changing_original(
+    tmp_path, monkeypatch, failure
+):
+    from types import SimpleNamespace
+
+    from custom_components.ninebot import startup_recovery
+
+    path, source, _ = await startup_fixture(tmp_path)
+    if failure in {"foreign", "payload", "metadata"}:
+        with sqlite3.connect(source) as db:
+            if failure == "foreign":
+                db.execute("UPDATE meta SET value=? WHERE key='owner'", ("f" * 64,))
+            elif failure == "payload":
+                db.execute("UPDATE detail_payloads SET body=?", (b"bad-source",))
+            else:
+                db.execute("UPDATE detail_payloads SET observed=?", (NOW.isoformat(),))
+    elif failure in {"receipt", "index", "owner", "reference"}:
+        with sqlite3.connect(path) as db:
+            if failure == "receipt":
+                db.execute("DELETE FROM payload_checks WHERE kind='detail'")
+            elif failure == "index":
+                db.execute("UPDATE rides SET data='{}'")
+            elif failure == "owner":
+                db.execute("UPDATE meta SET value=? WHERE key='owner'", ("f" * 64,))
+            else:
+                db.execute("DELETE FROM vehicles")  # Unrelated missing parent never admitted.
+    elif failure == "verify":
+        monkeypatch.setattr(startup_recovery, "verify", lambda *args: "payload")
+    else:
+        monkeypatch.setattr(
+            startup_recovery.shutil, "disk_usage", lambda *args: SimpleNamespace(free=0)
+        )
+    before = path.read_bytes()
+    archive = RideArchive(path, OWNER)
+    try:
+        with pytest.raises(ArchiveError):
+            await archive.async_open()
+    finally:
+        await archive.async_close()
+    assert path.read_bytes() == before
+    assert list(tmp_path.glob("*.recovery-*.sqlite3")) == [source]
+    assert not list(tmp_path.glob(".ninebot-*"))
+
+
+async def test_startup_publication_failure_preserves_source_and_forensic_copy(
+    tmp_path, monkeypatch
+):
+    from custom_components.ninebot import startup_recovery
+
+    path, source, _ = await startup_fixture(tmp_path)
+    original = path.read_bytes()
+    replace_file = startup_recovery.os.replace
+
+    def fail_publication(src, dst):
+        if dst == path:
+            raise OSError("synthetic atomic publication failure")
+        replace_file(src, dst)
+
+    monkeypatch.setattr(startup_recovery.os, "replace", fail_publication)
+    archive = RideArchive(path, OWNER)
+    try:
+        with pytest.raises(ArchiveError):
+            await archive.async_open()
+    finally:
+        await archive.async_close()
+    assert path.read_bytes() == original
+    preserved = [p for p in tmp_path.glob("*.recovery-*.sqlite3") if p != source]
+    assert len(preserved) == 1 and preserved[0].read_bytes() == original
+    assert not list(tmp_path.glob(".ninebot-*"))
