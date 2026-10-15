@@ -91,6 +91,7 @@ def recorded_enumeration(
     parent_ids = _ids(parent[0]) if parent else None
     if parent_ids is None:
         return None
+    parent_set = set(parent_ids)
     seen: dict[str, int] = {}
     last_ids: tuple[str, ...] = ()
     last_observed: datetime | None = None
@@ -130,7 +131,7 @@ def recorded_enumeration(
         if len(seen) > MAX_IDS:
             return None
         last_ids, last_observed = ids, at
-    if len(seen) != known or last_observed != observed_at or set(parent_ids) != set(last_ids):
+    if len(seen) != known or last_observed != observed_at or parent_set != set(last_ids):
         return None
     indexed = db.execute(
         "SELECT i.ride,i.first_page,r.id,m.latest FROM history_ids i"
@@ -140,7 +141,7 @@ def recorded_enumeration(
         (*scope, MAX_IDS + 1),
     ).fetchall()
     if len(indexed) != known or any(
-        seen.get(identity) != first or ride is None or latest != (identity in parent_ids)
+        seen.get(identity) != first or ride is None or latest != (identity in parent_set)
         for identity, first, ride, latest in indexed
     ):
         return None
