@@ -135,6 +135,7 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
             "missing_details": value.missing,
             "unmapped_details": value.unmapped,
             "quality_pending": value.quality_pending,
+            "reference_issues": value.reference_issues,
             "simplified_tracks": value.simplified,
             "discovery_complete": value.discovery_complete,
             "active_months": value.active_months,

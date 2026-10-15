@@ -43,6 +43,7 @@ class HistoryProgress:
     retry_at: datetime | None = None
     phase: str | None = None
     multi_page_months: int = 0
+    reference_issues: int = 0
 
     @property
     def scan_percent(self) -> int | None:
@@ -95,6 +96,8 @@ def project_progress(
         state = "needs_login"
     elif not authenticated:
         state = "waiting_connection"
+    elif health and health.reference_issues:
+        state = "verifying"  # A historical completion timestamp is not current consistency proof.
     elif active_phase is not None:
         state = active_phase
     elif current is None:
@@ -142,4 +145,5 @@ def project_progress(
         retry_at=retry,
         phase=phase,
         multi_page_months=evidence.multi_page_months,
+        reference_issues=health.reference_issues if health else 0,
     )

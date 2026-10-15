@@ -120,3 +120,16 @@ def test_active_request_is_visible_instead_of_its_reserved_future_budget():
     )
     assert value.state == value.phase == "preserving"
     assert value.next_request_at == NOW + timedelta(seconds=60)
+
+
+def test_reference_gap_overrides_old_completion_but_keeps_explicit_saved_percentage():
+    terminal = replace(
+        PLAN, state=HistoryState.COMPLETE, next_month=None, scanned_months=2, verified_months=2
+    )
+    evidence = HistoryEvidence(terminal, replace(HEALTH, reference_issues=1))
+    current = view(evidence)
+    assert current.state == "verifying" and current.reference_issues == 1
+    assert current.detail_percent == 100  # Stored detail count is not a reference certificate.
+    assert view(evidence, paused=True).state == "paused"
+    assert view(evidence, authenticated=False).state == "waiting_connection"
+    assert view(evidence, storage_error="capacity").state == "storage_full"

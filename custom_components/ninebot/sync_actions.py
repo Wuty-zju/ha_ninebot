@@ -189,7 +189,7 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         "discovery_complete": plan.discovery_complete if plan else False,
         "details": asdict(health) if health else None,
         "pagination_basis": "client_page_evidence",
-        "real_cloud_pagination_verified": False,
+        "real_cloud_pagination_verified": None,
     }
 
 

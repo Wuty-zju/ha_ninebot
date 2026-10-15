@@ -875,3 +875,90 @@ async def test_reuse_provenance_rejects_acceptance_before_source_receipt(tmp_pat
         await archive._run(verify)
     finally:
         await archive.async_close()
+
+
+@pytest.mark.parametrize("fault", ["missing_link", "wrong_latest", "parent_ids", "duplicate_ids"])
+async def test_reference_gap_blocks_new_completion_without_changing_raw_or_checkpoint(store, fault):
+    from dataclasses import replace
+
+    root = await completed_discovery(store)
+    for identity in ("ride-one", "ride-two"):
+        await save_track(store, identity, "120,30,1,1;120.1,30.1,2,2")
+    assert (await store.async_history_health(SN, root.plan_id)).reference_issues == 0
+
+    def damage_refs():
+        with store._db() as db:
+            if fault == "missing_link":
+                db.execute("DELETE FROM membership WHERE ride='ride-one'")
+            elif fault == "wrong_latest":
+                db.execute("UPDATE membership SET latest=0 WHERE ride='ride-two'")
+            elif fault == "parent_ids":
+                db.execute("UPDATE months SET ids='invalid-json' WHERE month='202610'")
+            else:
+                db.execute(
+                    "UPDATE months SET ids=? WHERE month='202610'",
+                    ('{"ids":["ride-two","ride-two"]}',),
+                )
+
+    await store._run(damage_refs)
+    health = await store.async_history_health(SN, root.plan_id)
+    assert health.saved == 2 and health.missing == health.quality_pending == 0
+    assert health.reference_issues == (2 if fault in {"parent_ids", "duplicate_ids"} else 1)
+    before = store.path.read_bytes()
+    assert (
+        await store.async_finish_history_baseline(
+            SN, root, NOW + timedelta(seconds=10), guard=lambda: True
+        )
+        == root
+    )
+    with pytest.raises(ArchiveError):
+        await store.async_set_history_plan(
+            SN,
+            replace(root, state=HistoryState.COMPLETE, revision=root.revision + 1),
+            root,
+            guard=lambda: True,
+        )
+    assert store.path.read_bytes() == before
+    assert await store.async_history_plan(SN) == root
+
+
+@pytest.mark.parametrize("complete", [False, True])
+async def test_partial_retention_and_complete_withdrawal_are_not_reference_errors(store, complete):
+    root = await completed_discovery(store)
+    for identity in ("ride-one", "ride-two"):
+        await save_track(store, identity, "120,30,1,1;120.1,30.1,2,2")
+    await store.async_record_month(
+        SN,
+        travel({"times": 1 if complete else 2, "list": [{"travel_id": "ride-two"}]}, "202610"),
+        NOW + timedelta(seconds=5),
+    )
+    health = await store.async_history_health(SN, root.plan_id)
+    assert health.reference_issues == 0
+    finished = await store.async_finish_history_baseline(
+        SN, root, NOW + timedelta(seconds=10), guard=lambda: True
+    )
+    assert finished.state is HistoryState.COMPLETE
+
+
+async def test_older_only_link_loss_is_counted_once_for_one_ride_in_two_months(store):
+    first = await store.async_accept_history_page(
+        SN, initial(), record(total=1), guard=lambda: True
+    )
+    last = await store.async_accept_history_page(
+        SN, first.root, record(total=1, month="202609"), guard=lambda: True
+    )
+    await save_track(store, "ride-one", "120,30,1,1;120.1,30.1,2,2")
+
+    def lose_old_link():
+        with store._db() as db:
+            db.execute("DELETE FROM membership WHERE month='202609'")
+
+    await store._run(lose_old_link)
+    health = await store.async_history_health(SN, last.root.plan_id)
+    assert health.discovered == health.saved == health.reference_issues == 1
+    assert (
+        await store.async_finish_history_baseline(
+            SN, last.root, NOW + timedelta(seconds=10), guard=lambda: True
+        )
+        == last.root
+    )
