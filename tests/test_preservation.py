@@ -622,3 +622,145 @@ async def test_saved_mature_risk_detail_is_reused_instead_of_requeried(tmp_path)
         assert detail.latest.received_at == received and detail.latest.payload() == saved
     finally:
         await archive.async_close()
+
+
+async def test_detail_and_month_vehicle_rotations_do_not_phase_lock_after_restart(
+    tmp_path, monkeypatch
+):
+    from collections import Counter
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from custom_components.ninebot.preservation import HistoryPreservation
+    from custom_components.ninebot.raw import Endpoint, RawStore, build_record
+
+    path = tmp_path / "family-fairness.sqlite3"
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    clock = [NOW]
+    monkeypatch.setattr("custom_components.ninebot.preservation.dt_util.utcnow", lambda: clock[0])
+    for sn in ("A", "B"):
+        await record_aged_rows(archive, sn, [aged_row(f"{sn}-{i}", 179 - i) for i in range(8)])
+    calls = []
+
+    async def executor(fn, *args):
+        return fn(*args)
+
+    async def save(sn, ride, received, guard, raw=None):
+        await co.statistics.archive.async_record_detail(
+            sn, ride, received, guard=guard, ordered=True, raw=raw
+        )
+
+    async def detail(sn, identity, month, **kwargs):
+        calls.append(("detail", sn))
+        return build_record(
+            Endpoint.TRIP_DETAIL,
+            {
+                "travel_id": identity,
+                "duration": 600,
+                "mileages": 1,
+                "trail": "120,30,1,1;120.1,30.1,2,2",
+            },
+            clock[0],
+            month,
+            backend_version="0.1.7",
+        )
+
+    co = SimpleNamespace(
+        config_entry=SimpleNamespace(
+            options={
+                "preserve_history": True,
+                "auto_history_sync": False,
+                "history_requests_per_hour": 60,
+            }
+        ),
+        _stopping=False,
+        _generation=1,
+        _ownership={"A": 1, "B": 1},
+        data={"A": object(), "B": object()},
+        _authenticated=True,
+        local_vehicle_available=lambda sn: sn in {"A", "B"},
+        fresh=lambda sn, group: True,
+        raw=RawStore(),
+        hass=SimpleNamespace(async_add_executor_job=executor),
+        statistics=SimpleNamespace(
+            archive=archive,
+            writable=True,
+            archive_ready=True,
+            error=None,
+            async_record_detail=save,
+            record_error=Mock(),
+            _notify_change=Mock(),
+        ),
+        async_query_detail=AsyncMock(side_effect=detail),
+    )
+
+    def worker():
+        instance = HistoryPreservation(co)
+        co.preservation = instance
+
+        async def pending_months(vehicles, now, budget, **kwargs):
+            # A continuously ready month family, using the real account budget.
+            # Endpoint acquisition itself is not the subject of this regression.
+            for sn in vehicles:
+                if await co.statistics.archive.async_background_budget(
+                    sn, now, budget, guard=lambda: True
+                ):
+                    calls.append(("month", sn))
+                    return True
+            return False
+
+        instance.bootstrap.async_step = pending_months
+        return instance
+
+    instance = worker()
+    try:
+        for batch in range(2):
+            for _ in range(4):
+                before = len(calls)
+                await instance._step(clock[0])
+                assert len(calls) == before + 1
+                # Neither cursor nor endpoint quota advances on a denied retry.
+                state = await archive.async_preservation_order(("A", "B"), kind="detail")
+                await instance._step(clock[0])
+                assert len(calls) == before + 1
+                assert await archive.async_preservation_order(("A", "B"), kind="detail") == state
+                clock[0] += timedelta(seconds=61)
+            if batch == 0:
+                await instance.async_close()
+                await archive.async_close()
+                archive = RideArchive(path, OWNER)
+                await archive.async_open()
+                co.statistics.archive = archive
+                instance = worker()
+        assert Counter(calls) == Counter(
+            {("detail", "A"): 2, ("detail", "B"): 2, ("month", "A"): 2, ("month", "B"): 2}
+        )
+        assert calls[:4] == [("detail", "A"), ("month", "B"), ("detail", "B"), ("month", "A")]
+        for sn in ("A", "B"):
+            for index in range(2):
+                assert await archive.async_private_detail(sn, f"{sn}-{index}") is not None
+        co.statistics.record_error.assert_not_called()
+        with pytest.raises(ValueError):
+            await archive.async_preservation_order(("A", "B"), kind="unknown")
+    finally:
+        await instance.async_close()
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("key", ["preservation_detail_cursor", "preservation_month_cursor"])
+async def test_family_cursor_values_are_validated_without_rewriting_archive(tmp_path, key):
+    archive = RideArchive(tmp_path / "invalid-family.sqlite3", OWNER)
+    await archive.async_open()
+
+    def corrupt():
+        db = archive._db(write=True)
+        with db:
+            db.execute("INSERT INTO meta VALUES (?,?)", (key, "invalid"))
+
+    await archive._run(corrupt)
+    await archive.async_close()
+    original = archive.path.read_bytes()
+    with pytest.raises(ArchiveError):
+        await archive.async_open()
+    assert archive.path.read_bytes() == original

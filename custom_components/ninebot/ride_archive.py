@@ -531,9 +531,11 @@ class RideArchive:
                 raise ValueError("Invalid month scheduling turn")
             elif key.startswith("preservation:"):
                 task_state(value)
-            elif key == "preservation_cursor" and (
-                len(value) != 64 or any(c not in "0123456789abcdef" for c in value)
-            ):
+            elif key in {
+                "preservation_cursor",
+                "preservation_detail_cursor",
+                "preservation_month_cursor",
+            } and (len(value) != 64 or any(c not in "0123456789abcdef" for c in value)):
                 raise ValueError("Invalid preservation cursor")
             elif key == "preservation_turn" and value not in {"detail", "month"}:
                 raise ValueError("Invalid preservation turn")
@@ -1578,20 +1580,27 @@ class RideArchive:
         )
 
     async def async_preservation_order(
-        self, vehicles: tuple[str, ...]
+        self, vehicles: tuple[str, ...], *, kind: str | None = None
     ) -> tuple[tuple[str, ...], str]:
-        """Restore fairness without storing account names or raw vehicle identities."""
+        """Rotate each request family independently; legacy callers keep their order."""
+        if kind not in {None, "detail", "month"}:
+            raise ValueError("Invalid preservation request family")
 
         def read() -> tuple[tuple[str, ...], str]:
             db = self._db()
             meta = dict(
                 db.execute(
                     "SELECT key,value FROM meta WHERE key IN "
-                    "('preservation_cursor','preservation_turn')"
+                    "('preservation_cursor','preservation_turn',"
+                    "'preservation_detail_cursor','preservation_month_cursor')"
                 )
             )
             ordered = tuple(sorted(vehicles))
-            cursor = meta.get("preservation_cursor")
+            cursor = (
+                meta.get(f"preservation_{kind}_cursor", meta.get("preservation_cursor"))
+                if kind
+                else meta.get("preservation_cursor")
+            )
             for index, sn in enumerate(ordered):
                 if vehicle_key(sn) == cursor:
                     ordered = ordered[index + 1 :] + ordered[: index + 1]
@@ -1614,6 +1623,10 @@ class RideArchive:
         for key, value in (
             ("preservation_budget", str(epoch + 3600 / budget)),
             ("preservation_cursor", vehicle),
+            (
+                "preservation_detail_cursor" if kind == "detail" else "preservation_month_cursor",
+                vehicle,
+            ),
             ("preservation_turn", "month" if kind == "detail" else "detail"),
         ):
             db.execute(

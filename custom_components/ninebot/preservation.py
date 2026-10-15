@@ -175,6 +175,7 @@ class HistoryPreservation:
             await self.months.async_seed_recent(vehicles, now)
         if turn == "month" and await self._resume_months(vehicles, budget):
             return
+        vehicles, _ = await archive.async_preservation_order(vehicles, kind="detail")
         generation = co._generation
         for sn in vehicles:
             if not co.fresh(sn, "profile"):
@@ -276,6 +277,9 @@ class HistoryPreservation:
 
     async def _resume_months(self, vehicles: tuple[str, ...], budget: int) -> bool:
         """Alternate bootstrap discovery, sparse repairs and explicit range jobs."""
+        vehicles, _ = await self.co.statistics.archive.async_preservation_order(
+            vehicles, kind="month"
+        )
         families = (self.bootstrap.async_step, self.incremental.async_step, self._legacy_month_step)
         turn = await self.co.statistics.archive.async_history_family_turn()
         for offset in range(3):

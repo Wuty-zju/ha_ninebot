@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0b83
+
+- Rotate vehicles independently for detail preservation and month discovery, avoiding a fixed vehicle/request-family pairing when both queues stay busy.
+- Persist both family cursors across restart, retain legacy cursor fallback and keep the shared account request budget unchanged. No extra cloud requests or entity identity changes.
+
 ## 2.0.0b82
 
 - Distinguish current-month recorded pagination evidence from partial single-page observations in local trip responses and the history card.
