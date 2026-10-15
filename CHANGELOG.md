@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b75
+
+- Reuse bounded, fully verified independent old-month page evidence during first discovery, preserving original receipt timestamps and explicit local provenance.
+- Atomically register pages, IDs and monthly coverage without spending cloud budget; partial, newer, recent or oversized candidates continue normal discovery.
+- Keep vehicle fairness, existing detail preservation and strict restart validation.
+
+
 ## 2.0.0b74
 
 - Continue vehicle-scoped manual incremental work when automatic synchronization is disabled.

@@ -617,3 +617,161 @@ async def test_progress_metadata_is_local_persistent_and_success_is_not_last_att
         assert await reopened.async_history_evidence(SN, guard=lambda: True) == value
     finally:
         await reopened.async_close()
+
+
+async def reusable_month(archive, *, month="202608", partial=False, source_before=False):
+    from datetime import timedelta
+
+    baseline = HistoryPlan.create("b" * 32, vehicle_key(SN), "202607", month, NOW.isoformat())
+    await archive.async_set_history_plan(SN, baseline, None, guard=lambda: True)
+    at = NOW + timedelta(seconds=-1 if source_before else 1)
+    run = await archive.async_schedule_history_run(SN, month, at, guard=lambda: True)
+    for number in range(1, 2 if partial else 3):
+        await archive.async_accept_history_page(
+            SN,
+            run,
+            build_record(
+                Endpoint.TRAVEL,
+                {"times": 2, "list": [{"travel_id": f"reused-{number}", "mileages": number}]},
+                NOW + timedelta(seconds=number + 1),
+                month,
+                backend_version="0.1.7",
+                endpoint_version=run.provider,
+            ),
+            guard=lambda: True,
+        )
+        run = await archive.async_history_run(SN, run.plan_id)
+    return baseline, run
+
+
+async def test_verified_month_reuse_preserves_original_receipts_ids_budget_and_restart(tmp_path):
+    archive = RideArchive(tmp_path / "reuse.sqlite3", OWNER)
+    await archive.async_open()
+    baseline, source = await reusable_month(archive)
+    try:
+        before = await archive._run(
+            lambda: (
+                archive._db()
+                .execute("SELECT value FROM meta WHERE key='preservation_budget'")
+                .fetchone()
+            )
+        )
+        assert await archive.async_reuse_history_month(
+            SN, NOW + timedelta(seconds=10), guard=lambda: True
+        )
+        after = await archive.async_history_plan(SN)
+        assert after.next_month == "202607" and after.scanned_months == after.verified_months == 1
+        assert (
+            after.revision == baseline.revision + 1
+            and after.updated_at == (NOW + timedelta(seconds=10)).isoformat()
+        )
+        for number in (1, 2):
+            original = await archive.async_history_page(
+                SN, source.plan_id, "202608", number, guard=lambda: True
+            )
+            copied = await archive.async_history_page(
+                SN, baseline.plan_id, "202608", number, guard=lambda: True
+            )
+            assert copied.received_at == original.received_at
+            assert copied.encoded == original.encoded
+        snapshot = await archive._run(
+            lambda: (
+                archive._db()
+                .execute("SELECT value FROM meta WHERE key='preservation_budget'")
+                .fetchone(),
+                archive._db().execute("SELECT count(*) FROM history_payloads").fetchone()[0],
+                archive._db()
+                .execute("SELECT count(*) FROM history_ids WHERE plan=?", (baseline.plan_id,))
+                .fetchone()[0],
+            )
+        )
+        assert snapshot == (before, 2, 2)
+        order, turn = await archive.async_preservation_order((SN, "other"))
+        assert order[-1] == SN and turn == "detail"
+        assert not await archive.async_reuse_history_month(
+            SN, NOW + timedelta(seconds=11), guard=lambda: True
+        )
+        await archive._run(lambda: archive._check(archive._db()))
+    finally:
+        await archive.async_close()
+    reopened = RideArchive(archive.path, OWNER)
+    await reopened.async_open()
+    assert (await reopened.async_history_plan(SN)) == after
+    await reopened.async_close()
+
+
+@pytest.mark.parametrize(
+    "reason",
+    ["partial", "recent", "source_before", "newer", "ids", "membership", "size", "pages", "future"],
+)
+async def test_month_reuse_does_not_turn_unproven_evidence_into_verified_root(
+    tmp_path, monkeypatch, reason
+):
+    from custom_components.ninebot import history_reuse
+
+    archive = RideArchive(tmp_path / "rejected-reuse.sqlite3", OWNER)
+    await archive.async_open()
+    baseline, source = await reusable_month(
+        archive,
+        month="202609" if reason == "recent" else "202608",
+        partial=reason == "partial",
+        source_before=reason == "source_before",
+    )
+    try:
+
+        def alter():
+            db = archive._db()
+            with db:
+                if reason == "newer":
+                    db.execute(
+                        "UPDATE months SET observed=?", ((NOW + timedelta(seconds=5)).isoformat(),)
+                    )
+                elif reason == "ids":
+                    db.execute(
+                        "UPDATE history_pages SET ids=? WHERE page=1",
+                        (encoded({"ids": ["unverified"]}),),
+                    )
+                elif reason == "membership":
+                    db.execute("DELETE FROM membership WHERE ride='reused-1'")
+
+        from custom_components.ninebot.archive_codec import encoded
+
+        await archive._run(alter)
+        if reason == "size":
+            monkeypatch.setattr(history_reuse, "MAX_BYTES", 1)
+        if reason == "pages":
+            monkeypatch.setattr(history_reuse, "MAX_PAGES", 1)
+        when = NOW + timedelta(seconds=1 if reason == "future" else 10)
+        assert not await archive.async_reuse_history_month(SN, when, guard=lambda: True)
+        assert await archive.async_history_plan(SN) == baseline
+        assert not await archive.async_history_page(
+            SN, baseline.plan_id, baseline.end_month, 1, guard=lambda: True
+        )
+    finally:
+        await archive.async_close()
+
+
+async def test_month_reuse_is_atomic_if_checkpoint_write_fails(tmp_path, monkeypatch):
+    from custom_components.ninebot import history_reuse
+
+    archive = RideArchive(tmp_path / "reuse-rollback.sqlite3", OWNER)
+    await archive.async_open()
+    baseline, _ = await reusable_month(archive)
+    try:
+
+        def fail(*args):
+            raise ValueError("synthetic checkpoint failure")
+
+        monkeypatch.setattr(history_reuse, "put_root", fail)
+        with pytest.raises(ArchiveError):
+            await archive.async_reuse_history_month(
+                SN, NOW + timedelta(seconds=10), guard=lambda: True
+            )
+        assert await archive.async_history_plan(SN) == baseline
+        assert (
+            await archive.async_history_page(SN, baseline.plan_id, "202608", 1, guard=lambda: True)
+            is None
+        )
+        await archive._run(lambda: archive._check(archive._db()))
+    finally:
+        await archive.async_close()

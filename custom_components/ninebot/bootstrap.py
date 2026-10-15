@@ -139,6 +139,16 @@ class HistoryBootstrap:
                         # A not-yet-due retry/lease must not block another month.
                         # Once claimed, keep checking completed local runs but no more claims.
             else:
+                try:
+                    reused = await archive.async_reuse_history_month(sn, now, guard=owns)
+                except ArchiveError as err:
+                    if err.kind is not ArchiveFailure.OBJECT:
+                        raise
+                    co.statistics.record_error(err)
+                    reused = False
+                if reused:
+                    await co.statistics.async_history_page_committed(sn, owns)
+                    return True  # One bounded local month, no cloud budget reservation.
                 claimed = await archive.async_claim_history_page(sn, now, budget, guard=owns)
             if claimed is None:
                 continue

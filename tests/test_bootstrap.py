@@ -331,3 +331,35 @@ async def test_waiting_month_does_not_block_other_due_month_and_shared_budget_st
     assert (await archive.async_history_run(SN, ready.plan_id)).discovery_complete
     assert not await runner.async_step((SN,), clock[0], 60, incremental=True)
     assert len(calls) == 1
+
+
+async def test_first_discovery_reuses_verified_old_month_without_any_cloud_call(context):
+    from custom_components.ninebot.history_plan import HistoryPlan
+    from custom_components.ninebot.ride_archive import vehicle_key
+
+    co, archive, clock, calls = context
+    root = HistoryPlan.create("d" * 32, vehicle_key(SN), "202608", "202608", NOW.isoformat())
+    await archive.async_set_history_plan(SN, root, None, guard=lambda: True)
+    source = await archive.async_schedule_history_run(
+        SN, "202608", NOW + timedelta(seconds=1), guard=lambda: True
+    )
+    await archive.async_accept_history_page(
+        SN,
+        source,
+        build_record(
+            Endpoint.TRAVEL,
+            {"times": 0, "list": []},
+            NOW + timedelta(seconds=2),
+            "202608",
+            backend_version="0.1.7",
+            endpoint_version=source.provider,
+        ),
+        guard=lambda: True,
+    )
+    clock[0] += timedelta(seconds=3)
+    assert await HistoryBootstrap(co).async_step((SN,), clock[0], 60)
+    assert not calls
+    saved = await archive.async_history_plan(SN)
+    assert saved.discovery_complete and saved.verified_months == 1
+    assert saved.state is HistoryState.PRESERVE  # Detail/quality completion is a separate step.
+    co.statistics.async_history_page_committed.assert_awaited_once()
