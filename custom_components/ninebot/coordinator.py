@@ -563,14 +563,14 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         request_revision=cached.request_revision,
                     )
                     cached_success = cached.received_at
+                    record = cached
                 else:
                     result = await self._read(
                         key,
                         partial(self.backend.async_travel_month, sn, month),
                         Priority.BACKGROUND,
                     )
-                    await self._capture(result, sn, guard=lambda: self._owns(key))
-                record = self.raw.get(Endpoint.TRAVEL, sn, month, now=dt_util.utcnow())
+                    record = await self._capture(result, sn, guard=lambda: self._owns(key))
                 request_revision = result.request_revision
                 if record and record.request_revision > request_revision and request_revision:
                     return
@@ -613,10 +613,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                                 partial(self.backend.async_travel_month, sn, previous),
                                 Priority.BACKGROUND,
                             )
-                            await self._capture(result, sn, guard=lambda: self._owns(key))
-                        fallback_record = self.raw.get(
-                            Endpoint.TRAVEL, sn, previous, now=dt_util.utcnow()
-                        )
+                            fallback_record = await self._capture(
+                                result, sn, guard=lambda: self._owns(key)
+                            )
                         fallback = await self._normalize(
                             fallback_record,
                             sn,

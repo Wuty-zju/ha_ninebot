@@ -45,6 +45,12 @@ def source(*, received=NOW, backend="0.1.7", **extra):
     )
 
 
+def logical_digest(path):
+    # SQLite backup preserves rows/BLOBs, not source header change counters.
+    with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
+        return hashlib.sha256("\n".join(db.iterdump()).encode()).hexdigest()
+
+
 async def save(store, raw, **kwargs):
     return await store.async_record_month(
         SN,
@@ -225,13 +231,15 @@ async def test_schema5_migration_keeps_original_backup_and_missing_source_explic
         db.execute("DROP TABLE month_sources")
         db.execute("PRAGMA user_version=5")
     original = path.read_bytes()
+    original_logical = logical_digest(path)
     migrated = RideArchive(path, OWNER)
     try:
         await migrated.async_open()
         assert (await inspect(migrated)).status == "missing"
         assert (await migrated.async_month(SN, "202610")).travel.summary.energy_wh == 2
         copies = list(path.parent.glob("rides.schema5-*.sqlite3"))
-        assert len(copies) == 1 and copies[0].read_bytes() == original
+        assert len(copies) == 1 and logical_digest(copies[0]) == original_logical
+        assert hashlib.sha256(original).hexdigest() in copies[0].name
         with closing(sqlite3.connect(path)) as db:
             assert db.execute("PRAGMA user_version").fetchone()[0] == 6
     finally:
@@ -248,13 +256,14 @@ async def test_schema6_failed_ddl_keeps_schema5_and_recovery_copy(store, monkeyp
         db.execute("DROP TABLE month_sources")
         db.execute("PRAGMA user_version=5")
     original = path.read_bytes()
+    original_logical = logical_digest(path)
     monkeypatch.setattr(month_source, "SCHEMA", (*month_source.SCHEMA, "INVALID DDL"))
     migrated = RideArchive(path, OWNER)
     try:
         with pytest.raises(ArchiveError):
             await migrated.async_open()
-        assert path.read_bytes() == original
-        assert next(path.parent.glob("rides.schema5-*.sqlite3")).read_bytes() == original
+        assert hashlib.sha256(path.read_bytes()).digest() == hashlib.sha256(original).digest()
+        assert logical_digest(next(path.parent.glob("rides.schema5-*.sqlite3"))) == original_logical
     finally:
         await migrated.async_close()
 
@@ -339,6 +348,10 @@ async def test_schema5_in_progress_reconstruction_keeps_old_recovery_point_after
         await migrated.async_open()
         result = await migrated.async_reconstruction_job(
             SN, "continue", NOW + timedelta(seconds=3), guard=lambda: True
+        )
+        assert result.checked == 1 and result.state != "blocked_recovery"
+        result = await migrated.async_reconstruction_job(
+            SN, "continue", NOW + timedelta(seconds=4), guard=lambda: True
         )
         assert result.state == "complete" and result.checked == 1
         assert result.backup_hash == checksum

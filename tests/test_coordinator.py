@@ -1336,3 +1336,30 @@ async def test_current_fallback_and_action_month_sources_follow_history_consent(
     assert (check.status != "missing") is consent
     if consent:
         assert check.raw_payload_integrity_verified and check.status != "stale"
+
+
+@pytest.mark.parametrize("coordinator", [{"preserve_history": True}], indirect=True)
+async def test_rejected_current_raw_never_binds_old_cached_body_to_new_projection(
+    coordinator, freezer
+):
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot.adapters import month_at
+
+    co = coordinator
+    await co._async_update_data()
+    current = month_at(dt_util.utcnow())
+    freezer.tick(timedelta(seconds=1))
+    co.client.async_get_travel.return_value = {
+        "times": 0,
+        "list": [],
+        "ec": 99,
+        "unknown": "x" * 1048577,
+    }
+    await co._group("synthetic-one", "travel", force=True, include_last_ride=False)
+    stored = await co.statistics.archive.async_month("synthetic-one", current)
+    assert stored.travel.summary.energy_wh == 99
+    checked = await co.statistics.archive.async_month_source_check(
+        "synthetic-one", current, guard=lambda: True
+    )
+    assert checked.status == "stale" and not checked.projection_verified
