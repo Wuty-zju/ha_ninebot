@@ -105,6 +105,7 @@ class HistoryHealth:
     single_point: int
     unavailable_track: int
     latest_degraded: int
+    reference_issues: int = 0
 
     @property
     def archive_has_gaps(self) -> bool:
@@ -131,4 +132,17 @@ def summary(db: sqlite3.Connection, vehicle: str, plan: str) -> HistoryHealth:
         " coalesce(sum(json_extract(health,'$.latest_simplified')=1),0) FROM facts",
         (vehicle, plan, vehicle, vehicle, vehicle),
     ).fetchone()
-    return HistoryHealth(*row)
+    from .history_references import issues
+
+    return HistoryHealth(
+        discovered=row[0],
+        saved=row[1],
+        missing=row[2],
+        unmapped=row[3],
+        quality_pending=row[4],
+        simplified=row[5],
+        single_point=row[6],
+        unavailable_track=row[7],
+        latest_degraded=row[8],
+        reference_issues=issues(db, vehicle, plan),
+    )

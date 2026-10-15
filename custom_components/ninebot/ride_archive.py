@@ -2818,7 +2818,12 @@ class RideArchive:
                 }:
                     return expected
                 health = summary(db, expected.vehicle, expected.plan_id)
-                if health.missing or health.unmapped or health.quality_pending:
+                if (
+                    health.missing
+                    or health.unmapped
+                    or health.quality_pending
+                    or health.reference_issues
+                ):
                     return expected
                 result = replace(
                     expected,

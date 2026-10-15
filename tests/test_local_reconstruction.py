@@ -1033,3 +1033,45 @@ async def test_membership_job_checkpoint_and_old_contracts_survive_restart(tmp_p
             assert public(legacy)["contract"] == label
     finally:
         await archive.async_close()
+
+
+async def test_old_completed_reference_gap_still_opens_backs_up_and_repairs(tmp_path):
+    from custom_components.ninebot.history_plan import HistoryState
+    from custom_components.ninebot.history_progress import project_progress
+
+    archive = await seed(tmp_path)
+    plan = await archive.async_history_plan(SN)
+    finished = await archive.async_finish_history_baseline(
+        SN, plan, NOW + timedelta(seconds=2), guard=lambda: True
+    )
+    assert finished.state is HistoryState.COMPLETE
+    await drop_membership(archive)
+    # Structural startup/backup validation deliberately does not resubmit a
+    # historical terminal plan through the stricter new-completion gate.
+    await archive._run(lambda: archive._check(archive._db()))
+    await archive.async_close()
+    archive = RideArchive(archive.path, OWNER)
+    await archive.async_open()
+    try:
+        before = await archive.async_history_evidence(SN, guard=lambda: True)
+        view = project_progress(
+            before, NOW + timedelta(seconds=3), enabled=True, paused=False, authenticated=True
+        )
+        assert view.state == "verifying" and view.reference_issues == 1
+        assert view.detail_percent == 100
+        assert before.last_completed == NOW + timedelta(seconds=2)
+        repaired = await archive.async_reconstruct_ride(
+            SN, "ride-a", guard=lambda: True, repair=True
+        )
+        assert repaired.repaired
+        assert list(tmp_path.glob("*.recovery-*.sqlite3"))
+        after = await archive.async_history_evidence(SN, guard=lambda: True)
+        assert after.health.reference_issues == 0 and after.last_completed == before.last_completed
+        assert (
+            project_progress(
+                after, NOW + timedelta(seconds=3), enabled=True, paused=False, authenticated=True
+            ).state
+            == "synced"
+        )
+    finally:
+        await archive.async_close()

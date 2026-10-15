@@ -142,6 +142,7 @@ def put_root(db: sqlite3.Connection, plan: HistoryPlan, expected: HistoryPlan | 
             health.missing
             or health.unmapped
             or health.quality_pending
+            or health.reference_issues
             or plan.state is HistoryState.COMPLETE
             and health.archive_has_gaps
         ):

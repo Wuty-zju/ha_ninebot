@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b81
+
+- Block new history completion when enumerated IDs have missing ride/month links or inconsistent latest-list membership flags.
+- Expose affected-ride counts and show verification pending even for a previously completed task with newly detected gaps.
+- Keep structural startup/backup validation separate so retained archives can still be backed up and repaired; no automatic selection rewrite or cloud requests.
+
 ## 2.0.0b80
 
 - Recover missing ride/month membership links only when bounded original page evidence proves the same identity and start time.

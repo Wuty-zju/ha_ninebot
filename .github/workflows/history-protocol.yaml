@@ -32,6 +32,7 @@ on:
       - 'custom_components/ninebot/incremental_sync.py'
       - 'custom_components/ninebot/incremental_runs.py'
       - 'custom_components/ninebot/detail_health.py'
+      - 'custom_components/ninebot/history_references.py'
       - 'custom_components/ninebot/bootstrap.py'
       - 'custom_components/ninebot/coordinator.py'
       - 'custom_components/ninebot/config_flow.py'
