@@ -122,6 +122,15 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
                 "observed_list_complete": row.list_complete,
                 "reported_count": row.reported_count,
                 "returned_count": row.returned_count,
+                "recorded_enumeration": {
+                    "pages": row.enumeration.pages,
+                    "ride_count": row.enumeration.rides,
+                    "received_at": iso(row.enumeration.received_at),
+                    "basis": "recorded_page_metadata_v1",
+                    "raw_payload_integrity_verified": False,
+                }
+                if row.enumeration
+                else None,
             }
             for row in page.months
         ],
@@ -134,6 +143,12 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
             "missing_months": missing,
             "partial_months": partial_months,
             "unknown_months": unknown_months,
+            "enumerated_months": [row.month for row in page.months if row.enumeration],
+            "enumeration_unverified_months": [
+                month
+                for month in months
+                if not any(row.month == month and row.enumeration for row in page.months)
+            ],
             "all_observed_lists_complete": not (missing or partial_months or unknown_months),
             "upstream_history_complete": "unverified",
             "future_and_ongoing_excluded": True,

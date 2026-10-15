@@ -27,11 +27,11 @@ def initial():
     return HistoryPlan.create("a" * 32, vehicle_key(SN), "202609", "202610", NOW.isoformat())
 
 
-def record(ids=("ride-one",), total=2, month="202610", **extra):
+def record(ids=("ride-one",), total=2, month="202610", *, received_at=NOW, **extra):
     return build_record(
         Endpoint.TRAVEL,
         {"times": total, "list": [{"travel_id": i} for i in ids], **extra},
-        NOW,
+        received_at,
         month,
         backend_version="0.1.7",
         endpoint_version="0.1.7+native.history.v1",
@@ -962,3 +962,144 @@ async def test_older_only_link_loss_is_counted_once_for_one_ride_in_two_months(s
         )
         == last.root
     )
+
+
+async def enumeration_page(store, *, as_of=NOW):
+    return await store.async_recorded_page(
+        SN,
+        datetime(2026, 10, 1, tzinfo=UTC),
+        datetime(2026, 11, 1, tzinfo=UTC),
+        as_of,
+        limit=10,
+    )
+
+
+async def enumerated_month(store):
+    first = await store.async_accept_history_page(SN, initial(), record(), guard=lambda: True)
+    return await store.async_accept_history_page(
+        SN, first.root, record(("ride-two",)), guard=lambda: True
+    )
+
+
+@pytest.mark.parametrize("offset_us", [0, 123456])
+async def test_recorded_enumeration_matches_receipt_without_rewriting_partial_source(
+    store, offset_us
+):
+    source_time = NOW + timedelta(microseconds=offset_us)
+    first = await store.async_accept_history_page(
+        SN, initial(), record(received_at=source_time), guard=lambda: True
+    )
+    assert (await enumeration_page(store)).months[0].enumeration is None
+    second = await store.async_accept_history_page(
+        SN, first.root, record(("ride-two",), received_at=source_time), guard=lambda: True
+    )
+    before = store.path.read_bytes()
+    page = await enumeration_page(store, as_of=source_time)
+    assert page.months[0].list_complete is False
+    assert page.months[0].returned_count == 1
+    evidence = page.months[0].enumeration
+    assert (
+        evidence and evidence.pages == evidence.rides == 2 and evidence.received_at == source_time
+    )
+    assert store.path.read_bytes() == before
+    assert (await enumeration_page(store, as_of=NOW - timedelta(seconds=1))).months[
+        0
+    ].enumeration is None
+    assert not (
+        await store.async_recorded_page(
+            "other-vehicle", NOW - timedelta(days=1), NOW + timedelta(days=1), NOW
+        )
+    ).months
+    # A newer single-page summary invalidates this exact-receipt evidence, even
+    # with the same reported count. It does not rewrite old page evidence.
+    await store.async_record_month(
+        SN, travel({"times": 2, "list": []}, "202610"), NOW + timedelta(seconds=1)
+    )
+    assert (await enumeration_page(store, as_of=NOW + timedelta(seconds=1))).months[
+        0
+    ].enumeration is None
+    assert (await store.async_history_plan(SN)) == second.root
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "missing_page",
+        "source_backend",
+        "source_endpoint",
+        "unstable_total",
+        "first_page",
+        "missing_membership",
+        "latest_flag",
+        "missing_payload",
+        "bad_json",
+        "oversize",
+        "parent_selection",
+        "future_source",
+        "not_verified",
+        "ambiguous_run",
+    ],
+)
+async def test_recorded_enumeration_rejects_unproven_headers_indexes_and_relationships(
+    store, fault
+):
+    await enumerated_month(store)
+    assert (await enumeration_page(store)).months[0].enumeration
+
+    def corrupt():
+        db = store._db(write=True)
+        with db:
+            if fault == "missing_page":
+                db.execute("DELETE FROM history_pages WHERE page=1")
+            elif fault == "source_backend":
+                db.execute("UPDATE history_pages SET backend='0.2.0'")
+            elif fault == "source_endpoint":
+                db.execute("UPDATE history_pages SET endpoint='unknown'")
+            elif fault == "unstable_total":
+                db.execute("UPDATE history_pages SET total=3 WHERE page=1")
+            elif fault == "first_page":
+                db.execute("UPDATE history_ids SET first_page=2 WHERE first_page=1")
+            elif fault == "missing_membership":
+                db.execute("DELETE FROM membership WHERE ride='ride-one'")
+            elif fault == "latest_flag":
+                db.execute("UPDATE membership SET latest=1")
+            elif fault == "missing_payload":
+                db.execute("DELETE FROM history_payloads")
+            elif fault == "bad_json":
+                db.execute("UPDATE history_pages SET ids='{' WHERE page=1")
+            elif fault == "oversize":
+                db.execute(
+                    "UPDATE history_pages SET ids=? WHERE page=1", (" " * (1024 * 1024 + 1),)
+                )
+            elif fault == "parent_selection":
+                db.execute("UPDATE months SET ids=?", ('{"ids":["ride-one"]}',))
+            elif fault == "future_source":
+                db.execute(
+                    "UPDATE history_pages SET observed=? WHERE page=1",
+                    ((NOW + timedelta(seconds=1)).isoformat(),),
+                )
+            elif fault == "not_verified":
+                db.execute("UPDATE history_months SET verified=0")
+            else:
+                db.execute(
+                    "INSERT INTO history_months SELECT vehicle,?,month,pages,known,total,"
+                    "verified,stop,observed FROM history_months",
+                    ("b" * 32,),
+                )
+
+    await store._run(corrupt)
+    before = store.path.read_bytes()
+    assert (await enumeration_page(store)).months[0].enumeration is None
+    assert store.path.read_bytes() == before
+
+
+async def test_empty_enumerated_month_has_explicit_zero_count(store):
+    second = await enumerated_month(store)
+    await store.async_accept_history_page(
+        SN, second.root, record((), 0, "202609"), guard=lambda: True
+    )
+    page = await store.async_recorded_page(
+        SN, datetime(2026, 9, 1, tzinfo=UTC), datetime(2026, 10, 1, tzinfo=UTC), NOW
+    )
+    evidence = page.months[0].enumeration
+    assert evidence and evidence.pages == 1 and evidence.rides == 0

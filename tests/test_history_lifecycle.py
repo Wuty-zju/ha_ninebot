@@ -214,6 +214,11 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
         # proved enumeration complete. Preserve that raw observation contract.
         assert not response["coverage"]["all_observed_lists_complete"]
         assert response["coverage"]["partial_months"] == ["202610"]
+        assert response["coverage"]["enumerated_months"] == ["202610"]
+        assert response["coverage"]["enumeration_unverified_months"] == []
+        enumeration = response["months"][0]["recorded_enumeration"]
+        assert enumeration["pages"] == enumeration["ride_count"] == 3
+        assert enumeration["raw_payload_integrity_verified"] is False
         view = await statistics.async_view(sn, ("202609", "202610"))
         metrics = statistics_response(view, sn, ("202610",), clock[0], True)
         month = metrics["months"][0]

@@ -61,7 +61,7 @@ export class FleetBrowser extends TripBrowser {
   async read(cursor = null) {
     if (!this.active || this.busy || !this.config || !this.hass?.user?.id ||
         this.hass.connected === false || !this.selected?.size || (cursor && !this.page)) return;
-    const epoch = this.epoch, rides = [], coverage = { missing_months: [], partial_months: [], unknown_months: [] };
+    const epoch = this.epoch, rides = [], coverage = { missing_months: [], partial_months: [], unknown_months: [], enumerated_months: [] };
     const continuation = {}, resolved = new Set();
     this.busy = true; this.error = null; this.awaitApply = false; this.changed();
     try {
@@ -84,6 +84,8 @@ export class FleetBrowser extends TripBrowser {
         rides.push(...response.rides.map(ride => ({ ...safeRide(ride), device_id: device,
           vehicle_label: String(name).slice(0, 128) })));
         if (response.next_cursor) continuation[device] = response.next_cursor;
+        // A mixed old/new backend fleet cannot claim an exact enumeration count.
+        if (!Array.isArray(response.coverage?.enumerated_months)) delete coverage.enumerated_months;
         for (const field of Object.keys(coverage)) {
           coverage[field].push(...(response.coverage?.[field] ?? []).map(month => `${device}:${month}`));
         }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b82
+
+- Distinguish current-month recorded pagination evidence from partial single-page observations in local trip responses and the history card.
+- Match bounded page headers/ID indexes/membership to the current receipt; newer summaries or inconsistent evidence remain unverified. No cloud requests or entity identity changes.
+- Preserve raw-page coverage and unknown coordinate/unit semantics; this metadata indicator is not a raw-payload integrity or whole-cloud-history certificate.
+
 ## 2.0.0b81
 
 - Block new history completion when enumerated IDs have missing ride/month links or inconsistent latest-list membership flags.
