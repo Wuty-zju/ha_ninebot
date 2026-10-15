@@ -25,6 +25,9 @@ def public(job: ReconstructionJob | None) -> dict:
         "checked": job.checked if job else 0,
         "repaired": job.repaired if job else 0,
         "partially_repaired": job.partially_repaired if job else 0,
+        "searching_sources": job.searching if job else False,
+        "pending_role_recovery": job.pending_repaired if job else False,
+        "source_copy_checks": job.source_copy_checks if job else 0,
         "blocked": job.blocked if job else 0,
         "corrupt": job.corrupt if job else 0,
         "recovery_point_ready": bool(job and job.backup_hash and job.state != "blocked_recovery"),
@@ -53,8 +56,10 @@ class BackgroundReconstruction:
         ):
             self.co.statistics.record_error(ArchiveError(ArchiveFailure.OBJECT))
         if before != job:
-            if job.repaired > (before.repaired if before else 0) or (
-                job.partially_repaired > (before.partially_repaired if before else 0)
+            if (
+                job.repaired > (before.repaired if before else 0)
+                or (job.partially_repaired > (before.partially_repaired if before else 0))
+                or (job.pending_repaired and (before is None or job.revision != before.revision))
             ):
                 await self.co.statistics.async_reconstruction_committed(sn, owns)
                 await self.co.preservation.async_refresh_progress((sn,), dt_util.utcnow())

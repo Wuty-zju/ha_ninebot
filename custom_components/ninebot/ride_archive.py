@@ -404,7 +404,11 @@ class RideArchive:
         from .preservation import task_state
 
         for key, value in meta.items():
-            if key.startswith("local_reconstruction:"):
+            if key.startswith("payload_search:"):
+                from .recovery_search import check as check_recovery_search
+
+                check_recovery_search(key, value)
+            elif key.startswith("local_reconstruction:"):
                 from .reconstruction_job import restored as restored_reconstruction
                 from .reconstruction_job import scope as reconstruction_scope
 
@@ -1312,25 +1316,34 @@ class RideArchive:
                     result, candidate, observed, quality = self._reconstruction_sources(
                         vehicle, ride_id
                     )
-                    recovered = 0
+                    recovered, pending, checks = 0, False, 0
                     if result.status == "corrupt":
                         from .payload_restore import restore
 
-                        recovered = restore(db, self.path, self.owner, vehicle, ride_id, now)
+                        recovery = restore(
+                            db, self.path, self.owner, vehicle, ride_id, now, job.job_id
+                        )
+                        recovered, pending, checks = (
+                            recovery.recovered,
+                            recovery.pending,
+                            recovery.examined,
+                        )
                         if recovered:
                             result, candidate, observed, quality = self._reconstruction_sources(
                                 vehicle, ride_id
                             )
                     if result.status == "repairable":
                         self._apply_reconstruction(vehicle, ride_id, candidate, observed, quality)
-                    if result.status == "repairable" or recovered:
+                    mutated = result.status == "repairable" or recovered > 0
+                    if mutated:
                         self._revision(bump=True)
-                        return replace(
-                            result,
-                            repaired=True,
-                            fields=result.fields + (("payload_bytes",) if recovered else ()),
-                        )
-                    return result
+                    return replace(
+                        result,
+                        status="searching" if pending else result.status,
+                        repaired=bool(mutated),
+                        source_copy_checks=checks,
+                        fields=result.fields + (("payload_bytes",) if recovered else ()),
+                    )
 
                 return step(db, vehicle, now, evaluate)
 

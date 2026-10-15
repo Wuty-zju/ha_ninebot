@@ -95,6 +95,12 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
             else None,
             "local_reconstruction_blocked": reconstruction.blocked if reconstruction else None,
             "local_reconstruction_corrupt": reconstruction.corrupt if reconstruction else None,
+            "local_reconstruction_searching_sources": reconstruction.searching
+            if reconstruction
+            else None,
+            "local_reconstruction_source_copy_checks": reconstruction.source_copy_checks
+            if reconstruction
+            else None,
             "local_reconstruction_changed": reconstruction.changed if reconstruction else None,
             "local_audit_phase": audit.phase if audit else None,
             "local_audit_scope": audit.scope if audit else None,

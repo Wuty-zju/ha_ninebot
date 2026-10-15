@@ -152,8 +152,8 @@ silently downloaded, and unresolved Repairs remain.
 
 
 The local reconstruction job can also recover byte-corrupt referenced originals
-from up to eight recent managed recovery copies in the same private account
-folder. It requires the exact existing content digest, matching owner/vehicle/
+from managed recovery copies in the same private account folder, using
+persisted cursors and at most eight source-copy checks per ride batch. It requires the exact existing content digest, matching owner/vehicle/
 ride and unchanged source metadata, then validates decoding, explicit identities
 and redaction. Damaged bounded bytes are copied and verified in quarantine before
 replacement. Receipt times and reference hashes are preserved; current integrity
@@ -162,3 +162,14 @@ A recovered readable role is kept even if another role remains bad; progress
 reports `partially_repaired` and finishes with gaps. Missing rows, oversized pinned
 objects, reference remapping, startup corruption and recovery sources beyond the
 bounded search require further recovery work. They are never guessed or deleted.
+
+
+Local recovery-source search now continues beyond the first eight copies. Each
+role records a captured name upper bound and continuation cursor in the same
+account archive; restart does not repeat prior source checks. The interval is
+not an immutable filesystem snapshot: sources added after the captured range can
+be considered by a new explicitly started job. While searching, the ride remains
+pending; `searching_sources`, `source_copy_checks` and `pending_role_recovery`
+explain progress without exposing file paths or raw data. Previously recovered
+roles stay readable, and final repaired/partial/blocked counts advance once per
+ride after source search finishes.

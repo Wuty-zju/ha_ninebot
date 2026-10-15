@@ -53,6 +53,9 @@ class ReconstructionJob:
     changed: bool = False
     backup_hash: str | None = None
     contract: int = CONTRACT
+    searching: bool = False
+    pending_repaired: bool = False
+    source_copy_checks: int = 0
 
     @property
     def terminal(self) -> bool:
@@ -67,8 +70,12 @@ def scope(vehicle: str) -> str:
 
 def restored(value: str) -> ReconstructionJob:
     data = decoded(value)
-    if set(data) == set(ReconstructionJob.__dataclass_fields__) - {"partially_repaired"}:
-        data["partially_repaired"] = 0  # Explicit additive legacy checkpoint compatibility.
+    fields = set(ReconstructionJob.__dataclass_fields__)
+    legacy = {"searching": False, "pending_repaired": False, "source_copy_checks": 0}
+    if set(data) in (fields - set(legacy), fields - set(legacy) - {"partially_repaired"}):
+        if "partially_repaired" not in data:
+            data["partially_repaired"] = 0
+        data.update(legacy)
     if set(data) != set(ReconstructionJob.__dataclass_fields__):
         raise ValueError("Invalid local reconstruction fields")
     if not isinstance(data["job_id"], str) or not re.fullmatch("[0-9a-f]{32}", data["job_id"]):
@@ -85,11 +92,15 @@ def restored(value: str) -> ReconstructionJob:
         "partially_repaired",
         "blocked",
         "corrupt",
+        "source_copy_checks",
     ):
         if type(data[field]) is not int or not 0 <= data[field] <= MAX_INTEGER:
             raise ValueError("Invalid local reconstruction count")
     if (
         type(data["changed"]) is not bool
+        or type(data["searching"]) is not bool
+        or type(data["pending_repaired"]) is not bool
+        or (data["pending_repaired"] and not data["searching"])
         or type(data["contract"]) is not int
         or data["contract"] not in {1, CONTRACT}
         or data["state"] not in STATES
@@ -170,17 +181,23 @@ def step(
     ).fetchone()
     if row:
         result = evaluate(row[0])
-        job = replace(
-            job,
-            after=row[0],
-            checked=job.checked + 1,
-            repaired=job.repaired
-            + int(result.repaired and result.status in {"healthy", "repairable"}),
-            partially_repaired=job.partially_repaired
-            + int(result.repaired and result.status not in {"healthy", "repairable"}),
-            blocked=job.blocked + int(result.status not in {"healthy", "repairable"}),
-            corrupt=job.corrupt + int(result.status == "corrupt"),
-        )
+        changed = result.repaired or job.pending_repaired
+        job = replace(job, source_copy_checks=job.source_copy_checks + result.source_copy_checks)
+        if result.status == "searching":
+            job = replace(job, searching=True, pending_repaired=changed)
+        else:
+            job = replace(
+                job,
+                after=row[0],
+                checked=job.checked + 1,
+                repaired=job.repaired + int(changed and result.status in {"healthy", "repairable"}),
+                partially_repaired=job.partially_repaired
+                + int(changed and result.status not in {"healthy", "repairable"}),
+                blocked=job.blocked + int(result.status not in {"healthy", "repairable"}),
+                corrupt=job.corrupt + int(result.status == "corrupt"),
+                searching=False,
+                pending_repaired=False,
+            )
     else:
         job = replace(job, state="with_gaps" if job.blocked or job.changed else "complete")
     revision, inventory = fences(db)
