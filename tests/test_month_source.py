@@ -259,26 +259,89 @@ async def test_schema6_failed_ddl_keeps_schema5_and_recovery_copy(store, monkeyp
         await migrated.async_close()
 
 
-async def test_schema5_missing_detail_recovers_before_schema6_migration(tmp_path):
-    from .test_local_reconstruction import OWNER as DETAIL_OWNER
-    from .test_local_reconstruction import SN as DETAIL_SN
-    from .test_local_reconstruction import startup_fixture
+async def seed_detail(store):
+    from custom_components.ninebot.travel import merge_detail, parse_ride
 
-    path, copy, before = await startup_fixture(tmp_path)
+    raw = source()
+    await save(store, raw)
+    summary = (await store.async_month(SN, "202610")).travel.rides[0]
+    body = {**raw.payload()["list"][0], "trail": "120,30,1,1;120.001,30.001,2,2"}
+    detail = build_record(
+        Endpoint.TRIP_DETAIL, body, NOW + timedelta(seconds=1), "202610", backend_version="0.1.7"
+    )
+    await store.async_record_detail(
+        SN,
+        merge_detail(summary, parse_ride(body, "202610", source=Endpoint.TRIP_DETAIL)),
+        detail.received_at,
+        raw=detail,
+    )
+    return await store.async_private_detail(SN, "ride-a")
+
+
+async def test_schema5_missing_detail_recovers_before_schema6_migration(store):
+    import shutil
+
+    before = await seed_detail(store)
+    await store.async_start_history_audit(SN, NOW + timedelta(seconds=2), guard=lambda: True)
+    assert (
+        await store.async_step_history_audit(SN, NOW + timedelta(seconds=2), guard=lambda: True)
+    ).payloads_verified
+    path = store.path
+    await store.async_close()
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DROP TABLE month_sources")
+        db.execute("PRAGMA user_version=5")
+    copy = path.with_name("rides.recovery-" + "1" * 32 + ".sqlite3")
+    shutil.copyfile(path, copy)
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DELETE FROM detail_payloads")
+    original = path.read_bytes()
+    migrated = RideArchive(path, OWNER)
+    try:
+        await migrated.async_open()
+        after = await migrated.async_private_detail(SN, "ride-a")
+        assert after.latest_hash == before.latest_hash and after.latest is not None
+        assert (await inspect(migrated)).status == "missing"
+        assert list(path.parent.glob("rides.schema5-*.sqlite3"))
+        assert any(p.read_bytes() == original for p in path.parent.glob("*.recovery-*.sqlite3"))
+    finally:
+        await migrated.async_close()
+
+
+async def test_schema5_in_progress_reconstruction_keeps_old_recovery_point_after_upgrade(store):
+    from dataclasses import asdict
+
+    from custom_components.ninebot.ride_archive import vehicle_key
+
+    await seed_detail(store)
+    started = await store.async_reconstruction_job(
+        SN, "start", NOW + timedelta(seconds=2), guard=lambda: True
+    )
+    await store._run(lambda: store._reconstruction_backup(vehicle_key(SN), started))
+    path = store.path
+    copy = path.with_name(f"rides.recovery-{started.job_id}.sqlite3")
+    await store.async_close()
     for target in (path, copy):
         with closing(sqlite3.connect(target)) as db, db:
             db.execute("DROP TABLE month_sources")
             db.execute("PRAGMA user_version=5")
-    original = path.read_bytes()
-    migrated = RideArchive(path, DETAIL_OWNER)
+    checksum = hashlib.sha256(copy.read_bytes()).hexdigest()
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute(
+            "UPDATE meta SET value=? WHERE key=?",
+            (
+                json.dumps(asdict(replace(started, backup_hash=checksum))),
+                "local_reconstruction:" + vehicle_key(SN),
+            ),
+        )
+    migrated = RideArchive(path, OWNER)
     try:
         await migrated.async_open()
-        after = await migrated.async_private_detail(DETAIL_SN, "ride-a")
-        assert after.latest_hash == before.latest_hash and after.latest is not None
-        assert (
-            await migrated.async_month_source_check(DETAIL_SN, "202610", guard=lambda: True)
-        ).status == "missing"
-        assert list(path.parent.glob("rides.schema5-*.sqlite3"))
-        assert any(p.read_bytes() == original for p in path.parent.glob("*.recovery-*.sqlite3"))
+        result = await migrated.async_reconstruction_job(
+            SN, "continue", NOW + timedelta(seconds=3), guard=lambda: True
+        )
+        assert result.state == "complete" and result.checked == 1
+        assert result.backup_hash == checksum
+        assert hashlib.sha256(copy.read_bytes()).hexdigest() == checksum
     finally:
         await migrated.async_close()
