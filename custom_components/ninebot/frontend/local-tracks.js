@@ -20,6 +20,10 @@ function checkedChunk(response, ride, offset) {
       !Number.isInteger(context?.scalar_revision) || context.scalar_revision < 1) {
     throw new Error('invalid_track_response');
   }
+  if (context.geometry_version !== undefined && context.geometry_version !== null &&
+      (typeof context.geometry_version !== 'string' || !/^[a-f0-9]{64}$/.test(context.geometry_version))) {
+    throw new Error('invalid_track_response');
+  }
   const total = summary.total_known, next = summary.next_offset;
   if ((total !== null && (!Number.isInteger(total) || total < 0 || total > 1048576)) ||
       (next !== null && (next !== offset + CHUNK || total === null || next >= total)) ||
@@ -42,8 +46,8 @@ function checkedChunk(response, ride, offset) {
   });
   return { points, next, total, kind: summary.geometry_kind,
     partial: context.local_integrity?.partial === true,
-    fingerprint: JSON.stringify([context.archive_revision, context.scalar_revision,
-      context.geometry_received_at, total, summary.geometry_kind,
+    fingerprint: JSON.stringify([context.geometry_version ?? [context.archive_revision, context.scalar_revision,
+      context.geometry_received_at], total, summary.geometry_kind,
       context.local_integrity?.geometry_evidence_source ?? 'selected_geometry',
       context.local_integrity?.latest_payload_available ?? true,
       context.local_integrity?.selected_geometry_available ?? true]) };

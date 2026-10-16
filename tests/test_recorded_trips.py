@@ -458,3 +458,26 @@ async def test_descending_action_consumes_only_successful_continuation(hass, ent
     assert second["rides"][0]["ride_id"] == "second"
     assert entry.runtime_data.coordinator.recorded_cursors.get(token, NOW) is None
     assert (await call(hass, device))["sort"] == "asc"
+
+
+async def test_descending_catalog_ignores_foreign_vehicle_but_rejects_own_changes(archive):
+    await archive.async_record_month(SN, sample(), NOW)
+    first = await page(archive, limit=1, sort="desc")
+    await archive.async_record_month("other", sample(), NOW)
+    second = await page(archive, limit=1, sort="desc", cursor=first.next_cursor)
+    assert second.revision != first.revision
+    assert second.selection_version == first.selection_version
+    assert second.records[0].ride.ride_id != first.records[0].ride.ride_id
+    await archive.async_record_month(SN, sample(ids=("new",)), NOW + timedelta(seconds=2))
+    with pytest.raises(ArchiveError) as error:
+        await page(archive, sort="desc", cursor=second.next_cursor)
+    assert error.value.kind is ArchiveFailure.CURSOR
+
+
+async def test_descending_catalog_is_stable_on_unchanged_receipt_refresh(archive):
+    await archive.async_record_month(SN, sample(), NOW)
+    first = await page(archive, limit=1, sort="desc")
+    await archive.async_record_month(SN, sample(), NOW + timedelta(seconds=1))
+    second = await page(archive, limit=1, sort="desc", cursor=first.next_cursor)
+    assert second.selection_version == first.selection_version
+    assert second.records[0].received_at == NOW + timedelta(seconds=1)

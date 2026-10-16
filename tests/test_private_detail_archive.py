@@ -467,3 +467,40 @@ async def test_explicit_wrong_ride_in_valid_blob_is_isolated_by_role(tmp_path, r
         )
     finally:
         await archive.async_close()
+
+
+async def test_local_geometry_version_binds_selected_original_not_account_or_scalar(tmp_path):
+    from types import SimpleNamespace
+
+    from custom_components.ninebot.services import cached_detail
+
+    archive = await opened(tmp_path)
+    co = SimpleNamespace(
+        statistics=SimpleNamespace(archive_ready=True, archive=archive),
+        _generation=1,
+        _ownership={SN: 1},
+        local_vehicle_available=lambda sn: sn == SN,
+    )
+    try:
+        await save(archive, {"trail": "120,30,1,1;120.1,30.1,2,2;120.2,30.2,3,3"}, NOW)
+        first, _ = await cached_detail(co, SN, "first", "202609", 1)
+        await archive.async_record_month("other", sample(), NOW)
+        await save(
+            archive,
+            {"trail": "120,30,1,1;120.2,30.2,2,2", "is_show_simple_point": True, "mileages": 3},
+            NOW + timedelta(seconds=1),
+        )
+        second, _ = await cached_detail(co, SN, "first", "202609", 1, offset=1)
+        assert first.archive_revision != second.archive_revision
+        assert first.scalar_revision != second.scalar_revision
+        assert first.geometry_version == second.geometry_version
+        assert len(second.geometry_version) == 64
+        await save(
+            archive,
+            {"trail": ";".join(f"120.{i},30,{i},1" for i in range(4))},
+            NOW + timedelta(seconds=2),
+        )
+        third, _ = await cached_detail(co, SN, "first", "202609", 1)
+        assert third.geometry_version != first.geometry_version
+    finally:
+        await archive.async_close()

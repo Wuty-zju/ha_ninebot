@@ -110,6 +110,8 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
         "source_mode": "ride_archive",
         "sort": sort,
         "revision": page.revision,
+        "selection_version": page.selection_version,
+        "revision_scope": "vehicle_catalog_v1" if page.selection_version else "account",
         "range": {
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),

@@ -1,5 +1,6 @@
 """Bounded, device-scoped history queries with explicit response data."""
 
+import hashlib
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from functools import partial
@@ -285,6 +286,7 @@ def detail_context(detail: RideDetail) -> dict[str, Any]:
         "scalar_revision": detail.scalar_revision,
         "scalar_observed_at": iso(detail.scalar_observed_at),
         "geometry_received_at": iso(detail.geometry_received_at),
+        "geometry_version": detail.geometry_version,
         "mixed_geometry_revision": detail.mixed_geometry_revision,
         "local_integrity": (
             {
@@ -360,6 +362,18 @@ async def cached_detail(
             "latest_payload" if found.latest is not None else "selected_geometry"
         ),
         geometry_evidence_source=found.geometry_source,
+        geometry_version=hashlib.sha256(
+            repr(
+                (
+                    found.geometry_hash if found.geometry is not None else found.latest_hash,
+                    found.geometry_source,
+                    found.ride.query_month,
+                    found.ride.parser_contract,
+                    geometry_evidence.backend_version,
+                    geometry_evidence.endpoint_version,
+                )
+            ).encode()
+        ).hexdigest(),
     ), evidence
 
 

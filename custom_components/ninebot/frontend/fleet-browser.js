@@ -96,7 +96,9 @@ export class FleetBrowser extends TripBrowser {
         if (response?.source_mode !== 'ride_archive' || response.sort !== 'desc' ||
             !Array.isArray(response.rides) || response.rides.length > this.config.limit ||
             (!response.rides.length && response.next_cursor)) throw new Error('invalid_response');
-        if (stream.loaded && stream.revision !== response.revision) throw { translation_key: 'history_cursor' };
+        if (response.selection_version != null && (typeof response.selection_version !== 'string' ||
+            !/^[a-f0-9]{32}:[0-9]{1,20}$/.test(response.selection_version))) throw new Error('invalid_response');
+        if (stream.loaded && stream.revision !== (response.selection_version ?? response.revision)) throw { translation_key: 'history_cursor' };
         const rows = response.rides.map(ride => ({ ...safeRide(ride), device_id: stream.device,
           vehicle_label: stream.name }));
         for (let i = 0; i < rows.length; i++) {
@@ -108,7 +110,7 @@ export class FleetBrowser extends TripBrowser {
         }
         stream.last = rows.at(-1) ?? stream.last;
         stream.rows = rows; stream.cursor = response.next_cursor;
-        stream.coverage = response.coverage; stream.revision = response.revision; stream.loaded = true;
+        stream.coverage = response.coverage; stream.revision = response.selection_version ?? response.revision; stream.loaded = true;
       };
       // At most two local reads in flight. Each stream retains <= one 100-row page.
       let index = 0;

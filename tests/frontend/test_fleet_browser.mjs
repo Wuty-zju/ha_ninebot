@@ -216,3 +216,19 @@ test('revoked history access during explicit detail clears saved fleet pages and
   assert.equal(browser.error, 'denied'); assert.equal(browser.page, null);
   assert.equal(browser.details.size, 0); assert.equal(browser.streams.length, 0);
 });
+
+
+test('vehicle catalog continuation survives unrelated account revision but not own catalog changes', async () => {
+  let revision = 1, selection_version = 'a'.repeat(32) + ':1';
+  const { browser } = setup(request => ({ ...page(request.service_data.cursor ? null : 'next'),
+    revision, selection_version,
+    rides: [{ ...row, ride_id: request.service_data.cursor ? 'older' : 'newer',
+      start_time: request.service_data.cursor ? '2026-09-01T00:00:00Z' : row.start_time }] }),
+    { device_id: 'device-a', limit: 1 });
+  await tick(); revision++;
+  await browser.read(browser.page.next_cursor);
+  assert.equal(browser.error, null); assert.equal(browser.page.rides[0].ride_id, 'older');
+  await browser.read(); selection_version = 'a'.repeat(32) + ':2';
+  await browser.read(browser.page.next_cursor);
+  assert.equal(browser.error, 'cursor_error');
+});
