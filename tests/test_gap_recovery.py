@@ -429,3 +429,57 @@ async def test_superseded_failed_attempt_ids_remain_in_detail_and_reference_deno
         == "synced"
     )
     assert not calls
+
+
+async def test_full_queue_can_replace_same_month_failed_discovery_without_extra_slot(context):
+    from custom_components.ninebot.ride_archive import RideArchive
+
+    co, root, clock, calls, _ = context
+    archive = co.statistics.archive
+    attempt = await archive.async_seed_history_gap(SN, clock[0], guard=lambda: True)
+    partial = item("full-queue-old-id", "202608")
+    first = await archive.async_accept_history_page(
+        SN, attempt, page("202608", clock[0], [partial], 2), guard=lambda: True
+    )
+    failed = await archive.async_accept_history_page(
+        SN, first.root, page("202608", clock[0], [], 2), guard=lambda: True
+    )
+    assert failed.root.discovery_complete and failed.root.gap_months == 1
+    assert failed.root.state is HistoryState.PRESERVE
+    for number in range(1, 12):
+        await archive.async_schedule_history_run(
+            SN, f"2010{number:02}", clock[0], guard=lambda: True
+        )
+    assert len(await archive.async_active_history_runs(SN)) == 12
+    # Cooling attempts do not create another run, even with a full queue.
+    assert await archive.async_seed_history_gap(SN, clock[0], guard=lambda: True) is None
+    later = clock[0] + timedelta(hours=7)
+    replacement = await archive.async_seed_history_gap(SN, later, guard=lambda: True)
+    assert replacement is not None and replacement.plan_id != attempt.plan_id
+    active = await archive.async_active_history_runs(SN)
+    assert len(active) == 12 and replacement in active
+    assert all(run.plan_id != attempt.plan_id for run in active)
+    with pytest.raises(ArchiveError) as err:
+        await archive.async_schedule_history_run(SN, "201012", later, guard=lambda: True)
+    assert err.value.kind is ArchiveFailure.BUSY
+    with closing(sqlite3.connect(archive.path)) as db:
+        from custom_components.ninebot.incremental_runs import get
+
+        assert get(db, vehicle_key(SN), attempt.plan_id) == failed.root
+    health = await archive.async_history_health(SN, root.plan_id)
+    assert health.discovered == 2 and health.missing == 1
+    assert await archive.async_history_plan(SN) == root
+    path, owner = archive.path, archive.owner
+    await co.preservation.async_close()
+    await co.statistics.async_close()
+    reopened = RideArchive(path, owner)
+    try:
+        await reopened.async_open()
+        active = await reopened.async_active_history_runs(SN)
+        assert len(active) == 12 and replacement in active
+        health = await reopened.async_history_health(SN, root.plan_id)
+        assert health.discovered == 2 and health.missing == 1
+        assert await reopened.async_seed_history_gap(SN, later, guard=lambda: True) is None
+    finally:
+        await reopened.async_close()
+    assert not calls

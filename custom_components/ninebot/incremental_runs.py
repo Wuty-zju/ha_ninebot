@@ -61,7 +61,10 @@ def schedule(
             retry_discovery and old.discovery_complete and old.gap_months > 0
         ):
             return old  # Automatic/manual requests coalesce, including retry/paused work.
-    if len(active(db, vehicle)) >= 12:
+    # Replacing this month's failed discovery reuses its active slot. The old
+    # run/evidence remains stored, but its pointer stops participating in active().
+    superseded = row[0] if row else None
+    if sum(run.plan_id != superseded for run in active(db, vehicle)) >= 12:
         raise RunCapacity
     plan = HistoryPlan.create(secrets.token_hex(16), vehicle, month, month, now.isoformat())
     put(db, plan)
