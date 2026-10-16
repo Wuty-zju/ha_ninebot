@@ -2225,6 +2225,12 @@ class RideArchive:
 
         return await self._run(query)
 
+    async def async_catalog_version(self, sn: str) -> str:
+        from .archive_versions import catalog_version
+
+        key = vehicle_key(sn)
+        return await self._run(lambda: catalog_version(self._db(), key))
+
     async def async_recorded_page(
         self,
         sn: str,

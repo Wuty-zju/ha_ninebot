@@ -26,6 +26,12 @@ export class HistorySelection {
     if (!same || !this.selected.has(this.brush?.key)) this.brush = null;
     this.notify('selection'); return true;
   }
+  update(ride) {
+    const key = trackKey(ride.device_id, ride);
+    if (!this.selected.has(key)) return;
+    this.selected.set(key, { ...safeRide(ride), device_id: ride.device_id,
+      vehicle_label: String(ride.vehicle_label ?? ride.device_id).slice(0, 128) });
+  }
   activate(key) {
     if (!this.selected.has(key) || this.primary === key) return;
     this.primary = key; this.focus = null; this.brush = null; this.notify('selection');

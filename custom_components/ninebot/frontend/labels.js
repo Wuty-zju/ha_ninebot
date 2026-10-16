@@ -86,7 +86,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -175,7 +179,11 @@ export const LABELS = {
     "editor_note": "日期留空默认当月。最多5辆车，已保存轨迹仍需位置权限。",
     "ride_energy_intensity": "单位里程能耗",
     "filters": "日期与车辆筛选",
-    "sample_selection": "选中的源点区间"
+    "sample_selection": "选中的源点区间",
+    "history_updated": "本地记录已更新，读取最新内容",
+    "feed_retrying": "正在重新连接本地更新通知…",
+    "feed_unavailable": "自动更新提示暂不可用，仍可手动读取。",
+    "feed_unsupported": "此版本不支持更新通知，仍可手动读取。"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -264,7 +272,11 @@ export const LABELS = {
     "editor_note": "日期留空默认当月。最多5辆车，已保存轨迹仍需位置权限。",
     "ride_energy_intensity": "单位里程能耗",
     "filters": "日期与车辆筛选",
-    "sample_selection": "选中的源点区间"
+    "sample_selection": "选中的源点区间",
+    "history_updated": "本地记录已更新，读取最新内容",
+    "feed_retrying": "正在重新连接本地更新通知…",
+    "feed_unavailable": "自动更新提示暂不可用，仍可手动读取。",
+    "feed_unsupported": "此版本不支持更新通知，仍可手动读取。"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -353,7 +365,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "fr": {
     "title": "Historique des trajets",
@@ -442,7 +458,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "es": {
     "title": "Historial de viajes",
@@ -531,7 +551,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -620,7 +644,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -709,7 +737,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -798,7 +830,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "ru": {
     "title": "История поездок",
@@ -887,7 +923,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "ja": {
     "title": "走行履歴",
@@ -976,7 +1016,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "ko": {
     "title": "주행 기록",
@@ -1065,7 +1109,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -1154,7 +1202,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -1243,7 +1295,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "uk": {
     "title": "Історія поїздок",
@@ -1332,7 +1388,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -1421,7 +1481,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -1510,7 +1574,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -1599,7 +1667,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -1688,7 +1760,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -1777,7 +1853,11 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -1866,6 +1946,10 @@ export const LABELS = {
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
     "ride_energy_intensity": "Energy per distance",
     "filters": "Date and vehicle filters",
-    "sample_selection": "Selected source-sequence range"
+    "sample_selection": "Selected source-sequence range",
+    "history_updated": "Local records updated · Read latest",
+    "feed_retrying": "Reconnecting local update notifications…",
+    "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
+    "feed_unsupported": "This version has no update notifications. You can read locally."
   }
 };

@@ -128,6 +128,23 @@ try {
   if (output) await page.screenshot({ path: join(output, 'workbench-editor.png'), fullPage: true });
   await page.evaluate(() => fixtureEditor.remove());
 
+  const beforeNotification = await page.evaluate(() => fixtureRequests.length);
+  const primaryBeforeNotification = await page.evaluate(() => fixtureCard.selection.primary);
+  await page.evaluate(() => {
+    for (const callback of fixtureFeeds) callback({ schema_version: 1, type: 'changed',
+      vehicles: ['synthetic-a', 'synthetic-b'].map(device_id => ({ device_id, selection_version: 'a'.repeat(32) + ':1' })) });
+  });
+  await page.getByRole('button', { name: '本地记录已更新，读取最新内容', exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => fixtureRequests.length), beforeNotification);
+  assert.equal(await page.evaluate(() => fixtureCard.selection.primary), primaryBeforeNotification);
+  await page.getByRole('button', { name: '本地记录已更新，读取最新内容', exact: true }).click();
+  await page.waitForFunction(() => !fixtureCard.browser.busy && !fixtureCard.tracks.busy && !fixtureCard.pendingUpdates);
+  assert.equal(await page.evaluate(() => fixtureCard.selection.primary), primaryBeforeNotification);
+  await page.evaluate(() => fixtureHass.connection.fire('disconnected'));
+  await page.waitForFunction(() => fixtureCard.tracks.tracks.size === 0 && fixtureCard.selection.selected.size === 0);
+  await page.evaluate(() => fixtureHass.connection.fire('ready'));
+  await page.waitForFunction(() => fixtureCard.browser.page?.rides.length === 2 && !fixtureCard.tracks.busy && fixtureCard.routeMap.map !== null);
+
   await page.evaluate(async () => { fixtureSaved = false; fixtureCard.browser.reset(); await fixtureCard.browser.read(); });
   await page.waitForFunction(() => !fixtureCard.browser.busy && fixtureCard.selection.selected.size === 1);
   assert.equal(await page.getByRole('button', { name: '显示已保存轨迹', exact: true }).isDisabled(), true);
@@ -143,6 +160,9 @@ try {
     fixtureCard.hass = { ...fixtureHass, user: { id: 'another-synthetic-reader' } };
   });
   await page.waitForFunction(() => fixtureCard.selection.selected.size === 0 && fixtureCard.tracks.tracks.size === 0 && fixtureCard.routeMap.map === null && fixtureCard.playback === null);
+  await page.evaluate(() => fixtureCard.remove());
+  assert.equal(await page.evaluate(() => fixtureFeeds.size), 0);
+  assert.equal(await page.evaluate(() => [...fixtureConnectionListeners.values()].some(set => set.size)), false);
   assert.deepEqual(errors, []);
   console.log('Synthetic workbench passed: linked selection/map/curves/brush, stable layers/viewport, bounded local reads, desktop/mobile/editor, explicit cloud detail and user privacy cleanup.');
 } finally {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b93
+
+- Add permission-checked, cancellable local history subscriptions. Batched archive commits show a local update notice without replacing the selected rides, map view or playback; notifications contain only device versions, never GPS/raw data.
+- Share identical in-flight local detail reads per connection/user/parameters; retry a transient local read once. Do not share consumed page cursors or retry cloud operations.
+- Refresh stale selected geometry explicitly and preserve comparison state. Reconnect from local first pages, cancel listeners/timers/tasks on disconnect/unload, and fall back to manual reading on unsupported backends.
+- No persistent schema, entity identity, dependency or cloud polling changes.
+
 ## 2.0.0b92
 
 - Fence descending local history continuations with a connection-local vehicle catalog version. Unrelated vehicles, progress writes and unchanged receipt refreshes no longer discard a valid page; relevant catalog/scalar/membership/saved-detail presence changes still reject mixed reads. Ascending Action cursors retain their account-wide behavior.

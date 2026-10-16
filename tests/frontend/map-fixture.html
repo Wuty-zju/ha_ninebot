@@ -11,13 +11,27 @@ const row = { ride_id: 'synthetic-ride', detail_id: 'synthetic-detail', query_mo
   precision: { mileages: 1 }, source: 'trip_detail', energy_intensity_wh_per_km: 75 };
 window.fixtureRequests = [];
 window.fixtureSaved = true;
-window.fixtureHass = { user: { id: 'synthetic-reader' }, connection: {}, connected: true, language: 'zh-Hans',
+window.fixtureFeeds = new Set();
+const connectionListeners = new Map();
+const connection = {
+  connected: true,
+  addEventListener(type, callback) { if (!connectionListeners.has(type)) connectionListeners.set(type, new Set()); connectionListeners.get(type).add(callback); },
+  removeEventListener(type, callback) { connectionListeners.get(type)?.delete(callback); },
+  fire(type) { this.connected = type === 'ready'; for (const callback of connectionListeners.get(type) ?? []) callback(); },
+  async subscribeMessage(callback, message) {
+    fixtureRequests.push(message); fixtureFeeds.add(callback);
+    queueMicrotask(() => callback({ schema_version: 1, type: 'baseline', vehicles: message.device_ids.map(device_id => ({ device_id, selection_version: 'a'.repeat(32) + ':1' })) }));
+    return () => { fixtureFeeds.delete(callback); };
+  },
+};
+window.fixtureConnectionListeners = connectionListeners;
+window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: true, language: 'zh-Hans',
   config: { time_zone: 'Asia/Shanghai' }, states: {}, callWS: async request => {
     window.fixtureRequests.push(request);
     if (request.type === 'config/entity_registry/get') return { device_id: 'synthetic-a' };
     if (window.fixtureDeny) throw { code: 'unauthorized' };
     const data = request.service_data;
-    if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive', sort: 'desc',
+    if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive', sort: 'desc', selection_version: 'a'.repeat(32) + ':1',
       rides: [{ ...row, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
     if (request.service !== 'get_trip_detail') throw new Error('Only history reads are allowed');
     const shift = data.device_id === 'synthetic-b' ? 0.002 : 0;
