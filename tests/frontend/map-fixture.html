@@ -16,7 +16,7 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection: {}, connect
     window.fixtureRequests.push(request);
     if (request.type === 'config/entity_registry/get') return { device_id: 'synthetic-a' };
     const data = request.service_data;
-    if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive',
+    if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive', sort: 'desc',
       rides: [{ ...row, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
     if (request.service !== 'get_trip_detail') throw new Error('Only history reads are allowed');
     const shift = data.device_id === 'synthetic-b' ? 0.002 : 0;

@@ -233,3 +233,6 @@ Local reconstruction also checks applicable per-scalar provenance/source/presenc
 With automatic history preservation enabled, failed baseline months are re-enumerated separately, including older months. Only known unverified manifests are selected; healthy old months are not periodically scanned. Gap attempts share the normal budget and persist a 6-hour exponential cooldown capped at 7 days, plus month rotation, across restart. Transport retries continue through the existing run retry policy. Repeated failures do not prove permanent deletion.
 
 Progress now separates `initial_gap_months`, `resolved_gap_months` and current `gap_months`. A recovery needs an actual complete page chain, and recovered IDs/details participate in the health denominator. The historical root can retain `completed_with_gaps` while `sync_state` reports a currently recovered range; original failure evidence is not rewritten. Server-simplified tracks and unresolved local corruption remain gaps. Scope is managed month-completion evidence, not raw-integrity or earliest-cloud-range certification.
+
+
+The history card now merges genuinely newest-first local vehicle pages and includes recent/7-day/30-day/month navigation. Existing `get_recorded_trips` calls default to ascending order; request `sort: desc` explicitly. Reload the browser after updating.

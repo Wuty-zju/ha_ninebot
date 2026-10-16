@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const row = { ride_id: 'same-id', detail_id: 'detail-id', query_month: '202609',
   start_time: '2026-09-03T08:00:00Z', distance_m: 1000 };
-const page = next => ({ source_mode: 'ride_archive', rides: [row], next_cursor: next,
+const page = next => ({ source_mode: 'ride_archive', sort: 'desc', revision: 1, rides: [row], next_cursor: next,
   coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [] } });
 function setup(handler, config = { vehicles: [{ device_id: 'device-a', name: 'A' },
   { device_id: 'device-b', name: 'B' }], limit: 4 }) {
@@ -24,16 +24,27 @@ function setup(handler, config = { vehicles: [{ device_id: 'device-a', name: 'A'
   return { browser, hass, calls, cleared };
 }
 
-test('multi-vehicle local pages have a total row budget and independent continuations', async () => {
-  const { browser, calls } = setup(request => page(request.service_data.device_id === 'device-a' ? 'cursor-a' : null));
-  await tick(); assert.equal(calls.length, 2); assert.equal(browser.page.rides.length, 2);
-  assert.deepEqual(browser.page.rides.map(ride => ride.device_id), ['device-a', 'device-b']);
+test('global recent merge retains unconsumed vehicle rows across pages without equal-share loss', async () => {
+  const histories = { 'device-a': [9, 8, 7, 5, 1], 'device-b': [10, 6, 2] };
+  const { browser, calls } = setup(request => {
+    const { device_id, cursor = '0', limit, sort } = request.service_data;
+    assert.equal(sort, 'desc');
+    const offset = Number(cursor), source = histories[device_id];
+    const selected = source.slice(offset, offset + limit);
+    return { ...page(null), rides: selected.map(day => ({ ...row, ride_id: `${device_id}-${day}`,
+      start_time: `2026-09-${String(day).padStart(2, '0')}T08:00:00Z` })),
+      next_cursor: offset + limit < source.length ? String(offset + limit) : null };
+  });
+  await tick();
+  assert.deepEqual(browser.page.rides.map(ride => Number(ride.ride_id.split('-').at(-1))), [10, 9, 8, 7]);
+  assert.equal(calls.length, 2); assert.ok(calls.every(call => call.service_data.limit === 4));
   assert.equal(browser.page.coverage.partial_months.length, 2);
-  assert.ok(calls.every(call => call.service === 'get_recorded_trips' && call.service_data.limit === 2));
-  const cursor = browser.page.next_cursor;
-  await browser.read(cursor);
-  assert.equal(calls.length, 3); assert.equal(calls.at(-1).service_data.device_id, 'device-a');
-  assert.equal(calls.at(-1).service_data.cursor, 'cursor-a');
+  const stale = browser.page.next_cursor;
+  await browser.read(stale);
+  assert.deepEqual(browser.page.rides.map(ride => Number(ride.ride_id.split('-').at(-1))), [6, 5, 2, 1]);
+  assert.equal(calls.length, 3); assert.equal(browser.page.next_cursor, null);
+  const current = browser.page;
+  await browser.read(stale); assert.equal(browser.page, current);
 });
 
 test('same upstream ride ID on different vehicles cannot collide in detail cache', async () => {
@@ -88,7 +99,7 @@ test('fleet targets/native card options are bounded and never include route data
   for (const config of [{ vehicles: [] }, { vehicles: ['calendar.a', 'calendar.a'] },
     { entity: 'calendar.a', vehicles: ['calendar.b'] }, { vehicles: Array(6).fill('calendar.a') },
     { vehicles: [{ device_id: 'a', entity: 'calendar.a' }] }]) assert.throws(() => vehicleTargets(config));
-  assert.throws(() => new FleetBrowser().configure({ vehicles: ['calendar.a', 'calendar.b'], limit: 1 }));
+  assert.doesNotThrow(() => new FleetBrowser().configure({ vehicles: ['calendar.a', 'calendar.b'], limit: 1 }));
   const cards = nativeCards(vehicleTargets({ vehicles: ['calendar.a', 'calendar.b'] }), ['ninebot:synthetic_day_distance_km']);
   assert.equal(cards.cards[0].type, 'calendar'); assert.deepEqual(cards.cards[0].entities, ['calendar.a', 'calendar.b']);
   assert.equal(cards.cards[1].type, 'statistics-graph'); assert.deepEqual(cards.cards[1].stat_types, ['change']);
@@ -149,4 +160,47 @@ test('enumeration months remain vehicle-scoped and mixed older backends stay unk
     ({ ...page(null), coverage: { ...page(null).coverage, enumerated_months: ['202609'] } }) : page(null));
   await tick();
   assert.equal(mixed.browser.page.coverage.enumerated_months, undefined);
+});
+
+
+test('single-row pages merge ties, empty cars and slow cars without duplicates', async () => {
+  const histories = { 'device-a': ['z', 'b', 'a'], 'device-b': [] };
+  const { browser } = setup(async request => {
+    const { device_id, cursor = '0' } = request.service_data;
+    if (device_id === 'device-b') await tick();
+    const offset = Number(cursor), ids = histories[device_id];
+    return { ...page(null), rides: ids.slice(offset, offset + 1).map(ride_id => ({ ...row, ride_id })),
+      next_cursor: offset + 1 < ids.length ? String(offset + 1) : null };
+  }, { vehicles: [{ device_id: 'device-a' }, { device_id: 'device-b' }], limit: 1 });
+  await tick(); await tick();
+  const ids = [];
+  do {
+    ids.push(...browser.page.rides.map(ride => ride.ride_id));
+    if (!browser.page.next_cursor) break;
+    await browser.read(browser.page.next_cursor);
+  } while (true);
+  assert.deepEqual(ids, ['z', 'b', 'a']);
+});
+
+
+test('a changed source revision cannot silently mix fleet pages', async () => {
+  let revision = 1;
+  const { browser } = setup(request => ({ ...page('next'), revision,
+    rides: [{ ...row, ride_id: request.service_data.cursor ? 'older' : 'newer',
+      start_time: request.service_data.cursor ? '2026-09-01T00:00:00Z' : row.start_time }] }),
+    { device_id: 'device-a', limit: 1 });
+  await tick(); revision++;
+  await browser.read(browser.page.next_cursor);
+  assert.equal(browser.error, 'cursor_error'); assert.equal(browser.page.next_cursor, null);
+  assert.equal(browser.streams.length, 0);
+});
+
+
+test('unsorted or non-descending old responses fail instead of pretending to be recent', async () => {
+  for (const response of [{ ...page(null), sort: undefined },
+    { ...page(null), rides: [{ ...row, start_time: 'invalid' }] },
+    { ...page(null), rides: [{ ...row, ride_id: 'old', start_time: '2026-09-01T00:00:00Z' }, row] }]) {
+    const { browser } = setup(() => response);
+    await tick(); assert.equal(browser.page, null); assert.equal(browser.error, 'read_error');
+  }
 });

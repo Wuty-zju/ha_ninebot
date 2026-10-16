@@ -55,9 +55,15 @@ async def archive(tmp_path):
         await actor.async_close()
 
 
-async def page(archive, *, limit=2, cursor=None, now=NOW):
+async def page(archive, *, limit=2, cursor=None, now=NOW, sort="asc"):
     return await archive.async_recorded_page(
-        SN, START - timedelta(days=1), NOW + timedelta(days=1), now, limit=limit, cursor=cursor
+        SN,
+        START - timedelta(days=1),
+        NOW + timedelta(days=1),
+        now,
+        limit=limit,
+        cursor=cursor,
+        sort=sort,
     )
 
 
@@ -412,3 +418,43 @@ async def test_page_detail_flags_share_rows_revision_when_a_detail_is_saved_afte
     assert err.value.translation_key == "history_cursor"
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
+
+
+async def test_descending_pages_cross_month_and_ties_preserve_ascending_default(archive):
+    for month, started in [("202609", START - timedelta(days=30)), ("202610", START)]:
+        await archive.async_record_month(
+            SN, sample(ids=(month + "-a", month + "-b"), month=month, start=started), NOW
+        )
+
+    async def query(**kwargs):
+        return await archive.async_recorded_page(
+            SN, START - timedelta(days=60), NOW, NOW, limit=1, **kwargs
+        )
+
+    first = await query(sort="desc")
+    ids = [first.records[0].ride.ride_id]
+    cursor = first.next_cursor
+    while cursor:
+        result = await query(sort="desc", cursor=cursor)
+        ids.extend(row.ride.ride_id for row in result.records)
+        cursor = result.next_cursor
+    assert ids == ["202610-b", "202610-a", "202609-b", "202609-a"]
+    assert (await query()).records[0].ride.ride_id == "202609-a"
+    with pytest.raises(ArchiveError) as error:
+        await query(sort="asc", cursor=first.next_cursor)
+    assert error.value.kind is ArchiveFailure.CURSOR
+    with pytest.raises(ValueError):
+        await query(sort="DESC; DROP TABLE rides")
+
+
+async def test_descending_action_consumes_only_successful_continuation(hass, entry, device):
+    first = await call(hass, device, limit=1, sort="desc")
+    assert first["sort"] == "desc" and first["rides"][0]["ride_id"] == "third"
+    token = first["next_cursor"]
+    with pytest.raises(HomeAssistantError):
+        await call(hass, device, cursor=token, sort="asc")
+    # A failed direction mismatch leaves the original descending continuation usable.
+    second = await call(hass, device, cursor=token, limit=1, sort="desc")
+    assert second["rides"][0]["ride_id"] == "second"
+    assert entry.runtime_data.coordinator.recorded_cursors.get(token, NOW) is None
+    assert (await call(hass, device))["sort"] == "asc"

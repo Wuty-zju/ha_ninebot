@@ -988,6 +988,10 @@
         "end_date": {
           "name": "结束日期",
           "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "sort": {
+          "name": "排序",
+          "description": "asc：最早优先；desc：最新优先。继续分页时保持相同方向。"
         }
       }
     }

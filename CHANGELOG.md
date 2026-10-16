@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b90
+
+- Add explicit `sort: desc` local history queries with direction-bound keyset continuations. Existing Action calls remain oldest first by default.
+- Merge vehicle streams into truly newest-first card pages, retaining unconsumed rows instead of dividing each page equally among vehicles. Local reads are limited to two in flight with bounded buffers.
+- Add recent rides (up to five years), last 7/30 days and previous/next month navigation. No cloud requests, archive schema, dependency or entity identity changes.
+- Descending continuations are single-use after a successful authorized read; failed requests retain them. Reload the browser after updating the integration.
+
 ## 2.0.0b89
 
 - Allow a failed same-month discovery retry to reuse its existing active slot when all 12 month slots are occupied. New distinct months remain bounded by the same limit.

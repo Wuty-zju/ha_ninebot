@@ -163,3 +163,17 @@ test('editing dates does not reread on ordinary HA updates until explicitly appl
   await tick(); assert.equal(calls.length, 2); assert.equal(browser.page, null);
   await browser.read(); assert.equal(calls.at(-1).service_data.start_date, '2026-08-01');
 });
+
+
+test('recent windows and month navigation cross year/month and leap-day boundaries', async () => {
+  const { recentDates, monthDates } = await import('../../custom_components/ninebot/frontend/trip-browser.js');
+  assert.deepEqual(recentDates(7, new Date('2026-01-02T16:00:00Z')), ['2025-12-28', '2026-01-03']);
+  assert.deepEqual(monthDates('2024-03-31', -1), ['2024-02-01', '2024-02-29']);
+  assert.deepEqual(monthDates('2026-12-01', 1), ['2027-01-01', '2027-01-31']);
+  const [start, end] = recentDates(1830, new Date('2026-10-17T00:00:00Z'));
+  assert.equal((Date.parse(end) - Date.parse(start)) / 86400000 + 1, 1830);
+  const { browser, calls } = setup(() => page()); await tick();
+  browser.range('previous_month'); await tick();
+  assert.deepEqual([browser.start, browser.end], ['2026-09-01', '2026-09-30']);
+  assert.equal(calls.at(-1).service, 'get_recorded_trips');
+});
