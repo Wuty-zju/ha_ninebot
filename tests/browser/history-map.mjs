@@ -67,16 +67,6 @@ try {
   assert.equal(external.length, 0); assert.deepEqual(errors, []);
 
   await page.evaluate(() => {
-    const canvas = fixtureCard.routeMap.library.Canvas.prototype;
-    const add = canvas._addPath, destroy = canvas._destroyContainer;
-    canvas._addPath = function (path) {
-      if (!this._ctx) console.error(new Error('Path added to destroyed Canvas').stack);
-      return add.call(this, path);
-    };
-    canvas._destroyContainer = function () {
-      console.error('Synthetic Canvas destroyed; pending frame:', this._redrawRequest);
-      return destroy.call(this);
-    };
     const map = fixtureCard.routeMap;
     map.map.panBy([80, 20], { animate: false });
     window.savedView = [map.map.getCenter().lat, map.map.getCenter().lng, map.map.getZoom()];
@@ -194,6 +184,8 @@ try {
   });
   await page.waitForFunction(() => fixtureCard.selection.selected.size === 0 && fixtureCard.tracks.tracks.size === 0 && fixtureCard.routeMap.map === null && fixtureCard.playback === null);
   await page.evaluate(() => fixtureCard.remove());
+  // Flush queued renderer work before claiming disconnect cleanup succeeded.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.equal(await page.evaluate(() => fixtureFeeds.size), 0);
   assert.equal(await page.evaluate(() => [...fixtureConnectionListeners.values()].some(set => set.size)), false);
   assert.deepEqual(errors, []);
