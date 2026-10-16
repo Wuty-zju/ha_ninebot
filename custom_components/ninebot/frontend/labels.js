@@ -61,7 +61,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Some local originals are unavailable. Showing the remaining readable data.",
     "enumerated": "Enumerated months",
@@ -84,7 +84,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -148,7 +150,7 @@ export const LABELS = {
     "point_distance": "距离采样值 · 单位待验证",
     "play_points": "按点播放",
     "pause_points": "暂停播放",
-    "playback_note": "按已读点固定0.5秒逐点播放，不代表实际时间或速度，不请求API。",
+    "playback_note": "按已读取的源点顺序播放，不代表实际时间或速度，不请求API。",
     "detail_missing": "尚未保存轨迹详情。先获取详情，或稍后本地读取以查看后台保存进度。",
     "partial_archive": "部分本地原件不可用，正在显示仍可读取的数据。",
     "enumerated": "已枚举月份",
@@ -171,7 +173,9 @@ export const LABELS = {
     "editor_add": "添加车辆",
     "editor_remove": "移除车辆",
     "editor_note": "日期留空默认当月。最多5辆车，已保存轨迹仍需位置权限。",
-    "ride_energy_intensity": "单位里程能耗"
+    "ride_energy_intensity": "单位里程能耗",
+    "filters": "日期与车辆筛选",
+    "sample_selection": "选中的源点区间"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -235,7 +239,7 @@ export const LABELS = {
     "point_distance": "距離取樣值 · 單位待驗證",
     "play_points": "按點播放",
     "pause_points": "暫停播放",
-    "playback_note": "按已讀點固定0.5秒逐點播放，不代表實際時間或速度，不請求API。",
+    "playback_note": "按已读取的源点顺序播放，不代表实际时间或速度，不请求API。",
     "detail_missing": "尚未儲存軌跡詳情。先取得詳情，或稍後本機讀取以查看背景儲存進度。",
     "partial_archive": "部分本機原件無法使用，正在顯示仍可讀取的資料。",
     "enumerated": "已列舉月份",
@@ -258,7 +262,9 @@ export const LABELS = {
     "editor_add": "添加车辆",
     "editor_remove": "移除车辆",
     "editor_note": "日期留空默认当月。最多5辆车，已保存轨迹仍需位置权限。",
-    "ride_energy_intensity": "单位里程能耗"
+    "ride_energy_intensity": "单位里程能耗",
+    "filters": "日期与车辆筛选",
+    "sample_selection": "选中的源点区间"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -322,7 +328,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Einige lokale Originaldaten sind nicht verfügbar. Die übrigen lesbaren Daten werden angezeigt.",
     "enumerated": "Erfasste Monate",
@@ -345,7 +351,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "fr": {
     "title": "Historique des trajets",
@@ -409,7 +417,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Certaines données locales sont indisponibles. Les données encore lisibles sont affichées.",
     "enumerated": "Mois recensés",
@@ -432,7 +440,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "es": {
     "title": "Historial de viajes",
@@ -496,7 +506,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Algunos originales locales no están disponibles. Se muestran los datos que aún se pueden leer.",
     "enumerated": "Meses enumerados",
@@ -519,7 +529,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -583,7 +595,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Alcuni originali locali non sono disponibili. Sono mostrati i dati ancora leggibili.",
     "enumerated": "Mesi enumerati",
@@ -606,7 +618,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -670,7 +684,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Alguns originais locais estão indisponíveis. São apresentados os dados ainda legíveis.",
     "enumerated": "Meses enumerados",
@@ -693,7 +707,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -757,7 +773,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Alguns originais locais estão indisponíveis. Exibindo os dados que ainda podem ser lidos.",
     "enumerated": "Meses enumerados",
@@ -780,7 +796,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "ru": {
     "title": "История поездок",
@@ -844,7 +862,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Часть локальных оригиналов недоступна. Показаны оставшиеся читаемые данные.",
     "enumerated": "Перечисленные месяцы",
@@ -867,7 +885,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "ja": {
     "title": "走行履歴",
@@ -931,7 +951,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "一部のローカル原本を利用できません。読み取り可能なデータを表示しています。",
     "enumerated": "列挙済みの月",
@@ -954,7 +974,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "ko": {
     "title": "주행 기록",
@@ -1018,7 +1040,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "일부 로컬 원본을 사용할 수 없습니다. 읽을 수 있는 데이터를 표시합니다.",
     "enumerated": "열거된 월",
@@ -1041,7 +1063,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -1105,7 +1129,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Sommige lokale originelen zijn niet beschikbaar. De overige leesbare gegevens worden getoond.",
     "enumerated": "Geïnventariseerde maanden",
@@ -1128,7 +1152,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -1192,7 +1218,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Niektóre lokalne oryginały są niedostępne. Wyświetlane są pozostałe czytelne dane.",
     "enumerated": "Zestawione miesiące",
@@ -1215,7 +1241,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "uk": {
     "title": "Історія поїздок",
@@ -1279,7 +1307,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Частина локальних оригіналів недоступна. Показано решту доступних для читання даних.",
     "enumerated": "Перелічені місяці",
@@ -1302,7 +1330,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -1366,7 +1396,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Bazı yerel özgün veriler kullanılamıyor. Okunabilen diğer veriler gösteriliyor.",
     "enumerated": "Listelenen aylar",
@@ -1389,7 +1419,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -1453,7 +1485,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "कुछ स्थानीय मूल डेटा उपलब्ध नहीं हैं। शेष पढ़ने योग्य डेटा दिखाया जा रहा है।",
     "enumerated": "गणना किए गए महीने",
@@ -1476,7 +1508,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -1540,7 +1574,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Sebagian data asli lokal tidak tersedia. Menampilkan data lain yang masih dapat dibaca.",
     "enumerated": "Bulan yang terdata",
@@ -1563,7 +1597,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -1627,7 +1663,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "ข้อมูลต้นฉบับในเครื่องบางส่วนไม่พร้อมใช้งาน กำลังแสดงข้อมูลที่ยังอ่านได้",
     "enumerated": "เดือนที่แจกแจงแล้ว",
@@ -1650,7 +1686,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -1714,7 +1752,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Một số dữ liệu gốc cục bộ không khả dụng. Đang hiển thị dữ liệu còn đọc được.",
     "enumerated": "Tháng đã liệt kê",
@@ -1737,7 +1775,9 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -1801,7 +1841,7 @@ export const LABELS = {
     "point_distance": "Distance raw · unit unverified",
     "play_points": "Play points",
     "pause_points": "Pause points",
-    "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
+    "playback_note": "Play saved samples in source order, not elapsed ride time or verified speed; no requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "بعض البيانات الأصلية المحلية غير متاحة. يتم عرض البيانات المتبقية القابلة للقراءة.",
     "enumerated": "الأشهر المحصورة",
@@ -1824,6 +1864,8 @@ export const LABELS = {
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
     "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
-    "ride_energy_intensity": "Energy per distance"
+    "ride_energy_intensity": "Energy per distance",
+    "filters": "Date and vehicle filters",
+    "sample_selection": "Selected source-sequence range"
   }
 };

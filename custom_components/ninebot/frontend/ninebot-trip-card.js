@@ -172,6 +172,8 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.routeMap.highlight(point);
     this.routeMap.brush(this.selection.brush);
     for (const binding of this.focusBindings) {
+      const brush = this.selection.brush;
+      binding.range.textContent = brush?.key === binding.key ? `${this.labels().sample_selection}: ${brush.start}–${brush.end}` : '';
       if (focus?.key !== binding.key || !point) { binding.status.textContent = ''; continue; }
       const index = track.points.indexOf(point);
       binding.input.value = String(index);
@@ -190,7 +192,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     }
   }
   pointControls(key, track, labels) {
-    const controls = element('div', '', 'samples'), status = element('p', '', 'note');
+    const controls = element('div', '', 'samples'), status = element('p', '', 'note'), range = element('p', '', 'note');
     const label = element('label', labels.point_sequence), input = element('input'); input.type = 'range';
     input.min = '0'; input.max = String(Math.max(0, track.points.length - 1)); input.step = '1'; input.value = '0';
     input.setAttribute('aria-label', `${labels.point_sequence} · ${track.label}`);
@@ -211,8 +213,8 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       }, reduced ? 1500 : 500);
     });
     play.disabled ||= track.points.length < 2;
-    this.focusBindings.push({ key, input, status });
-    label.append(input); controls.append(label, play, status, element('p', labels.playback_note, 'note'));
+    this.focusBindings.push({ key, input, status, range });
+    label.append(input); controls.append(label, play, status, range, element('p', labels.playback_note, 'note'));
     return controls;
   }
   curve(parent, title, samples, field, key = null) {
@@ -299,7 +301,11 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       label.append(input); toolbar.append(label);
     }
     for (const kind of ['recent', 'last_7', 'last_30', 'previous_month', 'next_month']) toolbar.append(this.button(labels[kind], () => browser.range(kind)));
-    toolbar.append(this.button(labels.refresh, () => void browser.read())); card.append(toolbar);
+    toolbar.append(this.button(labels.refresh, () => void browser.read()));
+    const filters = element('details', '', 'filters'); filters.open = this.filtersOpen === true;
+    filters.append(element('summary', `${labels.filters} · ${browser.start}–${browser.end}`), toolbar);
+    filters.addEventListener('toggle', () => { if (filters.isConnected) this.filtersOpen = filters.open; });
+    card.append(filters);
     card.append(element('p', `${labels.local} · Asia/Shanghai · ${labels.workbench_note}`, 'note'));
     for (const [text, style] of [[labels[browser.error], 'error'], [browser.busy || this.tracks.busy ? labels.loading : null, 'note'],
       [this.tracks.error ? labels[this.tracks.error] ?? labels.track_error : null, 'error'], [this.notice, 'note']]) if (text) card.append(element('p', text, style));

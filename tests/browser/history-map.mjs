@@ -42,6 +42,7 @@ try {
   await page.waitForFunction(() => fixtureCard.browser.page?.rides.length === 2 &&
     !fixtureCard.tracks.busy && fixtureCard.tracks.tracks.size === 1 && fixtureCard.routeMap.map?.getZoom() > 1);
   assert.equal(await page.getByText('已枚举月份: 2', { exact: false }).count(), 1);
+  assert.equal(await page.locator('details.filters').getAttribute('open'), null);
   await page.getByRole('checkbox', { name: /加入比较 · Synthetic B/ }).check();
   await page.waitForFunction(() => !fixtureCard.tracks.busy && fixtureCard.tracks.tracks.size === 2);
   assert.equal(await page.evaluate(() => fixtureCard.selection.selected.size), 2);
