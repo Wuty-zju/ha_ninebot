@@ -1132,3 +1132,20 @@ retried. No extra vehicle-cloud requests are introduced by notifications.
 按需更新；缺失详情不会隐式抓云。通知只含设备/版本，发送前再次授权，断线、卸载、
 撤权会清理资源/私有投影。相同本地详情在途读取合并，临时失败最多重试一次，旧版
 后端不支持通知时保留手动读取。新消息不会触发车辆控制或云端全量同步。
+
+### Synthetic archive profiling
+
+In a development environment with the pinned HA/ninecli dependencies, run
+`python -m scripts.profile_history --output /tmp/ninebot-profile.json`. It creates
+new disposable databases only, with deterministic 5k/50k/200k synthetic summaries
+and 512/4096/20000-point detail workloads. No HA configuration, account, vehicle
+cloud or existing archive is read. Output includes query plans, actor queue/worker
+and batch timings, codec/response costs, integrity checks and runtime fingerprints.
+Reopened first reads are not OS-cold reads; small-sample percentiles are not an SLA.
+
+The focused profile workflow compares base/candidate on the same runner with the
+identical profiler. Its smaller 5k case still includes all detail sizes; use the
+full default scales when evaluating query/index growth. This does not dispatch
+the complete HA compatibility matrix. Local detail reads reuse a validated point
+view only within that read, retaining full source scans and corruption/identity
+checks; no persisted geometry cache or archive migration is introduced.

@@ -109,14 +109,20 @@ def unpacked(
     return record
 
 
-def scoped_ride(record: RawRecord, current: Ride) -> Ride:
+def scoped_ride(
+    record: RawRecord, current: Ride, *, max_points: int = 1, point_offset: int = 0
+) -> Ride:
     """Reject explicit identity contradictions; retain ID-less query provenance."""
     from .travel import parse_ride
 
     if record.query_month != current.query_month:
         raise CorruptPayload("Private detail month contradiction")
     parsed = parse_ride(
-        record.payload(), current.query_month, source=Endpoint.TRIP_DETAIL, max_points=1
+        record.payload(),
+        current.query_month,
+        source=Endpoint.TRIP_DETAIL,
+        max_points=max_points,
+        point_offset=point_offset,
     )
     if (
         {"conflicting_ride_ids", "conflicting_detail_ids"} & set(parsed.issues)

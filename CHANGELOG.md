@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0b94
+
+- Reuse the validated selected geometry within each local detail read instead of scanning the same full trail twice. Each new read still validates source hashes, identity, full-track quality and offsets; partial corruption fallback and retained higher-quality geometry are unchanged.
+- Add a reproducible synthetic archive profiler and same-run baseline comparison. No schema, index, identity, dependency or cloud polling changes.
+
 ## 2.0.0b93
 
 - Add permission-checked, cancellable local history subscriptions. Batched archive commits show a local update notice without replacing the selected rides, map view or playback; notifications contain only device versions, never GPS/raw data.

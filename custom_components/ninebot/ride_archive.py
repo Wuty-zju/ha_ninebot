@@ -63,7 +63,7 @@ from .object_checks import ObjectSummary
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord, version_metadata
 from .reconstruction_job import ReconstructionJob
-from .ride_models import Ride, TrackQuality
+from .ride_models import Ride
 from .statistics_store import StoredMonth, StoredRide
 from .sync_job import SyncJob, SyncState, job_data, restored_job
 from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
@@ -1543,7 +1543,7 @@ class RideArchive:
         records: list[RawRecord | None] = []
         faults: list[str] = []
         decoded_payloads: dict[str, RawRecord | None] = {}
-        decoded_qualities: dict[str, TrackQuality] = {}
+        parsed_payloads: dict[str, Ride] = {}
         for role, digest in zip(("latest", "selected_geometry"), row[:2], strict=True):
             if digest not in decoded_payloads:
                 try:
@@ -1564,9 +1564,17 @@ class RideArchive:
                     decoded_record = unpacked(
                         blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]
                     )
-                    scoped = scoped_ride(decoded_record, summary[0])
+                    # Validate the full source and retain the requested view in
+                    # the same pass. Never cache across reads, revisions or users.
+                    selected = digest == row[1]
+                    scoped = scoped_ride(
+                        decoded_record,
+                        summary[0],
+                        max_points=max_points if selected else 1,
+                        point_offset=point_offset if selected else 0,
+                    )
                     decoded_payloads[digest] = decoded_record
-                    decoded_qualities[digest] = scoped.track_quality
+                    parsed_payloads[digest] = scoped
                 except CorruptPayload:
                     decoded_payloads[digest] = None
                     if not allow_partial:
@@ -1585,12 +1593,16 @@ class RideArchive:
         geometry_evidence = geometry or latest
         assert geometry_evidence is not None
         selection = row[4] if geometry is not None else "fallback_latest_payload"
-        parsed = parse_ride(
-            geometry_evidence.payload(),
-            geometry_evidence.query_month or summary[0].query_month,
-            source=Endpoint.TRIP_DETAIL,
-            max_points=max_points,
-            point_offset=point_offset,
+        parsed = (
+            parsed_payloads[row[1]]
+            if geometry is not None
+            else parse_ride(
+                geometry_evidence.payload(),
+                geometry_evidence.query_month or summary[0].query_month,
+                source=Endpoint.TRIP_DETAIL,
+                max_points=max_points,
+                point_offset=point_offset,
+            )
         )
         result = replace(
             summary[0],
@@ -1616,8 +1628,8 @@ class RideArchive:
             stamp(summary[1]),
             tuple(faults),
             "selected_geometry" if geometry is not None else "latest_payload",
-            decoded_qualities.get(row[0]) if latest is not None else None,
-            decoded_qualities.get(row[1]) if geometry is not None else None,
+            parsed_payloads[row[0]].track_quality if latest is not None else None,
+            parsed_payloads[row[1]].track_quality if geometry is not None else None,
         )
 
     async def async_preservation_order(
