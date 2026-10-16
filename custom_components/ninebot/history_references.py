@@ -32,15 +32,4 @@ QUERY = (
 
 def issues(db: sqlite3.Connection, vehicle: str, plan: str) -> int:
     """All referenced months are checked; count each affected ride only once."""
-    return int(
-        db.execute(
-            QUERY,
-            (
-                vehicle,
-                plans if plans is not None else json.dumps((plan,)),
-                vehicle,
-                vehicle,
-                vehicle,
-            ),
-        ).fetchone()[0]
-    )
+    return int(db.execute(QUERY, (vehicle, plan, plan, vehicle, vehicle, vehicle)).fetchone()[0])
