@@ -222,7 +222,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.resetting = false; this.render();
     if (accepted && ride.detail_saved === true) void this.readRoute(ride);
   }
-  remove(key) {
+  removeRide(key) {
     if (this.tracks.busy) return;
     this.resetting = true; this.selection.remove(key); this.tracks.remove(key); this.resetting = false;
     this.render();
@@ -427,7 +427,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       const panel = element('section', '', 'primary'); panel.dataset.key = primary;
       panel.append(element('h3', `${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`), this.metrics(displayed, labels));
       this.routeActions(panel, ride, labels);
-      panel.append(this.button(labels.remove_track, () => this.remove(primary)));
+      panel.append(this.button(labels.remove_track, () => this.removeRide(primary)));
       const track = this.tracks.tracks.get(primary);
       if (track) {
         if (track.stale) panel.append(element('p', labels.history_updated, 'note'));
@@ -462,7 +462,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         const label = element('label', labels.compare, 'compare'), compare = element('input'); compare.type = 'checkbox';
         compare.checked = this.selection.selected.has(key); compare.disabled = browser.busy || this.tracks.busy;
         compare.setAttribute('aria-label', `${labels.compare} · ${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`);
-        compare.addEventListener('change', () => compare.checked ? this.choose(ride, true) : this.remove(key));
+        compare.addEventListener('change', () => compare.checked ? this.choose(ride, true) : this.removeRide(key));
         label.prepend(compare); section.append(choose, label); list.append(section);
       }
       const footer = element('footer'); footer.append(element('span', `${labels.page} ${browser.pageNumber} · ${page.rides.length}`, 'note'));
