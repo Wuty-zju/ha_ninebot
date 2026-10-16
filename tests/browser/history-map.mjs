@@ -30,6 +30,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 900 } });
   await page.addInitScript(() => {
+    Error.stackTraceLimit = 40;
     const frame = window.requestAnimationFrame.bind(window);
     window.requestAnimationFrame = callback => {
       const scheduled = new Error('Animation scheduling origin').stack;
@@ -66,6 +67,16 @@ try {
   assert.equal(external.length, 0); assert.deepEqual(errors, []);
 
   await page.evaluate(() => {
+    const canvas = fixtureCard.routeMap.library.Canvas.prototype;
+    const add = canvas._addPath, destroy = canvas._destroyContainer;
+    canvas._addPath = function (path) {
+      if (!this._ctx) console.error(new Error('Path added to destroyed Canvas').stack);
+      return add.call(this, path);
+    };
+    canvas._destroyContainer = function () {
+      console.error('Synthetic Canvas destroyed; pending frame:', this._redrawRequest);
+      return destroy.call(this);
+    };
     const map = fixtureCard.routeMap;
     map.map.panBy([80, 20], { animate: false });
     window.savedView = [map.map.getCenter().lat, map.map.getCenter().lng, map.map.getZoom()];
