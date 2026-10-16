@@ -4,6 +4,8 @@ on:
     paths:
       - 'custom_components/ninebot/*statistics*.py'
       - 'custom_components/ninebot/ride_archive.py'
+      - 'custom_components/ninebot/gap_recovery.py'
+      - 'tests/test_gap_recovery.py'
       - 'custom_components/ninebot/month_source.py'
       - 'tests/test_month_source.py'
       - 'custom_components/ninebot/history_references.py'

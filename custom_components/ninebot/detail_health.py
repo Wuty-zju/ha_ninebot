@@ -113,8 +113,10 @@ class HistoryHealth:
 
 
 def summary(db: sqlite3.Connection, vehicle: str, plan: str) -> HistoryHealth:
+    from .gap_recovery import TARGETS
+
     row = db.execute(
-        "WITH targets AS (SELECT DISTINCT ride FROM history_ids WHERE vehicle=? AND plan=?),"
+        f"WITH targets AS (SELECT DISTINCT ride FROM ({TARGETS})),"
         " facts AS (SELECT d.ride IS NOT NULL AS saved,"
         " r.id IS NULL OR json_extract(r.data,'$.detail_id') IS NULL AS unmapped,"
         " CASE WHEN json_extract(m.value,'$.latest_hash')=d.latest_hash"
@@ -130,7 +132,7 @@ def summary(db: sqlite3.Connection, vehicle: str, plan: str) -> HistoryHealth:
         " OR json_extract(health,'$.invalid_points')>0"
         " OR json_extract(health,'$.scan_complete')!=1),0),"
         " coalesce(sum(json_extract(health,'$.latest_simplified')=1),0) FROM facts",
-        (vehicle, plan, vehicle, vehicle, vehicle),
+        (vehicle, plan, plan, vehicle, vehicle, vehicle),
     ).fetchone()
     from .history_references import issues
 

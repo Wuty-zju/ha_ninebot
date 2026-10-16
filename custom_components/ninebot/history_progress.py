@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from .detail_health import HistoryHealth
+from .gap_recovery import GapCoverage
 from .history_plan import HistoryPlan, HistoryState, month_count
 
 TERMINAL = {HistoryState.COMPLETE, HistoryState.WITH_GAPS, HistoryState.RECONCILED}
@@ -20,6 +21,7 @@ class HistoryEvidence:
     requested: bool = False
     last_completed: datetime | None = None
     multi_page_months: int = 0
+    gaps: GapCoverage | None = None
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,8 @@ class HistoryProgress:
     phase: str | None = None
     multi_page_months: int = 0
     reference_issues: int = 0
+    initial_gap_months: int | None = None
+    resolved_gap_months: int = 0
 
     @property
     def scan_percent(self) -> int | None:
@@ -72,6 +76,10 @@ def project_progress(
     active_phase: str | None = None,
 ) -> HistoryProgress:
     plan, health = evidence.baseline, evidence.health
+    unresolved = (
+        evidence.gaps.pending if evidence.gaps is not None else plan.gap_months if plan else 0
+    )
+    recovered = evidence.gaps.resolved if evidence.gaps is not None else 0
     pending = plan is not None and plan.state not in TERMINAL
     current = plan if pending else next(iter(evidence.active), plan)
     phase = (
@@ -84,6 +92,16 @@ def project_progress(
         if current and current.state is HistoryState.WAITING and current.retry_at
         else None
     )
+    if (
+        retry is None
+        and not pending
+        and not evidence.active
+        and unresolved
+        and evidence.gaps is not None
+        and evidence.gaps.next_retry is not None
+        and evidence.gaps.next_retry > now
+    ):
+        retry = evidence.gaps.next_retry
     deadlines = [value for value in (evidence.budget_at, retry) if value and value > now]
     next_request = max(deadlines) if deadlines else None
     if paused:
@@ -104,6 +122,8 @@ def project_progress(
         state = "not_started"
     elif current.state is HistoryState.WAITING:
         state = "needs_login" if current.reason == "auth" else "waiting_retry"
+    elif retry is not None and not pending and not evidence.active:
+        state = "waiting_retry"
     elif (
         (pending or evidence.active)
         and current.state is not HistoryState.QUERYING
@@ -121,14 +141,25 @@ def project_progress(
         }.get(current.state, "waiting_retry")
     elif evidence.active:
         state = "incremental"
+    elif health and (health.missing or health.unmapped or health.quality_pending):
+        state = "preserving"
     else:
-        state = "with_gaps" if current.state is HistoryState.WITH_GAPS else "synced"
+        state = (
+            "with_gaps"
+            if (
+                unresolved
+                or (health is not None and health.archive_has_gaps)
+                or current.state is HistoryState.WITH_GAPS
+                and evidence.gaps is None
+            )
+            else "synced"
+        )
     return HistoryProgress(
         state=state,
         scanned_months=plan.scanned_months if plan else None,
-        verified_months=plan.verified_months if plan else None,
+        verified_months=plan.verified_months + recovered if plan else None,
         total_months=month_count(plan.start_month, plan.end_month) if plan else None,
-        gap_months=plan.gap_months if plan else None,
+        gap_months=unresolved if plan else None,
         discovered=health.discovered if health else None,
         saved=health.saved if health else None,
         missing=health.missing if health else None,
@@ -146,4 +177,6 @@ def project_progress(
         phase=phase,
         multi_page_months=evidence.multi_page_months,
         reference_issues=health.reference_issues if health else 0,
+        initial_gap_months=plan.gap_months if plan else None,
+        resolved_gap_months=recovered,
     )

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b88
+
+- Automatically re-enumerate unverified baseline months outside the recent incremental window using existing month runs and the shared account budget. Persist fair gap selection and 6-hour-to-7-day retry cooldowns; manual work joins the same scope.
+- Retain original failed pages/manifests/root counts. Effective progress separately reports initial, resolved and remaining gaps only from complete managed page chains; recovered run IDs and detail health are included before success.
+- Keep stable old months and saved mature details reusable. Broken local evidence is not overwritten by an implicit cloud repair, and server-degraded geometry still shows gaps even when all known details are saved.
+- No dependency, database schema or entity identity changes. This is recorded acquisition coverage, not independent raw-byte or whole-cloud certification.
+
 ## 2.0.0b87
 
 - Local ride reconstruction now detects applicable scalar provenance/source/presence metadata conflicts even when the numeric values match, and restores precision below the retained detail's proven floor.

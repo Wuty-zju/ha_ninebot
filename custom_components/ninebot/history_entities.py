@@ -143,6 +143,8 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
             "retry_at": value.retry_at.isoformat() if value.retry_at else None,
             "sync_phase": value.phase,
             "last_completed": value.last_completed.isoformat() if value.last_completed else None,
+            "initial_gap_months": value.initial_gap_months,
+            "resolved_gap_months": value.resolved_gap_months,
             "recorded_multi_page_months": value.multi_page_months,
             "real_cloud_pagination_verified": None,
         }

@@ -34,12 +34,26 @@ class IncrementalSync:
             baseline = await archive.async_history_plan(sn)
             if baseline is None:
                 continue
+            # Register at most one unresolved baseline month; no wire request here.
+            # Manual-only calls do not enable new automatic gap discovery.
+            if not manual:
+                try:
+                    await archive.async_seed_history_gap(sn, now, guard=runner.guard(sn))
+                except ArchiveError as err:
+                    if err.kind is not ArchiveFailure.BUSY:
+                        raise
             for month in months:
                 if (
                     baseline.next_month is not None
                     and baseline.start_month <= month <= baseline.next_month
                 ):
                     continue  # The first scan already has this month ahead; do not duplicate it.
+                if await archive.async_history_gap_unresolved(sn, month):
+                    if manual:
+                        await archive.async_seed_history_gap(
+                            sn, now, guard=runner.guard(sn), month=month
+                        )
+                    continue  # A serve/known-ID reconciliation cannot resolve an enumeration gap.
                 archived = await archive.async_month(sn, month)
                 if archived is None:
                     signature = hashlib.sha256(month.encode()).hexdigest()

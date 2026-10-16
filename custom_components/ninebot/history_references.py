@@ -6,8 +6,10 @@ BLOBs, returns identity data, changes selections or reconstructs missing parents
 
 import sqlite3
 
+from .gap_recovery import TARGETS
+
 QUERY = (
-    "WITH targets AS (SELECT month,ride FROM history_ids WHERE vehicle=? AND plan=?),"
+    f"WITH targets AS ({TARGETS}),"
     " items AS (SELECT mo.month,j.value,j.type,"
     " CASE WHEN json_valid(mo.ids) THEN json_type(mo.ids,'$.ids') IS NOT 'array'"
     " ELSE 1 END AS bad_shape FROM months mo"
@@ -30,4 +32,4 @@ QUERY = (
 
 def issues(db: sqlite3.Connection, vehicle: str, plan: str) -> int:
     """All referenced months are checked; count each affected ride only once."""
-    return int(db.execute(QUERY, (vehicle, plan, vehicle, vehicle, vehicle)).fetchone()[0])
+    return int(db.execute(QUERY, (vehicle, plan, plan, vehicle, vehicle, vehicle)).fetchone()[0])
