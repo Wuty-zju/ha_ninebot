@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0b89
+
+- Allow a failed same-month discovery retry to reuse its existing active slot when all 12 month slots are occupied. New distinct months remain bounded by the same limit.
+- Preserve superseded attempt evidence, discovered IDs, retry cooldowns and restart continuity; no database schema, dependency or entity identity changes.
+
 ## 2.0.0b88
 
 - Automatically re-enumerate unverified baseline months outside the recent incremental window using existing month runs and the shared account budget. Persist fair gap selection and 6-hour-to-7-day retry cooldowns; manual work joins the same scope.
