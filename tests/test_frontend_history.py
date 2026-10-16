@@ -41,6 +41,7 @@ async def test_package_http_routes_and_registration_idempotence(hass, device, ha
     for url, filename in (
         (CARD_URL, "ninebot-trip-card.js"),
         ("/ninebot-static/labels.js", "labels.js"),
+        ("/ninebot-static/route-renderer.js", "route-renderer.js"),
     ):
         response = await client.get(url)
         assert response.status == 200

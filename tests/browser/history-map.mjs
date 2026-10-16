@@ -80,6 +80,18 @@ try {
   assert.deepEqual(calls.map(call => call.service_data.device_id), ['synthetic-a', 'synthetic-b']);
   assert.ok(calls.every(call => call.service_data.local_only === true && call.service_data.include_track === true));
   assert.equal(external.length, 0); assert.deepEqual(errors, []);
+  // Real pinned Canvas regression: view updates can redraw synchronously while
+  // an older frame is queued. Removing the map must cancel that older frame too.
+  await page.evaluate(async () => {
+    const { RouteMap } = await import('/ninebot-static/route-map.js');
+    const track = [...fixtureCard.tracks.tracks.values()][0];
+    for (let index = 0; index < 2; index++) {
+      const map = new RouteMap(); document.body.append(map.element);
+      await map.update([track]); map.fit(); map.clear(); map.element.remove();
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+  });
+  assert.deepEqual(errors, [], 'synchronous view update followed by immediate map removal');
 
   await page.evaluate(() => {
     const map = fixtureCard.routeMap;

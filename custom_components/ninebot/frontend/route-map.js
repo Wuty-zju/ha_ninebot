@@ -1,5 +1,6 @@
 /** Pinned local Leaflet with keyed layers; no CRS conversion or road matching. */
 import { trackSegments } from './local-tracks.js';
+import { createRouteRenderer } from './route-renderer.js';
 export const ROUTE_COLORS = ['#03a9f4', '#ff9800', '#9c27b0', '#009688', '#ef5350'];
 
 export function routePaths(track) {
@@ -94,7 +95,7 @@ export class RouteMap {
       if (serial !== this.serial || !this.element.isConnected) return;
       const initial = !this.map;
       if (initial) {
-        this.renderer = L.canvas();
+        this.renderer = createRouteRenderer(L);
         this.map = L.map(this.container, { renderer: this.renderer, preferCanvas: true, minZoom: 1, maxZoom: 19,
           scrollWheelZoom: false, zoomAnimation: false }).setView([0, 0], 1);
         this.map.attributionControl.setPrefix('Leaflet 1.9.4');
