@@ -30,7 +30,10 @@ const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 900 } });
   const errors = [], external = [];
-  page.on('pageerror', error => errors.push(error.message));
+  page.on('pageerror', error => {
+    errors.push(error.message);
+    console.error('Synthetic workbench browser error:', error.stack);
+  });
   // Even optional tiles cannot leave the isolated test. All points are fake.
   await page.route('**/*', route => {
     if (new URL(route.request().url()).origin !== origin) {
@@ -140,11 +143,14 @@ try {
   await page.getByRole('button', { name: '本地记录已更新，读取最新内容', exact: true }).click();
   await page.waitForFunction(() => !fixtureCard.browser.busy && !fixtureCard.tracks.busy && !fixtureCard.pendingUpdates);
   assert.equal(await page.evaluate(() => fixtureCard.selection.primary), primaryBeforeNotification);
+  assert.deepEqual(errors, [], 'before simulated disconnect');
   await page.evaluate(() => fixtureHass.connection.fire('disconnected'));
   await page.waitForFunction(() => fixtureCard.tracks.tracks.size === 0 && fixtureCard.selection.selected.size === 0);
+  assert.deepEqual(errors, [], 'after simulated disconnect');
   await page.evaluate(() => fixtureHass.connection.fire('ready'));
   await page.waitForFunction(() => fixtureCard.browser.page?.rides.length === 2 && !fixtureCard.tracks.busy && fixtureCard.routeMap.map !== null);
 
+  assert.deepEqual(errors, [], 'after simulated reconnect');
   await page.evaluate(async () => { fixtureSaved = false; fixtureCard.browser.reset(); await fixtureCard.browser.read(); });
   await page.waitForFunction(() => !fixtureCard.browser.busy && fixtureCard.selection.selected.size === 1);
   assert.equal(await page.getByRole('button', { name: '显示已保存轨迹', exact: true }).isDisabled(), true);

@@ -115,4 +115,4 @@ jobs:
         run: >-
           python -c 'import os; from importlib.metadata import version;
           assert version("homeassistant") == os.environ["EXPECTED_HA"]'
-      - run: python -m pytest -q tests/test_history_websocket.py tests/test_frontend_history.py
+      - run: timeout 120s python -m pytest -vv -o faulthandler_timeout=30 tests/test_history_websocket.py tests/test_frontend_history.py
