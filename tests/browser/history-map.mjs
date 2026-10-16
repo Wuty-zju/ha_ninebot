@@ -29,6 +29,17 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 900 } });
+  await page.addInitScript(() => {
+    const frame = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = callback => {
+      const scheduled = new Error('Animation scheduling origin').stack;
+      return frame(time => {
+        try { callback(time); }
+        catch (error) { console.error(scheduled); throw error; }
+      });
+    };
+  });
+  page.on('console', message => { if (message.type() === 'error') console.error(message.text()); });
   const errors = [], external = [];
   page.on('pageerror', error => {
     errors.push(error.message);
@@ -88,6 +99,12 @@ try {
   await page.waitForFunction(() => fixtureCard.selection.selected.get(fixtureCard.selection.primary)?.device_id === 'synthetic-b' && fixtureCard.selection.focus?.sequence === 8);
   await page.getByRole('button', { name: '按点播放', exact: true }).click();
   await page.waitForFunction(() => fixtureCard.playback !== null && fixtureCard.selection.focus.sequence > 8);
+  await page.evaluate(() => {
+    window.playbackBeforeUpdate = fixtureCard.playback;
+    for (const callback of fixtureFeeds) callback({ schema_version: 1, type: 'changed',
+      vehicles: ['synthetic-a', 'synthetic-b'].map(device_id => ({ device_id, selection_version: 'a'.repeat(32) + ':1' })) });
+  });
+  assert.equal(await page.evaluate(() => fixtureCard.playback === playbackBeforeUpdate), true);
   await page.getByRole('button', { name: '暂停播放', exact: true }).click();
   assert.equal(await page.evaluate(() => fixtureRequests.length), before);
 

@@ -19,8 +19,8 @@ NOW = datetime(2026, 10, 8, 10, tzinfo=UTC)
 @pytest.fixture(autouse=True)
 def clock(freezer, monkeypatch):
     freezer.move_to(NOW)
-    monkeypatch.setattr(ws, "DEBOUNCE", 0)
-    monkeypatch.setattr(ws, "RETRY_DELAYS", (0, 0))
+    monkeypatch.setattr(ws, "DEBOUNCE", 0.01)
+    monkeypatch.setattr(ws, "RETRY_DELAYS", (0.01, 0.01))
 
 
 @pytest.fixture
@@ -50,7 +50,16 @@ async def subscribe(client, device, identity=1):
     return await asyncio.wait_for(client.receive_json(), 5)
 
 
-async def test_real_commit_is_debounced_and_unsubscribe_is_local(hass, entry, app_client, local):
+async def advance(hass, freezer):
+    """Deliver dispatcher callbacks, then advance HA's frozen monotonic timers."""
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=1))
+    await hass.async_block_till_done()
+
+
+async def test_real_commit_is_debounced_and_unsubscribe_is_local(
+    hass, entry, app_client, local, freezer
+):
     device, client, co = local
     assert (await subscribe(client, device))["success"]
     baseline = (await client.receive_json())["event"]
@@ -79,6 +88,7 @@ async def test_real_commit_is_debounced_and_unsubscribe_is_local(hass, entry, ap
     )
     for _ in range(3):
         co.statistics._notify_change("SyntheticSN", None)
+    await advance(hass, freezer)
     print("WS awaiting changed after archive commit", flush=True)
     event = (await asyncio.wait_for(client.receive_json(), 5))["event"]
     assert event["type"] == "changed"
@@ -91,7 +101,7 @@ async def test_real_commit_is_debounced_and_unsubscribe_is_local(hass, entry, ap
     app_client.async_control.assert_not_awaited()
 
 
-async def test_permissions_before_subscription_and_again_before_delivery(hass, local):
+async def test_permissions_before_subscription_and_again_before_delivery(hass, local, freezer):
     device, client, co = local
     user = SimpleNamespace(is_active=True, permissions=Mock())
     user.permissions.access_all_entities.return_value = False
@@ -104,6 +114,7 @@ async def test_permissions_before_subscription_and_again_before_delivery(hass, l
         await client.receive_json()
         user.is_active = False
         co.statistics._notify_change("SyntheticSN", None)
+        await advance(hass, freezer)
         closed = (await client.receive_json())["event"]
         assert closed == {"schema_version": 1, "type": "closed", "reason": "denied"}
         assert not ws.feeds(hass)
@@ -153,7 +164,9 @@ async def test_socket_close_cancels_pending_authorization_read(hass, local, monk
     assert not ws.feeds(hass)
 
 
-async def test_archive_busy_retries_without_closing_after_one_failure(hass, local, monkeypatch):
+async def test_archive_busy_retries_without_closing_after_one_failure(
+    hass, local, monkeypatch, freezer
+):
     device, client, co = local
     assert (await subscribe(client, device))["success"]
     await client.receive_json()
@@ -161,6 +174,8 @@ async def test_archive_busy_retries_without_closing_after_one_failure(hass, loca
     query = AsyncMock(side_effect=[ArchiveError(ArchiveFailure.BUSY), original])
     monkeypatch.setattr(co.statistics.archive, "async_catalog_version", query)
     co.statistics._notify_change("SyntheticSN", None)
+    await advance(hass, freezer)
+    await advance(hass, freezer)
     assert (await client.receive_json())["event"]["type"] == "changed"
     assert query.await_count == 2
     assert len(ws.feeds(hass)) == 1
