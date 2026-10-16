@@ -17,6 +17,19 @@ PREFIX = "history_gap:"
 CURSOR = "history_gap_cursor:"
 
 
+# Include every actually discovered attempt ID, even if a later run superseded
+# its active pointer. This stays a metadata query, without a giant parameter list.
+TARGETS = (
+    "SELECT DISTINCT i.month,i.ride FROM history_ids i WHERE i.vehicle=? AND (i.plan=? OR EXISTS ("
+    "SELECT 1 FROM history_months g JOIN history_roots b ON b.vehicle=g.vehicle"
+    " AND json_extract(b.data,'$.plan_id')=g.plan"
+    " JOIN history_pages p ON p.vehicle=i.vehicle AND p.plan=i.plan AND p.month=i.month"
+    " AND p.page=i.first_page WHERE g.vehicle=i.vehicle AND g.plan=? AND g.month=i.month"
+    " AND g.verified=0 AND p.observed>=g.observed AND p.backend='0.1.7'"
+    " AND p.endpoint=json_extract(b.data,'$.provider')))"
+)
+
+
 @dataclass(frozen=True)
 class GapCoverage:
     initial: int

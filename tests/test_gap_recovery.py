@@ -384,3 +384,48 @@ async def test_full_run_queue_does_not_leave_an_untracked_gap_attempt(context):
     with closing(sqlite3.connect(archive.path)) as db:
         assert not db.execute("SELECT key FROM meta WHERE key LIKE 'history_gap:%'").fetchall()
     assert await archive.async_history_plan(SN) == root and not calls
+
+
+async def test_superseded_failed_attempt_ids_remain_in_detail_and_reference_denominator(context):
+    co, _, clock, calls, _ = context
+    archive = co.statistics.archive
+    attempt = await archive.async_seed_history_gap(SN, clock[0], guard=lambda: True)
+    first = await archive.async_accept_history_page(
+        SN,
+        attempt,
+        page("202608", clock[0], [item("partial-old-id", "202608")], 2),
+        guard=lambda: True,
+    )
+    failed = await archive.async_accept_history_page(
+        SN, first.root, page("202608", clock[0], [], 2), guard=lambda: True
+    )
+    assert failed.root.gap_months == 1
+    later = clock[0] + timedelta(hours=7)
+    replacement = await archive.async_seed_history_gap(SN, later, guard=lambda: True)
+    assert replacement.plan_id != attempt.plan_id
+    good = await archive.async_accept_history_page(
+        SN,
+        replacement,
+        page("202608", later, [item("later-good-id", "202608")], 1),
+        guard=lambda: True,
+    )
+    assert good.verified
+    await saved_detail(archive, SN, item("later-good-id", "202608"), "202608", later)
+    await archive.async_finish_history_baseline(SN, good.root, later, guard=lambda: True)
+    evidence = await archive.async_history_evidence(SN, guard=lambda: True)
+    assert evidence.gaps.resolved == 1
+    assert (
+        evidence.health.discovered == 3
+        and evidence.health.saved == 2
+        and evidence.health.missing == 1
+    )
+    progress = project_progress(evidence, later, enabled=True, paused=False, authenticated=True)
+    assert progress.state != "synced" and progress.detail_percent == 66
+    await saved_detail(archive, SN, item("partial-old-id", "202608"), "202608", later)
+    evidence = await archive.async_history_evidence(SN, guard=lambda: True)
+    assert evidence.health.discovered == evidence.health.saved == 3
+    assert (
+        project_progress(evidence, later, enabled=True, paused=False, authenticated=True).state
+        == "synced"
+    )
+    assert not calls
