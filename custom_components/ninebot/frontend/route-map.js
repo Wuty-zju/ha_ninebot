@@ -31,7 +31,11 @@ export class RouteMap {
     if (this.map && this.library) this.map.eachLayer(layer => {
       if (layer instanceof this.library.Path) this.map.removeLayer(layer);
     });
-    this.layer?.clearLayers(); this.map?.remove(); this.map = null; this.layer = null; this.tiles = null;
+    this.layer?.clearLayers();
+    // Own the renderer explicitly so it is removed after vectors, before Map's
+    // generic layer teardown. Do not leave cancellation to layer insertion order.
+    this.renderer?.remove(); this.map?.remove();
+    this.map = null; this.renderer = null; this.layer = null; this.tiles = null;
     this.focus = null; this.selectedPoint = null; this.brushLayer = null;
     this.groups.clear(); this.bounds = []; this.primary = null; this.brushSignature = null; this.brushTrack = null;
   }
@@ -90,7 +94,8 @@ export class RouteMap {
       if (serial !== this.serial || !this.element.isConnected) return;
       const initial = !this.map;
       if (initial) {
-        this.map = L.map(this.container, { preferCanvas: true, minZoom: 1, maxZoom: 19,
+        this.renderer = L.canvas();
+        this.map = L.map(this.container, { renderer: this.renderer, preferCanvas: true, minZoom: 1, maxZoom: 19,
           scrollWheelZoom: false, zoomAnimation: false }).setView([0, 0], 1);
         this.map.attributionControl.setPrefix('Leaflet 1.9.4');
         this.layer = L.layerGroup().addTo(this.map);
