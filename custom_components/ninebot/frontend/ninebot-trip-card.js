@@ -18,7 +18,7 @@ h2{font-size:20px;margin:0 0 12px}h3{font-size:16px}.toolbar{display:flex;flex-w
 label{display:flex;flex-direction:column;gap:4px;font-size:13px}input,button{font:inherit;color:inherit;background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px;padding:10px;min-height:44px}
 button{cursor:pointer;color:var(--primary-color)}button:disabled{opacity:.5;cursor:default}input[type=date]{max-width:150px}input[type=checkbox]{min-height:24px;width:24px}
 .note{font-size:12px;color:var(--secondary-text-color);line-height:1.5;overflow-wrap:anywhere}.error{color:var(--error-color)}
-.workbench{display:grid;grid-template-columns:minmax(0,2fr) minmax(230px,1fr);gap:16px;align-items:start}.main,.rides{min-width:0}
+.workbench{display:grid;grid-template-columns:minmax(0,2fr) minmax(230px,1fr);grid-template-areas:"map list" "detail list";gap:16px;align-items:start}.main,.rides,.ride-detail{min-width:0}.main{grid-area:map}.rides{grid-area:list}.ride-detail{grid-area:detail}
 .rides{max-height:850px;overflow:auto;overscroll-behavior:contain}.ride{padding:10px 0;border-bottom:1px solid var(--divider-color)}
 .ride.selected{border-left:3px solid var(--primary-color);padding-left:8px}.ride button{width:100%;text-align:start;white-space:normal}.compare{flex-direction:row;align-items:center}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chips button[aria-pressed=true]{background:var(--primary-color);color:var(--text-primary-color,#fff)}
@@ -27,8 +27,8 @@ dl{display:grid;grid-template-columns:minmax(100px,1fr) 1fr;gap:8px;font-size:14
 svg{display:block;width:100%;height:140px;touch-action:pan-y}.metrics{font-size:13px;font-weight:400}.samples input[type=range]{width:100%}
 footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px}.placeholder{padding:36px 16px;text-align:center;background:var(--secondary-background-color);border-radius:12px}
 :focus-visible{outline:2px solid var(--primary-color);outline-offset:3px}
-@media(max-width:650px){.workbench{grid-template-columns:minmax(0,1fr)}.rides{max-height:360px}.toolbar button{flex:1 1 auto}ha-card{padding:12px}}
-@container(max-width:650px){.workbench{grid-template-columns:minmax(0,1fr)}.rides{max-height:360px}.toolbar button{flex:1 1 auto}}
+@media(max-width:650px){.workbench{grid-template-columns:minmax(0,1fr);grid-template-areas:"map" "list" "detail"}.rides{max-height:300px}.toolbar button{flex:1 1 auto}ha-card{padding:12px}}
+@container(max-width:650px){.workbench{grid-template-columns:minmax(0,1fr);grid-template-areas:"map" "list" "detail"}.rides{max-height:300px}.toolbar button{flex:1 1 auto}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}`;
 
 export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
@@ -116,7 +116,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       [labels.max_speed, this.number(ride.max_speed_m_s === null ? null : ride.max_speed_m_s * 3.6, 0, 'km/h')],
       [labels.avg_speed, this.number(ride.average_speed_m_s === null ? null : ride.average_speed_m_s * 3.6, 1, 'km/h')],
       [labels.energy, this.number(ride.energy_wh, 0, 'Wh')],
-      [labels.energy_intensity, this.number(ride.energy_intensity_wh_per_km, 1, 'Wh/km')],
+      [labels.ride_energy_intensity, this.number(ride.energy_intensity_wh_per_km, 1, 'Wh/km')],
       [labels.observed, this.timestamp(ride.received_at)],
     ]) { dl.append(element('dt', name), element('dd', value)); }
     return dl;
@@ -132,7 +132,9 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.resetting = true;
     const accepted = this.selection.select(ride, compare);
     if (accepted) {
-      for (const key of this.tracks.tracks.keys()) if (!this.selection.selected.has(key)) this.tracks.remove(key);
+      const key = trackKey(ride.device_id, ride);
+      if (!this.routeMap.groups.has(key)) this.pendingFit = key;
+      // Reuse up to five same-scope tracks when switching the focused record.
       this.notice = null;
     } else this.notice = this.labels().selection_limit;
     this.resetting = false; this.render();
@@ -293,8 +295,9 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     for (const [text, style] of [[labels[browser.error], 'error'], [browser.busy || this.tracks.busy ? labels.loading : null, 'note'],
       [this.tracks.error ? labels[this.tracks.error] ?? labels.track_error : null, 'error'], [this.notice, 'note']]) if (text) card.append(element('p', text, style));
     const bench = element('div', '', 'workbench'), main = element('section', '', 'main'), list = element('section', '', 'rides');
+    const detailsArea = element('section', '', 'ride-detail');
     main.setAttribute('aria-label', labels.map); list.setAttribute('aria-label', labels.title);
-    bench.append(main, list); card.append(bench);
+    bench.append(main, list, detailsArea); card.append(bench);
     const selected = [...this.selection.selected.entries()], chips = element('div', '', 'chips');
     for (const [key, ride] of selected) {
       const button = this.button(`${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`, () => this.selection.activate(key));
@@ -336,7 +339,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         this.curve(panel, labels.distance_samples, displayed.distance_samples, 'distance_delta_raw', primary);
       }
       if (displayed.local_partial) panel.append(element('p', labels.partial_archive, 'note'));
-      this.provenance(panel, displayed, labels); main.append(panel);
+      this.provenance(panel, displayed, labels); detailsArea.append(panel);
     }
     const page = browser.page;
     if (page) {

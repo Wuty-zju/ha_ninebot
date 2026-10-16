@@ -83,7 +83,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -169,7 +170,8 @@ export const LABELS = {
     "editor_name": "显示名称（可选）",
     "editor_add": "添加车辆",
     "editor_remove": "移除车辆",
-    "editor_note": "日期留空默认当月。最多5辆车，已保存轨迹仍需位置权限。"
+    "editor_note": "日期留空默认当月。最多5辆车，已保存轨迹仍需位置权限。",
+    "ride_energy_intensity": "单位里程能耗"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -255,7 +257,8 @@ export const LABELS = {
     "editor_name": "显示名称（可选）",
     "editor_add": "添加车辆",
     "editor_remove": "移除车辆",
-    "editor_note": "日期留空默认当月。最多5辆车，已保存轨迹仍需位置权限。"
+    "editor_note": "日期留空默认当月。最多5辆车，已保存轨迹仍需位置权限。",
+    "ride_energy_intensity": "单位里程能耗"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -341,7 +344,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "fr": {
     "title": "Historique des trajets",
@@ -427,7 +431,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "es": {
     "title": "Historial de viajes",
@@ -513,7 +518,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -599,7 +605,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -685,7 +692,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -771,7 +779,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "ru": {
     "title": "История поездок",
@@ -857,7 +866,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "ja": {
     "title": "走行履歴",
@@ -943,7 +953,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "ko": {
     "title": "주행 기록",
@@ -1029,7 +1040,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -1115,7 +1127,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -1201,7 +1214,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "uk": {
     "title": "Історія поїздок",
@@ -1287,7 +1301,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -1373,7 +1388,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -1459,7 +1475,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -1545,7 +1562,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -1631,7 +1649,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -1717,7 +1736,8 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -1803,6 +1823,7 @@ export const LABELS = {
     "editor_name": "Display label (optional)",
     "editor_add": "Add vehicle",
     "editor_remove": "Remove vehicle",
-    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions."
+    "editor_note": "Optional dates retain the current-month default when empty. Up to five vehicles; saved routes remain subject to location permissions.",
+    "ride_energy_intensity": "Energy per distance"
   }
 };

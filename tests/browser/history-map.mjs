@@ -94,8 +94,18 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   const mainBox = await page.locator('.main').boundingBox(), listBox = await page.locator('.rides').boundingBox();
   assert.ok(listBox.y >= mainBox.y + mainBox.height - 2);
+  const detailBox = await page.locator('.ride-detail').boundingBox();
+  assert.ok(detailBox.y >= listBox.y + listBox.height - 2);
   if (output) await page.screenshot({ path: join(output, 'workbench-mobile.png'), fullPage: true });
   await page.setViewportSize({ width: 1080, height: 900 });
+  const localBeforeSwitch = await page.evaluate(() => fixtureRequests.length);
+  await page.locator('.ride button').first().click();
+  await page.waitForFunction(() => !fixtureCard.tracks.busy && fixtureCard.selection.selected.size === 1);
+  await page.locator('.ride button').last().click();
+  await page.waitForFunction(() => !fixtureCard.tracks.busy && fixtureCard.selection.selected.get(fixtureCard.selection.primary)?.device_id === 'synthetic-b');
+  await page.locator('.ride button').last().press('ArrowUp');
+  await page.waitForFunction(() => fixtureCard.selection.selected.get(fixtureCard.selection.primary)?.device_id === 'synthetic-a');
+  assert.equal(await page.evaluate(() => fixtureRequests.length), localBeforeSwitch);
   await page.getByRole('button', { name: '开启地图底图', exact: true }).click();
   await page.waitForFunction(() => fixtureCard.routeMap.tiles !== null);
   for (let i = 0; external.length === 0 && i < 20; i++) await new Promise(resolve => setTimeout(resolve, 50));
