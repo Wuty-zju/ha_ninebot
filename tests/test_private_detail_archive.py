@@ -482,13 +482,17 @@ async def test_local_geometry_version_binds_selected_original_not_account_or_sca
         local_vehicle_available=lambda sn: sn == SN,
     )
     try:
-        await save(archive, {"trail": "120,30,1,1;120.1,30.1,2,2;120.2,30.2,3,3"}, NOW)
+        await save(
+            archive,
+            {"trail": "120,30,1,1;120.1,30.1,2,2;120.2,30.2,3,3"},
+            NOW + timedelta(seconds=1),
+        )
         first, _ = await cached_detail(co, SN, "first", "202609", 1)
         await archive.async_record_month("other", sample(), NOW)
         await save(
             archive,
             {"trail": "120,30,1,1;120.2,30.2,2,2", "is_show_simple_point": True, "mileages": 3},
-            NOW + timedelta(seconds=1),
+            NOW + timedelta(seconds=2),
         )
         second, _ = await cached_detail(co, SN, "first", "202609", 1, offset=1)
         assert first.archive_revision != second.archive_revision
@@ -498,7 +502,7 @@ async def test_local_geometry_version_binds_selected_original_not_account_or_sca
         await save(
             archive,
             {"trail": ";".join(f"120.{i},30,{i},1" for i in range(4))},
-            NOW + timedelta(seconds=2),
+            NOW + timedelta(seconds=3),
         )
         third, _ = await cached_detail(co, SN, "first", "202609", 1)
         assert third.geometry_version != first.geometry_version
