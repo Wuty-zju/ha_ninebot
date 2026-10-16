@@ -1,4 +1,6 @@
 /** Explicit bounded local archive reads; no cloud, storage or CRS inference. */
+import { safeRide } from './trip-browser.js';
+
 const CHUNK = 512;
 const MAX_TRACKS = 5;
 const MAX_POINTS = 4096;
@@ -79,13 +81,13 @@ export class LocalTracks {
   remove(key) {
     if (!this.busy) { this.tracks.delete(key); this.changed(); }
   }
-  async read(device, ride) {
+  async read(device, ride, { refresh = false } = {}) {
     if (this.busy || typeof device !== 'string' || !device || !ride?.ride_id ||
         !/^20\d{4}$/.test(ride.query_month)) return;
     const key = trackKey(device, ride), prior = this.tracks.get(key);
-    if (prior?.complete) return;
+    if (prior?.complete && !refresh) return;
     const epoch = this.epoch;
-    let item = prior ? { ...prior, points: [...prior.points] } :
+    let item = prior && !refresh ? { ...prior, points: [...prior.points] } :
       { points: [], next: 0, fingerprint: null, complete: false, capped: false, bounds: null, valid_read: 0 };
     this.busy = true; this.error = null; this.changed();
     try {
@@ -116,7 +118,9 @@ export class LocalTracks {
         item = { ...item, fingerprint: chunk.fingerprint, total: chunk.total, kind: chunk.kind,
           points: step === 1 ? points : points.filter((_, i) => i === 0 || i === points.length - 1 || i % step === 0),
           next: chunk.next, complete: chunk.next === null, bounds,
-          partial: item.partial || chunk.partial,
+          partial: item.partial || chunk.partial, stale: false,
+          summary: { ...safeRide(response.ride), received_at: response.received_at,
+            device_id: device, vehicle_label: ride.vehicle_label ?? device },
           valid_read: item.valid_read + chunk.points.length, capped: item.capped || step > 1 };
         if (item.complete) break;
       }

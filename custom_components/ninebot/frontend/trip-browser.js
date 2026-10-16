@@ -1,3 +1,5 @@
+import { invokeHistory } from './history-network.js';
+
 /** Bounded, account-scoped local pages and explicitly requested cloud details. */
 
 export function businessDates(now = new Date()) {
@@ -121,11 +123,7 @@ export class TripBrowser {
   }
   dates(start, end) { this.start = start; this.end = end; this.reset(); this.awaitApply = true; }
   current(epoch) { return this.active && epoch === this.epoch; }
-  async invoke(service, data) {
-    const result = await this.hass.callWS({ type: 'call_service', domain: 'ninebot', service,
-      service_data: data, return_response: true });
-    return result.response;
-  }
+  async invoke(service, data) { const epoch = this.epoch; return invokeHistory(this.hass, service, data, () => this.current(epoch)); }
   async read(cursor = null) {
     if (!this.active || this.busy || !this.config || !this.hass?.user?.id || this.hass.connected === false) return;
     if (cursor && !this.page) return;

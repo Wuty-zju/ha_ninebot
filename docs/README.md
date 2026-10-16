@@ -1098,3 +1098,37 @@ the existing stricter fallback. No additional cloud queries or location/ID chang
 Action行为不变。轨迹续读绑定选中原件与解析契约，纯标量/其它车变化不再丢分段。
 目录版本只在连接内TEMP表/触发器维护，回滚一起回滚、重开连接失效，不改持久
 schema或原件。收据/覆盖说明仍为每次读取的元数据，不是全档案快照证明。
+
+
+### Local update notifications and in-flight sharing (b93)
+
+The card subscribes through the authenticated HA connection to
+`ninebot/history/subscribe` with one to five vehicle `device_ids`. The server checks
+the same local history read permissions as Actions, checks again before each
+delivery, and validates ownership/generation. Baseline/change events contain only
+device IDs and catalog versions. Geometry-only changes also produce invalidations;
+a matching catalog token does not certify unchanged detail. No GPS/raw object is
+pushed or stored in HA state. Limits: eight subscriptions per connection and 64
+active/pending server subscriptions, with commit bursts debounced.
+
+**Local records updated · Read latest** preserves current comparison, map view and
+playback. Clicking it reads local lists and the focused stale saved detail; other
+cached comparisons refresh lazily when focused. No cloud fill is implicit. Scope,
+user/connection changes and revoked access clear private projections. Backend
+unload closes streams, and subscriptions cancel pending reads/listeners/timers.
+The browser shares subscriptions by connection/user/device set, retries temporary
+subscription failures a bounded number of times, and retains manual reading when
+the older backend lacks this API. Reconnection clears old cursors and restarts
+local browsing instead of initiating a cloud scan.
+
+Identical pure local `get_trip_detail` calls share only their in-flight promise,
+never a durable GPS cache. Parameters/user/connection isolate requests; temporary
+local failures retry once. Page responses intentionally stay independent because
+descending cursors are consumed, and cloud operations are never automatically
+retried. No extra vehicle-cloud requests are introduced by notifications.
+
+简体中文：后台本地档案有更新时，卡片显示“本地记录已更新，读取最新内容”，不抢
+已选行程、地图视角或播放。点击后仅刷新本地列表与主行程已存详情，其他比较缓存
+按需更新；缺失详情不会隐式抓云。通知只含设备/版本，发送前再次授权，断线、卸载、
+撤权会清理资源/私有投影。相同本地详情在途读取合并，临时失败最多重试一次，旧版
+后端不支持通知时保留手动读取。新消息不会触发车辆控制或云端全量同步。

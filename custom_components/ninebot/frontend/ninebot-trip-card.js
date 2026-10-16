@@ -1,5 +1,6 @@
 /** Local map-centric ride workbench. No historical GPS is written into HA state. */
 import { LABELS } from './labels.js';
+import { watchHistory } from './history-network.js';
 import { samplePaths, digits } from './trip-browser.js';
 export { TripBrowser, safeRide, businessDates, digits, samplePolyline, samplePaths } from './trip-browser.js';
 import { FleetBrowser, nativeCards } from './fleet-browser.js';
@@ -47,9 +48,10 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   }
   makeMap() {
     return new RouteMap(() => { this.mapError = true; this.render(); },
-      key => this.selection.activate(key), (key, sequence) => this.selection.focusSample(key, sequence));
+      key => this.focusRide(key), (key, sequence) => this.selection.focusSample(key, sequence));
   }
   clearPrivate() {
+    this.stopWatch(); this.pendingUpdates = false; this.feedStatus = null;
     this.resetting = true; cancelAnimationFrame(this.curveFrame); this.pendingFit = null; this.stopPlayback(true); this.tiles = false; this.mapError = false;
     this.selection.clear(); this.tracks.clear(); this.routeMap.clear(); this.notice = null;
     this.resetting = false;
@@ -65,16 +67,96 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         if (this.isConnected && browser.current(epoch) && this.selection.primary === trackKey(ride.device_id, ride)) void this.readRoute(ride);
       });
     }
+    if (!browser.busy && browser.page) this.ensureWatch();
     this.render();
+  }
+  stopWatch() { this.unwatch?.(); this.unwatch = null; this.watchSignature = null; }
+  bindConnection() {
+    const connection = this.browser.hass?.connection;
+    if (this.boundConnection === connection) return;
+    this.unbindConnection();
+    if (!connection?.addEventListener) return;
+    this.boundConnection = connection;
+    this.connectionLost = () => this.browser.setHass({ ...this.browser.hass, connected: false });
+    this.connectionReady = () => this.browser.setHass({ ...this.browser.hass, connected: true });
+    connection.addEventListener('disconnected', this.connectionLost);
+    connection.addEventListener('ready', this.connectionReady);
+  }
+  unbindConnection() {
+    this.boundConnection?.removeEventListener('disconnected', this.connectionLost);
+    this.boundConnection?.removeEventListener('ready', this.connectionReady);
+    this.boundConnection = null;
+  }
+  ensureWatch() {
+    const devices = [...this.browser.resolved.values()].sort();
+    if (!devices.length || !this.isConnected) return;
+    const signature = JSON.stringify([this.browser.hass.user.id, devices]);
+    if (signature === this.watchSignature) return;
+    this.stopWatch(); this.watchSignature = signature;
+    const epoch = this.browser.epoch;
+    const stop = watchHistory(this.browser.hass, devices, event => {
+      if (this.browser.current(epoch)) this.historyUpdate(event);
+    });
+    if (signature === this.watchSignature) this.unwatch = stop; else stop();
+  }
+  historyUpdate(event) {
+    if (event.type === 'denied') {
+      this.browser.reset(); this.browser.error = 'denied'; this.render(); return;
+    }
+    if (event.type === 'retrying' && event.reason === 'temporary') { this.setFeedStatus('feed_retrying'); return; }
+    if (event.type === 'retrying') {
+      this.resetting = true; this.stopPlayback(true); this.selection.clear(); this.tracks.clear(); this.routeMap.clear();
+      this.browser.page = null; this.browser.streams = []; this.browser.details.clear();
+      this.resetting = false; this.feedStatus = 'feed_retrying'; this.render(); return;
+    }
+    if (event.type === 'unavailable' || event.type === 'unsupported') {
+      this.setFeedStatus(event.type === 'unsupported' ? 'feed_unsupported' : 'feed_unavailable'); return;
+    }
+    this.setFeedStatus(null);
+    if (!this.browser.page) { this.browser.error = null; void this.browser.read(); return; }
+    const changed = event.vehicles.some(row => this.browser.streams.find(stream => stream.device === row.device_id)?.revision !== row.selection_version);
+    if (event.type === 'changed' || changed) {
+      this.pendingUpdates = true;
+      for (const track of this.tracks.tracks.values()) track.stale = true;
+      if (changed) this.browser.page.next_cursor = null;
+    }
+    if (this.pendingUpdates) {
+      if (!this.shadowRoot.querySelector('[data-update-banner]')) {
+        const banner = this.button(this.labels().history_updated, () => void this.refreshLocal());
+        banner.dataset.updateBanner = 'true';
+        this.shadowRoot.querySelector('.workbench')?.before(banner);
+      }
+      if (changed) { const next = this.shadowRoot.querySelector('.rides footer button'); if (next) next.disabled = true; }
+    }
+  }
+  setFeedStatus(value) {
+    this.feedStatus = value;
+    this.shadowRoot.querySelector('[data-feed-status]')?.remove();
+    if (value) { const note = element('p', this.labels()[value], 'note'); note.dataset.feedStatus = 'true'; this.shadowRoot.querySelector('.workbench')?.before(note); }
+  }
+  async refreshLocal() {
+    this.stopWatch(); this.pendingUpdates = false;
+    for (const track of this.tracks.tracks.values()) track.stale = true;
+    await this.browser.read();
+    if (this.browser.error || !this.browser.active) return;
+    for (const ride of this.browser.page?.rides ?? []) this.selection.update(ride);
+    const ride = this.selection.selected.get(this.selection.primary);
+    if (ride && this.tracks.tracks.get(this.selection.primary)?.stale) await this.readRoute(ride);
+    this.render();
+  }
+  focusRide(key) {
+    this.selection.activate(key);
+    if (this.tracks.tracks.get(key)?.stale) void this.readRoute(this.selection.selected.get(key));
   }
   setConfig(config) { this.browser.configure(config); }
   set hass(hass) {
     const oldLanguage = this.browser.hass?.language;
     this.browser.setHass(hass);
+    if (this.isConnected) this.bindConnection();
     if (oldLanguage !== hass.language) this.render();
   }
-  connectedCallback() { document.addEventListener('visibilitychange', this.visibility); this.browser.connect(); this.render(); }
-  disconnectedCallback() { document.removeEventListener('visibilitychange', this.visibility); this.browser.disconnect(); this.clearPrivate(); }
+  connectedCallback() { document.addEventListener('visibilitychange', this.visibility); this.bindConnection(); this.browser.connect(); this.render(); }
+  disconnectedCallback() { document.removeEventListener('visibilitychange', this.visibility); this.unbindConnection(); this.browser.disconnect(); this.clearPrivate(); }
   getCardSize() { return 12; }
   getGridOptions() { return { columns: 12, min_columns: 6 }; }
   static getConfigElement() { return document.createElement('ninebot-trip-card-editor'); }
@@ -140,7 +222,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.resetting = false; this.render();
     if (accepted && ride.detail_saved === true) void this.readRoute(ride);
   }
-  remove(key) {
+  removeRide(key) {
     if (this.tracks.busy) return;
     this.resetting = true; this.selection.remove(key); this.tracks.remove(key); this.resetting = false;
     this.render();
@@ -163,7 +245,10 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       }
       this.resetting = false;
     }
-    await this.tracks.read(ride.device_id, ride);
+    const epoch = this.browser.epoch;
+    await this.tracks.read(ride.device_id, ride, { refresh: this.tracks.tracks.get(key)?.stale === true });
+    const summary = this.tracks.tracks.get(key)?.summary;
+    if (summary && this.browser.current(epoch)) { this.selection.update(summary); this.render(); }
   }
   updateFocus() {
     const focus = this.selection.focus;
@@ -270,7 +355,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     const key = trackKey(ride.device_id, ride), saved = this.tracks.tracks.get(key);
     const detail = this.browser.details.get(key), displayed = detail ?? ride;
     const route = this.button(saved && !saved.complete ? labels.more_track : labels.show_track, () => void this.readRoute(ride));
-    route.disabled ||= saved?.complete || displayed.detail_saved === false;
+    route.disabled ||= (saved?.complete && !saved.stale) || displayed.detail_saved === false;
     parent.append(route);
     if (displayed.detail_saved === false) parent.append(element('p', labels.detail_missing, 'note'));
     const source = this.browser.page?.rides.find(row => trackKey(row.device_id, row) === key);
@@ -301,7 +386,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       label.append(input); toolbar.append(label);
     }
     for (const kind of ['recent', 'last_7', 'last_30', 'previous_month', 'next_month']) toolbar.append(this.button(labels[kind], () => browser.range(kind)));
-    toolbar.append(this.button(labels.refresh, () => void browser.read()));
+    toolbar.append(this.button(labels.refresh, () => void this.refreshLocal()));
     const filters = element('details', '', 'filters'); filters.open = this.filtersOpen === true;
     filters.append(element('summary', `${labels.filters} · ${browser.start}–${browser.end}`), toolbar);
     filters.addEventListener('toggle', () => { if (filters.isConnected) this.filtersOpen = filters.open; });
@@ -309,13 +394,15 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     card.append(element('p', `${labels.local} · Asia/Shanghai · ${labels.workbench_note}`, 'note'));
     for (const [text, style] of [[labels[browser.error], 'error'], [browser.busy || this.tracks.busy ? labels.loading : null, 'note'],
       [this.tracks.error ? labels[this.tracks.error] ?? labels.track_error : null, 'error'], [this.notice, 'note']]) if (text) card.append(element('p', text, style));
+    if (this.pendingUpdates) { const banner = this.button(labels.history_updated, () => void this.refreshLocal()); banner.dataset.updateBanner = 'true'; card.append(banner); }
+    if (this.feedStatus) { const note = element('p', labels[this.feedStatus], 'note'); note.dataset.feedStatus = 'true'; card.append(note); }
     const bench = element('div', '', 'workbench'), main = element('section', '', 'main'), list = element('section', '', 'rides');
     const detailsArea = element('section', '', 'ride-detail');
     main.setAttribute('aria-label', labels.map); list.setAttribute('aria-label', labels.title);
     bench.append(main, list, detailsArea); card.append(bench);
     const selected = [...this.selection.selected.entries()], chips = element('div', '', 'chips');
     for (const [key, ride] of selected) {
-      const button = this.button(`${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`, () => this.selection.activate(key));
+      const button = this.button(`${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`, () => this.focusRide(key));
       button.setAttribute('aria-pressed', key === this.selection.primary); chips.append(button);
     }
     main.append(chips);
@@ -340,9 +427,10 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       const panel = element('section', '', 'primary'); panel.dataset.key = primary;
       panel.append(element('h3', `${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`), this.metrics(displayed, labels));
       this.routeActions(panel, ride, labels);
-      panel.append(this.button(labels.remove_track, () => this.remove(primary)));
+      panel.append(this.button(labels.remove_track, () => this.removeRide(primary)));
       const track = this.tracks.tracks.get(primary);
       if (track) {
+        if (track.stale) panel.append(element('p', labels.history_updated, 'note'));
         panel.append(element('p', `${labels.track_points}: ${track.valid_read}/${track.total ?? '—'} · ${track.kind === 'server_simplified' ? labels.simplified : labels.unverified_track}` +
           (track.capped ? ` · ${labels.display_limit}` : '') + (track.complete ? '' : ` · ${labels.partial_track}`), 'note'));
         if (track.partial) panel.append(element('p', labels.partial_archive, 'note'));
@@ -374,7 +462,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
         const label = element('label', labels.compare, 'compare'), compare = element('input'); compare.type = 'checkbox';
         compare.checked = this.selection.selected.has(key); compare.disabled = browser.busy || this.tracks.busy;
         compare.setAttribute('aria-label', `${labels.compare} · ${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`);
-        compare.addEventListener('change', () => compare.checked ? this.choose(ride, true) : this.remove(key));
+        compare.addEventListener('change', () => compare.checked ? this.choose(ride, true) : this.removeRide(key));
         label.prepend(compare); section.append(choose, label); list.append(section);
       }
       const footer = element('footer'); footer.append(element('span', `${labels.page} ${browser.pageNumber} · ${page.rides.length}`, 'note'));
@@ -385,7 +473,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       const help = element('details'); help.append(element('summary', labels.native_cards), element('p', labels.native_note, 'note'), element('pre', JSON.stringify(native, null, 2), 'note'));
       const link = element('a', labels.open_calendar); link.href = '/calendar'; help.append(link); card.append(help);
     }
-    card.append(element('small', 'Ninebot · 2.0.0b92', 'note'));
+    card.append(element('small', 'Ninebot · 2.0.0b93', 'note'));
     this.shadowRoot.replaceChildren(element('style', CSS), card);
     this.shadowRoot.querySelector('.rides').scrollTop = scroll;
     if (active) [...this.shadowRoot.querySelectorAll('[data-control]')].find(item => item.dataset.control === active)?.focus({ preventScroll: true });

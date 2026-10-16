@@ -30,7 +30,10 @@ const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 900 } });
   const errors = [], external = [];
-  page.on('pageerror', error => errors.push(error.message));
+  page.on('pageerror', error => {
+    errors.push(error.message);
+    console.error('Synthetic workbench browser error:', error.stack);
+  });
   // Even optional tiles cannot leave the isolated test. All points are fake.
   await page.route('**/*', route => {
     if (new URL(route.request().url()).origin !== origin) {
@@ -50,6 +53,18 @@ try {
   assert.deepEqual(calls.map(call => call.service_data.device_id), ['synthetic-a', 'synthetic-b']);
   assert.ok(calls.every(call => call.service_data.local_only === true && call.service_data.include_track === true));
   assert.equal(external.length, 0); assert.deepEqual(errors, []);
+  // Real pinned Canvas regression: view updates can redraw synchronously while
+  // an older frame is queued. Removing the map must cancel that older frame too.
+  await page.evaluate(async () => {
+    const { RouteMap } = await import('/ninebot-static/route-map.js');
+    const track = [...fixtureCard.tracks.tracks.values()][0];
+    for (let index = 0; index < 2; index++) {
+      const map = new RouteMap(); document.body.append(map.element);
+      await map.update([track]); map.fit(); map.clear(); map.element.remove();
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+  });
+  assert.deepEqual(errors, [], 'synchronous view update followed by immediate map removal');
 
   await page.evaluate(() => {
     const map = fixtureCard.routeMap;
@@ -128,6 +143,31 @@ try {
   if (output) await page.screenshot({ path: join(output, 'workbench-editor.png'), fullPage: true });
   await page.evaluate(() => fixtureEditor.remove());
 
+  await page.getByRole('button', { name: '按点播放', exact: true }).click();
+  await page.waitForFunction(() => fixtureCard.playback !== null);
+  await page.evaluate(() => { window.playbackBeforeUpdate = fixtureCard.playback; });
+  const beforeNotification = await page.evaluate(() => fixtureRequests.length);
+  const primaryBeforeNotification = await page.evaluate(() => fixtureCard.selection.primary);
+  await page.evaluate(() => {
+    for (const callback of fixtureFeeds) callback({ schema_version: 1, type: 'changed',
+      vehicles: ['synthetic-a', 'synthetic-b'].map(device_id => ({ device_id, selection_version: 'a'.repeat(32) + ':1' })) });
+  });
+  await page.getByRole('button', { name: '本地记录已更新，读取最新内容', exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => fixtureRequests.length), beforeNotification);
+  assert.equal(await page.evaluate(() => fixtureCard.selection.primary), primaryBeforeNotification);
+  assert.equal(await page.evaluate(() => fixtureCard.playback === playbackBeforeUpdate), true);
+  await page.getByRole('button', { name: '暂停播放', exact: true }).click();
+  await page.getByRole('button', { name: '本地记录已更新，读取最新内容', exact: true }).click();
+  await page.waitForFunction(() => !fixtureCard.browser.busy && !fixtureCard.tracks.busy && !fixtureCard.pendingUpdates);
+  assert.equal(await page.evaluate(() => fixtureCard.selection.primary), primaryBeforeNotification);
+  assert.deepEqual(errors, [], 'before simulated disconnect');
+  await page.evaluate(() => fixtureHass.connection.fire('disconnected'));
+  await page.waitForFunction(() => fixtureCard.tracks.tracks.size === 0 && fixtureCard.selection.selected.size === 0);
+  assert.deepEqual(errors, [], 'after simulated disconnect');
+  await page.evaluate(() => fixtureHass.connection.fire('ready'));
+  await page.waitForFunction(() => fixtureCard.browser.page?.rides.length === 2 && !fixtureCard.tracks.busy && fixtureCard.routeMap.map !== null);
+
+  assert.deepEqual(errors, [], 'after simulated reconnect');
   await page.evaluate(async () => { fixtureSaved = false; fixtureCard.browser.reset(); await fixtureCard.browser.read(); });
   await page.waitForFunction(() => !fixtureCard.browser.busy && fixtureCard.selection.selected.size === 1);
   assert.equal(await page.getByRole('button', { name: '显示已保存轨迹', exact: true }).isDisabled(), true);
@@ -143,6 +183,11 @@ try {
     fixtureCard.hass = { ...fixtureHass, user: { id: 'another-synthetic-reader' } };
   });
   await page.waitForFunction(() => fixtureCard.selection.selected.size === 0 && fixtureCard.tracks.tracks.size === 0 && fixtureCard.routeMap.map === null && fixtureCard.playback === null);
+  await page.evaluate(() => fixtureCard.remove());
+  // Flush queued renderer work before claiming disconnect cleanup succeeded.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.equal(await page.evaluate(() => fixtureFeeds.size), 0);
+  assert.equal(await page.evaluate(() => [...fixtureConnectionListeners.values()].some(set => set.size)), false);
   assert.deepEqual(errors, []);
   console.log('Synthetic workbench passed: linked selection/map/curves/brush, stable layers/viewport, bounded local reads, desktop/mobile/editor, explicit cloud detail and user privacy cleanup.');
 } finally {

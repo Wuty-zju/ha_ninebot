@@ -27,6 +27,7 @@ from .entity import async_audit_device_identities
 from .event_store import RideEventPipeline
 from .exceptions import NinebotError
 from .frontend import async_register_frontend
+from .history_websocket import async_register_history_websocket
 from .identity import IdentityStore
 from .migration import async_migrate
 from .models import VehicleSnapshot
@@ -46,6 +47,7 @@ from .storage import ModelStorage
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_register_actions(hass)
+    async_register_history_websocket(hass)
     await async_register_frontend(hass)
     return True
 
