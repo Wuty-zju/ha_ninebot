@@ -128,3 +128,18 @@ test('partial local tracks retain an explicit warning and never mix geometry evi
   assert.equal(changing.tracks.size, 0);
   assert.equal(changing.error, 'track_revision_changed');
 });
+
+
+test('verified geometry token survives scalar/account updates but rejects changed raw geometry', async () => {
+  for (const changed of [false, true]) {
+    const reader = new LocalTracks(async (_, data) => {
+      const response = chunk(data.point_offset, 1025, data.point_offset ? 7 : 1);
+      response.detail_context.scalar_revision = data.point_offset ? 9 : 1;
+      response.detail_context.geometry_version = changed && data.point_offset ? 'b'.repeat(64) : 'a'.repeat(64);
+      return response;
+    });
+    await reader.read('device-a', ride);
+    if (changed) { assert.equal(reader.tracks.size, 0); assert.ok(reader.error); }
+    else { assert.equal(reader.tracks.size, 1); assert.equal(reader.tracks.values().next().value.complete, true); }
+  }
+});

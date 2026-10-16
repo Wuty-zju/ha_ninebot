@@ -385,7 +385,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       const help = element('details'); help.append(element('summary', labels.native_cards), element('p', labels.native_note, 'note'), element('pre', JSON.stringify(native, null, 2), 'note'));
       const link = element('a', labels.open_calendar); link.href = '/calendar'; help.append(link); card.append(help);
     }
-    card.append(element('small', 'Ninebot · 2.0.0b91', 'note'));
+    card.append(element('small', 'Ninebot · 2.0.0b92', 'note'));
     this.shadowRoot.replaceChildren(element('style', CSS), card);
     this.shadowRoot.querySelector('.rides').scrollTop = scroll;
     if (active) [...this.shadowRoot.querySelectorAll('[data-control]')].find(item => item.dataset.control === active)?.focus({ preventScroll: true });

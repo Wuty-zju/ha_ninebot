@@ -1068,3 +1068,33 @@ messages, with English fallback in other supported locales.
 滑块与按点播放使用源点序号联动，不猜测时间和单位。手动地图视角保持，点击
 “显示全部轨迹”才主动缩放；位置权限和底图显式开启规则不变。新增可视化编辑器，
 支持车辆、标题、每页数量和日期，窄卡片/手机自动上下布局。
+
+
+### Scoped local continuation versions (b92)
+
+Descending `get_recorded_trips` responses now add `selection_version` and
+`revision_scope: vehicle_catalog_v1`. The numeric `revision` remains account-wide
+audit metadata. Descending cursors and the card use the vehicle catalog fence;
+ascending calls preserve their original account-wide fence. Unrelated vehicles
+and acquisition progress do not invalidate a descending page. Relevant ride
+scalars, membership, month content and saved-detail presence still require a fresh
+page. Receipt times and coverage annotations are read afresh per response; this is
+not an immutable snapshot of the entire archive.
+
+Versions live only on the archive actor's SQLite connection, with a random epoch
+and transactional TEMP triggers. Reopen/reload invalidates continuations, and a
+rolled-back transaction cannot advance the fence. No persistent schema or backup
+format changes. These guards cover managed actor writes, not external database
+edits or latent disk corruption.
+
+Saved local detail responses also add `geometry_version`, bound to the selected
+raw evidence, source and parser contract. The card can continue the same geometry
+when unrelated data or only ride scalars change; changed geometry, shape, evidence
+roles and integrity availability remain guarded. Old responses without a token use
+the existing stricter fallback. No additional cloud queries or location/ID changes.
+
+简体中文：最新优先分页改用车辆目录版本，不再因其它车辆、纯进度或相同内容的
+收据刷新而失效；本车目录/标量/成员/已存详情有实际改变仍需重新读页。旧正序
+Action行为不变。轨迹续读绑定选中原件与解析契约，纯标量/其它车变化不再丢分段。
+目录版本只在连接内TEMP表/触发器维护，回滚一起回滚、重开连接失效，不改持久
+schema或原件。收据/覆盖说明仍为每次读取的元数据，不是全档案快照证明。

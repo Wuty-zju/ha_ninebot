@@ -150,3 +150,4 @@ class RideDetail:
     selected_geometry_available: bool = True
     payload_evidence_source: str = "latest_payload"
     geometry_evidence_source: str = "selected_geometry"
+    geometry_version: str | None = None

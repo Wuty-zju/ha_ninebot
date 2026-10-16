@@ -15,6 +15,7 @@ from .archive_timeline import (
     current_selection,
     valid_timed_ride,
 )
+from .archive_versions import catalog_version
 from .month_enumeration import RecordedEnumeration, recorded_enumeration
 
 
@@ -33,6 +34,7 @@ class RecordedCursor:
     after_start: str
     after_id: str
     sort: str = "asc"
+    selection_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,7 @@ class RecordedPage:
     months: tuple[RecordedMonth, ...]
     skipped_conflicting_times: int
     saved_detail_ids: frozenset[str] = frozenset()
+    selection_version: str | None = None
 
 
 class RecordedCursors:
@@ -101,10 +104,15 @@ def recorded_page(
 ) -> RecordedPage:
     """Single actor read, at most one output page; never load every ride first."""
     revision = int(db.execute("SELECT value FROM meta WHERE key='revision'").fetchone()[0])
+    scoped = catalog_version(db, vehicle) if sort == "desc" else None
     if cursor and (
         cursor.owner != owner
         or cursor.vehicle != vehicle
-        or cursor.revision != revision
+        or (
+            cursor.selection_version != scoped
+            if scoped is not None
+            else cursor.revision != revision
+        )
         or cursor.start != start
         or cursor.end != end
         or cursor.as_of != as_of
@@ -139,7 +147,7 @@ def recorded_page(
         if len(records) == limit:
             assert position is not None
             next_cursor = RecordedCursor(
-                owner, vehicle, revision, start, end, as_of, *position, sort
+                owner, vehicle, revision, start, end, as_of, *position, sort, scoped
             )
             break
         records.append(ArchivedRide(ride, stamp(observed)))
@@ -180,4 +188,6 @@ def recorded_page(
         if ids
         else frozenset()
     )
-    return RecordedPage(tuple(records), revision, next_cursor, tuple(months), skipped, saved)
+    return RecordedPage(
+        tuple(records), revision, next_cursor, tuple(months), skipped, saved, scoped
+    )

@@ -746,6 +746,9 @@ class RideArchive:
             self.write_paused = pages > budget
             db.execute(f"PRAGMA max_page_count={max(pages, budget)}")
             os.chmod(self.path, 0o600)
+            from .archive_versions import install as install_catalog_versions
+
+            install_catalog_versions(db)
             self._connection = db
         except BaseException:
             db.close()
@@ -1035,8 +1038,9 @@ class RideArchive:
 
             put_month_source(db, vehicle, travel.month, observed, backend, raw)
             db.execute(
-                "UPDATE membership SET latest=0 WHERE vehicle=? AND month=?",
-                (vehicle, travel.month),
+                "UPDATE membership SET latest=0 WHERE vehicle=? AND month=?"
+                + (f" AND ride NOT IN ({','.join('?' for _ in ids)})" if ids else ""),
+                (vehicle, travel.month, *ids),
             )
             for identity, ride in candidates.items():
                 changed = self._upsert_ride(vehicle, ride, observed, ordered) or changed

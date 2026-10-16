@@ -25,6 +25,8 @@ on:
       - 'custom_components/ninebot/backup.py'
       - 'tests/test_private_detail_archive.py'
       - 'tests/test_recorded_trips.py'
+      - 'tests/test_archive_versions.py'
+      - 'custom_components/ninebot/archive_versions.py'
       - 'custom_components/ninebot/travel.py'
       - 'tests/test_travel.py'
       - 'custom_components/ninebot/archive_runtime.py'
@@ -59,6 +61,7 @@ jobs:
           tests/test_private_detail_archive.py
           tests/test_local_reconstruction.py
           tests/test_recorded_trips.py
+          tests/test_archive_versions.py
           tests/test_travel.py
           tests/test_services.py
           tests/test_accumulated_statistics.py

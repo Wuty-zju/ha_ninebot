@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b92
+
+- Fence descending local history continuations with a connection-local vehicle catalog version. Unrelated vehicles, progress writes and unchanged receipt refreshes no longer discard a valid page; relevant catalog/scalar/membership/saved-detail presence changes still reject mixed reads. Ascending Action cursors retain their account-wide behavior.
+- Bind saved track continuations to the selected raw geometry and parser contract rather than unrelated archive/scalar revisions. Legacy responses retain the conservative fingerprint fallback.
+- Use transactional TEMP counters/triggers only; no persistent schema migration or archive deletion. Page receipt/coverage metadata is fresh metadata, not an immutable snapshot certificate. Local update subscriptions and request coalescing follow in the next stage.
+
 ## 2.0.0b91
 
 - Turn the history card into a map-first workbench with linked list selection, up to five compared rides, selected-record totals and a focused ride summary. Saved detail is read locally; cloud retrieval remains an explicit action.
