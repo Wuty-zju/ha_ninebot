@@ -17,7 +17,7 @@ import statistics
 import subprocess
 import tempfile
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from importlib.metadata import version
 from pathlib import Path
@@ -129,13 +129,19 @@ async def seed(actor, scale):
 
 async def timed_reads(actor, operation, repeats):
     actor.samples.clear()
+    batches = []
     actor.capture = True
     try:
         for _ in range(repeats):
+            started = time.perf_counter()
             await operation()
+            batches.append((time.perf_counter() - started) * 1000)
     finally:
         actor.capture = False
-    return {key: summary([row[key] for row in actor.samples]) for key in actor.samples[0]}
+    return {
+        **{key: summary([row[key] for row in actor.samples]) for key in actor.samples[0]},
+        "batch_wall_ms": summary(batches),
+    }
 
 
 async def page(actor, *, vehicle=0, limit=25, cursor=None, recent=False):
@@ -223,6 +229,7 @@ def trigger_cost(actor):
 
 async def details(actor, final, repeats):
     month, rows = final
+    received = NOW + timedelta(seconds=1)
     result = []
     for index, count in enumerate((512, 4096, 20000)):
         raw = {
@@ -233,11 +240,13 @@ async def details(actor, final, repeats):
                 for i in range(count)
             ),
         }
-        record = build_record(Endpoint.TRIP_DETAIL, raw, NOW, month.month, backend_version="0.1.7")
+        record = build_record(
+            Endpoint.TRIP_DETAIL, raw, received, month.month, backend_version="0.1.7"
+        )
         ride = merge_detail(
             month.rides[index], parse_ride(raw, month.month, source=Endpoint.TRIP_DETAIL)
         )
-        await actor.async_record_detail("synthetic-vehicle-0", ride, NOW, raw=record)
+        assert await actor.async_record_detail("synthetic-vehicle-0", ride, received, raw=record)
         digest, body, _ = packed(record)
         canonical = json.dumps(raw, sort_keys=True, separators=(",", ":")).encode()
         metrics = {
@@ -246,7 +255,7 @@ async def details(actor, final, repeats):
             "compressed_bytes": len(body),
             "json_loads": measure(partial(json.loads, canonical), repeats),
             "unpack_integrity_redaction": measure(
-                partial(unpacked, body, digest, NOW, month.month, "0.1.7", None), repeats
+                partial(unpacked, body, digest, received, month.month, "0.1.7", None), repeats
             ),
             "parse_point_page": measure(
                 partial(
@@ -293,7 +302,9 @@ async def profile(scale, repeats, directory):
         assert counts["rides"] == counts["membership"] == scale and counts["months"] == 240
         await actor.async_close()
         actor = ProfileArchive(path)
+        opening = time.perf_counter()
         await actor.async_open()
+        reopen_ms = (time.perf_counter() - opening) * 1000
         first = await timed_reads(actor, lambda: page(actor), 1)
         first_page = await page(actor)
         assert len(first_page.records) == 25 and first_page.next_cursor is not None
@@ -302,7 +313,8 @@ async def profile(scale, repeats, directory):
             "vehicles": 4,
             "months_per_vehicle": 60,
             "counts": counts,
-            "seed_actor_ms": seed_ms,
+            "seed_normalize_and_actor_ms": seed_ms,
+            "reopen_validation_ms": reopen_ms,
             "connection_reopen_first_read_not_os_cold": first,
         }
         for label, operation in (
