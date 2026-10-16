@@ -153,7 +153,16 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.selection.activate(key);
     if (this.mapError) { this.routeMap.clear(); this.routeMap = this.makeMap(); }
     this.mapError = false;
-    if (!this.tracks.tracks.has(key)) this.pendingFit = key;
+    if (!this.tracks.tracks.has(key)) {
+      this.pendingFit = key;
+      // A cached inactive ride must not evict a still-selected comparison track.
+      this.resetting = true;
+      for (const cached of this.tracks.tracks.keys()) {
+        if (this.tracks.tracks.size < 5) break;
+        if (!this.selection.selected.has(cached)) this.tracks.remove(cached);
+      }
+      this.resetting = false;
+    }
     await this.tracks.read(ride.device_id, ride);
   }
   updateFocus() {

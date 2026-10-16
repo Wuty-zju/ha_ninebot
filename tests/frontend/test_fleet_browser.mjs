@@ -204,3 +204,15 @@ test('unsorted or non-descending old responses fail instead of pretending to be 
     await tick(); assert.equal(browser.page, null); assert.equal(browser.error, 'read_error');
   }
 });
+
+
+test('revoked history access during explicit detail clears saved fleet pages and buffers', async () => {
+  const { browser } = setup(request => {
+    if (request.service === 'get_recorded_trips') return page(null);
+    throw { code: 'unauthorized' };
+  });
+  await tick();
+  await browser.detail(browser.page.rides[0]);
+  assert.equal(browser.error, 'denied'); assert.equal(browser.page, null);
+  assert.equal(browser.details.size, 0); assert.equal(browser.streams.length, 0);
+});

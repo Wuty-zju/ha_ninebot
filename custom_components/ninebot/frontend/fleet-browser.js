@@ -174,6 +174,7 @@ export class FleetBrowser extends TripBrowser {
       if (this.current(epoch)) {
         this.cleared?.(); this.details.clear();
         this.error = error?.code === 'unauthorized' ? 'denied' : 'detail_error';
+        if (this.error === 'denied') { this.page = null; this.streams = []; }
       }
     } finally { if (this.current(epoch)) { this.busy = false; this.changed(); } }
   }
