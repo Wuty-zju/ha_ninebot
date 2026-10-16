@@ -4,13 +4,14 @@ import hashlib
 import sqlite3
 from contextlib import closing
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.raw import Endpoint, build_record
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
-from custom_components.ninebot.travel import merge_detail, parse_ride
+from custom_components.ninebot.travel import merge_detail, parse_ride, scan_track
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OWNER = hashlib.sha256(b"synthetic-account").hexdigest()
@@ -506,5 +507,35 @@ async def test_local_geometry_version_binds_selected_original_not_account_or_sca
         )
         third, _ = await cached_detail(co, SN, "first", "202609", 1)
         assert third.geometry_version != first.geometry_version
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("separate_geometry", [False, True])
+async def test_point_page_reuses_validated_geometry_without_skipping_full_source(
+    tmp_path, separate_geometry
+):
+    archive = await opened(tmp_path)
+    trail = ";".join(f"{120 + i / 10000},30,{i},1" for i in range(10)) + ";invalid"
+    try:
+        await save(archive, {"trail": trail, "mileages": 2}, NOW + timedelta(seconds=1))
+        if separate_geometry:
+            await save(
+                archive,
+                {"trail": "120,30,1,1", "is_show_simple_point": True, "mileages": 3},
+                NOW + timedelta(seconds=2),
+            )
+        before = archive.path.read_bytes()
+        with patch("custom_components.ninebot.travel.scan_track", wraps=scan_track) as scan:
+            result = await archive.async_private_detail(SN, "first", max_points=2, point_offset=3)
+        assert result is not None
+        assert scan.call_count == (2 if separate_geometry else 1)
+        assert [point.sequence for point in result.ride.track_points] == [3, 4]
+        assert result.ride.total_track_points == 11
+        assert result.ride.track_quality.valid_point_count == 10
+        assert result.ride.track_quality.invalid_point_count == 1  # Outside the requested page.
+        assert result.ride.distance_m == (3000 if separate_geometry else 2000)
+        assert result.geometry.payload()["trail"] == trail
+        assert archive.path.read_bytes() == before
     finally:
         await archive.async_close()

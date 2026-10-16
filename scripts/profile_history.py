@@ -343,6 +343,16 @@ async def profile(scale, repeats, directory):
         await actor.async_close()
 
 
+def fingerprints():
+    return {
+        "profiler_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "runtime_sha256": {
+            name: hashlib.sha256(Path("custom_components/ninebot", name).read_bytes()).hexdigest()
+            for name in ("ride_archive.py", "detail_codec.py", "archive_browse.py")
+        },
+    }
+
+
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -356,7 +366,7 @@ async def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "data": "synthetic_only_no_network_no_existing_database",
         "commit": (
             await asyncio.to_thread(
@@ -368,6 +378,7 @@ async def main():
         "sqlite": sqlite3.sqlite_version,
         "ha": version("homeassistant"),
         "ninecli": version("ninecli"),
+        **(await asyncio.to_thread(fingerprints)),
         "repeats": args.repeats,
         "percentile": "nearest rank; small sample, descriptive not an SLA",
         "cache": "reopened actor and warm repeats; operating-system cache is not flushed",
