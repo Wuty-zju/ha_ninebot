@@ -988,6 +988,10 @@
         "end_date": {
           "name": "Tanggal akhir",
           "description": "YYYY-MM-DD · Asia/Shanghai"
+        },
+        "sort": {
+          "name": "Sort order",
+          "description": "asc: oldest first; desc: newest first. Keep the same order when continuing."
         }
       }
     }

@@ -414,11 +414,16 @@ data:
   start_date: "2026-09-01"
   end_date: "2026-10-08"
   limit: 20
+  sort: desc  # Optional; omitted = asc for backwards compatibility.
 response_variable: recorded_trips
 ```
 
 Dates are inclusive in Asia/Shanghai, independent of the HA display time zone.
-One call returns at most 100 scalar rides, ordered by start time and ride ID;
+One call returns at most 100 scalar rides, ordered by start time and ride ID.
+`sort: asc` (the default) is oldest first; `sort: desc` is newest first. Keep the
+same direction when continuing; changing it rejects the cursor. Descending
+continuations are single-use after a successful authorized read; an unsuccessful
+request leaves its token usable. Ascending continuation behavior is unchanged;
 ongoing/future rides and conflicting or absent times are excluded. The maximum
 range is five years (1,830 days). Narrow the range if the 5,000-row scan or 8 MiB
 read budget is exceeded; there is no silent truncation or automatic retry loop.
@@ -433,7 +438,7 @@ The local page uses the same selection as the calendar: latest lists plus retain
 observations from partial lists. Complete-list corrections can remove a ride from
 the current view while retaining its historical evidence in the archive.
 
-Pass `next_cursor` as `cursor` with the same device and dates to get the next page.
+Pass `next_cursor` as `cursor` with the same device, dates and sort to get the next page.
 A cursor preserves the first page's `as_of`, is held only in this account's memory,
 expires after 15 minutes, and can be evicted when eight continuations are in use.
 An archive content change (including another vehicle in this account), reload or
@@ -458,7 +463,9 @@ required for GPS; automation traces may retain an explicitly requested track.
 档案，每页最多100条，不自动补采缺月、不拉轨迹、不调用控制。返回来源、采样时间、
 原始精度和缺月/部分/未知覆盖；已存列表完整不等于云端全部历史。继续分页时带回
 `next_cursor`，档案修订、重载或游标过期后从第一页重新读取。缺月同步和单条云端
-详情必须分别显式调用。账号/车辆实体身份及既有远程锁轮询逻辑保持不变。
+详情必须分别显式调用。`sort: desc`为最新优先，默认asc保持旧行为；继续分页需
+保持相同排序，倒序游标在成功且通过权限检查后单次使用，失败时保留。账号/车辆
+实体身份及既有远程锁轮询逻辑保持不变。
 
 
 ## Optional ride detail card
@@ -1005,3 +1012,25 @@ index reconstruction and reference/projection recovery remain follow-up work.
 增量只补未匹配对象，每车变更序号避免其他车辆更新带来的重复检查，定期深扫仍保留。
 正常大小的坏字节有界复制去重；超大原件原位保留，缺失只登记，不冒充已复制。
 状态只显示安全计数，凭据覆盖率不证明引用、派生统计或云历史完整，不自动修复或重抓。
+
+
+### Recent-first card navigation (b90)
+
+The card explicitly requests descending local pages and merges up to five vehicle
+streams in order. Unequal vehicle activity does not hide a newer ride behind an
+older vehicle's quota. Each vehicle buffers at most one 100-row source page; up to
+two local reads run concurrently. The displayed page respects the configured total
+`limit`, including a limit smaller than the selected vehicle count. Empty vehicles
+do not restart, and source/cursor failures never silently mix incompatible pages.
+
+Use **Recent rides (up to 5 years)**, **Last 7/30 days**, **Previous/Next month**, or
+the date inputs to browse across months. These are local archive reads, not history
+synchronization. Records outside the five-year window remain available by choosing
+an older date range. Source coverage is not a count of all rides in the filter, and
+a fleet page is not a cross-account database transaction. Existing date configuration
+and current-month defaults remain supported. Reload the browser after updating.
+
+简体中文：卡片现在按真正最新优先合并多车数据，不再均分各车配额后只倒排当前页。
+可用最近行程（最多5年）、最近7/30天、上/下月及日期输入浏览；更久历史选择旧日期
+范围即可，不删除已存记录。所有浏览只读本地，不额外抓云；每页总条数仍由limit
+决定。更新集成后请重新加载浏览器。

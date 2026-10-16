@@ -8,6 +8,21 @@ export function businessDates(now = new Date()) {
   return [`${values.year}-${values.month}-01`, `${values.year}-${values.month}-${values.day}`];
 }
 
+/** Inclusive Shanghai business-day windows; never infer dates from ride samples. */
+export function recentDates(days, now = new Date()) {
+  const end = businessDates(now)[1];
+  const start = new Date(`${end}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - days + 1);
+  return [start.toISOString().slice(0, 10), end];
+}
+
+export function monthDates(start, offset) {
+  const month = new Date(`${start.slice(0, 7)}-01T00:00:00Z`);
+  month.setUTCMonth(month.getUTCMonth() + offset);
+  const end = new Date(month); end.setUTCMonth(end.getUTCMonth() + 1); end.setUTCDate(0);
+  return [month.toISOString().slice(0, 10), end.toISOString().slice(0, 10)];
+}
+
 export function digits(value, fallback = 0) {
   return Number.isInteger(value) ? Math.max(0, Math.min(6, value)) : fallback;
 }
@@ -96,6 +111,13 @@ export class TripBrowser {
   startIfReady() {
     if (this.active && this.config && this.hass?.user?.id && this.hass.connected !== false &&
         this.hass.callWS && !this.page && !this.busy && !this.error && !this.awaitApply) void this.read();
+  }
+  range(kind) {
+    if (this.busy) return;
+    const dates = kind === 'previous_month' || kind === 'next_month' ?
+      monthDates(this.start, kind === 'previous_month' ? -1 : 1) :
+      recentDates(kind === 'recent' ? 1830 : kind === 'last_7' ? 7 : 30);
+    this.dates(...dates); void this.read();
   }
   dates(start, end) { this.start = start; this.end = end; this.reset(); this.awaitApply = true; }
   current(epoch) { return this.active && epoch === this.epoch; }

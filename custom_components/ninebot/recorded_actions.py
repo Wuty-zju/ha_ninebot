@@ -43,11 +43,14 @@ RECORDED_SCHEMA = vol.Schema(
         vol.Required("end_date"): business_date,
         vol.Optional("limit", default=20): partial(bounded_integer, maximum=100),
         vol.Optional("cursor"): cursor_value,
+        vol.Optional("sort", default="asc"): vol.In(("asc", "desc")),
     }
 )
 
 
 async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    # Internal callers may bypass the registered service schema defaults.
+    sort = call.data.get("sort", "asc")
     entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
     co = entry.runtime_data.coordinator
     generation, ownership = co._generation, co._ownership.get(sn, 0)
@@ -66,13 +69,14 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
     end = datetime.combine(end_date + timedelta(days=1), time(), zone)
     now = dt_util.utcnow()
     cursor = None
-    if token := call.data.get("cursor"):
+    token = call.data.get("cursor")
+    if token:
         cursor = co.recorded_cursors.get(token, now)
         if cursor is None:
             raise validation_error("history_cursor")
     try:
         page = await statistics.archive.async_recorded_page(
-            sn, start, end, now, limit=call.data["limit"], cursor=cursor
+            sn, start, end, now, limit=call.data["limit"], cursor=cursor, sort=sort
         )
     except ValueError:
         raise validation_error("recorded_range") from None
@@ -96,10 +100,15 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
     missing = [month for month in months if month not in stored]
     partial_months = [row.month for row in page.months if row.list_complete is False]
     unknown_months = [row.month for row in page.months if row.list_complete is None]
+    # New descending streams consume their continuation only after a successful,
+    # authorized read. One busy vehicle cannot evict the other four fleet heads.
+    if token and sort == "desc":
+        co.recorded_cursors.discard(token)
     next_cursor = co.recorded_cursors.put(page.next_cursor, now) if page.next_cursor else None
     return {
         "schema_version": 1,
         "source_mode": "ride_archive",
+        "sort": sort,
         "revision": page.revision,
         "range": {
             "start_date": start_date.isoformat(),

@@ -64,7 +64,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Some local originals are unavailable. Showing the remaining readable data.",
-    "enumerated": "Enumerated months"
+    "enumerated": "Enumerated months",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -131,7 +136,12 @@ export const LABELS = {
     "playback_note": "按已读点固定0.5秒逐点播放，不代表实际时间或速度，不请求API。",
     "detail_missing": "尚未保存轨迹详情。先获取详情，或稍后本地读取以查看后台保存进度。",
     "partial_archive": "部分本地原件不可用，正在显示仍可读取的数据。",
-    "enumerated": "已枚举月份"
+    "enumerated": "已枚举月份",
+    "recent": "最近行程（最多5年）",
+    "last_7": "最近7天",
+    "last_30": "最近30天",
+    "previous_month": "上个月",
+    "next_month": "下个月"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -198,7 +208,12 @@ export const LABELS = {
     "playback_note": "按已讀點固定0.5秒逐點播放，不代表實際時間或速度，不請求API。",
     "detail_missing": "尚未儲存軌跡詳情。先取得詳情，或稍後本機讀取以查看背景儲存進度。",
     "partial_archive": "部分本機原件無法使用，正在顯示仍可讀取的資料。",
-    "enumerated": "已列舉月份"
+    "enumerated": "已列舉月份",
+    "recent": "最近行程（最多5年）",
+    "last_7": "最近7天",
+    "last_30": "最近30天",
+    "previous_month": "上個月",
+    "next_month": "下個月"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -265,7 +280,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Einige lokale Originaldaten sind nicht verfügbar. Die übrigen lesbaren Daten werden angezeigt.",
-    "enumerated": "Erfasste Monate"
+    "enumerated": "Erfasste Monate",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "fr": {
     "title": "Historique des trajets",
@@ -332,7 +352,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Certaines données locales sont indisponibles. Les données encore lisibles sont affichées.",
-    "enumerated": "Mois recensés"
+    "enumerated": "Mois recensés",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "es": {
     "title": "Historial de viajes",
@@ -399,7 +424,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Algunos originales locales no están disponibles. Se muestran los datos que aún se pueden leer.",
-    "enumerated": "Meses enumerados"
+    "enumerated": "Meses enumerados",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -466,7 +496,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Alcuni originali locali non sono disponibili. Sono mostrati i dati ancora leggibili.",
-    "enumerated": "Mesi enumerati"
+    "enumerated": "Mesi enumerati",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -533,7 +568,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Alguns originais locais estão indisponíveis. São apresentados os dados ainda legíveis.",
-    "enumerated": "Meses enumerados"
+    "enumerated": "Meses enumerados",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -600,7 +640,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Alguns originais locais estão indisponíveis. Exibindo os dados que ainda podem ser lidos.",
-    "enumerated": "Meses enumerados"
+    "enumerated": "Meses enumerados",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "ru": {
     "title": "История поездок",
@@ -667,7 +712,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Часть локальных оригиналов недоступна. Показаны оставшиеся читаемые данные.",
-    "enumerated": "Перечисленные месяцы"
+    "enumerated": "Перечисленные месяцы",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "ja": {
     "title": "走行履歴",
@@ -734,7 +784,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "一部のローカル原本を利用できません。読み取り可能なデータを表示しています。",
-    "enumerated": "列挙済みの月"
+    "enumerated": "列挙済みの月",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "ko": {
     "title": "주행 기록",
@@ -801,7 +856,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "일부 로컬 원본을 사용할 수 없습니다. 읽을 수 있는 데이터를 표시합니다.",
-    "enumerated": "열거된 월"
+    "enumerated": "열거된 월",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -868,7 +928,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Sommige lokale originelen zijn niet beschikbaar. De overige leesbare gegevens worden getoond.",
-    "enumerated": "Geïnventariseerde maanden"
+    "enumerated": "Geïnventariseerde maanden",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -935,7 +1000,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Niektóre lokalne oryginały są niedostępne. Wyświetlane są pozostałe czytelne dane.",
-    "enumerated": "Zestawione miesiące"
+    "enumerated": "Zestawione miesiące",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "uk": {
     "title": "Історія поїздок",
@@ -1002,7 +1072,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Частина локальних оригіналів недоступна. Показано решту доступних для читання даних.",
-    "enumerated": "Перелічені місяці"
+    "enumerated": "Перелічені місяці",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -1069,7 +1144,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Bazı yerel özgün veriler kullanılamıyor. Okunabilen diğer veriler gösteriliyor.",
-    "enumerated": "Listelenen aylar"
+    "enumerated": "Listelenen aylar",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -1136,7 +1216,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "कुछ स्थानीय मूल डेटा उपलब्ध नहीं हैं। शेष पढ़ने योग्य डेटा दिखाया जा रहा है।",
-    "enumerated": "गणना किए गए महीने"
+    "enumerated": "गणना किए गए महीने",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -1203,7 +1288,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Sebagian data asli lokal tidak tersedia. Menampilkan data lain yang masih dapat dibaca.",
-    "enumerated": "Bulan yang terdata"
+    "enumerated": "Bulan yang terdata",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -1270,7 +1360,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "ข้อมูลต้นฉบับในเครื่องบางส่วนไม่พร้อมใช้งาน กำลังแสดงข้อมูลที่ยังอ่านได้",
-    "enumerated": "เดือนที่แจกแจงแล้ว"
+    "enumerated": "เดือนที่แจกแจงแล้ว",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -1337,7 +1432,12 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "Một số dữ liệu gốc cục bộ không khả dụng. Đang hiển thị dữ liệu còn đọc được.",
-    "enumerated": "Tháng đã liệt kê"
+    "enumerated": "Tháng đã liệt kê",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -1404,6 +1504,11 @@ export const LABELS = {
     "playback_note": "Fixed 0.5-second display steps through loaded points; not actual time or speed. No API requests.",
     "detail_missing": "Track detail is not saved yet. Fetch detail, or read locally again after background preservation.",
     "partial_archive": "بعض البيانات الأصلية المحلية غير متاحة. يتم عرض البيانات المتبقية القابلة للقراءة.",
-    "enumerated": "الأشهر المحصورة"
+    "enumerated": "الأشهر المحصورة",
+    "recent": "Recent rides (up to 5 years)",
+    "last_7": "Last 7 days",
+    "last_30": "Last 30 days",
+    "previous_month": "Previous month",
+    "next_month": "Next month"
   }
 };

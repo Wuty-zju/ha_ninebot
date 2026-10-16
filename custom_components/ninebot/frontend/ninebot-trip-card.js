@@ -170,6 +170,9 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       });
       label.append(input); toolbar.append(label);
     }
+    for (const kind of ['recent', 'last_7', 'last_30', 'previous_month', 'next_month']) {
+      toolbar.append(this.button(labels[kind], () => { this.openRides.clear(); browser.range(kind); }));
+    }
     toolbar.append(this.button(labels.refresh, () => { this.openRides.clear(); void browser.read(); }));
     const displayZone = browser.hass?.config?.time_zone ?? 'Asia/Shanghai';
     const zones = displayZone === 'Asia/Shanghai' ? displayZone : `Asia/Shanghai · ${displayZone}`;

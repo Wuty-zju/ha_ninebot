@@ -2230,12 +2230,14 @@ class RideArchive:
         *,
         limit: int = MAX_PAGE,
         cursor: RecordedCursor | None = None,
+        sort: str = "asc",
     ) -> RecordedPage:
         """Calendar selection as revision-fenced pages, without cloud or writes."""
         vehicle, start_key, end_key = vehicle_key(sn), utc_string(start), utc_string(end)
         as_of = cursor.as_of if cursor else utc_string(now)
         if (
-            start_key >= end_key
+            sort not in ("asc", "desc")
+            or start_key >= end_key
             or (end.astimezone(UTC) - start.astimezone(UTC)).total_seconds()
             > MAX_TIMELINE_DAYS * 86400
             or type(limit) is not int
@@ -2259,6 +2261,7 @@ class RideArchive:
                     first_month,
                     last_month,
                     cursor,
+                    sort,
                 )
             except TimelineLimitError:
                 raise ArchiveError(ArchiveFailure.BUDGET) from None

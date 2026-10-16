@@ -32,6 +32,7 @@ class RecordedCursor:
     as_of: str
     after_start: str
     after_id: str
+    sort: str = "asc"
 
 
 @dataclass(frozen=True)
@@ -78,6 +79,9 @@ class RecordedCursors:
             if not 0 <= (now - received).total_seconds() < 900:
                 self._values.pop(token)
 
+    def discard(self, token: str) -> None:
+        self._values.pop(token, None)
+
     def clear(self) -> None:
         self._values.clear()
 
@@ -93,6 +97,7 @@ def recorded_page(
     first_month: str,
     last_month: str,
     cursor: RecordedCursor | None,
+    sort: str = "asc",
 ) -> RecordedPage:
     """Single actor read, at most one output page; never load every ride first."""
     revision = int(db.execute("SELECT value FROM meta WHERE key='revision'").fetchone()[0])
@@ -103,16 +108,19 @@ def recorded_page(
         or cursor.start != start
         or cursor.end != end
         or cursor.as_of != as_of
+        or cursor.sort != sort
     ):
         raise RecordedCursorMismatch
     selection, arguments = current_selection(db, vehicle)
-    following = " AND (started,id)>(?,?)" if cursor else ""
+    # Direction is validated by the actor; never interpolate client SQL.
+    order, comparison = ("DESC", "<") if sort == "desc" else ("ASC", ">")
+    following = f" AND (started,id){comparison}(?,?)" if cursor else ""
     after = (cursor.after_start, cursor.after_id) if cursor else ()
     rows = db.execute(
         "SELECT data,observed,started,id FROM rides "
         "WHERE vehicle=? AND ended>? AND started<? AND ended<=? "
         f"AND started<>'' AND ended>started AND {selection}{following} "
-        "ORDER BY started,id LIMIT ?",
+        f"ORDER BY started {order},id {order} LIMIT ?",
         (vehicle, start, end, as_of, *arguments, *after, MAX_TIMELINE_RIDES + 1),
     )
     records: list[ArchivedRide] = []
@@ -130,7 +138,9 @@ def recorded_page(
             continue
         if len(records) == limit:
             assert position is not None
-            next_cursor = RecordedCursor(owner, vehicle, revision, start, end, as_of, *position)
+            next_cursor = RecordedCursor(
+                owner, vehicle, revision, start, end, as_of, *position, sort
+            )
             break
         records.append(ArchivedRide(ride, stamp(observed)))
         position = started, identity
