@@ -32,12 +32,27 @@ try {
   await page.addInitScript(() => {
     Error.stackTraceLimit = 40;
     const frame = window.requestAnimationFrame.bind(window);
+    const cancel = window.cancelAnimationFrame.bind(window);
+    const records = new Map(), cancellations = [];
+    window.cancelAnimationFrame = id => {
+      const record = records.get(id);
+      const stack = new Error('Animation cancellation origin').stack;
+      if (record) record.cancelled = stack;
+      cancellations.push({ id, stack });
+      if (cancellations.length > 12) cancellations.shift();
+      return cancel(id);
+    };
     window.requestAnimationFrame = callback => {
-      const scheduled = new Error('Animation scheduling origin').stack;
-      return frame(time => {
+      const record = { scheduled: new Error('Animation scheduling origin').stack, cancelled: null };
+      const id = frame(time => {
         try { callback(time); }
-        catch (error) { console.error(scheduled); throw error; }
+        catch (error) {
+          console.error(JSON.stringify({ id, ...record, cancellations }));
+          throw error;
+        } finally { records.delete(id); }
       });
+      records.set(id, record);
+      return id;
     };
   });
   page.on('console', message => { if (message.type() === 'error') console.error(message.text()); });
