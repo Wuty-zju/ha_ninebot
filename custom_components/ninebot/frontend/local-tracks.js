@@ -118,7 +118,7 @@ export class LocalTracks {
       }
       this.tracks.delete(key);
       while (this.tracks.size >= MAX_TRACKS) this.tracks.delete(this.tracks.keys().next().value);
-      this.tracks.set(key, { ...item, label: String(ride.vehicle_label ?? device).slice(0, 128), ride_id: ride.ride_id });
+      this.tracks.set(key, { ...item, key, label: String(ride.vehicle_label ?? device).slice(0, 128), ride_id: ride.ride_id });
     } catch (error) {
       if (this.epoch === epoch) {
         // HA permission failures can also be translated device/coordinate
