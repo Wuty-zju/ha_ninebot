@@ -3,7 +3,7 @@ const reads = new WeakMap(), subscriptions = new WeakMap();
 const delays = [1000, 5000, 15000];
 const safeStop = stop => { try { Promise.resolve(stop?.()).catch(() => {}); } catch {} };
 
-export function invokeHistory(hass, service, data) {
+export function invokeHistory(hass, service, data, current = () => true) {
   const request = () => hass.callWS({ type: 'call_service', domain: 'ninebot', service,
     service_data: data, return_response: true }).then(result => result.response);
   // Descending page cursors are consumed: never share their response tokens.
@@ -11,10 +11,12 @@ export function invokeHistory(hass, service, data) {
   let active = reads.get(hass.connection);
   if (!active) { active = new Map(); reads.set(hass.connection, active); }
   const key = JSON.stringify([hass.user.id, service, Object.entries(data).sort(([a], [b]) => a.localeCompare(b))]);
-  if (active.has(key)) return active.get(key);
+  if (active.has(key)) { const record = active.get(key); record.guards.add(current); return record.promise; }
   if (active.size >= 64) return Promise.reject({ code: 'busy' });
+  const record = { guards: new Set([current]), promise: null };
   const promise = Promise.resolve().then(async () => {
     for (let attempt = 0; ; attempt++) {
+      if (![...record.guards].some(check => check())) throw { code: 'cancelled' };
       try { return await request(); }
       catch (error) {
         const temporary = ['timeout', 'connection_lost', 'busy'].includes(error?.code) ||
@@ -24,8 +26,8 @@ export function invokeHistory(hass, service, data) {
       }
     }
   });
-  active.set(key, promise);
-  const clear = () => { if (active.get(key) === promise) active.delete(key); };
+  record.promise = promise; active.set(key, record);
+  const clear = () => { record.guards.clear(); if (active.get(key) === record) active.delete(key); };
   promise.then(clear, clear);
   return promise;
 }
@@ -80,7 +82,7 @@ export function watchHistory(hass, devices, listener) {
         if (feed.stopped || serial !== feed.serial) return;
         if (error?.code === 'unauthorized') notify({ type: 'denied' });
         else if (['unknown_command', 'not_supported', 'invalid_format'].includes(error?.code)) notify({ type: 'unsupported' });
-        else retry('unavailable');
+        else retry(error?.code === 'unavailable' ? 'unavailable' : 'temporary');
       });
     };
     feed.start = start;

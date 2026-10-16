@@ -103,15 +103,16 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     if (event.type === 'denied') {
       this.browser.reset(); this.browser.error = 'denied'; this.render(); return;
     }
+    if (event.type === 'retrying' && event.reason === 'temporary') { this.setFeedStatus('feed_retrying'); return; }
     if (event.type === 'retrying') {
       this.resetting = true; this.stopPlayback(true); this.selection.clear(); this.tracks.clear(); this.routeMap.clear();
       this.browser.page = null; this.browser.streams = []; this.browser.details.clear();
       this.resetting = false; this.feedStatus = 'feed_retrying'; this.render(); return;
     }
     if (event.type === 'unavailable' || event.type === 'unsupported') {
-      this.feedStatus = event.type === 'unsupported' ? 'feed_unsupported' : 'feed_unavailable'; this.render(); return;
+      this.setFeedStatus(event.type === 'unsupported' ? 'feed_unsupported' : 'feed_unavailable'); return;
     }
-    this.feedStatus = null;
+    this.setFeedStatus(null);
     if (!this.browser.page) { this.browser.error = null; void this.browser.read(); return; }
     const changed = event.vehicles.some(row => this.browser.streams.find(stream => stream.device === row.device_id)?.revision !== row.selection_version);
     if (event.type === 'changed' || changed) {
@@ -127,6 +128,11 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       }
       if (changed) { const next = this.shadowRoot.querySelector('.rides footer button'); if (next) next.disabled = true; }
     }
+  }
+  setFeedStatus(value) {
+    this.feedStatus = value;
+    this.shadowRoot.querySelector('[data-feed-status]')?.remove();
+    if (value) { const note = element('p', this.labels()[value], 'note'); note.dataset.feedStatus = 'true'; this.shadowRoot.querySelector('.workbench')?.before(note); }
   }
   async refreshLocal() {
     this.stopWatch(); this.pendingUpdates = false;
@@ -389,7 +395,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     for (const [text, style] of [[labels[browser.error], 'error'], [browser.busy || this.tracks.busy ? labels.loading : null, 'note'],
       [this.tracks.error ? labels[this.tracks.error] ?? labels.track_error : null, 'error'], [this.notice, 'note']]) if (text) card.append(element('p', text, style));
     if (this.pendingUpdates) { const banner = this.button(labels.history_updated, () => void this.refreshLocal()); banner.dataset.updateBanner = 'true'; card.append(banner); }
-    if (this.feedStatus) card.append(element('p', labels[this.feedStatus], 'note'));
+    if (this.feedStatus) { const note = element('p', labels[this.feedStatus], 'note'); note.dataset.feedStatus = 'true'; card.append(note); }
     const bench = element('div', '', 'workbench'), main = element('section', '', 'main'), list = element('section', '', 'rides');
     const detailsArea = element('section', '', 'ride-detail');
     main.setAttribute('aria-label', labels.map); list.setAttribute('aria-label', labels.title);

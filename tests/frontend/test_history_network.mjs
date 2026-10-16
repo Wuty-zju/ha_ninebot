@@ -61,3 +61,13 @@ test('only transient local detail failures retry once; authorization never retri
     else { await assert.rejects(promise); assert.equal(calls, 1); }
   }
 });
+
+
+test('a local retry stops when its last consumer has unloaded', async () => {
+  let calls = 0, active = true;
+  const hass = { user: { id: 'u' }, connection: {}, callWS: async () => { calls++; throw { code: 'busy' }; } };
+  const result = invokeHistory(hass, 'get_trip_detail', data, () => active);
+  await tick(); active = false;
+  await assert.rejects(result, error => error.code === 'cancelled');
+  assert.equal(calls, 1);
+});
