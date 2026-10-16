@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b91
+
+- Turn the history card into a map-first workbench with linked list selection, up to five compared rides, selected-record totals and a focused ride summary. Saved detail is read locally; cloud retrieval remains an explicit action.
+- Link map route clicks, source-point sliders and sample-curve hover/brush without network requests. Reuse keyed map layers and preserve the viewport; use Show all routes to fit explicitly. Point units, timestamps and CRS remain unverified.
+- Add a visual dashboard editor, responsive narrow-card/mobile layout, keyboard selection and reduced-motion playback. Clear private projections on user/connection/config changes and unload.
+- No database schema, entity identity, dependency or cloud polling changes. Reload the browser after updating.
+
 ## 2.0.0b90
 
 - Add explicit `sort: desc` local history queries with direction-bound keyset continuations. Existing Action calls remain oldest first by default.

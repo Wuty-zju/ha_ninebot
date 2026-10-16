@@ -177,3 +177,18 @@ test('recent windows and month navigation cross year/month and leap-day boundari
   assert.deepEqual([browser.start, browser.end], ['2026-09-01', '2026-09-30']);
   assert.equal(calls.at(-1).service, 'get_recorded_trips');
 });
+
+
+test('loading a new comparison keeps active cached routes and evicts an inactive one first', async () => {
+  const { trackKey } = await import('../../custom_components/ninebot/frontend/local-tracks.js');
+  const fresh = { ...row('new'), device_id: 'vehicle' }, key = trackKey('vehicle', fresh);
+  const selected = new Map([['active', {}], [key, fresh]]);
+  const cache = new Map([['active', {}], ['old-a', {}], ['old-b', {}], ['old-c', {}], ['old-d', {}]]);
+  const removed = [];
+  const fake = { browser: { active: true, busy: false, page: { rides: [fresh] } },
+    selection: { selected, activate() {} }, mapError: false,
+    tracks: { tracks: cache, busy: false, remove(key) { removed.push(key); cache.delete(key); },
+      async read() { assert.equal(cache.size, 4); assert.ok(cache.has('active')); } } };
+  await NinebotTripCard.prototype.readRoute.call(fake, fresh);
+  assert.deepEqual(removed, ['old-a']);
+});

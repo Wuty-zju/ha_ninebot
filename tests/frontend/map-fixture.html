@@ -15,6 +15,7 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection: {}, connect
   config: { time_zone: 'Asia/Shanghai' }, states: {}, callWS: async request => {
     window.fixtureRequests.push(request);
     if (request.type === 'config/entity_registry/get') return { device_id: 'synthetic-a' };
+    if (window.fixtureDeny) throw { code: 'unauthorized' };
     const data = request.service_data;
     if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive', sort: 'desc',
       rides: [{ ...row, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
@@ -30,9 +31,10 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection: {}, connect
           next_offset: null, geometry_kind: 'sampled_unverified' } } } };
   } };
 window.fixtureCard = document.createElement('ninebot-trip-card');
-fixtureCard.setConfig({ type: 'custom:ninebot-trip-card', vehicles: [
+window.fixtureConfig = { type: 'custom:ninebot-trip-card', vehicles: [
   { device_id: 'synthetic-a', name: 'Synthetic A' }, { device_id: 'synthetic-b', name: 'Synthetic B' }],
   start_date: '2026-09-01', end_date: '2026-09-30', limit: 10,
-  statistics_entities: ['ninebot:synthetic_day_distance_km'] });
+  statistics_entities: ['ninebot:synthetic_day_distance_km'] };
+fixtureCard.setConfig(fixtureConfig);
 fixtureCard.hass = fixtureHass; document.body.append(fixtureCard);
 </script></html>

@@ -1034,3 +1034,37 @@ and current-month defaults remain supported. Reload the browser after updating.
 可用最近行程（最多5年）、最近7/30天、上/下月及日期输入浏览；更久历史选择旧日期
 范围即可，不删除已存记录。所有浏览只读本地，不额外抓云；每页总条数仍由limit
 决定。更新集成后请重新加载浏览器。
+
+
+### Linked map workbench (b91)
+
+The existing `custom:ninebot-trip-card` resource/configuration remains valid. Reload
+the browser after updating (the card footer shows its bundled version). The first
+local ride is selected automatically, and its track is read only when the page
+reports saved detail. Missing detail never triggers an automatic cloud fetch.
+
+Select a ride in the list to link its summary, map and sample curves. Check
+**Compare** for up to five rides, including different vehicles; chips switch the
+focused ride. Totals are explicitly for the selected records, not the entire
+filter. Selections survive page navigation within the current scope; changing
+user, connection, vehicle/date scope or removing the card clears private caches.
+
+Map route clicks select the focused ride. Curve hover, a source-point slider and
+sequence playback share the same focus marker. Drag across a curve to highlight a
+source-sequence range on the map. These interactions make no requests and do not
+invent point timestamps or infer speed/distance units. Gaps and server-simplified
+points keep their existing quality boundaries. **Show all routes** fits the map;
+ordinary focus, tile and HA telemetry updates preserve the manual viewport.
+
+The dashboard card editor supports one to five vehicle calendars or manually
+entered HA device IDs, title, page size and optional dates. Existing statistic
+options are preserved; advanced fields remain editable in YAML. No dashboard is
+automatically modified. New concise interface text has Chinese and English
+messages, with English fallback in other supported locales.
+
+简体中文：旧卡片配置继续有效，更新后重新加载浏览器。默认选中首条本地行程，只有
+明确已保存的详情才自动读取轨迹；未保存时仍需手动获取云端详情。点击列表/地图
+同步主行程，勾选“加入比较”最多比较5条；合计仅统计已选记录。曲线悬停、拖选、
+滑块与按点播放使用源点序号联动，不猜测时间和单位。手动地图视角保持，点击
+“显示全部轨迹”才主动缩放；位置权限和底图显式开启规则不变。新增可视化编辑器，
+支持车辆、标题、每页数量和日期，窄卡片/手机自动上下布局。

@@ -170,7 +170,10 @@ export class TripBrowser {
         local_partial: response.detail_context?.local_integrity?.partial === true });
       // Keep the token; the backend explicitly rejects a changed archive revision.
     } catch (error) {
-      if (this.current(epoch)) this.error = error?.code === 'unauthorized' ? 'denied' : 'detail_error';
+      if (this.current(epoch)) {
+        this.error = error?.code === 'unauthorized' ? 'denied' : 'detail_error';
+        if (this.error === 'denied') { this.page = null; this.details.clear(); }
+      }
     } finally { if (this.current(epoch)) { this.busy = false; this.changed(); } }
   }
 }
