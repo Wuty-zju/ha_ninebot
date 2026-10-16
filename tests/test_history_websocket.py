@@ -19,12 +19,13 @@ NOW = datetime(2026, 10, 8, 10, tzinfo=UTC)
 @pytest.fixture(autouse=True)
 def clock(freezer, monkeypatch):
     freezer.move_to(NOW)
-    monkeypatch.setattr(ws, "DEBOUNCE", 0.01)
-    monkeypatch.setattr(ws, "RETRY_DELAYS", (0.01, 0.01))
+    monkeypatch.setattr(ws, "DEBOUNCE", 0)
+    monkeypatch.setattr(ws, "RETRY_DELAYS", (0, 0))
 
 
 @pytest.fixture
 async def local(hass, entry, app_client, hass_ws_client):
+    print("WS fixture: setup synthetic entry", flush=True)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     app_client.reset_mock()
@@ -37,6 +38,7 @@ async def local(hass, entry, app_client, hass_ws_client):
         client = await hass_ws_client(hass)
     except TypeError:
         client = await hass_ws_client()
+    print("WS fixture: authenticated client ready", flush=True)
     return device, client, entry.runtime_data.coordinator
 
 
@@ -44,7 +46,8 @@ async def subscribe(client, device, identity=1):
     await client.send_json(
         {"id": identity, "type": "ninebot/history/subscribe", "device_ids": [device]}
     )
-    return await client.receive_json()
+    print("WS awaiting subscription result", identity, flush=True)
+    return await asyncio.wait_for(client.receive_json(), 5)
 
 
 async def test_real_commit_is_debounced_and_unsubscribe_is_local(hass, entry, app_client, local):
@@ -76,7 +79,8 @@ async def test_real_commit_is_debounced_and_unsubscribe_is_local(hass, entry, ap
     )
     for _ in range(3):
         co.statistics._notify_change("SyntheticSN", None)
-    event = (await client.receive_json())["event"]
+    print("WS awaiting changed after archive commit", flush=True)
+    event = (await asyncio.wait_for(client.receive_json(), 5))["event"]
     assert event["type"] == "changed"
     assert event["vehicles"][0]["selection_version"] != baseline["vehicles"][0]["selection_version"]
     await client.send_json({"id": 2, "type": "unsubscribe_events", "subscription": 1})

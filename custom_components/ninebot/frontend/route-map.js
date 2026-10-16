@@ -26,8 +26,11 @@ export class RouteMap {
   }
   clear() {
     this.serial++; cancelAnimationFrame(this.frame); this.frame = null;
-    // Remove paths while their Canvas renderer still exists; then its removal
-    // cancels the final queued redraw instead of scheduling work on a dead ctx.
+    // Drain every vector owned by this map before Leaflet removes renderers.
+    // A focus/brush path can outlive its logical group after selection changes.
+    if (this.map && this.library) this.map.eachLayer(layer => {
+      if (layer instanceof this.library.Path) this.map.removeLayer(layer);
+    });
     this.layer?.clearLayers(); this.map?.remove(); this.map = null; this.layer = null; this.tiles = null;
     this.focus = null; this.selectedPoint = null; this.brushLayer = null;
     this.groups.clear(); this.bounds = []; this.primary = null; this.brushSignature = null; this.brushTrack = null;
