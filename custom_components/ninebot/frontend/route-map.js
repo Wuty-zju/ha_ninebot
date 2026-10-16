@@ -26,7 +26,9 @@ export class RouteMap {
   }
   clear() {
     this.serial++; cancelAnimationFrame(this.frame); this.frame = null;
-    this.map?.remove(); this.map = null; this.layer = null; this.tiles = null;
+    // Remove paths while their Canvas renderer still exists; then its removal
+    // cancels the final queued redraw instead of scheduling work on a dead ctx.
+    this.layer?.clearLayers(); this.map?.remove(); this.map = null; this.layer = null; this.tiles = null;
     this.focus = null; this.selectedPoint = null; this.brushLayer = null;
     this.groups.clear(); this.bounds = []; this.primary = null; this.brushSignature = null; this.brushTrack = null;
   }
