@@ -49,6 +49,8 @@ RECORDED_SCHEMA = vol.Schema(
 
 
 async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[str, Any]:
+    # Internal callers may bypass the registered service schema defaults.
+    sort = call.data.get("sort", "asc")
     entry, sn = resolve_vehicle(hass, call.data["device_id"], require_live=False)
     co = entry.runtime_data.coordinator
     generation, ownership = co._generation, co._ownership.get(sn, 0)
@@ -74,7 +76,7 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
             raise validation_error("history_cursor")
     try:
         page = await statistics.archive.async_recorded_page(
-            sn, start, end, now, limit=call.data["limit"], cursor=cursor, sort=call.data["sort"]
+            sn, start, end, now, limit=call.data["limit"], cursor=cursor, sort=sort
         )
     except ValueError:
         raise validation_error("recorded_range") from None
@@ -100,13 +102,13 @@ async def async_recorded_query(hass: HomeAssistant, call: ServiceCall) -> dict[s
     unknown_months = [row.month for row in page.months if row.list_complete is None]
     # New descending streams consume their continuation only after a successful,
     # authorized read. One busy vehicle cannot evict the other four fleet heads.
-    if token and call.data["sort"] == "desc":
+    if token and sort == "desc":
         co.recorded_cursors.discard(token)
     next_cursor = co.recorded_cursors.put(page.next_cursor, now) if page.next_cursor else None
     return {
         "schema_version": 1,
         "source_mode": "ride_archive",
-        "sort": call.data["sort"],
+        "sort": sort,
         "revision": page.revision,
         "range": {
             "start_date": start_date.isoformat(),
