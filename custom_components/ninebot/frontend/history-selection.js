@@ -13,7 +13,8 @@ export class HistorySelection {
     this.notify('selection');
   }
   select(ride, compare = false) {
-    if (!ride?.ride_id || !ride.query_month || typeof ride.device_id !== 'string') return false;
+    if (typeof ride?.ride_id !== 'string' || !ride.ride_id || !/^20\d{4}$/.test(ride.query_month) ||
+        typeof ride.device_id !== 'string' || !ride.device_id.trim()) return false;
     const key = trackKey(ride.device_id, ride);
     if (compare && !this.selected.has(key) && this.selected.size >= 5) return false;
     const value = { ...safeRide(ride), device_id: ride.device_id,
@@ -21,7 +22,8 @@ export class HistorySelection {
     const same = this.primary === key;
     if (!compare) this.selected.clear();
     this.selected.set(key, value); this.primary = key;
-    if (!same) { this.focus = null; this.brush = null; }
+    if (!same || !this.selected.has(this.focus?.key)) this.focus = null;
+    if (!same || !this.selected.has(this.brush?.key)) this.brush = null;
     this.notify('selection'); return true;
   }
   activate(key) {
@@ -44,7 +46,9 @@ export class HistorySelection {
   brushSamples(key, start, end) {
     if (!this.selected.has(key) || ![start, end].every(value =>
       Number.isInteger(value) && value >= 0 && value < 1048576)) return;
-    this.brush = { key, start: Math.min(start, end), end: Math.max(start, end) };
+    const first = Math.min(start, end), last = Math.max(start, end);
+    if (this.brush?.key === key && this.brush.start === first && this.brush.end === last) return;
+    this.brush = { key, start: first, end: last };
     this.notify('focus');
   }
 }

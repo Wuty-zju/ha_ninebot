@@ -43,3 +43,16 @@ test('removing a focused ride or clearing on scope change leaves no private sele
   assert.equal(session.primary, trackKey('a', a)); assert.equal(session.focus, null); assert.equal(session.brush, null);
   session.clear(); assert.equal(session.selected.size, 0); assert.equal(session.primary, null);
 });
+
+
+test('leaving comparison cannot leave focus attached to a deselected ride', () => {
+  const session = new HistorySelection(), a = ride('a'), b = ride('b');
+  session.select(a); session.select(b, true);
+  session.focusSample(trackKey('a', a), 2); session.brushSamples(trackKey('a', a), 1, 4);
+  session.select(b);
+  assert.equal(session.focus, null); assert.equal(session.brush, null);
+  for (const value of [{}, { ...a, device_id: '' }, { ...a, query_month: 'invalid' }]) {
+    assert.equal(session.select(value), false);
+  }
+  assert.equal(session.selected.size, 1);
+});
