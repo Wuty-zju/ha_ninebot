@@ -99,12 +99,6 @@ try {
   await page.waitForFunction(() => fixtureCard.selection.selected.get(fixtureCard.selection.primary)?.device_id === 'synthetic-b' && fixtureCard.selection.focus?.sequence === 8);
   await page.getByRole('button', { name: '按点播放', exact: true }).click();
   await page.waitForFunction(() => fixtureCard.playback !== null && fixtureCard.selection.focus.sequence > 8);
-  await page.evaluate(() => {
-    window.playbackBeforeUpdate = fixtureCard.playback;
-    for (const callback of fixtureFeeds) callback({ schema_version: 1, type: 'changed',
-      vehicles: ['synthetic-a', 'synthetic-b'].map(device_id => ({ device_id, selection_version: 'a'.repeat(32) + ':1' })) });
-  });
-  assert.equal(await page.evaluate(() => fixtureCard.playback === playbackBeforeUpdate), true);
   await page.getByRole('button', { name: '暂停播放', exact: true }).click();
   assert.equal(await page.evaluate(() => fixtureRequests.length), before);
 
@@ -148,6 +142,9 @@ try {
   if (output) await page.screenshot({ path: join(output, 'workbench-editor.png'), fullPage: true });
   await page.evaluate(() => fixtureEditor.remove());
 
+  await page.getByRole('button', { name: '按点播放', exact: true }).click();
+  await page.waitForFunction(() => fixtureCard.playback !== null);
+  await page.evaluate(() => { window.playbackBeforeUpdate = fixtureCard.playback; });
   const beforeNotification = await page.evaluate(() => fixtureRequests.length);
   const primaryBeforeNotification = await page.evaluate(() => fixtureCard.selection.primary);
   await page.evaluate(() => {
@@ -157,6 +154,8 @@ try {
   await page.getByRole('button', { name: '本地记录已更新，读取最新内容', exact: true }).waitFor();
   assert.equal(await page.evaluate(() => fixtureRequests.length), beforeNotification);
   assert.equal(await page.evaluate(() => fixtureCard.selection.primary), primaryBeforeNotification);
+  assert.equal(await page.evaluate(() => fixtureCard.playback === playbackBeforeUpdate), true);
+  await page.getByRole('button', { name: '暂停播放', exact: true }).click();
   await page.getByRole('button', { name: '本地记录已更新，读取最新内容', exact: true }).click();
   await page.waitForFunction(() => !fixtureCard.browser.busy && !fixtureCard.tracks.busy && !fixtureCard.pendingUpdates);
   assert.equal(await page.evaluate(() => fixtureCard.selection.primary), primaryBeforeNotification);
