@@ -1,0 +1,46 @@
+name: Documentation
+on:
+  pull_request:
+    paths:
+      - '*.md'
+      - 'docs/**'
+      - 'NOTICE'
+      - 'scripts/check_docs.py'
+      - 'scripts/docs_preview.py'
+      - 'scripts/tests/test_docs.py'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/CODEOWNERS'
+      - '.github/workflows/documentation.yaml'
+  push:
+    branches: [main]
+    paths:
+      - '*.md'
+      - 'docs/**'
+      - 'NOTICE'
+      - 'scripts/check_docs.py'
+      - 'scripts/docs_preview.py'
+      - 'scripts/tests/test_docs.py'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/CODEOWNERS'
+      - '.github/workflows/documentation.yaml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python -m unittest discover -s scripts/tests -p 'test_docs.py'
+      - run: python scripts/check_docs.py

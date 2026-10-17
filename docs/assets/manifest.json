@@ -9,23 +9,23 @@
   "license": "Project-generated documentation captures under repository MIT; included Leaflet UI retains its BSD attribution. No third-party map tiles.",
   "assets": [
     {
-      "file": "workbench-en.png",
+      "file": "workbench-en.jpg",
       "locale": "en",
       "sha256": "4932a5d5d7d16db3165e0f5231b6ef3f7da9389d1f6ccc2a09a6f8b310d9b7f6",
       "bytes": 63147,
-      "width": 65536,
-      "height": 4292542531,
+      "width": 1280,
+      "height": 720,
       "presentation": "1280x720 desktop viewport, demo shell at 0.8 scale",
       "synthetic": true,
       "real_data": false
     },
     {
-      "file": "workbench-zh.png",
+      "file": "workbench-zh.jpg",
       "locale": "zh-Hans",
       "sha256": "42a2d1a655027282ca796745afda84e819168b0879c1263b7b7c6d87ed436bc9",
       "bytes": 54646,
-      "width": 65536,
-      "height": 4292542531,
+      "width": 1280,
+      "height": 720,
       "presentation": "1280x720 desktop viewport, demo shell at 0.8 scale",
       "synthetic": true,
       "real_data": false

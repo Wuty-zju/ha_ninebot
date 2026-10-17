@@ -1,0 +1,43 @@
+name: Bug report / 问题反馈
+description: Report a reproducible integration problem without private data.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the README/troubleshooting guide first. Do not post credentials, account/SN, GPS trails or private session files. For sensitive concerns read SECURITY.md. Do not perform vehicle controls merely to reproduce an issue.
+  - type: input
+    id: versions
+    attributes:
+      label: Integration and Home Assistant versions / 版本
+      placeholder: "2.0.0bXX; HA 2026.X.X"
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation / 安装方式
+      options:
+        - HACS custom repository
+        - Manual
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior / 预期与实际
+      description: Include minimal steps, model family and platform/architecture; omit serials and identity.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Reviewed logs or diagnostics / 已检查的日志或诊断
+      description: Optional small relevant excerpt. Remove credentials, identities, addresses and coordinates; never attach the raw archive.
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy / 隐私
+      options:
+        - label: I reviewed this report and removed sensitive identities, credentials and location data.
+          required: true

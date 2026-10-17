@@ -76,4 +76,12 @@ Handoffs state base/head, scope, changed contracts, checks/skips and unresolved 
 
 Keep stages reviewable. Documentation-only updates do not bump versions or create empty prereleases. Actual behavior/packaging releases need relevant authorized checks, a real GitHub Release and truthful notes. Publishing, deploying production HA and applying for HACS default inclusion are separate actions; do not infer permission from a local docs task.
 
+## Documentation assets and preview
+
+Use `python3 scripts/check_docs.py` and `python3 -m unittest discover -s scripts/tests -p 'test_docs.py'`. Both use only the standard library. The **Documentation** workflow runs these on public documentation/tool changes without HA/pip/browser dependencies. It checks local Markdown/HTML-image references and anchors, NOTICE targets, paired language outlines and the synthetic-image manifest; translation meaning, remote availability and screenshot privacy still require review. Ignored local override files are excluded.
+
+`python3 scripts/docs_preview.py` starts a loopback-only preview of the existing `tests/frontend/map-fixture.html`, never a HA account. Use the printed URL with `lang=en` or `lang=zh-Hans`; optional `scale=0.8` changes only the documentation shell. Select the second synthetic Compare checkbox for the desktop example. CSP blocks external connections/images; keep tiles off. Stop the process after use. The ordinary browser smoke fixture remains unchanged.
+
+The [asset manifest](assets/manifest.json) records runtime commit, fixture digest, image language/size/hash, synthetic provenance and attribution. Desktop images are viewport captures of the real bundled card; the Chinese mobile example is the earlier b94 full-page synthetic render. Do not replace them with real accounts or a fabricated future UI. Preserve upstream Leaflet attribution; an image's synthetic flag alone is not a privacy audit.
+
 简体中文摘要：按任务读取指南/模块/fixture，小改相关检查、重大边界一次矩阵。默认离线、保护身份与私有数据；明确授权才并行，独立 worktree、单一整合者，文档-only 不发空版本。

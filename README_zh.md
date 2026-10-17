@@ -20,7 +20,7 @@
 
 > **2.0 预发布 · 独立社区集成。** 面向中国区 App 服务，未验证所有车型/其他地区。云端采集需互联网，已有本地历史可不抓云浏览。
 
-![随包历史地图以两辆合成车辆演示路线比较、关联列表与选中汇总，无真实账号/路线，底图关闭。](docs/assets/workbench-zh.png)
+![随包历史地图以两辆合成车辆演示路线比较、关联列表与选中汇总，无真实账号/路线，底图关闭。](docs/assets/workbench-zh.jpg)
 
 *真实随包卡片与合成数据。地图、列表、摘要和采样曲线共享选择，演示未开启在线底图。*
 
@@ -142,6 +142,6 @@ flowchart LR
 
 先读[文档](docs/README.md)和[排障](docs/guide_zh.md#常见问题)。复现问题用 [Issues](https://github.com/Wuty-zju/ha_ninebot/issues)，使用/设计用 [Discussions](https://github.com/Wuty-zju/ha_ninebot/discussions)。提供版本与检查后的诊断，**不要上传凭据或完整私人轨迹**。
 
-贡献者与 Agent：[开发地图](docs/development.md) · [AGENTS](AGENTS.md)。小改相关离线检查，重大边界一次兼容矩阵；Checks 徽章不表示已跑全矩阵。
+贡献者与 Agent：[贡献说明](CONTRIBUTING.md) · [开发地图](docs/development.md) · [AGENTS](AGENTS.md)。敏感问题读[安全政策](SECURITY.md)。小改相关离线检查，重大边界一次兼容矩阵；Checks 徽章不表示已跑全矩阵。
 
 MIT 许可。Ninebot/Segway 商标/图片归原权利人，本项目无官方关联/支持。感谢 HA/HACS 社区及 [NOTICE](NOTICE)、[架构归属](docs/architecture.md#dependencies-and-attribution)、随包许可证列明的协议/库贡献。

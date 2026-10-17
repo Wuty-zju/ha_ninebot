@@ -20,7 +20,7 @@ Bring your Ninebot vehicles into everyday Home Assistant automations: monitor ba
 
 > **2.0 prerelease · Independent community integration.** Designed for the Chinese Ninebot App service; other regions and every vehicle model are not verified. Internet is required for cloud acquisition. Saved local history can be browsed without fetching the cloud.
 
-![Two synthetic vehicles compared in the bundled history map, with linked list and selected totals. No real account or route data; tiles are off.](docs/assets/workbench-en.png)
+![Two synthetic vehicles compared in the bundled history map, with linked list and selected totals. No real account or route data; tiles are off.](docs/assets/workbench-en.jpg)
 
 *Actual bundled card with synthetic data. Map, list, summary and sample curves share a selection; optional online tiles are disabled in this demo.*
 
@@ -142,6 +142,6 @@ Cloud acquisition and local browsing are separate. Entities update on bounded de
 
 Start with [documentation](docs/README.md) and [troubleshooting](docs/guide.md#troubleshooting). Use [Issues](https://github.com/Wuty-zju/ha_ninebot/issues) for reproducible bugs and [Discussions](https://github.com/Wuty-zju/ha_ninebot/discussions) for usage/design questions. Share versions and reviewed diagnostics, **never credentials or full private tracks**.
 
-Contributors and coding agents: [development map](docs/development.md) · [AGENTS](AGENTS.md). Small changes use related offline checks; full compatibility runs are for major boundaries. The Checks badge does not claim every matrix job ran.
+Contributors and coding agents: [contributing](CONTRIBUTING.md) · [development map](docs/development.md) · [AGENTS](AGENTS.md). Sensitive concerns: [security policy](SECURITY.md). Small changes use related offline checks; full compatibility runs are for major boundaries. The Checks badge does not claim every matrix job ran.
 
 MIT licensed. Ninebot/Segway trademarks and images belong to their owners; this project has no official affiliation/support. Thanks to the HA/HACS community and protocol/library work acknowledged in [NOTICE](NOTICE), [architecture attribution](docs/architecture.md#dependencies-and-attribution) and bundled licenses.
