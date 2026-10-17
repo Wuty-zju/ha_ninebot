@@ -1,6 +1,6 @@
 # ha_ninebot product constraints
 
-Check actual Git state and user changes before editing. Runtime assets belong in the integration directory. Local development handbooks, raw samples, histories and workspace tools live outside this product repository; do not add them to releases. Standalone contributors can start with README, docs/README, code, tests/fixtures and CI.
+Check actual Git state and user changes before editing. Start with README/docs/README and the task-to-source/test table in docs/development.md; follow CONTRIBUTING.md for delivery. Read only relevant contracts and fixture metadata, not the entire release history. Private handbooks/captures/workspace tools stay outside this repository; no local paths are required for standalone contributions.
 
 ## Product constraints
 
@@ -15,4 +15,4 @@ Check actual Git state and user changes before editing. Runtime assets belong in
 
 ## Delivery
 
-Keep changes independently reviewable; preserve branches, user changes and entity identity. Update public user documentation and translations when behavior changes. Run related offline tests; broaden at major functional boundaries or justified risks. Never claim skipped checks or physical effects as verified. Use isolated worktrees if parallel work is explicitly authorized, with one integrator for shared files and releases. No force push or destructive reset.
+Keep changes independently reviewable; preserve branches, user changes and identity. Update public docs/translations when behavior changes. Docs use `python3 scripts/check_docs.py`; runtime changes need related offline tests, broader checks only at major boundaries/justified risks. Record actual checks/skips; do not claim physical effects. Parallel work requires explicit authorization, separate branch/worktree and fixed owner/scope/base; one integrator owns shared contracts, manifest/version, translations, docs navigation and releases. No force push/destructive reset, private-data publication or empty documentation prereleases.

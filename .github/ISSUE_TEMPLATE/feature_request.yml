@@ -1,0 +1,20 @@
+name: Feature request / 功能建议
+description: Explain a useful HA capability and its evidence.
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: User need / 使用需求
+      description: Describe the automation/history workflow and why current behavior is insufficient.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Proposed representation and evidence / 方案与依据
+      description: Link public docs/source or sanitized schema. Separate verified units/meaning from guesses. Do not attach private raw/GPS.
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Compatibility and request cost / 兼容与请求成本
+      description: Consider identity stability, local reuse, bounded storage and avoiding repeated cloud requests.

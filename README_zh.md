@@ -1,123 +1,146 @@
-# Ninebot 九号 Home Assistant 集成
+<div align="center">
 
-[English](README.md) · [发布版本](https://github.com/Wuty-zju/ha_ninebot/releases) · [开发入口](docs/README.md)
+# Ninebot for Home Assistant
 
-独立、非官方集成。v2使用固定 `ninecli==0.1.7` 的App协议替换OpenClaw；当前b50代码为预发布。
-后端面向中国区App服务，其他地区未验证；云端API可用性由厂商决定。
+**在 Home Assistant 中管理九号车辆、电池与骑行历史。**
 
-## 安装与登录
+[English](README.md) · 简体中文
 
-HACS添加自定义集成仓库 `Wuty-zju/ha_ninebot`，选择测试版；也可复制 `custom_components/ninebot`。
-安装后由用户自行重启HA，在“设备与服务”添加Ninebot。最低HA **2026.1.0**，需要兼容的64位ninecli wheel；
-不支持ARMv7/32位。Linux/macOS/Windows包已发布不代表每个平台均经过实测。
+[![Release](https://img.shields.io/github/v/release/Wuty-zju/ha_ninebot?include_prereleases&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases)
+[![Home Assistant](https://img.shields.io/badge/Home_Assistant-2026.1.0%2B-18bcf2)](docs/guide_zh.md#环境要求)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom_repository-orange)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
+[![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml)
+[![License](https://img.shields.io/github/license/Wuty-zju/ha_ninebot)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/Wuty-zju/ha_ninebot?style=flat&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers)
+[![Total release downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/total?label=downloads&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
 
-支持密码和两步短信登录；候选会话隔离验证后提交，密码不入ConfigEntry或argv。
-短信已离线验证，真实发送/验证码流程待验证。reauth/reconfigure保持同一账户。
-支持添加多个不同账号，新版HA入口显示“添加账号”；条目按上游明确提供的信息显示“用户名：账号[服务地区]”，
-缺少信息时回退到账号，不从国家/区号猜服务地区。自定义条目标题保留，登录读取用户名/地区；旧账号缺用户名时可在成功setup后进行一次显示信息补齐，不建立轮询或重试循环。
-每条目独立私有token/config目录；同权限/高权限进程仍属于本地信任边界。
-受管理serve只监听loopback并使用随机Bearer；native车辆发现命令负责准备业务路由缓存。
-细节见[Backend与认证契约](docs/README.md)。
+[安装](#安装) · [历史同步](#历史行程轨迹与详情同步) · [文档](docs/README.md) · [开发方向](docs/roadmap.md)
 
-## 当前功能与选项
+</div>
 
-| 类别 | 当前能力 |
+让九号车辆参与日常 HA 自动化：查看电量、充电与车辆状态，将历史行程、精细 GPS 轨迹与详细指标同步到私有本地存储。
+
+> **2.0 预发布 · 独立社区集成。** 面向中国区 App 服务，未验证所有车型/其他地区。云端采集需互联网，已有本地历史可不抓云浏览。
+
+## 可以做什么
+
+| 能力 | HA 中的表现 |
 |---|---|
-| 车辆状态 | 主电池电量、精准续航、预估续航、AI预估续航（诊断）、充电、电源、车辆锁与座桶锁 |
-| BMS | 电压、温度、明确支持的循环、W充电功率、健康评分；评分不是SOH；应急通信电池电量、主电池类型、Apple查找支持 |
-| 行程 | 今日/昨日与本月统计，最近行程起止/距离/时长/Wh/最高速度/总平均速度；时长默认h、两位小数 |
-| 其它观测 | 电池存在、电门ACC开/关、智能服务有效/到期；未知编码显示未识别 |
-| 原生HA表示 | 车型图片、可选GPS、骑行事件、历史查询Action response |
-| 额定参数 | 可选V/Ah及一个稳定额定能量；b24已移除SOC累计充放电估算 |
+| **了解车辆** | 主电池电量、精准/预估/AI 续航、充电、上电、ACC、智能服务和设备位置。 |
+| **了解电池** | 电压、温度、支持的循环次数、充电功率、健康评分、电池类型/数量和独立通信电量。 |
+| **留住历史** | 可重启续接的首次发现、增量同步、私有历史/轨迹证据、空间限额与较好几何保护。 |
+| **保留详细信息** | 骑行起止、里程、时长、能耗、最高/平均速度及云端返回的 GPS 点，保留来源精度与可用性。 |
+| **HA 原生能力** | 行程日历、骑行事件、响应 Action、显式日/月统计导入与标准图表。 |
+| **控制与反馈** | 主动启用车辆锁/座桶锁和远程按钮，经归属检查、短期回读确认。 |
 
-创建实体默认启用/可见；用户主动禁用/隐藏保留。位置展示默认开启，原来明确关闭的选择保留；控制、调试、额定参数仍需功能选项。
-名称无“原值/raw”，保留有意义的unique_id和历史。21种语言主要名称/设置/查询动作已本地化；
-简中/英文完整，其他语言部分长帮助/错误以英文兜底。
+字段受车型/实际上报影响，健康评分**不是 SOH**，额定能量是规格。缺证据保持未知，不伪装成 0。[实体、单位与选项 →](docs/guide_zh.md#实体与数据)
 
-默认status120秒、battery/travel600秒、profile3600秒；保留按车/组freshness、退避、需求context及partial failure。有界调度器共享同键在途读取，优先状态并兼顾其它车辆/后台读取；每账号网络事务1个、全局2个，读取与命令预算独立。取消一个读取者不影响其它读取者，卸载清理在途任务。暂时性GET故障在原deadline内最多额外尝试一次，控制命令不重播；缓存读取不续期，限流元数据与组级退避继续生效。
-禁用全部BMS/行程消费者会停止常规对应查询，bootstrap/空匿名inventory稀疏发现及Event需求为有界例外。
-不完整车辆列表不证明解绑，不给缺席车辆续期身份。详见[车辆/实体/刷新契约](docs/README.md)。
+## 安装
 
-GPS需双坐标有效且位置展示开启，复用status数据、不增加定位请求；坐标系未确认不转换。图片使用审核过的匿名来源及HA缓存。
-调试视图从已有snapshot有界派生，不额外拉云数据；diagnostics不含凭据、身份、精确位置或轨迹。
-详见[Raw/诊断契约](docs/README.md)。
+### HACS：推荐方式
 
-## 历史查询、事件与控制
+1. HACS **⋮ → 自定义仓库**。
+2. 添加 `https://github.com/Wuty-zju/ha_ninebot`，类型 **集成 Integration**。
+3. 下载 Ninebot，选择所需 **2.0 prerelease**，必要时开启预发布版本选择。
+4. 按提示重启 HA。
+5. **设置 → 设备与服务 → 添加集成 → Ninebot**。
 
-`ninebot.get_trips/get_trip_detail/get_history`选择HA车辆设备并返回结构化response。
-日图表、rides、trail不建成大批实体或放入state属性；本地分页只覆盖已返回集合，不保证上游全量。
-跨月cursor仅有界内存，重启清空；轨迹同时需要coordinates与include_track，automation trace可能保存响应位置。
-服务端最高速度与distance/duration总平均分开，逐点speed/delta单位仍待验证。
-Event启动/re-enable建立baseline，不重放历史；分页/上传延迟可能漏报，不能保证exactly-once。
-参数与示例见[行程/历史/事件契约](docs/README.md)。
+[![打开 HACS 仓库](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
+[![添加集成](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ninebot)
 
-控制必须显式开启、车辆allowlist、认证及身份/状态fresh；明确DENIED或歧义阻止。
-UNKNOWN仍未知，满足本地条件后交云端最终鉴权。bell/buck/engine-start/engine-stop Button仅发一次，
-原生车辆锁与座桶锁共享同一控制执行器，保留原buttons；start请求车辆解锁、stop请求上锁，停车/P条件由车辆与云端判定，集成不因缺少此遥测禁用stop。座桶仅支持远程解锁，上锁需手动操作。命令只发一次，在约0/2/5秒回读确认，并于10/20/25秒短暂跟随；不自动重发或乐观更新。接口接受或云端状态确认不证明物理动作。
-详见[控制契约](docs/README.md)。开发期间不把这些说明当成测试授权。
+需先安装 HACS；目前以**自定义仓库**分发，不宣称已进入默认商店。
 
-## 升级与开发
+### 手动安装
 
-升级前备份匹配的HA配置/storage；精确移除已审阅旧估算/重复ID，保留有意义ID、用户名称和Recorder历史。
-b36引入规范生成ID，详见[迁移指南](docs/README.md#canonical-entity-ids-and-upgrade)。自定义或无法确认来源的ID保留；使用改名/移除ID的自动化需要调整。回滚须同时恢复对应旧配置/参数Store，不能只换代码或手改数据库。
-初次迁移依据见[历史迁移矩阵](https://github.com/Wuty-zju/ha_ninebot/blob/9ba20bcadea1ea0500d9c080e60a48adc35e2387/docs/2.0-实体迁移矩阵.md)。
+下载 [Release](https://github.com/Wuty-zju/ha_ninebot/releases)，复制 `custom_components/ninebot` 到 `<config>/custom_components/ninebot`，重启后添加。运行/卡片资源随包提供，无需独立服务或另装卡片仓库。
 
-开发先读[集成说明](docs/README.md)和[产品约束](AGENTS.md)，再核对相关源码、测试及fixture来源。详细私有开发资料在本地独立工作区维护，不进入产品PR或安装包；[CHANGELOG](CHANGELOG.md)保存发布变化。小改做相关离线回归，重大功能边界再做综合兼容检查；旧绿色结果不代表本轮验收。
+**兼容要求：** HA **2026.1.0+**、兼容依赖 wheel 的 64 位平台及中国区云访问。不支持 ARMv7/32 位；其他地区/平台组合未验证。[完整安装说明 →](docs/guide_zh.md)
 
+## 添加账号
 
-“今日里程”从校验通过的月日表投影，按上海业务日期和 travel 新鲜度显示。
-必须有当日成功查询；跨午夜旧缓存、缺报或日表不一致时显示 unknown。
-实体默认启用，用户禁用选择保留，不新增历史或详情轮询。
+密码或两步短信登录；每账号添加独立集成条目，会话/归属/历史隔离。重新认证/配置仍针对原账号。密码不保存在 ConfigEntry 或进程参数；短信有离线覆盖，实机验证待补。
 
-可选的[行程详情卡](docs/README.md#optional-ride-detail-card)提供本地日期分页、单趟指标和显式按需详情/单位未确认的采样曲线，与原生日历及统计图配合使用。需手动添加资源，不自动修改仪表盘。
+选项包含位置、日历、详情保存/自动同步、历史预算/空间、控制/允许车辆、额定参数和调试。新账号默认保存/同步，已有关闭选择保留；控制默认关闭，需显式开启。[配置选项 →](docs/guide_zh.md#配置选项)
 
-本版会强制迁移已有实体ID；显示规则及账号页面标题限制见[b44升级说明](docs/README.md#b44-display-and-naming-update)。
+<a id="在地图上探索骑行历史"></a>
 
-[b45：日历、电量与行程显示](docs/README.md#b45-calendar-battery-and-ride-presentation)
+## 历史行程、轨迹与详情同步
 
-日统计可使用与月报告核对吻合的本地累计行程，单次20条明细不再阻断已有完整档案；缺报或冲突仍显示未知，升级自动重建投影而不额外请求。见[b50统计说明](docs/README.md#b50-accumulated-daily-statistics)。主电池电量独立于应急通信电池；设备位置不再提供已弃用的battery_level属性，自动化请读取主电池电量实体。
+在账号选项启用**后台保存行程详情**与**自动历史同步**。新账号默认开启，保留已有账号的关闭选择。
 
+- **首次发现，后续增量：** 按月份/分页可续接地发现可用行程，复用已知记录，只补缺失/变化详情，共享账号请求预算。
+- **详细行程：** 按实际返回保存起止时间、里程、时长、能耗、服务端最高速度和计算平均速度；保留来源精度，缺失不当零。
+- **精细 GPS 轨迹：** 云端有详细轨迹时保存完整点及关联采样数据；后续简化/空响应不覆盖已保存的更好路线，不做未经验证的坐标转换。
+- **本地结构化归档：** 业务原件与归一化事实保存在私有账号库，不塞进实体属性/Recorder；容量不足暂停写入，不静默淘汰历史。
+- **进度与管理：** 每车同步进度、手动触发、暂停/恢复、预算化重试和本地完整性核验。详情进度只覆盖已发现行程，不保证云端全部历史。
 
-### 复用已验证的历史月份
+通过原生日历与响应 Action 查询已保存信息。[同步、存储与查询说明 →](docs/history_zh.md#开启保存与同步)
 
-首次全量发现可以复用同账号内已独立完成枚举的旧月分页原件。复用前核验全部原件与哈希、总数、行程归属和接收时间；一次最多 8 页、解压 JSON 合计 4 MiB，来源不能早于首次基线截止时间。当月、上月、存在更新观察或证据不完整时仍正常查询。复用保留原始接收时间，不消耗云请求额度，也不会把缺失详情标记为完成；不会根据连续空月推断最早历史月份。
+可视化、UI 与自定义卡片目前均为**早期 alpha**，后续可能大幅完善、重构、修改或随时撤回，不作为稳定产品或公开 demo 展示。
 
+## 2.0 重构了什么
 
-如果已接受的账号车辆列表不再包含某辆已知车辆，历史同步状态会显示“账号车辆列表未包含此车”。这表示最近一次车辆发现结果，不代表已经确认真实解绑或账号删除。该车查询和操作保持阻断，已存数据不删除；正常账号发现继续，车辆重新出现后续接原基线。缺席时仅显示列表更新时间等安全信息，不展示缓存行程计数或 GPS。持续出现时请核对账号及车辆列表，不能仅凭这一状态判断上游原因。
+将认证、原始证据、领域模型、实时更新和长期历史分层：
 
+- **基础架构：** 隔离会话、受管理异步 I/O、按需 freshness 分组、在途合并、有界队列、退避容错。
+- **HA 模型：** 翻译实体、独立续航、原生锁/日历/事件/图片和响应 Action，不为历史点创建实体。
+- **历史生命周期：** 可续接/增量采集、事实与业务原件并存、几何保护、备份钩子与有界校验恢复。
+- **本地查询基础：** 有界历史读取、可追溯的详情分块、分范围 continuation 版本和实测解析复用。
+- **迁移与控制：** 已审核旧身份迁移、持久日志、显式启用、每次一次指令、有界回读。
 
-在现有 150–180 天本地保全风险窗口内，待取详情按已确认的行程结束时间从旧到新选择，优先处理更接近风险边界的记录。窗口外仍优先较新记录，并用行程 ID 确保同时间排序稳定；缺失结束时间不猜测截止日期。这是本地调度策略，不是服务器精确删除日期或本地保存期限承诺；账号预算、多车轮转、已有详情复用和持久重试保持不变。
+[升级与回滚 →](docs/migration_zh.md) · [更新记录 →](CHANGELOG.md)
 
+## 工作原理
 
-缓存统计月份与最近行程现在由同一次车辆归档读取取得；历史列表的详情保存标记也与行程行、覆盖信息和版本一起读取，避免后台写入插在两次读取之间而混用版本。分别发起的日历、列表和详情请求仍以各自读取时刻为准，这不等于跨请求或全车队的数据库快照令牌。浏览仍只读本地且有查询上限。
+```mermaid
+flowchart LR
+  Cloud[九号云] --> Adapter[账号适配层]
+  Adapter --> Models[原始证据与领域模型]
+  Models --> Live[实时协调器]
+  Models --> Archive[私有历史归档]
+  Live --> Entities[HA实体与自动化]
+  Archive --> Views[本地查询、日历与统计]
+```
 
+云采集与本地浏览分开，实体按需求有界更新；历史详情在私有存储，不塞进 state/Recorder，只有显式汇总导入写历史统计。[架构与依赖披露 →](docs/architecture.md)
 
-本地重建可修复缺失的行程/月归属，但必须由已保存原始分页证明同一行程、详情身份和精确开始时间。一次最多检查 8 个缺失月份、8 个分页候选及合计 4 MiB 解压证据，沿用私有修复前备份、权限复查和原子提交。已有归属及完整列表中的撤回状态不重写；缺少父记录、身份/时间证据不足或超限时保持阻断，不从云端补取。这只是受限修复，不代表全部归属或归一化字段都已核验。 此修复由归一化行程当前查询月份的归属缺失触发，不代表已全面检查仅发生在更旧月份的归属丢失。
+## 隐私与限制
 
+- 位置默认开启，请检查选项。详情/HA 备份可含精确路线，保护备份及自动化 trace。
+- 底图默认关闭，开启会向 OpenStreetMap 请求可见区域；不做未经验证的坐标转换。
+- 逐点速度/距离单位未确认，曲线/播放按序号；最高与总平均速度分开。
+- 详情百分比/核验月份/任务完成**不证明全部云历史**。简化或丢失的路线不能还原，本地仍有配额/磁盘限制。
+- 控制需启用/允许列表/权限，车辆/云端决定条件；接受/观察不是物理保证。座桶只能远程解锁。
 
-历史完成判定现在还要求已枚举行程的车辆/月份归属一致。属性 `reference_issues` 按受影响行程计数，包括父记录/归属缺失和 latest 列表选择不一致。详情保存率仍表示已知详情的保存情况，100% 不能覆盖关系缺口；旧任务发现新缺口时显示待验证，并保留历史完成时间。启动/备份结构检查保持独立，使本地恢复仍可进行，不会静默改写列表选择。这是与本地声明的月份 ID 的一致性检查，不代表已独立验证全部父原件或云端全集。
+[排障 →](docs/guide_zh.md#常见问题) · [覆盖与统计 →](docs/history_zh.md#覆盖与统计)
 
-本地历史覆盖率区分“原始响应仅有一页”和“本地有匹配的整月分页记录”。卡片新增**已枚举月份**；`get_recorded_trips` 同时返回 `coverage.enumerated_months` 及每月 `recorded_enumeration` 的页数、行程数和收据时间。较新的摘要、证据不一致或超出读取预算时保持未确认。此功能只读取本地数据，不改写原始单页完整性，也不代表已校验全部原始字节或确认云端最早历史边界。
+## 后续方向
 
-后台同步为月份请求和详情下载分别轮转车辆，避免“两类任务交替＋两车交替”固定成一车主要扫月份、另一车主要补详情。两种轮转位置均能重启续接，继续共用原账号请求预算，不提高查询频率。
+**已交付：** 历史行程/详情/GPS 同步、私有结构化存储、原生日历/统计、响应查询与有界恢复。
 
-已有本地校验操作现在返回 `page_reference_checks`：复用原始数据校验的一次解码，分别检查已捕获分页的原始 ID/总数、页头、行程索引和月份归属是否对应。冲突只报告，不自动改索引，也不把完好的原始字节判成损坏。月份父数据、捕获范围外的孤立索引、标准化指标和云端完整性不在该证明范围。升级前正在执行的纯原件扫描需先结束，再开始新的组合校验。
+**持续开发：** 随时可能重构或撤回的早期 alpha 可视化/UI/卡片、更清晰的同步/覆盖反馈、更多有证据的实体/车型与实测存储优化。
 
-历史响应正文明确报告其他月份时，原件作为未验证的 schema 缺口保存，不导入其行程；重启后仍可继续后续月份。保存异常原件不代表该月完整或已修复上游响应。
+**研究：** 已验证逐点指标、空间/几何扩展和更可审计的协议层，不承诺日期。[完整路线 →](docs/roadmap.md)
 
-## 当前月份来源核验
+## 支持与贡献
 
-开启**历史保全**后，普通月查询也会在原账号归档中保存私有当前来源快照。每个已记录月份至多一份当前来源；替换快照不会删除历史分页、详情或已选择的轨迹原件。未开启时仍保留原规范化统计行为。raw可能含位置和未知字段，不进入实体或诊断。
+先读[文档](docs/README.md)和[排障](docs/guide_zh.md#常见问题)。复现问题用 [Issues](https://github.com/Wuty-zju/ha_ninebot/issues)，使用/设计用 [Discussions](https://github.com/Wuty-zju/ha_ninebot/discussions)。提供版本与检查后的诊断，**不要上传凭据或完整私人轨迹**。
 
-schema6迁移先生成经过验证的 `rides.schema5-<hash>.sqlite3` 恢复副本（更旧库使用其对应版本）。旧版集成不能直接读取schema6；回退需要停止集成后，用对应旧schema恢复文件的**副本**恢复，同时另存新归档。运行期间不要手改生产存储。
+贡献者与 Agent：[贡献说明](CONTRIBUTING.md) · [开发地图](docs/development.md) · [AGENTS](AGENTS.md)。敏感问题读[安全政策](SECURITY.md)。小改相关离线检查，重大边界一次兼容矩阵；Checks 徽章不表示已跑全矩阵。
 
-在 `ninebot.sync_history` 中指定设备、`operation: verify_status` 和 `start_month: "202610"`，响应会增加 `month_source_check`：匹配、未捕获、已过期、版本未支持、原件损坏、无法核验或投影冲突，以及安全字段名和读取revision。每次只离线重放一个至多1MiB的来源，不请求云。范围限于当前月摘要、精度和返回ID列表，不代表全部行程、坐标、单位或云全集已认证。不提供start_month时保持原校验行为；过去未捕获的原件不会用新数据补造。
+下载量徽章统计各 GitHub Release 附件的累计下载，不包含 HACS 源码包下载或 Git 克隆。
 
-本地行程重建还会核对适用标量的来源、解析依据、字段状态及精度**下限**。详情未返回的字段和全局parser标记不在证明范围；数值相同时保留既有更高精度。较新的列表观察可以把仍保留旧详情值的字段标记为未上报，修复不会把这些无关状态当成此次详情重新返回。
+MIT 许可。Ninebot/Segway 商标/图片归原权利人，本项目无官方关联/支持。感谢 HA/HACS 社区及 [NOTICE](NOTICE)、[架构归属](docs/architecture.md#dependencies-and-attribution)、随包许可证列明的协议/库贡献。
 
-开启自动历史保全后，首次扫描中未验证的月份会独立补扫，包括较早月份；只选择已知缺口，不周期重扫健康旧月。复用原账号预算，月份轮转及6小时起、指数增加至最多7天的重试间隔在重启后保留；网络重试仍走原月份任务策略。重复失败不代表永久删除。
+<details>
+<summary>旧版首页链接</summary>
 
-进度分别提供 `initial_gap_months`（原始缺口）、`resolved_gap_months`（后来验证恢复）和 `gap_months`（当前未解决）。恢复必须实际完成分页，新增ID及详情纳入健康分母。历史根任务仍可保留 `completed_with_gaps`，而 `sync_state`反映当前范围已恢复，两者不是同一含义；原失败证据不改。服务器简化轨迹或本地证据损坏仍明确保留缺口。这里是托管月份完成证据，不是原件hash或最早云范围认证。
+- <a id="ninebot-九号-home-assistant-集成"></a>[Ninebot 九号 Home Assistant 集成](docs/history_zh.md)
+- <a id="安装与登录"></a>[安装与登录](docs/guide_zh.md)
+- <a id="当前功能与选项"></a>[当前功能与选项](docs/guide_zh.md)
+- <a id="历史查询事件与控制"></a>[历史查询、事件与控制](docs/history_zh.md)
+- <a id="升级与开发"></a>[升级与开发](docs/migration_zh.md)
+- <a id="复用已验证的历史月份"></a>[复用已验证的历史月份](docs/history_zh.md)
+- <a id="当前月份来源核验"></a>[当前月份来源核验](docs/history_zh.md)
 
-
-历史卡片现在真正按最新优先合并多车分页，支持最近行程、最近7/30天及上/下月导航。`get_recorded_trips`旧调用仍默认正序，最新优先请显式指定`sort: desc`。更新后重新加载浏览器；浏览仅查本地，不新增云请求。
+</details>

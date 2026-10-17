@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Usage and design / 使用与设计
+    url: https://github.com/Wuty-zju/ha_ninebot/discussions
+    about: Ask non-sensitive usage questions before opening a bug report.
+  - name: Security and privacy / 安全与隐私
+    url: https://github.com/Wuty-zju/ha_ninebot/blob/main/SECURITY.md
+    about: Read the reporting policy; never put credentials or precise routes in public issues.
