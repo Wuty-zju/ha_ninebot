@@ -2,6 +2,8 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
+> **Visualization status: early alpha.** The map/UI/card instructions below describe the current experimental implementation, not a stable product or public demo. These components can be redesigned, changed or withdrawn at any time. Historical acquisition, local preservation and query contracts are documented separately.
+
 ## Choose the right view
 
 | What you want | Use | Data source |

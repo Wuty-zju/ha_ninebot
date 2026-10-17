@@ -60,7 +60,7 @@ Do not install heavy HA environments for docs. Prefer Actions for expensive comp
 
 Start with [fixture metadata](../tests/fixtures/ninecli/0.1.7/metadata.json) and [field-source mapping](../tests/fixtures/field_inventory/source-map.json). Distinguish recorded sanitized, synthetic and maintainer-confirmed inputs. Unknown units/aliases/CRS stay unverified until appropriate evidence exists.
 
-No live cloud/SMS/control tests by default. No production HA writes, registry/database edits or automatic restart/deployment. Never commit credentials, real identities/locations/trails or local capture paths. A synthetic screenshot needs source/version and a demo label; private evidence remains outside this repository.
+No live cloud/SMS/control tests by default. No production HA writes, registry/database edits or automatic restart/deployment. Never commit credentials, real identities/locations/trails or local capture paths. Synthetic test captures need source/version and an explicit development-fixture label; private evidence remains outside this repository. Early-alpha UI/card captures are retained as development evidence, not promoted in README demos.
 
 ## Collaboration
 
@@ -94,7 +94,7 @@ HACS custom-repository installation, validation, default-list admission and HA C
 | Manifest | Domain/name/version/docs/issues/codeowners present; service/cloud_polling classification and exact dependency pin retained. |
 | HACS manifest | Name, integration layout, HA minimum and `country: CN` retained. English docs do not establish support outside CN. |
 | Open-source license and notices | MIT recognized; dependency/source limitations, runtime recon and Leaflet attribution retained. Do not imply the project MIT license grants trademark/image rights. |
-| Public documentation | EN/Chinese setup/history/migration, actual card demos, troubleshooting/upgrade/security and contribution paths. |
+| Public documentation | EN/Chinese setup/history/migration and synchronization/data contracts, troubleshooting/upgrade/security and contribution paths. UI/cards are early alpha; screenshots are withdrawn from README. |
 | Description/topics/issues | Already present. Suggested About text: `Ninebot vehicle integration for Home Assistant — battery, charging, ride history and maps.` Existing About has a spelling error; changing remote settings is a separate maintainer step. |
 | Required validation | HACS and Hassfest must pass on the candidate without errors/ignores. A green old commit does not prove a new candidate. Documentation CI supplements, not replaces them. |
 | Release | Publish a full GitHub Release after successful checks when a meaningful authorized update is ready; a tag alone is insufficient. Do not create an empty prerelease just to publish docs. |

@@ -11,18 +11,16 @@ English · [简体中文](README_zh.md)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom_repository-orange)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
 [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml)
 [![License](https://img.shields.io/github/license/Wuty-zju/ha_ninebot)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/Wuty-zju/ha_ninebot?style=flat&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers)
+[![Total release downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/total?label=downloads&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
 
-[Install](#installation) · [Explore history](#your-ride-history-on-a-map) · [Documentation](docs/README.md) · [Roadmap](docs/roadmap.md)
+[Install](#installation) · [History synchronization](#ride-history-and-track-synchronization) · [Documentation](docs/README.md) · [Roadmap](docs/roadmap.md)
 
 </div>
 
-Bring your Ninebot vehicles into everyday Home Assistant automations: monitor battery and charging, see vehicle status, preserve rides locally, and explore recorded routes in a linked map workspace.
+Bring your Ninebot vehicles into everyday Home Assistant automations: monitor battery and charging, see vehicle status, synchronize ride history, detailed GPS tracks and trip metrics into private local storage.
 
-> **2.0 prerelease · Independent community integration.** Designed for the Chinese Ninebot App service; other regions and every vehicle model are not verified. Internet is required for cloud acquisition. Saved local history can be browsed without fetching the cloud.
-
-![Two synthetic vehicles compared in the bundled history map, with linked list and selected totals. No real account or route data; tiles are off.](docs/assets/workbench-en.jpg)
-
-*Actual bundled card with synthetic data. Map, list, summary and sample curves share a selection; optional online tiles are disabled in this demo.*
+> **2.0 prerelease · Independent community integration.** Designed for the Chinese Ninebot App service; other regions are unverified and not every vehicle model has been tested. Internet is required for cloud acquisition. Saved local history can be browsed without fetching the cloud.
 
 ## What you can do
 
@@ -31,7 +29,7 @@ Bring your Ninebot vehicles into everyday Home Assistant automations: monitor ba
 | **Know your vehicle** | Main battery SOC, precise/estimated/AI range, charging, power, ACC, service information and device location. |
 | **Understand the battery** | Voltage, temperature, supported cycles, charging power, health score, battery type/count and separate emergency communication SOC. |
 | **Keep your rides** | Resumable first discovery, incremental synchronization, private local history/track evidence, storage quotas and quality-preserving geometry. |
-| **Explore and compare** | Recent-first date navigation, up to five rides across vehicles, linked map/list/summary/curves, point focus and sequence playback. |
+| **Retain detailed information** | Ride times, distance, duration, energy, maximum/average speed and cloud-returned GPS points, with source precision and availability. |
 | **Use native HA tools** | Ride calendars, completion events, response Actions and explicit day/month statistics imports for standard charts. |
 | **Control with feedback** | Opt-in vehicle/seat locks and remote buttons, guarded dispatch and short-lived state confirmation. |
 
@@ -64,35 +62,21 @@ Use password or two-step SMS login. Each account has a separate integration entr
 
 Options cover location, calendar, detail preservation/automatic sync, history budget/quota, controls/allowed vehicles, nominal battery parameters and debugging. New accounts enable preservation/sync; existing opt-outs are retained. Controls stay off until explicitly enabled. [Account and option details →](docs/guide.md#options)
 
-## Your ride history on a map
+<a id="your-ride-history-on-a-map"></a>
 
-**Install the integration → register the bundled module → add the card.**
+## Ride history and track synchronization
 
-In Dashboard **Resources**, add `/ninebot-static/ninebot-trip-card.js` as **JavaScript module**, then add:
+Enable **Preserve trip details in background** and **Automatic history synchronization** in the account options. New accounts enable both; existing opt-outs remain unchanged.
 
-```yaml
-type: custom:ninebot-trip-card
-entity: calendar.REPLACE_WITH_VEHICLE_RIDE_CALENDAR
-limit: 20
-```
+- **First discovery, then incremental work:** resumable month/page scans discover available rides; later work reuses known records and fetches missing or changed details under a shared account budget.
+- **Detailed ride records:** retain start/end times, distance, duration, energy, server maximum and calculated average speed where reported. Preserve source precision and distinguish missing fields from zero.
+- **Detailed GPS evidence:** save cloud-returned full track points and associated sample data when available. New simplified/empty results do not overwrite a retained better route; no unverified coordinate conversion is applied.
+- **Local structured archive:** raw business evidence and normalized facts stay in the private account archive, outside entity attributes/Recorder. Storage quotas pause writes rather than silently evicting history.
+- **Progress and control:** per-vehicle progress, manual synchronization, pause/resume, budgeted retries and local integrity checks. Saved-detail progress covers discovered rides, not a guarantee of all cloud history.
 
-Use the actual calendar entity, or `device_id` if the calendar is disabled. The visual editor supports multiple vehicles, dates, title and page size. No dashboard is changed automatically.
+Use native ride calendars and response Actions to query recorded information. [Synchronization, storage and query details →](docs/history.md#enable-preservation-and-synchronization)
 
-- Browse recent rides, old months or a custom date range **from local storage**.
-- Select a ride to link its route, metrics and curves; compare up to five recorded rides.
-- Hover/brush curves or play source points. Missing detail requires **Fetch cloud detail** or background sync; opening the card never silently downloads it.
-- Use native Calendar for dates and imported statistics for trends. A completion Event describes a newly observed ride, not the latest historical ride.
-
-[History, maps and Actions guide →](docs/history.md) · [Fix “Custom element not found” →](docs/history.md#add-the-history-map)
-
-<details>
-<summary>Mobile layout · synthetic example</summary>
-
-The same workbench stacks map, list and detail on narrow screens. This Chinese demo uses synthetic vehicles and no online tiles.
-
-<img src="docs/assets/workbench-mobile-zh.png" alt="Synthetic mobile history workbench with route comparison, ride metrics and sample curves" width="360">
-
-</details>
+Visualization, UI and custom cards are **early alpha**. They may be substantially redesigned, modified or withdrawn at any time and are not presented here as a stable product or demo.
 
 ## What's new in 2.0
 
@@ -101,7 +85,7 @@ The refactor separates account authentication, source evidence, normalized data,
 - **A stronger foundation:** isolated sessions, asynchronous managed I/O, demand/freshness groups, shared in-flight reads, bounded queues and backoff.
 - **Purposeful HA models:** translated entities, separate ranges, native locks/calendars/events/images and response Actions; no entity per historical point.
 - **History with a lifecycle:** resumable/incremental acquisition, facts alongside business evidence, geometry protection, backup hooks and bounded local verification/recovery.
-- **A map workspace:** newest-first cross-month/multi-vehicle browsing, shared selection/curves, visual editing, local update notices and measured read optimization.
+- **A local query foundation:** bounded historical reads, source-aware detail chunks, scoped continuation versions and measured parsing reuse.
 - **Reviewed upgrades and controls:** legacy identity migration, durable journals, explicit opt-in, one command per request and bounded readback.
 
 [Upgrade and rollback →](docs/migration.md) · [Changelog →](CHANGELOG.md)
@@ -115,7 +99,7 @@ flowchart LR
   Models --> Live[Realtime coordinator]
   Models --> Archive[Private history archive]
   Live --> Entities[HA entities and automations]
-  Archive --> Views[Local queries, maps, calendars and statistics]
+  Archive --> Views[Local queries, calendars and statistics]
 ```
 
 Cloud acquisition and local browsing are separate. Entities update on bounded demand; historical details live privately, outside state attributes/Recorder. Only an explicit aggregate import writes native historical statistics. [Architecture and dependency disclosures →](docs/architecture.md)
@@ -132,9 +116,9 @@ Cloud acquisition and local browsing are separate. Entities update on bounded de
 
 ## Next steps
 
-**Available now:** route visualization/comparison, native HA history views, incremental preservation and bounded recovery.
+**Available now:** historical ride/detail/GPS synchronization, private structured storage, native calendars/statistics, response queries and bounded recovery.
 
-**Next candidates:** clearer sync/coverage feedback, optional linked map/list/summary/chart cards, more evidence-backed entities/models and measured archive/read improvements.
+**Under development:** early-alpha visualization/UI/cards that may be redesigned or withdrawn; clearer sync/coverage feedback, more evidence-backed entities/models and measured archive/read improvements.
 
 **Research:** verified point metrics, spatial/geometry scaling and a more independently auditable protocol layer. These are directions, not delivery dates. [Full roadmap →](docs/roadmap.md)
 
@@ -143,6 +127,8 @@ Cloud acquisition and local browsing are separate. Entities update on bounded de
 Start with [documentation](docs/README.md) and [troubleshooting](docs/guide.md#troubleshooting). Use [Issues](https://github.com/Wuty-zju/ha_ninebot/issues) for reproducible bugs and [Discussions](https://github.com/Wuty-zju/ha_ninebot/discussions) for usage/design questions. Share versions and reviewed diagnostics, **never credentials or full private tracks**.
 
 Contributors and coding agents: [contributing](CONTRIBUTING.md) · [development map](docs/development.md) · [AGENTS](AGENTS.md). Sensitive concerns: [security policy](SECURITY.md). Small changes use related offline checks; full compatibility runs are for major boundaries. The Checks badge does not claim every matrix job ran.
+
+The downloads badge counts GitHub release-asset downloads across releases; it does not count HACS source-archive downloads or Git clones.
 
 MIT licensed. Ninebot/Segway trademarks and images belong to their owners; this project has no official affiliation/support. Thanks to the HA/HACS community and protocol/library work acknowledged in [NOTICE](NOTICE), [architecture attribution](docs/architecture.md#dependencies-and-attribution) and bundled licenses.
 
