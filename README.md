@@ -145,3 +145,18 @@ Start with [documentation](docs/README.md) and [troubleshooting](docs/guide.md#t
 Contributors and coding agents: [contributing](CONTRIBUTING.md) · [development map](docs/development.md) · [AGENTS](AGENTS.md). Sensitive concerns: [security policy](SECURITY.md). Small changes use related offline checks; full compatibility runs are for major boundaries. The Checks badge does not claim every matrix job ran.
 
 MIT licensed. Ninebot/Segway trademarks and images belong to their owners; this project has no official affiliation/support. Thanks to the HA/HACS community and protocol/library work acknowledged in [NOTICE](NOTICE), [architecture attribution](docs/architecture.md#dependencies-and-attribution) and bundled licenses.
+
+<details>
+<summary>Earlier README links</summary>
+
+- <a id="installation-and-account"></a>[Installation and account](docs/guide.md)
+- <a id="current-data-and-options"></a>[Current data and options](docs/guide.md)
+- <a id="history-events-and-controls"></a>[History, events and controls](docs/history.md)
+- <a id="upgrade-and-development"></a>[Upgrade and development](docs/migration.md)
+- <a id="missing-local-detail-originals"></a>[Missing local detail originals](docs/history.md)
+- <a id="recent-ride-follow-up"></a>[Recent ride follow-up](docs/history.md)
+- <a id="history-progress-and-local-rate-limiting"></a>[History progress and local rate limiting](docs/history.md)
+- <a id="reusing-verified-history-months"></a>[Reusing verified history months](docs/history.md)
+- <a id="current-month-source-checks"></a>[Current-month source checks](docs/history.md)
+
+</details>

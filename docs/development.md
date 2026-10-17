@@ -84,4 +84,30 @@ Use `python3 scripts/check_docs.py` and `python3 -m unittest discover -s scripts
 
 The [asset manifest](assets/manifest.json) records runtime commit, fixture digest, image language/size/hash, synthetic provenance and attribution. Desktop images are viewport captures of the real bundled card; the Chinese mobile example is the earlier b94 full-page synthetic render. Do not replace them with real accounts or a fabricated future UI. Preserve upstream Leaflet attribution; an image's synthetic flag alone is not a privacy audit.
 
+## HACS readiness and branding
+
+HACS custom-repository installation, validation, default-list admission and HA Core quality certification are different states. This repository currently advertises **Custom repository**. Follow the current [general](https://www.hacs.xyz/docs/publish/start/), [integration](https://www.hacs.xyz/docs/publish/integration/) and [default inclusion](https://www.hacs.xyz/docs/publish/include/) requirements when preparing an application.
+
+| Maintainer check | Repository state / next action |
+|---|---|
+| Single integration and runtime placement | Only `custom_components/ninebot`; runtime assets stay within it. Docs/preview/test utilities are development-only. |
+| Manifest | Domain/name/version/docs/issues/codeowners present; service/cloud_polling classification and exact dependency pin retained. |
+| HACS manifest | Name, integration layout, HA minimum and `country: CN` retained. English docs do not establish support outside CN. |
+| Open-source license and notices | MIT recognized; dependency/source limitations, runtime recon and Leaflet attribution retained. Do not imply the project MIT license grants trademark/image rights. |
+| Public documentation | EN/Chinese setup/history/migration, actual card demos, troubleshooting/upgrade/security and contribution paths. |
+| Description/topics/issues | Already present. Suggested About text: `Ninebot vehicle integration for Home Assistant — battery, charging, ride history and maps.` Existing About has a spelling error; changing remote settings is a separate maintainer step. |
+| Required validation | HACS and Hassfest must pass on the candidate without errors/ignores. A green old commit does not prove a new candidate. Documentation CI supplements, not replaces them. |
+| Release | Publish a full GitHub Release after successful checks when a meaningful authorized update is ready; a tag alone is insufficient. Do not create an empty prerelease just to publish docs. |
+| Default-list application | Not submitted by this docs change. Later prepare an alphabetically placed editable PR to `hacs/default`'s integration list as owner/major contributor. Recheck domain conflicts and the application template then. |
+
+The current packaged `brand/icon.png` is 256×256 RGBA PNG, introduced in [479068c](https://github.com/Wuty-zju/ha_ninebot/commit/479068cc936efb0cda50ff9c845c3d60d33540c3). Repository history proves its inclusion, **not original artwork permission**. Maintainer confirmation of its source/rights remains necessary before claiming a completed provenance audit.
+
+Local review at 96/32 px found the existing black/transparent icon readable on white and poor on dark fallback. The minimum icon file is present; an approved dark variant and optional @2x are quality follow-ups, not fabricated assets or a claim that they already exist. Use `scripts/docs_preview.py` → `/branding` to compare the unchanged asset. Do not replace it with another project's logo or an HA-official mark.
+
+Per [HA brand documentation](https://contributors.home-assistant.io/core/integrations/brands/), local custom-integration images are supported from HA 2026.3; older supported HA can fall back to an upstream image/placeholder. Do not raise the 2026.1 minimum solely for branding. Official icon conventions are 256×256, optional 512×512 @2x, transparent/trimmed PNG and dark variants where needed; use a separate landscape logo only if legitimate artwork exists.
+
+Before an actual store application, review the final **released** tree, validation results, description/topics and brand rights again. A prerelease is not automatically disqualified merely because it is a prerelease; the explicit prohibition concerns custom integrations used for testing/overriding Core integrations. Never mark the repo HACS Default or Gold before the respective process actually grants that state.
+
+简体中文：最低分发结构、manifest、许可证与本地图标已具备，文档改版不等于默认收录。检查最终发布版本的无 ignore HACS/Hassfest；不为文档发空版本。现图标暗色回退不清晰且原始授权仍待维护者确认；不编造品牌许可、不擅自更换资源/抬高最低 HA，不自动提交商店或修改远端设置。
+
 简体中文摘要：按任务读取指南/模块/fixture，小改相关检查、重大边界一次矩阵。默认离线、保护身份与私有数据；明确授权才并行，独立 worktree、单一整合者，文档-only 不发空版本。

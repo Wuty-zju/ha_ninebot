@@ -145,3 +145,16 @@ flowchart LR
 贡献者与 Agent：[贡献说明](CONTRIBUTING.md) · [开发地图](docs/development.md) · [AGENTS](AGENTS.md)。敏感问题读[安全政策](SECURITY.md)。小改相关离线检查，重大边界一次兼容矩阵；Checks 徽章不表示已跑全矩阵。
 
 MIT 许可。Ninebot/Segway 商标/图片归原权利人，本项目无官方关联/支持。感谢 HA/HACS 社区及 [NOTICE](NOTICE)、[架构归属](docs/architecture.md#dependencies-and-attribution)、随包许可证列明的协议/库贡献。
+
+<details>
+<summary>旧版首页链接</summary>
+
+- <a id="ninebot-九号-home-assistant-集成"></a>[Ninebot 九号 Home Assistant 集成](docs/history_zh.md)
+- <a id="安装与登录"></a>[安装与登录](docs/guide_zh.md)
+- <a id="当前功能与选项"></a>[当前功能与选项](docs/guide_zh.md)
+- <a id="历史查询事件与控制"></a>[历史查询、事件与控制](docs/history_zh.md)
+- <a id="升级与开发"></a>[升级与开发](docs/migration_zh.md)
+- <a id="复用已验证的历史月份"></a>[复用已验证的历史月份](docs/history_zh.md)
+- <a id="当前月份来源核验"></a>[当前月份来源核验](docs/history_zh.md)
+
+</details>

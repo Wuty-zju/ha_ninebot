@@ -9,6 +9,19 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def branding() -> bytes:
+    """Compare the existing packaged icon on light/dark surfaces, unchanged."""
+    return b"""<!doctype html><meta charset="utf-8"><title>Brand review</title>
+<style>body{font:18px system-ui;margin:32px;background:#ddd;color:#123}
+section{display:inline-block;padding:24px;margin:12px;border-radius:12px}
+.light{background:#fff}.dark{background:#18232b;color:#fff}img{margin:16px}</style>
+<h1>Existing Ninebot integration icon</h1><p>Repository asset, not a new logo.</p>
+<section class="light">Light<br><img src="/ninebot-brand/icon.png" width="96" alt="96px">
+<img src="/ninebot-brand/icon.png" width="32" alt="32px"></section>
+<section class="dark">Dark fallback<br><img src="/ninebot-brand/icon.png" width="96" alt="96px">
+<img src="/ninebot-brand/icon.png" width="32" alt="32px"></section>"""
+
+
 def document(language: str = "en", scale: str = "1") -> bytes:
     """Render the existing offline fixture shell; keep runtime UI unchanged."""
     if language not in {"en", "zh-Hans"} or scale not in {"1", "0.8"}:
@@ -32,6 +45,8 @@ def document(language: str = "en", scale: str = "1") -> bytes:
 
 def asset(path: str) -> Path:
     """Only expose packaged frontend assets, never the configuration or repo."""
+    if path == "/ninebot-brand/icon.png":
+        return ROOT / "custom_components/ninebot/brand/icon.png"
     prefix = "/ninebot-static/"
     if not path.startswith(prefix):
         raise ValueError("Not a preview asset")
@@ -48,7 +63,10 @@ class Preview(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         url = urlsplit(self.path)
         try:
-            if url.path == "/":
+            if url.path == "/branding":
+                body = branding()
+                content_type = "text/html; charset=utf-8"
+            elif url.path == "/":
                 query = parse_qs(url.query)
                 body = document(query.get("lang", ["en"])[0], query.get("scale", ["1"])[0])
                 content_type = "text/html; charset=utf-8"

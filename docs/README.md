@@ -17,6 +17,8 @@ New coding agents start with [AGENTS](../AGENTS.md), the relevant guide and the 
 
 [Contribute](../CONTRIBUTING.md) · [Security/privacy reporting](../SECURITY.md) · [Synthetic asset provenance](assets/manifest.json)
 
+Maintainers preparing distribution: [HACS and brand checklist](development.md#hacs-readiness-and-branding).
+
 ## Earlier documentation links
 
 The previous long behavior page was consolidated by topic. These anchors preserve existing bookmarks and map each former section to its current home. Some headings describe an older beta; current guides supersede intermediate defaults. The complete original remains available at the [fixed b94 commit](https://github.com/Wuty-zju/ha_ninebot/blob/fa3a7ec04dacc7f791bfd79d8ee469538ac95878/docs/README.md).
