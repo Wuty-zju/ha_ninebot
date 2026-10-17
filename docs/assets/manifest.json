@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "purpose": "Public synthetic documentation images, not real accounts or location evidence",
+  "runtime_commit": "fa3a7ec04dacc7f791bfd79d8ee469538ac95878",
+  "fixture": "tests/frontend/map-fixture.html",
+  "fixture_sha256": "85923633c2f8aaf36b9d7f9467ba9a4c0933cc59847342e95e5d4c133e830b8d",
+  "preview_script": "scripts/docs_preview.py",
+  "privacy": "No account/HA/vehicle/cloud access. Tiles disabled; local preview blocks external connections.",
+  "license": "Project-generated documentation captures under repository MIT; included Leaflet UI retains its BSD attribution. No third-party map tiles.",
+  "assets": [
+    {
+      "file": "workbench-en.png",
+      "locale": "en",
+      "sha256": "4932a5d5d7d16db3165e0f5231b6ef3f7da9389d1f6ccc2a09a6f8b310d9b7f6",
+      "bytes": 63147,
+      "width": 65536,
+      "height": 4292542531,
+      "presentation": "1280x720 desktop viewport, demo shell at 0.8 scale",
+      "synthetic": true,
+      "real_data": false
+    },
+    {
+      "file": "workbench-zh.png",
+      "locale": "zh-Hans",
+      "sha256": "42a2d1a655027282ca796745afda84e819168b0879c1263b7b7c6d87ed436bc9",
+      "bytes": 54646,
+      "width": 65536,
+      "height": 4292542531,
+      "presentation": "1280x720 desktop viewport, demo shell at 0.8 scale",
+      "synthetic": true,
+      "real_data": false
+    },
+    {
+      "file": "workbench-mobile-zh.png",
+      "locale": "zh-Hans",
+      "sha256": "c1850792fd5de22922437379022865002de4b474ff35c5c8944c0972d02a0541",
+      "bytes": 205880,
+      "width": 390,
+      "height": 2677,
+      "presentation": "Existing b94 synthetic browser render; 390px mobile viewport, full page",
+      "synthetic": true,
+      "real_data": false
+    }
+  ]
+}
