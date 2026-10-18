@@ -101,8 +101,8 @@
           "configure_model": "定格パラメーターを設定",
           "enable_calendar": "走行履歴",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "走行履歴の自動同期",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "履歴保存上限（MiB）",
           "debug_mode": "デバッグモード"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "所有する全車両の取得可能な履歴を取得し、その後は変更分をバックグラウンドで同期します。",
           "history_storage_mib": "アカウントごとに32–2048 MiB、既定値100。上限を下げても保存済みデータは削除せず、書き込みを一時停止する場合があります。"
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "月別履歴の取得進捗"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "走行詳細の保存進捗"
@@ -551,10 +551,56 @@
         "name": "遠隔施錠"
       },
       "history_sync": {
-        "name": "走行履歴を同期"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "無効",
+              "paused": "一時停止",
+              "storage_full": "ストレージ容量不足",
+              "storage_error": "ストレージエラー",
+              "needs_login": "再ログインが必要",
+              "waiting_connection": "接続待機中",
+              "not_started": "未開始",
+              "waiting_retry": "再試行待機中",
+              "waiting_budget": "リクエスト枠の回復待ち",
+              "discovering": "履歴を取得中",
+              "preserving": "詳細を保存中",
+              "verifying": "記録を検証中",
+              "incremental": "差分同期中",
+              "with_gaps": "一部不足で完了",
+              "synced": "ローカル同期完了",
+              "vehicle_not_present": "アカウントの車両一覧にありません"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "履歴同期を一時停止"
+        "name": "履歴同期を一時停止",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "無効",
+              "paused": "一時停止",
+              "storage_full": "ストレージ容量不足",
+              "storage_error": "ストレージエラー",
+              "needs_login": "再ログインが必要",
+              "waiting_connection": "接続待機中",
+              "not_started": "未開始",
+              "waiting_retry": "再試行待機中",
+              "waiting_budget": "リクエスト枠の回復待ち",
+              "discovering": "履歴を取得中",
+              "preserving": "詳細を保存中",
+              "verifying": "記録を検証中",
+              "incremental": "差分同期中",
+              "with_gaps": "一部不足で完了",
+              "synced": "ローカル同期完了",
+              "vehicle_not_present": "アカウントの車両一覧にありません"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "履歴同期を再開"

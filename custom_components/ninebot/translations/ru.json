@@ -101,8 +101,8 @@
           "configure_model": "Настроить номинальные параметры",
           "enable_calendar": "Поездки",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Автоматическая синхронизация истории",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "Лимит хранилища истории (MiB)",
           "debug_mode": "Режим отладки"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "Собрать доступную историю всех принадлежащих аккаунту машин, затем синхронизировать изменения в фоне.",
           "history_storage_mib": "32–2048 MiB на аккаунт, по умолчанию100. Уменьшение лимита не удаляет записи и может приостановить запись."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "Ход проверки месяцев"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Сохранённые сведения о поездках"
@@ -551,10 +551,56 @@
         "name": "Заблокировать удалённо"
       },
       "history_sync": {
-        "name": "Синхронизировать историю"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Отключена",
+              "paused": "Приостановлена",
+              "storage_full": "Хранилище заполнено",
+              "storage_error": "Ошибка хранилища",
+              "needs_login": "Требуется вход",
+              "waiting_connection": "Ожидание соединения",
+              "not_started": "Не начата",
+              "waiting_retry": "Ожидание повтора",
+              "waiting_budget": "Ожидание квоты запросов",
+              "discovering": "Поиск истории",
+              "preserving": "Сохранение сведений",
+              "verifying": "Проверка записей",
+              "incremental": "Добавочная синхронизация",
+              "with_gaps": "Завершена с пропусками",
+              "synced": "Локальная синхронизация завершена",
+              "vehicle_not_present": "Транспорт отсутствует в списке аккаунта"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Приостановить синхронизацию"
+        "name": "Приостановить синхронизацию",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Отключена",
+              "paused": "Приостановлена",
+              "storage_full": "Хранилище заполнено",
+              "storage_error": "Ошибка хранилища",
+              "needs_login": "Требуется вход",
+              "waiting_connection": "Ожидание соединения",
+              "not_started": "Не начата",
+              "waiting_retry": "Ожидание повтора",
+              "waiting_budget": "Ожидание квоты запросов",
+              "discovering": "Поиск истории",
+              "preserving": "Сохранение сведений",
+              "verifying": "Проверка записей",
+              "incremental": "Добавочная синхронизация",
+              "with_gaps": "Завершена с пропусками",
+              "synced": "Локальная синхронизация завершена",
+              "vehicle_not_present": "Транспорт отсутствует в списке аккаунта"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Продолжить синхронизацию"

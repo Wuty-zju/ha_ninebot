@@ -101,8 +101,8 @@
           "configure_model": "निर्धारित मान सेट करें",
           "enable_calendar": "यात्राएँ",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "इतिहास का स्वचालित सिंक",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "इतिहास भंडारण सीमा (MiB)",
           "debug_mode": "डिबग मोड"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "खाते के सभी अपने वाहनों का उपलब्ध इतिहास खोजें, फिर बदलाव पृष्ठभूमि में सिंक करें।",
           "history_storage_mib": "प्रति खाता32–2048 MiB, डिफ़ॉल्ट100। सीमा घटाने पर रिकॉर्ड नहीं मिटते, लेकिन लिखना रुक सकता है।"
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "मासिक इतिहास जाँच की प्रगति"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "सहेजे गए यात्रा विवरण"
@@ -551,10 +551,56 @@
         "name": "दूर से लॉक करें"
       },
       "history_sync": {
-        "name": "इतिहास सिंक करें"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "बंद",
+              "paused": "रुका हुआ",
+              "storage_full": "भंडारण भरा हुआ",
+              "storage_error": "भंडारण त्रुटि",
+              "needs_login": "लॉगिन आवश्यक",
+              "waiting_connection": "कनेक्शन की प्रतीक्षा",
+              "not_started": "शुरू नहीं हुआ",
+              "waiting_retry": "पुनः प्रयास की प्रतीक्षा",
+              "waiting_budget": "अनुरोध सीमा की प्रतीक्षा",
+              "discovering": "इतिहास खोज रहे हैं",
+              "preserving": "विवरण सहेज रहे हैं",
+              "verifying": "रिकॉर्ड जाँच रहे हैं",
+              "incremental": "नई जानकारी सिंक हो रही है",
+              "with_gaps": "कुछ रिकॉर्ड अधूरे हैं",
+              "synced": "स्थानीय सिंक पूरा",
+              "vehicle_not_present": "खाते की सूची में वाहन नहीं है"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "इतिहास सिंक रोकें"
+        "name": "इतिहास सिंक रोकें",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "बंद",
+              "paused": "रुका हुआ",
+              "storage_full": "भंडारण भरा हुआ",
+              "storage_error": "भंडारण त्रुटि",
+              "needs_login": "लॉगिन आवश्यक",
+              "waiting_connection": "कनेक्शन की प्रतीक्षा",
+              "not_started": "शुरू नहीं हुआ",
+              "waiting_retry": "पुनः प्रयास की प्रतीक्षा",
+              "waiting_budget": "अनुरोध सीमा की प्रतीक्षा",
+              "discovering": "इतिहास खोज रहे हैं",
+              "preserving": "विवरण सहेज रहे हैं",
+              "verifying": "रिकॉर्ड जाँच रहे हैं",
+              "incremental": "नई जानकारी सिंक हो रही है",
+              "with_gaps": "कुछ रिकॉर्ड अधूरे हैं",
+              "synced": "स्थानीय सिंक पूरा",
+              "vehicle_not_present": "खाते की सूची में वाहन नहीं है"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "इतिहास सिंक फिर शुरू करें"

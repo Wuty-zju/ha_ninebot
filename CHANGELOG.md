@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b98
+
+- Consolidate history sync and resume into one diagnostic button; retain pause and the resume Action. Update synchronization icons from cached progress.
+- Gate debug-only history status, last-success and raw views without changing their identities or user-disabled preferences. Classify history progress/calendar as diagnostics and use the device name for the location entity by default.
+- Share one background-request policy across settings, manual actions and archive writes: default 60, maximum 120 per account/hour, with an adaptive scheduler and existing fairness/backoff.
+
 ## 2.0.0b97
 
 - Observe lock commands with up to eight status reads across ten seconds, confirming each fresh target immediately and skipping overdue slots after slow responses.

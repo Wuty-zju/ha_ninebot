@@ -769,3 +769,31 @@ async def test_family_cursor_values_are_validated_without_rewriting_archive(tmp_
     finally:
         await reopened.async_close()
     assert archive.path.read_bytes() == original
+
+
+async def test_account_budget_120_reserves_thirty_second_slots_across_restart(tmp_path):
+    archive = RideArchive(tmp_path / "budget.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        assert await archive.async_background_budget(SN, NOW, 120, guard=lambda: True)
+        assert not await archive.async_background_budget(
+            "another-vehicle", NOW + timedelta(seconds=29), 120, guard=lambda: True
+        )
+        assert await archive.async_background_budget(
+            "another-vehicle", NOW + timedelta(seconds=30), 120, guard=lambda: True
+        )
+        with pytest.raises(ValueError):
+            await archive.async_background_budget(SN, NOW, 121, guard=lambda: True)
+    finally:
+        await archive.async_close()
+    reopened = RideArchive(tmp_path / "budget.sqlite3", OWNER)
+    await reopened.async_open()
+    try:
+        assert not await reopened.async_background_budget(
+            SN, NOW + timedelta(seconds=59), 120, guard=lambda: True
+        )
+        assert await reopened.async_background_budget(
+            SN, NOW + timedelta(seconds=60), 120, guard=lambda: True
+        )
+    finally:
+        await reopened.async_close()

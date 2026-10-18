@@ -101,8 +101,8 @@
           "configure_model": "Ustaw parametry znamionowe",
           "enable_calendar": "Przejazdy",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Automatyczna synchronizacja historii",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "Limit pamięci historii (MiB)",
           "debug_mode": "Tryb debugowania"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "Pobierz dostępną historię wszystkich pojazdów konta, a następnie synchronizuj zmiany w tle.",
           "history_storage_mib": "32–2048 MiB na konto, domyślnie100. Zmniejszenie limitu zachowuje dane i może wstrzymać zapis."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "Postęp sprawdzania miesięcy"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Zapisane szczegóły przejazdów"
@@ -551,10 +551,56 @@
         "name": "Zablokuj zdalnie"
       },
       "history_sync": {
-        "name": "Synchronizuj historię"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Wyłączona",
+              "paused": "Wstrzymana",
+              "storage_full": "Pamięć pełna",
+              "storage_error": "Błąd pamięci",
+              "needs_login": "Wymagane logowanie",
+              "waiting_connection": "Oczekiwanie na połączenie",
+              "not_started": "Nierozpoczęta",
+              "waiting_retry": "Oczekiwanie na ponowienie",
+              "waiting_budget": "Oczekiwanie na limit zapytań",
+              "discovering": "Wyszukiwanie historii",
+              "preserving": "Zapisywanie szczegółów",
+              "verifying": "Sprawdzanie danych",
+              "incremental": "Synchronizacja przyrostowa",
+              "with_gaps": "Zakończona z brakami",
+              "synced": "Zsynchronizowano lokalnie",
+              "vehicle_not_present": "Brak pojazdu na liście konta"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Wstrzymaj synchronizację"
+        "name": "Wstrzymaj synchronizację",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Wyłączona",
+              "paused": "Wstrzymana",
+              "storage_full": "Pamięć pełna",
+              "storage_error": "Błąd pamięci",
+              "needs_login": "Wymagane logowanie",
+              "waiting_connection": "Oczekiwanie na połączenie",
+              "not_started": "Nierozpoczęta",
+              "waiting_retry": "Oczekiwanie na ponowienie",
+              "waiting_budget": "Oczekiwanie na limit zapytań",
+              "discovering": "Wyszukiwanie historii",
+              "preserving": "Zapisywanie szczegółów",
+              "verifying": "Sprawdzanie danych",
+              "incremental": "Synchronizacja przyrostowa",
+              "with_gaps": "Zakończona z brakami",
+              "synced": "Zsynchronizowano lokalnie",
+              "vehicle_not_present": "Brak pojazdu na liście konta"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Wznów synchronizację"

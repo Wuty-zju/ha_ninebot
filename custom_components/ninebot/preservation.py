@@ -16,6 +16,9 @@ from homeassistant.util import dt as dt_util
 
 from .archive_codec import RIDE_VALUES, ride_data
 from .exceptions import NinebotError
+from .history_budget import CONF_BUDGET as CONF_BUDGET
+from .history_budget import DEFAULT_BUDGET as DEFAULT_BUDGET
+from .history_budget import configured_budget
 from .history_progress import HistoryProgress, project_progress
 from .query_broker import Priority
 from .raw import Endpoint
@@ -26,8 +29,6 @@ if TYPE_CHECKING:
     from .coordinator import NinebotCoordinator
 
 CONF_PRESERVE = "preserve_history"
-CONF_BUDGET = "history_requests_per_hour"
-DEFAULT_BUDGET = 30
 
 
 def mutable_detail(ride: Ride, now: datetime) -> bool:
@@ -79,7 +80,9 @@ class HistoryPreservation:
             return
         self.status = "idle"
         self._remove = async_track_time_interval(
-            self.co.hass, self.async_tick, timedelta(seconds=60)
+            self.co.hass,
+            self.async_tick,
+            timedelta(seconds=3600 / configured_budget(entry.options)),
         )
 
     async def async_tick(self, now: datetime) -> None:
@@ -165,9 +168,7 @@ class HistoryPreservation:
         entry = co.config_entry
         if entry is None:
             return
-        budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
-        if type(budget) is not int or not 1 <= budget <= 60:
-            budget = DEFAULT_BUDGET
+        budget = configured_budget(entry.options)
         await self.bootstrap.async_seed(vehicles, now)
         vehicles = tuple(sn for sn in vehicles if sn not in self.bootstrap.paused)
         await self.incremental.async_seed(vehicles, now)

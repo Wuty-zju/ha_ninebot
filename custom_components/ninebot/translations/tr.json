@@ -101,8 +101,8 @@
           "configure_model": "Nominal parametreleri ayarla",
           "enable_calendar": "Sürüşler",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Otomatik geçmiş eşitleme",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "Geçmiş depolama sınırı (MiB)",
           "debug_mode": "Hata ayıklama modu"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "Hesaba ait tüm araçların mevcut geçmişini bul, ardından değişiklikleri arka planda eşitle.",
           "history_storage_mib": "Hesap başına32–2048 MiB, varsayılan100. Sınırı düşürmek kayıtları silmez; yazmayı duraklatabilir."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "Aylık tarama ilerlemesi"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Kaydedilen yolculuk ayrıntıları"
@@ -551,10 +551,56 @@
         "name": "Uzaktan kilitle"
       },
       "history_sync": {
-        "name": "Geçmişi eşitle"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Devre dışı",
+              "paused": "Duraklatıldı",
+              "storage_full": "Depolama dolu",
+              "storage_error": "Depolama hatası",
+              "needs_login": "Giriş gerekli",
+              "waiting_connection": "Bağlantı bekleniyor",
+              "not_started": "Başlamadı",
+              "waiting_retry": "Yeniden deneme bekleniyor",
+              "waiting_budget": "İstek kotası bekleniyor",
+              "discovering": "Geçmiş aranıyor",
+              "preserving": "Ayrıntılar kaydediliyor",
+              "verifying": "Kayıtlar doğrulanıyor",
+              "incremental": "Artımlı eşitleme",
+              "with_gaps": "Eksiklerle tamamlandı",
+              "synced": "Yerel eşitleme tamamlandı",
+              "vehicle_not_present": "Araç hesap listesinde yok"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Eşitlemeyi duraklat"
+        "name": "Eşitlemeyi duraklat",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Devre dışı",
+              "paused": "Duraklatıldı",
+              "storage_full": "Depolama dolu",
+              "storage_error": "Depolama hatası",
+              "needs_login": "Giriş gerekli",
+              "waiting_connection": "Bağlantı bekleniyor",
+              "not_started": "Başlamadı",
+              "waiting_retry": "Yeniden deneme bekleniyor",
+              "waiting_budget": "İstek kotası bekleniyor",
+              "discovering": "Geçmiş aranıyor",
+              "preserving": "Ayrıntılar kaydediliyor",
+              "verifying": "Kayıtlar doğrulanıyor",
+              "incremental": "Artımlı eşitleme",
+              "with_gaps": "Eksiklerle tamamlandı",
+              "synced": "Yerel eşitleme tamamlandı",
+              "vehicle_not_present": "Araç hesap listesinde yok"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Eşitlemeye devam et"

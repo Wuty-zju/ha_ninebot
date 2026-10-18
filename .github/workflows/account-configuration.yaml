@@ -47,4 +47,4 @@ jobs:
       - run: >-
           python -m pytest -q tests/test_account_display.py tests/test_config_flow.py
           tests/test_debug_and_model_options.py tests/test_sms_login.py
-          tests/test_session.py tests/test_translations.py
+          tests/test_session.py tests/test_translations.py tests/test_history_entities.py tests/test_calendar_history.py

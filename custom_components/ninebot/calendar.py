@@ -8,6 +8,7 @@ from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
@@ -28,6 +29,7 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "ride_calendar", "calendar", "travel")
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._labels: dict[str, str] = {}
         self._last_available: bool | None = None
 

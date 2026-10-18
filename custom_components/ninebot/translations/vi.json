@@ -101,8 +101,8 @@
           "configure_model": "Cấu hình thông số định mức",
           "enable_calendar": "Chuyến đi",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Tự động đồng bộ lịch sử",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "Giới hạn lưu trữ lịch sử (MiB)",
           "debug_mode": "Chế độ gỡ lỗi"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "Tìm lịch sử có sẵn của mọi xe thuộc tài khoản rồi đồng bộ thay đổi trong nền.",
           "history_storage_mib": "32–2048 MiB mỗi tài khoản, mặc định100. Giảm giới hạn không xóa dữ liệu và có thể tạm dừng ghi."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "Tiến độ kiểm tra tháng"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Chi tiết chuyến đi đã lưu"
@@ -551,10 +551,56 @@
         "name": "Khóa từ xa"
       },
       "history_sync": {
-        "name": "Đồng bộ lịch sử"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Đã tắt",
+              "paused": "Đã tạm dừng",
+              "storage_full": "Bộ nhớ đầy",
+              "storage_error": "Lỗi lưu trữ",
+              "needs_login": "Cần đăng nhập",
+              "waiting_connection": "Đang chờ kết nối",
+              "not_started": "Chưa bắt đầu",
+              "waiting_retry": "Đang chờ thử lại",
+              "waiting_budget": "Đang chờ hạn mức truy vấn",
+              "discovering": "Đang tìm lịch sử",
+              "preserving": "Đang lưu chi tiết",
+              "verifying": "Đang kiểm tra dữ liệu",
+              "incremental": "Đang đồng bộ phần mới",
+              "with_gaps": "Hoàn tất nhưng còn thiếu",
+              "synced": "Đã đồng bộ cục bộ",
+              "vehicle_not_present": "Không có xe trong danh sách tài khoản"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Tạm dừng đồng bộ"
+        "name": "Tạm dừng đồng bộ",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Đã tắt",
+              "paused": "Đã tạm dừng",
+              "storage_full": "Bộ nhớ đầy",
+              "storage_error": "Lỗi lưu trữ",
+              "needs_login": "Cần đăng nhập",
+              "waiting_connection": "Đang chờ kết nối",
+              "not_started": "Chưa bắt đầu",
+              "waiting_retry": "Đang chờ thử lại",
+              "waiting_budget": "Đang chờ hạn mức truy vấn",
+              "discovering": "Đang tìm lịch sử",
+              "preserving": "Đang lưu chi tiết",
+              "verifying": "Đang kiểm tra dữ liệu",
+              "incremental": "Đang đồng bộ phần mới",
+              "with_gaps": "Hoàn tất nhưng còn thiếu",
+              "synced": "Đã đồng bộ cục bộ",
+              "vehicle_not_present": "Không có xe trong danh sách tài khoản"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Tiếp tục đồng bộ"

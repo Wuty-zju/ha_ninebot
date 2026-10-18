@@ -6,7 +6,10 @@ from typing import Any
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.const import PERCENTAGE
 from homeassistant.core import callback
+from homeassistant.helpers.entity import EntityCategory
 
+from .const import CONF_DEBUG
+from .debug_entities import DEBUG_SENSOR_KEYS
 from .entity import NinebotEntity
 from .runtime import NinebotConfigEntry
 
@@ -40,6 +43,10 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
         super().__init__(entry, sn, key, "sensor", "profile")
         self.key = key
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        if key in DEBUG_SENSOR_KEYS:
+            self._attr_entity_registry_enabled_default = entry.options.get(CONF_DEBUG) is True
+            self._attr_entity_registry_visible_default = entry.options.get(CONF_DEBUG) is True
         if key == "history_sync_state":
             self._attr_device_class = SensorDeviceClass.ENUM
             self._attr_options = list(HISTORY_STATES)
