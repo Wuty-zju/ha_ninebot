@@ -3,45 +3,30 @@
     "step": {
       "user": {
         "title": "新增帳號",
-        "description": "The password is used only for this login and is not stored in integration configuration. 新帳號預設在背景將行程歷史及軌跡儲存至本機，可在選項中關閉。",
+        "description": "Sign in with your account and password, then choose vehicle features. Your password is not saved in integration configuration.",
         "data": {
           "account": "帳號",
-          "password": "密碼",
-          "debug_mode": "調試模式",
-          "enable_estimation": "啟用電池額定參數",
-          "enable_coordinates": "顯示車輛位置",
-          "login_method": "登入方式"
+          "password": "密碼"
         },
-        "data_description": {
-          "debug_mode": "Show a bounded diagnostic view without additional requests.",
-          "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
-        }
+        "data_description": {}
       },
       "reauth_confirm": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "帳號",
-          "password": "密碼",
-          "login_method": "登入方式"
+          "password": "密碼"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "reconfigure": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "帳號",
-          "password": "密碼",
-          "login_method": "登入方式"
+          "password": "密碼"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "sms_account": {
         "title": "Send login code",
@@ -57,6 +42,21 @@
           "code": "驗證碼",
           "resend": "重新發送"
         }
+      },
+      "features": {
+        "title": "Vehicle features",
+        "description": "Account verified. Choose vehicle features; rated voltage and capacity can be entered on the device page after setup.",
+        "data": {
+          "enable_estimation": "設定電池額定參數",
+          "enable_coordinates": "顯示車輛位置",
+          "enable_calendar": "啟用行程日曆",
+          "debug_mode": "調試模式"
+        },
+        "data_description": {
+          "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
       }
     },
     "error": {
@@ -64,7 +64,7 @@
       "cannot_connect": "Cannot connect; try again later",
       "upstream_error": "Ninebot service returned an error; try later",
       "invalid_response": "Unexpected response format",
-      "unsupported_platform": "ninecli cannot start on this platform",
+      "unsupported_platform": "The vehicle connection service cannot run on this platform.",
       "busy": "Session is busy; try again later",
       "storage_error": "Cannot save session; check storage and permissions",
       "password_required": "Enter a password or choose SMS login.",
@@ -80,7 +80,9 @@
       "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
-      "storage_error": "Local session storage failed. Check storage and try again."
+      "storage_error": "Local session storage failed. Check storage and try again.",
+      "sms_unavailable": "SMS sign-in is unavailable. Use your password.",
+      "onboarding_expired": "Feature setup expired. Add the account again."
     },
     "initiate_flow": {
       "user": "新增帳號"
@@ -90,28 +92,27 @@
     "step": {
       "init": {
         "title": "選項",
-        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
+        "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
           "poll_interval": "狀態刷新間隔（秒）",
-          "enable_estimation": "啟用電池額定參數",
           "enable_coordinates": "顯示車輛位置",
           "enable_controls": "啟用車輛控制",
           "control_vehicles": "允許控制的車輛",
-          "debug_mode": "調試模式",
-          "configure_model": "配置電池額定參數",
+          "configure_model": "設定電池額定參數",
           "enable_calendar": "啟用行程日曆",
-          "preserve_history": "后台保全行程详情",
+          "preserve_history": "自動同步歷史詳情",
           "history_requests_per_hour": "每账号每小时详情请求限额",
           "auto_history_sync": "自動同步歷史行程",
-          "history_storage_mib": "歷史儲存額度（MiB）"
+          "history_storage_mib": "歷史儲存額度（MiB）",
+          "debug_mode": "調試模式"
         },
         "data_description": {
-          "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
+          "configure_model": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "開關每輛車的本地行程日曆。關閉不刪除歷史；重新開啟沿用原實體。瀏覽不請求雲端。",
-          "preserve_history": "私有儲存可得的行程詳情和軌跡。關閉後停止背景任務，不刪除已有檔案。",
-          "history_requests_per_hour": "每个账号的后台月份与详情查询共享此预算；ninecli 内部重试不计在此逻辑请求数内。",
+          "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
+          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
           "auto_history_sync": "為帳號內所有歸屬車輛發現可得歷史，隨後背景增量同步。",
           "history_storage_mib": "每帳號32–2048 MiB，預設100。降低額度不刪除已存記錄，超額時暫停寫入。"
         }

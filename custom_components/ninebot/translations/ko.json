@@ -3,45 +3,30 @@
     "step": {
       "user": {
         "title": "계정 추가",
-        "description": "The password is used only for this login and is not stored in integration configuration. 새 계정은 주행 기록과 경로를 백그라운드에서 로컬에 저장합니다. 옵션에서 끌 수 있습니다.",
+        "description": "Sign in with your account and password, then choose vehicle features. Your password is not saved in integration configuration.",
         "data": {
           "account": "계정",
-          "password": "비밀번호",
-          "debug_mode": "디버그 모드",
-          "enable_estimation": "정격 매개변수 활성화",
-          "enable_coordinates": "차량 위치 표시",
-          "login_method": "로그인 방법"
+          "password": "비밀번호"
         },
-        "data_description": {
-          "debug_mode": "Show a bounded diagnostic view without additional requests.",
-          "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
-        }
+        "data_description": {}
       },
       "reauth_confirm": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "계정",
-          "password": "비밀번호",
-          "login_method": "로그인 방법"
+          "password": "비밀번호"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "reconfigure": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "계정",
-          "password": "비밀번호",
-          "login_method": "로그인 방법"
+          "password": "비밀번호"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "sms_account": {
         "title": "Send login code",
@@ -57,6 +42,21 @@
           "code": "인증 코드",
           "resend": "다시 보내기"
         }
+      },
+      "features": {
+        "title": "Vehicle features",
+        "description": "Account verified. Choose vehicle features; rated voltage and capacity can be entered on the device page after setup.",
+        "data": {
+          "enable_estimation": "정격 매개변수 설정",
+          "enable_coordinates": "차량 위치 표시",
+          "enable_calendar": "주행 기록",
+          "debug_mode": "디버그 모드"
+        },
+        "data_description": {
+          "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
       }
     },
     "error": {
@@ -64,7 +64,7 @@
       "cannot_connect": "Cannot connect; try again later",
       "upstream_error": "Ninebot service returned an error; try later",
       "invalid_response": "Unexpected response format",
-      "unsupported_platform": "ninecli cannot start on this platform",
+      "unsupported_platform": "The vehicle connection service cannot run on this platform.",
       "busy": "Session is busy; try again later",
       "storage_error": "Cannot save session; check storage and permissions",
       "password_required": "Enter a password or choose SMS login.",
@@ -80,7 +80,9 @@
       "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
-      "storage_error": "Local session storage failed. Check storage and try again."
+      "storage_error": "Local session storage failed. Check storage and try again.",
+      "sms_unavailable": "SMS sign-in is unavailable. Use your password.",
+      "onboarding_expired": "Feature setup expired. Add the account again."
     },
     "initiate_flow": {
       "user": "계정 추가"
@@ -90,28 +92,27 @@
     "step": {
       "init": {
         "title": "옵션",
-        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
+        "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
           "poll_interval": "상태 갱신 간격(초)",
-          "enable_estimation": "정격 매개변수 활성화",
           "enable_coordinates": "차량 위치 표시",
           "enable_controls": "차량 제어 활성화",
           "control_vehicles": "제어 허용 차량",
-          "debug_mode": "디버그 모드",
           "configure_model": "정격 매개변수 설정",
           "enable_calendar": "주행 기록",
-          "preserve_history": "Preserve trip details in background",
+          "preserve_history": "Automatically sync trip details",
           "history_requests_per_hour": "Detail request budget per account/hour",
           "auto_history_sync": "주행 기록 자동 동기화",
-          "history_storage_mib": "기록 저장 한도 (MiB)"
+          "history_storage_mib": "기록 저장 한도 (MiB)",
+          "debug_mode": "디버그 모드"
         },
         "data_description": {
-          "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
+          "configure_model": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
-          "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
+          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
           "auto_history_sync": "계정의 모든 소유 차량에서 제공되는 기록을 찾은 후 변경분을 백그라운드로 동기화합니다.",
           "history_storage_mib": "계정당32–2048 MiB, 기본100. 한도를 낮춰도 저장된 기록은 삭제하지 않으며 쓰기가 중지될 수 있습니다."
         }

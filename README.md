@@ -69,9 +69,9 @@ The Downloads badge counts `ninebot.zip` downloads across releases, including up
 
 ## Add your accounts
 
-Choose **password** or **two-step SMS** login. Ninebot discovers the account's vehicles and creates supported entities. Review account options, then add another integration entry for each additional account.
+Sign in with your account and **password**; vehicle features are configured after authentication. Ninebot discovers the account's vehicles and creates supported entities. Review account options, then add another integration entry for each additional account.
 
-Each account owns its session, credentials directory and archive. Entry titles use the reported **username, account and service region**, omitting missing components. Reauthentication and reconfiguration update the established account. Passwords are not stored in ConfigEntry or passed as process arguments; local session tokens and backups should be protected.
+Each account owns its session, credentials directory and archive. Entry titles use the reported **username and account**, omitting missing components. Reauthentication and reconfiguration update the established account. Passwords are not stored in ConfigEntry or passed as process arguments; local session tokens and backups should be protected.
 
 ### Choose what runs
 
@@ -139,7 +139,7 @@ Local-only query modes read the archive without cloud acquisition. Large lists a
 
 | Layer | Refactor and resulting behavior |
 |---|---|
-| **Accounts** | Separate entries, sessions and archives; password/SMS setup, reauth and reconfigure. |
+| **Accounts** | Separate entries, sessions and archives; password setup, reauth and reconfigure. |
 | **Data model** | Reviewed normalization, source metadata, distinct range fields, explicit missing values and original precision. |
 | **Realtime updates** | Per-vehicle/group freshness, demand scheduling, shared in-flight reads, partial failures and backoff. |
 | **History lifecycle** | Resumable discovery, incremental detail preservation, transactional SQLite storage and quality-aware track retention. |

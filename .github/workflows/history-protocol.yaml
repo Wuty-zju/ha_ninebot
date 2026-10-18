@@ -38,7 +38,6 @@ on:
       - 'custom_components/ninebot/archive_browse.py'
       - 'custom_components/ninebot/bootstrap.py'
       - 'custom_components/ninebot/coordinator.py'
-      - 'custom_components/ninebot/config_flow.py'
       - 'custom_components/ninebot/preservation.py'
       - 'custom_components/ninebot/detail_followup.py'
       - 'custom_components/ninebot/ride_archive.py'

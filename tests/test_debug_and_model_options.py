@@ -96,7 +96,6 @@ async def test_options_and_number_share_rated_parameters(hass, entry, app_client
         form["flow_id"],
         {
             "poll_interval": 120,
-            "enable_estimation": True,
             "debug_mode": True,
             "configure_model": True,
         },
