@@ -413,3 +413,88 @@ async def test_followup_deadline_cancels_slow_read_without_replaying(controls, m
     co.client.async_get_status_once.assert_awaited_once()
     co.client.async_control.assert_not_awaited()
     assert not co.pending_controls and not co._control_leases
+
+
+@pytest.mark.parametrize("transition", [0.2, 4.9, 5.1, 9.8])
+@pytest.mark.parametrize("action", ["engine/start", "engine/stop", "buck"])
+async def test_late_target_is_published_on_first_matching_read(
+    controls, monkeypatch, transition, action
+):
+    from custom_components.ninebot.control_polling import read_slots
+
+    schedule = (0, 1, 2, 3, 4, 6, 8, 9.9)
+    monkeypatch.setattr(module, "CONFIRMATION_DELAYS", schedule)
+    elapsed = [0.0]
+    observed = []
+
+    async def slots(started, offsets):
+        if offsets != schedule:
+            async for offset in read_slots(started, offsets):
+                yield offset
+            return
+        clock = [started]
+
+        async def advance(delay):
+            clock[0] += delay
+            elapsed[0] = clock[0] - started
+            await asyncio.sleep(0)
+
+        async for offset in read_slots(started, offsets, now=lambda: clock[0], sleep=advance):
+            yield offset
+
+    monkeypatch.setattr(module, "read_slots", slots)
+    target = action == "engine/stop"
+
+    async def status(sn):
+        observed.append(elapsed[0])
+        reached = elapsed[0] >= transition
+        locked = target if reached else not target
+        return payload(vehicle=int(locked), seat=0 if locked else 1)
+
+    controls.client.async_get_status_once.side_effect = status
+    await controls.async_control("SyntheticSN", action)
+    expected = next(offset for offset in schedule if offset >= transition)
+    assert observed[-1] == pytest.approx(expected)
+    key = "seat_lock" if action == "buck" else "vehicle_lock"
+    assert controls.lock_state("SyntheticSN", key) is target
+    assert len(observed) <= 8
+    assert (
+        controls.control_results.diagnostics("SyntheticSN")[action]["confirmation"] == "confirmed"
+    )
+    controls.client.async_control.assert_awaited_once_with("SyntheticSN", action)
+
+
+async def test_seat_feedback_does_not_freeze_real_relock_and_expires(controls, entry, freezer):
+    from datetime import timedelta
+
+    from homeassistant.util import dt as dt_util
+    from pytest_homeassistant_custom_component.common import async_fire_time_changed
+
+    from custom_components.ninebot import adapters
+
+    controls.client.async_get_status_once.return_value = payload(seat=1)
+    await controls.async_control("SyntheticSN", "buck")
+    lock = NinebotLock(entry, "SyntheticSN", "seat_lock")
+    assert lock.is_locked is False
+    assert lock.extra_state_attributes["unlock_feedback"] == "recently_unlocked"
+    snapshot = controls.data["SyntheticSN"]
+    controls.data["SyntheticSN"] = replace(snapshot, status=adapters.status(payload(seat=0)))
+    assert lock.is_locked is True
+    assert lock.extra_state_attributes["unlock_feedback"] == "recently_unlocked"
+    freezer.move_to(dt_util.utcnow() + timedelta(seconds=6))
+    async_fire_time_changed(controls.hass, dt_util.utcnow())
+    await controls.hass.async_block_till_done()
+    assert lock.extra_state_attributes["unlock_feedback"] == "none"
+    assert not controls._seat_feedback_timers
+
+
+async def test_seat_followup_stops_when_relocked_without_another_command(controls, monkeypatch):
+    monkeypatch.setattr(module, "SEAT_FOLLOWUP_DELAYS", (0, 0, 0))
+    controls.client.async_get_status_once.side_effect = [payload(seat=1), payload(seat=0)]
+    owner = controls._key("SyntheticSN", module.Endpoint.STATUS)
+    await controls._control_followup(
+        "SyntheticSN", owner, asyncio.get_running_loop().time(), seat=True
+    )
+    assert controls.client.async_get_status_once.await_count == 2
+    controls.client.async_control.assert_not_awaited()
+    assert controls.lock_state("SyntheticSN", "seat_lock") is True

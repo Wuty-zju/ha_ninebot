@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "Última operación"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Resultado incierto. Comprueba el vehículo."
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "Comando enviado; no se pudo leer el estado del bloqueo."
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "Hay una operación del vehículo pendiente o se alcanzó el límite de control de la cuenta. Vuelve a intentarlo cuando termine."
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "El compartimento del asiento solo se cierra manualmente."
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "Comando enviado; el estado solicitado aún no está confirmado."
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "Comando no enviado: la comunicación no está disponible temporalmente. Inténtalo más tarde."

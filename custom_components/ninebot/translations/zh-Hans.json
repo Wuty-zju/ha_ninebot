@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "最近操作"
+          },
+          "unlock_feedback": {
+            "name": "操作反馈",
+            "state": {
+              "recently_unlocked": "刚解锁",
+              "none": "无"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "指令未发送，请检查控制设置和账号连接。"
     },
     "control_uncertain": {
-      "message": "操作结果不确定，请检查车辆。"
+      "message": "未能确认指令结果，请查看车辆状态。"
     },
     "control_readback_failed": {
-      "message": "指令已发送，暂时无法读取锁状态。"
+      "message": "未能确认车辆状态，请查看车辆。"
     },
     "busy": {
       "message": "车辆操作进行中，请稍后重试。"
@@ -691,10 +698,10 @@
       "message": "实体身份存储不可用，请检查修复提示。"
     },
     "seat_lock_manual": {
-      "message": "座桶只能手动上锁。"
+      "message": "座桶需手动上锁。"
     },
     "control_target_not_observed": {
-      "message": "指令已发送，尚未确认目标锁状态，请检查车辆。"
+      "message": "10秒内未确认，请查看车辆状态。"
     },
     "control_not_sent": {
       "message": "操作未发送：通信暂不可用，请稍后重试。"

@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-from homeassistant.helpers.event import async_track_point_in_utc_time
+from homeassistant.helpers.event import async_call_later, async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -34,6 +34,7 @@ from .const import (
     DOMAIN,
     VEHICLE_INTERVAL,
 )
+from .control_polling import read_slots
 from .control_results import (
     CommandOutcome,
     Confirmation,
@@ -57,10 +58,13 @@ from .ride_lifecycle import RideLifecycle
 from .travel_observation import MonthObservation
 
 LOGGER = logging.getLogger(__name__)
-CONFIRMATION_DELAYS = (0, 2, 5)
+CONFIRMATION_DELAYS = (0, 1, 2, 3, 4, 6, 8, 9.9)
 CONFIRMATION_TIMEOUT = 10
 CONTROL_FOLLOWUP_DELAYS = (10, 20, 25)
 CONTROL_FOLLOWUP_TIMEOUT = 30
+SEAT_FOLLOWUP_DELAYS = (1, 2, 3, 4, 5, 6, 8, 9.9)
+SEAT_FOLLOWUP_TIMEOUT = 10
+SEAT_FEEDBACK_SECONDS = 5
 
 
 def travel_record(record: RawRecord, month: str) -> TravelMonth:
@@ -133,6 +137,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._authenticated = False
         self._control_pending = 0
         self._control_followups: dict[str, asyncio.Task[None]] = {}
+        self.seat_unlock_feedback: set[str] = set()
+        self._seat_feedback_timers: dict[str, Callable[[], None]] = {}
         self._query_pending = 0
         self._active: set[asyncio.Task[Any]] = set()
         self._forced: dict[str, asyncio.Task[bool]] = {}
@@ -1247,8 +1253,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if target:
                 started = asyncio.get_running_loop().time()
                 refreshed = await self._confirm_lock(sn, result, target[0], owner, command_revision)
+                if action == "buck" and refreshed:
+                    self._mark_seat_unlocked(sn)
                 if self._owns(owner) and not self.broker.cooling_down:
-                    self._schedule_control_followup(sn, owner, started)
+                    self._schedule_control_followup(
+                        sn,
+                        owner,
+                        asyncio.get_running_loop().time() if action == "buck" else started,
+                        seat=action == "buck",
+                    )
             else:
                 refreshed = await self._control_readback(sn, result)
             if command_error is not None:
@@ -1277,11 +1290,32 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if result is not None:
                 result.finished_at = dt_util.utcnow()
 
-    def _schedule_control_followup(self, sn: str, owner: QueryKey, started: float) -> None:
+    @callback
+    def _mark_seat_unlocked(self, sn: str) -> None:
+        """Five seconds of operation feedback, never a lock-state override."""
+        if cancel := self._seat_feedback_timers.pop(sn, None):
+            cancel()
+        self.seat_unlock_feedback.add(sn)
+
+        @callback
+        def clear(_: datetime) -> None:
+            self._seat_feedback_timers.pop(sn, None)
+            self.seat_unlock_feedback.discard(sn)
+            if not self._stopping:
+                self.async_update_listeners()
+
+        self._seat_feedback_timers[sn] = async_call_later(self.hass, SEAT_FEEDBACK_SECONDS, clear)
+        self.async_update_listeners()
+
+    def _schedule_control_followup(
+        self, sn: str, owner: QueryKey, started: float, *, seat: bool = False
+    ) -> None:
         """Observe automatic relocking without holding pending state or a lease."""
         assert self.config_entry is not None
         task = self.config_entry.async_create_background_task(
-            self.hass, self._control_followup(sn, owner, started), "ninebot lock state follow-up"
+            self.hass,
+            self._control_followup(sn, owner, started, seat=seat),
+            "ninebot lock state follow-up",
         )
         self._control_followups[sn] = task
 
@@ -1291,13 +1325,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
         task.add_done_callback(finished)
 
-    async def _control_followup(self, sn: str, owner: QueryKey, started: float) -> None:
-        """Three additional status-only reads; never replay a control command."""
-        loop = asyncio.get_running_loop()
+    async def _control_followup(
+        self, sn: str, owner: QueryKey, started: float, *, seat: bool = False
+    ) -> None:
+        """Observe relocking on a bounded schedule; never replay a command."""
+        timeout = SEAT_FOLLOWUP_TIMEOUT if seat else CONTROL_FOLLOWUP_TIMEOUT
+        offsets = SEAT_FOLLOWUP_DELAYS if seat else CONTROL_FOLLOWUP_DELAYS
         try:
-            async with asyncio.timeout_at(started + CONTROL_FOLLOWUP_TIMEOUT):
-                for offset in CONTROL_FOLLOWUP_DELAYS:
-                    await asyncio.sleep(max(0, started + offset - loop.time()))
+            async with asyncio.timeout_at(started + timeout):
+                async for _ in read_slots(started, offsets):
                     if not self._owns(owner) or not self._authenticated or self.broker.cooling_down:
                         return
                     self._barriers[sn] = self._barriers.get(sn, 0) + 1
@@ -1307,6 +1343,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     self.async_set_updated_data(dict(self.data))
                     self._schedule_validity_check()
                     if self.data[sn].status_freshness.error is not None:
+                        return
+                    if seat and self.lock_state(sn, "seat_lock") is True:
                         return
         except NinebotAuthError:
             self._manual_auth_failure()
@@ -1332,17 +1370,16 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         owner: QueryKey,
         command_revision: int,
     ) -> bool:
-        """Three single-attempt reads, one absolute deadline, no optimistic state."""
+        """Up to eight reads across ten seconds; confirm each fresh sample immediately."""
         loop = asyncio.get_running_loop()
         started = loop.time()
         result.readback = ReadbackOutcome.PENDING
         try:
             async with asyncio.timeout_at(started + CONFIRMATION_TIMEOUT):
-                for offset in CONFIRMATION_DELAYS:
+                async for _ in read_slots(started, CONFIRMATION_DELAYS):
                     if not self._owns(owner):
                         result.readback = ReadbackOutcome.SKIPPED
                         break
-                    await asyncio.sleep(max(0, started + offset - loop.time()))
                     if not self._owns(owner):
                         result.readback = ReadbackOutcome.SKIPPED
                         break
@@ -1427,6 +1464,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
     async def async_close(self) -> None:
         self._stopping = True
         self._generation += 1
+        for cancel in self._seat_feedback_timers.values():
+            cancel()
+        self._seat_feedback_timers.clear()
+        self.seat_unlock_feedback.clear()
         if self._validity_cancel:
             self._validity_cancel()
             self._validity_cancel = None

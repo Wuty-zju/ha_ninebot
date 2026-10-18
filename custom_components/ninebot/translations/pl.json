@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "Ostatnia operacja"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Wynik niepewny. Sprawdź pojazd."
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "Polecenie wysłane; nie można odczytać stanu zamka."
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "Trwa operacja pojazdu lub osiągnięto limit sterowania konta. Spróbuj ponownie po zakończeniu."
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Schowek można zamknąć tylko ręcznie."
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "Polecenie wysłane; żądany stan zamka nie został potwierdzony."
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "Polecenie nie zostało wysłane: komunikacja jest chwilowo niedostępna. Spróbuj później."

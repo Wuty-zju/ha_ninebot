@@ -81,7 +81,7 @@ Requests are demand-aware, account-budgeted and shared when identical reads are 
 
 Vehicle **unlock** requests remote start; **lock** requests remote stop. The vehicle/cloud decides its motion/P requirements. HA does not disable remote stop by guessing whether the vehicle is moving. Seat unlock opens the compartment; seat locking is manual only. The retained buttons use the same executor as the Lock entities.
 
-Each explicit request sends one command, never an automatic replay. Fresh status reads at approximately 0/2/5 seconds check the target; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. A cloud observation is not a physical guarantee; pending/unconfirmed/failed results are kept distinct. A competing command for the same physical vehicle reports busy instead of being queued for later execution.
+Each explicit request sends one command, never an automatic replay. Up to eight fresh status reads over ten seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. A cloud observation is not a physical guarantee; pending/unconfirmed/failed results are kept distinct. A competing command for the same physical vehicle reports busy instead of being queued for later execution.
 
 ## Troubleshooting
 
@@ -105,3 +105,5 @@ Location display defaults on, and detail preservation can retain precise tracks.
 Optional map tiles contact an external provider only when enabled; see [map privacy](history.md#map-privacy-and-units). Protect backups and local session directories from other users and privileged processes.
 
 Removing an account closes its work and removes only its recognized archive/journal files; unusual files/recovery copies may be retained with a Repair rather than broadly deleted. Keep a complete backup before removal. Do not edit `.storage`, entity registries or a running archive manually. For upgrades/downgrades, follow the [migration guide](migration.md).
+
+Seat-unlock confirmation starts a separate ten-second relock observation window. A five-second “Recently unlocked” attribute confirms the observed operation without delaying a newly observed locked state. Overdue read slots are skipped rather than sent in a burst.
