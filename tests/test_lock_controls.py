@@ -61,7 +61,10 @@ async def test_command_updates_target_and_preserves_buttons(controls, entry, act
     assert not co.pending_controls and not co._control_leases
     rows = er.async_entries_for_config_entry(er.async_get(co.hass), entry.entry_id)
     assert sum(row.domain == "lock" for row in rows) == 2
-    assert sum(row.domain == "button" for row in rows) == 5
+    buttons = {row.unique_id for row in rows if row.domain == "button"}
+    assert {
+        f"SyntheticSN_{key}" for key in ("refresh", "bell", "buck", "engine_start", "engine_stop")
+    } <= buttons
     assert not any(row.unique_id.endswith(("_unlocked", "_seat_lock_raw")) for row in rows)
 
 
