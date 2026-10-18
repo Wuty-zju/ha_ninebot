@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "पिछली कार्रवाई"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "आदेश का परिणाम अनिश्चित है। वाहन जाँचें।"
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "आदेश भेजा गया; लॉक की स्थिति नहीं पढ़ी जा सकी।"
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "वाहन की एक कार्रवाई चल रही है या खाते की नियंत्रण सीमा पूरी हो गई है। समाप्त होने के बाद फिर प्रयास करें।"
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "सीट डिब्बा केवल हाथ से लॉक किया जा सकता है।"
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "आदेश भेजा गया; अनुरोधित लॉक स्थिति की पुष्टि नहीं हुई।"
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "आदेश नहीं भेजा गया: संचार अस्थायी रूप से उपलब्ध नहीं है। बाद में फिर प्रयास करें।"

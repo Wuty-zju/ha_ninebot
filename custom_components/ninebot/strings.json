@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "Last operation"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "Command not sent. Check control settings and account connection."
     },
     "control_uncertain": {
-      "message": "Command result unknown. Check the vehicle."
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "Command sent; current lock state could not be read."
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "A vehicle operation is in progress. Try again shortly."
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "The seat compartment can only be locked manually."
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "Command sent; the requested lock state is not yet confirmed."
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "Command not sent: communication is temporarily unavailable. Retry later."

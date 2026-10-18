@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0b97
+
+- Observe lock commands with up to eight status reads across ten seconds, confirming each fresh target immediately and skipping overdue slots after slow responses.
+- Observe seat relocking for ten seconds after confirmation. Keep five seconds of recent-unlock feedback separate from the actual lock state.
+
 ## 2.0.0b96
 
 - Simplify sign-in to account and password, then open vehicle feature settings. Keep SMS sign-in unavailable until delivery is verified.

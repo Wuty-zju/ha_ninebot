@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "Остання операція"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Результат невідомий. Перевірте транспортний засіб."
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "Команду надіслано; стан замка недоступний."
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "Операція з транспортним засобом триває або досягнуто ліміту керування облікового запису. Повторіть після завершення."
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Відсік сидіння замикається лише вручну."
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "Команду надіслано; потрібний стан замка не підтверджено."
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "Команду не надіслано: зв’язок тимчасово недоступний. Повторіть пізніше."

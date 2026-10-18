@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "Son işlem"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Komut sonucu belirsiz. Aracı kontrol edin."
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "Komut gönderildi; kilit durumu okunamadı."
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "Bir araç işlemi sürüyor veya hesabın kontrol sınırına ulaşıldı. Tamamlandıktan sonra tekrar deneyin."
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Sele bölmesi yalnızca elle kilitlenebilir."
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "Komut gönderildi; istenen kilit durumu henüz doğrulanmadı."
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "Komut gönderilmedi: iletişim geçici olarak kullanılamıyor. Daha sonra tekrar deneyin."

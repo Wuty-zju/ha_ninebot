@@ -12,7 +12,7 @@ from .runtime import NinebotConfigEntry
 
 
 class NinebotLock(NinebotEntity, LockEntity):
-    _unrecorded_attributes = unrecorded_attributes(frozenset({"last_operation"}))
+    _unrecorded_attributes = unrecorded_attributes(frozenset({"last_operation", "unlock_feedback"}))
 
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
         identities = entry.runtime_data.identities
@@ -33,6 +33,15 @@ class NinebotLock(NinebotEntity, LockEntity):
         return {
             "remote_lock_mode": "manual" if self.key == "seat_lock" else "remote",
             "last_operation": latest,
+            **(
+                {
+                    "unlock_feedback": "recently_unlocked"
+                    if self.sn in self.coordinator.seat_unlock_feedback
+                    else "none"
+                }
+                if self.key == "seat_lock"
+                else {}
+            ),
         }
 
     @property

@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "最近操作"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "指令未傳送，請檢查控制設定和帳號連線。"
     },
     "control_uncertain": {
-      "message": "操作結果不確定，請檢查車輛。"
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "指令已傳送，暫時無法讀取鎖狀態。"
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "車輛操作進行中，請稍後重試。"
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "座桶只能手動上鎖。"
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "指令已傳送，尚未確認目標鎖狀態，請檢查車輛。"
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "操作未送出：通訊暫時無法使用，請稍後重試。"

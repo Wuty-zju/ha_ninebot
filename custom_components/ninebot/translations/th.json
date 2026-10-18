@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "การทำงานล่าสุด"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "ไม่ทราบผลคำสั่ง โปรดตรวจสอบรถ"
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "ส่งคำสั่งแล้ว แต่ไม่สามารถอ่านสถานะล็อกได้"
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "มีการดำเนินการของรถอยู่หรือถึงขีดจำกัดการควบคุมบัญชีแล้ว โปรดลองอีกครั้งเมื่อเสร็จสิ้น"
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "ช่องใต้เบาะล็อกได้ด้วยมือเท่านั้น"
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "ส่งคำสั่งแล้ว แต่ยังไม่ยืนยันสถานะล็อกที่ต้องการ"
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "ไม่ได้ส่งคำสั่ง: การสื่อสารไม่พร้อมใช้งานชั่วคราว โปรดลองอีกครั้งในภายหลัง"

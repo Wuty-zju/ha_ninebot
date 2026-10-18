@@ -619,6 +619,13 @@
           },
           "last_operation": {
             "name": "Thao tác gần nhất"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
           }
         }
       }
@@ -634,10 +641,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Kết quả chưa rõ. Hãy kiểm tra xe."
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "Đã gửi lệnh; không đọc được trạng thái khóa."
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "Một thao tác xe đang diễn ra hoặc đã đạt giới hạn điều khiển của tài khoản. Hãy thử lại sau khi hoàn tất."
@@ -691,10 +698,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Cốp yên chỉ có thể khóa thủ công."
+      "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "Đã gửi lệnh; chưa xác nhận trạng thái khóa yêu cầu."
+      "message": "Not confirmed within 10 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "Lệnh chưa được gửi: giao tiếp tạm thời không khả dụng. Hãy thử lại sau."
