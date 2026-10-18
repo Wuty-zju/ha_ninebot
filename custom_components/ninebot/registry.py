@@ -184,6 +184,13 @@ def async_configure_debug_entities(hass: HomeAssistant, entry: NinebotConfigEntr
                 hidden = er.RegistryEntryHider.INTEGRATION
         if disabled != row.disabled_by or hidden != row.hidden_by:
             registry.async_update_entity(row.entity_id, disabled_by=disabled, hidden_by=hidden)
+        # Unloading an enabled entity restores an unavailable placeholder before
+        # this setup disables it. Registry flag updates do not remove that
+        # placeholder in Core. Remove only our disabled, restored state; keep
+        # the registry identity, user preferences and Recorder history intact.
+        if disabled is not None and (state := hass.states.get(row.entity_id)) is not None:
+            if state.attributes.get("restored") is True:
+                hass.states.async_remove(row.entity_id)
 
 
 @callback

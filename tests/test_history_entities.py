@@ -186,6 +186,9 @@ async def test_debug_off_hides_only_debug_views_and_keeps_diagnostic_features(
 
     from homeassistant.helpers.entity import EntityCategory
 
+    hass.config_entries.async_update_entry(
+        entry, options={"preserve_history": True, "auto_history_sync": False}
+    )
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     registry = er.async_get(hass)
