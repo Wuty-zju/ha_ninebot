@@ -1,13 +1,22 @@
 name: Checks
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
+    inputs:
+      full_validation:
+        description: Run the full HA and frontend compatibility suites
+        type: boolean
+        default: false
 permissions:
   contents: read
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   lint:
+    name: Core lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -18,14 +27,24 @@ jobs:
       - run: ruff check custom_components tests scripts
       - run: ruff format --check custom_components tests scripts
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        if: github.event_name == 'workflow_dispatch' && inputs.full_validation
         with:
           node-version: '24'
-      - if: github.event_name == 'workflow_dispatch'
+      - if: github.event_name == 'workflow_dispatch' && inputs.full_validation
         run: node --test tests/frontend/*.mjs
+  release-policy:
+    name: Release policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python -m unittest discover -s scripts/tests -p 'test_release.py'
   test:
     # Full compatibility runs are requested for major updates, not every beta.
     # A maintainer can dispatch this workflow on the branch/main being released.
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.full_validation
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

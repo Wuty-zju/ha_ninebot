@@ -1,13 +1,14 @@
 name: HACS
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   validate:
+    name: HACS validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6

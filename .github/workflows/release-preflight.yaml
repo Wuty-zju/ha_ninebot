@@ -1,0 +1,51 @@
+name: Release preflight
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Intended release channel (this workflow never publishes)
+        type: choice
+        options: [preview, stable]
+        required: true
+      version:
+        description: Exact manifest version without v
+        type: string
+        required: true
+      source:
+        description: Source branch (dev, main or release/version)
+        type: string
+        default: dev
+        required: true
+      candidate_sha:
+        description: Reviewed full commit SHA at the fetched source tip
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  preflight:
+    name: Read-only release preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Require the maintained workflow on main
+        env:
+          WORKFLOW_REF: ${{ github.ref }}
+        run: test "$WORKFLOW_REF" = refs/heads/main
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Validate immutable request against fetched Git objects
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+          SOURCE: ${{ inputs.source }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: >-
+          python scripts/check_release.py --channel "$CHANNEL" --version "$VERSION"
+          --source "$SOURCE" --sha "$CANDIDATE_SHA"
