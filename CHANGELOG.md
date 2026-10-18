@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0b95
+
+- Distribute `ninebot.zip` through HACS, with SHA256 checksums and verified runtime contents. Older releases retain source-archive installation.
+- Add draft-first automated package publication and cumulative package-download statistics in the English and Chinese documentation.
+
 ## 2.0.0b94
 
 - Reuse the validated selected geometry within each local detail read instead of scanning the same full trail twice. Each new read still validates source hashes, identity, full-track quality and offsets; partial corruption fallback and retained higher-quality geometry are unchanged.
