@@ -90,7 +90,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Ride time"
   },
   "zh-Hans": {
     "title": "行程历史",
@@ -183,7 +184,8 @@ export const LABELS = {
     "history_updated": "本地记录已更新，读取最新内容",
     "feed_retrying": "正在重新连接本地更新通知…",
     "feed_unavailable": "自动更新提示暂不可用，仍可手动读取。",
-    "feed_unsupported": "此版本不支持更新通知，仍可手动读取。"
+    "feed_unsupported": "此版本不支持更新通知，仍可手动读取。",
+    "ride_time": "行程时间"
   },
   "zh-Hant": {
     "title": "行程歷史",
@@ -276,7 +278,8 @@ export const LABELS = {
     "history_updated": "本地记录已更新，读取最新内容",
     "feed_retrying": "正在重新连接本地更新通知…",
     "feed_unavailable": "自动更新提示暂不可用，仍可手动读取。",
-    "feed_unsupported": "此版本不支持更新通知，仍可手动读取。"
+    "feed_unsupported": "此版本不支持更新通知，仍可手动读取。",
+    "ride_time": "行程時間"
   },
   "de": {
     "title": "Fahrtenhistorie",
@@ -369,7 +372,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Startzeit – Endzeit"
   },
   "fr": {
     "title": "Historique des trajets",
@@ -462,7 +466,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Heure de départ – Heure d’arrivée"
   },
   "es": {
     "title": "Historial de viajes",
@@ -555,7 +560,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Hora de inicio – Hora de fin"
   },
   "it": {
     "title": "Cronologia viaggi",
@@ -648,7 +654,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Ora di partenza – Ora di arrivo"
   },
   "pt": {
     "title": "Histórico de viagens",
@@ -741,7 +748,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Hora de início – Hora de fim"
   },
   "pt-BR": {
     "title": "Histórico de viagens",
@@ -834,7 +842,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Hora de início – Hora de fim"
   },
   "ru": {
     "title": "История поездок",
@@ -927,7 +936,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Время начала – Время окончания"
   },
   "ja": {
     "title": "走行履歴",
@@ -1020,7 +1030,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "開始時刻 – 終了時刻"
   },
   "ko": {
     "title": "주행 기록",
@@ -1113,7 +1124,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "시작 시간 – 종료 시간"
   },
   "nl": {
     "title": "Ritgeschiedenis",
@@ -1206,7 +1218,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Starttijd – Eindtijd"
   },
   "pl": {
     "title": "Historia przejazdów",
@@ -1299,7 +1312,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Czas rozpoczęcia – Czas zakończenia"
   },
   "uk": {
     "title": "Історія поїздок",
@@ -1392,7 +1406,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Час початку – Час завершення"
   },
   "tr": {
     "title": "Sürüş geçmişi",
@@ -1485,7 +1500,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Başlangıç zamanı – Bitiş zamanı"
   },
   "hi": {
     "title": "यात्रा इतिहास",
@@ -1578,7 +1594,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "आरंभ समय – समाप्ति समय"
   },
   "id": {
     "title": "Riwayat perjalanan",
@@ -1671,7 +1688,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Waktu mulai – Waktu selesai"
   },
   "th": {
     "title": "ประวัติการเดินทาง",
@@ -1764,7 +1782,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "เวลาเริ่ม – เวลาสิ้นสุด"
   },
   "vi": {
     "title": "Lịch sử chuyến đi",
@@ -1857,7 +1876,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "Giờ bắt đầu – Giờ kết thúc"
   },
   "ar": {
     "title": "سجل الرحلات",
@@ -1950,6 +1970,7 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "ride_time": "وقت البدء – وقت الانتهاء"
   }
 };

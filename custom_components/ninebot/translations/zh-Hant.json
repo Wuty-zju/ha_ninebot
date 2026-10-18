@@ -173,7 +173,7 @@
         "name": "本月: 距離"
       },
       "last_mileage": {
-        "name": "上次行程: 距離"
+        "name": "最近行程距離"
       },
       "month_energy_raw": {
         "name": "本月: 能耗"
@@ -429,7 +429,7 @@
         "name": "主電池組數"
       },
       "month_list_coverage": {
-        "name": "本月: 行程覆蓋率"
+        "name": "本月行程列表完整率"
       },
       "battery_rated_energy": {
         "name": "主電池額定能量"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "行程時間"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "車輛狀態事件",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "狀態變更"
+            }
+          },
+          "changes": {
+            "name": "變更項目",
+            "state": {
+              "powered_on": "車輛上電",
+              "powered_off": "車輛斷電",
+              "charging_started": "開始充電",
+              "charging_stopped": "結束充電",
+              "locked": "車輛上鎖",
+              "unlocked": "車輛解鎖",
+              "seat_locked": "座桶上鎖",
+              "seat_unlocked": "座桶解鎖"
+            }
+          },
+          "summary": {
+            "name": "摘要"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "行程日曆"
+        "name": "行程日曆",
+        "state_attributes": {
+          "ride_time": {
+            "name": "行程時間"
+          }
+        }
       }
     }
   },

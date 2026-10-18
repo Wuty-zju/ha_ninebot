@@ -173,7 +173,7 @@
         "name": "Ten miesiąc: Dystans"
       },
       "last_mileage": {
-        "name": "Ostatni przejazd: Dystans"
+        "name": "Dystans ostatniej jazdy"
       },
       "month_energy_raw": {
         "name": "Ten miesiąc: Energia"
@@ -429,7 +429,7 @@
         "name": "Główny akumulator: liczba"
       },
       "month_list_coverage": {
-        "name": "Ten miesiąc: Kompletność listy przejazdów"
+        "name": "Kompletność miesięcznej listy jazd"
       },
       "battery_rated_energy": {
         "name": "Główny akumulator: energia znamionowa"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Czas jazdy"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Zdarzenie stanu pojazdu",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Zmiana stanu"
+            }
+          },
+          "changes": {
+            "name": "Zmiany",
+            "state": {
+              "powered_on": "Włączono",
+              "powered_off": "Wyłączono",
+              "charging_started": "Rozpoczęto ładowanie",
+              "charging_stopped": "Zakończono ładowanie",
+              "locked": "Zablokowano",
+              "unlocked": "Odblokowano",
+              "seat_locked": "Schowek zablokowany",
+              "seat_unlocked": "Schowek odblokowany"
+            }
+          },
+          "summary": {
+            "name": "Podsumowanie"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Przejazdy"
+        "name": "Przejazdy",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Czas jazdy"
+          }
+        }
       }
     }
   },

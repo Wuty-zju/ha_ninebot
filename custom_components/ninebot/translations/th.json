@@ -173,7 +173,7 @@
         "name": "เดือนนี้: ระยะทาง"
       },
       "last_mileage": {
-        "name": "การเดินทางล่าสุด: ระยะทาง"
+        "name": "ระยะทางการเดินทางล่าสุด"
       },
       "month_energy_raw": {
         "name": "เดือนนี้: พลังงาน"
@@ -429,7 +429,7 @@
         "name": "แบตเตอรี่หลัก: จำนวน"
       },
       "month_list_coverage": {
-        "name": "เดือนนี้: ความครบถ้วนของประวัติ"
+        "name": "ความครบถ้วนของรายการเดินทางรายเดือน"
       },
       "battery_rated_energy": {
         "name": "แบตเตอรี่หลัก: พลังงานพิกัด"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "ช่วงเวลาการเดินทาง"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "เหตุการณ์สถานะรถ",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "สถานะเปลี่ยนแปลง"
+            }
+          },
+          "changes": {
+            "name": "รายการเปลี่ยนแปลง",
+            "state": {
+              "powered_on": "เปิดเครื่อง",
+              "powered_off": "ปิดเครื่อง",
+              "charging_started": "เริ่มชาร์จ",
+              "charging_stopped": "หยุดชาร์จ",
+              "locked": "ล็อกแล้ว",
+              "unlocked": "ปลดล็อกแล้ว",
+              "seat_locked": "ล็อกเบาะ",
+              "seat_unlocked": "ปลดล็อกเบาะ"
+            }
+          },
+          "summary": {
+            "name": "สรุป"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "ประวัติการเดินทาง"
+        "name": "ประวัติการเดินทาง",
+        "state_attributes": {
+          "ride_time": {
+            "name": "ช่วงเวลาการเดินทาง"
+          }
+        }
       }
     }
   },

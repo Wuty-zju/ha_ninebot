@@ -173,7 +173,7 @@
         "name": "Diesen Monat: Strecke"
       },
       "last_mileage": {
-        "name": "Letzte Fahrt: Strecke"
+        "name": "Letzte Fahrstrecke"
       },
       "month_energy_raw": {
         "name": "Diesen Monat: Energie"
@@ -429,7 +429,7 @@
         "name": "Hauptbatterie: Anzahl"
       },
       "month_list_coverage": {
-        "name": "Diesen Monat: Fahrtenabdeckung"
+        "name": "Vollständigkeit der monatlichen Fahrtenliste"
       },
       "battery_rated_energy": {
         "name": "Hauptbatterie: Nennenergie"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Fahrtzeit"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Fahrzeugstatusereignis",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Status geändert"
+            }
+          },
+          "changes": {
+            "name": "Änderungen",
+            "state": {
+              "powered_on": "Eingeschaltet",
+              "powered_off": "Ausgeschaltet",
+              "charging_started": "Laden begonnen",
+              "charging_stopped": "Laden beendet",
+              "locked": "Verriegelt",
+              "unlocked": "Entriegelt",
+              "seat_locked": "Sitzfach verriegelt",
+              "seat_unlocked": "Sitzfach entriegelt"
+            }
+          },
+          "summary": {
+            "name": "Zusammenfassung"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Fahrten"
+        "name": "Fahrten",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Fahrtzeit"
+          }
+        }
       }
     }
   },

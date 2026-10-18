@@ -115,7 +115,7 @@ Enable **Preserve trip details in background** and **Automatic history synchroni
 
 Sync status, month-scan progress, saved-detail progress and last-success entities explain different stages. Manual sync, pause and resume are available. Saved-detail percentage covers **discovered records**; month coverage reports list gaps separately.
 
-The default history budget is **30 logical requests per account/hour**. Archive quota defaults to **100 MiB per account**, configurable from **32–2048 MiB**. Reaching the quota pauses writes and retains existing data. Local records have no age-based expiry; capacity and backups govern long-term retention. Save details while the cloud still returns them: removed or simplified upstream tracks cannot be recreated locally.
+The default history budget is **60 logical requests per account/hour**, configurable up to **120**. Archive quota defaults to **100 MiB per account**, configurable from **32–2048 MiB**. Reaching the quota pauses writes and retains existing data. Local records have no age-based expiry; capacity and backups govern long-term retention. Save details while the cloud still returns them: removed or simplified upstream tracks cannot be recreated locally.
 
 ### Use the recorded information
 

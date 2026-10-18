@@ -170,11 +170,19 @@ async def test_real_event_entity_baseline_small_attributes_and_restart(
     assert event.attributes["event_type"] == "completed"
     assert event.attributes["ride_id"] == "new-ride"
     assert event.attributes["average_speed_m_s"] == 5
+    assert " – " in event.attributes["time_range"]
     for large in ("raw", "track", "speed_samples", "latitude", "longitude"):
         assert large not in event.attributes
     before = event.state
     co = entry.runtime_data.coordinator
     co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], travel_freshness=Freshness())
+    co.async_set_updated_data(dict(co.data))
+    await hass.async_block_till_done()
+    # R4 made recorded history independent of live travel freshness. Keep the
+    # actual event timestamp, but disclose that its current source is not fresh.
+    assert hass.states.get(event_id).state == before
+    assert hass.states.get(event_id).attributes["travel_fresh"] is False
+    co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], present=False)
     co.async_set_updated_data(dict(co.data))
     await hass.async_block_till_done()
     assert hass.states.get(event_id).state == "unavailable"

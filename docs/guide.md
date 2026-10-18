@@ -52,7 +52,7 @@ Availability depends on the vehicle model, permissions and actual cloud reports.
 | Rides | Today/yesterday/month totals, last-ride metrics, monthly list coverage | Completeness is checked per metric. Missing evidence is not silently converted to zero. |
 | History | Sync state, month-scan progress, saved-detail progress, last successful sync | These are different scopes; 100% saved discovered details does not prove full cloud history. |
 | Controls | Vehicle/seat locks and retained remote buttons | Explicit opt-in/allowlist and authorization required; see below. |
-| Native HA | Ride calendar, ride-completed event, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
+| Native HA | Ride calendar, ride-completed/state-transition events, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
 
 Durations retain native seconds and suggest **hours with two decimals** through HA's native conversion. Distance/range and Wh/km suggest one decimal; energy and maximum speed suggest integers. Presentation rounding does not round archived source facts. HA user overrides take precedence. Rated battery V/Ah produce a specification in kWh, not measured capacity or health.
 
@@ -95,7 +95,7 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 | Authentication fails | Check the official App/account region; use reauth. Do not publish credentials or token files. |
 | Rated-parameter form rejects a vehicle | Close and reopen the form after the updated integration is actually loaded. Choose a currently discovered vehicle. |
 | Today/yesterday values unknown | Open [coverage and statistics](history.md#coverage-and-statistics). A partial month or missing metric may not support a reliable daily total. |
-| Ride event unknown | It waits for a new stable completion after the startup baseline; it is not the last historical ride timestamp. |
+| Ride/vehicle event unknown | Events wait for a new stable ride completion or a known status transition after their baseline. History imports and reconnection do not replay events. See [event semantics](history.md#ride-summaries-and-vehicle-events). |
 | History waiting for request budget | Inspect `next_request_at`, `retry_at`, `sync_phase`, pause/auth/capacity state; do not repeatedly request a full scan. |
 | Custom element not found | Register the [bundled module resource](history.md#add-the-history-map), then reload the browser. |
 | Track missing or a single point | Check saved-detail state, coordinate option/permissions and cloud track quality. Old simplified data cannot recreate a lost trail. |

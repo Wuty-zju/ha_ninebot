@@ -173,7 +173,7 @@
         "name": "Bulan ini: Jarak"
       },
       "last_mileage": {
-        "name": "Perjalanan terakhir: Jarak"
+        "name": "Jarak perjalanan terakhir"
       },
       "month_energy_raw": {
         "name": "Bulan ini: Energi"
@@ -429,7 +429,7 @@
         "name": "Baterai utama: jumlah"
       },
       "month_list_coverage": {
-        "name": "Bulan ini: Cakupan catatan perjalanan"
+        "name": "Kelengkapan daftar perjalanan bulanan"
       },
       "battery_rated_energy": {
         "name": "Baterai utama: energi nominal"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Waktu perjalanan"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Peristiwa status kendaraan",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Status berubah"
+            }
+          },
+          "changes": {
+            "name": "Perubahan",
+            "state": {
+              "powered_on": "Daya menyala",
+              "powered_off": "Daya mati",
+              "charging_started": "Pengisian dimulai",
+              "charging_stopped": "Pengisian berhenti",
+              "locked": "Terkunci",
+              "unlocked": "Terbuka",
+              "seat_locked": "Kompartemen terkunci",
+              "seat_unlocked": "Kompartemen terbuka"
+            }
+          },
+          "summary": {
+            "name": "Ringkasan"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Perjalanan"
+        "name": "Perjalanan",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Waktu perjalanan"
+          }
+        }
       }
     }
   },

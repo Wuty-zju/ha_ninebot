@@ -3,6 +3,14 @@ on:
   pull_request:
     paths:
       - 'custom_components/ninebot/account.py'
+      - 'custom_components/ninebot/event.py'
+      - 'custom_components/ninebot/vehicle_events.py'
+      - 'custom_components/ninebot/ride_presentation.py'
+      - 'custom_components/ninebot/calendar.py'
+      - 'tests/test_vehicle_events.py'
+      - 'tests/test_ride_presentation.py'
+      - 'tests/test_event_pipeline.py'
+      - 'tests/test_ride_events.py'
       - 'custom_components/ninebot/config_flow.py'
       - 'custom_components/ninebot/compat.py'
       - 'custom_components/ninebot/session.py'
@@ -48,3 +56,4 @@ jobs:
           python -m pytest -q tests/test_account_display.py tests/test_config_flow.py
           tests/test_debug_and_model_options.py tests/test_sms_login.py
           tests/test_session.py tests/test_translations.py tests/test_history_entities.py tests/test_calendar_history.py
+          tests/test_vehicle_events.py tests/test_ride_presentation.py tests/test_event_pipeline.py tests/test_ride_events.py

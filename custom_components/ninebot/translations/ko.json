@@ -173,7 +173,7 @@
         "name": "이번 달: 거리"
       },
       "last_mileage": {
-        "name": "최근 주행: 거리"
+        "name": "최근 주행 거리"
       },
       "month_energy_raw": {
         "name": "이번 달: 에너지"
@@ -429,7 +429,7 @@
         "name": "주 배터리: 개수"
       },
       "month_list_coverage": {
-        "name": "이번 달: 주행 기록 확보율"
+        "name": "이번 달 주행 목록 완전성"
       },
       "battery_rated_energy": {
         "name": "주 배터리: 정격 에너지"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "주행 시간대"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "차량 상태 이벤트",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "상태 변경"
+            }
+          },
+          "changes": {
+            "name": "변경 사항",
+            "state": {
+              "powered_on": "전원 켜짐",
+              "powered_off": "전원 꺼짐",
+              "charging_started": "충전 시작",
+              "charging_stopped": "충전 종료",
+              "locked": "잠김",
+              "unlocked": "잠금 해제",
+              "seat_locked": "시트 잠김",
+              "seat_unlocked": "시트 잠금 해제"
+            }
+          },
+          "summary": {
+            "name": "요약"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "주행 기록"
+        "name": "주행 기록",
+        "state_attributes": {
+          "ride_time": {
+            "name": "주행 시간대"
+          }
+        }
       }
     }
   },

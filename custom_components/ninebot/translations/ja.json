@@ -173,7 +173,7 @@
         "name": "今月: 距離"
       },
       "last_mileage": {
-        "name": "前回の走行: 距離"
+        "name": "直近の走行距離"
       },
       "month_energy_raw": {
         "name": "今月: 電力量"
@@ -429,7 +429,7 @@
         "name": "主バッテリー: 個数"
       },
       "month_list_coverage": {
-        "name": "今月: 走行記録の取得率"
+        "name": "今月の走行一覧の完全率"
       },
       "battery_rated_energy": {
         "name": "主バッテリー: 定格エネルギー"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "走行時間帯"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "車両状態イベント",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "状態変更"
+            }
+          },
+          "changes": {
+            "name": "変更項目",
+            "state": {
+              "powered_on": "電源オン",
+              "powered_off": "電源オフ",
+              "charging_started": "充電開始",
+              "charging_stopped": "充電終了",
+              "locked": "施錠",
+              "unlocked": "解錠",
+              "seat_locked": "シートボックス施錠",
+              "seat_unlocked": "シートボックス解錠"
+            }
+          },
+          "summary": {
+            "name": "概要"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "走行履歴"
+        "name": "走行履歴",
+        "state_attributes": {
+          "ride_time": {
+            "name": "走行時間帯"
+          }
+        }
       }
     }
   },

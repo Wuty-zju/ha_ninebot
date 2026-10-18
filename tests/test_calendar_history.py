@@ -94,6 +94,9 @@ async def test_offline_cold_start_calendar_and_latest_across_old_months(
         assert not events[0].all_day and events[0].location is None
         assert events[0].uid != "one" and len(events[0].uid) == 64
         assert "30 km/h" in events[0].description and "7.2 km/h" in events[0].description
+        assert "Ride time:" in events[0].description and " – " in events[0].description
+        assert "Last ride start:" not in events[0].description
+        assert "Last ride end:" not in events[0].description
         assert not await entity.async_get_events(hass, NOW, NOW + timedelta(days=1))
         client = await hass_client()
         response = await client.get(

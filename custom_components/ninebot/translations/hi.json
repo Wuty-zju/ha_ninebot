@@ -173,7 +173,7 @@
         "name": "इस महीने: दूरी"
       },
       "last_mileage": {
-        "name": "पिछली यात्रा: दूरी"
+        "name": "पिछली यात्रा की दूरी"
       },
       "month_energy_raw": {
         "name": "इस महीने: ऊर्जा"
@@ -429,7 +429,7 @@
         "name": "मुख्य बैटरी: संख्या"
       },
       "month_list_coverage": {
-        "name": "इस महीने: यात्रा रिकॉर्ड कवरेज"
+        "name": "मासिक यात्रा सूची की पूर्णता"
       },
       "battery_rated_energy": {
         "name": "मुख्य बैटरी: रेटेड ऊर्जा"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "यात्रा अवधि"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "वाहन स्थिति घटना",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "स्थिति बदली"
+            }
+          },
+          "changes": {
+            "name": "परिवर्तन",
+            "state": {
+              "powered_on": "पावर चालू",
+              "powered_off": "पावर बंद",
+              "charging_started": "चार्जिंग शुरू",
+              "charging_stopped": "चार्जिंग बंद",
+              "locked": "लॉक किया गया",
+              "unlocked": "अनलॉक किया गया",
+              "seat_locked": "सीट लॉक",
+              "seat_unlocked": "सीट अनलॉक"
+            }
+          },
+          "summary": {
+            "name": "सारांश"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "यात्राएँ"
+        "name": "यात्राएँ",
+        "state_attributes": {
+          "ride_time": {
+            "name": "यात्रा अवधि"
+          }
+        }
       }
     }
   },
