@@ -101,8 +101,8 @@
           "configure_model": "Configura parametri nominali",
           "enable_calendar": "Viaggi",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Sincronizzazione automatica della cronologia",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "Limite spazio cronologia (MiB)",
           "debug_mode": "Modalità debug"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "Scopri la cronologia disponibile di tutti i veicoli dell’account, poi sincronizza le modifiche in background.",
           "history_storage_mib": "32–2048 MiB per account, predefinito 100. Ridurre il limite conserva i dati e può sospendere la scrittura."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "Avanzamento scansione mensile"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Dettagli viaggi salvati"
@@ -551,10 +551,56 @@
         "name": "Blocca da remoto"
       },
       "history_sync": {
-        "name": "Sincronizza cronologia"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Disattivata",
+              "paused": "Sospesa",
+              "storage_full": "Spazio esaurito",
+              "storage_error": "Errore di archiviazione",
+              "needs_login": "Accesso richiesto",
+              "waiting_connection": "In attesa di connessione",
+              "not_started": "Non avviata",
+              "waiting_retry": "In attesa di riprovare",
+              "waiting_budget": "In attesa del limite richieste",
+              "discovering": "Ricerca della cronologia",
+              "preserving": "Salvataggio dettagli",
+              "verifying": "Verifica dei dati",
+              "incremental": "Sincronizzazione incrementale",
+              "with_gaps": "Completata con lacune",
+              "synced": "Sincronizzata localmente",
+              "vehicle_not_present": "Veicolo assente dall’elenco dell’account"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Sospendi sincronizzazione"
+        "name": "Sospendi sincronizzazione",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Disattivata",
+              "paused": "Sospesa",
+              "storage_full": "Spazio esaurito",
+              "storage_error": "Errore di archiviazione",
+              "needs_login": "Accesso richiesto",
+              "waiting_connection": "In attesa di connessione",
+              "not_started": "Non avviata",
+              "waiting_retry": "In attesa di riprovare",
+              "waiting_budget": "In attesa del limite richieste",
+              "discovering": "Ricerca della cronologia",
+              "preserving": "Salvataggio dettagli",
+              "verifying": "Verifica dei dati",
+              "incremental": "Sincronizzazione incrementale",
+              "with_gaps": "Completata con lacune",
+              "synced": "Sincronizzata localmente",
+              "vehicle_not_present": "Veicolo assente dall’elenco dell’account"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Riprendi sincronizzazione"

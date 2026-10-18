@@ -101,8 +101,8 @@
           "configure_model": "ضبط المعلمات الاسمية",
           "enable_calendar": "الرحلات",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "مزامنة السجل تلقائيًا",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "حد تخزين السجل (MiB)",
           "debug_mode": "وضع التصحيح"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "اكتشاف السجل المتاح لكل المركبات المملوكة للحساب ثم مزامنة التغييرات في الخلفية.",
           "history_storage_mib": "32–2048 MiB لكل حساب، الافتراضي100. تقليل الحد يحفظ السجلات وقد يوقف الكتابة مؤقتًا."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "تقدم فحص الأشهر"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "تفاصيل الرحلات المحفوظة"
@@ -551,10 +551,56 @@
         "name": "القفل عن بُعد"
       },
       "history_sync": {
-        "name": "مزامنة السجل"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "معطلة",
+              "paused": "متوقفة مؤقتًا",
+              "storage_full": "التخزين ممتلئ",
+              "storage_error": "خطأ في التخزين",
+              "needs_login": "يلزم تسجيل الدخول",
+              "waiting_connection": "انتظار الاتصال",
+              "not_started": "لم تبدأ",
+              "waiting_retry": "انتظار إعادة المحاولة",
+              "waiting_budget": "انتظار حصة الطلبات",
+              "discovering": "اكتشاف السجل",
+              "preserving": "حفظ التفاصيل",
+              "verifying": "التحقق من السجلات",
+              "incremental": "مزامنة تزايدية",
+              "with_gaps": "اكتملت مع فجوات",
+              "synced": "تمت المزامنة محليًا",
+              "vehicle_not_present": "المركبة غير موجودة في قائمة الحساب"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "إيقاف المزامنة مؤقتًا"
+        "name": "إيقاف المزامنة مؤقتًا",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "معطلة",
+              "paused": "متوقفة مؤقتًا",
+              "storage_full": "التخزين ممتلئ",
+              "storage_error": "خطأ في التخزين",
+              "needs_login": "يلزم تسجيل الدخول",
+              "waiting_connection": "انتظار الاتصال",
+              "not_started": "لم تبدأ",
+              "waiting_retry": "انتظار إعادة المحاولة",
+              "waiting_budget": "انتظار حصة الطلبات",
+              "discovering": "اكتشاف السجل",
+              "preserving": "حفظ التفاصيل",
+              "verifying": "التحقق من السجلات",
+              "incremental": "مزامنة تزايدية",
+              "with_gaps": "اكتملت مع فجوات",
+              "synced": "تمت المزامنة محليًا",
+              "vehicle_not_present": "المركبة غير موجودة في قائمة الحساب"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "استئناف المزامنة"

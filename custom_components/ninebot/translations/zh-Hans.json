@@ -101,8 +101,8 @@
           "configure_model": "设置电池额定参数",
           "enable_calendar": "启用行程日历",
           "preserve_history": "自动同步历史详情",
-          "history_requests_per_hour": "每账号每小时详情请求限额",
-          "auto_history_sync": "自动同步历史行程",
+          "history_requests_per_hour": "每账号每小时历史请求限额",
+          "auto_history_sync": "自动扫描历史行程",
           "history_storage_mib": "历史存储额度（MiB）",
           "debug_mode": "调试模式"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "在地图和区域中使用车辆位置。",
           "enable_calendar": "开关每辆车的本地行程日历。关闭不删除历史记录；重新开启沿用原实体。浏览日历不会请求云端。",
           "preserve_history": "将可获取的行程详情与轨迹保存到本地，首次扫描后按需增量补全。",
-          "history_requests_per_hour": "账号共享的后台月份与详情查询限额；传输层重试不计入逻辑请求数。",
+          "history_requests_per_hour": "范围1–120，默认60；月份与详情共享账号限额。",
           "auto_history_sync": "为账号内所有归属车辆发现可得历史，随后后台增量同步。",
           "history_storage_mib": "每账号32–2048 MiB，默认100。降低额度不删除已存记录，超额时暂停写入。"
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "历史月份扫描进度"
+        "name": "历史行程扫描进度"
       },
       "history_detail_progress": {
         "name": "行程详情保存进度"
@@ -551,10 +551,56 @@
         "name": "远程关闭"
       },
       "history_sync": {
-        "name": "同步历史行程"
+        "name": "同步历史行程",
+        "state_attributes": {
+          "sync_state": {
+            "name": "同步状态",
+            "state": {
+              "disabled": "已关闭",
+              "paused": "已暂停",
+              "storage_full": "存储已满",
+              "storage_error": "存储错误",
+              "needs_login": "需要重新登录",
+              "waiting_connection": "等待连接",
+              "not_started": "尚未开始",
+              "waiting_retry": "等待重试",
+              "waiting_budget": "本地限速等待",
+              "discovering": "正在发现历史",
+              "preserving": "正在保存详情",
+              "verifying": "正在校验记录",
+              "incremental": "增量同步中",
+              "with_gaps": "已完成，有缺口",
+              "synced": "本地同步完成",
+              "vehicle_not_present": "账号车辆列表未包含此车"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "暂停历史同步"
+        "name": "暂停历史同步",
+        "state_attributes": {
+          "sync_state": {
+            "name": "同步状态",
+            "state": {
+              "disabled": "已关闭",
+              "paused": "已暂停",
+              "storage_full": "存储已满",
+              "storage_error": "存储错误",
+              "needs_login": "需要重新登录",
+              "waiting_connection": "等待连接",
+              "not_started": "尚未开始",
+              "waiting_retry": "等待重试",
+              "waiting_budget": "本地限速等待",
+              "discovering": "正在发现历史",
+              "preserving": "正在保存详情",
+              "verifying": "正在校验记录",
+              "incremental": "增量同步中",
+              "with_gaps": "已完成，有缺口",
+              "synced": "本地同步完成",
+              "vehicle_not_present": "账号车辆列表未包含此车"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "恢复历史同步"

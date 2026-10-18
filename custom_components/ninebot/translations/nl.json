@@ -101,8 +101,8 @@
           "configure_model": "Nominale parameters instellen",
           "enable_calendar": "Ritten",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Automatische historieksynchronisatie",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "Opslaglimiet historiek (MiB)",
           "debug_mode": "Debugmodus"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "Beschikbare historiek van alle eigen voertuigen ontdekken en wijzigingen op de achtergrond synchroniseren.",
           "history_storage_mib": "32–2048 MiB per account, standaard100. Verlaging bewaart gegevens en kan schrijven pauzeren."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "Voortgang maandcontrole"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Opgeslagen ritdetails"
@@ -551,10 +551,56 @@
         "name": "Op afstand vergrendelen"
       },
       "history_sync": {
-        "name": "Historiek synchroniseren"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Uitgeschakeld",
+              "paused": "Gepauzeerd",
+              "storage_full": "Opslag vol",
+              "storage_error": "Opslagfout",
+              "needs_login": "Aanmelden vereist",
+              "waiting_connection": "Wachten op verbinding",
+              "not_started": "Niet gestart",
+              "waiting_retry": "Wachten op nieuwe poging",
+              "waiting_budget": "Wachten op aanvraagbudget",
+              "discovering": "Historiek zoeken",
+              "preserving": "Details opslaan",
+              "verifying": "Records controleren",
+              "incremental": "Incrementele synchronisatie",
+              "with_gaps": "Voltooid met hiaten",
+              "synced": "Lokaal gesynchroniseerd",
+              "vehicle_not_present": "Voertuig ontbreekt in de accountlijst"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Synchronisatie pauzeren"
+        "name": "Synchronisatie pauzeren",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Uitgeschakeld",
+              "paused": "Gepauzeerd",
+              "storage_full": "Opslag vol",
+              "storage_error": "Opslagfout",
+              "needs_login": "Aanmelden vereist",
+              "waiting_connection": "Wachten op verbinding",
+              "not_started": "Niet gestart",
+              "waiting_retry": "Wachten op nieuwe poging",
+              "waiting_budget": "Wachten op aanvraagbudget",
+              "discovering": "Historiek zoeken",
+              "preserving": "Details opslaan",
+              "verifying": "Records controleren",
+              "incremental": "Incrementele synchronisatie",
+              "with_gaps": "Voltooid met hiaten",
+              "synced": "Lokaal gesynchroniseerd",
+              "vehicle_not_present": "Voertuig ontbreekt in de accountlijst"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Synchronisatie hervatten"

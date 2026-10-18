@@ -20,6 +20,7 @@ class NinebotTracker(NinebotEntity, TrackerEntity):
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "location", "device_tracker", "status")
+        self._attr_name = None
 
     @property
     def available(self) -> bool:

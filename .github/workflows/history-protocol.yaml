@@ -80,4 +80,4 @@ jobs:
           tests/test_archive_validation.py
           tests/test_bootstrap.py tests/test_history_lifecycle.py tests/test_config_flow.py tests/test_coordinator.py
           tests/test_preservation.py
-          tests/test_account_display.py tests/test_control_polling.py tests/test_lock_controls.py
+          tests/test_account_display.py tests/test_control_polling.py tests/test_lock_controls.py tests/test_history_budget.py

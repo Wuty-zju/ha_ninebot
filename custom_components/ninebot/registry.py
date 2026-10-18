@@ -15,7 +15,8 @@ from homeassistant.helpers import entity_registry as er
 
 from .capabilities import CONTROL_BUTTONS
 from .compat import device_entry_ids
-from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, CONF_ESTIMATION, DOMAIN
+from .const import CONF_CONTROL_VEHICLES, CONF_CONTROLS, CONF_DEBUG, CONF_ESTIMATION, DOMAIN
+from .debug_entities import DEBUG_SENSOR_KEYS
 from .identity import (
     device_sn,
     legacy_uids,
@@ -64,6 +65,7 @@ OBSOLETE_KEYS = {
             *(field.key for field in RAW_FIELDS if field not in ENTITY_FIELDS),
         ]
     ),
+    "button": frozenset({"history_resume"}),
     "lock": frozenset({"lock", "vehicle_lock_control"}),
     "number": frozenset({"battery_max_range"}),
 }
@@ -82,6 +84,10 @@ def visible_keys(entry: NinebotConfigEntry, sn: str) -> dict[str, frozenset[str]
         for key in (description.key, *description.aliases)
     } | {"control_availability", "raw_data_summary", "bms_voltage", "batt_temp", "bms_cycles"}
     sensors.update(DAY_FIELDS)
+    if entry.options.get(CONF_DEBUG) is True:
+        sensors.update(DEBUG_SENSOR_KEYS)
+    else:
+        sensors.difference_update(DEBUG_SENSOR_KEYS)
     numbers: set[str] = set()
     if entry.options.get(CONF_ESTIMATION):
         sensors.add("battery_rated_energy")
@@ -154,6 +160,37 @@ def async_remove_obsolete_entities(hass: HomeAssistant, entry: NinebotConfigEntr
             registry.async_remove(row.entity_id)
             removed += 1
     return removed
+
+
+@callback
+def async_configure_debug_entities(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    """Gate reviewed debug identities without erasing user registry preferences."""
+    enabled = entry.options.get(CONF_DEBUG) is True
+    registry = er.async_get(hass)
+    keys = {"sensor": DEBUG_SENSOR_KEYS}
+    for row, sn in _owned_entities(hass, entry):
+        if not _matches(row, sn, keys, entry):
+            continue
+        disabled, hidden = row.disabled_by, row.hidden_by
+        if enabled:
+            if disabled is er.RegistryEntryDisabler.INTEGRATION:
+                disabled = None
+            if hidden is er.RegistryEntryHider.INTEGRATION:
+                hidden = None
+        else:
+            if disabled is None:
+                disabled = er.RegistryEntryDisabler.INTEGRATION
+            if hidden is None:
+                hidden = er.RegistryEntryHider.INTEGRATION
+        if disabled != row.disabled_by or hidden != row.hidden_by:
+            registry.async_update_entity(row.entity_id, disabled_by=disabled, hidden_by=hidden)
+        # Unloading an enabled entity restores an unavailable placeholder before
+        # this setup disables it. Registry flag updates do not remove that
+        # placeholder in Core. Remove only our disabled, restored state; keep
+        # the registry identity, user preferences and Recorder history intact.
+        if disabled is not None and (state := hass.states.get(row.entity_id)) is not None:
+            if state.attributes.get("restored") is True:
+                hass.states.async_remove(row.entity_id)
 
 
 @callback

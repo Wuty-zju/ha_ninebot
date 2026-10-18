@@ -101,8 +101,8 @@
           "configure_model": "Set rated battery parameters",
           "enable_calendar": "Enable ride calendar",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Automatic history synchronization",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "History storage limit (MiB)",
           "debug_mode": "Debug mode"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "Discover available history for all owned vehicles, then sync changes in background.",
           "history_storage_mib": "32–2048 MiB per account, default 100. Lowering the limit preserves saved records and may pause writes."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "History month scan progress"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Discovered trip details saved"
@@ -551,10 +551,56 @@
         "name": "Remote lock"
       },
       "history_sync": {
-        "name": "Sync history"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Disabled",
+              "paused": "Paused",
+              "storage_full": "Storage full",
+              "storage_error": "Storage error",
+              "needs_login": "Login required",
+              "waiting_connection": "Waiting for connection",
+              "not_started": "Not started",
+              "waiting_retry": "Waiting to retry",
+              "waiting_budget": "Waiting for local request interval",
+              "discovering": "Discovering history",
+              "preserving": "Saving details",
+              "verifying": "Verifying records",
+              "incremental": "Incremental sync",
+              "with_gaps": "Completed with gaps",
+              "synced": "Synced locally",
+              "vehicle_not_present": "Vehicle missing from account list"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Pause history sync"
+        "name": "Pause history sync",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Disabled",
+              "paused": "Paused",
+              "storage_full": "Storage full",
+              "storage_error": "Storage error",
+              "needs_login": "Login required",
+              "waiting_connection": "Waiting for connection",
+              "not_started": "Not started",
+              "waiting_retry": "Waiting to retry",
+              "waiting_budget": "Waiting for local request interval",
+              "discovering": "Discovering history",
+              "preserving": "Saving details",
+              "verifying": "Verifying records",
+              "incremental": "Incremental sync",
+              "with_gaps": "Completed with gaps",
+              "synced": "Synced locally",
+              "vehicle_not_present": "Vehicle missing from account list"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Resume history sync"

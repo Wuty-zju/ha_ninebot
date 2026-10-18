@@ -54,6 +54,7 @@ from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .detail_codec import ArchivedDetail, CorruptPayload, packed, scoped_ride, unpacked
 from .detail_health import HistoryHealth
 from .exceptions import NinebotError
+from .history_budget import valid_budget
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
@@ -1699,7 +1700,7 @@ class RideArchive:
     ) -> bool:
         """Reserve one month operation before I/O, with the same account detail budget."""
         utc_string(now)
-        if type(budget) is not int or not 1 <= budget <= 60:
+        if not valid_budget(budget):
             raise ValueError("Invalid preservation budget")
 
         def reserve() -> bool:
@@ -1760,7 +1761,7 @@ class RideArchive:
         from .month_tasks import claim
 
         utc_string(now)
-        if type(budget) is not int or not 1 <= budget <= 60:
+        if not valid_budget(budget):
             raise ValueError("Invalid month budget")
 
         def commit() -> "MonthTask | None":
@@ -1818,7 +1819,7 @@ class RideArchive:
         self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
     ) -> "PreservationTask | None":
         utc_string(now)
-        if type(budget) is not int or not 1 <= budget <= 60:
+        if not valid_budget(budget):
             raise ValueError("Invalid preservation budget")
         return await self._run(
             partial(self._preservation_claim, vehicle_key(sn), now, budget), guard=guard
@@ -3022,7 +3023,7 @@ class RideArchive:
         from .history_store import put_root, resolve, root
 
         observed = utc_string(now)
-        if type(budget) is not int or not 1 <= budget <= 60:
+        if not valid_budget(budget):
             raise ValueError("Invalid history budget")
 
         def claim() -> HistoryPlan | None:

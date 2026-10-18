@@ -518,3 +518,14 @@ async def test_options_single_parameters_entry_debug_last_preserves_old_options(
     assert entry.options["enable_estimation"] is True
     assert entry.options["enable_coordinates"] is False
     assert entry.options["debug_mode"] is True
+
+
+async def test_history_budget_default_sixty_and_explicit_120(hass, entry, flow_manager):
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    defaults = form["data_schema"]({"poll_interval": 120})
+    assert defaults["history_requests_per_hour"] == 60
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {"poll_interval": 120, "history_requests_per_hour": 120}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["history_requests_per_hour"] == 120

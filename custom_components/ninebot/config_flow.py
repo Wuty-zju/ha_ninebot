@@ -47,6 +47,7 @@ from .const import (
     DOMAIN,
 )
 from .exceptions import ErrorKind, NinebotError
+from .history_budget import CONF_BUDGET, MAX_BUDGET, MIN_BUDGET, configured_budget
 from .history_capacity import (
     CONF_HISTORY_CAPACITY,
     MAX_HISTORY_MIB,
@@ -55,7 +56,7 @@ from .history_capacity import (
 )
 from .identity import IDENTITY_VERSION
 from .parsing import number
-from .preservation import CONF_BUDGET, CONF_PRESERVE, DEFAULT_BUDGET
+from .preservation import CONF_PRESERVE
 from .services import resolve_vehicle
 from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
 
@@ -591,9 +592,9 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     ): vol.All(
                         vol.Coerce(int), vol.Range(min=MIN_HISTORY_MIB, max=MAX_HISTORY_MIB)
                     ),
-                    vol.Optional(
-                        CONF_BUDGET, default=options.get(CONF_BUDGET, DEFAULT_BUDGET)
-                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
+                    vol.Optional(CONF_BUDGET, default=configured_budget(options)): vol.All(
+                        vol.Coerce(int), vol.Range(min=MIN_BUDGET, max=MAX_BUDGET)
+                    ),
                     vol.Optional("configure_model", default=False): bool,
                     vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
                     vol.Optional(

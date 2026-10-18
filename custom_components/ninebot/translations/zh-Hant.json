@@ -101,8 +101,8 @@
           "configure_model": "設定電池額定參數",
           "enable_calendar": "啟用行程日曆",
           "preserve_history": "自動同步歷史詳情",
-          "history_requests_per_hour": "每账号每小时详情请求限额",
-          "auto_history_sync": "自動同步歷史行程",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "歷史儲存額度（MiB）",
           "debug_mode": "調試模式"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "開關每輛車的本地行程日曆。關閉不刪除歷史；重新開啟沿用原實體。瀏覽不請求雲端。",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "為帳號內所有歸屬車輛發現可得歷史，隨後背景增量同步。",
           "history_storage_mib": "每帳號32–2048 MiB，預設100。降低額度不刪除已存記錄，超額時暫停寫入。"
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "歷史月份掃描進度"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "行程詳情儲存進度"
@@ -551,10 +551,56 @@
         "name": "遠端關閉"
       },
       "history_sync": {
-        "name": "同步歷史行程"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "已關閉",
+              "paused": "已暫停",
+              "storage_full": "儲存已滿",
+              "storage_error": "儲存錯誤",
+              "needs_login": "需要重新登入",
+              "waiting_connection": "等待連線",
+              "not_started": "尚未開始",
+              "waiting_retry": "等待重試",
+              "waiting_budget": "等待本機請求間隔",
+              "discovering": "正在發現歷史",
+              "preserving": "正在儲存詳情",
+              "verifying": "正在校驗記錄",
+              "incremental": "增量同步中",
+              "with_gaps": "已完成，有缺口",
+              "synced": "本地同步完成",
+              "vehicle_not_present": "帳號車輛清單未包含此車"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "暫停歷史同步"
+        "name": "暫停歷史同步",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "已關閉",
+              "paused": "已暫停",
+              "storage_full": "儲存已滿",
+              "storage_error": "儲存錯誤",
+              "needs_login": "需要重新登入",
+              "waiting_connection": "等待連線",
+              "not_started": "尚未開始",
+              "waiting_retry": "等待重試",
+              "waiting_budget": "等待本機請求間隔",
+              "discovering": "正在發現歷史",
+              "preserving": "正在儲存詳情",
+              "verifying": "正在校驗記錄",
+              "incremental": "增量同步中",
+              "with_gaps": "已完成，有缺口",
+              "synced": "本地同步完成",
+              "vehicle_not_present": "帳號車輛清單未包含此車"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "恢復歷史同步"

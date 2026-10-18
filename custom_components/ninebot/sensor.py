@@ -35,6 +35,7 @@ from .battery import current_battery, identified_battery
 from .capabilities import CONTROL_BUTTONS, CONTROL_STATES, control_state
 from .compat import unrecorded_attributes
 from .const import BUSINESS_TIMEZONE, CONF_DEBUG, CONF_ESTIMATION, DETAIL_INTERVAL
+from .debug_entities import DEBUG_SENSOR_KEYS
 from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .history_entities import HISTORY_SENSORS, HistoryProgressSensor
@@ -470,6 +471,8 @@ class RawDataSummarySensor(NinebotEntity, SensorEntity):
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "raw_data_summary", "sensor", "profile")
+        self._attr_entity_registry_enabled_default = entry.options.get(CONF_DEBUG) is True
+        self._attr_entity_registry_visible_default = entry.options.get(CONF_DEBUG) is True
 
     @property
     def available(self) -> bool:
@@ -518,6 +521,9 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             unique_id=unique_id,
         )
         self.entity_description = description
+        if description.key in DEBUG_SENSOR_KEYS:
+            self._attr_entity_registry_enabled_default = entry.options.get(CONF_DEBUG) is True
+            self._attr_entity_registry_visible_default = entry.options.get(CONF_DEBUG) is True
         self._attr_translation_key = description.translation_key or description.key
 
     async def async_added_to_hass(self) -> None:

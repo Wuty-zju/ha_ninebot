@@ -101,8 +101,8 @@
           "configure_model": "Atur parameter nominal",
           "enable_calendar": "Perjalanan",
           "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Sinkronisasi riwayat otomatis",
+          "history_requests_per_hour": "History requests per account per hour",
+          "auto_history_sync": "Automatically scan trip history",
           "history_storage_mib": "Batas penyimpanan riwayat (MiB)",
           "debug_mode": "Mode debug"
         },
@@ -112,7 +112,7 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
+          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
           "auto_history_sync": "Temukan riwayat tersedia untuk semua kendaraan milik akun lalu sinkronkan perubahan di latar belakang.",
           "history_storage_mib": "32–2048 MiB per akun, bawaan100. Menurunkan batas mempertahankan data dan dapat menjeda penulisan."
         }
@@ -503,7 +503,7 @@
         }
       },
       "history_scan_progress": {
-        "name": "Kemajuan pemeriksaan bulan"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Detail perjalanan tersimpan"
@@ -551,10 +551,56 @@
         "name": "Kunci jarak jauh"
       },
       "history_sync": {
-        "name": "Sinkronkan riwayat"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Dinonaktifkan",
+              "paused": "Dijeda",
+              "storage_full": "Penyimpanan penuh",
+              "storage_error": "Kesalahan penyimpanan",
+              "needs_login": "Perlu masuk",
+              "waiting_connection": "Menunggu koneksi",
+              "not_started": "Belum dimulai",
+              "waiting_retry": "Menunggu percobaan ulang",
+              "waiting_budget": "Menunggu kuota permintaan",
+              "discovering": "Menemukan riwayat",
+              "preserving": "Menyimpan detail",
+              "verifying": "Memverifikasi catatan",
+              "incremental": "Sinkronisasi inkremental",
+              "with_gaps": "Selesai dengan kekurangan",
+              "synced": "Tersinkron secara lokal",
+              "vehicle_not_present": "Kendaraan tidak ada di daftar akun"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Jeda sinkronisasi"
+        "name": "Jeda sinkronisasi",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Dinonaktifkan",
+              "paused": "Dijeda",
+              "storage_full": "Penyimpanan penuh",
+              "storage_error": "Kesalahan penyimpanan",
+              "needs_login": "Perlu masuk",
+              "waiting_connection": "Menunggu koneksi",
+              "not_started": "Belum dimulai",
+              "waiting_retry": "Menunggu percobaan ulang",
+              "waiting_budget": "Menunggu kuota permintaan",
+              "discovering": "Menemukan riwayat",
+              "preserving": "Menyimpan detail",
+              "verifying": "Memverifikasi catatan",
+              "incremental": "Sinkronisasi inkremental",
+              "with_gaps": "Selesai dengan kekurangan",
+              "synced": "Tersinkron secara lokal",
+              "vehicle_not_present": "Kendaraan tidak ada di daftar akun"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Lanjutkan sinkronisasi"
