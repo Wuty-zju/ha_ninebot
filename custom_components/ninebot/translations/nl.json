@@ -173,7 +173,7 @@
         "name": "Deze maand: Afstand"
       },
       "last_mileage": {
-        "name": "Laatste rit: Afstand"
+        "name": "Afstand laatste rit"
       },
       "month_energy_raw": {
         "name": "Deze maand: Energie"
@@ -429,7 +429,7 @@
         "name": "Hoofdbatterij: aantal"
       },
       "month_list_coverage": {
-        "name": "Deze maand: Dekking rittenlijst"
+        "name": "Volledigheid maandelijkse rittenlijst"
       },
       "battery_rated_energy": {
         "name": "Hoofdbatterij: nominale energie"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Ritperiode"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Voertuigstatusgebeurtenis",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Status gewijzigd"
+            }
+          },
+          "changes": {
+            "name": "Wijzigingen",
+            "state": {
+              "powered_on": "Ingeschakeld",
+              "powered_off": "Uitgeschakeld",
+              "charging_started": "Laden gestart",
+              "charging_stopped": "Laden gestopt",
+              "locked": "Vergrendeld",
+              "unlocked": "Ontgrendeld",
+              "seat_locked": "Zadelvak vergrendeld",
+              "seat_unlocked": "Zadelvak ontgrendeld"
+            }
+          },
+          "summary": {
+            "name": "Samenvatting"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Ritten"
+        "name": "Ritten",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Ritperiode"
+          }
+        }
       }
     }
   },

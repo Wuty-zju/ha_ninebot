@@ -56,6 +56,7 @@ from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
 from .ride_archive import ArchiveError
 from .ride_lifecycle import RideLifecycle
 from .travel_observation import MonthObservation
+from .vehicle_events import StatusObservation
 
 LOGGER = logging.getLogger(__name__)
 CONFIRMATION_DELAYS = (0, 1, 2, 3, 4, 6, 8, 9.9)
@@ -341,6 +342,29 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 and snapshot.travel_freshness.valid(now, 3 * DETAIL_INTERVAL)
             )
         return False
+
+    def status_observation(self, sn: str) -> "StatusObservation | None":
+        """Only a committed successful receipt can establish a transition."""
+        snapshot = self.data.get(sn)
+        revision = self._committed.get((sn, "status"), 0)
+        if (
+            snapshot is None
+            or not self.fresh(sn, "status")
+            or snapshot.status_freshness.error is not None
+            or snapshot.status_freshness.succeeded_at is None
+            or revision <= 0
+        ):
+            return None
+        return StatusObservation(
+            (self._generation, self._ownership.get(sn, 0), revision),
+            snapshot.status_freshness.succeeded_at,
+            (
+                snapshot.status.powered,
+                snapshot.status.charging,
+                snapshot.status.locked,
+                self.lock_state(sn, "seat_lock"),
+            ),
+        )
 
     def _due(self, sn: str, group: str, stamp: float) -> bool:
         return stamp >= self._next_attempt.get((sn, group), 0)

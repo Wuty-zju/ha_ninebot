@@ -173,7 +173,7 @@
         "name": "Bu ay: Mesafe"
       },
       "last_mileage": {
-        "name": "Son sürüş: Mesafe"
+        "name": "Son sürüş mesafesi"
       },
       "month_energy_raw": {
         "name": "Bu ay: Enerji"
@@ -429,7 +429,7 @@
         "name": "Ana batarya: sayısı"
       },
       "month_list_coverage": {
-        "name": "Bu ay: Sürüş kaydı kapsamı"
+        "name": "Aylık sürüş listesi bütünlüğü"
       },
       "battery_rated_energy": {
         "name": "Ana batarya: nominal enerji"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Sürüş aralığı"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Araç durumu olayı",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Durum değişti"
+            }
+          },
+          "changes": {
+            "name": "Değişiklikler",
+            "state": {
+              "powered_on": "Güç açıldı",
+              "powered_off": "Güç kapatıldı",
+              "charging_started": "Şarj başladı",
+              "charging_stopped": "Şarj durdu",
+              "locked": "Kilitlendi",
+              "unlocked": "Kilidi açıldı",
+              "seat_locked": "Sele kilitlendi",
+              "seat_unlocked": "Sele kilidi açıldı"
+            }
+          },
+          "summary": {
+            "name": "Özet"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Sürüşler"
+        "name": "Sürüşler",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Sürüş aralığı"
+          }
+        }
       }
     }
   },

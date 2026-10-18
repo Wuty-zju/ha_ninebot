@@ -137,6 +137,9 @@
     "event": {
       "ride": {
         "default": "mdi:motorbike"
+      },
+      "vehicle_event": {
+        "default": "mdi:motorbike"
       }
     },
     "button": {

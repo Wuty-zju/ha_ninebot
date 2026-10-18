@@ -173,7 +173,7 @@
         "name": "Current month distance"
       },
       "last_mileage": {
-        "name": "Last returned ride distance"
+        "name": "Last ride distance"
       },
       "month_energy_raw": {
         "name": "Current month ride energy"
@@ -429,7 +429,7 @@
         "name": "Main battery packs"
       },
       "month_list_coverage": {
-        "name": "Month ride list coverage"
+        "name": "Month trip list completeness"
       },
       "battery_rated_energy": {
         "name": "Main battery rated energy"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Ride time"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Vehicle state event",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "State changed"
+            }
+          },
+          "changes": {
+            "name": "Changes",
+            "state": {
+              "powered_on": "Powered on",
+              "powered_off": "Powered off",
+              "charging_started": "Charging started",
+              "charging_stopped": "Charging stopped",
+              "locked": "Locked",
+              "unlocked": "Unlocked",
+              "seat_locked": "Seat locked",
+              "seat_unlocked": "Seat unlocked"
+            }
+          },
+          "summary": {
+            "name": "Summary"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Rides"
+        "name": "Rides",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Ride time"
+          }
+        }
       }
     }
   },

@@ -173,7 +173,7 @@
         "name": "Цей місяць: Відстань"
       },
       "last_mileage": {
-        "name": "Остання поїздка: Відстань"
+        "name": "Відстань останньої поїздки"
       },
       "month_energy_raw": {
         "name": "Цей місяць: Енергія"
@@ -429,7 +429,7 @@
         "name": "Основна батарея: кількість"
       },
       "month_list_coverage": {
-        "name": "Цей місяць: Повнота списку поїздок"
+        "name": "Повнота списку поїздок за місяць"
       },
       "battery_rated_energy": {
         "name": "Основна батарея: номінальна енергія"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Час поїздки"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Подія стану транспорту",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Стан змінено"
+            }
+          },
+          "changes": {
+            "name": "Зміни",
+            "state": {
+              "powered_on": "Живлення ввімкнено",
+              "powered_off": "Живлення вимкнено",
+              "charging_started": "Заряджання почалось",
+              "charging_stopped": "Заряджання завершилось",
+              "locked": "Заблоковано",
+              "unlocked": "Розблоковано",
+              "seat_locked": "Відсік заблоковано",
+              "seat_unlocked": "Відсік розблоковано"
+            }
+          },
+          "summary": {
+            "name": "Підсумок"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Поїздки"
+        "name": "Поїздки",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Час поїздки"
+          }
+        }
       }
     }
   },

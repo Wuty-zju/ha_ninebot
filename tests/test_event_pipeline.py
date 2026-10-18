@@ -170,6 +170,7 @@ async def test_real_event_entity_baseline_small_attributes_and_restart(
     assert event.attributes["event_type"] == "completed"
     assert event.attributes["ride_id"] == "new-ride"
     assert event.attributes["average_speed_m_s"] == 5
+    assert " – " in event.attributes["time_range"]
     for large in ("raw", "track", "speed_samples", "latitude", "longitude"):
         assert large not in event.attributes
     before = event.state

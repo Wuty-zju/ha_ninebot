@@ -173,7 +173,7 @@
         "name": "Этот месяц: Расстояние"
       },
       "last_mileage": {
-        "name": "Последняя поездка: Расстояние"
+        "name": "Расстояние последней поездки"
       },
       "month_energy_raw": {
         "name": "Этот месяц: Энергия"
@@ -429,7 +429,7 @@
         "name": "Основная батарея: количество"
       },
       "month_list_coverage": {
-        "name": "Этот месяц: Полнота списка поездок"
+        "name": "Полнота списка поездок за месяц"
       },
       "battery_rated_energy": {
         "name": "Основная батарея: номинальная энергия"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Время поездки"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Событие состояния транспорта",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Состояние изменено"
+            }
+          },
+          "changes": {
+            "name": "Изменения",
+            "state": {
+              "powered_on": "Питание включено",
+              "powered_off": "Питание выключено",
+              "charging_started": "Зарядка началась",
+              "charging_stopped": "Зарядка завершена",
+              "locked": "Заблокирован",
+              "unlocked": "Разблокирован",
+              "seat_locked": "Багажник заблокирован",
+              "seat_unlocked": "Багажник разблокирован"
+            }
+          },
+          "summary": {
+            "name": "Сводка"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Поездки"
+        "name": "Поездки",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Время поездки"
+          }
+        }
       }
     }
   },

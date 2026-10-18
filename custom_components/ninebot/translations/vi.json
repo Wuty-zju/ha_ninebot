@@ -173,7 +173,7 @@
         "name": "Tháng này: Quãng đường"
       },
       "last_mileage": {
-        "name": "Chuyến gần nhất: Quãng đường"
+        "name": "Quãng đường chuyến gần nhất"
       },
       "month_energy_raw": {
         "name": "Tháng này: Năng lượng"
@@ -429,7 +429,7 @@
         "name": "Pin chính: số lượng"
       },
       "month_list_coverage": {
-        "name": "Tháng này: Mức đầy đủ lịch sử"
+        "name": "Độ đầy đủ danh sách chuyến trong tháng"
       },
       "battery_rated_energy": {
         "name": "Pin chính: năng lượng định mức"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Khoảng thời gian chuyến đi"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Sự kiện trạng thái xe",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Trạng thái thay đổi"
+            }
+          },
+          "changes": {
+            "name": "Thay đổi",
+            "state": {
+              "powered_on": "Bật nguồn",
+              "powered_off": "Tắt nguồn",
+              "charging_started": "Bắt đầu sạc",
+              "charging_stopped": "Dừng sạc",
+              "locked": "Đã khóa",
+              "unlocked": "Đã mở khóa",
+              "seat_locked": "Khóa cốp",
+              "seat_unlocked": "Mở khóa cốp"
+            }
+          },
+          "summary": {
+            "name": "Tóm tắt"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Chuyến đi"
+        "name": "Chuyến đi",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Khoảng thời gian chuyến đi"
+          }
+        }
       }
     }
   },

@@ -173,7 +173,7 @@
         "name": "本月里程"
       },
       "last_mileage": {
-        "name": "最后返回行程里程"
+        "name": "最近行程距离"
       },
       "month_energy_raw": {
         "name": "本月行程能耗"
@@ -429,7 +429,7 @@
         "name": "主电池组数"
       },
       "month_list_coverage": {
-        "name": "本月行程明细覆盖率"
+        "name": "本月行程列表完整率"
       },
       "battery_rated_energy": {
         "name": "主电池额定能量"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "骑行结束"
             }
+          },
+          "time_range": {
+            "name": "行程时间"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "车辆状态事件",
+        "state_attributes": {
+          "event_type": {
+            "name": "事件类型",
+            "state": {
+              "state_changed": "状态变化"
+            }
+          },
+          "changes": {
+            "name": "变化项",
+            "state": {
+              "powered_on": "车辆上电",
+              "powered_off": "车辆断电",
+              "charging_started": "开始充电",
+              "charging_stopped": "结束充电",
+              "locked": "车辆上锁",
+              "unlocked": "车辆解锁",
+              "seat_locked": "座桶上锁",
+              "seat_unlocked": "座桶解锁"
+            }
+          },
+          "summary": {
+            "name": "摘要"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "行程日历"
+        "name": "行程日历",
+        "state_attributes": {
+          "ride_time": {
+            "name": "行程时间"
+          }
+        }
       }
     }
   },

@@ -173,7 +173,7 @@
         "name": "Este mês: Distância"
       },
       "last_mileage": {
-        "name": "Última viagem: Distância"
+        "name": "Distância da última viagem"
       },
       "month_energy_raw": {
         "name": "Este mês: Energia"
@@ -429,7 +429,7 @@
         "name": "Bateria principal: quantidade"
       },
       "month_list_coverage": {
-        "name": "Este mês: Cobertura das viagens"
+        "name": "Integridade da lista mensal de viagens"
       },
       "battery_rated_energy": {
         "name": "Bateria principal: energia nominal"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "Período da viagem"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Evento de estado do veículo",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Estado alterado"
+            }
+          },
+          "changes": {
+            "name": "Alterações",
+            "state": {
+              "powered_on": "Ligado",
+              "powered_off": "Desligado",
+              "charging_started": "Carregamento iniciado",
+              "charging_stopped": "Carregamento terminado",
+              "locked": "Trancado",
+              "unlocked": "Destrancado",
+              "seat_locked": "Compartimento trancado",
+              "seat_unlocked": "Compartimento destrancado"
+            }
+          },
+          "summary": {
+            "name": "Resumo"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Viagens"
+        "name": "Viagens",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Período da viagem"
+          }
+        }
       }
     }
   },

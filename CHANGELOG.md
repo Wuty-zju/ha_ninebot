@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b99
+
+- Show compact ride time ranges and durations from original seconds, while retaining numeric sensor identities and native unit preferences.
+- Add vehicle state events for observed power, charging and lock transitions, with silent startup/reconnection baselines and localized summaries.
+- Clarify monthly trip-list completeness and history progress, and standardize recent-ride names across all supported translations.
+
 ## 2.0.0b98
 
 - Consolidate history sync and resume into one diagnostic button; retain pause and the resume Action. Update synchronization icons from cached progress.

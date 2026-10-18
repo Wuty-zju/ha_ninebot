@@ -23,11 +23,11 @@ In account options, review **Preserve trip details in background**, **Automatic 
 
 First discovery persists a fixed baseline from the client's `200001` month lower bound through the bootstrap month for each owned vehicle. This is a **client search policy**, not an official earliest-history boundary. Empty months do not prove earlier history is impossible. Work is resumable and budgeted, so a first scan may take a long time. New months, current/previous-month changes and older gaps have separate incremental scheduling; stable saved details are reused instead of continually downloaded.
 
-Month pages and detail requests share the durable account budget (default 30 logical calls/hour), with fairness between vehicles and priority below live telemetry/controls. Retries/backoff, authentication, pause, backup and storage guards apply. Restarting does not reset the request budget. Recent details can receive bounded stability follow-up; late arrivals/corrections do not require rescanning all stable months. Within the local 150–180-day risk band, pending details prioritize older confirmed ride ends; this is not a guaranteed server deletion deadline.
+Month pages and detail requests share the durable account budget (default 60 logical calls/hour, maximum 120), with fairness between vehicles and priority below live telemetry/controls. Retries/backoff, authentication, pause, backup and storage guards apply. Restarting does not reset the request budget. Recent details can receive bounded stability follow-up; late arrivals/corrections do not require rescanning all stable months. Within the local 150–180-day risk band, pending details prioritize older confirmed ride ends; this is not a guaranteed server deletion deadline.
 
 ### Manual and incremental controls
 
-The vehicle's **Sync history / Pause history sync / Resume history sync** buttons use the same scoped Action. They do not operate vehicle locks. History mutations require HA control permission; status is read-only. Preservation must be enabled; manually requested work can proceed while automatic sync is off without enabling new automatic scans.
+The vehicle's **Sync history / Pause history sync** diagnostic buttons (Sync also resumes paused work) use the same scoped Action. They do not operate vehicle locks. History mutations require HA control permission; status is read-only. Preservation must be enabled; manually requested work can proceed while automatic sync is off without enabling new automatic scans.
 
 ```yaml
 action: ninebot.sync_history
@@ -104,6 +104,16 @@ Leaflet **1.9.4** and its license/assets are bundled locally. Tiles are **off by
 Coordinates are plotted as received: CRS is unverified, with no automatic WGS/GCJ conversion or road matching. Point speed and point-distance units remain unverified. Curves use **source sequence**, not elapsed time; 0.5-second playback steps are display timing, not riding speed/time. Server maximum speed and the calculated overall `distance / duration` average stay distinct; sample means cannot replace them.
 
 Private projections are cleared on user/connection/date/vehicle scope change, revoked access and card removal. Full trails/raw do not enter HA entity attributes, Recorder, diagnostics or localStorage. Explicit GPS Action responses can still be recorded in automation traces; protect them.
+
+## Ride summaries and vehicle events
+
+Numeric day/month/last-ride sensors retain their identities, units and recorded history. The last distance is named **Last ride distance**. Start/end timestamps remain available to existing automations; the calendar, ride-completed event and workbench show one time range. Duration sensors retain original seconds with an initial display unit of hours; user unit/precision choices take precedence. Compact workbench views render the original seconds as, for example, **45 sec**, **31 min 46 sec**, or **1 hr 2 min 3 sec**. Generic HA cards can format durations differently.
+
+**Vehicle state event** uses the existing status group. One `state_changed` event batches the changes observed in one successful receipt: `powered_on`, `powered_off`, `charging_started`, `charging_stopped`, `locked`, `unlocked`, `seat_locked`, `seat_unlocked`. Its `changes` list is stable for automation filters; `summary` is localized. `observed_at` is the cloud observation time, not a guaranteed physical transition time. `observation_revision` distinguishes consecutive observations even on older HA versions whose event timestamps can share a millisecond.
+
+Startup, reconnection, stale/failed reads and unknown field values establish a silent baseline rather than replaying changes. No movement is inferred from ACC, no controls are sent, and no extra polling loop is started. Before the first transition, the Event state is correctly `unknown`. The existing ride-completed event keeps its own stable-completion and restart-deduplication rules; importing history does not emit past rides.
+
+**Month trip list completeness** is a debug diagnostic: unique valid returned ride IDs divided by the server's reported month count. It is separate from **History scan progress** (verified months) and **Saved-detail progress** (saved details for discovered IDs). None alone proves a complete historical GPS archive. Debug classification and the absence of a statistics state class do not exclude ordinary Recorder states; use explicit Recorder filters when required. Full raw export is not provided by the parsed debug view or sanitized diagnostics.
 
 ## Query Actions
 

@@ -173,7 +173,7 @@
         "name": "هذا الشهر: المسافة"
       },
       "last_mileage": {
-        "name": "آخر رحلة: المسافة"
+        "name": "مسافة الرحلة الأخيرة"
       },
       "month_energy_raw": {
         "name": "هذا الشهر: الطاقة"
@@ -429,7 +429,7 @@
         "name": "البطارية الرئيسية: العدد"
       },
       "month_list_coverage": {
-        "name": "هذا الشهر: تغطية سجل الرحلات"
+        "name": "اكتمال قائمة رحلات الشهر"
       },
       "battery_rated_energy": {
         "name": "البطارية الرئيسية: الطاقة الاسمية"
@@ -633,6 +633,36 @@
             "state": {
               "completed": "Completed"
             }
+          },
+          "time_range": {
+            "name": "فترة الرحلة"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "حدث حالة المركبة",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "تغير الحالة"
+            }
+          },
+          "changes": {
+            "name": "التغييرات",
+            "state": {
+              "powered_on": "تشغيل الطاقة",
+              "powered_off": "إيقاف الطاقة",
+              "charging_started": "بدء الشحن",
+              "charging_stopped": "توقف الشحن",
+              "locked": "مقفل",
+              "unlocked": "غير مقفل",
+              "seat_locked": "قفل حجرة المقعد",
+              "seat_unlocked": "فتح حجرة المقعد"
+            }
+          },
+          "summary": {
+            "name": "الملخص"
           }
         }
       }
@@ -678,7 +708,12 @@
     },
     "calendar": {
       "ride_calendar": {
-        "name": "الرحلات"
+        "name": "الرحلات",
+        "state_attributes": {
+          "ride_time": {
+            "name": "فترة الرحلة"
+          }
+        }
       }
     }
   },
