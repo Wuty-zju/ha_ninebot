@@ -42,7 +42,7 @@ docs/                       Public usage, architecture, migration and developmen
 | Auth/identity/schema/compatibility | Failure/migration/authorization regressions; broader pinned HA matrix once at a major boundary. |
 | Release packaging | HACS/Hassfest against the candidate, correct manifest/tag/release and runtime paths. |
 
-**Checks** automatically runs lint; its complete HA/coverage matrix is `workflow_dispatch`, not every beta. **Focused statistics**, **History protocol** and **History browser** have affected-path scopes. **History profile** is an explicit synthetic measurement, not a timing SLA. Read current YAML before dispatching; a green lightweight badge does not prove the full matrix ran.
+**Checks** automatically runs **Core lint** and the small standard-library **Release policy** guards on PRs and pushes to `main`/`dev`. HACS/Hassfest use unique check names. The complete HA/coverage/frontend matrix requires `workflow_dispatch` with **full_validation=true**; its default is false. **Focused statistics**, **History protocol** and **History browser** have affected-path scopes. **History profile** is an explicit synthetic measurement, not a timing SLA. Read current YAML before dispatching; a green lightweight badge does not prove the full matrix ran.
 
 In an existing compatible isolated environment:
 
@@ -75,6 +75,25 @@ Handoffs state base/head, scope, changed contracts, checks/skips and unresolved 
 ## Publication
 
 Keep stages reviewable. Documentation-only updates do not bump versions or create empty prereleases. Actual behavior/packaging releases need relevant authorized checks, a real GitHub Release and truthful notes. Publishing, deploying production HA and applying for HACS default inclusion are separate actions; do not infer permission from a local docs task.
+
+## Branch and release channels
+
+See [CONTRIBUTING](../CONTRIBUTING.md#branch-targets-and-releases) for PR targets. `dev` is the reviewed integration/preview branch; `main` receives stable promotions and stable fixes. During the current transition, 2.0 is still prerelease. Historical tags/Releases remain intact. Short topic branches retire after integration; only main/dev are permanent by default. A temporary `release/<version>` isolates a frozen candidate only when development must advance concurrently.
+
+Run **Release preflight** manually from **main** with channel, exact manifest version (without `v`), source branch and reviewed full commit SHA. It has read-only permissions, reads fetched Git objects without executing candidate code, and **never creates a tag or Release**. It requires the SHA to equal the fetched source tip, the committed Ninebot version to match and the version tag to be unused. Preview requires an `a`/`b`/`rc` suffix and source `dev` or matching `release/<version>`; stable requires an unsuffixed version on `main`.
+
+The same offline check is available after fetching branches/tags:
+
+```sh
+python scripts/check_release.py --channel preview --version 2.0.0b95 \
+  --source dev --sha REPLACE_WITH_REVIEWED_FULL_SHA
+```
+
+This is request validation, not runtime or packaging certification. Before actual publication, verify candidate checks, final manifest/tag/ZIP/checksum, fresh remote source/tag state and authorized release scope. Use a draft with all assets attached before publishing; previews are prerelease/non-latest. Never move/reuse a published tag or silently change its assets. Code rollback does not reverse persisted schema migrations: use the matching HA backup when required.
+
+Record the actual tested SHA/tree, workflow/dependency/fixture/environment and results before reusing CI. Identical content can reuse related evidence, but changed content/configuration needs affected checks and every release still needs final channel/package verification. Full suites belong at meaningful compatibility/migration/RC boundaries. Production HA deployment and physical controls remain separate authorizations.
+
+简体中文：main/dev职责与当前2.0预发布状态分开判断。发布预检只读，不执行候选代码/发版本；核对来源tip、manifest、未使用tag与通道。完整HA/前端矩阵需显式勾选full_validation；普通PR相关检查即可。稳定修复不能带入整条下一轮dev，迁移回滚须匹配备份。
 
 ## Documentation assets and preview
 

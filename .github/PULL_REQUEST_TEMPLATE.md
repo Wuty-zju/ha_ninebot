@@ -4,6 +4,8 @@ Describe the concrete problem and what a user/contributor can do after this chan
 
 ## Scope and compatibility
 
+- Base/head SHA, target (`dev` normally; explain stable `main` fixes/promotions) and dependent PRs:
+- Intended channel, completion criteria and topic retirement:
 - Affected modules/contracts:
 - Entity identity, stored data, dependency or minimum-HA changes (or none):
 - User docs/translations updated:
@@ -11,6 +13,7 @@ Describe the concrete problem and what a user/contributor can do after this chan
 ## Validation
 
 - Candidate/environment:
+- Reused CI evidence (actual tree/workflow/dependency/fixture equivalence, if applicable):
 - Relevant checks actually run:
 - Skipped checks and reason:
 - Synthetic/recorded evidence; remaining real-device uncertainty:

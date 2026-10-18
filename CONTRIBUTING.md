@@ -6,12 +6,24 @@ Thank you for improving Ninebot for Home Assistant. Start with a focused problem
 
 ## A small, reviewable change
 
-1. Inspect the current checkout and preserve other people's work. Use a topic branch.
+1. Inspect the current checkout and preserve other people's work. Use a short-lived topic branch from `dev` for normal development.
 2. Follow the [task-to-code/test table](docs/development.md#start-with-a-task-not-the-whole-repository), not the whole release history.
 3. Preserve entity identity, account isolation, privacy, exact dependency pins and bounded asynchronous behavior.
 4. Update the relevant guide and both primary language pages when user behavior changes. Keep runtime resources inside the integration directory.
 5. Run the smallest meaningful offline checks from the [validation table](docs/development.md#select-the-smallest-meaningful-checks). State exactly what ran/skipped and why.
 6. Open a PR describing the problem, resulting behavior, compatibility/identity effects and evidence. Do not create a new permanent report per PR or bump a version for prose alone.
+
+## Branch targets and releases
+
+- **`dev`** integrates reviewed development. Target it for features, development fixes and experimental UI work. Keep unfinished work isolated; do not make experimental cards necessary for core synchronization.
+- **`main`** is the stable release/promotion line. Stable fixes and stable documentation/tooling corrections can target it. The current 2.0 version remains a prerelease until stable acceptance; creating these branch roles does not certify b94 as stable.
+- Use `feat/…`, `fix/…`, `docs/…`, `chore/…` or `perf/…` for one bounded task. Name the goal, not a beta number. Squash short topics when appropriate and retire them after integration; never reuse a squashed topic for the next task.
+- Promote an accepted development cycle to `main` with a normal merge, then synchronize `main` back into `dev`. Do not squash the long-lived branches. A stable hotfix must not merge unrelated next-cycle development; use a minimal fix or a traced backport.
+- Only create a temporary `release/<version>` when candidate stabilization and next-cycle development truly overlap. Promote the frozen branch, not the advancing `dev`.
+
+Feature PRs do not each require a release. Publish useful preview increments from `dev` (or a frozen release branch); publish accepted stable versions from `main`. Keep old tags/Releases immutable, preserve meaningful IDs/data, and do not delete active branches or worktrees. Branch cleanup needs verified integration and recovery evidence.
+
+简体中文：普通开发从dev开短分支并PR回dev；main用于稳定提升/修复，当前2.0仍是预发布。长期分支正常merge，稳定补丁不夹带下一轮功能；按完整成果发预览版，保留旧tag/Release。发布前参考[预检与门槛](docs/development.md#branch-and-release-channels)。
 
 ## Documentation and examples
 
