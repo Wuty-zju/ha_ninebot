@@ -4,19 +4,7 @@
 
 This is a Home Assistant integration with a cloud adapter and a private historical archive. Current-state entities, large historical queries and control acknowledgements have separate responsibilities. The runtime is entirely inside `custom_components/ninebot`; docs/tests/scripts are not runtime dependencies.
 
-```mermaid
-flowchart TD
-  Cloud[Ninebot Cloud] --> Adapter[Account-scoped cloud adapter]
-  Adapter --> Models[Raw evidence and normalized domain models]
-  Models --> Realtime[Realtime coordinator and demand]
-  Models --> Acquisition[Historical acquisition and private archive]
-  Realtime --> Entities[Native HA entities]
-  Acquisition --> Queries[Authorized local Actions and WebSocket]
-  Queries --> Views[Map workbench, calendar and statistics]
-  Controls[Opt-in controls] --> Adapter
-  Adapter --> Readback[Bounded status readback]
-  Readback --> Entities
-```
+![Account-isolated realtime and historical data flow](assets/architecture/overview-en.svg)
 
 Arrows describe data relationships, not upstream push. The frontend's local archive notification is not a Ninebot cloud subscription. See [user options](guide.md#options) for current periods and budgets.
 
@@ -54,6 +42,8 @@ Controls require explicit enablement, vehicle allowlist and fresh ownership/stat
 Read [fixture provenance](../tests/fixtures/ninecli/0.1.7/metadata.json) before promoting a candidate alias or unit. Recorded/synthetic/maintainer-confirmed evidence are different. Reference parsers without a clear license are behavior/schema leads, not copyable implementation.
 
 ## Historical acquisition
+
+![Month discovery, incremental details, transactional storage and local consumption](assets/architecture/history-en.svg)
 
 First discovery, new/current month work, sparse repair, detail preservation and local auditing share a resumable lifecycle rather than a poll per entity. `bootstrap.py`, `history_plan.py`, `incremental_runs.py`, `gap_recovery.py`, `preservation.py` and `history_store.py` persist checkpoints, ID/page membership, budgets and retry state. Real page bodies, receipts, totals and unique IDs are separate from normalized display projections.
 

@@ -7,6 +7,7 @@ on:
       - 'NOTICE'
       - 'scripts/check_docs.py'
       - 'scripts/docs_preview.py'
+      - 'scripts/render_architecture.py'
       - 'scripts/tests/test_docs.py'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
@@ -20,6 +21,7 @@ on:
       - 'NOTICE'
       - 'scripts/check_docs.py'
       - 'scripts/docs_preview.py'
+      - 'scripts/render_architecture.py'
       - 'scripts/tests/test_docs.py'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
@@ -44,3 +46,4 @@ jobs:
           python-version: '3.13'
       - run: python -m unittest discover -s scripts/tests -p 'test_docs.py'
       - run: python scripts/check_docs.py
+      - run: python scripts/render_architecture.py --check
