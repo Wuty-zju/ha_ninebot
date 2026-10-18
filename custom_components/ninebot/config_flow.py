@@ -342,7 +342,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if post_create_options_supported():
             options = await self.hass.config_entries.options.async_init(result["result"].entry_id)
             result["next_flow"] = (
-                config_entries.FlowType.OPTIONS_FLOW,
+                config_entries.FlowType("options_flow"),
                 options["flow_id"],
             )
         return result

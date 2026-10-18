@@ -43,6 +43,12 @@ async def flow_manager(hass, tmp_path):
         patch("custom_components.ninebot.async_unload_entry", return_value=True),
     ):
         yield manager
+        # Setup is deliberately mocked in these flow-only tests; unload while
+        # that matching mock is still active, without invoking a real runtime.
+        await hass.async_block_till_done()
+        for stored in hass.config_entries.async_entries("ninebot"):
+            if stored.state.name == "LOADED":
+                await hass.config_entries.async_unload(stored.entry_id)
 
 
 async def test_user_success_no_password_stored(hass, flow_manager):
@@ -441,7 +447,7 @@ async def test_old_core_features_candidate_has_no_password_or_held_lock(hass, fl
         assert not hass.config_entries.async_entries("ninebot")
         assert not flow_manager._live_transactions
         flow = hass.config_entries.flow.async_get(result["flow_id"])
-        assert "synthetic-secret" not in repr(vars(flow))
+        assert "synthetic-secret" not in repr(flow)
         assert [key.schema for key in result["data_schema"].schema][-1] == "debug_mode"
         done = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -495,7 +501,7 @@ async def test_native_post_create_hook_chains_options_when_supported(hass, flow_
     kind, flow_id = result["next_flow"]
     assert kind == "options_flow"
     form = hass.config_entries.options.async_get(flow_id)
-    assert form.handler == result["result"].entry_id
+    assert form["handler"] == result["result"].entry_id
 
 
 async def test_options_single_parameters_entry_debug_last_preserves_old_options(
