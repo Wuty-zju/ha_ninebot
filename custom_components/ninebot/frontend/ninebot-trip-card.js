@@ -1,5 +1,6 @@
 /** Local map-centric ride workbench. No historical GPS is written into HA state. */
 import { LABELS } from './labels.js';
+import { formatRideDuration, formatRideInterval } from './trip-format.js';
 import { watchHistory } from './history-network.js';
 import { samplePaths, digits } from './trip-browser.js';
 export { TripBrowser, safeRide, businessDates, digits, samplePolyline, samplePaths } from './trip-browser.js';
@@ -175,8 +176,9 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       maximumFractionDigits: value === 0 && !preserveZero ? 0 : digits(precision) }).format(value);
     return `${n}${unit ? ` ${unit}` : ''}`;
   }
-  duration(value) {
-    return this.number(value, 2, 'h', true);
+  duration(value, seconds = null) {
+    const locale = this.browser.hass?.locale?.language ?? this.browser.hass?.language ?? 'en';
+    return formatRideDuration(seconds, value, locale);
   }
   timestamp(value) {
     if (!value || Number.isNaN(new Date(value).getTime())) return '—';
@@ -192,9 +194,10 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   metrics(ride, labels) {
     const dl = element('dl');
     for (const [name, value] of [
-      [labels.start, this.timestamp(ride.start_time)], [labels.end, this.timestamp(ride.end_time)],
+      [labels.ride_time, formatRideInterval(ride.start_time, ride.end_time,
+        this.browser.hass?.language ?? 'en', this.browser.hass?.config?.time_zone ?? 'Asia/Shanghai')],
       [labels.distance, this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')],
-      [labels.duration, this.duration(ride.duration_h)],
+      [labels.duration, this.duration(ride.duration_h, ride.duration_s)],
       [labels.max_speed, this.number(ride.max_speed_m_s === null ? null : ride.max_speed_m_s * 3.6, 0, 'km/h')],
       [labels.avg_speed, this.number(ride.average_speed_m_s === null ? null : ride.average_speed_m_s * 3.6, 1, 'km/h')],
       [labels.energy, this.number(ride.energy_wh, 0, 'Wh')],
@@ -419,7 +422,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       const values = selected.map(([key, ride]) => browser.details.get(key) ?? ride);
       // These are selected-record totals, never a claim about all filtered history.
       const total = field => values.every(ride => Number.isFinite(ride[field])) ? values.reduce((n, ride) => n + ride[field], 0) : null;
-      main.append(element('p', `${labels.selected_total} (${values.length}) · ${this.number(total('distance_m') === null ? null : total('distance_m') / 1000, 1, 'km')} · ${this.duration(total('duration_h'))} · ${this.number(total('energy_wh'), 0, 'Wh')}`, 'note'));
+      main.append(element('p', `${labels.selected_total} (${values.length}) · ${this.number(total('distance_m') === null ? null : total('distance_m') / 1000, 1, 'km')} · ${this.duration(total('duration_h'), total('duration_s'))} · ${this.number(total('energy_wh'), 0, 'Wh')}`, 'note'));
     }
     const primary = this.selection.primary, ride = this.selection.selected.get(primary);
     if (ride) {
@@ -452,7 +455,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       for (const ride of page.rides) {
         const key = trackKey(ride.device_id, ride), section = element('article', '', `ride${key === primary ? ' selected' : ''}`);
         section.dataset.key = key;
-        const choose = this.button(`${ride.vehicle_label} · ${this.timestamp(ride.start_time)}\n${this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')} · ${this.duration(ride.duration_h)}`, () => this.choose(ride));
+        const choose = this.button(`${ride.vehicle_label} · ${this.timestamp(ride.start_time)}\n${this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')} · ${this.duration(ride.duration_h, ride.duration_s)}`, () => this.choose(ride));
         choose.dataset.control = `ride:${key}`; choose.setAttribute('aria-pressed', key === primary);
         choose.addEventListener('keydown', event => {
           if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
