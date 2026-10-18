@@ -25,7 +25,7 @@ These links open your configured Home Assistant instance; they do not install HA
 
 ## Install manually
 
-Download the selected [GitHub release](https://github.com/Wuty-zju/ha_ninebot/releases). Copy its `custom_components/ninebot` directory into `<config>/custom_components/ninebot`, then restart Home Assistant and add the integration. Do not copy the entire development repository into your configuration directory or overlay files from different releases.
+Download `ninebot.zip` from the selected [packaged release](https://github.com/Wuty-zju/ha_ninebot/releases). Its root contains the integration files: extract them into `<config>/custom_components/ninebot`, then restart Home Assistant and add the integration. For older versions or automatic GitHub source archives, copy the contained `custom_components/ninebot` directory instead. Do not copy the entire development repository or overlay files from different releases.
 
 All runtime Python, translations, branding and dashboard assets are inside that integration directory. No separate service, external dashboard package or repository-root script needs to be installed manually.
 

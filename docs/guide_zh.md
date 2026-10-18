@@ -25,7 +25,7 @@
 
 ## 手动安装
 
-下载所选 [GitHub Release](https://github.com/Wuty-zju/ha_ninebot/releases)，将其中 `custom_components/ninebot` 复制到 `<config>/custom_components/ninebot`，重启后添加集成。不要把整个开发仓库复制进配置目录，也不要混合不同版本文件。
+下载所选 [GitHub Release](https://github.com/Wuty-zju/ha_ninebot/releases) 的 `ninebot.zip`，将包内文件解压到 `<config>/custom_components/ninebot`，重启后添加集成。旧版本若没有此附件，则从源码包中复制 `custom_components/ninebot`。不要把整个开发仓库复制进配置目录，也不要混合不同版本文件。
 
 所有运行所需 Python、翻译、品牌和卡片资源都随集成目录分发，无需手动安装独立服务、另一个卡片包或仓库根脚本。
 
