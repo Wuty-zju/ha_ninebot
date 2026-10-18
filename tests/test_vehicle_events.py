@@ -75,7 +75,7 @@ async def vehicle(hass, entry, app_client, freezer):
     app_client.async_get_status.return_value = {
         "pwr": 0,
         "charging": 0,
-        "loc": {"lock": 0},
+        "loc": {"lock": 1},
         "barrel_lock_status": 0,
     }
     with patch("custom_components.ninebot.coordinator.NinebotCoordinator._schedule_refresh"):
@@ -113,7 +113,7 @@ async def test_real_entity_batches_same_millisecond_transitions_without_extra_qu
             hass,
             entry,
             app_client,
-            {"pwr": 1, "charging": 1, "loc": {"lock": 1}, "barrel_lock_status": 1},
+            {"pwr": 1, "charging": 1, "loc": {"lock": 0}, "barrel_lock_status": 1},
         )
         first = hass.states.get(identity)
         assert first.attributes["event_type"] == "state_changed"
@@ -135,7 +135,7 @@ async def test_real_entity_batches_same_millisecond_transitions_without_extra_qu
             hass,
             entry,
             app_client,
-            {"pwr": 0, "charging": 0, "loc": {"lock": 0}, "barrel_lock_status": 0},
+            {"pwr": 0, "charging": 0, "loc": {"lock": 1}, "barrel_lock_status": 0},
         )
         second = hass.states.get(identity)
         assert second.attributes["observation_revision"] > first.attributes["observation_revision"]
@@ -180,7 +180,7 @@ async def test_failed_read_and_unknown_field_do_not_emit_after_recovery(
 async def test_reload_restores_last_display_but_does_not_replay_a_transition(
     hass, entry, app_client, vehicle
 ):
-    await report(hass, entry, app_client, {"pwr": 1, "charging": 0, "loc": {"lock": 0}})
+    await report(hass, entry, app_client, {"pwr": 1, "charging": 0, "loc": {"lock": 1}})
     before = hass.states.get(vehicle)
     row_id = er.async_get(hass).async_get(vehicle).id
     assert before.attributes["changes"] == ["powered_on"]

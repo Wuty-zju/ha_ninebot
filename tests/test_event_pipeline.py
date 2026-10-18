@@ -178,6 +178,13 @@ async def test_real_event_entity_baseline_small_attributes_and_restart(
     co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], travel_freshness=Freshness())
     co.async_set_updated_data(dict(co.data))
     await hass.async_block_till_done()
+    # R4 made recorded history independent of live travel freshness. Keep the
+    # actual event timestamp, but disclose that its current source is not fresh.
+    assert hass.states.get(event_id).state == before
+    assert hass.states.get(event_id).attributes["travel_fresh"] is False
+    co.data["SyntheticSN"] = replace(co.data["SyntheticSN"], present=False)
+    co.async_set_updated_data(dict(co.data))
+    await hass.async_block_till_done()
     assert hass.states.get(event_id).state == "unavailable"
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
