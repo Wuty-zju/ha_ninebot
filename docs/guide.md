@@ -31,11 +31,11 @@ All runtime Python, translations, branding and dashboard assets are inside that 
 
 ## Add accounts and vehicles
 
-Choose password or two-step SMS login. Passwords are used for authentication and are not stored in ConfigEntry or passed as process arguments. The SMS flow has offline regression coverage; live SMS verification is still pending. Private local sessions/tokens remain sensitive: protect the HA configuration and backups.
+Sign in with your account and password. SMS sign-in is temporarily unavailable and is not offered in setup, reauthentication or reconfiguration. Passwords are used for authentication and are not stored in ConfigEntry or passed as process arguments. After authentication, current HA opens account options; older HA completes feature selection in the same setup wizard. Private local sessions/tokens remain sensitive: protect the HA configuration and backups.
 
 Each integration entry represents **one account**, with its own session and historical archive. Add another entry for a different account. Vehicles are discovered within that account; shared physical vehicles can have separate account-scoped HA representations.
 
-Account titles use reported `username：account[region]`, omitting missing components. A routing value such as `bj` is not proof of your residence or the vehicle's location. User-provided entry titles are retained. HA determines the surrounding entry-section heading from the integration type; the integration does not patch global frontend translations.
+Account titles use reported `username：account`, omitting missing components. The opaque region metadata is retained internally and is not shown in the title. User-provided entry titles are retained. HA determines the surrounding entry-section heading from the integration type; the integration does not patch global frontend translations.
 
 Expired credentials use **Reauthenticate**. Reconfigure updates the same account; use a new entry to add another account. An older entry missing display metadata can make one enrichment read on successful setup; there is no recurring username polling loop.
 

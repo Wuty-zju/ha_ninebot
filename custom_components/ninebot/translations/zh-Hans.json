@@ -3,45 +3,30 @@
     "step": {
       "user": {
         "title": "添加账号",
-        "description": "密码仅用于本次登录验证，不保存到集成配置。 新账号默认在后台将行程历史及轨迹保存到本地，可在选项中关闭。",
+        "description": "使用账号和密码登录，验证后设置车辆功能。密码不会保存在集成配置中。",
         "data": {
           "account": "账号",
-          "password": "密码",
-          "debug_mode": "调试模式",
-          "enable_estimation": "启用电池额定参数",
-          "enable_coordinates": "显示车辆位置",
-          "login_method": "登录方式"
+          "password": "密码"
         },
-        "data_description": {
-          "debug_mode": "在解析信息实体中显示有界诊断视图，不增加请求。",
-          "enable_estimation": "可选额定电压与容量，不再从SOC变化推算充放电量。",
-          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。",
-          "enable_coordinates": "显示位置复用状态查询，不增加请求；位置可能进入 Home Assistant 历史。关闭后不暴露坐标，坐标系尚未核验。"
-        }
+        "data_description": {}
       },
       "reauth_confirm": {
         "title": "Ninebot",
         "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
           "account": "账号",
-          "password": "密码",
-          "login_method": "登录方式"
+          "password": "密码"
         },
-        "data_description": {
-          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
-        }
+        "data_description": {}
       },
       "reconfigure": {
         "title": "Ninebot",
         "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
           "account": "账号",
-          "password": "密码",
-          "login_method": "登录方式"
+          "password": "密码"
         },
-        "data_description": {
-          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
-        }
+        "data_description": {}
       },
       "sms_account": {
         "title": "发送登录验证码",
@@ -57,6 +42,21 @@
           "code": "验证码",
           "resend": "重新发送验证码"
         }
+      },
+      "features": {
+        "title": "车辆功能",
+        "description": "账号已验证。选择车辆功能；电池额定电压与容量可在添加完成后的设备页面填写。",
+        "data": {
+          "enable_estimation": "设置电池额定参数",
+          "enable_coordinates": "显示车辆位置",
+          "enable_calendar": "启用行程日历",
+          "debug_mode": "调试模式"
+        },
+        "data_description": {
+          "enable_estimation": "设置电池额定参数，包括电压和容量",
+          "enable_coordinates": "在地图和区域中使用车辆位置。",
+          "debug_mode": "显示有界的当前数据解析视图。可从集成菜单启用调试日志、下载日志和诊断信息。"
+        }
       }
     },
     "error": {
@@ -64,7 +64,7 @@
       "cannot_connect": "连接失败，请稍后重试",
       "upstream_error": "九号服务返回错误，请稍后重试",
       "invalid_response": "返回数据格式不符合预期",
-      "unsupported_platform": "ninecli 无法在当前平台启动",
+      "unsupported_platform": "车辆连接服务无法在此平台运行。",
       "busy": "会话正在使用，请稍后重试",
       "storage_error": "无法安全保存会话，请检查存储空间和权限",
       "password_required": "请填写密码或选择短信登录。",
@@ -80,7 +80,9 @@
       "session_update_failed": "会话更新未完成，已恢复旧会话。请重新开始认证。",
       "session_recovery_pending": "会话恢复尚未完成，备份已保留。请查看“修复”提示并重启 HA 后重试。",
       "sms_expired": "短信登录流程已过期，请重新开始。",
-      "storage_error": "本地会话保存失败，请检查存储后重试。"
+      "storage_error": "本地会话保存失败，请检查存储后重试。",
+      "sms_unavailable": "短信登录暂不可用，请使用密码登录。",
+      "onboarding_expired": "功能设置已过期，请重新添加账号。"
     },
     "initiate_flow": {
       "user": "添加账号"
@@ -90,28 +92,27 @@
     "step": {
       "init": {
         "title": "选项",
-        "description": "额定电池参数是可选规格。新账号默认显示位置，可以关闭。控制需要主动启用并指定车辆；云端接受命令不代表操作已完成。",
+        "description": "设置车辆功能与历史同步，按需开启远程控制。额定参数是电池规格，不代表实测容量。",
         "data": {
           "poll_interval": "状态轮询间隔（秒）",
-          "enable_estimation": "启用电池额定参数",
           "enable_coordinates": "显示车辆位置",
           "enable_controls": "启用车辆控制",
           "control_vehicles": "允许控制的车辆",
-          "debug_mode": "调试模式",
-          "configure_model": "配置电池额定参数",
+          "configure_model": "设置电池额定参数",
           "enable_calendar": "启用行程日历",
-          "preserve_history": "后台保全行程详情",
+          "preserve_history": "自动同步历史详情",
           "history_requests_per_hour": "每账号每小时详情请求限额",
           "auto_history_sync": "自动同步历史行程",
-          "history_storage_mib": "历史存储额度（MiB）"
+          "history_storage_mib": "历史存储额度（MiB）",
+          "debug_mode": "调试模式"
         },
         "data_description": {
-          "debug_mode": "只显示已取得快照的安全解析，不输出账号、位置或轨迹。",
-          "configure_model": "选择HA中的车辆设备；与车辆的两个额定参数配置实体共用存储。",
-          "enable_coordinates": "显示位置复用状态查询，不增加请求；位置可能进入 Home Assistant 历史。关闭后不暴露坐标，坐标系尚未核验。",
+          "debug_mode": "显示有界的当前数据解析视图。可从集成菜单启用调试日志、下载日志和诊断信息。",
+          "configure_model": "设置电池额定参数，包括电压和容量",
+          "enable_coordinates": "在地图和区域中使用车辆位置。",
           "enable_calendar": "开关每辆车的本地行程日历。关闭不删除历史记录；重新开启沿用原实体。浏览日历不会请求云端。",
-          "preserve_history": "私有保存可得的行程详情和轨迹。关闭后停止后台任务，不删除已有档案。",
-          "history_requests_per_hour": "每个账号的后台月份与详情查询共享此预算；ninecli 内部重试不计在此逻辑请求数内。",
+          "preserve_history": "将可获取的行程详情与轨迹保存到本地，首次扫描后按需增量补全。",
+          "history_requests_per_hour": "账号共享的后台月份与详情查询限额；传输层重试不计入逻辑请求数。",
           "auto_history_sync": "为账号内所有归属车辆发现可得历史，随后后台增量同步。",
           "history_storage_mib": "每账号32–2048 MiB，默认100。降低额度不删除已存记录，超额时暂停写入。"
         }

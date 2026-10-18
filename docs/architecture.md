@@ -10,7 +10,7 @@ Arrows describe data relationships, not upstream push. The frontend's local arch
 
 ## Accounts and lifecycle
 
-`config_flow.py` and `session.py` isolate candidate password/SMS sessions, validate identity and only then commit the account. Reauth/reconfigure keep the established business identity. Each ConfigEntry owns a coordinator, private token/config directory, archive actor and unload lifecycle. Different accounts do not share credentials or historical ownership.
+`config_flow.py` and `session.py` isolate candidate sessions, validate identity and only then commit the account. Public setup uses a password; the SMS implementation remains dormant pending delivery verification. Current HA chains into account options after creation; older HA selects features after authentication and before the candidate is committed. Reauth/reconfigure keep the established business identity. Each ConfigEntry owns a coordinator, private token/config directory, archive actor and unload lifecycle. Different accounts do not share credentials or historical ownership.
 
 `runtime.py` manages a local loopback child with a random Bearer token. Passwords go in the local HTTP request body, not process arguments or ConfigEntry. Arbitrary upstream host overrides are not exposed. Tokens/config files remain local secrets; same-user and privileged host processes are inside the trust boundary. Unload cancels tasks/subscriptions/readback and drains/closes the account resources.
 

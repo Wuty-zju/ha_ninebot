@@ -13,6 +13,13 @@ from custom_components.ninebot.session import Candidate, session_uid
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
+async def finish_onboarding(hass, result, **options):
+    """Old Core finishes features in-flow; new Core opens native options."""
+    if result.get("step_id") == "features":
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], options)
+    return result
+
+
 @pytest.fixture
 async def flow_manager(hass, tmp_path):
     from custom_components.ninebot import manager_for
@@ -36,6 +43,12 @@ async def flow_manager(hass, tmp_path):
         patch("custom_components.ninebot.async_unload_entry", return_value=True),
     ):
         yield manager
+        # Setup is deliberately mocked in these flow-only tests; unload while
+        # that matching mock is still active, without invoking a real runtime.
+        await hass.async_block_till_done()
+        for stored in hass.config_entries.async_entries("ninebot"):
+            if stored.state.name == "LOADED":
+                await hass.config_entries.async_unload(stored.entry_id)
 
 
 async def test_user_success_no_password_stored(hass, flow_manager):
@@ -44,6 +57,7 @@ async def test_user_success_no_password_stored(hass, flow_manager):
     result = await hass.config_entries.flow.async_configure(
         form["flow_id"], {"account": " fake-account ", "password": "synthetic-password"}
     )
+    result = await finish_onboarding(hass, result)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     entry = result["result"]
     assert entry.unique_id == "synthetic-business"
@@ -72,12 +86,17 @@ async def test_account_title_metadata_and_explicit_location_off(hass, flow_manag
         data={
             "account": "test-account",
             "password": "synthetic-password",
-            "enable_coordinates": False,
         },
     )
+    result = await finish_onboarding(hass, result, enable_coordinates=False)
     entry = result["result"]
-    assert entry.title == "Rider：test-account[bj]"
+    assert entry.title == "Rider：test-account"
     assert entry.data["account_display"] == {"username": "Rider", "region": "bj"}
+    if result.get("next_flow"):
+        _, flow_id = result["next_flow"]
+        await hass.config_entries.options.async_configure(
+            flow_id, {"poll_interval": 120, "enable_coordinates": False}
+        )
     assert entry.options["enable_coordinates"] is False
 
 
@@ -186,7 +205,6 @@ async def test_options_defaults_are_safe(hass, entry, flow_manager):
         form["flow_id"],
         {
             "poll_interval": 120,
-            "enable_estimation": False,
             "enable_coordinates": False,
             "enable_controls": False,
         },
@@ -369,11 +387,12 @@ async def test_two_account_entries_keep_metadata_and_token_directories_separate(
             context={"source": SOURCE_USER},
             data={"account": account, "password": "synthetic"},
         )
+        result = await finish_onboarding(hass, result)
         results.append(result["result"])
     first, second = results
     assert first.unique_id != second.unique_id
     assert first.data["session_key"] != second.data["session_key"]
-    assert first.title == "Rider-one：one[bj]" and second.title == "Rider-two：two[bj]"
+    assert first.title == "Rider-one：one" and second.title == "Rider-two：two"
     for entry in results:
         assert session_uid(flow_manager.path(entry.data["session_key"])) == entry.unique_id
 
@@ -396,3 +415,106 @@ async def test_history_options_expose_capacity_and_keep_explicit_auto_off(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["auto_history_sync"] is False
     assert history_capacity_bytes(entry.options) == 256 * 1024 * 1024
+
+
+async def test_password_only_form_and_public_sms_steps_never_send(hass, flow_manager):
+    form = await hass.config_entries.flow.async_init("ninebot", context={"source": SOURCE_USER})
+    assert [key.schema for key in form["data_schema"].schema] == ["account", "password"]
+    for source in ("sms_account", "sms_code"):
+        result = await hass.config_entries.flow.async_init(
+            "ninebot", context={"source": source}, data={"account": "fake"}
+        )
+        assert result["reason"] == "sms_unavailable"
+    result = await hass.config_entries.flow.async_init(
+        "ninebot",
+        context={"source": SOURCE_USER},
+        data={"account": "fake", "login_method": "sms"},
+    )
+    assert result["reason"] == "sms_unavailable"
+    assert not flow_manager.root.exists()
+
+
+async def test_old_core_features_candidate_has_no_password_or_held_lock(hass, flow_manager):
+    with patch(
+        "custom_components.ninebot.config_flow.post_create_options_supported", return_value=False
+    ):
+        result = await hass.config_entries.flow.async_init(
+            "ninebot",
+            context={"source": SOURCE_USER},
+            data={"account": "fake", "password": "synthetic-secret"},
+        )
+        assert result["step_id"] == "features"
+        assert not hass.config_entries.async_entries("ninebot")
+        assert not flow_manager._live_transactions
+        flow = hass.config_entries.flow.async_get(result["flow_id"])
+        assert "synthetic-secret" not in repr(flow)
+        assert [key.schema for key in result["data_schema"].schema][-1] == "debug_mode"
+        done = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {"enable_coordinates": False, "enable_calendar": False, "enable_estimation": True},
+        )
+    assert done["type"] is FlowResultType.CREATE_ENTRY
+    assert done["result"].options["enable_estimation"] is True
+    assert done["result"].options["enable_calendar"] is False
+    assert not list(flow_manager.root.glob(".candidate-*"))
+
+
+@pytest.mark.parametrize("expire", [False, True])
+async def test_old_core_cancel_or_timeout_discards_onboarding_candidate(
+    hass, flow_manager, freezer, expire
+):
+    with patch(
+        "custom_components.ninebot.config_flow.post_create_options_supported", return_value=False
+    ):
+        form = await hass.config_entries.flow.async_init(
+            "ninebot",
+            context={"source": SOURCE_USER},
+            data={"account": "fake", "password": "synthetic"},
+        )
+        assert list(flow_manager.root.glob(".candidate-*"))
+        if expire:
+            from datetime import timedelta
+
+            from homeassistant.util import dt as dt_util
+            from pytest_homeassistant_custom_component.common import async_fire_time_changed
+
+            freezer.move_to(dt_util.utcnow() + timedelta(seconds=601))
+            async_fire_time_changed(hass, dt_util.utcnow())
+        else:
+            hass.config_entries.flow.async_abort(form["flow_id"])
+        await hass.async_block_till_done()
+    assert not list(flow_manager.root.glob(".candidate-*"))
+    assert not hass.config_entries.async_entries("ninebot")
+
+
+async def test_native_post_create_hook_chains_options_when_supported(hass, flow_manager):
+    from custom_components.ninebot.compat import post_create_options_supported
+
+    if not post_create_options_supported():
+        pytest.skip("Native hook is absent on the minimum supported Core")
+    result = await hass.config_entries.flow.async_init(
+        "ninebot",
+        context={"source": SOURCE_USER},
+        data={"account": "fake", "password": "synthetic"},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    kind, flow_id = result["next_flow"]
+    assert kind == "options_flow"
+    form = hass.config_entries.options.async_get(flow_id)
+    assert form["handler"] == result["result"].entry_id
+
+
+async def test_options_single_parameters_entry_debug_last_preserves_old_options(
+    hass, entry, flow_manager
+):
+    hass.config_entries.async_update_entry(
+        entry, options={"enable_estimation": True, "enable_coordinates": False, "debug_mode": True}
+    )
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    keys = [key.schema for key in form["data_schema"].schema]
+    assert "configure_model" in keys and "enable_estimation" not in keys
+    assert keys[-1] == "debug_mode"
+    await hass.config_entries.options.async_configure(form["flow_id"], {"poll_interval": 120})
+    assert entry.options["enable_estimation"] is True
+    assert entry.options["enable_coordinates"] is False
+    assert entry.options["debug_mode"] is True

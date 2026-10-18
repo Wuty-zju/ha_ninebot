@@ -3,45 +3,30 @@
     "step": {
       "user": {
         "title": "Aggiungi account",
-        "description": "The password is used only for this login and is not stored in integration configuration. I nuovi account salvano localmente viaggi e percorsi in background. Puoi disattivare questa funzione nelle opzioni.",
+        "description": "Sign in with your account and password, then choose vehicle features. Your password is not saved in integration configuration.",
         "data": {
           "account": "Account",
-          "password": "Password",
-          "debug_mode": "Modalità debug",
-          "enable_estimation": "Abilita parametri nominali",
-          "enable_coordinates": "Mostra posizione del veicolo",
-          "login_method": "Metodo di accesso"
+          "password": "Password"
         },
-        "data_description": {
-          "debug_mode": "Show a bounded diagnostic view without additional requests.",
-          "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
-        }
+        "data_description": {}
       },
       "reauth_confirm": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Account",
-          "password": "Password",
-          "login_method": "Metodo di accesso"
+          "password": "Password"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "reconfigure": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Account",
-          "password": "Password",
-          "login_method": "Metodo di accesso"
+          "password": "Password"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "sms_account": {
         "title": "Send login code",
@@ -57,6 +42,21 @@
           "code": "Codice di verifica",
           "resend": "Invia di nuovo"
         }
+      },
+      "features": {
+        "title": "Vehicle features",
+        "description": "Account verified. Choose vehicle features; rated voltage and capacity can be entered on the device page after setup.",
+        "data": {
+          "enable_estimation": "Configura parametri nominali",
+          "enable_coordinates": "Mostra posizione del veicolo",
+          "enable_calendar": "Viaggi",
+          "debug_mode": "Modalità debug"
+        },
+        "data_description": {
+          "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
       }
     },
     "error": {
@@ -64,7 +64,7 @@
       "cannot_connect": "Cannot connect; try again later",
       "upstream_error": "Ninebot service returned an error; try later",
       "invalid_response": "Unexpected response format",
-      "unsupported_platform": "ninecli cannot start on this platform",
+      "unsupported_platform": "The vehicle connection service cannot run on this platform.",
       "busy": "Session is busy; try again later",
       "storage_error": "Cannot save session; check storage and permissions",
       "password_required": "Enter a password or choose SMS login.",
@@ -80,7 +80,9 @@
       "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
-      "storage_error": "Local session storage failed. Check storage and try again."
+      "storage_error": "Local session storage failed. Check storage and try again.",
+      "sms_unavailable": "SMS sign-in is unavailable. Use your password.",
+      "onboarding_expired": "Feature setup expired. Add the account again."
     },
     "initiate_flow": {
       "user": "Aggiungi account"
@@ -90,28 +92,27 @@
     "step": {
       "init": {
         "title": "Opzioni",
-        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
+        "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
           "poll_interval": "Intervallo di aggiornamento (secondi)",
-          "enable_estimation": "Abilita parametri nominali",
           "enable_coordinates": "Mostra posizione del veicolo",
           "enable_controls": "Abilita controlli",
           "control_vehicles": "Veicoli autorizzati",
-          "debug_mode": "Modalità debug",
           "configure_model": "Configura parametri nominali",
           "enable_calendar": "Viaggi",
-          "preserve_history": "Preserve trip details in background",
+          "preserve_history": "Automatically sync trip details",
           "history_requests_per_hour": "Detail request budget per account/hour",
           "auto_history_sync": "Sincronizzazione automatica della cronologia",
-          "history_storage_mib": "Limite spazio cronologia (MiB)"
+          "history_storage_mib": "Limite spazio cronologia (MiB)",
+          "debug_mode": "Modalità debug"
         },
         "data_description": {
-          "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
+          "configure_model": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
-          "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
+          "history_requests_per_hour": "Shared account limit for background month and detail queries. Transport retries are separate from this logical operation counter.",
           "auto_history_sync": "Scopri la cronologia disponibile di tutti i veicoli dell’account, poi sincronizza le modifiche in background.",
           "history_storage_mib": "32–2048 MiB per account, predefinito 100. Ridurre il limite conserva i dati e può sospendere la scrittura."
         }

@@ -67,3 +67,15 @@ async def test_ha_loads_account_entry_and_capability_translations(hass, language
     assert result["component.ninebot.config.initiate_flow.user"] == name
     result = await async_get_translations(hass, language, "entity", {DOMAIN})
     assert result["component.ninebot.entity.binary_sensor.cycle_support.state.on"] == on
+
+
+def test_public_configuration_is_password_only_and_hides_backend_names():
+    for path in (DIRECTORY / "translations").glob("*.json"):
+        content = json.loads(path.read_text())
+        for name in ("user", "reauth_confirm", "reconfigure"):
+            step = content["config"]["step"][name]
+            assert set(step["data"]) == {"account", "password"}, path.name
+        assert "ninecli" not in json.dumps({k: content[k] for k in ("config", "options")}).lower()
+        fields = list(content["options"]["step"]["init"]["data"])
+        assert fields[-1] == "debug_mode"
+        assert "enable_estimation" not in fields

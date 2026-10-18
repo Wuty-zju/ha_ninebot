@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b96
+
+- Simplify sign-in to account and password, then open vehicle feature settings. Keep SMS sign-in unavailable until delivery is verified.
+- Hide the opaque region suffix in automatic account titles while preserving custom titles and existing sessions.
+- Use one rated-parameter setup entry, keep location settings after sign-in and place debug mode last.
+
 ## 2.0.0b95
 
 - Distribute `ninebot.zip` through HACS, with SHA256 checksums and verified runtime contents. Older releases retain source-archive installation.

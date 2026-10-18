@@ -41,6 +41,7 @@ async def sms_manager(hass, tmp_path):
 
     manager._factory = factory
     with (
+        patch("custom_components.ninebot.config_flow.SMS_LOGIN_ENABLED", True),
         patch("custom_components.ninebot.async_setup_entry", return_value=True),
         patch("custom_components.ninebot.async_unload_entry", return_value=True),
     ):
