@@ -41,6 +41,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m unittest discover -s scripts/tests -p 'test_release.py'
+      - run: python -m unittest discover -s scripts/tests -p 'test_release_package.py'
   test:
     # Full compatibility runs are requested for major updates, not every beta.
     # A maintainer can dispatch this workflow on the branch/main being released.

@@ -1,0 +1,128 @@
+name: Publish packaged release
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel
+        type: choice
+        options: [preview, stable]
+        required: true
+      version:
+        description: Exact manifest version without v
+        type: string
+        required: true
+      source:
+        description: Source branch (dev, main or release/version)
+        type: string
+        default: dev
+        required: true
+      candidate_sha:
+        description: Reviewed full source-tip commit SHA
+        type: string
+        required: true
+      publish:
+        description: Publish after package verification (otherwise prepare artifacts only)
+        type: boolean
+        default: false
+      notes_en:
+        description: English change bullets
+        type: string
+        required: true
+      notes_zh:
+        description: Equivalent Simplified Chinese change bullets
+        type: string
+        required: true
+      upgrade_en:
+        description: English upgrade instructions, if needed
+        type: string
+      upgrade_zh:
+        description: Equivalent Chinese upgrade instructions, if needed
+        type: string
+permissions:
+  contents: read
+  checks: read
+concurrency:
+  group: ninebot-packaged-publication
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+  CHANNEL: ${{ inputs.channel }}
+  VERSION: ${{ inputs.version }}
+  SOURCE: ${{ inputs.source }}
+  CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+  RELEASE_NOTES_EN: ${{ inputs.notes_en }}
+  RELEASE_NOTES_ZH: ${{ inputs.notes_zh }}
+  UPGRADE_NOTES_EN: ${{ inputs.upgrade_en }}
+  UPGRADE_NOTES_ZH: ${{ inputs.upgrade_zh }}
+jobs:
+  prepare:
+    name: Verify candidate and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      package_sha: ${{ steps.package.outputs.package_sha }}
+    steps:
+      - name: Require the maintained workflow on main
+        run: test "$GITHUB_REF" = refs/heads/main
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Build and verify without executing candidate code
+        id: package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m scripts.publish_release --channel "$CHANNEL" --version "$VERSION" \
+            --source "$SOURCE" --sha "$CANDIDATE_SHA" --output "$RUNNER_TEMP/package"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          report = json.loads((Path(os.environ["RUNNER_TEMP"]) / "package/publication.json").read_text())
+          with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
+              stream.write("package_sha=" + report["package_sha256"] + "\n")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ninebot-${{ inputs.version }}-package
+          path: ${{ runner.temp }}/package/
+          if-no-files-found: error
+          retention-days: 30
+  publish:
+    name: Publish verified draft
+    if: inputs.publish
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      checks: read
+    steps:
+      - name: Require the maintained workflow on main
+        run: test "$GITHUB_REF" = refs/heads/main
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Rebuild, compare, attach and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PACKAGE_SHA: ${{ needs.prepare.outputs.package_sha }}
+        run: >-
+          python -m scripts.publish_release --channel "$CHANNEL" --version "$VERSION"
+          --source "$SOURCE" --sha "$CANDIDATE_SHA" --output "$RUNNER_TEMP/package" --publish
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ninebot-${{ inputs.version }}-publication
+          path: ${{ runner.temp }}/package/
+          if-no-files-found: warn
+          retention-days: 30
