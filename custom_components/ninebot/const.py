@@ -25,6 +25,7 @@ CONF_ESTIMATION = "enable_estimation"
 CONF_COORDINATES = "enable_coordinates"
 CONF_DEBUG = "debug_mode"
 CONF_CALENDAR = "enable_calendar"
+CONF_EVENTS = "enable_vehicle_events"
 DEFAULT_POLL_INTERVAL = 120
 DEFAULT_COORDINATES = True
 DETAIL_INTERVAL = 600

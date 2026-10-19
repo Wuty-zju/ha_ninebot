@@ -515,6 +515,7 @@ async def test_native_post_create_hook_chains_options_when_supported(hass, flow_
     assert defaults["preserve_history"] is False
     assert defaults["auto_history_sync"] is False
     assert defaults["history_requests_per_hour"] == 60
+    assert defaults["enable_vehicle_events"] is True
 
 
 async def test_options_single_parameters_entry_debug_last_preserves_old_options(
@@ -552,6 +553,7 @@ async def test_history_budget_default_sixty_and_explicit_120(hass, entry, flow_m
     form = await hass.config_entries.options.async_init(entry.entry_id)
     defaults = form["data_schema"]({"poll_interval": 120})
     assert defaults["history_requests_per_hour"] == 60
+    assert defaults["enable_vehicle_events"] is True
     result = await hass.config_entries.options.async_configure(
         form["flow_id"], {"poll_interval": 120, "history_requests_per_hour": budget}
     )

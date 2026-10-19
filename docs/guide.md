@@ -54,7 +54,7 @@ Availability depends on the vehicle model, permissions and actual cloud reports.
 | Controls | Vehicle/seat locks and retained remote buttons | Explicit opt-in/allowlist and authorization required; see below. |
 | Native HA | Ride calendar, ride-completed/state-transition events, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
 
-Durations retain native seconds and suggest **hours with two decimals** through HA's native conversion. Distance/range and Wh/km suggest one decimal; energy and maximum speed suggest integers. Presentation rounding does not round archived source facts. HA user overrides take precedence. Rated battery V/Ah produce a specification in kWh, not measured capacity or health.
+Durations retain native seconds and suggest **hours with four decimals** through HA's native conversion. Distance/range and Wh/km suggest one decimal; energy and maximum speed suggest integers. Presentation rounding does not round archived source facts. HA user overrides take precedence. Rated battery V/Ah produce a specification in kWh, not measured capacity or health.
 
 Cycle counts display not supported only when the cycle-support flag explicitly says so; unknown support stays unknown. Missing odometer is not reported, without invented distance. English and Simplified Chinese are the primary documentation languages; shipped entity/settings labels cover additional locales with English fallback for some longer text.
 
@@ -66,6 +66,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 |---|---|---|
 | Status interval | 120 s; 30–3600 s | Status demand only; battery/travel use separate 600 s periods and profiles 3600 s. These are client policy, not guaranteed cloud freshness. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
+| Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
 | Preserve trip details (Beta) | Off for new accounts; existing choices retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |
 | Automatic history sync (Beta) | Off for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
@@ -97,8 +98,9 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 | Authentication fails | Check the official App/account region; use reauth. Do not publish credentials or token files. |
 | Rated-parameter form rejects a vehicle | Close and reopen the form after the updated integration is actually loaded. Choose a currently discovered vehicle. |
 | Today/yesterday values unknown | Open [coverage and statistics](history.md#coverage-and-statistics). A partial month or missing metric may not support a reliable daily total. |
-| Ride/vehicle event unknown | Events wait for a new stable ride completion or a known status transition after their baseline. History imports and reconnection do not replay events. See [event semantics](history.md#ride-summaries-and-vehicle-events). |
+| Ride/vehicle event unknown | Events wait for a new/revised trip report, stable completion or known status transition after their baseline. History imports and reconnection do not replay events. See [event semantics](history.md#ride-summaries-and-vehicle-events). |
 | History waiting for request budget | Inspect `next_request_at`, `retry_at`, `sync_phase`, pause/auth/capacity state; do not repeatedly request a full scan. |
+| Calendar shows “No current trip” / off | This is a historical calendar with no active event. Browse saved dates in HA Calendar; only the account option disables the feature. |
 | Custom element not found | Register the [bundled module resource](history.md#add-the-history-map), then reload the browser. |
 | Track missing or a single point | Check saved-detail state, coordinate option/permissions and cloud track quality. Old simplified data cannot recreate a lost trail. |
 | Storage Repair | Preserve the files and read [verification and recovery](history.md#verification-and-recovery). Do not delete the database/registry to silence it. |

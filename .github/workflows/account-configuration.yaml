@@ -9,6 +9,11 @@ on:
       - 'tests/test_control_polling.py'
       - 'custom_components/ninebot/account.py'
       - 'custom_components/ninebot/event.py'
+      - 'custom_components/ninebot/ride_reports.py'
+      - 'tests/test_ride_reports.py'
+      - 'tests/test_registry.py'
+      - 'tests/test_ride_entities.py'
+      - 'tests/test_period_statistics.py'
       - 'custom_components/ninebot/vehicle_events.py'
       - 'custom_components/ninebot/ride_presentation.py'
       - 'custom_components/ninebot/calendar.py'
@@ -62,4 +67,5 @@ jobs:
           tests/test_debug_and_model_options.py tests/test_sms_login.py
           tests/test_session.py tests/test_translations.py tests/test_history_entities.py tests/test_calendar_history.py
           tests/test_vehicle_events.py tests/test_ride_presentation.py tests/test_event_pipeline.py tests/test_ride_events.py
-          tests/test_lock_controls.py tests/test_control_polling.py tests/test_lock_migration.py
+          tests/test_lock_controls.py tests/test_control_polling.py tests/test_lock_migration.py tests/test_control_results.py
+          tests/test_ride_reports.py tests/test_registry.py tests/test_ride_entities.py tests/test_period_statistics.py

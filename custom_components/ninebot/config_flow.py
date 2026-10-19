@@ -40,6 +40,7 @@ from .const import (
     CONF_COORDINATES,
     CONF_DEBUG,
     CONF_ESTIMATION,
+    CONF_EVENTS,
     CONF_IDENTITY_SCHEME,
     CONF_POLL_INTERVAL,
     CONF_SESSION_KEY,
@@ -599,6 +600,7 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_COORDINATES, default=options.get(CONF_COORDINATES, DEFAULT_COORDINATES)
                     ): bool,
+                    vol.Optional(CONF_EVENTS, default=options.get(CONF_EVENTS, True)): bool,
                     vol.Optional(CONF_CALENDAR, default=options.get(CONF_CALENDAR, True)): bool,
                     vol.Optional(CONF_PRESERVE, default=options.get(CONF_PRESERVE, False)): bool,
                     vol.Optional(

@@ -123,7 +123,7 @@ async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
         row("sensor", "ninebot_syntheticsn_endurance"),
         row("sensor", "SyntheticSN_range_estimated"),
         row("sensor", "SyntheticSN_range_ai"),
-        row("sensor", "SyntheticSN_last_ride_end"),
+        row("sensor", "SyntheticSN_last_ride_duration"),
         row("image", "SyntheticSN_vehicle_image"),
         row("sensor", "SyntheticSN_month_energy_raw"),
         row("device_tracker", "SyntheticSN_location"),
@@ -132,12 +132,13 @@ async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
     ]
     registry.async_update_entity(promoted[0].entity_id, name="My range")
     retained = [
-        row("sensor", "SyntheticSN_last_ride_start", er.RegistryEntryDisabler.USER),
+        row("sensor", "SyntheticSN_last_ride_max_speed", er.RegistryEntryDisabler.USER),
         row("sensor", "unrecognized_range_estimated", owned=False),
     ]
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert entry.runtime_data.standard_entities_enabled == len(promoted)
+    assert entry.runtime_data.standard_entities_enabled == len(promoted) - 1
+    # Event opt-in gating already restored its integration-disabled row.
 
     def current(item):
         # Naming migration changes entity_id; the registry identity stays fixed.
@@ -156,3 +157,43 @@ async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
     assert entry.runtime_data.standard_entities_enabled == 0
     assert current(promoted[0]).disabled_by is er.RegistryEntryDisabler.USER
     app_client.async_control.assert_not_awaited()
+
+
+async def test_events_option_reuses_registry_identity_and_retires_only_time_sensors(
+    hass, entry, app_client
+):
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={("ninebot", "SyntheticSN")}
+    )
+    registry = er.async_get(hass)
+    retired = [
+        registry.async_get_or_create(
+            "sensor", "ninebot", f"SyntheticSN_{key}", config_entry=entry, device_id=device.id
+        )
+        for key in ("last_ride_start", "last_ride_end")
+    ]
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert all(registry.async_get(row.entity_id) is None for row in retired)
+    rows = [
+        registry.async_get(registry.async_get_entity_id("event", "ninebot", f"SyntheticSN_{key}"))
+        for key in ("ride", "vehicle_event")
+    ]
+    ids = [row.id for row in rows]
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "enable_vehicle_events": False}
+    )
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    for row in rows:
+        current = registry.async_get(row.entity_id)
+        assert current.id == row.id and current.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+        assert hass.states.get(current.entity_id) is None
+    assert not entry.runtime_data.events._callbacks
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "enable_vehicle_events": True}
+    )
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert [registry.async_get(row.entity_id).id for row in rows] == ids
+    assert all(registry.async_get(row.entity_id).disabled_by is None for row in rows)

@@ -154,11 +154,18 @@ async def test_real_event_entity_baseline_small_attributes_and_restart(
     event_id = registry.async_get_entity_id("event", "ninebot", "SyntheticSN_ride")
     assert registry.async_get(event_id).id == registry_id
     event = hass.states.get(event_id)
-    assert event.state == "unknown" and event.attributes["event_types"] == ["completed"]
+    assert event.state == "unknown" and event.attributes["event_types"] == [
+        "reported",
+        "updated",
+        "completed",
+        "late_reported",
+    ]
     active = entry.runtime_data.events
     assert active._callbacks and active._cursors
     await new_report(hass, entry, app_client, freezer)
-    assert hass.states.get(event_id).state == "unknown"
+    assert hass.states.get(event_id).attributes["event_type"] == "reported"
+    assert hass.states.get(event_id).attributes["latest_start_time"]
+    assert hass.states.get(event_id).attributes["latest_end_time"]
     await settled_report(hass, entry, freezer)
     co = entry.runtime_data.coordinator
     last = co.data["SyntheticSN"].travel.rides[0]

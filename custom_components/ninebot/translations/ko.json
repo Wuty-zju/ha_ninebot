@@ -99,6 +99,7 @@
           "poll_interval": "상태 갱신 간격(초)",
           "enable_coordinates": "차량 위치 표시",
           "configure_model": "정격 매개변수 설정",
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
           "enable_calendar": "주행 기록 (Beta)",
           "preserve_history": "Automatically sync trip details (Beta)",
           "history_requests_per_hour": "History requests per account per hour (Beta)",
@@ -110,12 +111,13 @@
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "기본값 60. 0은 시간당 제한 없음(권장하지 않음), 그 외에는 1–120의 정수입니다. 월별 조회와 상세 조회가 공유하며 클라우드 제한과 재시도 대기는 유지됩니다.",
           "auto_history_sync": "계정의 모든 소유 차량에서 제공되는 기록을 찾은 후 변경분을 백그라운드로 동기화합니다.",
           "history_storage_mib": "계정당32–2048 MiB, 기본100. 한도를 낮춰도 저장된 기록은 삭제하지 않으며 쓰기가 중지될 수 있습니다.",
-          "control_vehicles": "이 계정에서 차량을 하나 이상 선택하세요. 제어를 꺼도 선택은 유지됩니다."
+          "control_vehicles": "이 계정에서 차량을 하나 이상 선택하세요. 제어를 꺼도 선택은 유지됩니다.",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events."
         }
       },
       "model_vehicle": {
@@ -200,12 +202,6 @@
       },
       "last_ride_duration": {
         "name": "최근 주행: 주행 시간"
-      },
-      "last_ride_start": {
-        "name": "최근 주행: 시작 시간"
-      },
-      "last_ride_end": {
-        "name": "최근 주행: 종료 시간"
       },
       "last_ride_max_speed": {
         "name": "최근 주행: 최고 속도"
@@ -512,6 +508,12 @@
       },
       "history_sync_last_success": {
         "name": "마지막 기록 동기화 성공"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -628,16 +630,28 @@
     },
     "event": {
       "ride": {
-        "name": "주행 이벤트",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
           },
           "time_range": {
             "name": "주행 시간대"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
           }
         }
       },
@@ -647,7 +661,15 @@
           "event_type": {
             "name": "Event type",
             "state": {
-              "state_changed": "상태 변경"
+              "state_changed": "상태 변경",
+              "powered_on": "전원 켜짐",
+              "powered_off": "전원 꺼짐",
+              "charging_started": "충전 시작",
+              "charging_stopped": "충전 종료",
+              "locked": "잠김",
+              "unlocked": "잠금 해제",
+              "seat_locked": "시트 잠김",
+              "seat_unlocked": "시트 잠금 해제"
             }
           },
           "changes": {
@@ -682,6 +704,21 @@
           },
           "last_operation": {
             "name": "최근 작업"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -712,17 +749,42 @@
               "unlocked": "잠금 해제",
               "unknown": "알 수 없음"
             }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "주행 기록",
+        "name": "Trip history calendar",
         "state_attributes": {
           "ride_time": {
             "name": "주행 시간대"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
           }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
         }
       }
     }
@@ -789,7 +851,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Lock the seat compartment manually."
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."

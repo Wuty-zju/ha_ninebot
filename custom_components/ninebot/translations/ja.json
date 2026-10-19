@@ -99,6 +99,7 @@
           "poll_interval": "状態更新間隔（秒）",
           "enable_coordinates": "車両の位置を表示",
           "configure_model": "定格パラメーターを設定",
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
           "enable_calendar": "走行履歴 (Beta)",
           "preserve_history": "Automatically sync trip details (Beta)",
           "history_requests_per_hour": "History requests per account per hour (Beta)",
@@ -110,12 +111,13 @@
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "既定値60。0は時間当たりの制限なし（非推奨）、通常は1～120の整数です。月と詳細の取得で共有し、クラウドの制限と再試行の待機は引き続き有効です。",
           "auto_history_sync": "所有する全車両の取得可能な履歴を取得し、その後は変更分をバックグラウンドで同期します。",
           "history_storage_mib": "アカウントごとに32–2048 MiB、既定値100。上限を下げても保存済みデータは削除せず、書き込みを一時停止する場合があります。",
-          "control_vehicles": "このアカウントの車両を1台以上選択します。操作を無効にしても選択は保持されます。"
+          "control_vehicles": "このアカウントの車両を1台以上選択します。操作を無効にしても選択は保持されます。",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events."
         }
       },
       "model_vehicle": {
@@ -200,12 +202,6 @@
       },
       "last_ride_duration": {
         "name": "前回の走行: 走行時間"
-      },
-      "last_ride_start": {
-        "name": "前回の走行: 開始時刻"
-      },
-      "last_ride_end": {
-        "name": "前回の走行: 終了時刻"
       },
       "last_ride_max_speed": {
         "name": "前回の走行: 最高速度"
@@ -512,6 +508,12 @@
       },
       "history_sync_last_success": {
         "name": "履歴同期の最終成功日時"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -628,16 +630,28 @@
     },
     "event": {
       "ride": {
-        "name": "走行イベント",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
           },
           "time_range": {
             "name": "走行時間帯"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
           }
         }
       },
@@ -647,7 +661,15 @@
           "event_type": {
             "name": "Event type",
             "state": {
-              "state_changed": "状態変更"
+              "state_changed": "状態変更",
+              "powered_on": "電源オン",
+              "powered_off": "電源オフ",
+              "charging_started": "充電開始",
+              "charging_stopped": "充電終了",
+              "locked": "施錠",
+              "unlocked": "解錠",
+              "seat_locked": "シートボックス施錠",
+              "seat_unlocked": "シートボックス解錠"
             }
           },
           "changes": {
@@ -682,6 +704,21 @@
           },
           "last_operation": {
             "name": "直近の操作"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -712,17 +749,42 @@
               "unlocked": "解錠",
               "unknown": "不明"
             }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "走行履歴",
+        "name": "Trip history calendar",
         "state_attributes": {
           "ride_time": {
             "name": "走行時間帯"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
           }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
         }
       }
     }
@@ -789,7 +851,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Lock the seat compartment manually."
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."

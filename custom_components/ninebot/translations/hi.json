@@ -99,6 +99,7 @@
           "poll_interval": "अपडेट अंतराल (सेकंड)",
           "enable_coordinates": "वाहन का स्थान दिखाएँ",
           "configure_model": "निर्धारित मान सेट करें",
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
           "enable_calendar": "यात्राएँ (Beta)",
           "preserve_history": "Automatically sync trip details (Beta)",
           "history_requests_per_hour": "History requests per account per hour (Beta)",
@@ -110,12 +111,13 @@
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "डिफ़ॉल्ट 60; 0 का अर्थ प्रति घंटे कोई सीमा नहीं (अनुशंसित नहीं), अन्यथा 1–120 का पूर्णांक। मासिक और विवरण अनुरोध सीमा साझा करते हैं; क्लाउड सीमाएँ और पुनः प्रयास का विलंब लागू रहते हैं।",
           "auto_history_sync": "खाते के सभी अपने वाहनों का उपलब्ध इतिहास खोजें, फिर बदलाव पृष्ठभूमि में सिंक करें।",
           "history_storage_mib": "प्रति खाता32–2048 MiB, डिफ़ॉल्ट100। सीमा घटाने पर रिकॉर्ड नहीं मिटते, लेकिन लिखना रुक सकता है।",
-          "control_vehicles": "इस खाते से एक या अधिक वाहन चुनें। नियंत्रण बंद करने पर चयन बना रहता है।"
+          "control_vehicles": "इस खाते से एक या अधिक वाहन चुनें। नियंत्रण बंद करने पर चयन बना रहता है।",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events."
         }
       },
       "model_vehicle": {
@@ -200,12 +202,6 @@
       },
       "last_ride_duration": {
         "name": "पिछली यात्रा: यात्रा अवधि"
-      },
-      "last_ride_start": {
-        "name": "पिछली यात्रा: आरंभ समय"
-      },
-      "last_ride_end": {
-        "name": "पिछली यात्रा: समाप्ति समय"
       },
       "last_ride_max_speed": {
         "name": "पिछली यात्रा: अधिकतम गति"
@@ -512,6 +508,12 @@
       },
       "history_sync_last_success": {
         "name": "अंतिम सफल इतिहास सिंक"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -628,16 +630,28 @@
     },
     "event": {
       "ride": {
-        "name": "यात्रा घटना",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
           },
           "time_range": {
             "name": "यात्रा अवधि"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
           }
         }
       },
@@ -647,7 +661,15 @@
           "event_type": {
             "name": "Event type",
             "state": {
-              "state_changed": "स्थिति बदली"
+              "state_changed": "स्थिति बदली",
+              "powered_on": "पावर चालू",
+              "powered_off": "पावर बंद",
+              "charging_started": "चार्जिंग शुरू",
+              "charging_stopped": "चार्जिंग बंद",
+              "locked": "लॉक किया गया",
+              "unlocked": "अनलॉक किया गया",
+              "seat_locked": "सीट लॉक",
+              "seat_unlocked": "सीट अनलॉक"
             }
           },
           "changes": {
@@ -682,6 +704,21 @@
           },
           "last_operation": {
             "name": "पिछली कार्रवाई"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -712,17 +749,42 @@
               "unlocked": "अनलॉक",
               "unknown": "अज्ञात"
             }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "यात्राएँ",
+        "name": "Trip history calendar",
         "state_attributes": {
           "ride_time": {
             "name": "यात्रा अवधि"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
           }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
         }
       }
     }
@@ -789,7 +851,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Lock the seat compartment manually."
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."

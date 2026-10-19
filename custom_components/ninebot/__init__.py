@@ -33,6 +33,7 @@ from .migration import async_migrate
 from .models import VehicleSnapshot
 from .registry import (
     async_configure_debug_entities,
+    async_configure_event_entities,
     async_enable_configured_controls,
     async_enable_standard_entities,
     async_migrate_entity_ids,
@@ -141,6 +142,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         )
         entry.runtime_data.obsolete_entities_removed = async_remove_obsolete_entities(hass, entry)
         async_configure_debug_entities(hass, entry)
+        async_configure_event_entities(hass, entry)
         entry.runtime_data.standard_entities_enabled = async_enable_standard_entities(hass, entry)
         entry.runtime_data.configured_controls_enabled = async_enable_configured_controls(
             hass, entry

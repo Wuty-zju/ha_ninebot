@@ -99,6 +99,7 @@
           "poll_interval": "狀態刷新間隔（秒）",
           "enable_coordinates": "顯示車輛位置",
           "configure_model": "設定電池額定參數",
+          "enable_vehicle_events": "啟用車輛事件（Beta）",
           "enable_calendar": "啟用行程日曆（Beta）",
           "preserve_history": "自動同步歷史詳情（Beta）",
           "history_requests_per_hour": "History requests per account per hour（Beta）",
@@ -110,12 +111,13 @@
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "開關每輛車的本地行程日曆。關閉不刪除歷史；重新開啟沿用原實體。瀏覽不請求雲端。",
+          "enable_calendar": "按日期瀏覽本地歷史行程。日曆顯示“無目前行程”并不代表停用；關閉此選項才会停用日曆，歷史記錄保留。",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "預設60；輸入0表示不限制每小時請求數（不建議），或填寫1–120的整數。月份與詳情共用此限額；雲端限流與錯誤退避仍生效。",
           "auto_history_sync": "為帳號內所有歸屬車輛發現可得歷史，隨後背景增量同步。",
           "history_storage_mib": "每帳號32–2048 MiB，預設100。降低額度不刪除已存記錄，超額時暫停寫入。",
-          "control_vehicles": "從此帳號選擇一輛或多輛允許遠端控制的車輛。關閉控制會保留選擇。"
+          "control_vehicles": "從此帳號選擇一輛或多輛允許遠端控制的車輛。關閉控制會保留選擇。",
+          "enable_vehicle_events": "同時開關車輛行程事件与車輛狀態事件；預設開啟。重新開啟不会重放旧記錄。"
         }
       },
       "model_vehicle": {
@@ -199,13 +201,7 @@
         }
       },
       "last_ride_duration": {
-        "name": "上次行程: 騎行時長"
-      },
-      "last_ride_start": {
-        "name": "上次行程: 開始時間"
-      },
-      "last_ride_end": {
-        "name": "上次行程: 結束時間"
+        "name": "最近行程時長"
       },
       "last_ride_max_speed": {
         "name": "上次行程: 最高速度"
@@ -422,10 +418,10 @@
         }
       },
       "month_ride_count": {
-        "name": "本月: 騎行次數"
+        "name": "本月行程次數"
       },
       "month_duration": {
-        "name": "本月: 騎行時長"
+        "name": "本月行程時長"
       },
       "returned_pack_count": {
         "name": "主電池組數"
@@ -443,28 +439,28 @@
         "name": "昨日: 距離"
       },
       "today_ride_count": {
-        "name": "今日: 騎行次數"
+        "name": "今日行程次數"
       },
       "yesterday_ride_count": {
-        "name": "昨日: 騎行次數"
+        "name": "昨日行程次數"
       },
       "today_ride_duration": {
-        "name": "今日: 騎行時長"
+        "name": "今日行程時長"
       },
       "yesterday_ride_duration": {
-        "name": "昨日: 騎行時長"
+        "name": "昨日行程時長"
       },
       "today_ride_energy": {
-        "name": "今日: 能耗"
+        "name": "今日行程能耗"
       },
       "yesterday_ride_energy": {
-        "name": "昨日: 能耗"
+        "name": "昨日行程能耗"
       },
       "month_energy_intensity": {
-        "name": "本月: 單位里程能耗"
+        "name": "本月平均能耗"
       },
       "last_energy_intensity": {
-        "name": "上次行程: 單位里程能耗"
+        "name": "最近行程平均能耗"
       },
       "emergency_battery": {
         "name": "應急通訊電池電量"
@@ -512,6 +508,12 @@
       },
       "history_sync_last_success": {
         "name": "最近成功同步"
+      },
+      "today_energy_intensity": {
+        "name": "今日平均能耗"
+      },
+      "yesterday_energy_intensity": {
+        "name": "昨日平均能耗"
       }
     },
     "binary_sensor": {
@@ -628,16 +630,28 @@
     },
     "event": {
       "ride": {
-        "name": "騎行事件",
+        "name": "車輛行程事件",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "行程已上報",
+              "updated": "行程已修訂",
+              "late_reported": "遲到行程已確認"
             }
           },
           "time_range": {
             "name": "行程時間"
+          },
+          "latest_ride": {
+            "name": "最近行程"
+          },
+          "latest_start_time": {
+            "name": "最近行程開始时间"
+          },
+          "latest_end_time": {
+            "name": "最近行程結束时间"
           }
         }
       },
@@ -647,7 +661,15 @@
           "event_type": {
             "name": "Event type",
             "state": {
-              "state_changed": "狀態變更"
+              "state_changed": "狀態變更",
+              "powered_on": "車輛上電",
+              "powered_off": "車輛斷電",
+              "charging_started": "開始充電",
+              "charging_stopped": "結束充電",
+              "locked": "車輛上鎖",
+              "unlocked": "車輛解鎖",
+              "seat_locked": "座桶上鎖",
+              "seat_unlocked": "座桶解鎖"
             }
           },
           "changes": {
@@ -682,6 +704,21 @@
           },
           "last_operation": {
             "name": "最近操作"
+          },
+          "command_status": {
+            "name": "指令确认",
+            "state": {
+              "idle": "无等待指令",
+              "not_requested": "无需状态确认",
+              "pending": "等待响应，可再次发送指令",
+              "confirmed": "状态已确认",
+              "observed_target_command_uncertain": "状态已更新，指令结果未确认",
+              "already_in_target": "已处于目标状态",
+              "target_not_observed": "15秒内未确认，请检查车辆",
+              "unknown": "未获取确认状态",
+              "cancelled": "等待已取消",
+              "superseded": "等待已取消或由新指令接替"
+            }
           }
         }
       },
@@ -712,17 +749,42 @@
               "unlocked": "已解鎖",
               "unknown": "未知"
             }
+          },
+          "command_status": {
+            "name": "指令确认",
+            "state": {
+              "idle": "无等待指令",
+              "not_requested": "无需状态确认",
+              "pending": "等待响应，可再次发送指令",
+              "confirmed": "状态已确认",
+              "observed_target_command_uncertain": "状态已更新，指令结果未确认",
+              "already_in_target": "已处于目标状态",
+              "target_not_observed": "15秒内未确认，请检查车辆",
+              "unknown": "未获取确认状态",
+              "cancelled": "等待已取消",
+              "superseded": "等待已取消或由新指令接替"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "行程日曆",
+        "name": "行程歷史日曆",
         "state_attributes": {
           "ride_time": {
             "name": "行程時間"
+          },
+          "calendar_mode": {
+            "name": "日曆用途",
+            "state": {
+              "historical_read_only": "歷史行程（唯讀）"
+            }
           }
+        },
+        "state": {
+          "off": "無目前行程",
+          "on": "行程進行中"
         }
       }
     }
@@ -789,7 +851,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Lock the seat compartment manually."
+      "message": "請在車輛上關閉座桶。如需再次解鎖，请直接傳送解鎖指令。"
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."

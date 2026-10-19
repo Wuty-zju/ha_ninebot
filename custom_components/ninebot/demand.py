@@ -55,7 +55,11 @@ def entity_context(vehicle: str, platform: str, key: str, group: str) -> Consume
     elif platform == "button" and key != "refresh":
         need = Need.CONTROL
     elif group == "travel":
-        if key.startswith("yesterday_") or key.startswith("today_ride_"):
+        if (
+            key.startswith("yesterday_")
+            or key.startswith("today_ride_")
+            or key == "today_energy_intensity"
+        ):
             need = Need.DAY
         else:
             need = (

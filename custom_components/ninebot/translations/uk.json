@@ -99,6 +99,7 @@
           "poll_interval": "Інтервал оновлення (секунди)",
           "enable_coordinates": "Показувати розташування транспорту",
           "configure_model": "Налаштувати номінальні параметри",
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
           "enable_calendar": "Поїздки (Beta)",
           "preserve_history": "Automatically sync trip details (Beta)",
           "history_requests_per_hour": "History requests per account per hour (Beta)",
@@ -110,12 +111,13 @@
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "Типово 60; 0 скасовує погодинний ліміт (не рекомендовано), інакше 1–120. Місяці й деталі ділять ліміт; обмеження хмари та затримки повторів зберігаються.",
           "auto_history_sync": "Зібрати доступну історію всіх транспортних засобів облікового запису, далі синхронізувати зміни у фоні.",
           "history_storage_mib": "32–2048 MiB на обліковий запис, типово100. Зменшення ліміту не видаляє дані та може зупинити запис.",
-          "control_vehicles": "Виберіть транспортні засоби цього облікового запису. Вимкнення керування зберігає вибір."
+          "control_vehicles": "Виберіть транспортні засоби цього облікового запису. Вимкнення керування зберігає вибір.",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events."
         }
       },
       "model_vehicle": {
@@ -200,12 +202,6 @@
       },
       "last_ride_duration": {
         "name": "Остання поїздка: Тривалість поїздок"
-      },
-      "last_ride_start": {
-        "name": "Остання поїздка: Час початку"
-      },
-      "last_ride_end": {
-        "name": "Остання поїздка: Час завершення"
       },
       "last_ride_max_speed": {
         "name": "Остання поїздка: Максимальна швидкість"
@@ -512,6 +508,12 @@
       },
       "history_sync_last_success": {
         "name": "Остання успішна синхронізація"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -628,16 +630,28 @@
     },
     "event": {
       "ride": {
-        "name": "Подія поїздки",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
           },
           "time_range": {
             "name": "Час поїздки"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
           }
         }
       },
@@ -647,7 +661,15 @@
           "event_type": {
             "name": "Event type",
             "state": {
-              "state_changed": "Стан змінено"
+              "state_changed": "Стан змінено",
+              "powered_on": "Живлення ввімкнено",
+              "powered_off": "Живлення вимкнено",
+              "charging_started": "Заряджання почалось",
+              "charging_stopped": "Заряджання завершилось",
+              "locked": "Заблоковано",
+              "unlocked": "Розблоковано",
+              "seat_locked": "Відсік заблоковано",
+              "seat_unlocked": "Відсік розблоковано"
             }
           },
           "changes": {
@@ -682,6 +704,21 @@
           },
           "last_operation": {
             "name": "Остання операція"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -712,17 +749,42 @@
               "unlocked": "Розблоковано",
               "unknown": "Невідомо"
             }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Поїздки",
+        "name": "Trip history calendar",
         "state_attributes": {
           "ride_time": {
             "name": "Час поїздки"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
           }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
         }
       }
     }
@@ -789,7 +851,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Lock the seat compartment manually."
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."

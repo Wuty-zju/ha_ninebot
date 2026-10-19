@@ -52,6 +52,8 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "source": "ride_archive",
+            "calendar_mode": "historical_read_only",
+            "state_meaning": "no_active_event",
             "coverage": "observed_subset",
             "selection_basis": SELECTION_BASIS,
         }
@@ -71,8 +73,6 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
                 "last_ride_average_speed",
                 "last_energy_raw",
                 "last_energy_intensity",
-                "last_ride_start",
-                "last_ride_end",
             )
         }
         self._labels["ride_time"] = translations.get(
@@ -113,7 +113,7 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
                 if ride.duration_s is not None
                 else None,
                 "h",
-                2,
+                4,
             ),
             (
                 "last_ride_max_speed",
