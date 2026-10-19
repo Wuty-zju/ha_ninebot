@@ -687,7 +687,9 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
         schema = {}
         for key, maximum, unit in (("voltage", 300, "V"), ("capacity", 500, "Ah")):
             value = getattr(model, key)
-            field = vol.Optional(key) if value is None else vol.Optional(key, default=value)
+            field = vol.Optional(
+                key, description={"suggested_value": value} if value is not None else None
+            )
             schema[field] = parameter_validator(maximum, unit)
         return self.async_show_form(
             step_id="model_parameters", data_schema=vol.Schema(schema), errors=errors
@@ -726,9 +728,7 @@ class RatedParameterSelector(NumberSelector):
             )
         )
 
-    def __call__(self, value: Any) -> float | None:
-        if value is None or value == "":
-            return None
+    def __call__(self, value: Any) -> float:
         result = number(value, 1, self._maximum)
         if result is None:
             raise vol.Invalid("Model parameter outside supported range")

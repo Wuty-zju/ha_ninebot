@@ -217,8 +217,8 @@ async def test_rated_parameters_allow_unfilled_partial_and_explicit_clear(hass, 
     for values, expected in (
         ({}, (None, None)),
         ({"voltage": 72}, (72, None)),
-        ({"voltage": None, "capacity": 38}, (None, 38)),
-        ({"capacity": ""}, (None, None)),
+        ({"capacity": 38}, (None, 38)),
+        ({}, (None, None)),
     ):
         form = await hass.config_entries.options.async_init(entry.entry_id)
         form = await hass.config_entries.options.async_configure(
