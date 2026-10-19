@@ -107,8 +107,8 @@ class DailyStatisticsSync:
                         guard=owns,
                         receipt_ordered=True,
                     )
-                    if not owns():
-                        return
+                    if not owns() or not store.writable:
+                        return  # A paused/failed write cannot advance the page cursor.
                     cursor.seen.update(ids)
                     cursor.attempts = 0
                     cursor.page += 1
