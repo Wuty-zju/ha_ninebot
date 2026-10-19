@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b103
+
+- Refresh demanded trip data at the business-day boundary and after entity setup, retaining request coalescing, account budgets and failure backoff.
+- Keep verified same-period daily, monthly and latest-trip values available during short connection failures and offline restart, with original receipt times and explicit cache status.
+- Update daily and monthly entities immediately when the local archive changes; preserve entity identities, original precision and strict historical-statistics validation.
+
 ## 2.0.0b102
 
 - Enable controls and select all sign-in-verified vehicles for new accounts; retain existing user choices and use a 60-second default status interval.

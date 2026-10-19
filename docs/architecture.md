@@ -26,6 +26,8 @@ Controls require enablement, a vehicle allowlist and fresh ownership/status. New
 
 `daily_sync.py` repairs only incomplete current-month normalized ride indexes for enabled daily consumers when the detail-preservation worker is off. It shares the durable hourly budget and existing read broker, processes one page per update and does not fetch details or persist raw GPS. Complete indexes are reused and metric reconciliation remains separate from upstream coverage claims.
 
+Shanghai day changes invalidate only a successful previous-day travel scheduling interval, never failure backoff or Retry-After. The midnight callback and post-platform setup use the normal coordinator request debouncer. The archive exposes an atomic memory-only current/previous-month projection and notifies daily/monthly/latest entities after writes. Entity presentation can use verified same-period cached facts with original receipts; `get_statistics` and Recorder export retain stricter closing-observation requirements. Cache continuity cannot create a new-day zero, transfer another period's totals or renew live freshness.
+
 ## Raw evidence and normalized models
 
 `raw.py` retains bounded source records; adapters normalize reviewed fields into `models.py` and `ride_models.py`. Unknown safe business fields can remain in private evidence for future parsing. Missing/null/invalid/zero are distinct, and list/detail observations preserve provenance. Re-reading a cached record never advances its receipt age.

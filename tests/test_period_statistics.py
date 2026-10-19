@@ -121,6 +121,13 @@ def test_time_disagreement_duration_and_stale_observation(hass):
     result = day_summary(store, "one", YESTERDAY, NOW)
     assert result.distance_km is result.ride_count is None
     assert result.reason("distance_km") == "day_not_observed"
+    provisional = day_summary(store, "one", YESTERDAY, NOW, allow_cached=True)
+    assert provisional.distance_km == 14.8 and provisional.ride_count == 2
+    assert provisional.observation_state == "awaiting_day_close"
+    stale = day_summary(
+        record(hass), "one", NOW.date(), NOW + timedelta(hours=1), allow_cached=True
+    )
+    assert stale.ride_count == 0 and stale.observation_state == "cached"
     assert day_summary(record(hass), "one", NOW.date(), NOW + timedelta(hours=1)).ride_count is None
     assert (
         day_summary(record(hass), "one", YESTERDAY, NOW - timedelta(seconds=1)).ride_count is None

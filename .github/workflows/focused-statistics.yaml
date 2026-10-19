@@ -2,6 +2,7 @@ name: Focused statistics
 on:
   pull_request:
     paths:
+      - 'tests/test_statistics_continuity.py'
       - 'custom_components/ninebot/daily_sync.py'
       - 'tests/test_daily_sync.py'
       - 'custom_components/ninebot/*statistics*.py'
@@ -67,6 +68,7 @@ jobs:
           tests/test_travel.py
           tests/test_services.py
           tests/test_accumulated_statistics.py
+          tests/test_statistics_continuity.py
           tests/test_period_statistics.py
           tests/test_daily_sync.py
           tests/test_archive_runtime.py

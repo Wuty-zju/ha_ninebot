@@ -39,12 +39,15 @@ class DaySummary:
     adjacent_revision: int | None = None
     completeness_basis: str = "not_verified"
     energy_intensity_wh_per_km: float | None = None
+    observation_state: str = "unavailable"
 
     def reason(self, metric: DayMetric) -> str:
         return dict(self.availability).get(metric, "available")
 
 
-def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> DaySummary:
+def day_summary(
+    store: StatisticsReader, sn: str, day: date, now: datetime, *, allow_cached: bool = False
+) -> DaySummary:
     """Missing dates/rows are gaps; only a proven empty window means zero."""
     record = store.month(sn, day.strftime("%Y%m"))
     zone = ZoneInfo(BUSINESS_TIMEZONE)
@@ -58,8 +61,12 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
         day > business_today
         or sampled > now
         or day > sampled.astimezone(zone).date()
-        or (day < business_today and day >= sampled.astimezone(zone).date())
-        or (day == business_today and (now - sampled).total_seconds() > 3 * DETAIL_INTERVAL)
+        or (not allow_cached and day < business_today and day >= sampled.astimezone(zone).date())
+        or (
+            not allow_cached
+            and day == business_today
+            and (now - sampled).total_seconds() > 3 * DETAIL_INTERVAL
+        )
     ):
         return DaySummary(
             day,
@@ -67,6 +74,16 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
             revision=record.revision,
             availability=tuple((field, "day_not_observed") for field in DAY_METRICS),
         )
+    sampled_day = sampled.astimezone(zone).date()
+    observation_state = (
+        "awaiting_day_close"
+        if day < business_today and sampled_day == day
+        else "cached"
+        if day == business_today and (now - sampled).total_seconds() > 3 * DETAIL_INTERVAL
+        else "current"
+        if day == business_today
+        else "reported_history"
+    )
     distance = None
     if record.chart_status == "valid" and len(record.daily_distance_km) >= day.day:
         distance = record.daily_distance_km[day.day - 1]
@@ -167,6 +184,8 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
     reasons["energy_intensity_wh_per_km"] = (
         "available"
         if intensity is not None
+        else "zero_distance"
+        if complete and ride_distance == 0
         else "missing_metric"
         if complete
         else "incomplete_month_list"
@@ -186,4 +205,5 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
         previous_record.revision if previous_record else None,
         completeness_basis,
         intensity,
+        observation_state,
     )

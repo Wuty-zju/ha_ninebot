@@ -155,6 +155,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
             )
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         coordinator.preservation.start()
+        coordinator.async_schedule_statistics_refresh()
     except BaseException:
         if entry.runtime_data.events:
             await entry.runtime_data.events.async_close()

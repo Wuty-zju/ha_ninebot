@@ -316,20 +316,34 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         @callback
         def notify(at: datetime) -> None:
             self._validity_cancel = None
-            self.async_update_listeners()
-            if self.statistics.projection_needs_refresh(at):
+            day_changed = at.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date() != local.date()
 
-                async def refresh_local() -> None:
+            async def refresh_local() -> None:
+                if self.statistics.projection_needs_refresh(at):
                     await self.statistics.async_refresh_projection()
-                    if not self._stopping:
-                        self.async_update_listeners()
+                if self._stopping:
+                    return
+                self.async_update_listeners()
+                if day_changed and any("travel" in self.demand(sn).groups for sn in self.data):
+                    # Reuse group due/backoff and in-flight work, never force a
+                    # second midnight query or bypass a server Retry-After.
+                    await self.async_request_refresh()
 
-                task = self.hass.async_create_task(refresh_local())
-                self._active.add(task)
-                task.add_done_callback(self._active.discard)
+            task = self.hass.async_create_task(refresh_local())
+            self._active.add(task)
+            task.add_done_callback(self._active.discard)
             self._schedule_validity_check()
 
         self._validity_cancel = async_track_point_in_utc_time(self.hass, notify, min(deadlines))
+
+    @callback
+    def async_schedule_statistics_refresh(self) -> None:
+        """Admit newly subscribed daily consumers without waiting a status period."""
+        if self._stopping:
+            return
+        task = self.hass.async_create_task(self.async_request_refresh())
+        self._active.add(task)
+        task.add_done_callback(self._active.discard)
 
     @callback
     def _async_refresh_finished(self) -> None:
@@ -378,7 +392,20 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         )
 
     def _due(self, sn: str, group: str, stamp: float) -> bool:
-        return stamp >= self._next_attempt.get((sn, group), 0)
+        key = (sn, group)
+        if group == "travel" and not self._failures.get(key, 0):
+            snapshot = self.data.get(sn)
+            observed = snapshot.travel_freshness.succeeded_at if snapshot else None
+            zone = ZoneInfo(BUSINESS_TIMEZONE)
+            now = dt_util.utcnow()
+            if (
+                observed is not None
+                and observed <= now
+                and observed.astimezone(zone).date() != now.astimezone(zone).date()
+                and stamp >= self._retry_after_until.get(key, 0)
+            ):
+                return True  # Successful previous-day scheduling cannot delay the new day.
+        return stamp >= self._next_attempt.get(key, 0)
 
     def _attempt_finished(
         self, sn: str, group: str, stamp: float, interval: int, success: bool
@@ -591,6 +618,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 if (
                     cached
                     and not force
+                    and cached.received_at.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date()
+                    == now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date()
                     and 0 <= (now - cached.received_at).total_seconds() < DETAIL_INTERVAL
                     and (previous_success is None or cached.received_at > previous_success)
                 ):

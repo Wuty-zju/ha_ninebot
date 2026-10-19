@@ -17,14 +17,21 @@ from . import adapters
 from .const import BUSINESS_TIMEZONE
 from .exceptions import NinebotError
 from .history_budget import configured_budget
+from .models import TravelMonth
 from .parsing import previous_month
 from .preservation import CONF_PRESERVE, retry_delay
+from .raw import RawRecord
 from .ride_archive import ArchiveError
 
 if TYPE_CHECKING:
     from .coordinator import NinebotCoordinator
 
 MAX_PAGES = 256
+
+
+def parse_page(record: RawRecord, month: str) -> TravelMonth:
+    """Decode and normalize a captured page outside the event loop."""
+    return adapters.travel(record.payload(), month)
 
 
 @dataclass
@@ -85,9 +92,7 @@ class DailyStatisticsSync:
                 self._last_vehicle = sn
                 try:
                     raw = await co.async_query_history_page(sn, month, cursor.page)
-                    travel = await co.hass.async_add_executor_job(
-                        adapters.travel, raw.payload(), month
-                    )
+                    travel = await co.hass.async_add_executor_job(parse_page, raw, month)
                     summary = travel.summary
                     ids = {ride.ride_id for ride in travel.rides if ride.ride_id is not None}
                     if (
