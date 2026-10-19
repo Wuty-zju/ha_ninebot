@@ -571,7 +571,9 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
             for sn, snapshot in vehicles.items()
             if snapshot.present
         ]
-        for sn in options.get(CONF_CONTROL_VEHICLES, []):
+        # Keep previously saved choices selectable when validation redisplays
+        # an empty selection and vehicle discovery is temporarily unavailable.
+        for sn in self.config_entry.options.get(CONF_CONTROL_VEHICLES, []):
             if sn not in {choice["value"] for choice in choices}:
                 snapshot = vehicles.get(sn)
                 choices.append(

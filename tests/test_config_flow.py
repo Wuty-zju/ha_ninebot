@@ -509,6 +509,7 @@ async def test_native_post_create_hook_chains_options_when_supported(hass, flow_
     assert kind == "options_flow"
     form = hass.config_entries.options.async_get(flow_id)
     assert form["handler"] == result["result"].entry_id
+    form = await hass.config_entries.options.async_configure(flow_id)
     defaults = form["data_schema"]({})
     assert defaults["enable_calendar"] is False
     assert defaults["preserve_history"] is False
