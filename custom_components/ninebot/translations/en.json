@@ -99,6 +99,7 @@
           "poll_interval": "Status polling interval (seconds)",
           "enable_coordinates": "Show vehicle location",
           "configure_model": "Set rated battery parameters",
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
           "enable_calendar": "Enable ride calendar (Beta)",
           "preserve_history": "Automatically sync trip details (Beta)",
           "history_requests_per_hour": "History requests per account per hour (Beta)",
@@ -110,12 +111,13 @@
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "Default 60; enter 0 for no hourly limit (not recommended), or 1–120. Month and detail queries share this limit; cloud rate limits and retry backoff still apply.",
           "auto_history_sync": "Discover available history for all owned vehicles, then sync changes in background.",
           "history_storage_mib": "32–2048 MiB per account, default 100. Lowering the limit preserves saved records and may pause writes.",
-          "control_vehicles": "Choose one or more vehicles from this account. Turning controls off keeps your selection."
+          "control_vehicles": "Choose one or more vehicles from this account. Turning controls off keeps your selection.",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events."
         }
       },
       "model_vehicle": {
@@ -199,13 +201,7 @@
         }
       },
       "last_ride_duration": {
-        "name": "Last ride duration"
-      },
-      "last_ride_start": {
-        "name": "Last ride start"
-      },
-      "last_ride_end": {
-        "name": "Last ride end"
+        "name": "Latest trip duration"
       },
       "last_ride_max_speed": {
         "name": "Last ride maximum speed"
@@ -422,10 +418,10 @@
         }
       },
       "month_ride_count": {
-        "name": "Current month ride count"
+        "name": "Monthly trip count"
       },
       "month_duration": {
-        "name": "Current month ride duration"
+        "name": "Monthly trip duration"
       },
       "returned_pack_count": {
         "name": "Main battery packs"
@@ -443,28 +439,28 @@
         "name": "Yesterday distance"
       },
       "today_ride_count": {
-        "name": "Today ride count"
+        "name": "Today trip count"
       },
       "yesterday_ride_count": {
-        "name": "Yesterday ride count"
+        "name": "Yesterday trip count"
       },
       "today_ride_duration": {
-        "name": "Today ride duration"
+        "name": "Today trip duration"
       },
       "yesterday_ride_duration": {
-        "name": "Yesterday ride duration"
+        "name": "Yesterday trip duration"
       },
       "today_ride_energy": {
-        "name": "Today ride energy"
+        "name": "Today trip energy"
       },
       "yesterday_ride_energy": {
-        "name": "Yesterday ride energy"
+        "name": "Yesterday trip energy"
       },
       "month_energy_intensity": {
-        "name": "Current month energy consumption per distance"
+        "name": "Monthly average consumption"
       },
       "last_energy_intensity": {
-        "name": "Last ride energy consumption per distance"
+        "name": "Latest trip average consumption"
       },
       "emergency_battery": {
         "name": "Emergency communication battery"
@@ -512,6 +508,12 @@
       },
       "history_sync_last_success": {
         "name": "Last successful history sync"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -628,16 +630,28 @@
     },
     "event": {
       "ride": {
-        "name": "Ride event",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
           },
           "time_range": {
             "name": "Ride time"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
           }
         }
       },
@@ -647,7 +661,15 @@
           "event_type": {
             "name": "Event type",
             "state": {
-              "state_changed": "State changed"
+              "state_changed": "State changed",
+              "powered_on": "Powered on",
+              "powered_off": "Powered off",
+              "charging_started": "Charging started",
+              "charging_stopped": "Charging stopped",
+              "locked": "Locked",
+              "unlocked": "Unlocked",
+              "seat_locked": "Seat locked",
+              "seat_unlocked": "Seat unlocked"
             }
           },
           "changes": {
@@ -682,6 +704,21 @@
           },
           "last_operation": {
             "name": "Last operation"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -712,17 +749,42 @@
               "unlocked": "Unlocked",
               "unknown": "Unknown"
             }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Rides",
+        "name": "Trip history calendar",
         "state_attributes": {
           "ride_time": {
             "name": "Ride time"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
           }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
         }
       }
     }
@@ -789,7 +851,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Lock the seat compartment manually."
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."

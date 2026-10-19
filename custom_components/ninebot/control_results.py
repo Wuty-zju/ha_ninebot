@@ -31,6 +31,7 @@ class ReadbackOutcome(StrEnum):
 
 
 class Confirmation(StrEnum):
+    SUPERSEDED = "superseded"
     NOT_REQUESTED = "not_requested"
     PENDING = "pending"
     CONFIRMED = "confirmed"

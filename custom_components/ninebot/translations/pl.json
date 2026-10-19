@@ -99,6 +99,7 @@
           "poll_interval": "Interwał aktualizacji (sekundy)",
           "enable_coordinates": "Pokaż położenie pojazdu",
           "configure_model": "Ustaw parametry znamionowe",
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
           "enable_calendar": "Przejazdy (Beta)",
           "preserve_history": "Automatically sync trip details (Beta)",
           "history_requests_per_hour": "History requests per account per hour (Beta)",
@@ -110,12 +111,13 @@
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "Domyślnie 60; 0 oznacza brak limitu godzinowego (niezalecane), w pozostałych przypadkach 1–120. Miesiące i szczegóły współdzielą limit; ograniczenia chmury i opóźnienia ponowień nadal obowiązują.",
           "auto_history_sync": "Pobierz dostępną historię wszystkich pojazdów konta, a następnie synchronizuj zmiany w tle.",
           "history_storage_mib": "32–2048 MiB na konto, domyślnie100. Zmniejszenie limitu zachowuje dane i może wstrzymać zapis.",
-          "control_vehicles": "Wybierz pojazdy tego konta. Wyłączenie sterowania zachowuje wybór."
+          "control_vehicles": "Wybierz pojazdy tego konta. Wyłączenie sterowania zachowuje wybór.",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events."
         }
       },
       "model_vehicle": {
@@ -200,12 +202,6 @@
       },
       "last_ride_duration": {
         "name": "Ostatni przejazd: Czas przejazdów"
-      },
-      "last_ride_start": {
-        "name": "Ostatni przejazd: Czas rozpoczęcia"
-      },
-      "last_ride_end": {
-        "name": "Ostatni przejazd: Czas zakończenia"
       },
       "last_ride_max_speed": {
         "name": "Ostatni przejazd: Prędkość maksymalna"
@@ -512,6 +508,12 @@
       },
       "history_sync_last_success": {
         "name": "Ostatnia udana synchronizacja"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -628,16 +630,28 @@
     },
     "event": {
       "ride": {
-        "name": "Zdarzenie przejazdu",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
           },
           "time_range": {
             "name": "Czas jazdy"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
           }
         }
       },
@@ -647,7 +661,15 @@
           "event_type": {
             "name": "Event type",
             "state": {
-              "state_changed": "Zmiana stanu"
+              "state_changed": "Zmiana stanu",
+              "powered_on": "Włączono",
+              "powered_off": "Wyłączono",
+              "charging_started": "Rozpoczęto ładowanie",
+              "charging_stopped": "Zakończono ładowanie",
+              "locked": "Zablokowano",
+              "unlocked": "Odblokowano",
+              "seat_locked": "Schowek zablokowany",
+              "seat_unlocked": "Schowek odblokowany"
             }
           },
           "changes": {
@@ -682,6 +704,21 @@
           },
           "last_operation": {
             "name": "Ostatnia operacja"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -712,17 +749,42 @@
               "unlocked": "Odblokowany",
               "unknown": "Nieznany"
             }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Przejazdy",
+        "name": "Trip history calendar",
         "state_attributes": {
           "ride_time": {
             "name": "Czas jazdy"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
           }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
         }
       }
     }
@@ -789,7 +851,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Lock the seat compartment manually."
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."

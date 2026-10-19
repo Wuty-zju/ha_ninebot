@@ -67,3 +67,7 @@ Recovery-job copies such as `.recovery-<job_id>.sqlite3` are evidence/recovery p
 Sync trip history now also resumes paused work. The old Resume history sync button retires; update automations using it to the existing sync button, or retain the compatible `ninebot.sync_history` Action with `operation: resume`. Pause remains available. Saved rides, other entity identities and user names are retained.
 
 With debug off, related diagnostics are integration-disabled and hidden; enabling debug restores the same identities without overriding user-disabled/hidden choices. The default request budget becomes 60 and its maximum becomes 120; explicit valid preferences are retained.
+
+## Trip events and duration display in b101
+
+The two standalone latest-trip start/end sensors are retired into the existing Vehicle trip event. Update dashboards/templates to its `latest_start_time` and `latest_end_time` attributes; archived rides and old Recorder rows are not deleted. Vehicle events now use concrete event types instead of `state_changed`; update automation filters. Event IDs and other trip sensor identities remain. Duration display is migrated once to hours/four decimals. Existing calendar/history options remain as selected; only new accounts default these Beta features off.

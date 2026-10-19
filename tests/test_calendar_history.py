@@ -116,7 +116,7 @@ async def test_offline_cold_start_calendar_and_latest_across_old_months(
         expected = {
             "last_mileage": (1.2, 1),
             "last_energy_raw": (100, 0),
-            "last_ride_duration": (600 / 3600, 2),
+            "last_ride_duration": (600 / 3600, 4),
             "last_ride_max_speed": (30, 0),
             "last_ride_average_speed": (7.2, 1),
         }

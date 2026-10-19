@@ -13,7 +13,15 @@ from .runtime import NinebotConfigEntry
 
 class NinebotLock(NinebotEntity, LockEntity):
     _unrecorded_attributes = unrecorded_attributes(
-        frozenset({"last_operation", "unlock_feedback", "reported_state"})
+        frozenset(
+            {
+                "last_operation",
+                "unlock_feedback",
+                "reported_state",
+                "pending_action",
+                "command_status",
+            }
+        )
     )
 
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
@@ -35,6 +43,8 @@ class NinebotLock(NinebotEntity, LockEntity):
         return {
             "remote_lock_mode": "manual" if self.key == "seat_lock" else "remote",
             "last_operation": latest,
+            "command_status": latest.get("confirmation", "idle") if latest else "idle",
+            "pending_action": self.coordinator.pending_lock_action(self.sn, self.key),
             **(
                 {
                     "unlock_feedback": "recently_unlocked"
@@ -57,18 +67,18 @@ class NinebotLock(NinebotEntity, LockEntity):
 
     @property
     def is_locking(self) -> bool:
-        return (
-            self.key == "vehicle_lock"
-            and self.coordinator.pending_controls.get(self.sn) == "engine/stop"
-        )
+        # Keep native controls usable. Command progress belongs in attributes;
+        # the actual lock state always comes from a fresh status observation.
+        return False
 
     @property
     def is_unlocking(self) -> bool:
-        action = "buck" if self.key == "seat_lock" else "engine/start"
-        return self.coordinator.pending_controls.get(self.sn) == action
+        return False
 
     async def async_lock(self, **kwargs: object) -> None:
         if self.key == "seat_lock":
+            if self.coordinator.cancel_seat_unlock_wait(self.sn):
+                return
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="seat_lock_manual")
         await self.coordinator.async_control(self.sn, "engine/stop")
 

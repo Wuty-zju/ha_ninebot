@@ -138,7 +138,9 @@ async def test_already_observed_target_still_sends_once_with_consent(controls):
     assert co.client.async_control.await_count == 1
 
 
-async def test_pending_never_optimistic_and_same_vehicle_across_accounts_is_busy(controls, entry):
+async def test_pending_stays_observed_and_cross_account_commands_serialize_only_dispatch(
+    controls, entry
+):
     co = controls
     started, release = asyncio.Event(), asyncio.Event()
 
@@ -159,18 +161,20 @@ async def test_pending_never_optimistic_and_same_vehicle_across_accounts_is_busy
     other = NinebotCoordinator(co.hass, other_entry, AsyncMock())
     other.data = dict(co.data)
     other._authenticated = True
+    other.client.async_get_status_once.return_value = payload(seat=1)
+    other_task = asyncio.create_task(other.async_control("SyntheticSN", "buck"))
     try:
-        assert lock.is_unlocking is True and lock.is_locked is True
-        with pytest.raises(HomeAssistantError) as err:
-            await other.async_control("SyntheticSN", "buck")
-        assert err.value.translation_key == "busy"
+        assert lock.is_unlocking is False and lock.is_locked is True
+        for _ in range(5):
+            await asyncio.sleep(0)
         other.client.async_control.assert_not_awaited()
         release.set()
-        await task
+        await asyncio.gather(task, other_task)
+        other.client.async_control.assert_awaited_once_with("SyntheticSN", "buck")
         assert lock.is_unlocking is False and lock.is_locked is False
     finally:
         release.set()
-        await asyncio.gather(task, return_exceptions=True)
+        await asyncio.gather(task, other_task, return_exceptions=True)
         await other.async_close()
 
 
@@ -553,3 +557,62 @@ async def test_unconfirmed_seat_unlock_has_no_hold_or_extended_observation(contr
     assert not controls.seat_unlock_feedback
     assert "SyntheticSN" not in controls._control_followups
     controls.client.async_control.assert_awaited_once()
+
+
+@pytest.mark.parametrize("next_action", ["engine/start", "engine/stop"])
+async def test_new_vehicle_command_supersedes_readback_without_replaying_post(
+    controls, next_action
+):
+    co = controls
+    reading = asyncio.Event()
+    count = 0
+
+    async def status(*args):
+        nonlocal count
+        count += 1
+        if count == 1:
+            reading.set()
+            await asyncio.Event().wait()
+        return payload(vehicle=int(next_action == "engine/stop"))
+
+    co.client.async_get_status_once.side_effect = status
+    old = asyncio.create_task(co.async_control("SyntheticSN", "engine/start"))
+    await reading.wait()
+    await asyncio.wait_for(co.async_control("SyntheticSN", next_action), 2)
+    await asyncio.wait_for(old, 2)
+    assert [call.args[1] for call in co.client.async_control.await_args_list] == [
+        "engine/start",
+        next_action,
+    ]
+    assert co.control_results.diagnostics("SyntheticSN")[next_action]["confirmation"] == "confirmed"
+    assert not co._control_observers and not co._pending_commands
+
+
+async def test_seat_cancel_wait_then_retry_never_sends_lock(controls, entry):
+    co = controls
+    reading = asyncio.Event()
+    count = 0
+
+    async def status(*args):
+        nonlocal count
+        count += 1
+        if count == 1:
+            reading.set()
+            await asyncio.Event().wait()
+        return payload(seat=1)
+
+    co.client.async_get_status_once.side_effect = status
+    seat = NinebotLock(entry, "SyntheticSN", "seat_lock")
+    first = asyncio.create_task(seat.async_unlock())
+    await reading.wait()
+    await seat.async_lock()  # Cancel local waiting, not the physical command.
+    await asyncio.wait_for(first, 2)
+    assert co.control_results.diagnostics("SyntheticSN")["buck"]["confirmation"] == "superseded"
+    assert seat.is_locked is True
+    await seat.async_unlock()
+    assert seat.is_locked is False
+    with pytest.raises(HomeAssistantError) as error:
+        await seat.async_lock()
+    assert error.value.translation_key == "seat_lock_manual"
+    await seat.async_unlock()  # Explicit repeated unlock remains possible.
+    assert [call.args[1] for call in co.client.async_control.await_args_list] == ["buck"] * 3

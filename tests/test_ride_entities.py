@@ -14,8 +14,6 @@ pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 FIXTURES = Path(__file__).parent / "fixtures/ninecli/0.1.7"
 KEYS = {
     "last_ride_duration",
-    "last_ride_start",
-    "last_ride_end",
     "last_ride_max_speed",
     "last_ride_average_speed",
 }
@@ -32,9 +30,7 @@ async def test_last_ride_native_values_classes_visible_defaults_and_state_size(
     registry = er.async_get(hass)
     descriptions = {description.key: description for description in SENSORS}
     expected = {
-        "last_ride_duration": (83, "duration", "s"),
-        "last_ride_start": (datetime(2026, 9, 25, 8, tzinfo=UTC), "timestamp", None),
-        "last_ride_end": (datetime(2026, 9, 25, 8, 1, 23, tzinfo=UTC), "timestamp", None),
+        "last_ride_duration": (83, "duration", "h"),
         "last_ride_max_speed": (23, "speed", "km/h"),
         "last_ride_average_speed": (300 / 83 * 3.6, "speed", "km/h"),
     }
@@ -53,19 +49,19 @@ async def test_last_ride_native_values_classes_visible_defaults_and_state_size(
             else sensor.native_value == value
         )
         assert sensor.state_class is None
-        assert sensor.extra_state_attributes == {
-            "query_month": "202609",
-            "received_at": "2026-09-26T00:00:00+00:00",
-            "ride_phase": "stabilizing",
-            "completion_basis": None,
-        }
+        assert sensor.extra_state_attributes["query_month"] == "202609"
+        if key == "last_ride_duration":
+            assert sensor.extra_state_attributes["duration_seconds"] == 83
+            assert sensor.suggested_display_precision == 4
         assert sensor.translation_key == key
         registry.async_update_entity(row.entity_id, disabled_by=None)
     # Isolated HA reload registers enabled entities; no production runtime is touched.
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
-    start = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_last_ride_start")
-    assert hass.states.get(start).state == "2026-09-25T08:00:00+00:00"
+    assert registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_last_ride_start") is None
+    event = hass.states.get(registry.async_get_entity_id("event", "ninebot", "SyntheticSN_ride"))
+    assert event.attributes["latest_start_time"] == "2026-09-25T08:00:00+00:00"
+    assert event.attributes["latest_end_time"] == "2026-09-25T08:01:23+00:00"
     for key in KEYS:
         entity_id = registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
         attributes = hass.states.get(entity_id).attributes

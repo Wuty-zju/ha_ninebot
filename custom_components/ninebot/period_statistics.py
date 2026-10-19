@@ -11,8 +11,16 @@ from .const import BUSINESS_TIMEZONE, DETAIL_INTERVAL
 from .parsing import previous_month
 from .statistics_store import timestamp
 
-type DayMetric = Literal["distance_km", "ride_count", "duration_s", "energy_wh"]
-DAY_METRICS: tuple[DayMetric, ...] = ("distance_km", "ride_count", "duration_s", "energy_wh")
+type DayMetric = Literal[
+    "distance_km", "ride_count", "duration_s", "energy_wh", "energy_intensity_wh_per_km"
+]
+DAY_METRICS: tuple[DayMetric, ...] = (
+    "distance_km",
+    "ride_count",
+    "duration_s",
+    "energy_wh",
+    "energy_intensity_wh_per_km",
+)
 
 
 @dataclass(frozen=True)
@@ -30,6 +38,7 @@ class DaySummary:
     adjacent_received_at: str | None = None
     adjacent_revision: int | None = None
     completeness_basis: str = "not_verified"
+    energy_intensity_wh_per_km: float | None = None
 
     def reason(self, metric: DayMetric) -> str:
         return dict(self.availability).get(metric, "available")
@@ -145,6 +154,23 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
                 else "missing_metric"
             )
         )
+    # Never divide a server chart distance by an unrelated partial-list energy.
+    ride_distance = totals["distance_m"]
+    energy = totals["energy_wh"]
+    intensity = (
+        energy / (ride_distance / 1000)
+        if ride_distance is not None and ride_distance > 0 and energy is not None
+        else None
+    )
+    if intensity is not None and not math.isfinite(intensity):
+        intensity = None
+    reasons["energy_intensity_wh_per_km"] = (
+        "available"
+        if intensity is not None
+        else "missing_metric"
+        if complete
+        else "incomplete_month_list"
+    )
     return DaySummary(
         day,
         distance,
@@ -159,4 +185,5 @@ def day_summary(store: StatisticsReader, sn: str, day: date, now: datetime) -> D
         previous_record.received_at if previous_record else None,
         previous_record.revision if previous_record else None,
         completeness_basis,
+        intensity,
     )

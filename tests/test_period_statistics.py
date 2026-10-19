@@ -66,6 +66,7 @@ def test_two_rides_day_coverage_zero_and_correction(hass):
         340,
     )
     assert summary.distance_basis == "server_daily_chart" and summary.rides_complete
+    assert summary.energy_intensity_wh_per_km == pytest.approx(340 / 14.8)
     today = day_summary(store, "one", NOW.date(), NOW)
     assert (today.distance_km, today.ride_count, today.duration_s, today.energy_wh) == (0, 0, 0, 0)
     assert day_summary(store, "other", YESTERDAY, NOW).distance_km is None
@@ -83,6 +84,9 @@ def test_chart_and_end_day_policy_do_not_force_agreement(hass):
     raw["detail"][5], raw["detail"][4] = 13, 1.8
     store = record(hass, raw)
     assert day_summary(store, "one", YESTERDAY, NOW).distance_km == 13
+    assert day_summary(store, "one", YESTERDAY, NOW).energy_intensity_wh_per_km == pytest.approx(
+        340 / 14.8
+    )
     fallback = day_summary(record(hass, sample(chart=False)), "one", YESTERDAY, NOW)
     assert fallback.distance_km == 14.8 and fallback.distance_basis == "returned_unique_rides"
 
@@ -91,6 +95,7 @@ def test_partial_list_missing_or_old_fields_do_not_make_false_daily_totals(hass)
     partial = day_summary(record(hass, sample(count=128)), "one", YESTERDAY, NOW)
     assert partial.distance_km == 14.8
     assert partial.ride_count is partial.duration_s is partial.energy_wh is None
+    assert partial.energy_intensity_wh_per_km is None
     assert partial.reason("energy_wh") == "incomplete_month_list"
     store = record(hass)
     raw = sample()
@@ -197,6 +202,7 @@ async def test_visible_entities_native_metadata_historical_cache_and_retirement(
             "today_ride_energy": (0, "Wh", "energy"),
             "month_energy_intensity": (340 / 14.8, "Wh/km", "energy_distance"),
             "last_energy_intensity": (195 / 8.7, "Wh/km", "energy_distance"),
+            "yesterday_energy_intensity": (340 / 14.8, "Wh/km", "energy_distance"),
         }
         for key, (value, unit, device_class) in expected.items():
             eid = registry.async_get_entity_id(

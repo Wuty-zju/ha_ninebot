@@ -51,7 +51,7 @@ from .history_sync import HistorySync
 from .models import Freshness, TravelMonth, VehicleSnapshot
 from .parsing import integer
 from .preservation import CONF_PRESERVE, HistoryPreservation
-from .query_broker import Priority, QueryBroker, QueryKey
+from .query_broker import Priority, QueryBroker, QueryKey, QueryReceipt
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
 from .ride_archive import ArchiveError
 from .ride_lifecycle import RideLifecycle
@@ -116,6 +116,14 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         # Only mutual exclusion is shared between accounts, never observations.
         self._control_leases: set[str] = hass.data.setdefault(f"{DOMAIN}_control_leases", set())
         self.pending_controls: dict[str, str] = {}
+        self._control_serial = 0
+        self._control_versions: dict[tuple[str, str], int] = {}
+        self._pending_versions: dict[str, int] = {}
+        self._pending_commands: dict[tuple[str, str], tuple[int, str]] = {}
+        self._control_observers: dict[tuple[str, str], asyncio.Task[bool]] = {}
+        self._control_dispatch: dict[str, asyncio.Lock] = hass.data.setdefault(
+            f"{DOMAIN}_control_dispatch", {}
+        )
         gate = hass.data.setdefault(f"{DOMAIN}_wire_gate", asyncio.Semaphore(2))
         self.broker = QueryBroker(
             gate, lambda: dt_util.utcnow(), on_auth_failure=self._invalidate_auth
@@ -1201,28 +1209,77 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self.config_entry.async_start_reauth(self.hass)
         return error
 
+    @staticmethod
+    def _control_key(sn: str, action: str) -> tuple[str, str]:
+        return sn, LOCK_TARGETS[action][0] if action in LOCK_TARGETS else action
+
+    def pending_lock_action(self, sn: str, key: str) -> str | None:
+        command = self._pending_commands.get((sn, key))
+        return command[1] if command else None
+
+    @callback
+    def cancel_seat_unlock_wait(self, sn: str) -> bool:
+        """Cancel local observation only; an already sent unlock cannot be recalled."""
+        key = (sn, "seat_lock")
+        if (
+            self.pending_lock_action(sn, "seat_lock") != "buck"
+            or self.displayed_lock_state(sn, "seat_lock") is False
+        ):
+            return False
+        self._control_serial += 1
+        self._control_versions[key] = self._control_serial
+        if observer := self._control_observers.pop(key, None):
+            observer.cancel()
+        self._pending_commands.pop(key, None)
+        if self.pending_controls.get(sn) == "buck":
+            self.pending_controls.pop(sn, None)
+            self._pending_versions.pop(sn, None)
+        self.async_update_listeners()
+        return True
+
     async def async_control(self, sn: str, action: str) -> None:
-        if self._control_pending >= 4 or sn in self._control_leases:
+        if self._control_pending >= 4:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
         self._control_pending += 1
-        self._control_leases.add(sn)
+        self._control_serial += 1
+        serial = self._control_serial
+        key = self._control_key(sn, action)
+        self._control_versions[key] = serial
+        if observer := self._control_observers.pop(key, None):
+            observer.cancel()  # Only the GET observer, never an in-flight command.
         task = asyncio.current_task()
         if task:
             self._active.add(task)
         try:
             if previous := self._control_followups.pop(sn, None):
                 previous.cancel()
-                await asyncio.gather(previous, return_exceptions=True)
-            await self._control(sn, action)
+            await self._control(sn, action, serial)
         finally:
-            self.pending_controls.pop(sn, None)
-            self._control_leases.discard(sn)
+            if self._pending_commands.get(key, (None,))[0] == serial:
+                self._pending_commands.pop(key, None)
+            if self._pending_versions.get(sn) == serial:
+                self.pending_controls.pop(sn, None)
+                self._pending_versions.pop(sn, None)
             self._control_pending -= 1
             self.async_update_listeners()
             if task:
                 self._active.discard(task)
 
-    async def _control(self, sn: str, action: str) -> None:
+    async def _dispatch_control(self, sn: str, action: str, owner: QueryKey) -> QueryReceipt[None]:
+        """Serialize wire dispatch across accounts, not the confirmation window."""
+        gate = self._control_dispatch.setdefault(sn, asyncio.Lock())
+        async with gate:
+            self._control_leases.add(sn)
+            try:
+                return await self.broker.async_command(
+                    sn,
+                    partial(self.backend.async_control, sn, action),
+                    lambda: self._owns(owner) and self.controls_enabled(sn, action),
+                )
+            finally:
+                self._control_leases.discard(sn)
+
+    async def _control(self, sn: str, action: str, serial: int) -> None:
         """Send once, reconcile status, and retain only safe outcome metadata."""
         if (
             self._stopping
@@ -1245,15 +1302,13 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 result.target_locked = target[1]
                 result.observed_locked = self.lock_state(sn, target[0])
                 self.pending_controls[sn] = action
+                self._pending_versions[sn] = serial
+                self._pending_commands[self._control_key(sn, action)] = (serial, action)
                 result.confirmation = Confirmation.PENDING
                 self.async_update_listeners()
             command_revision = 0
             try:
-                receipt = await self.broker.async_command(
-                    sn,
-                    partial(self.backend.async_control, sn, action),
-                    lambda: self._owns(owner) and self.controls_enabled(sn, action),
-                )
+                receipt = await self._dispatch_control(sn, action, owner)
                 command_revision = receipt.revision
                 result.outcome = CommandOutcome.ACCEPTED
             except NinebotAuthError:
@@ -1287,8 +1342,30 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     else "control_not_sent",
                 ) from None
             if target:
+                key = self._control_key(sn, action)
+                if self._control_versions.get(key) != serial:
+                    result.confirmation = Confirmation.SUPERSEDED
+                    result.readback = ReadbackOutcome.SKIPPED
+                    return
                 started = asyncio.get_running_loop().time()
-                refreshed = await self._confirm_lock(sn, result, target[0], owner, command_revision)
+                observer = asyncio.create_task(
+                    self._confirm_lock(sn, result, target[0], owner, command_revision)
+                )
+                self._control_observers[key] = observer
+                try:
+                    refreshed = await observer
+                except asyncio.CancelledError:
+                    if self._control_versions.get(key) != serial:
+                        result.confirmation = Confirmation.SUPERSEDED
+                        result.readback = ReadbackOutcome.CANCELLED
+                        return
+                    raise
+                finally:
+                    if self._control_observers.get(key) is observer:
+                        self._control_observers.pop(key, None)
+                if self._control_versions.get(key) != serial:
+                    result.confirmation = Confirmation.SUPERSEDED
+                    return
                 if action == "buck" and refreshed:
                     self._mark_seat_unlocked(sn)
                 if (

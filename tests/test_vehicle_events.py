@@ -116,14 +116,14 @@ async def test_real_entity_batches_same_millisecond_transitions_without_extra_qu
             {"pwr": 1, "charging": 1, "loc": {"lock": 0}, "barrel_lock_status": 1},
         )
         first = hass.states.get(identity)
-        assert first.attributes["event_type"] == "state_changed"
+        assert first.attributes["event_type"] == "seat_unlocked"
         assert first.attributes["changes"] == [
             "powered_on",
             "charging_started",
             "unlocked",
             "seat_unlocked",
         ]
-        assert "Charging started" in first.attributes["summary"]
+        assert first.attributes["summary"] == "Seat unlocked"
         assert first.attributes["source"] == "cloud_status_observation"
         assert first.attributes["observed_at"] == NOW.isoformat()
         co = entry.runtime_data.coordinator
@@ -145,7 +145,7 @@ async def test_real_entity_batches_same_millisecond_transitions_without_extra_qu
             "locked",
             "seat_locked",
         ]
-        assert len(events) == count + 1  # Also true on old Core with an unchanged millisecond.
+        assert len(events) == count + 4  # Also true on old Core with an unchanged millisecond.
         assert app_client.async_get_status.await_count == calls + 2
         for forbidden in ("raw", "latitude", "longitude", "track", "account", "token"):
             assert forbidden not in second.attributes

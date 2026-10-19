@@ -403,18 +403,6 @@ SENSORS = (
         value=lambda s: ride_value(s, "duration_s"),
     ),
     Description(
-        key="last_ride_start",
-        group="travel",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value=lambda s: ride_value(s, "started_at"),
-    ),
-    Description(
-        key="last_ride_end",
-        group="travel",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value=lambda s: ride_value(s, "ended_at"),
-    ),
-    Description(
         key="last_ride_max_speed",
         group="travel",
         device_class=SensorDeviceClass.SPEED,
@@ -589,7 +577,7 @@ class NinebotSensor(NinebotEntity, SensorEntity):
         if value in ("unsupported", "not_reported"):
             return None
         if description.key in {"month_duration", "last_ride_duration"}:
-            return 2
+            return 4
         if description.key in {"endurance", "range_estimated", "range_ai"}:
             return 1
         if value == 0:
@@ -672,6 +660,18 @@ class RatedEnergySensor(NinebotEntity, SensorEntity):
 
 
 DAY_FIELDS: dict[str, tuple[DayMetric, int, str | None, SensorDeviceClass | None]] = {
+    "today_energy_intensity": (
+        "energy_intensity_wh_per_km",
+        0,
+        UnitOfEnergyDistance.WATT_HOUR_PER_KM,
+        SensorDeviceClass.ENERGY_DISTANCE,
+    ),
+    "yesterday_energy_intensity": (
+        "energy_intensity_wh_per_km",
+        1,
+        UnitOfEnergyDistance.WATT_HOUR_PER_KM,
+        SensorDeviceClass.ENERGY_DISTANCE,
+    ),
     "yesterday_mileage": ("distance_km", 1, UnitOfLength.KILOMETERS, SensorDeviceClass.DISTANCE),
     "today_ride_count": ("ride_count", 0, None, None),
     "yesterday_ride_count": ("ride_count", 1, None, None),
@@ -695,14 +695,19 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
         ) = DAY_FIELDS[key]
         if self._attr_device_class is SensorDeviceClass.DURATION:
             self._attr_suggested_unit_of_measurement = UnitOfTime.HOURS
+        if self._attr_device_class is SensorDeviceClass.ENERGY_DISTANCE:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def suggested_display_precision(self) -> int:
         if self._attr_device_class is SensorDeviceClass.DURATION:
-            return 2
+            return 4
         if self.native_value == 0:
             return 0
-        if self._attr_device_class is SensorDeviceClass.DISTANCE:
+        if self._attr_device_class in {
+            SensorDeviceClass.DISTANCE,
+            SensorDeviceClass.ENERGY_DISTANCE,
+        }:
             return 1
         return 0
 

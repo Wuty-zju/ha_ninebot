@@ -1,4 +1,4 @@
-"""A small, optional cloud-reported ride completion event, without GPS."""
+"""Optional semantic trip/status events with bounded, GPS-free projections."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -11,12 +11,13 @@ from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 
 from .archive_runtime import ArchiveStatistics
-from .const import DOMAIN
+from .const import CONF_EVENTS, DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .ride_models import Ride
 from .ride_presentation import ride_time_range
+from .ride_reports import RideReportCursor
 from .runtime import NinebotConfigEntry
-from .vehicle_events import StatusEventCursor
+from .vehicle_events import TRANSITIONS, StatusEventCursor
 
 
 @dataclass
@@ -55,10 +56,12 @@ class NinebotObservedEvent(NinebotEntity, EventEntity):
 
 
 class NinebotRideEvent(NinebotObservedEvent):
-    _attr_event_types = ["completed"]
+    _attr_event_types = ["reported", "updated", "completed", "late_reported"]
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "ride", "event", "travel")
+        self._ready = False
+        self._reports = RideReportCursor()
 
     @property
     def available(self) -> bool:
@@ -80,30 +83,86 @@ class NinebotRideEvent(NinebotObservedEvent):
         latest = (
             statistics.latest_ride(self.sn) if isinstance(statistics, ArchiveStatistics) else None
         )
-        if latest and latest.ride.ended_at:
-            attributes["last_reported_ride_end"] = latest.ride.ended_at.isoformat()
+        ride = latest.ride if latest else None
+        snapshot = self.snapshot
+        if snapshot and snapshot.travel and snapshot.travel.last_ride:
+            reported = snapshot.travel.last_ride.ride
+            if (
+                reported
+                and reported.ended_at
+                and (not ride or not ride.ended_at or reported.ended_at > ride.ended_at)
+            ):
+                ride = reported
+        if ride:
+            attributes["latest_ride"] = self._ride_data(ride)
+            attributes["latest_start_time"] = (
+                ride.started_at.isoformat() if ride.started_at else None
+            )
+            attributes["latest_end_time"] = ride.ended_at.isoformat() if ride.ended_at else None
         return attributes
+
+    @staticmethod
+    def _ride_data(ride: Ride) -> dict[str, Any]:
+        return {
+            "ride_id": ride.ride_id,
+            "query_month": ride.query_month,
+            "start_time": ride.started_at.isoformat() if ride.started_at else None,
+            "end_time": ride.ended_at.isoformat() if ride.ended_at else None,
+            "time_range": ride_time_range(ride.started_at, ride.ended_at),
+            "distance_m": ride.distance_m,
+            "duration_s": ride.duration_s,
+            "max_speed_m_s": ride.server_max_speed_m_s,
+            "average_speed_m_s": ride.average_speed_m_s,
+            "energy_wh": ride.energy_raw,
+        }
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
+        self._observe_reports()  # Rebaseline; do not replay a restored/imported ride.
         if pipeline := self.entry.runtime_data.events:
             self.async_on_remove(await pipeline.async_subscribe(self.sn, self._completed))
+        if isinstance(statistics := self.coordinator.statistics, ArchiveStatistics):
+            self.async_on_remove(
+                statistics.async_add_archive_listener(self.sn, self._archive_updated)
+            )
+        self._ready = True
+
+    @callback
+    def _archive_updated(self) -> None:
+        self.async_write_ha_state()  # Update latest timestamps without firing a historical event.
+
+    def _observe_reports(self) -> None:
+        snapshot = self.snapshot
+        if (
+            snapshot is None
+            or snapshot.travel is None
+            or not self.coordinator.fresh(self.sn, "travel")
+            or snapshot.travel_freshness.error is not None
+            or snapshot.travel_freshness.succeeded_at is None
+        ):
+            self._reports = RideReportCursor()
+            return
+        records = snapshot.travel.rides
+        for kind, ride in self._reports.observe(
+            records,
+            snapshot.travel_freshness.succeeded_at,
+            (self.coordinator._generation, self.coordinator._ownership.get(self.sn, 0)),
+        ):
+            self._trigger_event(kind, {**self._ride_data(ride), "source": "cloud_travel_report"})
+            self.async_write_ha_state()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        if self._ready:
+            self._observe_reports()
+            self.async_write_ha_state()
 
     @callback
     def _completed(self, ride: Ride, late: bool) -> None:
         self._trigger_event(
-            "completed",
+            "late_reported" if late else "completed",
             {
-                "ride_id": ride.ride_id,
-                "query_month": ride.query_month,
-                "start_time": ride.started_at.isoformat() if ride.started_at else None,
-                "end_time": ride.ended_at.isoformat() if ride.ended_at else None,
-                "time_range": ride_time_range(ride.started_at, ride.ended_at),
-                "distance_m": ride.distance_m,
-                "duration_s": ride.duration_s,
-                "max_speed_m_s": ride.server_max_speed_m_s,
-                "average_speed_m_s": ride.average_speed_m_s,
-                "energy_wh": ride.energy_raw,
+                **self._ride_data(ride),
                 "source": "cloud_travel_end_report",
                 "completion_basis": "stable_successful_samples",
                 "late": late,
@@ -115,7 +174,8 @@ class NinebotRideEvent(NinebotObservedEvent):
 class NinebotVehicleEvent(NinebotObservedEvent):
     """One batch per successful status receipt, including on older Core."""
 
-    _attr_event_types = ["state_changed"]
+    # The legacy type remains restorable, but new receipts emit concrete types.
+    _attr_event_types = ["state_changed", *(kind for pair in TRANSITIONS for kind in pair)]
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "vehicle_event", "event", "status")
@@ -153,17 +213,19 @@ class NinebotVehicleEvent(NinebotObservedEvent):
         sample = self.coordinator.status_observation(self.sn)
         changes = self._cursor.observe(sample, max_gap_s=max(3 * self.coordinator.interval, 180))
         if sample is not None and changes:
-            self._trigger_event(
-                "state_changed",
-                {
-                    "changes": list(changes),
-                    "summary": " · ".join(self._change_labels.get(key, key) for key in changes),
-                    "observed_at": sample.received_at.isoformat(),
-                    "observation_revision": sample.identity[2],
-                    "source": "cloud_status_observation",
-                    "completion_basis": "successful_status_transition",
-                },
-            )
+            for change in changes:
+                self._trigger_event(
+                    change,
+                    {
+                        "changes": list(changes),
+                        "summary": self._change_labels.get(change, change),
+                        "observed_at": sample.received_at.isoformat(),
+                        "observation_revision": sample.identity[2],
+                        "source": "cloud_status_observation",
+                        "completion_basis": "successful_status_transition",
+                    },
+                )
+                self.async_write_ha_state()
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -176,6 +238,8 @@ class NinebotVehicleEvent(NinebotObservedEvent):
 async def async_setup_entry(
     hass: HomeAssistant, entry: NinebotConfigEntry, add: AddEntitiesCallback
 ) -> None:
+    if not entry.options.get(CONF_EVENTS, True):
+        return
     async_setup_dynamic(
         hass, entry, add, lambda sn: [NinebotRideEvent(entry, sn), NinebotVehicleEvent(entry, sn)]
     )

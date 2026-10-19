@@ -99,6 +99,7 @@
           "poll_interval": "فاصل التحديث (ثوانٍ)",
           "enable_coordinates": "إظهار موقع المركبة",
           "configure_model": "ضبط المعلمات الاسمية",
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
           "enable_calendar": "الرحلات (Beta)",
           "preserve_history": "Automatically sync trip details (Beta)",
           "history_requests_per_hour": "History requests per account per hour (Beta)",
@@ -110,12 +111,13 @@
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "الافتراضي 60؛ القيمة 0 تلغي الحد بالساعة (غير مستحسن)، أو أدخل عددًا صحيحًا من 1 إلى 120. تتشارك طلبات الأشهر والتفاصيل هذا الحد؛ تبقى قيود السحابة وفترات انتظار إعادة المحاولة سارية.",
           "auto_history_sync": "اكتشاف السجل المتاح لكل المركبات المملوكة للحساب ثم مزامنة التغييرات في الخلفية.",
           "history_storage_mib": "32–2048 MiB لكل حساب، الافتراضي100. تقليل الحد يحفظ السجلات وقد يوقف الكتابة مؤقتًا.",
-          "control_vehicles": "اختر مركبة أو أكثر من هذا الحساب. إيقاف التحكم يحتفظ بالاختيار."
+          "control_vehicles": "اختر مركبة أو أكثر من هذا الحساب. إيقاف التحكم يحتفظ بالاختيار.",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events."
         }
       },
       "model_vehicle": {
@@ -200,12 +202,6 @@
       },
       "last_ride_duration": {
         "name": "آخر رحلة: مدة الرحلات"
-      },
-      "last_ride_start": {
-        "name": "آخر رحلة: وقت البدء"
-      },
-      "last_ride_end": {
-        "name": "آخر رحلة: وقت الانتهاء"
       },
       "last_ride_max_speed": {
         "name": "آخر رحلة: السرعة القصوى"
@@ -512,6 +508,12 @@
       },
       "history_sync_last_success": {
         "name": "آخر مزامنة ناجحة"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -628,16 +630,28 @@
     },
     "event": {
       "ride": {
-        "name": "حدث رحلة",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
           },
           "time_range": {
             "name": "فترة الرحلة"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
           }
         }
       },
@@ -647,7 +661,15 @@
           "event_type": {
             "name": "Event type",
             "state": {
-              "state_changed": "تغير الحالة"
+              "state_changed": "تغير الحالة",
+              "powered_on": "تشغيل الطاقة",
+              "powered_off": "إيقاف الطاقة",
+              "charging_started": "بدء الشحن",
+              "charging_stopped": "توقف الشحن",
+              "locked": "مقفل",
+              "unlocked": "غير مقفل",
+              "seat_locked": "قفل حجرة المقعد",
+              "seat_unlocked": "فتح حجرة المقعد"
             }
           },
           "changes": {
@@ -682,6 +704,21 @@
           },
           "last_operation": {
             "name": "آخر عملية"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -712,17 +749,42 @@
               "unlocked": "غير مقفل",
               "unknown": "غير معروف"
             }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "الرحلات",
+        "name": "Trip history calendar",
         "state_attributes": {
           "ride_time": {
             "name": "فترة الرحلة"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
           }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
         }
       }
     }
@@ -789,7 +851,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Lock the seat compartment manually."
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."

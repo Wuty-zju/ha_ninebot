@@ -1,10 +1,16 @@
 # Changelog
 
-## Unreleased
+## 2.0.0b101
 
 - Make the ride calendar and historical acquisition opt-in for new accounts, retaining existing preferences and labeling history settings as Beta.
 - Move vehicle controls to the top of account options and use a native multi-select dropdown with clear vehicle identification.
 - Replace the hourly history quota slider with an integer input: default 60, or 0 for no hourly quota while retaining serialization and upstream backoff.
+
+- Allow new vehicle/seat unlock commands while an earlier confirmation is pending; newer commands replace the old readback without replaying an earlier command. A seat lock action may cancel an unconfirmed wait but cannot remotely close the compartment.
+- Add reported, revised and late-confirmed trip events and concrete power/charging/lock event types, with one default-on Beta switch for both event entities.
+- Move latest trip start/end into the existing trip event attributes, retiring the two standalone timestamp sensors. Update automations that reference those sensors.
+- Standardize trip/average-consumption names, add today/yesterday average consumption from complete matching records, and display native ride durations in hours with four decimals.
+- Clarify the read-only trip history calendar: no active event does not mean disabled.
 
 ## 2.0.0b100
 
