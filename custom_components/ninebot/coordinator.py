@@ -753,6 +753,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 and previous_seat_locked is not False
                 and self.lock_state(sn, "seat_lock") is False
             ):
+                # A genuinely new unlock gets its own window; repeated
+                # unlocked samples and the same command confirmation do not.
+                self._clear_seat_feedback(sn)
                 self._mark_seat_unlocked(sn)
             success = True
         except NinebotAuthError:

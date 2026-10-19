@@ -527,6 +527,9 @@ async def test_regular_status_unlock_starts_display_hold_without_control(control
     await controls.async_refresh_vehicle("SyntheticSN")
     assert lock.is_locked is False
     assert controls.status_observation("SyntheticSN").values[3] is True
+    controls.client.async_get_status.return_value = payload(seat=1)
+    await controls.async_refresh_vehicle("SyntheticSN")
+    assert controls._seat_feedback_timers["SyntheticSN"] is not timer
     controls._invalidate_auth()
     assert not controls._seat_feedback_timers and not controls.seat_unlock_feedback
 
