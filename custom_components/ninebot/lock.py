@@ -1,4 +1,4 @@
-"""Cloud-observed locks; requests never optimistically change the locked state."""
+"""Cloud-observed locks with a bounded seat-unlock presentation window."""
 
 from homeassistant.components.lock import LockEntity
 from homeassistant.core import HomeAssistant
@@ -12,7 +12,9 @@ from .runtime import NinebotConfigEntry
 
 
 class NinebotLock(NinebotEntity, LockEntity):
-    _unrecorded_attributes = unrecorded_attributes(frozenset({"last_operation", "unlock_feedback"}))
+    _unrecorded_attributes = unrecorded_attributes(
+        frozenset({"last_operation", "unlock_feedback", "reported_state"})
+    )
 
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
         identities = entry.runtime_data.identities
@@ -37,7 +39,12 @@ class NinebotLock(NinebotEntity, LockEntity):
                 {
                     "unlock_feedback": "recently_unlocked"
                     if self.sn in self.coordinator.seat_unlock_feedback
-                    else "none"
+                    else "none",
+                    "reported_state": {
+                        True: "locked",
+                        False: "unlocked",
+                        None: "unknown",
+                    }[self.coordinator.lock_state(self.sn, self.key)],
                 }
                 if self.key == "seat_lock"
                 else {}
@@ -46,7 +53,7 @@ class NinebotLock(NinebotEntity, LockEntity):
 
     @property
     def is_locked(self) -> bool | None:
-        return self.coordinator.lock_state(self.sn, self.key)
+        return self.coordinator.displayed_lock_state(self.sn, self.key)
 
     @property
     def is_locking(self) -> bool:

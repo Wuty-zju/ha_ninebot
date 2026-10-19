@@ -3,7 +3,12 @@
 import asyncio
 
 from custom_components.ninebot.control_polling import read_slots
-from custom_components.ninebot.coordinator import CONFIRMATION_DELAYS, CONFIRMATION_TIMEOUT
+from custom_components.ninebot.coordinator import (
+    CONFIRMATION_DELAYS,
+    CONFIRMATION_TIMEOUT,
+    SEAT_FOLLOWUP_DELAYS,
+    SEAT_FOLLOWUP_TIMEOUT,
+)
 
 
 async def test_complete_schedule_reaches_late_window_with_bounded_reads():
@@ -21,9 +26,9 @@ async def test_complete_schedule_reaches_late_window_with_bounded_reads():
             100.0, CONFIRMATION_DELAYS, now=lambda: clock[0], sleep=advance
         )
     ]
-    assert slots == [0, 1, 2, 3, 4, 6, 8, 9.9]
-    assert CONFIRMATION_TIMEOUT == 10 and len(slots) == 8
-    assert 9.8 < sum(waits) < CONFIRMATION_TIMEOUT
+    assert slots == [*range(15), 14.9]
+    assert CONFIRMATION_TIMEOUT == 15 and len(slots) == 16
+    assert 14.8 < sum(waits) < CONFIRMATION_TIMEOUT
 
 
 async def test_slow_reads_skip_expired_slots_without_catch_up_burst():
@@ -36,4 +41,11 @@ async def test_slow_reads_skip_expired_slots_without_catch_up_burst():
     async for offset in read_slots(0, CONFIRMATION_DELAYS, now=lambda: clock[0], sleep=advance):
         issued.append(offset)
         clock[0] += 2.5  # A slow response consumes more than two early slots.
-    assert issued == [0, 3, 6, 9.9]
+    assert issued == [0, 3, 6, 9, 12, 14.9]
+
+
+def test_seat_observation_tapers_after_fifteen_seconds_and_ends_at_sixty():
+    assert SEAT_FOLLOWUP_DELAYS == (*range(1, 15), 14.9, 20, 30, 45, 59.9)
+    assert len(SEAT_FOLLOWUP_DELAYS) == 19
+    assert SEAT_FOLLOWUP_TIMEOUT == 60
+    assert SEAT_FOLLOWUP_DELAYS[-1] < SEAT_FOLLOWUP_TIMEOUT

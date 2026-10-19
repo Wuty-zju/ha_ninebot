@@ -702,6 +702,14 @@
               "recently_unlocked": "Recently unlocked",
               "none": "None"
             }
+          },
+          "reported_state": {
+            "name": "Bildirilen mandal durumu",
+            "state": {
+              "locked": "Kilitli",
+              "unlocked": "Kilidi açık",
+              "unknown": "Bilinmiyor"
+            }
           }
         }
       }
@@ -782,7 +790,7 @@
       "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "Not confirmed within 10 seconds. Check the vehicle state."
+      "message": "Not confirmed within 15 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "Komut gönderilmedi: iletişim geçici olarak kullanılamıyor. Daha sonra tekrar deneyin."
