@@ -78,9 +78,9 @@ Each account owns its session, credentials directory and archive. Entry titles u
 | Option | Default | Purpose |
 |---|---|---|
 | Precise location | On | Current position and authorized track responses; no separate precision request. |
-| Ride calendar | On | Local rides on a native HA calendar. |
-| Background detail preservation | On for new accounts | Save detailed rides/tracks within the request budget. |
-| Automatic history sync | On for new accounts | Initial discovery and subsequent incremental work. |
+| Ride calendar (Beta) | Off for new accounts | Local rides on a native HA calendar. |
+| Background detail preservation (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
+| Automatic history sync (Beta) | Off for new accounts | Initial discovery and subsequent incremental work. |
 | Controls and vehicle allowlist | Off / empty | Explicitly enable commands for selected vehicles. |
 | Debug mode | Off | Bounded parsed current information for investigation. |
 
@@ -104,7 +104,7 @@ Scalar values and track quality have separate lifecycles. A corrected total can 
 
 ### How synchronization progresses
 
-Enable **Preserve trip details in background** and **Automatic history synchronization** in account options. Both default on for new accounts.
+Enable **Preserve trip details in background** and **Automatic history synchronization** in account options. Both default off for new accounts; enable them when you want background acquisition. Existing choices are retained.
 
 | Stage | Work performed |
 |---|---|
@@ -115,7 +115,7 @@ Enable **Preserve trip details in background** and **Automatic history synchroni
 
 Sync status, month-scan progress, saved-detail progress and last-success entities explain different stages. Manual sync, pause and resume are available. Saved-detail percentage covers **discovered records**; month coverage reports list gaps separately.
 
-The default history budget is **60 logical requests per account/hour**, configurable up to **120**. Archive quota defaults to **100 MiB per account**, configurable from **32–2048 MiB**. Reaching the quota pauses writes and retains existing data. Local records have no age-based expiry; capacity and backups govern long-term retention. Save details while the cloud still returns them: removed or simplified upstream tracks cannot be recreated locally.
+The default history budget is **60 logical requests per account/hour**, configurable from **1–120** in a numeric input. **0** removes the hourly quota (not recommended); request serialization, retries and upstream backoff still apply. Archive quota defaults to **100 MiB per account**, configurable from **32–2048 MiB**. Reaching the quota pauses writes and retains existing data. Local records have no age-based expiry; capacity and backups govern long-term retention. Save details while the cloud still returns them: removed or simplified upstream tracks cannot be recreated locally.
 
 ### Use the recorded information
 

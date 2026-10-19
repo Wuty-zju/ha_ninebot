@@ -54,7 +54,7 @@ from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .detail_codec import ArchivedDetail, CorruptPayload, packed, scoped_ride, unpacked
 from .detail_health import HistoryHealth
 from .exceptions import NinebotError
-from .history_budget import valid_budget
+from .history_budget import request_interval, valid_budget
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
@@ -1672,10 +1672,10 @@ class RideArchive:
         if paused is not None and paused[0] == "1":
             return False
         limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
-        if limit is not None and float(limit[0]) > epoch:
+        if budget and limit is not None and float(limit[0]) > epoch:
             return False
         for key, value in (
-            ("preservation_budget", str(epoch + 3600 / budget)),
+            ("preservation_budget", str(epoch + request_interval(budget))),
             ("preservation_cursor", vehicle),
             (
                 "preservation_detail_cursor" if kind == "detail" else "preservation_month_cursor",
@@ -1837,7 +1837,7 @@ class RideArchive:
             if self._history_paused(vehicle):
                 return None
             limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
-            if limit is not None and float(limit[0]) > epoch:
+            if budget and limit is not None and float(limit[0]) > epoch:
                 return None
             rows = db.execute(
                 "SELECT r.id,r.data,r.revision,m.value,h.value FROM rides r LEFT JOIN meta m "
@@ -1923,7 +1923,7 @@ class RideArchive:
                         (key, encoded(state)),
                     )
                     continue
-                interval = 3600 / budget
+                interval = request_interval(budget)
                 state["attempts"] = min(255, state["attempts"] + 1)
                 state["next_attempt"] = epoch + max(60, interval)
                 db.execute(

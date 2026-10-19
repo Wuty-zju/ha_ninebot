@@ -6,7 +6,7 @@ import json
 import math
 import random
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -18,7 +18,7 @@ from .archive_codec import RIDE_VALUES, ride_data
 from .exceptions import NinebotError
 from .history_budget import CONF_BUDGET as CONF_BUDGET
 from .history_budget import DEFAULT_BUDGET as DEFAULT_BUDGET
-from .history_budget import configured_budget
+from .history_budget import configured_budget, request_interval
 from .history_progress import HistoryProgress, project_progress
 from .query_broker import Priority
 from .raw import Endpoint
@@ -82,7 +82,7 @@ class HistoryPreservation:
         self._remove = async_track_time_interval(
             self.co.hass,
             self.async_tick,
-            timedelta(seconds=3600 / configured_budget(entry.options)),
+            timedelta(seconds=max(1, request_interval(configured_budget(entry.options)))),
         )
 
     async def async_tick(self, now: datetime) -> None:
@@ -132,6 +132,8 @@ class HistoryPreservation:
                 continue
             self.audit.publish(sn, await co.statistics.archive.async_history_audit(sn), owns)
             evidence = await co.statistics.archive.async_history_evidence(sn, guard=owns)
+            if co.config_entry and configured_budget(co.config_entry.options) == 0:
+                evidence = replace(evidence, budget_at=None)
             value = project_progress(
                 evidence,
                 now,

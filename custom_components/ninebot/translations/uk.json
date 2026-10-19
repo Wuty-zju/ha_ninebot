@@ -49,7 +49,7 @@
         "data": {
           "enable_estimation": "Налаштувати номінальні параметри",
           "enable_coordinates": "Показувати розташування транспорту",
-          "enable_calendar": "Поїздки",
+          "enable_calendar": "Поїздки (Beta)",
           "debug_mode": "Режим налагодження"
         },
         "data_description": {
@@ -94,16 +94,16 @@
         "title": "Налаштування",
         "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
-          "poll_interval": "Інтервал оновлення (секунди)",
-          "enable_coordinates": "Показувати розташування транспорту",
           "enable_controls": "Увімкнути керування",
           "control_vehicles": "Дозволений транспорт",
+          "poll_interval": "Інтервал оновлення (секунди)",
+          "enable_coordinates": "Показувати розташування транспорту",
           "configure_model": "Налаштувати номінальні параметри",
-          "enable_calendar": "Поїздки",
-          "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "History requests per account per hour",
-          "auto_history_sync": "Automatically scan trip history",
-          "history_storage_mib": "Ліміт сховища історії (MiB)",
+          "enable_calendar": "Поїздки (Beta)",
+          "preserve_history": "Automatically sync trip details (Beta)",
+          "history_requests_per_hour": "History requests per account per hour (Beta)",
+          "auto_history_sync": "Automatically scan trip history (Beta)",
+          "history_storage_mib": "Ліміт сховища історії (MiB) (Beta)",
           "debug_mode": "Режим налагодження"
         },
         "data_description": {
@@ -112,9 +112,10 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
+          "history_requests_per_hour": "Типово 60; 0 скасовує погодинний ліміт (не рекомендовано), інакше 1–120. Місяці й деталі ділять ліміт; обмеження хмари та затримки повторів зберігаються.",
           "auto_history_sync": "Зібрати доступну історію всіх транспортних засобів облікового запису, далі синхронізувати зміни у фоні.",
-          "history_storage_mib": "32–2048 MiB на обліковий запис, типово100. Зменшення ліміту не видаляє дані та може зупинити запис."
+          "history_storage_mib": "32–2048 MiB на обліковий запис, типово100. Зменшення ліміту не видаляє дані та може зупинити запис.",
+          "control_vehicles": "Виберіть транспортні засоби цього облікового запису. Вимкнення керування зберігає вибір."
         }
       },
       "model_vehicle": {
@@ -137,7 +138,8 @@
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
-      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
+      "control_vehicles_required": "Виберіть хоча б один транспортний засіб для дистанційного керування."
     }
   },
   "entity": {

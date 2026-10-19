@@ -21,6 +21,7 @@ from homeassistant.helpers.selector import (
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
+    SelectSelectorMode,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
@@ -165,7 +166,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self._onboarding_options = {
                             CONF_ESTIMATION: False,
                             CONF_COORDINATES: DEFAULT_COORDINATES,
-                            CONF_CALENDAR: True,
+                            CONF_CALENDAR: False,
                             CONF_DEBUG: False,
                         }
 
@@ -216,9 +217,9 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         title=title,
                         data=data,
                         options={
-                            CONF_PRESERVE: True,
-                            CONF_AUTO_HISTORY: True,
-                            CONF_CALENDAR: bool(user_input.get(CONF_CALENDAR, True)),
+                            CONF_PRESERVE: False,
+                            CONF_AUTO_HISTORY: False,
+                            CONF_CALENDAR: bool(user_input.get(CONF_CALENDAR, False)),
                             **{
                                 key: bool(
                                     user_input.get(
@@ -550,17 +551,23 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
         self._model_vehicle: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
             self._pending_options = {**self.config_entry.options, **user_input}
-            configure_model = self._pending_options.pop("configure_model", False)
-            if configure_model:
-                return await self.async_step_model_vehicle()
-            return self.async_create_entry(title="", data=self._pending_options)
-        options = self.config_entry.options
+            if self._pending_options.get(CONF_CONTROLS) and not self._pending_options.get(
+                CONF_CONTROL_VEHICLES
+            ):
+                errors[CONF_CONTROL_VEHICLES] = "control_vehicles_required"
+            else:
+                configure_model = self._pending_options.pop("configure_model", False)
+                if configure_model:
+                    return await self.async_step_model_vehicle()
+                return self.async_create_entry(title="", data=self._pending_options)
+        options = {**self.config_entry.options, **(user_input or {})}
         runtime = getattr(self.config_entry, "runtime_data", None)
         vehicles = runtime.coordinator.data if runtime else {}
         choices = [
-            SelectOptionDict(value=sn, label=snapshot.profile.name)
+            SelectOptionDict(value=sn, label=f"{snapshot.profile.name} · {sn[-6:]}")
             for sn, snapshot in vehicles.items()
             if snapshot.present
         ]
@@ -572,8 +579,17 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 )
         return self.async_show_form(
             step_id="init",
+            errors=errors,
             data_schema=vol.Schema(
                 {
+                    vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
+                    vol.Optional(
+                        CONF_CONTROL_VEHICLES, default=options.get(CONF_CONTROL_VEHICLES, [])
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=choices, multiple=True, mode=SelectSelectorMode.DROPDOWN
+                        )
+                    ),
                     vol.Required(
                         CONF_POLL_INTERVAL,
                         default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
@@ -592,14 +608,10 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     ): vol.All(
                         vol.Coerce(int), vol.Range(min=MIN_HISTORY_MIB, max=MAX_HISTORY_MIB)
                     ),
-                    vol.Optional(CONF_BUDGET, default=configured_budget(options)): vol.All(
-                        vol.Coerce(int), vol.Range(min=MIN_BUDGET, max=MAX_BUDGET)
-                    ),
+                    vol.Required(
+                        CONF_BUDGET, default=configured_budget(options)
+                    ): HistoryBudgetSelector(),
                     vol.Optional("configure_model", default=False): bool,
-                    vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
-                    vol.Optional(
-                        CONF_CONTROL_VEHICLES, default=options.get(CONF_CONTROL_VEHICLES, [])
-                    ): SelectSelector(SelectSelectorConfig(options=choices, multiple=True)),
                     vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
                 }
             ),
@@ -671,6 +683,23 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="model_parameters", data_schema=vol.Schema(schema), errors=errors
         )
+
+
+class HistoryBudgetSelector(NumberSelector):
+    """A native input box, retaining integers and explicit unlimited zero."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            NumberSelectorConfig(
+                min=MIN_BUDGET, max=MAX_BUDGET, step=1, mode=NumberSelectorMode.BOX
+            )
+        )
+
+    def __call__(self, value: Any) -> int:
+        result = number(value, MIN_BUDGET, MAX_BUDGET)
+        if result is None or not result.is_integer():
+            raise vol.Invalid("History budget must be an integer from 0 to 120")
+        return int(result)
 
 
 class RatedParameterSelector(NumberSelector):

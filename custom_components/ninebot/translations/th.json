@@ -49,7 +49,7 @@
         "data": {
           "enable_estimation": "ตั้งค่าพิกัดแบตเตอรี่",
           "enable_coordinates": "แสดงตำแหน่งรถ",
-          "enable_calendar": "ประวัติการเดินทาง",
+          "enable_calendar": "ประวัติการเดินทาง (Beta)",
           "debug_mode": "โหมดดีบัก"
         },
         "data_description": {
@@ -94,16 +94,16 @@
         "title": "ตัวเลือก",
         "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
-          "poll_interval": "ช่วงอัปเดต (วินาที)",
-          "enable_coordinates": "แสดงตำแหน่งรถ",
           "enable_controls": "เปิดใช้การควบคุมรถ",
           "control_vehicles": "รถที่อนุญาต",
+          "poll_interval": "ช่วงอัปเดต (วินาที)",
+          "enable_coordinates": "แสดงตำแหน่งรถ",
           "configure_model": "ตั้งค่าพิกัดแบตเตอรี่",
-          "enable_calendar": "ประวัติการเดินทาง",
-          "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "History requests per account per hour",
-          "auto_history_sync": "Automatically scan trip history",
-          "history_storage_mib": "ขีดจำกัดพื้นที่เก็บประวัติ (MiB)",
+          "enable_calendar": "ประวัติการเดินทาง (Beta)",
+          "preserve_history": "Automatically sync trip details (Beta)",
+          "history_requests_per_hour": "History requests per account per hour (Beta)",
+          "auto_history_sync": "Automatically scan trip history (Beta)",
+          "history_storage_mib": "ขีดจำกัดพื้นที่เก็บประวัติ (MiB) (Beta)",
           "debug_mode": "โหมดดีบัก"
         },
         "data_description": {
@@ -112,9 +112,10 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
+          "history_requests_per_hour": "ค่าเริ่มต้น 60; 0 คือไม่จำกัดต่อชั่วโมง (ไม่แนะนำ) หรือป้อนจำนวนเต็ม 1–120 คำขอรายเดือนและรายละเอียดใช้โควตาร่วมกัน โดยข้อจำกัดคลาวด์และช่วงรอลองใหม่ยังมีผล",
           "auto_history_sync": "ค้นหาประวัติที่มีของรถทั้งหมดในบัญชี จากนั้นซิงค์ส่วนที่เปลี่ยนในเบื้องหลัง",
-          "history_storage_mib": "32–2048 MiB ต่อบัญชี ค่าเริ่มต้น100 ลดขีดจำกัดไม่ลบข้อมูลเดิม แต่อาจพักการเขียน"
+          "history_storage_mib": "32–2048 MiB ต่อบัญชี ค่าเริ่มต้น100 ลดขีดจำกัดไม่ลบข้อมูลเดิม แต่อาจพักการเขียน",
+          "control_vehicles": "เลือกยานพาหนะอย่างน้อยหนึ่งคันจากบัญชีนี้ การปิดการควบคุมจะเก็บตัวเลือกไว้"
         }
       },
       "model_vehicle": {
@@ -137,7 +138,8 @@
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
-      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
+      "control_vehicles_required": "เลือกยานพาหนะอย่างน้อยหนึ่งคันสำหรับการควบคุมระยะไกล"
     }
   },
   "entity": {

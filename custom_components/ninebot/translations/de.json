@@ -49,7 +49,7 @@
         "data": {
           "enable_estimation": "Batterienennwerte konfigurieren",
           "enable_coordinates": "Fahrzeugposition anzeigen",
-          "enable_calendar": "Fahrten",
+          "enable_calendar": "Fahrten (Beta)",
           "debug_mode": "Debugmodus"
         },
         "data_description": {
@@ -94,16 +94,16 @@
         "title": "Optionen",
         "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
-          "poll_interval": "Statusintervall (Sekunden)",
-          "enable_coordinates": "Fahrzeugposition anzeigen",
           "enable_controls": "Fahrzeugsteuerung aktivieren",
           "control_vehicles": "Zugelassene Fahrzeuge",
+          "poll_interval": "Statusintervall (Sekunden)",
+          "enable_coordinates": "Fahrzeugposition anzeigen",
           "configure_model": "Batterienennwerte konfigurieren",
-          "enable_calendar": "Fahrten",
-          "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "History requests per account per hour",
-          "auto_history_sync": "Automatically scan trip history",
-          "history_storage_mib": "Verlaufsspeicherlimit (MiB)",
+          "enable_calendar": "Fahrten (Beta)",
+          "preserve_history": "Automatically sync trip details (Beta)",
+          "history_requests_per_hour": "History requests per account per hour (Beta)",
+          "auto_history_sync": "Automatically scan trip history (Beta)",
+          "history_storage_mib": "Verlaufsspeicherlimit (MiB) (Beta)",
           "debug_mode": "Debugmodus"
         },
         "data_description": {
@@ -112,9 +112,10 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
+          "history_requests_per_hour": "Standard 60; 0 bedeutet kein Stundenlimit (nicht empfohlen), sonst 1–120. Monats- und Detailabfragen teilen das Limit; Cloud-Limits und Wiederholungswartezeiten gelten weiterhin.",
           "auto_history_sync": "Verfügbaren Verlauf aller eigenen Fahrzeuge erfassen, danach Änderungen im Hintergrund synchronisieren.",
-          "history_storage_mib": "32–2048 MiB je Konto, Standard 100. Ein kleineres Limit löscht keine Daten und kann Schreibvorgänge pausieren."
+          "history_storage_mib": "32–2048 MiB je Konto, Standard 100. Ein kleineres Limit löscht keine Daten und kann Schreibvorgänge pausieren.",
+          "control_vehicles": "Wähle ein oder mehrere Fahrzeuge dieses Kontos. Das Ausschalten der Steuerung behält die Auswahl bei."
         }
       },
       "model_vehicle": {
@@ -137,7 +138,8 @@
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
-      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
+      "control_vehicles_required": "Wähle mindestens ein Fahrzeug für die Fernsteuerung."
     }
   },
   "entity": {
