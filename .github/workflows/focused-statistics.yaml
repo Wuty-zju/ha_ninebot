@@ -2,8 +2,10 @@ name: Focused statistics
 on:
   pull_request:
     paths:
+      - 'tests/test_statistics_continuity.py'
       - 'custom_components/ninebot/daily_sync.py'
       - 'tests/test_daily_sync.py'
+      - 'tests/test_history_sync.py'
       - 'custom_components/ninebot/*statistics*.py'
       - 'custom_components/ninebot/ride_archive.py'
       - 'custom_components/ninebot/gap_recovery.py'
@@ -41,6 +43,7 @@ concurrency:
 jobs:
   regression:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -54,7 +57,7 @@ jobs:
       - run: mypy custom_components/ninebot --follow-imports=silent
       - name: Run related offline regression only
         run: >-
-          python -m pytest -q
+          python -m pytest -q -o faulthandler_timeout=60
           tests/test_month_tasks.py
           tests/test_history_sync.py
           tests/test_preservation.py
@@ -67,6 +70,7 @@ jobs:
           tests/test_travel.py
           tests/test_services.py
           tests/test_accumulated_statistics.py
+          tests/test_statistics_continuity.py
           tests/test_period_statistics.py
           tests/test_daily_sync.py
           tests/test_archive_runtime.py

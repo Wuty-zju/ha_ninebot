@@ -97,7 +97,7 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 | Integration missing after download | Confirm the directory/domain, restart as prompted, and use a release compatible with your host architecture. |
 | Authentication fails | Check the official App/account region; use reauth. Do not publish credentials or token files. |
 | Rated-parameter form rejects a vehicle | Close and reopen the form after the updated integration is actually loaded. Choose a currently discovered vehicle. |
-| Today/yesterday values unknown | Open [coverage and statistics](history.md#coverage-and-statistics). A partial month or missing metric may not support a reliable daily total. |
+| Today/yesterday values unknown | Setup and midnight schedule a prompt refresh; incomplete lists or missing metrics still need evidence. Same-period verified values survive short outages. See [coverage and statistics](history.md#coverage-and-statistics). |
 | Ride/vehicle event unknown | Events wait for a new/revised trip report, stable completion or known status transition after their baseline. History imports and reconnection do not replay events. See [event semantics](history.md#ride-summaries-and-vehicle-events). |
 | History waiting for request budget | Inspect `next_request_at`, `retry_at`, `sync_phase`, pause/auth/capacity state; do not repeatedly request a full scan. |
 | Calendar shows “No current trip” / off | This is a historical calendar with no active event. Browse saved dates in HA Calendar; only the account option disables the feature. |

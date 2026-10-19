@@ -1199,7 +1199,7 @@ async def test_retired_soc_model_does_not_force_endpoint_requests(coordinator):
     co.client.async_get_travel.assert_not_awaited()
 
 
-async def test_local_month_boundary_expires_travel_without_cloud_io(coordinator):
+async def test_local_month_boundary_expires_travel_and_schedules_coalesced_refresh(coordinator):
     co = coordinator
     before = datetime(2026, 9, 30, 15, 59, 59, tzinfo=UTC)
     with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=before):
@@ -1209,10 +1209,15 @@ async def test_local_month_boundary_expires_travel_without_cloud_io(coordinator)
             notify, deadline = timer.call_args.args[1:]
             assert deadline == before + timedelta(seconds=1)
             co.client.reset_mock()
-            with patch(
-                "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+            with (
+                patch(
+                    "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+                ),
+                patch.object(co, "async_request_refresh") as refresh,
             ):
                 notify(deadline)
+                await asyncio.gather(*tuple(co._active))
+                refresh.assert_awaited_once()
                 assert not co.fresh("synthetic-one", "travel")
             co.client.async_get_status.assert_not_awaited()
             co.client.async_get_travel.assert_not_awaited()
@@ -1240,7 +1245,7 @@ async def test_raw_capture_propagates_metadata_without_discarding_valid_telemetr
     assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is record
 
 
-async def test_local_day_boundary_notifies_without_cloud_requests(coordinator):
+async def test_local_day_boundary_notifies_then_requests_normal_refresh(coordinator):
     co = coordinator
     before = datetime(2026, 9, 25, 15, 59, 59, tzinfo=UTC)
     with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=before):
@@ -1250,10 +1255,15 @@ async def test_local_day_boundary_notifies_without_cloud_requests(coordinator):
             notify, deadline = timer.call_args.args[1:]
             assert deadline == before + timedelta(seconds=1)
             co.client.reset_mock()
-            with patch(
-                "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+            with (
+                patch(
+                    "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+                ),
+                patch.object(co, "async_request_refresh") as refresh,
             ):
                 notify(deadline)
+                await asyncio.gather(*tuple(co._active))
+                refresh.assert_awaited_once()
             co.client.async_get_travel.assert_not_awaited()
             co.client.async_get_status.assert_not_awaited()
 
@@ -1363,3 +1373,43 @@ async def test_rejected_current_raw_never_binds_old_cached_body_to_new_projectio
         "synthetic-one", current, guard=lambda: True
     )
     assert checked.status == "stale" and not checked.projection_verified
+
+
+async def test_midnight_travel_due_ignores_success_delay_but_not_backoff(coordinator, freezer):
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot.raw import Endpoint, build_record
+
+    co = coordinator
+    before = datetime(2026, 10, 7, 15, 59, 59, tzinfo=UTC)
+    freezer.move_to(before)
+    await co._async_update_data()
+    sn = "synthetic-one"
+    # An Action's later old-day receipt is not a sample for the new day.
+    raw = build_record(
+        Endpoint.TRAVEL,
+        {"times": 0, "list": [], "total_mileages": 0},
+        before + timedelta(microseconds=100),
+        "202610",
+    )
+    co.raw.put(raw, vehicle=sn)
+    freezer.tick(1)
+    now = dt_util.utcnow()
+    assert co._next_attempt[(sn, "travel")] > now.timestamp()
+    assert co._due(sn, "travel", now.timestamp())
+    co.client.async_get_travel.reset_mock()
+    await co._group(sn, "travel", include_last_ride=False)
+    co.client.async_get_travel.assert_awaited_once_with(sn, "202610")
+    assert co.data[sn].travel_freshness.succeeded_at == now
+    assert not co._due(sn, "travel", now.timestamp())
+    key = (sn, "travel")
+    co.data[sn] = replace(
+        co.data[sn], travel_freshness=replace(co.data[sn].travel_freshness, succeeded_at=before)
+    )
+    co._failures[key] = 1
+    co._next_attempt[key] = now.timestamp() + 60
+    assert not co._due(sn, "travel", now.timestamp())
+    co._failures[key] = 0
+    co._retry_after_until[key] = now.timestamp() + 120
+    co._next_attempt[key] = now.timestamp() + 120
+    assert not co._due(sn, "travel", now.timestamp())

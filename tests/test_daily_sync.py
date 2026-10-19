@@ -1,5 +1,6 @@
 """Daily statistics rebuild from synthetic capped pages after a clean install."""
 
+from contextlib import nullcontext
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -40,19 +41,30 @@ def payload(page):
     }
 
 
-async def setup(hass, entry, app_client, freezer):
+async def setup(hass, entry, app_client, freezer, *, startup=False):
     freezer.move_to(NOW)
     app_client.async_get_travel.return_value = payload(1)
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    co = entry.runtime_data.coordinator
 
     async def page(sn, month, number):
         return build_record(
             Endpoint.TRAVEL, payload(number), dt_util.utcnow(), month, backend_version="0.1.7"
         )
 
-    return co, AsyncMock(side_effect=page)
+    query = AsyncMock(side_effect=page)
+    with (
+        nullcontext()
+        if startup
+        else patch(
+            "custom_components.ninebot.coordinator.NinebotCoordinator.async_schedule_statistics_refresh"
+        ),
+        patch(
+            "custom_components.ninebot.coordinator.NinebotCoordinator.async_query_history_page",
+            query,
+        ),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    return entry.runtime_data.coordinator, query
 
 
 async def test_clean_account_repairs_daily_index_without_history_details(
@@ -115,3 +127,14 @@ async def test_daily_repair_respects_persistent_pause(hass, entry, app_client, f
     with patch.object(co, "async_query_history_page", query):
         await co.daily_sync.async_step(NOW)
     query.assert_not_awaited()
+
+
+async def test_first_setup_admits_daily_paging_without_waiting_status_period(
+    hass, entry, app_client, freezer
+):
+    co, query = await setup(hass, entry, app_client, freezer, startup=True)
+    query.assert_awaited_once_with(SN, "202610", 1)
+    assert co.daily_sync.cursors[(SN, "202610")].page == 2
+    assert app_client.async_get_status.await_count == 1
+    assert app_client.async_get_travel.await_count == 1
+    app_client.async_get_trip_detail.assert_not_awaited()
