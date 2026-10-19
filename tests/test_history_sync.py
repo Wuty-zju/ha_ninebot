@@ -19,6 +19,15 @@ NOW = datetime(2026, 10, 8, tzinfo=UTC)
 SN = "SyntheticSN"
 
 
+@pytest.fixture(autouse=True)
+def manual_history_scheduler():
+    """These tests drive the shared budget explicitly; bootstrap has its own replay."""
+    with patch(
+        "custom_components.ninebot.coordinator.NinebotCoordinator.async_schedule_statistics_refresh"
+    ):
+        yield
+
+
 @pytest.fixture
 async def sync_device(hass, entry, app_client, freezer):
     freezer.move_to(NOW)
