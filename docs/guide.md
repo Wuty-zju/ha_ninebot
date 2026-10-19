@@ -51,7 +51,7 @@ Availability depends on the vehicle model, permissions and actual cloud reports.
 | Location and image | Device location tracker, vehicle image | Two valid fresh coordinates are required; no unverified coordinate conversion. The image is diagnostic. |
 | Rides | Today/yesterday/month totals, last-ride metrics, monthly list coverage | Completeness is checked per metric. Missing evidence is not silently converted to zero. |
 | History | Sync state, month-scan progress, saved-detail progress, last successful sync | These are different scopes; 100% saved discovered details does not prove full cloud history. |
-| Controls | Vehicle/seat locks and retained remote buttons | Explicit opt-in/allowlist and authorization required; see below. |
+| Controls | Vehicle/seat locks and retained remote buttons | Enabled controls, an allowlist and authorization required; see below. |
 | Native HA | Ride calendar, ride-completed/state-transition events, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
 
 Durations retain native seconds and suggest **hours with four decimals** through HA's native conversion. Distance/range and Wh/km suggest one decimal; energy and maximum speed suggest integers. Presentation rounding does not round archived source facts. HA user overrides take precedence. Rated battery V/Ah produce a specification in kWh, not measured capacity or health.

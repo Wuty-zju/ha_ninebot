@@ -81,7 +81,7 @@ Each account owns its session, credentials directory and archive. Entry titles u
 | Ride calendar (Beta) | Off for new accounts | Local rides on a native HA calendar. |
 | Background detail preservation (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
 | Automatic history sync (Beta) | Off for new accounts | Initial discovery and subsequent incremental work. |
-| Controls and vehicle allowlist | Off / empty | Explicitly enable commands for selected vehicles. |
+| Controls and vehicle allowlist | New accounts: on / sign-in-verified vehicles | Explicitly enable commands for selected vehicles. |
 | Debug mode | Off | Bounded parsed current information for investigation. |
 
 Existing explicit choices are retained on upgrade. Further options include polling intervals, nominal battery parameters, request budget and archive quota. [Defaults and ranges →](docs/guide.md#options)
@@ -156,7 +156,7 @@ Retired low-confidence SOC energy estimates remain removed. Cloud readings and u
 
 Each account owns its session/resources. A shared scheduler coordinates cloud reads across vehicles: current state refreshes by data group, while history advances in background steps. Source evidence and normalized values remain distinguishable.
 
-Typical schedules are **120 s for status**, **600 s for battery/travel** and **3600 s for profiles**, subject to enabled features, freshness and backoff. Identical in-flight reads share work; there is no cloud poll per entity.
+Typical schedules are **60 s for status**, **600 s for battery/travel** and **3600 s for profiles**, subject to enabled features, freshness and backoff. Identical in-flight reads share work; there is no cloud poll per entity.
 
 ### History is acquired once, then reused locally
 
