@@ -23,7 +23,7 @@ async def test_model_device_selection_through_http(hass, entry, app_client, hass
     url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
     response = await client.post(
         url,
-        json={"poll_interval": 120, "enable_estimation": True, "configure_model": True},
+        json={"poll_interval": 120, "configure_model": True},
     )
     assert response.status == 200
     form = await response.json()
