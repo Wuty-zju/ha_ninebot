@@ -116,7 +116,8 @@ def test_time_disagreement_duration_and_stale_observation(hass):
     assert result.ride_count == 2 and result.energy_wh == 340 and result.duration_s is None
     raw["list"][1]["end_time"] = int(datetime(2026, 10, 6, 12, 30, tzinfo=UTC).timestamp())
     assert day_summary(record(hass, raw), "one", YESTERDAY, NOW).ride_count is None
-    yesterday_sample = NOW - timedelta(days=1)
+    # A same-day cached report must have been received after its rides ended.
+    yesterday_sample = NOW - timedelta(days=1) + timedelta(hours=10)
     store = record(hass, received=yesterday_sample)
     result = day_summary(store, "one", YESTERDAY, NOW)
     assert result.distance_km is result.ride_count is None
