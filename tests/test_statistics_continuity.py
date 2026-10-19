@@ -178,6 +178,8 @@ async def test_offline_cold_start_restores_same_period_without_renewing_observat
     app_client.async_list_vehicles.side_effect = NinebotError(ErrorKind.CONNECTION)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
+    assert not entry.runtime_data.coordinator.last_update_success
+    assert not entry.runtime_data.coordinator._authenticated
     for key, expected in (
         ("month_mileage", 3),
         ("today_ride_count", 1),

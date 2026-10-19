@@ -339,7 +339,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
     @callback
     def async_schedule_statistics_refresh(self) -> None:
         """Admit newly subscribed daily consumers without waiting a status period."""
-        if self._stopping:
+        if self._stopping or not self._authenticated:
+            # Offline startup is a local archive view, not a successful poll.
             return
         task = self.hass.async_create_task(self.async_request_refresh())
         self._active.add(task)
