@@ -22,7 +22,7 @@ Arrows describe data relationships, not upstream push. The frontend's local arch
 
 Transient GET transport failures can retry once within the same deadline. Authentication/schema errors and controls do not replay. Actual Retry-After metadata and existing group backoff apply. One cancelled reader does not cancel other consumers; abandoned work is reclaimed. Ownership/generation/request barriers prevent late/pre-command responses overwriting current state or confirming a command.
 
-Controls require explicit enablement, vehicle allowlist and fresh ownership/status. Known denials/ambiguity block dispatch; unknown permission remains unknown and cloud authorization decides. Vehicle/cloud enforces motion/P policy; HA does not infer it from ACC/power. Locks/buttons share one physical-vehicle command lease across accounts. Accepted command, observed cloud target and physical success remain distinct. See [confirmation behavior](guide.md#controls-and-confirmation).
+Controls require explicit enablement, vehicle allowlist and fresh ownership/status. Known denials/ambiguity block dispatch; unknown permission remains unknown and cloud authorization decides. Vehicle/cloud enforces motion/P policy; HA does not infer it from ACC/power. Locks/buttons share one physical-vehicle command lease across accounts. Accepted command, observed cloud target and physical success remain distinct. See [confirmation behavior](guide.md#controls-and-confirmation). The seat Lock presentation holds a verified unlock for five seconds; raw latch observations, confirmation and status events remain independent. Lid position is not inferred from the latch.
 
 ## Raw evidence and normalized models
 

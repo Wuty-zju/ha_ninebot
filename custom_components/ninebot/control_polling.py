@@ -15,7 +15,7 @@ async def read_slots(
 
     The caller owns the absolute timeout and checks ownership/authentication on
     every yielded slot. Clock/sleep injection lets offline tests use real
-    schedules without waiting ten seconds or patching the HA event loop.
+    schedules without waiting fifteen seconds or patching the HA event loop.
     """
     clock = now or asyncio.get_running_loop().time
     for offset in offsets:

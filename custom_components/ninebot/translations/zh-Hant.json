@@ -702,6 +702,14 @@
               "recently_unlocked": "Recently unlocked",
               "none": "None"
             }
+          },
+          "reported_state": {
+            "name": "回報鎖舌狀態",
+            "state": {
+              "locked": "已鎖定",
+              "unlocked": "已解鎖",
+              "unknown": "未知"
+            }
           }
         }
       }
@@ -782,7 +790,7 @@
       "message": "Lock the seat compartment manually."
     },
     "control_target_not_observed": {
-      "message": "Not confirmed within 10 seconds. Check the vehicle state."
+      "message": "Not confirmed within 15 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "操作未送出：通訊暫時無法使用，請稍後重試。"

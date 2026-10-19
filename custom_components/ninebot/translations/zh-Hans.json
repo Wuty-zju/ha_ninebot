@@ -702,6 +702,14 @@
               "recently_unlocked": "刚解锁",
               "none": "无"
             }
+          },
+          "reported_state": {
+            "name": "上报锁舌状态",
+            "state": {
+              "locked": "已锁定",
+              "unlocked": "已解锁",
+              "unknown": "未知"
+            }
           }
         }
       }
@@ -782,7 +790,7 @@
       "message": "座桶需手动上锁。"
     },
     "control_target_not_observed": {
-      "message": "10秒内未确认，请查看车辆状态。"
+      "message": "15秒内未确认，请查看车辆状态。"
     },
     "control_not_sent": {
       "message": "操作未发送：通信暂不可用，请稍后重试。"

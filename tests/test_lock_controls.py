@@ -420,14 +420,14 @@ async def test_followup_deadline_cancels_slow_read_without_replaying(controls, m
     assert not co.pending_controls and not co._control_leases
 
 
-@pytest.mark.parametrize("transition", [0.2, 4.9, 5.1, 9.8])
+@pytest.mark.parametrize("transition", [0.2, 4.9, 9.8, 14.8])
 @pytest.mark.parametrize("action", ["engine/start", "engine/stop", "buck"])
 async def test_late_target_is_published_on_first_matching_read(
     controls, monkeypatch, transition, action
 ):
     from custom_components.ninebot.control_polling import read_slots
 
-    schedule = (0, 1, 2, 3, 4, 6, 8, 9.9)
+    schedule = (*range(15), 14.9)
     monkeypatch.setattr(module, "CONFIRMATION_DELAYS", schedule)
     elapsed = [0.0]
     observed = []
@@ -462,14 +462,14 @@ async def test_late_target_is_published_on_first_matching_read(
     assert observed[-1] == pytest.approx(expected)
     key = "seat_lock" if action == "buck" else "vehicle_lock"
     assert controls.lock_state("SyntheticSN", key) is target
-    assert len(observed) <= 8
+    assert len(observed) <= 16
     assert (
         controls.control_results.diagnostics("SyntheticSN")[action]["confirmation"] == "confirmed"
     )
     controls.client.async_control.assert_awaited_once_with("SyntheticSN", action)
 
 
-async def test_seat_feedback_does_not_freeze_real_relock_and_expires(controls, entry, freezer):
+async def test_seat_display_holds_unlock_then_returns_to_reported_latch(controls, entry, freezer):
     from datetime import timedelta
 
     from homeassistant.util import dt as dt_util
@@ -484,22 +484,69 @@ async def test_seat_feedback_does_not_freeze_real_relock_and_expires(controls, e
     assert lock.extra_state_attributes["unlock_feedback"] == "recently_unlocked"
     snapshot = controls.data["SyntheticSN"]
     controls.data["SyntheticSN"] = replace(snapshot, status=adapters.status(payload(seat=0)))
-    assert lock.is_locked is True
+    assert lock.is_locked is False
+    assert controls.lock_state("SyntheticSN", "seat_lock") is True
+    controls.client.async_get_status_once.return_value = payload(seat=0)
+    assert lock.extra_state_attributes["reported_state"] == "locked"
     assert lock.extra_state_attributes["unlock_feedback"] == "recently_unlocked"
     freezer.move_to(dt_util.utcnow() + timedelta(seconds=6))
     async_fire_time_changed(controls.hass, dt_util.utcnow())
     await controls.hass.async_block_till_done()
     assert lock.extra_state_attributes["unlock_feedback"] == "none"
+    assert lock.is_locked is True
     assert not controls._seat_feedback_timers
 
 
-async def test_seat_followup_stops_when_relocked_without_another_command(controls, monkeypatch):
+async def test_seat_followup_does_not_treat_latch_relock_as_lid_closure(controls, monkeypatch):
     monkeypatch.setattr(module, "SEAT_FOLLOWUP_DELAYS", (0, 0, 0))
-    controls.client.async_get_status_once.side_effect = [payload(seat=1), payload(seat=0)]
+    controls.client.async_get_status_once.side_effect = [
+        payload(seat=1),
+        payload(seat=0),
+        payload(seat=0),
+    ]
     owner = controls._key("SyntheticSN", module.Endpoint.STATUS)
     await controls._control_followup(
         "SyntheticSN", owner, asyncio.get_running_loop().time(), seat=True
     )
-    assert controls.client.async_get_status_once.await_count == 2
+    assert controls.client.async_get_status_once.await_count == 3
     controls.client.async_control.assert_not_awaited()
     assert controls.lock_state("SyntheticSN", "seat_lock") is True
+
+
+async def test_regular_status_unlock_starts_display_hold_without_control(controls, entry):
+    controls.client.async_get_status.return_value = payload(seat=1)
+    await controls.async_refresh_vehicle("SyntheticSN")
+    assert "SyntheticSN" in controls.seat_unlock_feedback
+    lock = NinebotLock(entry, "SyntheticSN", "seat_lock")
+    assert lock.is_locked is False
+    controls.client.async_control.assert_not_awaited()
+    timer = controls._seat_feedback_timers["SyntheticSN"]
+    await controls.async_refresh_vehicle("SyntheticSN")
+    assert controls._seat_feedback_timers["SyntheticSN"] is timer
+    controls.client.async_get_status.return_value = payload(seat=0)
+    await controls.async_refresh_vehicle("SyntheticSN")
+    assert lock.is_locked is False
+    assert controls.status_observation("SyntheticSN").values[3] is True
+    controls._invalidate_auth()
+    assert not controls._seat_feedback_timers and not controls.seat_unlock_feedback
+
+
+async def test_seat_hold_never_fills_in_unknown_latch(controls, entry):
+    from custom_components.ninebot import adapters
+
+    controls.client.async_get_status_once.return_value = payload(seat=1)
+    await controls.async_control("SyntheticSN", "buck")
+    snapshot = controls.data["SyntheticSN"]
+    controls.data["SyntheticSN"] = replace(snapshot, status=adapters.status(payload(seat=None)))
+    lock = NinebotLock(entry, "SyntheticSN", "seat_lock")
+    assert lock.is_locked is None
+    assert lock.extra_state_attributes["reported_state"] == "unknown"
+
+
+async def test_unconfirmed_seat_unlock_has_no_hold_or_extended_observation(controls):
+    controls.client.async_get_status_once.return_value = payload(seat=0)
+    with pytest.raises(HomeAssistantError):
+        await controls.async_control("SyntheticSN", "buck")
+    assert not controls.seat_unlock_feedback
+    assert "SyntheticSN" not in controls._control_followups
+    controls.client.async_control.assert_awaited_once()

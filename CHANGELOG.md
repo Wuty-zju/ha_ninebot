@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0b100
+
+- Extend vehicle and seat unlock confirmation to fifteen seconds with immediate target updates and bounded status polling.
+- Keep an observed seat unlock visible for at least five seconds while retaining the reported latch state separately. Observe seat status for up to sixty seconds, tapering after fifteen seconds.
+- Distinguish latch state from compartment-lid position; existing reports do not provide an independently verified lid-open field.
+
 ## 2.0.0b99
 
 - Show compact ride time ranges and durations from original seconds, while retaining numeric sensor identities and native unit preferences.
