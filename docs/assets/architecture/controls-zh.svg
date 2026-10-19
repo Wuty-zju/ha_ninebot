@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="880" height="470" viewBox="0 0 880 470" role="img" aria-labelledby="title desc" xml:lang="zh-Hans">
 <title id="title">控制指令与状态回读</title>
-<desc id="desc">显式启用与车辆许可后只发送一次指令，随后短时回读；实体状态以云端观测更新，座桶只能远程解锁。</desc>
+<desc id="desc">控制启用与车辆许可后只发送一次指令，随后短时回读；实体状态以云端观测更新，座桶只能远程解锁。</desc>
 <defs>
   <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse">
     <path d="M0 0 L8 4 L0 8 Z" fill="#64748b"/>
@@ -32,7 +32,7 @@
 <rect class="page" x="1" y="1" width="878" height="468" rx="20"/>
 <text class="title" x="36" y="48">控制指令与状态回读</text>
 <rect class="card blue" x="40" y="85" width="240" height="105" rx="12"/>
-<text class="label" x="60" y="117">用户明确开启</text>
+<text class="label" x="60" y="117">控制已启用</text>
 <text class="body" x="60" y="145">车辆许可列表</text>
 <text class="body" x="60" y="169">账号归属与权限检查</text>
 <rect class="card blue" x="320" y="85" width="240" height="105" rx="12"/>

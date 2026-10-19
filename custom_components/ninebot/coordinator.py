@@ -43,6 +43,7 @@ from .control_results import (
     ReadbackOutcome,
 )
 from .control_targets import LOCK_TARGETS
+from .daily_sync import DailyStatisticsSync
 from .demand import ConsumerContext, Group, Need, PollingDemand, polling_demand
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
@@ -93,6 +94,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.recorded_cursors = RecordedCursors()
         self.history_sync = HistorySync(self)
         self.preservation = HistoryPreservation(self)
+        self.daily_sync = DailyStatisticsSync(self)
         self.ride_lifecycles: dict[str, RideLifecycle] = {}
         self.statistics = ArchiveStatistics(
             hass,
@@ -1138,6 +1140,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                             if group in demands[sn].groups
                         )
                     )
+            try:
+                await self.daily_sync.async_step(dt_util.utcnow())
+            except ArchiveError as err:
+                self.statistics.record_error(err)
             return dict(self.data)
         except NinebotAuthError as err:
             self._invalidate_auth()

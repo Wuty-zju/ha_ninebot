@@ -70,6 +70,7 @@ class Candidate:
     path: Path
     uid: str
     display: AccountDisplay = field(default_factory=AccountDisplay, repr=False)
+    vehicles: tuple[str, ...] = field(default=(), repr=False)
 
 
 SMS_COOLDOWN = 60
@@ -189,13 +190,15 @@ class SessionManager:
             try:
                 await client.async_consume_login_code(challenge.account, code)
                 display = await self._account_display(client)
-                profiles(await client.async_list_vehicles())
+                vehicles = profiles(await client.async_list_vehicles())
                 uid = await finish_io(lambda: session_uid(challenge.path))
                 await client.async_close()
                 await finish_io(lambda: secure_files(challenge.path))
                 challenge.consumed = True
                 self._sms.pop(challenge.path, None)
-                return Candidate(challenge.path, uid, display)
+                return Candidate(
+                    challenge.path, uid, display, tuple(vehicle.sn for vehicle in vehicles)
+                )
             finally:
                 await client.async_close()
 
@@ -244,11 +247,11 @@ class SessionManager:
             client = self._factory(directory, self._session)
             await client.async_login(account, password)
             display = await self._account_display(client)
-            profiles(await client.async_list_vehicles())
+            vehicles = profiles(await client.async_list_vehicles())
             uid = await finish_io(lambda: session_uid(directory))
             await client.async_close()
             await finish_io(lambda: secure_files(directory))
-            return Candidate(directory, uid, display)
+            return Candidate(directory, uid, display, tuple(vehicle.sn for vehicle in vehicles))
         except BaseException:
             try:
                 if client is not None:

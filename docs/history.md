@@ -168,6 +168,8 @@ Response `field_states`, sources, units, precision and `detail_context` distingu
 
 Restricted HA readers need read access to the vehicle's Ninebot calendar and, for GPS, tracker. Full readers follow standard HA permissions. Checks run before work and before returning; ownership/generation still applies. Synchronization mutations/statistics imports need control permission. Trusted no-user-context automations keep normal HA behavior.
 
+With history-detail synchronization off, enabled daily sensors can still fill a capped current-month list one page per account update. This uses the shared hourly budget, ownership/pause checks and bounded retries, and stores normalized list facts only. Full-history discovery and detail/track downloads remain off. Complete local indexes are reused; missing or conflicting metrics remain explicitly unknown rather than being replaced with zero.
+
 ## Coverage and statistics
 
 Cloud monthly totals, the latest returned list, accumulated local rides, saved details, geometric quality and integrity checks are **separate evidence scopes**. Stored list completeness or a zero missing-month count never proves the upstream's entire history. `upstream_history_complete` remains unverified.

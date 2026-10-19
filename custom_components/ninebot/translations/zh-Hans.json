@@ -128,7 +128,7 @@
       },
       "model_parameters": {
         "title": "标称电池参数",
-        "description": "填写额定电压与容量。修改参数更新同一个实体；此数值不代表实测容量或电池健康度。",
+        "description": "电压和容量均可留空，按电池额定规格填写。缺少任一项时不计算额定能量；不代表实测容量或健康度。",
         "data": {
           "voltage": "标称电压（V）",
           "capacity": "额定容量（Ah）"
@@ -177,7 +177,7 @@
         "name": "本月里程"
       },
       "last_mileage": {
-        "name": "最近行程距离"
+        "name": "最近里程"
       },
       "month_energy_raw": {
         "name": "本月行程能耗"
@@ -207,7 +207,7 @@
         "name": "最近行程最高速度"
       },
       "last_ride_average_speed": {
-        "name": "最近行程总平均速度"
+        "name": "最近行程平均速度"
       },
       "control_availability": {
         "name": "车辆控制状态",
@@ -460,7 +460,7 @@
         "name": "本月平均能耗"
       },
       "last_energy_intensity": {
-        "name": "最近行程平均能耗"
+        "name": "最近平均能耗"
       },
       "emergency_battery": {
         "name": "应急通信电池电量"

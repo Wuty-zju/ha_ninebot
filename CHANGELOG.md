@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b102
+
+- Enable controls and select all sign-in-verified vehicles for new accounts; retain existing user choices and use a 60-second default status interval.
+- Leave rated battery voltage/capacity empty until provided, accept either field independently and support clearing values.
+- Repair incomplete current-month ride lists on demand for daily statistics, sharing the account request budget without downloading details or tracks.
+- Rename latest distance, average consumption and average speed without changing entity identities.
+
 ## 2.0.0b101
 
 - Make the ride calendar and historical acquisition opt-in for new accounts, retaining existing preferences and labeling history settings as Beta.

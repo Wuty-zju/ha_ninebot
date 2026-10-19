@@ -209,3 +209,30 @@ async def test_debug_gate_reloads_without_losing_identity_or_user_disable(hass, 
         else:
             assert registry.async_get(ids[key]).disabled_by is None
             assert hass.states.get(ids[key]) is not None
+
+
+async def test_rated_parameters_allow_unfilled_partial_and_explicit_clear(hass, entry, app_client):
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    for values, expected in (
+        ({}, (None, None)),
+        ({"voltage": 72}, (72, None)),
+        ({"capacity": 38}, (None, 38)),
+        ({}, (None, None)),
+    ):
+        form = await hass.config_entries.options.async_init(entry.entry_id)
+        form = await hass.config_entries.options.async_configure(
+            form["flow_id"],
+            {"configure_model": True},
+        )
+        form = await hass.config_entries.options.async_configure(
+            form["flow_id"],
+            {"model_vehicle": "SyntheticSN"},
+        )
+        assert all(not isinstance(key, vol.Required) for key in form["data_schema"].schema)
+        result = await hass.config_entries.options.async_configure(form["flow_id"], values)
+        assert result["type"].value == "create_entry"
+        await hass.async_block_till_done()
+        model = entry.runtime_data.models.model("SyntheticSN")
+        assert (model.voltage, model.capacity) == expected
+        assert model.nominal is None
