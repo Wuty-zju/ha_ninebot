@@ -101,5 +101,18 @@ class ControlResults:
             if (result := self._records.get((vehicle, action))) is not None
         }
 
+    def latest(
+        self, vehicle: str, actions: tuple[str, ...]
+    ) -> dict[str, str | bool | int | None] | None:
+        """Insertion order stays correct even when rapid attempts share a timestamp."""
+        return next(
+            (
+                result.diagnostics()
+                for (sn, action), result in reversed(self._records.items())
+                if sn == vehicle and action in actions
+            ),
+            None,
+        )
+
     def clear(self) -> None:
         self._records.clear()

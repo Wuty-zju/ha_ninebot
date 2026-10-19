@@ -34,12 +34,7 @@ class NinebotLock(NinebotEntity, LockEntity):
     @property
     def extra_state_attributes(self) -> dict[str, object]:
         actions = ("buck",) if self.key == "seat_lock" else ("engine/start", "engine/stop")
-        outcomes = self.coordinator.control_results.diagnostics(self.sn)
-        latest = max(
-            (outcomes[action] for action in actions if action in outcomes),
-            key=lambda result: str(result["attempted_at"]),
-            default=None,
-        )
+        latest = self.coordinator.control_results.latest(self.sn, actions)
         return {
             "remote_lock_mode": "manual" if self.key == "seat_lock" else "remote",
             "last_operation": latest,

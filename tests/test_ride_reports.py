@@ -1,11 +1,27 @@
 """Live report/update semantics without physical-start assumptions or cloud I/O."""
 
 from dataclasses import replace
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
+from custom_components.ninebot.raw import Endpoint
+from custom_components.ninebot.ride_models import Ride
 from custom_components.ninebot.ride_reports import RideReportCursor
 
-from .test_ride_events import NOW, ride
+NOW = datetime(2026, 9, 30, 15, 59, tzinfo=UTC)
+
+
+def ride(key, end):
+    return Ride(
+        "202609",
+        Endpoint.TRAVEL,
+        ride_id=key,
+        detail_id=key,
+        started_at=end - timedelta(seconds=60),
+        ended_at=end,
+        distance_m=300,
+        duration_s=60,
+        field_provenance=(("ride_id", "travel_id"),),
+    )
 
 
 def test_report_revision_duplicates_partial_omission_and_restart_baseline():

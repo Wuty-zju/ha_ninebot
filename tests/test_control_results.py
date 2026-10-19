@@ -44,3 +44,13 @@ def test_global_bound_eviction_and_unknown_action_cannot_add_records():
     with pytest.raises(ValueError):
         results.start("synthetic", "not-an-action", NOW)
     assert len(results._records) == MAX_CONTROL_RESULTS
+
+
+def test_latest_command_uses_dispatch_order_instead_of_timestamp_ties():
+    results = ControlResults()
+    start = results.start("vehicle", "engine/start", NOW)
+    stop = results.start("vehicle", "engine/stop", NOW)
+    stop.outcome = CommandOutcome.ACCEPTED
+    start.outcome = CommandOutcome.UNCERTAIN
+    assert results.latest("vehicle", ("engine/start", "engine/stop"))["outcome"] == "accepted"
+    assert results.latest("other", ("engine/start", "engine/stop")) is None
