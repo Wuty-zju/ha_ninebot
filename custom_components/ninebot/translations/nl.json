@@ -49,7 +49,7 @@
         "data": {
           "enable_estimation": "Nominale parameters instellen",
           "enable_coordinates": "Voertuiglocatie tonen",
-          "enable_calendar": "Ritten",
+          "enable_calendar": "Ritten (Beta)",
           "debug_mode": "Debugmodus"
         },
         "data_description": {
@@ -94,16 +94,16 @@
         "title": "Opties",
         "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
-          "poll_interval": "Statusinterval (seconden)",
-          "enable_coordinates": "Voertuiglocatie tonen",
           "enable_controls": "Voertuigbediening inschakelen",
           "control_vehicles": "Toegestane voertuigen",
+          "poll_interval": "Statusinterval (seconden)",
+          "enable_coordinates": "Voertuiglocatie tonen",
           "configure_model": "Nominale parameters instellen",
-          "enable_calendar": "Ritten",
-          "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "History requests per account per hour",
-          "auto_history_sync": "Automatically scan trip history",
-          "history_storage_mib": "Opslaglimiet historiek (MiB)",
+          "enable_calendar": "Ritten (Beta)",
+          "preserve_history": "Automatically sync trip details (Beta)",
+          "history_requests_per_hour": "History requests per account per hour (Beta)",
+          "auto_history_sync": "Automatically scan trip history (Beta)",
+          "history_storage_mib": "Opslaglimiet historiek (MiB) (Beta)",
           "debug_mode": "Debugmodus"
         },
         "data_description": {
@@ -112,9 +112,10 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
+          "history_requests_per_hour": "Standaard 60; 0 betekent geen uurlimiet (afgeraden), anders 1–120. Maand- en detailverzoeken delen de limiet; cloudlimieten en wachttijden bij opnieuw proberen blijven gelden.",
           "auto_history_sync": "Beschikbare historiek van alle eigen voertuigen ontdekken en wijzigingen op de achtergrond synchroniseren.",
-          "history_storage_mib": "32–2048 MiB per account, standaard100. Verlaging bewaart gegevens en kan schrijven pauzeren."
+          "history_storage_mib": "32–2048 MiB per account, standaard100. Verlaging bewaart gegevens en kan schrijven pauzeren.",
+          "control_vehicles": "Kies een of meer voertuigen van dit account. De selectie blijft bewaard als bediening wordt uitgezet."
         }
       },
       "model_vehicle": {
@@ -137,7 +138,8 @@
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
-      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
+      "control_vehicles_required": "Selecteer minstens één voertuig voor bediening op afstand."
     }
   },
   "entity": {

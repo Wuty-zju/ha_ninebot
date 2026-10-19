@@ -66,12 +66,12 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 |---|---|---|
 | Status interval | 120 s; 30–3600 s | Status demand only; battery/travel use separate 600 s periods and profiles 3600 s. These are client policy, not guaranteed cloud freshness. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
-| Ride calendar | On | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
-| Preserve trip details | On for new accounts; existing opt-outs retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |
-| Automatic history sync | On for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
-| History storage limit | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
-| History request budget | 60/account/hour; 1–120 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. |
-| Controls + allowed vehicles | Off / empty | Explicitly permit guarded vehicle commands. History synchronization permissions are separate. |
+| Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
+| Preserve trip details (Beta) | Off for new accounts; existing choices retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |
+| Automatic history sync (Beta) | Off for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
+| History storage limit (Beta) | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
+| History request budget (Beta) | 60/account/hour; 0–120 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. Enter 0 to remove the hourly quota (not recommended); serialization and upstream backoff remain active. |
+| Controls + allowed vehicles | Off / empty | The first settings on the page: enable controls and choose one or more account vehicles in the native multi-select dropdown. Disabling controls retains the selection. History synchronization permissions are separate. |
 | Nominal battery parameters | Off | Optional configured voltage/capacity and rated energy. Retired low-confidence SOC estimators remain removed. |
 | Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 

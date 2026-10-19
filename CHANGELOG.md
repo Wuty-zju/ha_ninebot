@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Make the ride calendar and historical acquisition opt-in for new accounts, retaining existing preferences and labeling history settings as Beta.
+- Move vehicle controls to the top of account options and use a native multi-select dropdown with clear vehicle identification.
+- Replace the hourly history quota slider with an integer input: default 60, or 0 for no hourly quota while retaining serialization and upstream backoff.
+
 ## 2.0.0b100
 
 - Extend vehicle and seat unlock confirmation to fifteen seconds with immediate target updates and bounded status polling.

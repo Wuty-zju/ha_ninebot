@@ -67,6 +67,9 @@ async def test_user_success_no_password_stored(hass, flow_manager):
     assert not list(flow_manager.root.glob(".candidate-*"))
     assert entry.title == "fake-account"
     assert entry.options["enable_coordinates"] is True
+    assert entry.options["enable_calendar"] is False
+    assert entry.options["preserve_history"] is False
+    assert entry.options["auto_history_sync"] is False
 
 
 async def test_account_title_metadata_and_explicit_location_off(hass, flow_manager):
@@ -434,7 +437,10 @@ async def test_password_only_form_and_public_sms_steps_never_send(hass, flow_man
     assert not flow_manager.root.exists()
 
 
-async def test_old_core_features_candidate_has_no_password_or_held_lock(hass, flow_manager):
+@pytest.mark.parametrize("calendar", [False, True])
+async def test_old_core_features_candidate_has_no_password_or_held_lock(
+    hass, flow_manager, calendar
+):
     with patch(
         "custom_components.ninebot.config_flow.post_create_options_supported", return_value=False
     ):
@@ -444,6 +450,7 @@ async def test_old_core_features_candidate_has_no_password_or_held_lock(hass, fl
             data={"account": "fake", "password": "synthetic-secret"},
         )
         assert result["step_id"] == "features"
+        assert result["data_schema"]({})["enable_calendar"] is False
         assert not hass.config_entries.async_entries("ninebot")
         assert not flow_manager._live_transactions
         flow = hass.config_entries.flow.async_get(result["flow_id"])
@@ -451,11 +458,11 @@ async def test_old_core_features_candidate_has_no_password_or_held_lock(hass, fl
         assert [key.schema for key in result["data_schema"].schema][-1] == "debug_mode"
         done = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {"enable_coordinates": False, "enable_calendar": False, "enable_estimation": True},
+            {"enable_coordinates": False, "enable_calendar": calendar, "enable_estimation": True},
         )
     assert done["type"] is FlowResultType.CREATE_ENTRY
     assert done["result"].options["enable_estimation"] is True
-    assert done["result"].options["enable_calendar"] is False
+    assert done["result"].options["enable_calendar"] is calendar
     assert not list(flow_manager.root.glob(".candidate-*"))
 
 
@@ -502,30 +509,84 @@ async def test_native_post_create_hook_chains_options_when_supported(hass, flow_
     assert kind == "options_flow"
     form = hass.config_entries.options.async_get(flow_id)
     assert form["handler"] == result["result"].entry_id
+    form = await hass.config_entries.options.async_configure(flow_id)
+    defaults = form["data_schema"]({})
+    assert defaults["enable_calendar"] is False
+    assert defaults["preserve_history"] is False
+    assert defaults["auto_history_sync"] is False
+    assert defaults["history_requests_per_hour"] == 60
 
 
 async def test_options_single_parameters_entry_debug_last_preserves_old_options(
     hass, entry, flow_manager
 ):
     hass.config_entries.async_update_entry(
-        entry, options={"enable_estimation": True, "enable_coordinates": False, "debug_mode": True}
+        entry,
+        options={
+            "enable_estimation": True,
+            "enable_coordinates": False,
+            "debug_mode": True,
+            "enable_calendar": True,
+            "preserve_history": True,
+            "auto_history_sync": False,
+            "history_requests_per_hour": 0,
+        },
     )
     form = await hass.config_entries.options.async_init(entry.entry_id)
     keys = [key.schema for key in form["data_schema"].schema]
     assert "configure_model" in keys and "enable_estimation" not in keys
+    assert keys[:2] == ["enable_controls", "control_vehicles"]
     assert keys[-1] == "debug_mode"
     await hass.config_entries.options.async_configure(form["flow_id"], {"poll_interval": 120})
     assert entry.options["enable_estimation"] is True
     assert entry.options["enable_coordinates"] is False
     assert entry.options["debug_mode"] is True
+    assert entry.options["enable_calendar"] is True
+    assert entry.options["preserve_history"] is True
+    assert entry.options["auto_history_sync"] is False
+    assert entry.options["history_requests_per_hour"] == 0
 
 
-async def test_history_budget_default_sixty_and_explicit_120(hass, entry, flow_manager):
+@pytest.mark.parametrize("budget", [0, 60, 120])
+async def test_history_budget_default_sixty_and_explicit_120(hass, entry, flow_manager, budget):
     form = await hass.config_entries.options.async_init(entry.entry_id)
     defaults = form["data_schema"]({"poll_interval": 120})
     assert defaults["history_requests_per_hour"] == 60
     result = await hass.config_entries.options.async_configure(
-        form["flow_id"], {"poll_interval": 120, "history_requests_per_hour": 120}
+        form["flow_id"], {"poll_interval": 120, "history_requests_per_hour": budget}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options["history_requests_per_hour"] == 120
+    assert entry.options["history_requests_per_hour"] == budget
+    assert type(entry.options["history_requests_per_hour"]) is int
+
+
+@pytest.mark.parametrize("value", [True, False, -1, 121, 1.5, "NaN", "Infinity", None])
+def test_budget_input_rejects_non_integer_or_invalid_values(value):
+    from custom_components.ninebot.config_flow import HistoryBudgetSelector, vol
+
+    with pytest.raises(vol.Invalid):
+        HistoryBudgetSelector()(value)
+
+
+async def test_controls_require_selection_and_use_native_dropdown(hass, entry, flow_manager):
+    # A retained selection must survive temporary vehicle discovery failure.
+    hass.config_entries.async_update_entry(
+        entry, options={"enable_controls": False, "control_vehicles": ["synthetic-vehicle"]}
+    )
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    selectors = {key.schema: value for key, value in form["data_schema"].schema.items()}
+    assert selectors["control_vehicles"].config["mode"] == "dropdown"
+    assert selectors["control_vehicles"].config["multiple"] is True
+    assert selectors["history_requests_per_hour"].config["mode"] == "box"
+    invalid = await hass.config_entries.options.async_configure(
+        form["flow_id"], {"enable_controls": True, "control_vehicles": []}
+    )
+    assert invalid["errors"] == {"control_vehicles": "control_vehicles_required"}
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {"enable_controls": True, "control_vehicles": ["synthetic-vehicle"]}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["control_vehicles"] == ["synthetic-vehicle"]
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    await hass.config_entries.options.async_configure(form["flow_id"], {"enable_controls": False})
+    assert entry.options["control_vehicles"] == ["synthetic-vehicle"]

@@ -49,7 +49,7 @@
         "data": {
           "enable_estimation": "ضبط المعلمات الاسمية",
           "enable_coordinates": "إظهار موقع المركبة",
-          "enable_calendar": "الرحلات",
+          "enable_calendar": "الرحلات (Beta)",
           "debug_mode": "وضع التصحيح"
         },
         "data_description": {
@@ -94,16 +94,16 @@
         "title": "الخيارات",
         "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
-          "poll_interval": "فاصل التحديث (ثوانٍ)",
-          "enable_coordinates": "إظهار موقع المركبة",
           "enable_controls": "تفعيل التحكم",
           "control_vehicles": "المركبات المسموح بها",
+          "poll_interval": "فاصل التحديث (ثوانٍ)",
+          "enable_coordinates": "إظهار موقع المركبة",
           "configure_model": "ضبط المعلمات الاسمية",
-          "enable_calendar": "الرحلات",
-          "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "History requests per account per hour",
-          "auto_history_sync": "Automatically scan trip history",
-          "history_storage_mib": "حد تخزين السجل (MiB)",
+          "enable_calendar": "الرحلات (Beta)",
+          "preserve_history": "Automatically sync trip details (Beta)",
+          "history_requests_per_hour": "History requests per account per hour (Beta)",
+          "auto_history_sync": "Automatically scan trip history (Beta)",
+          "history_storage_mib": "حد تخزين السجل (MiB) (Beta)",
           "debug_mode": "وضع التصحيح"
         },
         "data_description": {
@@ -112,9 +112,10 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
+          "history_requests_per_hour": "الافتراضي 60؛ القيمة 0 تلغي الحد بالساعة (غير مستحسن)، أو أدخل عددًا صحيحًا من 1 إلى 120. تتشارك طلبات الأشهر والتفاصيل هذا الحد؛ تبقى قيود السحابة وفترات انتظار إعادة المحاولة سارية.",
           "auto_history_sync": "اكتشاف السجل المتاح لكل المركبات المملوكة للحساب ثم مزامنة التغييرات في الخلفية.",
-          "history_storage_mib": "32–2048 MiB لكل حساب، الافتراضي100. تقليل الحد يحفظ السجلات وقد يوقف الكتابة مؤقتًا."
+          "history_storage_mib": "32–2048 MiB لكل حساب، الافتراضي100. تقليل الحد يحفظ السجلات وقد يوقف الكتابة مؤقتًا.",
+          "control_vehicles": "اختر مركبة أو أكثر من هذا الحساب. إيقاف التحكم يحتفظ بالاختيار."
         }
       },
       "model_vehicle": {
@@ -137,7 +138,8 @@
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
-      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
+      "control_vehicles_required": "اختر مركبة واحدة على الأقل للتحكم عن بُعد."
     }
   },
   "entity": {

@@ -797,3 +797,48 @@ async def test_account_budget_120_reserves_thirty_second_slots_across_restart(tm
         )
     finally:
         await reopened.async_close()
+
+
+async def test_zero_budget_bypasses_old_hourly_deadline_but_keeps_claim_retry(tmp_path):
+    path = tmp_path / "unlimited.sqlite3"
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        assert await archive.async_background_budget(SN, NOW, 1, guard=lambda: True)
+        first = await archive.async_preservation_claim(SN, NOW, 0, guard=lambda: True)
+        assert first is not None
+        second = await archive.async_preservation_claim(SN, NOW, 0, guard=lambda: True)
+        assert second is not None and second.ride.ride_id != first.ride.ride_id
+        assert await archive.async_preservation_claim(SN, NOW, 0, guard=lambda: True) is None
+    finally:
+        await archive.async_close()
+    restarted = RideArchive(path, OWNER)
+    await restarted.async_open()
+    try:
+        assert await restarted.async_background_budget(SN, NOW, 0, guard=lambda: True)
+        assert await restarted.async_background_budget(SN, NOW, 0, guard=lambda: True)
+        assert await restarted.async_background_budget(SN, NOW, 60, guard=lambda: True)
+        assert not await restarted.async_background_budget(SN, NOW, 60, guard=lambda: True)
+        with pytest.raises(ArchiveError):
+            await restarted.async_background_budget(SN, NOW, 0, guard=lambda: False)
+    finally:
+        await restarted.async_close()
+
+
+@pytest.mark.parametrize(("budget", "seconds"), [(0, 1), (60, 60), (120, 30)])
+def test_worker_scheduler_remains_bounded_with_zero_budget(budget, seconds):
+    from types import SimpleNamespace
+
+    from custom_components.ninebot.preservation import HistoryPreservation
+
+    coordinator = SimpleNamespace(
+        config_entry=SimpleNamespace(
+            options={"preserve_history": True, "history_requests_per_hour": budget}
+        ),
+        hass=object(),
+    )
+    worker = HistoryPreservation(coordinator)
+    with patch("custom_components.ninebot.preservation.async_track_time_interval") as track:
+        worker.start()
+    assert track.call_args.args[2] == timedelta(seconds=seconds)

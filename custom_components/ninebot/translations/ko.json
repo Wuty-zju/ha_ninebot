@@ -49,7 +49,7 @@
         "data": {
           "enable_estimation": "정격 매개변수 설정",
           "enable_coordinates": "차량 위치 표시",
-          "enable_calendar": "주행 기록",
+          "enable_calendar": "주행 기록 (Beta)",
           "debug_mode": "디버그 모드"
         },
         "data_description": {
@@ -94,16 +94,16 @@
         "title": "옵션",
         "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
-          "poll_interval": "상태 갱신 간격(초)",
-          "enable_coordinates": "차량 위치 표시",
           "enable_controls": "차량 제어 활성화",
           "control_vehicles": "제어 허용 차량",
+          "poll_interval": "상태 갱신 간격(초)",
+          "enable_coordinates": "차량 위치 표시",
           "configure_model": "정격 매개변수 설정",
-          "enable_calendar": "주행 기록",
-          "preserve_history": "Automatically sync trip details",
-          "history_requests_per_hour": "History requests per account per hour",
-          "auto_history_sync": "Automatically scan trip history",
-          "history_storage_mib": "기록 저장 한도 (MiB)",
+          "enable_calendar": "주행 기록 (Beta)",
+          "preserve_history": "Automatically sync trip details (Beta)",
+          "history_requests_per_hour": "History requests per account per hour (Beta)",
+          "auto_history_sync": "Automatically scan trip history (Beta)",
+          "history_storage_mib": "기록 저장 한도 (MiB) (Beta)",
           "debug_mode": "디버그 모드"
         },
         "data_description": {
@@ -112,9 +112,10 @@
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
-          "history_requests_per_hour": "Range 1–120, default 60. Month and detail queries share this account limit.",
+          "history_requests_per_hour": "기본값 60. 0은 시간당 제한 없음(권장하지 않음), 그 외에는 1–120의 정수입니다. 월별 조회와 상세 조회가 공유하며 클라우드 제한과 재시도 대기는 유지됩니다.",
           "auto_history_sync": "계정의 모든 소유 차량에서 제공되는 기록을 찾은 후 변경분을 백그라운드로 동기화합니다.",
-          "history_storage_mib": "계정당32–2048 MiB, 기본100. 한도를 낮춰도 저장된 기록은 삭제하지 않으며 쓰기가 중지될 수 있습니다."
+          "history_storage_mib": "계정당32–2048 MiB, 기본100. 한도를 낮춰도 저장된 기록은 삭제하지 않으며 쓰기가 중지될 수 있습니다.",
+          "control_vehicles": "이 계정에서 차량을 하나 이상 선택하세요. 제어를 꺼도 선택은 유지됩니다."
         }
       },
       "model_vehicle": {
@@ -137,7 +138,8 @@
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
-      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
+      "control_vehicles_required": "원격 제어할 차량을 하나 이상 선택하세요."
     }
   },
   "entity": {

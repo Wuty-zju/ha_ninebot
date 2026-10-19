@@ -49,7 +49,7 @@
         "data": {
           "enable_estimation": "设置电池额定参数",
           "enable_coordinates": "显示车辆位置",
-          "enable_calendar": "启用行程日历",
+          "enable_calendar": "启用行程日历（Beta）",
           "debug_mode": "调试模式"
         },
         "data_description": {
@@ -94,16 +94,16 @@
         "title": "选项",
         "description": "设置车辆功能与历史同步，按需开启远程控制。额定参数是电池规格，不代表实测容量。",
         "data": {
-          "poll_interval": "状态轮询间隔（秒）",
-          "enable_coordinates": "显示车辆位置",
           "enable_controls": "启用车辆控制",
           "control_vehicles": "允许控制的车辆",
+          "poll_interval": "状态轮询间隔（秒）",
+          "enable_coordinates": "显示车辆位置",
           "configure_model": "设置电池额定参数",
-          "enable_calendar": "启用行程日历",
-          "preserve_history": "自动同步历史详情",
-          "history_requests_per_hour": "每账号每小时历史请求限额",
-          "auto_history_sync": "自动扫描历史行程",
-          "history_storage_mib": "历史存储额度（MiB）",
+          "enable_calendar": "启用行程日历（Beta）",
+          "preserve_history": "自动同步历史详情（Beta）",
+          "history_requests_per_hour": "每账号每小时历史请求限额（Beta）",
+          "auto_history_sync": "自动扫描历史行程（Beta）",
+          "history_storage_mib": "历史存储额度（MiB）（Beta）",
           "debug_mode": "调试模式"
         },
         "data_description": {
@@ -112,9 +112,10 @@
           "enable_coordinates": "在地图和区域中使用车辆位置。",
           "enable_calendar": "开关每辆车的本地行程日历。关闭不删除历史记录；重新开启沿用原实体。浏览日历不会请求云端。",
           "preserve_history": "将可获取的行程详情与轨迹保存到本地，首次扫描后按需增量补全。",
-          "history_requests_per_hour": "范围1–120，默认60；月份与详情共享账号限额。",
+          "history_requests_per_hour": "默认60；输入0为不限制每小时请求数（不推荐），或填写1–120的整数。月份与详情共享此限额；云端限流与错误退避仍然生效。",
           "auto_history_sync": "为账号内所有归属车辆发现可得历史，随后后台增量同步。",
-          "history_storage_mib": "每账号32–2048 MiB，默认100。降低额度不删除已存记录，超额时暂停写入。"
+          "history_storage_mib": "每账号32–2048 MiB，默认100。降低额度不删除已存记录，超额时暂停写入。",
+          "control_vehicles": "从此账号选择一辆或多辆允许远程控制的车辆。关闭控制会保留选择。"
         }
       },
       "model_vehicle": {
@@ -137,7 +138,8 @@
     },
     "error": {
       "model_unavailable": "请选择当前集成账户下可用的车辆设备。",
-      "model_storage_invalid": "电池参数存储不可写，请先处理修复提示。"
+      "model_storage_invalid": "电池参数存储不可写，请先处理修复提示。",
+      "control_vehicles_required": "请选择至少一辆允许控制的车辆。"
     }
   },
   "entity": {
