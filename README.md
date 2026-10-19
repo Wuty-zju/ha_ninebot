@@ -81,7 +81,7 @@ Each account owns its session, credentials directory and archive. Entry titles u
 | Ride calendar (Beta) | Off for new accounts | Local rides on a native HA calendar. |
 | Background detail preservation (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
 | Automatic history sync (Beta) | Off for new accounts | Initial discovery and subsequent incremental work. |
-| Controls and vehicle allowlist | New accounts: on / sign-in-verified vehicles | Explicitly enable commands for selected vehicles. |
+| Controls and vehicle allowlist | New accounts: on / sign-in-verified vehicles | Adjust command access for selected vehicles; existing choices are retained. |
 | Debug mode | Off | Bounded parsed current information for investigation. |
 
 Existing explicit choices are retained on upgrade. Further options include polling intervals, nominal battery parameters, request budget and archive quota. [Defaults and ranges →](docs/guide.md#options)
