@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.storage import Store
 
 from custom_components.ninebot import adapters
 from custom_components.ninebot.models import VehicleProfile, VehicleSnapshot
@@ -12,6 +13,8 @@ from custom_components.ninebot.sensor import SENSORS, NinebotSensor, last_timed_
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 FIXTURES = Path(__file__).parent / "fixtures/ninecli/0.1.7"
+REAL_WRITE = Store._async_write_data
+REAL_LOAD = Store._async_load
 KEYS = {
     "last_ride_duration",
     "last_ride_max_speed",
@@ -20,8 +23,13 @@ KEYS = {
 
 
 async def test_last_ride_native_values_classes_visible_defaults_and_state_size(
-    hass, entry, app_client, freezer
+    hass, entry, app_client, freezer, monkeypatch
 ):
+    # Event cursor acknowledgement intentionally requires a real on-disk write.
+    # HA's default Store write mock makes the event unavailable after baseline.
+    # Use real atomic I/O only inside this disposable test configuration.
+    monkeypatch.setattr(Store, "_async_write_data", REAL_WRITE)
+    monkeypatch.setattr(Store, "_async_load", REAL_LOAD)
     freezer.move_to(datetime(2026, 9, 26, tzinfo=UTC))
     month = json.loads((FIXTURES / "travel-nonempty.json").read_text())
     app_client.async_get_travel.return_value = month
@@ -66,6 +74,7 @@ async def test_last_ride_native_values_classes_visible_defaults_and_state_size(
     co.async_set_updated_data(dict(co.data))
     await hass.async_block_till_done()
     event = hass.states.get(registry.async_get_entity_id("event", "ninebot", "SyntheticSN_ride"))
+    assert entry.runtime_data.events.available
     assert event.attributes["latest_start_time"] == "2026-09-25T08:00:00+00:00"
     assert event.attributes["latest_end_time"] == "2026-09-25T08:01:23+00:00"
     for key in KEYS:
