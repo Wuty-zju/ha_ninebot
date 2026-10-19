@@ -2,6 +2,8 @@ name: Account configuration
 on:
   pull_request:
     paths:
+      - 'custom_components/ninebot/daily_sync.py'
+      - 'tests/test_daily_sync.py'
       - 'custom_components/ninebot/coordinator.py'
       - 'custom_components/ninebot/lock.py'
       - 'custom_components/ninebot/control_polling.py'

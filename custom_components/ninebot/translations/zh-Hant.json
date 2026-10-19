@@ -177,7 +177,7 @@
         "name": "本月: 距離"
       },
       "last_mileage": {
-        "name": "最近行程距離"
+        "name": "最近里程"
       },
       "month_energy_raw": {
         "name": "本月: 能耗"
@@ -207,7 +207,7 @@
         "name": "上次行程: 最高速度"
       },
       "last_ride_average_speed": {
-        "name": "上次行程: 平均速度"
+        "name": "最近行程平均速度"
       },
       "control_availability": {
         "name": "車輛控制狀態",
@@ -460,7 +460,7 @@
         "name": "本月平均能耗"
       },
       "last_energy_intensity": {
-        "name": "最近行程平均能耗"
+        "name": "最近平均能耗"
       },
       "emergency_battery": {
         "name": "應急通訊電池電量"

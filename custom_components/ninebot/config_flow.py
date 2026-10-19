@@ -218,6 +218,9 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         title=title,
                         data=data,
                         options={
+                            CONF_CONTROLS: True,
+                            CONF_CONTROL_VEHICLES: list(candidate.vehicles),
+                            CONF_POLL_INTERVAL: DEFAULT_POLL_INTERVAL,
                             CONF_PRESERVE: False,
                             CONF_AUTO_HISTORY: False,
                             CONF_CALENDAR: bool(user_input.get(CONF_CALENDAR, False)),
@@ -672,7 +675,9 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
         errors = {}
         if user_input is not None:
             try:
-                runtime.models.configure(sn, user_input)
+                runtime.models.configure(
+                    sn, {key: user_input.get(key) for key in ("voltage", "capacity")}
+                )
             except ValueError:
                 errors["base"] = "model_storage_invalid"
             else:
@@ -682,7 +687,7 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
         schema = {}
         for key, maximum, unit in (("voltage", 300, "V"), ("capacity", 500, "Ah")):
             value = getattr(model, key)
-            field = vol.Required(key) if value is None else vol.Required(key, default=value)
+            field = vol.Optional(key) if value is None else vol.Optional(key, default=value)
             schema[field] = parameter_validator(maximum, unit)
         return self.async_show_form(
             step_id="model_parameters", data_schema=vol.Schema(schema), errors=errors
@@ -721,7 +726,9 @@ class RatedParameterSelector(NumberSelector):
             )
         )
 
-    def __call__(self, value: Any) -> float:
+    def __call__(self, value: Any) -> float | None:
+        if value is None or value == "":
+            return None
         result = number(value, 1, self._maximum)
         if result is None:
             raise vol.Invalid("Model parameter outside supported range")

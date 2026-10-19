@@ -63,7 +63,7 @@ class ModelStorage:
             self.models[sn] = BatteryParameters()
         return self.models[sn]
 
-    def configure(self, sn: str, values: dict[str, float]) -> None:
+    def configure(self, sn: str, values: dict[str, float | None]) -> None:
         """Validate the entire batch before changing or scheduling anything."""
         if not self._writable:
             raise ValueError("Parameter storage is not writable")
@@ -71,7 +71,10 @@ class ModelStorage:
         fields = old.dump()
         for key, value in values.items():
             maximum = {"voltage": 300, "capacity": 500}.get(key)
-            if maximum is None or (valid := number(value, 1, maximum)) is None:
+            if maximum is None:
+                raise ValueError("Invalid battery parameter")
+            valid = None if value is None else number(value, 1, maximum)
+            if value is not None and valid is None:
                 raise ValueError("Invalid battery parameter")
             fields[key] = valid
         updated = BatteryParameters(**fields)

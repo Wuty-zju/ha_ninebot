@@ -128,7 +128,7 @@
       },
       "model_parameters": {
         "title": "Nominal battery parameters",
-        "description": "Enter rated voltage and capacity. Changes update the same entity; these are not measured capacity or battery health.",
+        "description": "Leave voltage or capacity empty until known. Enter rated specifications; rated energy requires both values and is not measured capacity or battery health.",
         "data": {
           "voltage": "Nominal voltage (V)",
           "capacity": "Rated capacity (Ah)"
@@ -177,7 +177,7 @@
         "name": "Current month distance"
       },
       "last_mileage": {
-        "name": "Last ride distance"
+        "name": "Latest distance"
       },
       "month_energy_raw": {
         "name": "Current month ride energy"
@@ -207,7 +207,7 @@
         "name": "Last ride maximum speed"
       },
       "last_ride_average_speed": {
-        "name": "Last ride average speed"
+        "name": "Latest trip average speed"
       },
       "control_availability": {
         "name": "Vehicle control status",
@@ -460,7 +460,7 @@
         "name": "Monthly average consumption"
       },
       "last_energy_intensity": {
-        "name": "Latest trip average consumption"
+        "name": "Latest average consumption"
       },
       "emergency_battery": {
         "name": "Emergency communication battery"

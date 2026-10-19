@@ -66,6 +66,9 @@ async def test_user_success_no_password_stored(hass, flow_manager):
     assert session_uid(flow_manager.path(entry.data["session_key"])) == "synthetic-business"
     assert not list(flow_manager.root.glob(".candidate-*"))
     assert entry.title == "fake-account"
+    assert entry.options["enable_controls"] is True
+    assert entry.options["control_vehicles"] == []
+    assert entry.options["poll_interval"] == 60
     assert entry.options["enable_coordinates"] is True
     assert entry.options["enable_calendar"] is False
     assert entry.options["preserve_history"] is False
@@ -592,3 +595,38 @@ async def test_controls_require_selection_and_use_native_dropdown(hass, entry, f
     form = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(form["flow_id"], {"enable_controls": False})
     assert entry.options["control_vehicles"] == ["synthetic-vehicle"]
+
+
+async def test_new_account_controls_select_verified_vehicles_once(hass, flow_manager):
+    from dataclasses import replace
+
+    prepare = flow_manager.async_prepare.side_effect
+
+    async def discovered(account, password):
+        return replace(await prepare(account, password), vehicles=("SyntheticA", "SyntheticB"))
+
+    flow_manager.async_prepare.side_effect = discovered
+    result = await hass.config_entries.flow.async_init(
+        "ninebot",
+        context={"source": SOURCE_USER},
+        data={"account": "fake", "password": "synthetic"},
+    )
+    result = await finish_onboarding(hass, result)
+    stored = result["result"]
+    assert stored.options["enable_controls"] is True
+    assert stored.options["control_vehicles"] == ["SyntheticA", "SyntheticB"]
+    assert stored.options["poll_interval"] == 60
+    hass.config_entries.async_update_entry(
+        stored,
+        options={
+            **stored.options,
+            "enable_controls": False,
+            "control_vehicles": ["SyntheticB"],
+            "poll_interval": 180,
+        },
+    )
+    form = await hass.config_entries.options.async_init(stored.entry_id)
+    defaults = form["data_schema"]({})
+    assert defaults["enable_controls"] is False
+    assert defaults["control_vehicles"] == ["SyntheticB"]
+    assert defaults["poll_interval"] == 180

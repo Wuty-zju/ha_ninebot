@@ -64,7 +64,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 
 | Option | Default / range | Effect |
 |---|---|---|
-| Status interval | 120 s; 30–3600 s | Status demand only; battery/travel use separate 600 s periods and profiles 3600 s. These are client policy, not guaranteed cloud freshness. |
+| Status interval | 60 s; 30–3600 s | Status demand only; battery/travel use separate 600 s periods and profiles 3600 s. These are client policy, not guaranteed cloud freshness. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
@@ -72,8 +72,8 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Automatic history sync (Beta) | Off for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
 | History storage limit (Beta) | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
 | History request budget (Beta) | 60/account/hour; 0–120 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. Enter 0 to remove the hourly quota (not recommended); serialization and upstream backoff remain active. |
-| Controls + allowed vehicles | Off / empty | The first settings on the page: enable controls and choose one or more account vehicles in the native multi-select dropdown. Disabling controls retains the selection. History synchronization permissions are separate. |
-| Nominal battery parameters | Off | Optional configured voltage/capacity and rated energy. Retired low-confidence SOC estimators remain removed. |
+| Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
+| Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. Retired low-confidence SOC estimators remain removed. |
 | Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
 Requests are demand-aware, account-budgeted and shared when identical reads are in flight. Status, battery and travel have separate freshness and failure/backoff state. Unload/reload cancels work; a cache read does not become a new measurement.
@@ -82,7 +82,7 @@ Requests are demand-aware, account-budgeted and shared when identical reads are 
 
 Vehicle **unlock** requests remote start; **lock** requests remote stop. The vehicle/cloud decides its motion/P requirements. HA does not disable remote stop by guessing whether the vehicle is moving. Seat unlock opens the compartment; seat locking is manual only. The retained buttons use the same executor as the Lock entities.
 
-Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. A cloud observation is not a physical guarantee; pending/unconfirmed/failed results are kept distinct. A competing command for the same physical vehicle reports busy instead of being queued for later execution.
+Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. A cloud observation is not a physical guarantee; pending/unconfirmed/failed results are kept distinct. A new command can replace the previous confirmation observer; only command transmission is serialized.
 
 After a verified seat unlock, its Lock display remains unlocked for at least five seconds while status queries continue. The `Reported latch state` attribute and vehicle state events retain the actual reported state throughout this display window. After five seconds, the Lock follows the latest valid latch reading. A separate status observation runs about once per second for fifteen seconds, then at 20/30/45/59.9 seconds, ending within sixty seconds. Missed read slots are skipped rather than sent in a burst.
 
@@ -113,3 +113,5 @@ Location display defaults on, and detail preservation can retain precise tracks.
 Optional map tiles contact an external provider only when enabled; see [map privacy](history.md#map-privacy-and-units). Protect backups and local session directories from other users and privileged processes.
 
 Removing an account closes its work and removes only its recognized archive/journal files; unusual files/recovery copies may be retained with a Repair rather than broadly deleted. Keep a complete backup before removal. Do not edit `.storage`, entity registries or a running archive manually. For upgrades/downgrades, follow the [migration guide](migration.md).
+
+Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
