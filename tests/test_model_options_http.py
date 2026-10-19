@@ -128,3 +128,34 @@ async def test_empty_or_wrong_type_vehicle_is_field_scoped_not_an_option_enum(
         assert "not a valid option" not in data["errors"]["model_vehicle"]
     assert entry.runtime_data.models.model("SyntheticSN").nominal is None
     assert entry.options == before_options
+
+
+async def test_optional_rated_parameters_roundtrip_and_clear(hass, entry, app_client, hass_client):
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert await async_setup_component(hass, "config", {})
+    client = await hass_client()
+    for values, expected in (
+        ({}, (None, None)),
+        ({"voltage": 72}, (72, None)),
+        ({"capacity": 38}, (None, 38)),
+        ({}, (None, None)),
+    ):
+        initial = await (
+            await client.post(
+                "/api/config/config_entries/options/flow", json={"handler": entry.entry_id}
+            )
+        ).json()
+        url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
+        await client.post(url, json={"configure_model": True})
+        response = await client.post(url, json={"model_vehicle": "SyntheticSN"})
+        assert response.status == 200
+        fields = (await response.json())["data_schema"]
+        assert all(not item.get("required") for item in fields)
+        response = await client.post(url, json=values)
+        assert response.status == 200
+        assert (await response.json())["type"] == "create_entry"
+        await hass.async_block_till_done()
+        model = entry.runtime_data.models.model("SyntheticSN")
+        assert (model.voltage, model.capacity) == expected
+        assert model.nominal is None
