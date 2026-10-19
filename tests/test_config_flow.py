@@ -83,7 +83,11 @@ async def test_account_title_metadata_and_explicit_location_off(hass, flow_manag
     prepare = flow_manager.async_prepare.side_effect
 
     async def with_display(account, password):
-        return replace(await prepare(account, password), display=AccountDisplay("Rider", "bj"))
+        return replace(
+            await prepare(account, password),
+            display=AccountDisplay("Rider", "bj"),
+            vehicles=("SyntheticSN",),
+        )
 
     flow_manager.async_prepare.side_effect = with_display
     result = await hass.config_entries.flow.async_init(
@@ -100,9 +104,10 @@ async def test_account_title_metadata_and_explicit_location_off(hass, flow_manag
     assert entry.data["account_display"] == {"username": "Rider", "region": "bj"}
     if result.get("next_flow"):
         _, flow_id = result["next_flow"]
-        await hass.config_entries.options.async_configure(
+        configured = await hass.config_entries.options.async_configure(
             flow_id, {"poll_interval": 120, "enable_coordinates": False}
         )
+        assert configured["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["enable_coordinates"] is False
 
 
