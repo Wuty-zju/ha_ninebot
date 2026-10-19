@@ -164,7 +164,7 @@ async def test_pending_stays_observed_and_cross_account_commands_serialize_only_
     other.client.async_get_status_once.return_value = payload(seat=1)
     other_task = asyncio.create_task(other.async_control("SyntheticSN", "buck"))
     try:
-        assert lock.is_unlocking is False and lock.is_locked is True
+        assert lock.is_unlocking is True and lock.is_locked is True
         for _ in range(5):
             await asyncio.sleep(0)
         other.client.async_control.assert_not_awaited()

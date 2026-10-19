@@ -77,6 +77,8 @@ class NinebotRideEvent(NinebotObservedEvent):
         attributes: dict[str, Any] = {
             "observation_status": "event_recorded" if self.state else "waiting_for_new_ride",
             "travel_fresh": self.coordinator.fresh(self.sn, "travel"),
+            "latest_start_time": None,
+            "latest_end_time": None,
             "historical_replay": False,
         }
         statistics = self.coordinator.statistics
@@ -143,6 +145,9 @@ class NinebotRideEvent(NinebotObservedEvent):
             self._reports = RideReportCursor()
             return
         records = snapshot.travel.rides
+        last = snapshot.travel.last_ride
+        if last and last.ride and last.ride.query_month != snapshot.travel.month:
+            records += (last.ride,)
         for kind, ride in self._reports.observe(
             records,
             snapshot.travel_freshness.succeeded_at,

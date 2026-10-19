@@ -59,6 +59,12 @@ async def test_last_ride_native_values_classes_visible_defaults_and_state_size(
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_last_ride_start") is None
+    # This recorded fixture is an incomplete month, not a verified archive
+    # membership proof. Reobserve its mock response after reload.
+    co = entry.runtime_data.coordinator
+    await co._group("SyntheticSN", "travel", force=True)
+    co.async_set_updated_data(dict(co.data))
+    await hass.async_block_till_done()
     event = hass.states.get(registry.async_get_entity_id("event", "ninebot", "SyntheticSN_ride"))
     assert event.attributes["latest_start_time"] == "2026-09-25T08:00:00+00:00"
     assert event.attributes["latest_end_time"] == "2026-09-25T08:01:23+00:00"

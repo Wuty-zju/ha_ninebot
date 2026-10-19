@@ -62,13 +62,19 @@ class NinebotLock(NinebotEntity, LockEntity):
 
     @property
     def is_locking(self) -> bool:
-        # Keep native controls usable. Command progress belongs in attributes;
-        # the actual lock state always comes from a fresh status observation.
-        return False
+        return (
+            self.key == "vehicle_lock"
+            and self.coordinator.pending_lock_action(self.sn, self.key) == "engine/stop"
+            and self.is_locked is not True
+        )
 
     @property
     def is_unlocking(self) -> bool:
-        return False
+        action = "buck" if self.key == "seat_lock" else "engine/start"
+        return (
+            self.coordinator.pending_lock_action(self.sn, self.key) == action
+            and self.is_locked is not False
+        )
 
     async def async_lock(self, **kwargs: object) -> None:
         if self.key == "seat_lock":

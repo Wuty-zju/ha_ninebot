@@ -137,7 +137,8 @@ async def test_visible_default_upgrade_preserves_user_choices_and_diagnostics(
     ]
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert entry.runtime_data.standard_entities_enabled == len(promoted)
+    assert entry.runtime_data.standard_entities_enabled == len(promoted) - 1
+    # Event opt-in gating already restored its integration-disabled row.
 
     def current(item):
         # Naming migration changes entity_id; the registry identity stays fixed.
