@@ -4,10 +4,12 @@
 
 ## Requirements
 
-- Home Assistant **2026.1.0 or newer** and internet access to the Chinese Ninebot App service.
-- A Ninebot account with vehicles visible in the official App. Other service regions are unverified.
+- Home Assistant **2026.1.0 or newer** and internet access to the Ninebot cloud service.
+- A Ninebot account with vehicles visible in the official App.
 - A compatible 64-bit host/container for the pinned runtime dependency. ARMv7/32-bit is unsupported.
 - HACS for the recommended installation. This is a custom integration, not a Supervisor app/add-on or a built-in Core integration.
+
+The current connection has been verified against the Chinese App service; additional service regions require validation.
 
 The current 2.0 release candidate is **v2.0.0rc1**. Back up your Home Assistant configuration and private storage before upgrading.
 

@@ -1,52 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="720" viewBox="0 0 880 720" role="img" aria-labelledby="title desc" xml:lang="en">
-<title id="title">Account archive lifecycle</title>
-<desc id="desc">One account archive across entry removal, upgrades and transfers.</desc>
-<defs>
-  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse">
-    <path d="M0 0 L8 4 L0 8 Z" fill="#64748b"/>
-  </marker>
-</defs>
-<style>
-  text {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans',
-    'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #172b4d}
-  .title {font-size: 27px; font-weight: 700}
-  .label {font-size: 21px; font-weight: 650}
-  .body {font-size: 17px; fill: #475569}
-  .foot {font-size: 16px; fill: #475569}
-  .page {fill: #f8fafc; stroke: #dbe4ef}
-  .card {fill: #fff; stroke: #cbd5e1; stroke-width: 1.5}
-  .blue {fill: #eff6ff; stroke: #93c5fd}
-  .green {fill: #f0fdfa; stroke: #5eead4}
-  .purple {fill: #faf5ff; stroke: #d8b4fe}
-  .line {fill: none; stroke: #64748b; stroke-width: 2; marker-end: url(#arrow)}
-</style>
-<rect class="page" x="1" y="1" width="878" height="718" rx="20"/>
-<text class="title" x="36" y="48">Account archive lifecycle</text>
-<rect class="card blue" x="40" y="85" width="380" height="105" rx="12"/>
-<text class="label" x="60" y="117">Authenticated account</text>
-<text class="body" x="60" y="145">Stable account identity · multiple vehicles</text>
-<text class="body" x="60" y="169">Reconnect after removal and sign-in</text>
-<rect class="card blue" x="460" y="85" width="380" height="105" rx="12"/>
-<text class="label" x="480" y="117">Legacy and imported sources</text>
-<text class="body" x="480" y="145">Isolated upgrade · owner/hash/link checks</text>
-<text class="body" x="480" y="169">Merge, then remove verified source copies</text>
-<path class="line" d="M 230 190 V 220 H 330 V 250"/>
-<path class="line" d="M 650 190 V 220 H 550 V 250"/>
-<rect class="card green" x="40" y="260" width="800" height="110" rx="12"/>
-<text class="label" x="60" y="292">One private SQLite database per account</text>
-<text class="body" x="60" y="320">Rides · latest details · best geometry · compressed evidence · checkpoints</text>
-<text class="body" x="60" y="344">Serialized database worker · transactions · capacity limit · local verification</text>
-<path class="line" d="M 230 370 V 415"/>
-<path class="line" d="M 650 370 V 415"/>
-<rect class="card purple" x="40" y="425" width="380" height="105" rx="12"/>
-<text class="label" x="60" y="457">Remove an account</text>
-<text class="body" x="60" y="485">Retain by default; reuse on same-account login</text>
-<text class="body" x="60" y="509">Opt out to delete managed account history</text>
-<rect class="card purple" x="460" y="425" width="380" height="105" rx="12"/>
-<text class="label" x="480" y="457">Export and restore</text>
-<text class="body" x="480" y="485">Consistent snapshots by account/vehicle</text>
-<text class="body" x="480" y="509">ZIP + SHA256 manifest · validated merge</text>
-<text class="foot" x="40" y="590">Failed sources stay for review. Saved records have no age-based expiry.</text>
-<text class="foot" x="40" y="624">Account archives, sign-in sessions and HA Recorder have separate lifecycles.</text>
-<text class="foot" x="40" y="658">Back up HA before upgrading; use exports for migration between installations.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="728" viewBox="0 0 960 728" role="img" aria-labelledby="title desc" xml:lang="en">
+<title id="title">One account, one durable archive</title>
+<desc id="desc">Stable account identity · validated consolidation · portable snapshots</desc>
+<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
+<rect width="960" height="728" rx="16" fill="#ffffff"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#182536">One account, one durable archive</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#475569">Stable account identity · validated consolidation · portable snapshots</text>
+<rect x="40" y="112" width="428" height="162" rx="12" fill="#edf5ff" stroke="#cbd5e1"/>
+<text x="64" y="137" font-size="12" font-weight="700" fill="#245da8">01 / A</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#182536">Authenticated account</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#475569">Stable identity and multiple vehicles</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#475569">Reconnect after account re-addition</text>
+<rect x="492" y="112" width="428" height="162" rx="12" fill="#edf5ff" stroke="#cbd5e1"/>
+<text x="516" y="137" font-size="12" font-weight="700" fill="#245da8">01 / B</text>
+<text x="516" y="166" font-size="21" font-weight="650" fill="#182536">Legacy or imported sources</text>
+<text x="516" y="197" font-size="17" font-weight="400" fill="#475569">Owner, schema, hash and reference</text>
+<text x="516" y="222" font-size="17" font-weight="400" fill="#475569">checks</text>
+<text x="516" y="247" font-size="17" font-weight="400" fill="#475569">Remove copies after validated merge</text>
+<path d="M254 274 V293 H480 V312" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M476 306 L480 312 L484 306" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M706 274 V293 H480 V312" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M476 306 L480 312 L484 306" fill="none" stroke="#64748b" stroke-width="2"/>
+<rect x="40" y="322" width="880" height="137" rx="12" fill="#edf9f4" stroke="#cbd5e1"/>
+<text x="64" y="347" font-size="12" font-weight="700" fill="#245da8">02</text>
+<text x="64" y="376" font-size="21" font-weight="650" fill="#182536">Private account SQLite database</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#475569">Rides, details, best geometry, source evidence and checkpoints</text>
+<text x="64" y="432" font-size="17" font-weight="400" fill="#475569">Serialized worker, transactions, capacity limits and local audits</text>
+<path d="M480 459 V478 H254 V497" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M250 491 L254 497 L258 491" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M480 459 V478 H706 V497" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M702 491 L706 497 L710 491" fill="none" stroke="#64748b" stroke-width="2"/>
+<rect x="40" y="507" width="428" height="137" rx="12" fill="#f5f1fc" stroke="#cbd5e1"/>
+<text x="64" y="532" font-size="12" font-weight="700" fill="#245da8">03 / A</text>
+<text x="64" y="561" font-size="21" font-weight="650" fill="#182536">Remove and reconnect</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#475569">History retained by default</text>
+<text x="64" y="617" font-size="17" font-weight="400" fill="#475569">Opt out to remove managed history</text>
+<rect x="492" y="507" width="428" height="137" rx="12" fill="#f5f1fc" stroke="#cbd5e1"/>
+<text x="516" y="532" font-size="12" font-weight="700" fill="#245da8">03 / B</text>
+<text x="516" y="561" font-size="21" font-weight="650" fill="#182536">Export and merge</text>
+<text x="516" y="592" font-size="17" font-weight="400" fill="#475569">Choose accounts and vehicles</text>
+<text x="516" y="617" font-size="17" font-weight="400" fill="#475569">Versioned ZIP and SHA256 manifest</text>
+<text x="40" y="685" font-size="16" font-weight="400" fill="#475569">Saved records have no age-based expiry. Account archives, sessions and Recorder remain separate.</text>
 </svg>

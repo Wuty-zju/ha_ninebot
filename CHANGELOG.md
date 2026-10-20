@@ -14,6 +14,8 @@
 - Existing account settings and entity identities are retained. New accounts keep calendar and background historical acquisition off until enabled in account options.
 - The bundled history map and custom cards remain early alpha. Core synchronization, local queries and native entities work independently of that interface.
 
+[2.0 beta-to-RC overview](docs/releases/2.0.md) groups all 107 betas by design stage and delivered capability.
+
 ## 2.0.0b106
 
 - Consolidate managed legacy, retired and imported databases into one account archive. Preserve distinct business originals in schema 7, then remove successfully merged source files and temporary rollback copies.
@@ -386,6 +388,21 @@
 - Restore today/yesterday ride counts, duration and energy when retained local rides reconcile with the latest monthly count and distance, even if one response returns only a partial list. Check energy and duration independently against monthly reports.
 - Keep upstream list coverage, existing entity IDs, source seconds, precision, freshness, account isolation and complete-response omission rules unchanged. No extra polling or automatic historical scan.
 - Add focused cloud regression for accumulated lists, restart, field conflicts, scope, query budgets and existing daily/action/export/calendar boundaries; no production HA changes or live vehicle requests.
+
+## 2.0.0b49
+
+- Remove the deprecated tracker `battery_level` property and use the main-battery SOC sensor for device battery information.
+- Keep the emergency communication battery independent of the main battery.
+
+### Upgrade notes
+
+- Change automations that read the tracker's `battery_level` attribute to use the main-battery SOC sensor.
+
+## 2.0.0b48
+
+- Separate precise range (`precise_estimate_mileage`), estimated range (`estimate_mileage`), and AI range (`ai_estimate_mileage`).
+- Display ranges in km with one decimal place and place AI range in diagnostics.
+- Preserve existing entity identities and user display choices.
 
 ## 2.0.0b47
 

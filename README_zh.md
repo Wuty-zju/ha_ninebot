@@ -14,7 +14,7 @@
 
 查看九号车辆的电量、充电与状态，将骑行记录及精细 GPS 轨迹保存在自己的 Home Assistant 存储中，通过自动化查询历史，并使用原生日历、统计与日常车辆实体。
 
-> **当前推荐候选：[v2.0.0rc1](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc1)。** 连接中国区九号 App 服务；实时更新需要互联网，已保存行程可在本地查询。地图可视化与自定义卡片为早期 alpha。
+> **当前推荐候选：[v2.0.0rc1](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc1)。** 实时更新需要互联网，已保存行程可在本地查询。地图可视化与自定义卡片为早期 alpha。
 
 ## 可以做什么
 
@@ -36,7 +36,7 @@
 ### 环境要求
 
 - **Home Assistant 2026.1.0+**，以及兼容运行依赖的 **64 位**主机或容器。
-- 在**中国区九号 App 服务**中可以看到车辆的九号账号。
+- 在官方 App 中可以看到车辆的九号账号。
 - 登录、实时更新及云端历史采集所需的互联网访问。
 - 推荐使用 HACS，也支持手动安装。
 
@@ -148,7 +148,7 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 | **HA 接入** | 原生传感器、锁、定位、图片、日历和事件，响应型操作及聚合统计。 |
 | **维护** | 诊断、Repairs、迁移记录、备份协调及有界本地校验/重建。 |
 
-重构还加入了车辆发现快速恢复、状态即时更新、跨天统计保留，以及删除并重新添加账号后的历史库复用。电池配置规格与实测值分别表达。[迁移详情 →](docs/migration_zh.md) · [版本历史 →](CHANGELOG.md)
+重构还加入了车辆发现快速恢复、状态即时更新、跨天统计保留，以及删除并重新添加账号后的历史库复用。电池配置规格与实测值分别表达。[迁移详情 →](docs/migration_zh.md) · [2.0 开发回顾 →](docs/releases/2.0.md#简体中文) · [版本历史 →](CHANGELOG.md)
 
 ## 本地行程数据库
 
@@ -165,7 +165,10 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 | **升级清理** | 校验后整合旧库，成功合并的副本自动清理；不同来源证据保留在主库内。 |
 | **容量管理** | 达到账号额度时暂停写入，已有记录仍可使用，用户可提高上限。 |
 
-![账号历史独立于条目保留，支持经校验的导出、导入和整合](docs/assets/architecture/archive-zh.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/archive-zh-dark.svg">
+  <img src="docs/assets/architecture/archive-zh.svg" alt="账号历史独立于条目保留，支持经校验的导出、导入和整合" width="960">
+</picture>
 
 **保留本地历史行程信息数据库（Beta）**默认开启，决定移除账号时的处理。管理员可在账号**配置**中导出／导入；下载链接十分钟失效，文件名区分 UTC 时间、账号／车辆数与导出范围。
 
@@ -175,7 +178,10 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 
 ### 实时状态与历史采用独立生命周期
 
-![账号隔离的云端适配分别供给实时 HA 实体和私有历史档案](docs/assets/architecture/overview-zh.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/overview-zh-dark.svg">
+  <img src="docs/assets/architecture/overview-zh.svg" alt="账号隔离的云端适配分别供给实时 HA 实体和私有历史档案" width="960">
+</picture>
 
 各账号管理自己的会话和资源。共享调度器协调多车云端读取：当前状态按数据组刷新，历史分批在后台推进，来源依据与规范化数值保持可区分。
 
@@ -183,7 +189,10 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 
 ### 历史按需采集，随后本地复用
 
-![月份分页校验后增量采集详情并事务保存至 SQLite，本地操作、日历和聚合统计从档案读取](docs/assets/architecture/history-zh.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/history-zh-dark.svg">
+  <img src="docs/assets/architecture/history-zh.svg" alt="月份分页校验后增量采集详情并事务保存至 SQLite，本地操作、日历和聚合统计从档案读取" width="960">
+</picture>
 
 月份发现、身份、详情下载和本地校验分别保存断点。稳定详情会被复用，较新标量与最佳已知几何独立保存。SQLite 操作由账号拥有的串行执行器在 HA 事件循环之外处理。
 
@@ -191,7 +200,10 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 
 ### 控制通过新状态确认
 
-![控制启用及车辆许可后只发送一次指令，再以有界短时状态查询更新实体](docs/assets/architecture/controls-zh.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/controls-zh-dark.svg">
+  <img src="docs/assets/architecture/controls-zh.svg" alt="控制启用及车辆许可后只发送一次指令，再以有界短时状态查询更新实体" width="960">
+</picture>
 
 锁与按钮共用执行器。车辆上锁/解锁映射为远程关闭/开启，执行条件由车辆和云端判断。HA 随后短时查询状态，不直接假定目标已达成。座桶支持远程打开，上锁仍需手动完成。
 

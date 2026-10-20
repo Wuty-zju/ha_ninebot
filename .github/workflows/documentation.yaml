@@ -44,6 +44,9 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
-      - run: python -m unittest discover -s scripts/tests -p 'test_docs.py'
-      - run: python scripts/check_docs.py
-      - run: python scripts/render_architecture.py --check
+      - name: Check documentation contracts and theme contrast
+        run: python -m unittest discover -s scripts/tests -p 'test_docs.py'
+      - name: Check public links, language outlines and assets
+        run: python scripts/check_docs.py
+      - name: Verify reproducible bilingual light/dark diagrams
+        run: python scripts/render_architecture.py --check

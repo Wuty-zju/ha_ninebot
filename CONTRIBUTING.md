@@ -11,7 +11,7 @@ Thank you for improving Ninebot for Home Assistant. Start with a focused problem
 3. Preserve entity identity, account isolation, privacy, exact dependency pins and bounded asynchronous behavior.
 4. Update the relevant guide and both primary language pages when user behavior changes. Keep runtime resources inside the integration directory.
 5. Run the smallest meaningful offline checks from the [validation table](docs/development.md#select-the-smallest-meaningful-checks). Include the relevant check results.
-6. Open a PR describing the problem, resulting behavior, compatibility/identity effects and evidence. Do not create a new permanent report per PR for a prose-only change.
+6. Open a PR describing the problem, resulting behavior, compatibility/identity effects and evidence. Maintain the existing topic guide; add a separate document when it serves a distinct, lasting purpose.
 
 ## Branch targets and releases
 
@@ -21,7 +21,7 @@ Thank you for improving Ninebot for Home Assistant. Start with a focused problem
 - Promote an accepted development cycle to `main` with a normal merge, then synchronize `main` back into `dev`. Do not squash the long-lived branches. A stable hotfix must not merge unrelated next-cycle development; use a minimal fix or a traced backport.
 - Only create a temporary `release/<version>` when candidate stabilization and next-cycle development truly overlap. Promote the frozen branch, not the advancing `dev`.
 
-Feature PRs do not each require a release. Publish useful preview increments from `dev` (or a frozen release branch); publish accepted stable versions or promoted RCs from `main`. Keep old tags/Releases immutable, preserve meaningful IDs/data, and do not delete active branches or worktrees. Branch cleanup needs verified integration and recovery evidence.
+Feature PRs do not each require a release. Publish useful preview increments from `dev` (or a frozen release branch); publish accepted stable versions or promoted RCs from `main`. Published tags and package assets stay fixed; release descriptions can be corrected with a recorded audit. Preserve meaningful IDs/data and active branches/worktrees. Branch cleanup needs verified integration and recovery evidence.
 
 简体中文：普通开发从dev开短分支并PR回dev；main用于验收提升／修复，推荐RC可经明确选择发布为Release／Latest。长期分支正常merge，稳定补丁不夹带下一轮功能；按完整成果发预览版，保留旧tag/Release。发布前参考[预检与门槛](docs/development.md#branch-and-release-channels)。
 
@@ -29,7 +29,7 @@ Feature PRs do not each require a release. Publish useful preview increments fro
 
 English is the maintenance source; README, setup/history/migration guides have corresponding Simplified Chinese pages. Architecture/development have Chinese summaries. Keep meaning, units, defaults and limits aligned; a matching outline alone is not a translation review.
 
-Use repository-relative links and stable section anchors. Preserve or bridge existing public links when reorganizing. Synthetic examples must be labeled; review screenshots and diagnostics before sharing. Do not publish private captures, credentials, real vehicle/account identifiers or precise trails.
+Use repository-relative links and stable section anchors. Architecture images use paired light/dark SVGs selected with `<picture>`; keep labels readable in both themes. Preserve or bridge existing public links when reorganizing. Synthetic examples must be labeled; review screenshots and diagnostics before sharing. Do not publish private captures, credentials, real vehicle/account identifiers or precise trails.
 
 ```sh
 python3 scripts/check_docs.py

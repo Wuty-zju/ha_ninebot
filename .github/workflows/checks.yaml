@@ -17,6 +17,7 @@ concurrency:
 jobs:
   lint:
     name: Core lint
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -34,6 +35,7 @@ jobs:
         run: node --test tests/frontend/*.mjs
   release-policy:
     name: Release policy
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6

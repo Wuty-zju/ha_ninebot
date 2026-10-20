@@ -14,7 +14,7 @@ English · [简体中文](README_zh.md)
 
 Monitor your Ninebot's battery, charging and vehicle status. Keep ride records and detailed GPS tracks in your own Home Assistant storage, query them from automations, and use native calendars and statistics alongside everyday vehicle entities.
 
-> **Current release candidate: [v2.0.0rc1](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc1).** Connects to the Chinese Ninebot App service. Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
+> **Current release candidate: [v2.0.0rc1](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc1).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
 
 ## What you can do
 
@@ -36,11 +36,11 @@ Available fields vary by vehicle and cloud reports. Battery health score is a sc
 ### Requirements
 
 - **Home Assistant 2026.1.0+** and a compatible **64-bit** host/container for the runtime dependency.
-- A Ninebot account with vehicles visible in the **Chinese Ninebot App service**.
+- A Ninebot account with vehicles visible in the official app.
 - Internet access for login, live updates and cloud history acquisition.
 - HACS for the recommended installation; manual installation is also supported.
 
-ARMv7/32-bit platforms are unsupported. [Platform and region details →](docs/guide.md#requirements)
+ARMv7/32-bit platforms are unsupported. [Requirements and platform details →](docs/guide.md#requirements)
 
 ### HACS — recommended
 
@@ -148,7 +148,7 @@ Local-only query modes read the archive without cloud acquisition. Large lists a
 | **HA integration** | Native sensors, locks, tracker, images, calendars and events; response Actions and aggregate statistics. |
 | **Maintenance** | Diagnostics, Repairs, migration journals, backup coordination and bounded local verification/reconstruction. |
 
-The refactor also adds prompt discovery recovery, immediate status updates, stable day-boundary statistics and account-owned history that survives removing and re-adding an account. Configured battery specifications remain separate from measured values. [Migration details →](docs/migration.md) · [Release history →](CHANGELOG.md)
+The refactor also adds prompt discovery recovery, immediate status updates, stable day-boundary statistics and account-owned history that survives removing and re-adding an account. Configured battery specifications remain separate from measured values. [Migration details →](docs/migration.md) · [2.0 development overview →](docs/releases/2.0.md) · [Release history →](CHANGELOG.md)
 
 ## Your local ride database
 
@@ -165,7 +165,10 @@ Each authenticated account has **one private SQLite database**, shared by its ve
 | **Upgrade cleanup** | Verified legacy databases are consolidated; successfully merged copies are removed. Distinct source evidence stays in the main archive. |
 | **Capacity control** | The account quota pauses writes when full. Existing records remain available, and the user can raise the limit. |
 
-![Account history survives entry removal and supports validated export, import and consolidation](docs/assets/architecture/archive-en.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/archive-en-dark.svg">
+  <img src="docs/assets/architecture/archive-en.svg" alt="Account history survives entry removal and supports validated export, import and consolidation" width="960">
+</picture>
 
 The default **Keep local trip history database (Beta)** option controls removal behavior. Export/import is available from account **Configure** and requires an administrator. Download links expire after ten minutes; filenames identify UTC time, account/vehicle counts and the selected scope.
 
@@ -175,7 +178,10 @@ Back up Home Assistant before a major upgrade. A first upgrade with several olde
 
 ### Live state and history have separate lifecycles
 
-![Account-isolated cloud adapter feeding realtime HA entities and a private history archive](docs/assets/architecture/overview-en.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/overview-en-dark.svg">
+  <img src="docs/assets/architecture/overview-en.svg" alt="Account-isolated cloud adapter feeding realtime HA entities and a private history archive" width="960">
+</picture>
 
 Each account owns its session/resources. A shared scheduler coordinates cloud reads across vehicles: current state refreshes by data group, while history advances in background steps. Source evidence and normalized values remain distinguishable.
 
@@ -183,7 +189,10 @@ Typical schedules are **60 s for status**, **600 s for battery/travel** and **36
 
 ### History is acquired once, then reused locally
 
-![Validated month pages feed incremental details and SQLite; local Actions, calendars and aggregate imports read the archive](docs/assets/architecture/history-en.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/history-en-dark.svg">
+  <img src="docs/assets/architecture/history-en.svg" alt="Validated month pages feed incremental details and SQLite; local Actions, calendars and aggregate imports read the archive" width="960">
+</picture>
 
 Month discovery, identity, detail download and local verification have independent checkpoints. Stable details are reused; newer scalar values and the best known geometry are kept separately. An account-owned serialized worker performs SQLite operations outside HA's event loop.
 
@@ -191,7 +200,10 @@ Current summaries use HA's state machine. Full trails and business evidence stay
 
 ### Controls confirm state through fresh observations
 
-![Enabled, allowlisted commands are sent once, followed by bounded status checks](docs/assets/architecture/controls-en.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/controls-en-dark.svg">
+  <img src="docs/assets/architecture/controls-en.svg" alt="Enabled, allowlisted commands are sent once, followed by bounded status checks" width="960">
+</picture>
 
 Locks and buttons share the executor. Vehicle lock/unlock maps to remote stop/start; vehicle/cloud operating rules apply. HA follows with short-term status reads rather than assuming the target state. Seat unlock is remote; seat locking is manual.
 

@@ -16,6 +16,7 @@ PAIRS = (
     ("docs/migration.md", "docs/migration_zh.md"),
 )
 TARGET = re.compile(r"\]\((<[^>\n]+>|[^)\n]+)\)")
+SRCSET = re.compile(r"\bsrcset=[\"']([^\"']+)[\"']")
 ATTRIBUTE = re.compile(r"(?:href|src)=[\"']([^\"']+)[\"']")
 
 
@@ -58,6 +59,12 @@ def references(text: str) -> list[str]:
     text = prose(text)
     values = [m[1].strip() for m in TARGET.finditer(text)]
     values += ATTRIBUTE.findall(text)
+    values += [
+        candidate.strip().split()[0]
+        for group in SRCSET.findall(text)
+        for candidate in group.split(",")
+        if candidate.strip()
+    ]
     values += re.findall(r"^\s*\[[^\]]+\]:\s*(\S+)", text, re.M)
     return [
         value[1:-1] if value.startswith("<") and value.endswith(">") else value for value in values

@@ -4,7 +4,10 @@
 
 This is a Home Assistant integration with a cloud adapter and a private historical archive. Current-state entities, large historical queries and control acknowledgements have separate responsibilities. The runtime is entirely inside `custom_components/ninebot`; docs/tests/scripts are not runtime dependencies.
 
-![Account-isolated realtime and historical data flow](assets/architecture/overview-en.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/overview-en-dark.svg">
+  <img src="assets/architecture/overview-en.svg" alt="Account-isolated realtime and historical data flow" width="960">
+</picture>
 
 Arrows describe data relationships, not upstream push. The frontend's local archive notification is not a Ninebot cloud subscription. See [user options](guide.md#options) for current periods and budgets.
 
@@ -47,7 +50,10 @@ Read [fixture provenance](../tests/fixtures/ninecli/0.1.7/metadata.json) before 
 
 ## Historical acquisition
 
-![Month discovery, incremental details, transactional storage and local consumption](assets/architecture/history-en.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/history-en-dark.svg">
+  <img src="assets/architecture/history-en.svg" alt="Month discovery, incremental details, transactional storage and local consumption" width="960">
+</picture>
 
 First discovery, new/current month work, sparse repair, detail preservation and local auditing share a resumable lifecycle rather than a poll per entity. `bootstrap.py`, `history_plan.py`, `incremental_runs.py`, `gap_recovery.py`, `preservation.py` and `history_store.py` persist checkpoints, ID/page membership, budgets and retry state. Real page bodies, receipts, totals and unique IDs are separate from normalized display projections.
 
@@ -116,7 +122,10 @@ Imports replay reviewed vehicle/month/ride/membership/detail facts in a single a
 
 Native options forms use HA file upload, administrator authorization and expiring signed downloads. Account/vehicle selection defines transfer scope. Full archive/transfer content remains outside entity attributes, Recorder and diagnostics. See [usage and limits](guide.md#export-and-import-history-databases).
 
-![Account archive identity, validated consolidation and portable transfers](assets/architecture/archive-en.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/archive-en-dark.svg">
+  <img src="assets/architecture/archive-en.svg" alt="Account archive identity, validated consolidation and portable transfers" width="960">
+</picture>
 
 Successful startup consolidation removes verified inactive legacy entry, retired, import and schema copies. It checks file identity again before unlinking, shares the backup write barrier and only removes empty directories. A failed/changed source stays available for retry with a Repair; another account or unknown file is never cleanup input. Normal startup without leftovers performs no full-copy maintenance, and no startup VACUUM or new cloud query is introduced. Signed download anchors explicitly leave the frontend router; safe ASCII filenames and manifest scope/time/counts distinguish exports.
 
