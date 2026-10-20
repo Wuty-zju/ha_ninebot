@@ -155,8 +155,8 @@ async def test_cancel_export_drains_filesystem_before_removing_directory(hass, t
     directories = []
     mkdtemp = tempfile.mkdtemp
 
-    def create():
-        directory = Path(mkdtemp(dir=tmp_path))
+    def create(**kwargs):
+        directory = Path(mkdtemp(dir=tmp_path, **kwargs))
         directories.append(directory)
         if phase == "create":
             loop.call_soon_threadsafe(started.set)
