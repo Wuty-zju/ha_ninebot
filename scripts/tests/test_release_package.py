@@ -184,28 +184,31 @@ class PackageAndPublication(unittest.TestCase):
         self.run_publish(apply=True)
         self.assertEqual(len(self.api.writes), count)
 
-    def test_stable_publication_sets_latest_after_assets_are_verified(self):
-        manifest = self.repo / "custom_components/ninebot/manifest.json"
-        manifest.write_text(json.dumps({"domain": "ninebot", "version": "2.0.0"}))
-        self.git("add", ".")
-        self.commit()
-        self.git("update-ref", "refs/remotes/origin/main", self.sha)
-        self.api = FakeGitHub(self.sha)
-        report = publish(
-            self.api,
-            self.repo,
-            self.output,
-            "stable",
-            "2.0.0",
-            "main",
-            self.sha,
-            "- Package release.",
-            "- 安装包发布。",
-            apply=True,
-        )
-        self.assertEqual(report["status"], "published_verified")
-        self.assertEqual(self.api.latest["id"], report["release_id"])
-        self.assertFalse(self.api.current["prerelease"])
+    def test_stable_and_promoted_rc_set_latest_after_assets_are_verified(self):
+        for channel, version in (("stable", "2.0.0"), ("candidate", "2.0.0rc1")):
+            with self.subTest(channel=channel):
+                manifest = self.repo / "custom_components/ninebot/manifest.json"
+                manifest.write_text(json.dumps({"domain": "ninebot", "version": version}))
+                self.git("add", ".")
+                self.commit()
+                self.git("update-ref", "refs/remotes/origin/main", self.sha)
+                self.api = FakeGitHub(self.sha)
+                report = publish(
+                    self.api,
+                    self.repo,
+                    self.output,
+                    channel,
+                    version,
+                    "main",
+                    self.sha,
+                    "- Package release.",
+                    "- 安装包发布。",
+                    apply=True,
+                )
+                self.assertEqual(report["status"], "published_verified")
+                self.assertEqual(self.api.latest["id"], report["release_id"])
+                self.assertFalse(self.api.current["prerelease"])
+                self.assertEqual(self.api.current["tag_name"], f"v{version}")
 
     def test_successful_publication_with_lost_response_is_read_back_without_replay(self):
         original = self.api.request
@@ -265,6 +268,20 @@ class PackageAndPublication(unittest.TestCase):
                 candidate_gate(self.api, "dev", self.sha)
         self.assertEqual(self.api.writes, [])
 
+    def test_documentation_check_is_required_before_publication(self):
+        original = self.api.request
+
+        def missing_docs(path, **kwargs):
+            result = original(path, **kwargs)
+            if path.startswith("commits/"):
+                result["check_runs"] = [r for r in result["check_runs"] if r["name"] != "docs"]
+            return result
+
+        self.api.request = missing_docs
+        with self.assertRaisesRegex(ValueError, "successful GitHub Actions"):
+            self.run_publish(apply=True)
+        self.assertEqual(self.api.writes, [])
+
     def test_preparation_digest_cannot_change_before_publish(self):
         with self.assertRaisesRegex(ValueError, "preparation job"):
             self.run_publish(apply=True, expected_digest="d" * 64)
@@ -280,6 +297,8 @@ class PackageAndPublication(unittest.TestCase):
         stable = release_body("o/r", "v2.0.0", "stable", catalog, "- Change", "- 更新")
         self.assertIn("v2.0.0b94...v2.0.0b95", preview)
         self.assertIn("v1.2.0...v2.0.0", stable)
+        candidate = release_body("o/r", "v2.0.0rc1", "candidate", catalog, "- Change", "- 更新")
+        self.assertIn("v2.0.0b94...v2.0.0rc1", candidate)
         self.assertIn("<summary>简体中文</summary>", preview)
         for en, zh, upgrade in (
             ("中文", "更新", ""),

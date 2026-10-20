@@ -5,7 +5,7 @@ on:
       channel:
         description: Intended release channel (this workflow never publishes)
         type: choice
-        options: [preview, stable]
+        options: [preview, candidate, stable]
         required: true
       version:
         description: Exact manifest version without v

@@ -12,17 +12,21 @@ SHA = re.compile(r"[0-9a-f]{40}")
 
 
 def validate_request(channel: str, version: str, source: str, sha: str) -> None:
-    """Keep preview/stable roles explicit, including temporary candidate branches."""
+    """Keep preview, promoted RC and stable publication roles explicit."""
     match = VERSION.fullmatch(version)
     if not match or not SHA.fullmatch(sha):
         raise ValueError("Use an exact version without v and a full lowercase commit SHA")
-    if channel not in {"preview", "stable"}:
+    if channel not in {"preview", "candidate", "stable"}:
         raise ValueError("Unknown release channel")
     preview = match.group(4) is not None
-    if (channel == "preview") != preview:
-        raise ValueError("Preview needs a/b/rc; stable must not have a prerelease suffix")
+    if channel == "preview" and not preview:
+        raise ValueError("Preview needs an a/b/rc suffix")
+    if channel == "stable" and preview:
+        raise ValueError("Stable must not have a prerelease suffix")
+    if channel == "candidate" and match.group(5) != "rc":
+        raise ValueError("Candidate publication requires an rc version")
     base_version = ".".join(match.group(i) for i in (1, 2, 3))
-    allowed = {"dev", f"release/{base_version}"} if preview else {"main"}
+    allowed = {"dev", f"release/{base_version}"} if channel == "preview" else {"main"}
     if source not in allowed:
         raise ValueError("Source branch does not match the channel and version")
 
@@ -61,14 +65,14 @@ def check_candidate(repo: Path, channel: str, version: str, source: str, sha: st
         "version": version,
         "tag": f"v{version}",
         "prerelease": channel == "preview",
-        "set_latest": channel == "stable",
+        "set_latest": channel != "preview",
         "scope": "Request preflight only; CI, packaging and publication still need verification",
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--channel", required=True, choices=("preview", "stable"))
+    parser.add_argument("--channel", required=True, choices=("preview", "candidate", "stable"))
     parser.add_argument("--version", required=True)
     parser.add_argument("--source", required=True)
     parser.add_argument("--sha", required=True)

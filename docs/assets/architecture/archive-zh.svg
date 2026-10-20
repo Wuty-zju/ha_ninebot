@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="720" viewBox="0 0 880 720" role="img" aria-labelledby="title desc" xml:lang="zh-Hans">
+<title id="title">账号数据库的生命周期</title>
+<desc id="desc">认证账号拥有唯一主库；旧来源校验合并；条目移除与导出导入分开管理。</desc>
+<defs>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse">
+    <path d="M0 0 L8 4 L0 8 Z" fill="#64748b"/>
+  </marker>
+</defs>
+<style>
+  text {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans',
+    'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #172b4d}
+  .title {font-size: 27px; font-weight: 700}
+  .label {font-size: 21px; font-weight: 650}
+  .body {font-size: 17px; fill: #475569}
+  .foot {font-size: 16px; fill: #475569}
+  .page {fill: #f8fafc; stroke: #dbe4ef}
+  .card {fill: #fff; stroke: #cbd5e1; stroke-width: 1.5}
+  .blue {fill: #eff6ff; stroke: #93c5fd}
+  .green {fill: #f0fdfa; stroke: #5eead4}
+  .purple {fill: #faf5ff; stroke: #d8b4fe}
+  .line {fill: none; stroke: #64748b; stroke-width: 2; marker-end: url(#arrow)}
+</style>
+<rect class="page" x="1" y="1" width="878" height="718" rx="20"/>
+<text class="title" x="36" y="48">账号数据库的生命周期</text>
+<rect class="card blue" x="40" y="85" width="380" height="105" rx="12"/>
+<text class="label" x="60" y="117">账号认证</text>
+<text class="body" x="60" y="145">稳定账号身份 · 多辆车辆</text>
+<text class="body" x="60" y="169">删除重加可接回原档案</text>
+<rect class="card blue" x="460" y="85" width="380" height="105" rx="12"/>
+<text class="label" x="480" y="117">旧库与导入来源</text>
+<text class="body" x="480" y="145">隔离升级 · 归属／摘要／引用校验</text>
+<text class="body" x="480" y="169">去重合并后清理已验证副本</text>
+<path class="line" d="M 230 190 V 220 H 330 V 250"/>
+<path class="line" d="M 650 190 V 220 H 550 V 250"/>
+<rect class="card green" x="40" y="260" width="800" height="110" rx="12"/>
+<text class="label" x="60" y="292">一个账号，一个私有 SQLite 主库</text>
+<text class="body" x="60" y="320">行程与月份 · 最新详情 · 较好轨迹 · 压缩原始证据 · 同步断点</text>
+<text class="body" x="60" y="344">串行数据库执行器 · 事务提交 · 容量限制 · 本地校验</text>
+<path class="line" d="M 230 370 V 415"/>
+<path class="line" d="M 650 370 V 415"/>
+<rect class="card purple" x="40" y="425" width="380" height="105" rx="12"/>
+<text class="label" x="60" y="457">移除账号</text>
+<text class="body" x="60" y="485">默认保留；同账号再次登录复用</text>
+<text class="body" x="60" y="509">取消保留则清理受管历史</text>
+<rect class="card purple" x="460" y="425" width="380" height="105" rx="12"/>
+<text class="label" x="480" y="457">导出与恢复</text>
+<text class="body" x="480" y="485">按账号／车辆选择一致性快照</text>
+<text class="body" x="480" y="509">ZIP + SHA256 清单 · 校验后合并</text>
+<text class="foot" x="40" y="590">失败或未知来源保留待处理；已保存记录无按时间自动过期。</text>
+<text class="foot" x="40" y="624">账号档案、登录会话与 HA Recorder 分别管理。</text>
+<text class="foot" x="40" y="658">升级前备份完整 HA；导出包可用于跨机器迁移。</text>
+</svg>

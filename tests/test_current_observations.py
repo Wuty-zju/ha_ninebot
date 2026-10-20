@@ -9,6 +9,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.ninebot import adapters
+from custom_components.ninebot.debug_entities import DEBUG_SENSOR_KEYS
 from custom_components.ninebot.models import VehicleProfile, VehicleSnapshot
 from custom_components.ninebot.observations import ENTITY_FIELDS, scalar_observations
 from custom_components.ninebot.parsing import display_scalar, integer, raw_scalar
@@ -40,9 +41,9 @@ def test_charging_replay_keeps_empty_estimate_and_conflicting_layered_values():
     descriptions = {d.key: d for d in (*SENSORS, *battery_descriptions(snapshot))}
     for key, expected, unit, device_class, state_class in [
         ("charging_power_raw", 310, "W", "power", "measurement"),
-        ("health_score", 0, None, None, None),
+        ("health_score", "unsupported", None, None, None),
         ("returned_pack_count", 1, None, None, None),
-        ("emergency_battery", 93, "%", "battery", "measurement"),
+        ("emergency_battery", 93, "%", None, "measurement"),
         ("main_battery_type", "lead_acid", None, "enum", None),
     ]:
         d = descriptions[key]
@@ -132,12 +133,16 @@ def test_scalar_types_absent_null_and_privacy_are_preserved_deliberately():
             assert not any(d.key == field.key for d in SENSORS)  # Now a native Lock.
             continue
         d = next(d for d in SENSORS if d.key == field.key)
-        assert d.value(snapshot) is None
-        assert d.attributes(snapshot)["interpretation"] == "not_reported"
+        if field.key == "odometer_raw":
+            assert d.value(snapshot) == "not_reported"
+            assert d.attributes(snapshot)["interpretation"] == "maintainer_display_contract"
+        else:
+            assert d.value(snapshot) is None
+            assert d.attributes(snapshot)["interpretation"] == "not_reported"
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
-async def test_all_current_defaults_enable_without_granting_coordinates_or_controls(
+async def test_standard_entities_enable_without_granting_coordinates_or_controls(
     hass, entry, app_client
 ):
     device = dr.async_get(hass).async_get_or_create(
@@ -159,11 +164,18 @@ async def test_all_current_defaults_enable_without_granting_coordinates_or_contr
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     rows = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert all(row.disabled_by is None and row.hidden_by is None for row in rows)
-    assert registry.async_get(legacy.entity_id).unique_id == legacy.unique_id
-    assert registry.async_get(legacy.entity_id).name == "Personal charging power"
-    assert float(hass.states.get(legacy.entity_id).state) == 310
-    assert hass.states.get(legacy.entity_id).attributes["unit_of_measurement"] == "W"
+    for row in rows:
+        if row.translation_key in DEBUG_SENSOR_KEYS:
+            assert row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+            assert row.hidden_by is er.RegistryEntryHider.INTEGRATION
+        else:
+            assert row.disabled_by is None and row.hidden_by is None
+    legacy_id = registry.async_get_entity_id("sensor", "ninebot", legacy.unique_id)
+    assert legacy_id is not None
+    assert registry.async_get(legacy_id).unique_id == legacy.unique_id
+    assert registry.async_get(legacy_id).name == "Personal charging power"
+    assert float(hass.states.get(legacy_id).state) == 310
+    assert hass.states.get(legacy_id).attributes["unit_of_measurement"] == "W"
     for platform, key in [("sensor", "returned_pack_count"), ("device_tracker", "location")]:
         entity_id = registry.async_get_entity_id(platform, "ninebot", f"SyntheticSN_{key}")
         assert registry.async_get(entity_id).entity_category is None
@@ -186,5 +198,5 @@ async def test_all_current_defaults_enable_without_granting_coordinates_or_contr
         }
     )
     await hass.async_block_till_done()
-    assert float(hass.states.get(legacy.entity_id).state) == 0
+    assert float(hass.states.get(legacy_id).state) == 0
     assert await hass.config_entries.async_unload(entry.entry_id)

@@ -19,7 +19,7 @@ pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 async def open_parameters(hass, entry):
     form = await hass.config_entries.options.async_init(entry.entry_id)
     return await hass.config_entries.options.async_configure(
-        form["flow_id"], {"poll_interval": 120, "enable_estimation": True, "configure_model": True}
+        form["flow_id"], {"poll_interval": 120, "configure_model": True}
     )
 
 

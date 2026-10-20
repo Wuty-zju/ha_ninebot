@@ -1,23 +1,24 @@
 # Security and privacy
 
-This is an independent cloud-connected custom integration. The actively maintained line is the current **2.0 prerelease**; older releases are not promised backported security fixes. There is no guaranteed response SLA or vendor endorsement.
+Ninebot for Home Assistant is an independently maintained cloud integration. The current maintenance line is 2.0.
 
 ## Reporting a concern
 
-**Do not post passwords, tokens, private session files, real vehicle/account identifiers, exact locations or full trails in Issues, Discussions or PRs.** Sanitized diagnostics still need your review. Describe ordinary non-sensitive bugs using the issue form.
+For an ordinary bug, open an Issue with integration/HA versions, reproduction steps and reviewed diagnostics. Remove credentials, account or vehicle identifiers, precise locations and full routes before posting.
 
-GitHub private vulnerability reporting was **not enabled when this page was prepared (2026-10-18)**. If the repository's Security tab now offers **Report a vulnerability**, use that private channel. Otherwise, open a Discussion containing only a request for a private reporting channel, without vulnerability details, logs, personal data or exploit instructions. Wait for a verified private channel before sending details. No unverified contact email or response time is promised.
+If the repository's Security tab offers **Report a vulnerability**, use that private channel. Private vulnerability reporting was disabled when checked on 2026-10-20. Until a private channel is available, open a Discussion asking the maintainer how to contact them privately, leaving the vulnerability details out of the public message.
 
-Do not use a normal public bug report to disclose a credential leak. If your own credentials may have leaked, use the official account/App controls to revoke or replace them; do not attach the leaked files here.
+If account credentials are exposed, revoke or replace them through the official account/App settings.
 
 ## Trust boundaries
 
-- Passwords go in the authenticated local request body, not ConfigEntry or command-line arguments. Local token/config files remain sensitive; same-user/privileged processes can access host data.
-- Account sessions, cloud ownership and local archive permissions remain separate. Controls need explicit opt-in/allowlist and guarded state readback; never use real controls as an unsolicited test.
-- Stored business evidence can contain GPS and unknown safe business fields. Private archives, recovery points, backups and automation response traces require protection even if diagnostics redact coordinates.
-- Online map tiles are optional and disclose the viewed map area to the provider when enabled. No automatic coordinate transformation is applied to unverified CRS data.
-- A fixed native dependency is not a sandbox or a proof of reproducible upstream builds. Read [dependency disclosures](docs/architecture.md#dependencies-and-attribution).
+- Authentication uses a managed local connection. Passwords travel in the authenticated HTTP body; session tokens remain in the private HA configuration directory.
+- Each account has its own session and history archive. Vehicle ownership, control enablement and the selected allowlist are checked before commands. New accounts enable controls for vehicles verified at sign-in; users can change this in options.
+- History archives, exports, backups and automation traces can contain precise routes. Archive export packages are not encrypted; transfer and store them privately.
+- Optional online map tiles disclose the viewed area to the tile provider. Bundled maps keep external tiles off by default.
+- Diagnostics expose reviewed metadata and redact credentials, identity and location. Debug information and arbitrary raw captures require review before sharing.
+- Pinned dependencies and bundled third-party assets are documented in [NOTICE](NOTICE) and the [architecture](docs/architecture.md#dependencies-and-attribution).
 
-For operational precautions, see [privacy/backup](docs/guide.md#privacy-backup-and-removal), [map privacy](docs/history.md#map-privacy-and-units) and [migration/rollback](docs/migration.md).
+For operation and recovery, see [privacy and backup](docs/guide.md#privacy-backup-and-removal), [map privacy](docs/history.md#map-privacy-and-units) and [migration](docs/migration.md).
 
-简体中文：不要公开凭据、私人会话、车辆身份或轨迹。当前私密漏洞通道开启状态需在 Security 页确认；若没有，仅用 Discussion 请求私密联系渠道，不附敏感细节。2.0 预发布为维护线，无响应时限承诺；私有历史/备份/trace 仍需保护。
+简体中文：普通问题可附已检查的诊断；凭据、账号／车辆身份和精确轨迹应从公开内容中移除。漏洞细节通过私密通道反馈；若尚无通道，先公开请求私密联系方式。历史库、导出包、备份和自动化 trace 均需妥善保管，导出包未加密。

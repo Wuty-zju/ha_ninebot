@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.0rc1
+
+- Prepare the first 2.0 release candidate, carrying forward the account-owned schema 7 archive, validated history transfer, incremental synchronization and connection-recovery fixes from the beta series.
+- Expand the English and Chinese installation, history, database and migration guides. Document account removal/reconnection, scoped export/import, capacity management and first-upgrade consolidation.
+- Refresh the architecture diagrams and contributor navigation, including the account archive lifecycle and current lock-confirmation timing.
+- Add an explicit promoted-candidate publication channel: RC versions from main can be published as a regular Release and Latest.
+- Update the full CI boundary to Home Assistant 2026.1.0 and 2026.10.2, verify dependency consistency, retain test/coverage reports and require documentation validation before publication. Refresh legacy test expectations and establish a measured 91% coverage floor.
+
+### Upgrade notes
+
+- Back up the full Home Assistant configuration before upgrading from 1.x or an earlier beta. Legacy history databases are validated and consolidated into schema 7; successfully merged copies are removed. The first upgrade can take a few minutes.
+- Existing account settings and entity identities are retained. New accounts keep calendar and background historical acquisition off until enabled in account options.
+- The bundled history map and custom cards remain early alpha. Core synchronization, local queries and native entities work independently of that interface.
+
 ## 2.0.0b106
 
 - Consolidate managed legacy, retired and imported databases into one account archive. Preserve distinct business originals in schema 7, then remove successfully merged source files and temporary rollback copies.
