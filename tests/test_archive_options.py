@@ -1,5 +1,9 @@
 """Actual HA options/upload/download API; synthetic archives, no cloud or browser."""
 
+import io
+import json
+import re
+import zipfile
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +15,9 @@ from custom_components.ninebot.archive_options import DOWNLOADS
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
-async def test_native_export_download_upload_and_confirm(hass, entry, app_client, hass_client):
+async def test_native_export_download_upload_and_confirm(
+    hass, entry, app_client, hass_client, hass_client_no_auth
+):
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert await async_setup_component(hass, "config", {})
@@ -33,11 +39,28 @@ async def test_native_export_download_upload_and_confirm(hass, entry, app_client
     form = await response.json()
     assert form["step_id"] == "archive_download", form
     download = form["description_placeholders"]["url"]
-    response = await client.get(download)
+    filename = form["description_placeholders"]["filename"]
+    assert re.fullmatch(
+        r"ninebot-history_\d{8}T\d{12}Z_1accounts_\d+vehicles_[0-9a-f]{12}_[0-9a-f]{12}\.zip",
+        filename,
+    )
+    # A browser navigation has no Authorization header; the signed path must suffice.
+    browser = await hass_client_no_auth()
+    response = await browser.get(download)
     assert response.status == 200
     package = await response.read()
     assert package.startswith(b"PK")
     assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Content-Disposition"] == f'attachment; filename="{filename}"'
+    with zipfile.ZipFile(io.BytesIO(package)) as bundle:
+        manifest = json.loads(bundle.read("manifest.json"))
+        assert manifest["export_id"] in filename
+        assert manifest["scope_id"] in filename
+        assert manifest["created_at"].endswith("+00:00")
+        assert manifest["accounts"][0]["schema"] == 7
+        assert manifest["accounts"][0]["vehicles"]
+    response = await browser.get(download.split("?", 1)[0])
+    assert response.status == 401
     await client.post(url, json={})
     await hass.async_block_till_done()
     response = await client.post(

@@ -147,25 +147,25 @@
       },
       "archive_export": {
         "title": "导出历史数据库",
-        "description": "可选择一个或多个账号下的车辆。导出包含行程、详细轨迹和原始历史证据，不包含登录凭据。",
+        "description": "选择一个或多个账号下的车辆。导出包含行程、轨迹和已保留的业务原始响应，不包含登录凭据。",
         "data": {
           "vehicles": "账号与车辆"
         }
       },
       "archive_download": {
         "title": "下载历史数据库",
-        "description": "[下载归档包]({url})。链接10分钟内有效，仅当前管理员可用。下载后提交完成。"
+        "description": "<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\" download>下載歸檔包</a>\n\n**{filename}**\n\n連結十分鐘內有效，僅目前管理員可用。下載後提交即可。"
       },
       "archive_import": {
         "title": "上传历史数据库",
-        "description": "上传导出的ZIP包或当前格式的单个SQLite数据库（最多100 MiB，ZIP解压后最多512 MiB）。请先登录文件内所有账号。上传后会校验并确认，不会立即写入。",
+        "description": "上传导出的 ZIP 包或支持的早期 SQLite 数据库（不超过100 MiB；ZIP 解压后不超过512 MiB）。请先登录包内账号。副本升级并校验后显示预览，确认后才会合并。",
         "data": {
           "file": "上传数据库包"
         }
       },
       "archive_confirm": {
         "title": "确认合并历史数据库",
-        "description": "选择需要恢复的车辆。按账号事务合并并保留更完整的轨迹，不替换登录状态或运行中的同步任务。每个账号合并前生成恢复快照；已完成账号可安全重试。",
+        "description": "选择要恢复的车辆。每个账号的全部选中来源在同一事务内合并，保留更完整轨迹。校验提交成功后清理临时恢复文件；失败时保留恢复点。已完成账号可安全重试。",
         "data": {
           "vehicles": "需要恢复的车辆",
           "confirm": "确认备份并合并"
@@ -985,6 +985,10 @@
     "ride_archive_object_corrupt": {
       "title": "部分本地行程資料校驗失敗",
       "description": "其他記錄仍可使用。請保留備份並校驗受影響的本地檔案物件，不要刪除檔案。"
+    },
+    "archive_cleanup": {
+      "title": "旧历史文件需要检查",
+      "description": "部分旧历史文件无法校验或仍在使用，已保留，当前账号数据库仍可使用。处理这些文件前请备份 Home Assistant。"
     }
   },
   "services": {

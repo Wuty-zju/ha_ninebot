@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0b106
+
+- Consolidate managed legacy, retired and imported databases into one account archive. Preserve distinct business originals in schema 7, then remove successfully merged source files and temporary rollback copies.
+- Merge every selected source in older export packages, including rides present only in their evidence databases. Preserve better tracks and verified discovery coverage.
+- Fix archive downloads from account options and use UTC timestamps, account/vehicle counts, scope fingerprints and unique export IDs in filenames and manifests.
+- Upgrade supported older SQLite copies before import, retain failed sources for review and keep healthy history available when one source cannot be consolidated.
+
+### Upgrade notes
+
+- Back up Home Assistant before upgrading. Verified legacy database copies are removed after consolidation; failed, foreign or unrecognized sources are retained. Downgrading from schema 7 requires restoring a matching backup.
+
 ## 2.0.0b105
 
 - Retain local ride history by default when removing an account, and reconnect the archive when the same account is added again. An account option allows deletion instead.

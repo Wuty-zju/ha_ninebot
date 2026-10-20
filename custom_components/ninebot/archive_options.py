@@ -1,11 +1,12 @@
 """Native options-flow archive management, with admin-only temporary downloads."""
 
+import hashlib
 import secrets
 import shutil
 import sqlite3
 import tempfile
 import zipfile
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -30,11 +31,11 @@ from homeassistant.helpers.selector import (
 )
 
 from .account_archive import account_lock, owner_key
-from .archive_transfer import pack, readonly, snapshot, unpack_upload, validate
+from .archive_transfer import pack, readonly, unpack_upload, validate
 from .backup import backup_active
 from .compat import validation as vol
 from .const import CONF_BUSINESS_UID, DOMAIN
-from .ride_archive import ArchiveError
+from .ride_archive import ArchiveError, RideArchive
 from .runtime import RuntimeData
 
 DOWNLOADS = f"{DOMAIN}_archive_downloads"
@@ -67,7 +68,9 @@ class ArchiveDownload(HomeAssistantView):
         return web.FileResponse(
             item[1],
             headers={
-                "Content-Disposition": 'attachment; filename="ninebot-history.zip"',
+                "Content-Disposition": f'attachment; filename="{item[1].name}"',
+                "Content-Type": "application/zip",
+                "X-Content-Type-Options": "nosniff",
                 "Cache-Control": "no-store",
                 "Referrer-Policy": "no-referrer",
             },
@@ -139,7 +142,8 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                 directory = Path(await self.hass.async_add_executor_job(tempfile.mkdtemp))
                 try:
                     snapshots = []
-                    evidence: dict[str, list[Path]] = {}
+                    scope: list[str] = []
+                    vehicle_count = 0
                     for owner, entry in accounts.items():
                         vehicles = tuple(
                             value.split(":", 1)[1]
@@ -160,44 +164,39 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                                 else tuple(vehicle_key(sn) for sn in vehicles),
                             )
 
-                        def source_snapshots(
-                            archive: Any = archive,
-                            owner: str = owner,
-                            vehicles: tuple[str, ...] = vehicles,
-                        ) -> list[Path]:
-                            sources = []
-                            from .ride_archive import vehicle_key
+                        def inspect_scope(path: Path = path, owner: str = owner) -> list[str]:
+                            db = readonly(path)
+                            try:
+                                return [
+                                    owner + ":" + row[0]
+                                    for row in db.execute("SELECT vehicle FROM vehicles")
+                                ]
+                            finally:
+                                db.close()
 
-                            for index, original in enumerate(
-                                sorted((archive.path.parent / "imports").glob("*.sqlite3"))
-                            ):
-                                db = readonly(original)
-                                try:
-                                    available = {
-                                        r[0] for r in db.execute("SELECT vehicle FROM vehicles")
-                                    }
-                                    keys = (
-                                        tuple(sorted(available))
-                                        if "*" in vehicles
-                                        else tuple(
-                                            vehicle_key(sn)
-                                            for sn in vehicles
-                                            if vehicle_key(sn) in available
-                                        )
-                                    )
-                                    if not keys:
-                                        continue
-                                    output = directory / f"{owner}-source-{index}.sqlite3"
-                                    snapshot(db, output, keys)
-                                    sources.append(output)
-                                finally:
-                                    db.close()
-                            return sources
-
-                        evidence[owner] = await self.hass.async_add_executor_job(source_snapshots)
+                        selected_scope = await self.hass.async_add_executor_job(inspect_scope)
+                        scope.extend(selected_scope)
+                        vehicle_count += len(selected_scope)
                         snapshots.append((owner, path))
-                    package = directory / "ninebot-history.zip"
-                    await self.hass.async_add_executor_job(pack, package, snapshots, evidence)
+                    created = datetime.now(UTC)
+                    export_id = secrets.token_hex(6)
+                    scope_id = hashlib.sha256(",".join(sorted(scope)).encode()).hexdigest()[:12]
+                    filename = (
+                        f"ninebot-history_{created.strftime('%Y%m%dT%H%M%S%fZ')}_"
+                        f"{len(snapshots)}accounts_{vehicle_count}vehicles_{scope_id}_{export_id}.zip"
+                    )
+                    package = directory / filename
+                    await self.hass.async_add_executor_job(
+                        pack,
+                        package,
+                        snapshots,
+                        None,
+                        {
+                            "created_at": created.isoformat(),
+                            "export_id": export_id,
+                            "scope_id": scope_id,
+                        },
+                    )
                     token = secrets.token_urlsafe(32)
                     register_download(self.hass)
                     self.hass.data[DOWNLOADS][token] = (self._archive_user_id, package)
@@ -213,10 +212,10 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                     url = async_sign_path(self.hass, URL + token, timedelta(minutes=10))
                     return self.async_show_form(
                         step_id="archive_download",
-                        description_placeholders={"url": url},
+                        description_placeholders={"url": url, "filename": filename},
                         data_schema=vol.Schema({}),
                     )
-                except (ArchiveError, OSError, ValueError):
+                except (ArchiveError, OSError, ValueError, sqlite3.Error):
                     await self.hass.async_add_executor_job(shutil.rmtree, directory, True)
                     errors["base"] = "archive_invalid"
         return self.async_show_form(
@@ -264,6 +263,20 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                         return unpack_upload(uploaded, self._archive_directory / "accounts")
 
                 self._archive_sources = await self.hass.async_add_executor_job(staged)
+                for owner, path in self._archive_sources:
+                    if owner not in loaded_accounts(self.hass):
+                        raise ValueError("Sign in to the package account first")
+
+                    def safe_source(path: Path = path) -> None:
+                        db = readonly(path)  # Reject executable schema before any migration.
+                        db.close()
+
+                    await self.hass.async_add_executor_job(safe_source)
+                    candidate = RideArchive(path, owner)
+                    try:
+                        await candidate.async_open()
+                    finally:
+                        await candidate.async_close()
                 return await self.async_step_archive_confirm()
             except (
                 ArchiveError,

@@ -7,13 +7,16 @@ remote job checkpoints and authentication material are never executed/adopted.
 import hashlib
 import json
 import os
+import secrets
 import shutil
 import sqlite3
 import stat
 import time
 import zipfile
 from collections.abc import Iterable
+from contextlib import ExitStack
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -116,6 +119,9 @@ def validate(actor: "RideArchive", db: sqlite3.Connection) -> None:
         "SELECT * FROM month_sources"
     ):
         unpacked(body, digest, stamp(observed), month, backend, endpoint, source=Endpoint.TRAVEL)
+    from .archive_evidence import check as check_evidence
+
+    check_evidence(db, deep=True)
     # Historical page bodies may be content-addressed in the shared payload table.
     for month, digest, body, observed, backend, endpoint in db.execute(
         "SELECT p.month,p.digest,CASE WHEN length(p.body)>0 THEN p.body ELSE "
@@ -177,26 +183,36 @@ def merge(
     vehicles: tuple[str, ...] | None = None,
     evidence_sources: tuple[Path, ...] = (),
 ) -> dict[str, int]:
-    """One account transaction, deterministic replay, no source DDL/checkpoints."""
+    """One transaction for all sources; successful imports leave one account DB."""
+    from .archive_evidence import absorb, prune_duplicates
+    from .payload_inventory import advance
+
+    if len(evidence_sources) > 16:
+        raise ValueError("Too many account sources")
     db = actor._db(write=True)
-    incoming = readonly(source)
-    try:
-        validate(actor, incoming)
-        selected = {r[0] for r in incoming.execute("SELECT vehicle FROM vehicles")}
+    with ExitStack() as stack:
+        sources = []
+        for path in (source, *evidence_sources):
+            if path.resolve() == actor.path.resolve():
+                raise ValueError("Cannot import the live database")
+            incoming = readonly(path)
+            stack.callback(incoming.close)
+            validate(actor, incoming)
+            sources.append(incoming)
+        selected = {
+            r[0] for incoming in sources for r in incoming.execute("SELECT vehicle FROM vehicles")
+        }
         if vehicles is not None:
             if not vehicles or not set(vehicles) <= selected:
                 raise ValueError("Unknown import selection")
             selected = set(vehicles)
-        before = {
-            t: db.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in ("rides", "details")
-        }
+        # v2 also merges old package evidence instead of merely retaining copies.
         receipt = (
             "account_import:"
             + hashlib.sha256(
                 (
-                    digest_file(source)
-                    + ":"
-                    + ":".join(digest_file(p) for p in evidence_sources)
+                    "v2:"
+                    + ":".join(digest_file(p) for p in (source, *evidence_sources))
                     + ":"
                     + ",".join(sorted(selected))
                 ).encode()
@@ -204,205 +220,200 @@ def merge(
         )
         if db.execute("SELECT 1 FROM meta WHERE key=?", (receipt,)).fetchone():
             return {"rides": 0, "details": 0}
-        # Evidence is immutable and separate from live jobs. Validate every file
-        # before any account facts are changed; subset copies exclude other cars.
-        imports = actor.path.parent / "imports"
-        imports.mkdir(mode=0o700, exist_ok=True)
-        for original in (source, *evidence_sources):
-            original_db = readonly(original)
-            try:
-                validate(actor, original_db)
-                available = {r[0] for r in original_db.execute("SELECT vehicle FROM vehicles")}
-                keys = tuple(sorted(selected & available))
-                if not keys:
-                    continue
-                pending_evidence = imports / "pending.sqlite3"
-                pending_evidence.unlink(missing_ok=True)
-                snapshot(original_db, pending_evidence, keys)
-                evidence = imports / (digest_file(pending_evidence) + ".sqlite3")
-                if evidence.exists():
-                    pending_evidence.unlink()
-                    continue
-                if (
-                    sum(p.stat().st_size for p in imports.glob("*.sqlite3"))
-                    + pending_evidence.stat().st_size
-                    > MAX_EXPANDED
-                    or len(list(imports.glob("*.sqlite3"))) > 16
-                ):
-                    pending_evidence.unlink()
-                    raise ValueError("Recovery evidence budget exceeded")
-                os.replace(pending_evidence, evidence)
-            finally:
-                original_db.close()
-        # Keep a consistent rollback image independently of transaction rollback.
-        recovery = actor.path.parent / "recovery.sqlite3"
-        pending = actor.path.parent / "recovery.pending.sqlite3"
-        pending.unlink(missing_ok=True)
-        snapshot(db, pending)
-        os.replace(pending, recovery)
-        with db:
-            for row in incoming.execute("SELECT * FROM vehicles"):
-                if row[0] not in selected:
-                    continue
-                old = db.execute(
-                    "SELECT observed FROM vehicles WHERE vehicle=?", (row[0],)
-                ).fetchone()
-                if old is None:
-                    _insert(db, "vehicles", (row[0], row[1], row[2], 0))
-                elif old[0] < row[2]:
-                    db.execute(
-                        "UPDATE vehicles SET profile=?,observed=? WHERE vehicle=?",
-                        (row[1], row[2], row[0]),
-                    )
-            for row in incoming.execute("SELECT * FROM rides"):
-                if row[0] in selected:
-                    old = actor._ride(row[0], row[1])
-                    candidate = restored_ride(decoded(row[2]))
-                    if old and (
-                        (
-                            old[0].detail_id is not None
-                            and candidate.detail_id is not None
-                            and old[0].detail_id != candidate.detail_id
-                        )
-                        or old[0].query_month != candidate.query_month
-                    ):
-                        raise ValueError("Conflicting ride identity")
-                    if old and old[1] >= row[3]:
-                        candidate = merged_ride(candidate, old[0])
-                        actor._upsert_ride(row[0], candidate, old[1], ordered=True)
-                    else:
-                        actor._upsert_ride(row[0], candidate, row[3])
-            for row in incoming.execute("SELECT * FROM months"):
-                if row[0] not in selected:
-                    continue
-                old = db.execute(
-                    "SELECT observed,revision FROM months WHERE vehicle=? AND month=?", row[:2]
-                ).fetchone()
-                if old is None or old[0] < row[3]:
-                    replacement = (*row[:4], max(row[4], old[1] if old else 0) + 1, *row[5:])
-                    _insert(db, "months", replacement)
-                    db.execute(
-                        "UPDATE membership SET latest=0 WHERE vehicle=? AND month=?", row[:2]
-                    )
-                    ids = actor._ids(row[6])
-                    for ride_id in ids:
-                        db.execute(
-                            "INSERT INTO membership VALUES (?,?,?,1) "
-                            "ON CONFLICT(vehicle,month,ride) "
-                            "DO UPDATE SET latest=1",
-                            (*row[:2], ride_id),
-                        )
-                    db.execute("DELETE FROM month_sources WHERE vehicle=? AND month=?", row[:2])
-                    raw = incoming.execute(
-                        "SELECT * FROM month_sources WHERE vehicle=? AND month=?", row[:2]
-                    ).fetchone()
-                    if raw:
-                        _insert(db, "month_sources", raw)
-            for row in incoming.execute("SELECT vehicle,month,ride,0 FROM membership"):
-                if row[0] in selected:
-                    db.execute("INSERT OR IGNORE INTO membership VALUES (?,?,?,?)", row)
-            for row in incoming.execute("SELECT * FROM details"):
-                vehicle, ride_id, latest_hash, geometry_hash, observed, revision, selection = row
-                if vehicle not in selected:
-                    continue
-                old = actor._private_detail(vehicle, ride_id, 2000)
-                summary = actor._ride(vehicle, ride_id)
-                assert summary is not None
-                payloads = {
-                    r[2]: r
-                    for r in incoming.execute(
-                        "SELECT * FROM detail_payloads WHERE vehicle=? AND ride=?",
-                        (vehicle, ride_id),
-                    )
-                }
-                chosen = scoped_ride(
-                    unpacked(
-                        payloads[geometry_hash][3],
-                        geometry_hash,
-                        stamp(payloads[geometry_hash][4]),
-                        payloads[geometry_hash][5],
-                        payloads[geometry_hash][6],
-                        payloads[geometry_hash][7],
-                    ),
-                    summary[0],
-                    max_points=2000,
-                )
-                if old:
-                    assert old.latest is not None and old.geometry is not None
-                    previous = db.execute(
-                        "SELECT latest_hash,geometry_hash FROM details WHERE vehicle=? AND ride=?",
-                        (vehicle, ride_id),
-                    ).fetchone()
-                    adopt, reason = select_geometry(old.ride, chosen)
-                    if not adopt:
-                        geometry_hash = previous[1]
-                        selection = reason
-                    if old.latest.received_at >= stamp(observed):
-                        latest_hash, observed = (
-                            previous[0],
-                            old.latest.received_at.isoformat(timespec="microseconds"),
-                        )
-                        # archive timestamps use the same UTC ISO representation.
-                        from .ride_archive import utc_string
-
-                        observed = utc_string(old.latest.received_at)
-                for digest in {latest_hash, geometry_hash}:
-                    if digest in payloads:
-                        db.execute(
-                            "INSERT OR IGNORE INTO detail_payloads VALUES (?,?,?,?,?,?,?,?)",
-                            payloads[digest],
-                        )
-                _insert(
-                    db,
-                    "details",
-                    (
-                        vehicle,
-                        ride_id,
-                        latest_hash,
-                        geometry_hash,
-                        observed,
-                        max(revision, old.revision if old else 0) + 1,
-                        selection,
-                    ),
-                )
-                db.execute(
-                    "DELETE FROM detail_payloads WHERE vehicle=? AND ride=? AND hash NOT IN (?,?)",
-                    (vehicle, ride_id, latest_hash, geometry_hash),
-                )
-                from .detail_health import put as put_health
-
-                saved = actor._private_detail(vehicle, ride_id, 1)
-                assert saved is not None and saved.latest_quality is not None
-                assert saved.selected_quality is not None
-                put_health(
-                    db,
-                    vehicle,
-                    ride_id,
-                    latest_hash,
-                    geometry_hash,
-                    saved.latest_quality,
-                    saved.selected_quality,
-                )
-            from .payload_inventory import advance
-
-            for vehicle in selected:
-                adopt_discovery(db, incoming, vehicle)
-                db.execute("DELETE FROM payload_checks WHERE vehicle=?", (vehicle,))
-                advance(db, vehicle)
-            db.execute("INSERT INTO meta VALUES (?,?)", (receipt, "1"))
-            actor._revision(bump=True)
-            actor._check(db)
+        before = {
+            t: db.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in ("rides", "details")
+        }
+        # An interrupted or failed merge keeps its own recovery image. A complete
+        # checked commit removes it; SQLite FULL synchronous journaling stays on.
+        recovery = actor.path.with_name(f"rides.recovery-{secrets.token_hex(16)}.sqlite3")
+        snapshot(db, recovery)
+        try:
+            with db:
+                for incoming in sources:
+                    _merge_rows(actor, incoming, selected)
+                    absorb(db, incoming, selected)
+                prune_duplicates(db)
+                for vehicle in selected:
+                    db.execute("DELETE FROM payload_checks WHERE vehicle=?", (vehicle,))
+                    advance(db, vehicle)
+                db.execute("INSERT INTO meta VALUES (?,?)", (receipt, "1"))
+                actor._revision(bump=True)
+                validate(actor, db)
+        except BaseException:
+            retained = actor.path.parent / "recovery.sqlite3"
+            if not retained.exists():
+                os.replace(recovery, retained)
+            else:
+                recovery.unlink(missing_ok=True)
+            raise
+        recovery.unlink()
         return {
             t: db.execute(f"SELECT count(*) FROM {t}").fetchone()[0] - before[t] for t in before
         }
-    finally:
-        incoming.close()
+
+
+def _merge_rows(actor: "RideArchive", incoming: sqlite3.Connection, selected: set[str]) -> None:
+    db = actor._db(write=True)
+    for row in incoming.execute("SELECT * FROM vehicles"):
+        if row[0] not in selected:
+            continue
+        old = db.execute("SELECT observed FROM vehicles WHERE vehicle=?", (row[0],)).fetchone()
+        if old is None:
+            _insert(db, "vehicles", (row[0], row[1], row[2], 0))
+        elif old[0] < row[2]:
+            db.execute(
+                "UPDATE vehicles SET profile=?,observed=? WHERE vehicle=?",
+                (row[1], row[2], row[0]),
+            )
+    for row in incoming.execute("SELECT * FROM rides"):
+        if row[0] in selected:
+            old = actor._ride(row[0], row[1])
+            candidate = restored_ride(decoded(row[2]))
+            if old and (
+                (
+                    old[0].detail_id is not None
+                    and candidate.detail_id is not None
+                    and old[0].detail_id != candidate.detail_id
+                )
+                or old[0].query_month != candidate.query_month
+            ):
+                raise ValueError("Conflicting ride identity")
+            if old and old[1] >= row[3]:
+                candidate = merged_ride(candidate, old[0])
+                actor._upsert_ride(row[0], candidate, old[1], ordered=True)
+            else:
+                actor._upsert_ride(row[0], candidate, row[3])
+    for row in incoming.execute("SELECT * FROM months"):
+        if row[0] not in selected:
+            continue
+        old = db.execute(
+            "SELECT observed,revision FROM months WHERE vehicle=? AND month=?", row[:2]
+        ).fetchone()
+        if old is None or old[0] < row[3]:
+            replacement = (*row[:4], max(row[4], old[1] if old else 0) + 1, *row[5:])
+            _insert(db, "months", replacement)
+            db.execute("UPDATE membership SET latest=0 WHERE vehicle=? AND month=?", row[:2])
+            ids = actor._ids(row[6])
+            for ride_id in ids:
+                db.execute(
+                    "INSERT INTO membership VALUES (?,?,?,1) "
+                    "ON CONFLICT(vehicle,month,ride) "
+                    "DO UPDATE SET latest=1",
+                    (*row[:2], ride_id),
+                )
+            db.execute(
+                "INSERT OR IGNORE INTO archive_evidence SELECT vehicle,'month',month,"
+                "digest,body,observed,month,backend,endpoint FROM month_sources"
+                " WHERE vehicle=? AND month=?",
+                row[:2],
+            )
+            db.execute("DELETE FROM month_sources WHERE vehicle=? AND month=?", row[:2])
+            raw = incoming.execute(
+                "SELECT * FROM month_sources WHERE vehicle=? AND month=?", row[:2]
+            ).fetchone()
+            if raw:
+                _insert(db, "month_sources", raw)
+    for row in incoming.execute("SELECT vehicle,month,ride,0 FROM membership"):
+        if row[0] in selected:
+            db.execute("INSERT OR IGNORE INTO membership VALUES (?,?,?,?)", row)
+    for row in incoming.execute("SELECT * FROM details"):
+        vehicle, ride_id, latest_hash, geometry_hash, observed, revision, selection = row
+        if vehicle not in selected:
+            continue
+        old = actor._private_detail(vehicle, ride_id, 2000)
+        summary = actor._ride(vehicle, ride_id)
+        assert summary is not None
+        payloads = {
+            r[2]: r
+            for r in incoming.execute(
+                "SELECT * FROM detail_payloads WHERE vehicle=? AND ride=?",
+                (vehicle, ride_id),
+            )
+        }
+        chosen = scoped_ride(
+            unpacked(
+                payloads[geometry_hash][3],
+                geometry_hash,
+                stamp(payloads[geometry_hash][4]),
+                payloads[geometry_hash][5],
+                payloads[geometry_hash][6],
+                payloads[geometry_hash][7],
+            ),
+            summary[0],
+            max_points=2000,
+        )
+        if old:
+            assert old.latest is not None and old.geometry is not None
+            previous = db.execute(
+                "SELECT latest_hash,geometry_hash FROM details WHERE vehicle=? AND ride=?",
+                (vehicle, ride_id),
+            ).fetchone()
+            adopt, reason = select_geometry(old.ride, chosen)
+            if not adopt:
+                geometry_hash = previous[1]
+                selection = reason
+            if old.latest.received_at >= stamp(observed):
+                latest_hash, observed = (
+                    previous[0],
+                    old.latest.received_at.isoformat(timespec="microseconds"),
+                )
+                # archive timestamps use the same UTC ISO representation.
+                from .ride_archive import utc_string
+
+                observed = utc_string(old.latest.received_at)
+        for digest in {latest_hash, geometry_hash}:
+            if digest in payloads:
+                db.execute(
+                    "INSERT OR IGNORE INTO detail_payloads VALUES (?,?,?,?,?,?,?,?)",
+                    payloads[digest],
+                )
+        _insert(
+            db,
+            "details",
+            (
+                vehicle,
+                ride_id,
+                latest_hash,
+                geometry_hash,
+                observed,
+                max(revision, old.revision if old else 0) + 1,
+                selection,
+            ),
+        )
+        db.execute(
+            "INSERT OR IGNORE INTO archive_evidence SELECT vehicle,'detail',ride,hash,body,"
+            "observed,month,backend,endpoint FROM detail_payloads WHERE vehicle=? AND ride=?"
+            " AND hash NOT IN (?,?)",
+            (vehicle, ride_id, latest_hash, geometry_hash),
+        )
+        db.execute(
+            "DELETE FROM detail_payloads WHERE vehicle=? AND ride=? AND hash NOT IN (?,?)",
+            (vehicle, ride_id, latest_hash, geometry_hash),
+        )
+        from .detail_health import put as put_health
+
+        saved = actor._private_detail(vehicle, ride_id, 1)
+        assert saved is not None and saved.latest_quality is not None
+        assert saved.selected_quality is not None
+        put_health(
+            db,
+            vehicle,
+            ride_id,
+            latest_hash,
+            geometry_hash,
+            saved.latest_quality,
+            saved.selected_quality,
+        )
+
+    for vehicle in selected:
+        adopt_discovery(db, incoming, vehicle)
 
 
 def pack(
     target: Path,
     snapshots: Iterable[tuple[str, Path]],
     evidence: dict[str, list[Path]] | None = None,
+    export_metadata: dict[str, str] | None = None,
 ) -> None:
     records = []
     expanded = 0
@@ -415,8 +426,31 @@ def pack(
                 "file": name,
                 "sha256": digest_file(path),
                 "bytes": path.stat().st_size,
+                "schema": None,
+                "vehicles": [],
                 "evidence": [],
             }
+            db = readonly(path)
+            try:
+                record["schema"] = db.execute("PRAGMA user_version").fetchone()[0]
+                record["counts"] = {
+                    t: db.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
+                    for t in ("rides", "details")
+                }
+                record["range"] = dict(
+                    zip(
+                        ("started_at", "ended_at"),
+                        db.execute(
+                            "SELECT min(started),max(coalesce(ended,started)) FROM rides"
+                        ).fetchone(),
+                        strict=True,
+                    )
+                )
+                record["vehicles"] = [
+                    r[0] for r in db.execute("SELECT vehicle FROM vehicles ORDER BY vehicle")
+                ]
+            finally:
+                db.close()
             bundle.write(path, name)
             expanded += path.stat().st_size
             seen_sources: set[str] = set()
@@ -436,7 +470,18 @@ def pack(
             records.append(record)
         if not 1 <= len(records) <= MAX_ACCOUNTS or expanded > MAX_EXPANDED:
             raise ValueError("Package exceeds account or expanded byte budget")
-        bundle.writestr("manifest.json", json.dumps({"format": FORMAT, "accounts": records}))
+        bundle.writestr(
+            "manifest.json",
+            json.dumps(
+                {
+                    "format": FORMAT,
+                    "created_at": datetime.now(UTC).isoformat(timespec="microseconds"),
+                    "export_id": secrets.token_hex(16),
+                    **(export_metadata or {}),
+                    "accounts": records,
+                }
+            ),
+        )
     if target.stat().st_size > MAX_PACKAGE:
         raise ValueError("Package exceeds upload budget; export fewer vehicles")
 

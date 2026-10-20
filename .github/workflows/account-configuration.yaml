@@ -2,6 +2,7 @@ name: Account configuration
 on:
   pull_request:
     paths:
+      - 'custom_components/ninebot/archive_evidence.py'
       - 'custom_components/ninebot/account_archive.py'
       - 'custom_components/ninebot/archive_transfer.py'
       - 'custom_components/ninebot/archive_options.py'
