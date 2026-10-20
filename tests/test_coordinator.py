@@ -329,7 +329,7 @@ async def test_overlapping_normalization_parses_same_content_once(coordinator):
     assert not co._normalizations
 
 
-async def test_late_profile_parser_cannot_remove_newly_confirmed_vehicle(coordinator):
+async def test_overlapping_discovery_shares_parser_and_next_round_confirms_vehicle(coordinator):
     from custom_components.ninebot import adapters
 
     co = coordinator
@@ -352,9 +352,18 @@ async def test_late_profile_parser_cannot_remove_newly_confirmed_vehicle(coordin
             {"wnumber": "synthetic-one"},
             {"wnumber": "synthetic-two"},
         ]
-        await co._list(datetime.now(UTC))
+        newer = asyncio.create_task(co._list(datetime.now(UTC)))
+        await asyncio.sleep(0)
+        # Both observers share the same in-flight discovery/parse. The newly
+        # configured reply belongs to the next real discovery, not this one.
+        assert co.client.async_list_vehicles.await_count == 2
         release.set()
-        await older
+        await asyncio.wait_for(asyncio.gather(older, newer), 2)
+    assert co.local_vehicle_available("synthetic-two")
+    assert co.data["synthetic-two"].profile_freshness.error is ErrorKind.SERVICE
+    co._next_attempt[("", "profile")] = 0
+    await co._list(datetime.now(UTC))
+    assert co.data["synthetic-two"].profile_freshness.error is None
     assert co.data["synthetic-two"].present
     assert co.fresh("synthetic-two", "status")
 
@@ -1478,7 +1487,7 @@ async def test_recovery_timer_updates_status_while_slow_battery_round_is_waiting
     co._normalize = slow_normalize
     co._next_attempt[("synthetic-one", "battery")] = 0
     poll = asyncio.create_task(co._async_update_data())
-    await entered.wait()
+    await asyncio.wait_for(entered.wait(), 2)
     co._next_attempt[("synthetic-one", "status")] = 0
     assert not poll.done()
     co.realtime.running = True
@@ -1510,7 +1519,7 @@ async def test_recovery_is_singleflight_cancellable_and_honors_cooldown(coordina
     co.client.async_get_status.side_effect = status
     co.client.async_get_status.reset_mock()
     co.realtime._wake(None)
-    await entered.wait()
+    await asyncio.wait_for(entered.wait(), 2)
     task = co.realtime.task
     co.realtime._wake(None)
     assert co.realtime.task is task
