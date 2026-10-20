@@ -200,7 +200,9 @@ async def test_cached_profile_never_bypasses_local_session_owner(hass, entry, ap
 
 
 async def test_bad_archive_keeps_original_and_never_overwrites_legacy(hass):
-    path = archive_path(hass, "bad")
+    from custom_components.ninebot.account_archive import account_path
+
+    path = account_path(hass, "owner")
     path.parent.mkdir(parents=True)
     path.write_bytes(b"invalid-sqlite-original")
     store = ArchiveStatistics(hass, "bad", "owner")

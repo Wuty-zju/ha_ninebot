@@ -330,6 +330,22 @@ class RideArchive:
             self._space_checked_at = time.monotonic()
         return self._connection
 
+    async def async_export_archive(
+        self, target: Path, vehicles: tuple[str, ...] | None = None
+    ) -> None:
+        """Consistent private snapshot on the account's existing SQL actor."""
+        from .archive_transfer import snapshot
+
+        await self._run(lambda: snapshot(self._db(), target, vehicles))
+
+    async def async_merge_archive(
+        self, source: Path, vehicles: tuple[str, ...] | None = None
+    ) -> dict[str, int]:
+        """Validate and merge without a second writer or cloud operation."""
+        from .archive_transfer import merge
+
+        return await self._run(lambda: merge(self, source, vehicles))
+
     async def async_prepare_backup(self) -> None:
         """Reject new writes immediately, then drain earlier SQL operations."""
         self.backup_paused = True

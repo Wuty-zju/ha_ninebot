@@ -105,6 +105,8 @@
           "history_requests_per_hour": "History requests per account per hour（Beta）",
           "auto_history_sync": "Automatically scan trip history（Beta）",
           "history_storage_mib": "歷史儲存額度（MiB）（Beta）",
+          "retain_history_database": "保留本地历史行程信息数据库（Beta）",
+          "manage_archive": "导出或导入历史数据库（Beta）",
           "debug_mode": "調試模式"
         },
         "data_description": {
@@ -117,7 +119,9 @@
           "auto_history_sync": "為帳號內所有歸屬車輛發現可得歷史，隨後背景增量同步。",
           "history_storage_mib": "每帳號32–2048 MiB，預設100。降低額度不刪除已存記錄，超額時暫停寫入。",
           "control_vehicles": "從此帳號選擇一輛或多輛允許遠端控制的車輛。關閉控制會保留選擇。",
-          "enable_vehicle_events": "同時開關車輛行程事件与車輛狀態事件；預設開啟。重新開啟不会重放旧記錄。"
+          "enable_vehicle_events": "同時開關車輛行程事件与車輛狀態事件；預設開啟。重新開啟不会重放旧記錄。",
+          "retain_history_database": "删除账号时保留历史及轨迹；重新添加同一账号后自动恢复。取消后，下次删除账号会删除受管归档及恢复副本。",
+          "manage_archive": "选择账号和车辆导出，或上传归档包校验并合并。文件包含私密位置与轨迹，请妥善保管。"
         }
       },
       "model_vehicle": {
@@ -133,15 +137,55 @@
           "voltage": "額定電壓 (V)",
           "capacity": "額定容量 (Ah)"
         }
+      },
+      "archive": {
+        "title": "历史数据库（Beta）",
+        "menu_options": {
+          "archive_export": "导出数据库",
+          "archive_import": "上传并导入数据库"
+        }
+      },
+      "archive_export": {
+        "title": "导出历史数据库",
+        "description": "可选择一个或多个账号下的车辆。导出包含行程、详细轨迹和原始历史证据，不包含登录凭据。",
+        "data": {
+          "vehicles": "账号与车辆"
+        }
+      },
+      "archive_download": {
+        "title": "下载历史数据库",
+        "description": "[下载归档包]({url})。链接10分钟内有效，仅当前管理员可用。下载后提交完成。"
+      },
+      "archive_import": {
+        "title": "上传历史数据库",
+        "description": "上传导出的ZIP包（最多100 MiB，解压后最多512 MiB）。请先登录包内所有账号。上传后会校验并确认，不会立即写入。",
+        "data": {
+          "file": "上传数据库包"
+        }
+      },
+      "archive_confirm": {
+        "title": "确认合并历史数据库",
+        "description": "选择需要恢复的车辆。按账号事务合并并保留更完整的轨迹，不替换登录状态或运行中的同步任务。每个账号合并前生成恢复快照；已完成账号可安全重试。",
+        "data": {
+          "vehicles": "需要恢复的车辆",
+          "confirm": "确认备份并合并"
+        }
+      },
+      "archive_result": {
+        "title": "历史数据库已合并",
+        "description": "新增行程 / 新增详情：\n{result}\n\n本地查询现可使用导入数据；自动同步仍遵循你的配置。"
       }
     },
     "abort": {
-      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters."
+      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
+      "archive_admin_required": "仅Home Assistant管理员可导入或导出历史数据库。"
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
       "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
-      "control_vehicles_required": "請至少選擇一輛允許控制的車輛。"
+      "control_vehicles_required": "請至少選擇一輛允許控制的車輛。",
+      "archive_invalid": "无法完成归档操作。请核对账号、文件格式、完整性、容量与车辆身份。已完成的账号会保留，可安全重试；原始文件不被替换。",
+      "archive_busy": "正在备份，请稍后重试。"
     }
   },
   "entity": {

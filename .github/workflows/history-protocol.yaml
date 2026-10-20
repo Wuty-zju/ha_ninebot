@@ -2,6 +2,11 @@ name: History protocol
 on:
   pull_request:
     paths:
+      - 'custom_components/ninebot/account_archive.py'
+      - 'custom_components/ninebot/archive_transfer.py'
+      - 'custom_components/ninebot/archive_options.py'
+      - 'tests/test_account_archive.py'
+      - 'tests/test_archive_options.py'
       - 'custom_components/ninebot/native_history.py'
       - 'custom_components/ninebot/history_crypto.py'
       - 'custom_components/ninebot/client.py'
@@ -70,7 +75,7 @@ jobs:
           homeassistant==2026.1.0 ninecli==0.1.7 mypy==2.4.0
       - run: mypy custom_components/ninebot --follow-imports=silent
       - run: >-
-          python -m pytest -q tests/test_native_history.py tests/test_backend.py
+          python -m pytest -q tests/test_account_archive.py tests/test_archive_options.py tests/test_archive_runtime.py tests/test_native_history.py tests/test_backend.py
           tests/test_client.py tests/test_native_vehicles.py tests/test_vehicle_cache.py tests/test_session.py tests/test_query_broker.py
           tests/test_archive_audit.py tests/test_month_source.py tests/test_gap_recovery.py tests/test_local_reconstruction.py tests/test_history_plan.py tests/test_history_progress.py
           tests/test_history_entities.py tests/test_history_capacity.py tests/test_translations.py tests/test_demand.py

@@ -105,6 +105,8 @@
           "history_requests_per_hour": "每账号每小时历史请求限额（Beta）",
           "auto_history_sync": "自动扫描历史行程（Beta）",
           "history_storage_mib": "历史存储额度（MiB）（Beta）",
+          "retain_history_database": "保留本地历史行程信息数据库（Beta）",
+          "manage_archive": "导出或导入历史数据库（Beta）",
           "debug_mode": "调试模式"
         },
         "data_description": {
@@ -117,7 +119,9 @@
           "auto_history_sync": "为账号内所有归属车辆发现可得历史，随后后台增量同步。",
           "history_storage_mib": "每账号32–2048 MiB，默认100。降低额度不删除已存记录，超额时暂停写入。",
           "control_vehicles": "从此账号选择一辆或多辆允许远程控制的车辆。关闭控制会保留选择。",
-          "enable_vehicle_events": "同时开关车辆行程事件与车辆状态事件；默认开启。重新开启不会重放旧记录。"
+          "enable_vehicle_events": "同时开关车辆行程事件与车辆状态事件；默认开启。重新开启不会重放旧记录。",
+          "retain_history_database": "删除账号时保留历史及轨迹；重新添加同一账号后自动恢复。取消后，下次删除账号会删除受管归档及恢复副本。",
+          "manage_archive": "选择账号和车辆导出，或上传归档包校验并合并。文件包含私密位置与轨迹，请妥善保管。"
         }
       },
       "model_vehicle": {
@@ -133,15 +137,55 @@
           "voltage": "标称电压（V）",
           "capacity": "额定容量（Ah）"
         }
+      },
+      "archive": {
+        "title": "历史数据库（Beta）",
+        "menu_options": {
+          "archive_export": "导出数据库",
+          "archive_import": "上传并导入数据库"
+        }
+      },
+      "archive_export": {
+        "title": "导出历史数据库",
+        "description": "可选择一个或多个账号下的车辆。导出包含行程、详细轨迹和原始历史证据，不包含登录凭据。",
+        "data": {
+          "vehicles": "账号与车辆"
+        }
+      },
+      "archive_download": {
+        "title": "下载历史数据库",
+        "description": "[下载归档包]({url})。链接10分钟内有效，仅当前管理员可用。下载后提交完成。"
+      },
+      "archive_import": {
+        "title": "上传历史数据库",
+        "description": "上传导出的ZIP包（最多100 MiB，解压后最多512 MiB）。请先登录包内所有账号。上传后会校验并确认，不会立即写入。",
+        "data": {
+          "file": "上传数据库包"
+        }
+      },
+      "archive_confirm": {
+        "title": "确认合并历史数据库",
+        "description": "选择需要恢复的车辆。按账号事务合并并保留更完整的轨迹，不替换登录状态或运行中的同步任务。每个账号合并前生成恢复快照；已完成账号可安全重试。",
+        "data": {
+          "vehicles": "需要恢复的车辆",
+          "confirm": "确认备份并合并"
+        }
+      },
+      "archive_result": {
+        "title": "历史数据库已合并",
+        "description": "新增行程 / 新增详情：\n{result}\n\n本地查询现可使用导入数据；自动同步仍遵循你的配置。"
       }
     },
     "abort": {
-      "model_unavailable": "请先加载集成，再选择当前账户的车辆配置额定参数。"
+      "model_unavailable": "请先加载集成，再选择当前账户的车辆配置额定参数。",
+      "archive_admin_required": "仅Home Assistant管理员可导入或导出历史数据库。"
     },
     "error": {
       "model_unavailable": "请选择当前集成账户下可用的车辆设备。",
       "model_storage_invalid": "电池参数存储不可写，请先处理修复提示。",
-      "control_vehicles_required": "请选择至少一辆允许控制的车辆。"
+      "control_vehicles_required": "请选择至少一辆允许控制的车辆。",
+      "archive_invalid": "无法完成归档操作。请核对账号、文件格式、完整性、容量与车辆身份。已完成的账号会保留，可安全重试；原始文件不被替换。",
+      "archive_busy": "正在备份，请稍后重试。"
     }
   },
   "entity": {

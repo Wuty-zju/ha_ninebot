@@ -2,6 +2,11 @@ name: Account configuration
 on:
   pull_request:
     paths:
+      - 'custom_components/ninebot/account_archive.py'
+      - 'custom_components/ninebot/archive_transfer.py'
+      - 'custom_components/ninebot/archive_options.py'
+      - 'tests/test_account_archive.py'
+      - 'tests/test_archive_options.py'
       - 'tests/test_statistics_continuity.py'
       - 'custom_components/ninebot/daily_sync.py'
       - 'tests/test_daily_sync.py'
@@ -66,7 +71,7 @@ jobs:
       - run: python -m pip install homeassistant==${{ matrix.ha }}
       - run: mypy custom_components/ninebot --follow-imports=silent
       - run: >-
-          python -m pytest -q tests/test_account_display.py tests/test_config_flow.py
+          python -m pytest -q tests/test_account_archive.py tests/test_archive_options.py tests/test_archive_runtime.py tests/test_account_display.py tests/test_config_flow.py
           tests/test_debug_and_model_options.py tests/test_model_options_http.py tests/test_sms_login.py
           tests/test_session.py tests/test_translations.py tests/test_history_entities.py tests/test_calendar_history.py
           tests/test_vehicle_events.py tests/test_ride_presentation.py tests/test_event_pipeline.py tests/test_ride_events.py
