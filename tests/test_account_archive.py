@@ -372,7 +372,7 @@ async def test_restore_verified_discovery_without_restarting_month_scan(tmp_path
 
 
 async def test_deferred_deletion_cannot_erase_readded_account(hass, entry):
-    from custom_components.ninebot.backup import async_pre_backup, async_post_backup
+    from custom_components.ninebot.backup import async_post_backup, async_pre_backup
 
     actor = await populated(account_path(hass, UID))
     await actor.async_close()
