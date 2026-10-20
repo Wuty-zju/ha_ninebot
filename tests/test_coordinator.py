@@ -1539,3 +1539,23 @@ async def test_recovery_backoff_keeps_retry_after_and_does_not_wait_an_hour(coor
         co._retry_after_until[("synthetic-one", "status")] = 400
         co._attempt_finished("synthetic-one", "status", 110, 30, False)
         assert co._next_attempt[("synthetic-one", "status")] == 400
+
+
+async def test_all_status_service_failures_yield_background_until_recovery(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co.client.async_get_status.side_effect = NinebotError(ErrorKind.SERVICE)
+    co.client.async_get_battery.reset_mock()
+    co.client.async_get_travel.reset_mock()
+    for sn in co.data:
+        for group in ("status", "battery", "travel"):
+            co._next_attempt[(sn, group)] = 0
+    await co._async_update_data()
+    assert co.status_recovering() and not co.background_ready()
+    co.client.async_get_battery.assert_not_awaited()
+    co.client.async_get_travel.assert_not_awaited()
+    co.client.async_get_status.side_effect = None
+    for sn in co.data:
+        co._next_attempt[(sn, "status")] = 0
+    await co.async_poll_status()
+    assert not co.status_recovering() and co.background_ready()

@@ -434,7 +434,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             )
         )
         if not success:
-            delay *= random.uniform(0.8, 1.2)
+            delay = min(
+                60 if group in {"profile", "status"} else interval,
+                delay * random.uniform(0.8, 1.2),
+            )
         if success:
             self._retry_after_until.pop(key, None)
         self._next_attempt[key] = max(self._retry_after_until.get(key, 0), stamp + delay)
@@ -1211,8 +1214,20 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             and (sn not in self._suspect or self.fresh(sn, "profile"))
         )
 
+    def status_recovering(self) -> bool:
+        active = [value for value in self.data.values() if value.present]
+        return bool(active) and all(
+            value.status_freshness.error
+            in {ErrorKind.CONNECTION, ErrorKind.PLATFORM, ErrorKind.SERVICE}
+            for value in active
+        )
+
     def background_ready(self) -> bool:
-        return not self.broker.cooling_down and self._list_freshness.error is None
+        return (
+            not self.broker.cooling_down
+            and self._list_freshness.error is None
+            and not self.status_recovering()
+        )
 
     async def async_poll_status(self) -> None:
         sns = [
@@ -1244,7 +1259,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     *(self._group(sn, "status") for sn in window if "status" in demands[sn].groups)
                 )
                 for group in ("battery", "travel"):
-                    if self.broker.cooling_down:
+                    if self.broker.cooling_down or self.status_recovering():
                         break
                     await asyncio.gather(
                         *(
@@ -1682,7 +1697,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         ErrorKind.BUSY,
                     }:
                         break
-                    if self.broker.cooling_down:
+                    if self.broker.cooling_down or self.status_recovering():
                         break
         except NinebotAuthError:
             self._manual_auth_failure()
