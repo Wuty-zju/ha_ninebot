@@ -141,7 +141,7 @@ async def test_legacy_same_owner_merge_and_retire(hass, entry):
         assert len((await restored.async_page(SN)).rides) == 2
         assert await restored.async_private_detail(SN, "ride")
         assert not await hass.async_add_executor_job(legacy.exists)
-        assert (current.path.parent / "retired" / legacy.parent.name / "rides.sqlite3").exists()
+        assert not (current.path.parent / "retired").exists()
     finally:
         await restored.async_close()
     await async_prepare_account(hass, UID, 100 * 1024 * 1024)
@@ -163,7 +163,7 @@ async def test_merge_preserves_best_geometry_and_latest_receipt(tmp_path, older_
         assert saved.latest.received_at == NOW + timedelta(seconds=2 if older_geometry else 3)
         assert await target.async_merge_archive(exported) == {"rides": 0, "details": 0}
         assert (await target.async_private_detail(SN, "ride")).revision == saved.revision
-        assert (target.path.parent / "recovery.sqlite3").is_file()
+        assert not list(target.path.parent.glob("rides.recovery-*.sqlite3"))
     finally:
         await full.async_close()
         await simple.async_close()
@@ -332,7 +332,7 @@ async def test_additional_source_evidence_reexports_with_selected_vehicle(tmp_pa
             sources[0][1], (vehicle_key(SN),), (sources[1][1],)
         )
         assert result["rides"] == 1
-        assert len(list((destination.path.parent / "imports").glob("*.sqlite3"))) == 1
+        assert not (destination.path.parent / "imports").exists()
     finally:
         await actor.async_close()
         await destination.async_close()
@@ -385,3 +385,139 @@ async def test_deferred_deletion_cannot_erase_readded_account(hass, entry):
     replacement.add_to_hass(hass)
     await async_post_backup(hass)
     assert actor.path.is_file()
+
+
+async def test_cleanup_consolidates_b105_layout_and_schema6_only_ride(hass, entry):
+    """A ride present only in an older snapshot must survive automatic cleanup."""
+    canonical = account_path(hass, UID)
+    current = await populated(canonical, identity="current")
+    await current.async_close()
+    paths = [
+        canonical.parent / "imports" / ("a" * 64 + ".sqlite3"),
+        canonical.parent / "retired" / ("b" * 64) / "rides.sqlite3",
+        canonical.parent / "recovery.sqlite3",
+        canonical.with_name("rides.schema6-" + "c" * 64 + ".sqlite3"),
+    ]
+    for index, path in enumerate(paths):
+        actor = await populated(path, identity=f"source-{index}")
+        await actor.async_close()
+        with sqlite3.connect(path) as db:
+            db.execute("DROP TABLE archive_evidence")
+            db.execute("PRAGMA user_version=6")
+    await async_prepare_account(hass, UID, 100 * 1024 * 1024)
+    actor = RideArchive(canonical, owner_key(UID))
+    try:
+        await actor.async_open()
+        assert len((await actor.async_page(SN)).rides) == 5
+        assert list(canonical.parent.rglob("*.sqlite3")) == [canonical]
+    finally:
+        await actor.async_close()
+
+
+async def test_cleanup_failure_keeps_source_and_healthy_account(hass, entry):
+    current = await populated(account_path(hass, UID))
+    await current.async_close()
+    corrupt = current.path.parent / "imports" / ("a" * 64 + ".sqlite3")
+    corrupt.parent.mkdir()
+    corrupt.write_bytes(b"not sqlite")
+    personal = current.path.parent / "personal.sqlite3"
+    personal.write_bytes(b"not managed")
+    await async_prepare_account(hass, UID, 100 * 1024 * 1024)
+    assert corrupt.read_bytes() == b"not sqlite"
+    assert personal.read_bytes() == b"not managed"
+    actor = RideArchive(current.path, owner_key(UID))
+    try:
+        await actor.async_open()
+        assert len((await actor.async_page(SN)).rides) == 1
+    finally:
+        await actor.async_close()
+
+
+async def test_cleanup_retry_after_commit_does_not_duplicate(hass, entry):
+    source = account_path(hass, UID).parent / "retired" / ("a" * 64) / "rides.sqlite3"
+    old = await populated(source)
+    await detail(old)
+    await old.async_close()
+    with patch("custom_components.ninebot.account_archive._discard", side_effect=OSError):
+        await async_prepare_account(hass, UID, 100 * 1024 * 1024)
+    assert source.exists()
+    await async_prepare_account(hass, UID, 100 * 1024 * 1024)
+    assert not source.exists()
+    actor = RideArchive(account_path(hass, UID), owner_key(UID))
+    try:
+        await actor.async_open()
+        assert len((await actor.async_page(SN)).rides) == 1
+        assert (await actor.async_private_detail(SN, "ride")).ride.total_track_points == 3
+    finally:
+        await actor.async_close()
+
+
+async def test_old_package_evidence_is_merged_into_single_database(tmp_path):
+    first = await populated(tmp_path / "first" / "rides.sqlite3", identity="first")
+    second = await populated(tmp_path / "second" / "rides.sqlite3", identity="evidence-only")
+    target = RideArchive(tmp_path / "target" / "rides.sqlite3", owner_key(UID))
+    try:
+        await target.async_open()
+        await first.async_export_archive(tmp_path / "first.sqlite3")
+        await second.async_export_archive(tmp_path / "second.sqlite3")
+        result = await target.async_merge_archive(
+            tmp_path / "first.sqlite3", None, (tmp_path / "second.sqlite3",)
+        )
+        assert result["rides"] == 2
+        assert {r.ride_id for r in (await target.async_page(SN)).rides} == {
+            "first",
+            "evidence-only",
+        }
+        assert list(target.path.parent.glob("*.sqlite3")) == [target.path]
+    finally:
+        await first.async_close()
+        await second.async_close()
+        await target.async_close()
+
+
+async def test_superseded_detail_originals_survive_without_source_databases(tmp_path):
+    target = await populated(tmp_path / "target" / "rides.sqlite3")
+    source = await populated(tmp_path / "source" / "rides.sqlite3")
+    try:
+        await detail(target, at=NOW + timedelta(seconds=1))
+        await detail(source, simple=True, at=NOW + timedelta(seconds=2))
+        first = tmp_path / "first.sqlite3"
+        await source.async_export_archive(first)
+        await target.async_merge_archive(first)
+        await detail(source, at=NOW + timedelta(seconds=3))
+        second = tmp_path / "second.sqlite3"
+        await source.async_export_archive(second)
+        await target.async_merge_archive(second)
+        with sqlite3.connect(target.path) as db:
+            assert (
+                db.execute("SELECT count(*) FROM archive_evidence WHERE kind='detail'").fetchone()[
+                    0
+                ]
+                == 1
+            )
+        exported = tmp_path / "exported.sqlite3"
+        await target.async_export_archive(exported)
+        db = readonly(exported)
+        try:
+            validate(target, db)
+            assert db.execute("SELECT count(*) FROM archive_evidence").fetchone()[0] == 1
+        finally:
+            db.close()
+    finally:
+        await target.async_close()
+        await source.async_close()
+
+
+async def test_running_reconstruction_keeps_its_rollback_point(hass, entry):
+    path = account_path(hass, UID)
+    actor = await populated(path)
+    await detail(actor)
+    job = await actor.async_reconstruction_job(
+        SN, "start", NOW + timedelta(seconds=2), guard=lambda: True
+    )
+    await actor._run(lambda: actor._reconstruction_backup(vehicle_key(SN), job))
+    recovery = path.with_name(f"rides.recovery-{job.job_id}.sqlite3")
+    before = recovery.read_bytes()
+    await actor.async_close()
+    await async_prepare_account(hass, UID, 100 * 1024 * 1024)
+    assert recovery.read_bytes() == before

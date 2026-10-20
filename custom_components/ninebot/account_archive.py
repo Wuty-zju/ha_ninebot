@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -11,16 +12,17 @@ import tempfile
 from pathlib import Path
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 
 from .archive_transfer import readonly, snapshot
-from .backup import backup_active, register_archive, unregister_archive
+from .backup import ACTORS_KEY, backup_active, register_archive, unregister_archive
 from .const import DOMAIN
 from .ride_archive import ArchiveError, ArchiveFailure, RideArchive
 
 CONF_RETAIN_ARCHIVE = "retain_history_database"
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
 _DB = re.compile(
-    r"rides(?:\.schema[1-6]-[0-9a-f]{64}|\.recovery-[0-9a-f]+)?\.sqlite3(?:-(?:journal|wal|shm))?\Z"
+    r"rides(?:\.schema[1-7]-[0-9a-f]{64}|\.recovery-[0-9a-f]+)?\.sqlite3(?:-(?:journal|wal|shm))?\Z"
 )
 
 
@@ -39,19 +41,72 @@ def account_lock(hass: HomeAssistant, uid: str) -> asyncio.Lock:
 
 
 def _sources(hass: HomeAssistant, uid: str) -> list[Path]:
-    root = Path(hass.config.path(".storage", DOMAIN, "archives"))
-    if root.is_symlink() or not root.is_dir():
-        return []
+    """Only managed names/locations; never scan session files or another account."""
+    root = Path(hass.config.path(".storage", DOMAIN))
+    canonical = account_path(hass, uid)
+    candidates: list[Path] = []
+    active_recovery = False
+    if canonical.is_file() and not canonical.is_symlink():
+        try:
+            db = readonly(canonical)
+            try:
+                active_recovery = any(
+                    json.loads(value).get("state") not in {"cancelled", "complete", "with_gaps"}
+                    for (value,) in db.execute(
+                        "SELECT value FROM meta WHERE key LIKE 'local_reconstruction:%'"
+                    )
+                ) or any(
+                    not json.loads(value).get("finished", False)
+                    for (value,) in db.execute(
+                        "SELECT value FROM meta WHERE key LIKE 'payload_search:%'"
+                    )
+                )
+            finally:
+                db.close()
+        except (OSError, ValueError, sqlite3.Error):
+            active_recovery = True
+
+    def files(folder: Path, *, imports: bool = False) -> None:
+        if folder.is_symlink() or not folder.is_dir():
+            return
+        for path in folder.iterdir():
+            if active_recovery and ".recovery-" in path.name:
+                continue  # A running repair owns its rollback point and search interval.
+            known = (
+                bool(re.fullmatch(r"[0-9a-f]{64}\.sqlite3", path.name))
+                if imports
+                else bool(_DB.fullmatch(path.name)) or path.name == "recovery.sqlite3"
+            )
+            if (
+                known
+                and path.suffix == ".sqlite3"
+                and path != canonical
+                and not path.is_symlink()
+                and path.is_file()
+            ):
+                candidates.append(path)
+
+    archives = root / "archives"
+    if archives.is_dir() and not archives.is_symlink():
+        for folder in archives.iterdir():
+            if _HEX.fullmatch(folder.name):
+                files(folder)
+    if canonical.parent.is_symlink():
+        raise ArchiveError(ArchiveFailure.STORAGE)
+    files(canonical.parent)
+    files(canonical.parent / "imports", imports=True)
+    retired = canonical.parent / "retired"
+    if retired.is_dir() and not retired.is_symlink():
+        for folder in retired.iterdir():
+            if _HEX.fullmatch(folder.name):
+                files(folder)
     result: list[tuple[int, int, Path]] = []
-    for folder in root.iterdir():
-        if folder.is_symlink() or not folder.is_dir() or not _HEX.fullmatch(folder.name):
-            continue
-        path = folder / "rides.sqlite3"
-        if not path.is_file() or path.is_symlink():
-            continue
+    for path in candidates:
         try:
             db = readonly(path)
         except (OSError, ValueError, sqlite3.Error):
+            if path.is_relative_to(canonical.parent):
+                result.append((0, 0, path))  # Report, but never remove an unreadable own source.
             continue
         try:
             row = db.execute("SELECT value FROM meta WHERE key='owner'").fetchone()
@@ -66,6 +121,9 @@ def _sources(hass: HomeAssistant, uid: str) -> list[Path]:
                 )
                 rides = db.execute("SELECT count(*) FROM rides").fetchone()[0]
                 result.append((verified, rides, path))
+        except sqlite3.Error:
+            if path.is_relative_to(canonical.parent):
+                result.append((0, 0, path))
         finally:
             db.close()
     return [p for _, _, p in sorted(result, key=lambda item: (-item[0], -item[1], str(item[2])))]
@@ -79,48 +137,110 @@ def _copy_source(path: Path, target: Path) -> None:
         db.close()
 
 
-def _retire(source: Path, destination: Path) -> None:
-    """Move only a recognized old directory after its live database was merged."""
-    files = list(source.parent.iterdir())
-    if any(p.is_symlink() or not p.is_file() or not _DB.fullmatch(p.name) for p in files):
-        return  # Leave unusual user files untouched; merge receipt prevents replay.
-    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    if not destination.exists():
-        os.rename(source.parent, destination)
+def _identity(path: Path) -> tuple[int, int, int, int]:
+    info = path.stat(follow_symlinks=False)
+    if not stat.S_ISREG(info.st_mode) or any(
+        Path(str(path) + suffix).exists() for suffix in ("-wal", "-shm", "-journal")
+    ):
+        raise ArchiveError(ArchiveFailure.BUSY)
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns
+
+
+def _discard(source: Path, expected: tuple[int, int, int, int], boundary: Path) -> None:
+    """Only a checked, unchanged, inactive source after the destination committed."""
+    if _identity(source) != expected or source.resolve() != source.absolute():
+        raise ArchiveError(ArchiveFailure.BUSY)
+    descriptor = os.open(source.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        info = os.stat(source.name, dir_fd=descriptor, follow_symlinks=False)
+        if (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns) != expected:
+            raise ArchiveError(ArchiveFailure.BUSY)
+        os.unlink(source.name, dir_fd=descriptor)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    folder = source.parent
+    while folder != boundary:
+        try:
+            folder.rmdir()  # Never remove a nonempty directory or an unknown file.
+        except OSError:
+            break
+        folder = folder.parent
 
 
 async def async_prepare_account(hass: HomeAssistant, uid: str, max_bytes: int) -> None:
-    """Adopt all verified old entry archives before opening the runtime actor."""
+    """Consolidate legacy business evidence, then remove only committed sources."""
     async with account_lock(hass, uid):
         if backup_active(hass):
             raise ArchiveError(ArchiveFailure.BUSY)
+        target = account_path(hass, uid)
+        if any(other.path == target for other in hass.data.get(ACTORS_KEY, {}).values()):
+            raise ArchiveError(ArchiveFailure.BUSY)
         sources = await hass.async_add_executor_job(_sources, hass, uid)
         if not sources:
-            return
-        target = account_path(hass, uid)
+
+            def old_schema() -> bool:
+                if not target.exists():
+                    return False
+                from .ride_archive import SCHEMA_VERSION
+
+                db = readonly(target)
+                try:
+                    return db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION
+                finally:
+                    db.close()
+
+            if not await hass.async_add_executor_job(old_schema):
+                return
         actor = RideArchive(target, owner_key(uid), max_bytes=max_bytes)
         register_archive(hass, actor)
         try:
             await actor.async_open()
+            # Opening an older canonical DB creates its schema safety copy.
+            sources = await hass.async_add_executor_job(_sources, hass, uid)
+            failed = False
             for source in sources:
+                if any(
+                    other is not actor and other.path == source
+                    for other in hass.data.get(ACTORS_KEY, {}).values()
+                ):
+                    failed = True
+                    continue
                 # Migrate a private copy, never rewrite an old evidence original.
                 directory = await hass.async_add_executor_job(tempfile.mkdtemp)
                 copy = Path(directory) / "rides.sqlite3"
                 candidate = RideArchive(copy, owner_key(uid), max_bytes=max_bytes)
                 try:
+                    identity = await hass.async_add_executor_job(_identity, source)
                     await hass.async_add_executor_job(_copy_source, source, copy)
                     await candidate.async_open()
                     await candidate.async_close()
                     await actor.async_merge_archive(copy)
 
-                    def retire(source: Path = source) -> None:
+                    def discard(
+                        source: Path = source, identity: tuple[int, int, int, int] = identity
+                    ) -> None:
                         actor._db(write=True)  # Share the official backup barrier.
-                        _retire(source, target.parent / "retired" / source.parent.name)
+                        _discard(source, identity, target.parent.parent.parent)
 
-                    await actor._run(retire)
+                    await actor._run(discard)
+                except (ArchiveError, OSError, ValueError, sqlite3.Error):
+                    failed = True  # Keep the source; one failure cannot hide healthy history.
                 finally:
                     await candidate.async_close()
                     await hass.async_add_executor_job(shutil.rmtree, directory)
+            issue = f"archive_cleanup_{owner_key(uid)}"
+            if failed:
+                ir.async_create_issue(
+                    hass,
+                    DOMAIN,
+                    issue,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key="archive_cleanup",
+                )
+            else:
+                ir.async_delete_issue(hass, DOMAIN, issue)
         finally:
             await actor.async_close()
             unregister_archive(hass, actor)

@@ -137,6 +137,7 @@ async def test_v1_migration_preserves_legacy_and_recovery_copy(tmp_path):
         db.execute("DROP TABLE history_roots")
         db.execute("DROP TABLE details")
         db.execute("DROP TABLE detail_payloads")
+        db.execute("DROP TABLE IF EXISTS archive_evidence")
         db.execute("PRAGMA user_version=1")
     original = path.read_bytes()
     migrated = RideArchive(path, OWNER)

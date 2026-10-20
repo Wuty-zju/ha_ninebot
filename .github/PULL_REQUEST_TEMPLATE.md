@@ -1,26 +1,20 @@
-## Problem and resulting behavior
+## Changes
 
-Describe the concrete problem and what a user/contributor can do after this change.
+Describe the problem and the resulting behavior. Link related issues or PRs.
 
-## Scope and compatibility
+## Implementation
 
-- Base/head SHA, target (`dev` normally; explain stable `main` fixes/promotions) and dependent PRs:
-- Intended channel, completion criteria and topic retirement:
-- Affected modules/contracts:
-- Entity identity, stored data, dependency or minimum-HA changes (or none):
-- User docs/translations updated:
+- Main modules and design choices:
+- Entity identity, stored data or configuration changes:
+- Documentation/translations:
 
 ## Validation
 
-- Candidate/environment:
-- Reused CI evidence (actual tree/workflow/dependency/fixture equivalence, if applicable):
-- Relevant checks actually run:
-- Skipped checks and reason:
-- Synthetic/recorded evidence; remaining real-device uncertainty:
+List the relevant checks and results. If reusing CI evidence, identify the tested commit and unchanged scope.
 
-## Privacy and review
+## Delivery
 
-- [ ] No credentials, personal account/vehicle IDs, precise routes or private workspace material.
-- [ ] Runtime resources remain inside the integration directory; existing IDs/data are preserved unless explicitly reviewed.
-- [ ] No unsolicited cloud/SMS/control or production HA operations.
-- [ ] The change is focused; no empty prerelease/version bump for documentation alone.
+Target `dev` for normal development. For a `main` promotion or stable fix, identify the accepted candidate or backport. Describe any upgrade steps.
+
+- [ ] Public examples and fixtures contain no credentials or private location/identity data.
+- [ ] Runtime files remain inside `custom_components/ninebot`.

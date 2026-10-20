@@ -42,7 +42,7 @@ def copied_body(
     try:
         source = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=0)
         try:
-            if source.execute("PRAGMA user_version").fetchone()[0] not in {2, 3, 4, 5, 6}:
+            if source.execute("PRAGMA user_version").fetchone()[0] not in {2, 3, 4, 5, 6, 7}:
                 return None
             if source.execute("SELECT value FROM meta WHERE key='owner'").fetchone() != (owner,):
                 return None

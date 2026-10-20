@@ -22,5 +22,5 @@
   "requirements": [
     "ninecli==0.1.7"
   ],
-  "version": "2.0.0b105"
+  "version": "2.0.0rc1"
 }

@@ -105,6 +105,7 @@ async def test_action_returns_chart_from_same_cached_month_without_new_queries(
     raw = json.loads((FIXTURES / "travel-nonempty.json").read_text())
     raw["detail"] = ["10.13"] * 30
     app_client.async_get_travel.return_value = raw
+    hass.config_entries.async_update_entry(entry, options={"debug_mode": True})
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     device = next(

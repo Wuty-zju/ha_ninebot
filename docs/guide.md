@@ -6,22 +6,22 @@
 
 - Home Assistant **2026.1.0 or newer** and internet access to the Chinese Ninebot App service.
 - A Ninebot account with vehicles visible in the official App. Other service regions are unverified.
-- A compatible 64-bit platform for the pinned runtime dependency. ARMv7/32-bit is unsupported; published Linux/macOS/Windows wheels do not certify every host or container architecture.
+- A compatible 64-bit host/container for the pinned runtime dependency. ARMv7/32-bit is unsupported.
 - HACS for the recommended installation. This is a custom integration, not a Supervisor app/add-on or a built-in Core integration.
 
-The 2.0 series is currently a **prerelease**. Vendor service changes can affect availability. Back up your Home Assistant configuration and private storage before upgrading.
+The current 2.0 release candidate is **v2.0.0rc1**. Back up your Home Assistant configuration and private storage before upgrading.
 
 ## Install with HACS
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with type **Integration**.
-3. Open **Ninebot**, choose the desired 2.0 prerelease, and download it. Enable beta/prerelease versions in the version selector if necessary.
+3. Open **Ninebot**, choose **v2.0.0rc1**, and download it.
 4. Restart Home Assistant when prompted. A downloaded file version alone does not mean the running integration has loaded it.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
 [Open the HACS repository](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) · [Add Ninebot](https://my.home-assistant.io/redirect/config_flow_start/?domain=ninebot)
 
-These links open your configured Home Assistant instance; they do not install HACS itself. The repository is currently distributed as a **custom repository**, not advertised as a HACS default listing.
+These links open your configured Home Assistant instance. Install HACS first, then add this **custom repository**.
 
 ## Install manually
 
@@ -41,7 +41,7 @@ Expired credentials use **Reauthenticate**. Reconfigure updates the same account
 
 ## Entities and data
 
-Availability depends on the vehicle model, permissions and actual cloud reports. Created entities are enabled/visible by default; existing user-disabled/hidden choices are respected. Feature options still control the corresponding runtime features.
+Available fields depend on the vehicle model, permissions and cloud reports. Standard entities are enabled and visible when their feature is active. Debug-only diagnostics follow the debug option; events and calendars have separate switches. Existing user-disabled or hidden choices are retained.
 
 | Group | Available information | Meaning and limits |
 |---|---|---|
@@ -52,11 +52,13 @@ Availability depends on the vehicle model, permissions and actual cloud reports.
 | Rides | Today/yesterday/month totals, last-ride metrics, monthly list coverage | Completeness is checked per metric. Missing evidence is not silently converted to zero. |
 | History | Sync state, month-scan progress, saved-detail progress, last successful sync | These are different scopes; 100% saved discovered details does not prove full cloud history. |
 | Controls | Vehicle/seat locks and retained remote buttons | Enabled controls, an allowlist and authorization required; see below. |
-| Native HA | Ride calendar, ride-completed/state-transition events, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
+| Native HA | Ride calendar, vehicle/trip events, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
 
 Durations retain native seconds and suggest **hours with four decimals** through HA's native conversion. Distance/range and Wh/km suggest one decimal; energy and maximum speed suggest integers. Presentation rounding does not round archived source facts. HA user overrides take precedence. Rated battery V/Ah produce a specification in kWh, not measured capacity or health.
 
 Cycle counts display not supported only when the cycle-support flag explicitly says so; unknown support stays unknown. Missing odometer is not reported, without invented distance. English and Simplified Chinese are the primary documentation languages; shipped entity/settings labels cover additional locales with English fallback for some longer text.
+
+Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
 
 ## Options
 
@@ -64,7 +66,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 
 | Option | Default / range | Effect |
 |---|---|---|
-| Status interval | 60 s; 30–3600 s | Status demand only; battery/travel use separate 600 s periods and profiles 3600 s. These are client policy, not guaranteed cloud freshness. |
+| Status interval | 60 s; 30–3600 s | Status refresh target; battery/travel use separate 600 s periods and profiles 3600 s. Demand, response age and backoff control each group. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
@@ -73,6 +75,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | History storage limit (Beta) | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
 | History request budget (Beta) | 60/account/hour; 0–120 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. Enter 0 to remove the hourly quota (not recommended); serialization and upstream backoff remain active. |
 | Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
+| Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. Retired low-confidence SOC estimators remain removed. |
 | Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
@@ -82,7 +85,7 @@ Requests are demand-aware, account-budgeted and shared when identical reads are 
 
 Vehicle **unlock** requests remote start; **lock** requests remote stop. The vehicle/cloud decides its motion/P requirements. HA does not disable remote stop by guessing whether the vehicle is moving. Seat unlock opens the compartment; seat locking is manual only. The retained buttons use the same executor as the Lock entities.
 
-Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. A cloud observation is not a physical guarantee; pending/unconfirmed/failed results are kept distinct. A new command can replace the previous confirmation observer; only command transmission is serialized.
+Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. Confirmation uses fresh cloud observations; pending/unconfirmed/failed results are kept distinct. A new command can replace the previous confirmation observer; only command transmission is serialized.
 
 After a verified seat unlock, its Lock display remains unlocked for at least five seconds while status queries continue. The `Reported latch state` attribute and vehicle state events retain the actual reported state throughout this display window. After five seconds, the Lock follows the latest valid latch reading. A separate status observation runs about once per second for fifteen seconds, then at 20/30/45/59.9 seconds, ending within sixty seconds. Missed read slots are skipped rather than sent in a burst.
 
@@ -95,6 +98,7 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 | Symptom | Check first |
 |---|---|
 | Integration missing after download | Confirm the directory/domain, restart as prompted, and use a release compatible with your host architecture. |
+| First upgrade stays at initializing | Legacy archives are validated and consolidated before setup completes. Several databases can take a few minutes. Check the latest log time and allow the migration to finish. Repeated failures require the traceback and diagnostics. |
 | Authentication fails | Check the official App/account region; use reauth. Do not publish credentials or token files. |
 | Rated-parameter form rejects a vehicle | Close and reopen the form after the updated integration is actually loaded. Choose a currently discovered vehicle. |
 | Today/yesterday values unknown | Setup and midnight schedule a prompt refresh; incomplete lists or missing metrics still need evidence. Same-period verified values survive short outages. See [coverage and statistics](history.md#coverage-and-statistics). |
@@ -114,18 +118,17 @@ Optional map tiles contact an external provider only when enabled; see [map priv
 
 **Keep local trip history database (Beta)** is checked by default. Removing an account stops its tasks and retains trips, detailed tracks and recovery evidence. Adding the same authenticated account reconnects its archive; synchronization resumes under your selected options. If unchecked, the next account removal deletes that account’s managed archive and recovery copies. Unrecognized files are retained with a Repair. This setting does not delete Recorder history. Do not edit a running database or registry manually; see [migration](migration.md).
 
-Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
 
 
 ## Export and import history databases
 
 In the account’s **Configure** form, select **Export or import history database (Beta)** and submit. The next menu provides **Export database** and **Upload and import database**. These operations require a Home Assistant administrator.
 
-- **Export:** select one or more vehicles across loaded accounts. Download the ZIP using the administrator-bound link, valid for ten minutes. It contains consistent SQLite snapshots, historical source evidence and a versioned SHA256 manifest; no password or sign-in session is included.
-- **Import:** first sign in to every account represented in the package, upload the ZIP (or a standalone current-format SQLite database), select vehicles, then confirm the backup and merge. Account ownership, schema, references, raw payload hashes and ride identities are checked before merging. Better saved geometry survives a newer simplified response; repeated imports are deduplicated.
-- Each account is one transaction with a pre-merge recovery snapshot. Accounts completed before a later account fails remain committed; retrying the package is safe. Existing options, live authorization and active sync jobs are not replaced.
+- **Export:** select one or more vehicles across loaded accounts. Click the administrator-bound download link, valid for ten minutes. Filenames identify UTC creation time, account/vehicle counts, scope fingerprint and export ID; the manifest includes the schema, counts and time range. It contains consistent SQLite snapshots, historical source evidence and a versioned SHA256 manifest; no password or sign-in session is included.
+- **Import:** first sign in to every account represented in the package, upload the ZIP (or a supported earlier SQLite database), select vehicles, then confirm the backup and merge. Account ownership, schema, references, raw payload hashes and ride identities are checked before merging. Better saved geometry survives a newer simplified response; repeated imports are deduplicated.
+- Each account merges all selected source databases in one transaction. Temporary recovery snapshots are removed after a validated commit; failed merges retain a recovery point. Accounts completed before a later account fails remain committed; retrying the package is safe. Existing options, live authorization and active sync jobs are not replaced.
 
-Packages are private GPS records, not diagnostics. Transfer them securely; they are not encrypted by the integration. Uploads are limited to 100 MiB compressed and 512 MiB expanded, at most 16 accounts and 16 retained source snapshots per account. Split large exports by vehicle. Live archive capacity remains separate from retained recovery evidence, which has its own 512 MiB/account limit. Old migration originals are retained until deliberate deletion; HA backups should include the complete configuration directory.
+Packages are private GPS records, not diagnostics. Transfer them securely; they are not encrypted by the integration. Uploads are limited to 100 MiB compressed and 512 MiB expanded, at most 16 accounts. Earlier packages may include up to 16 source snapshots per account; these are consolidated rather than kept as separate databases. New exports contain one SQLite per account. Distinct historical originals live inside the main database and count toward its capacity. Verified old migration/import copies are automatically removed; failed or unrecognized files are retained for review. Back up the full HA configuration before upgrading; keep external exports for migration or rollback.
 
 ## Connection interruptions
 

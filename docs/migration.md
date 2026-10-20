@@ -55,11 +55,11 @@ Historical manual-job entities were retired separately from the current automati
 
 ## Archive schema and rollback
 
-Archive migrations validate the source, check space and create an exclusive consistent `rides.schema<old>-<digest>.sqlite3` recovery copy before transactional schema changes. Original evidence and checkpoints are retained; certificates can become stale under a newer verification contract.
+Archive migrations validate the source, check space and create an exclusive consistent `rides.schema<old>-<digest>.sqlite3` recovery copy before transactional schema changes. Source evidence and checkpoints are retained inside the account archive. After validated consolidation, inactive legacy files and schema safety copies are removed. Keep an external/full HA backup for rollback.
 
 Older versions may not read the upgraded schema or identity journal. Restore the matching full pre-upgrade backup in a deliberate recovery environment with the integration stopped. Keep the only recovery original intact; an older copy lacks data acquired after it was created. Do not overwrite a live archive, lower its schema marker manually or delete it to force setup.
 
-Recovery-job copies such as `.recovery-<job_id>.sqlite3` are evidence/recovery points, not certified ready-to-load restore images. See [verification and recovery](history.md#verification-and-recovery) for supported local operations. When proof is missing, retain files and the Repair instead of guessing.
+Use recovery-job copies such as `.recovery-<job_id>.sqlite3` through the supported [verification and recovery](history.md#verification-and-recovery) workflow. Keep the matching full HA backup for version rollback and retain unresolved Repairs for diagnosis.
 
 
 ## History controls and debug entities
@@ -74,4 +74,6 @@ The two standalone latest-trip start/end sensors are retired into the existing V
 
 ## Account-owned archive directories
 
-This update moves from per-entry archive locations to a stable authenticated-account directory. It creates a new canonical archive, validates/merges matching old primary databases and retires recognized source directories without discarding migration originals. Existing SQLite codecs and entity identities remain intact; old archive layouts are no longer used for live writes. Same-account re-addition automatically reconnects this directory. Export before deliberate account-data deletion. Older integration versions do not understand the new account path: downgrading requires a matching HA backup, not copying a live database into an old entry path.
+History uses a stable authenticated-account directory. Schema 7 consolidates matching entry databases, previous `imports/` and `retired/` copies, rollback files and supported schema snapshots. Each source is upgraded on an isolated copy, validated and committed before its managed file is removed. Distinct business originals are preserved in the canonical database; unrelated accounts, unknown names, symlinks, changed/in-use files and failed sources are not deleted. A failed source does not hide a healthy account archive; a Repair identifies incomplete cleanup.
+
+Back up Home Assistant **before upgrading**. Successful consolidation removes the old local database copies; downgrade requires a matching external/full HA backup. Same-account re-addition reconnects its canonical archive, and entity identities are unchanged. Do not copy files over a running database or manually change schema markers.

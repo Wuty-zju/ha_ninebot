@@ -38,15 +38,6 @@ class Diagram:
   .green {fill: #f0fdfa; stroke: #5eead4}
   .purple {fill: #faf5ff; stroke: #d8b4fe}
   .line {fill: none; stroke: #64748b; stroke-width: 2; marker-end: url(#arrow)}
-  @media (prefers-color-scheme: dark) {
-    text {fill: #e2e8f0}
-    .body, .foot {fill: #cbd5e1}
-    .page {fill: #111827; stroke: #334155}
-    .card {fill: #1e293b; stroke: #475569}
-    .blue {fill: #172b49; stroke: #3b82f6}
-    .green {fill: #103b3b; stroke: #14b8a6}
-    .purple {fill: #322345; stroke: #a78bfa}
-  }
 </style>""",
             f'<rect class="page" x="1" y="1" width="878" height="{height - 2}" rx="20"/>',
         ]
@@ -83,183 +74,176 @@ class Diagram:
 
 def overview(zh: bool) -> str:
     d = Diagram(
-        "账号隔离与数据分层" if zh else "Account isolation and data flow",
-        "云端适配分为实时更新和历史采集；各账号独立保存会话与档案。"
+        "实时更新与历史采集" if zh else "Live updates and historical acquisition",
+        "逐账号隔离，实时和历史分别调度，共享请求协调。"
         if zh
-        else (
-            "An account adapter feeds separate realtime and historical paths. "
-            "Sessions and archives belong to each account."
-        ),
-        640,
+        else "Account-isolated sessions share bounded scheduling across live and historical work.",
+        700,
         "zh-Hans" if zh else "en",
     )
     d.box(
         40,
         85,
-        220,
-        "九号云服务" if zh else "Ninebot cloud",
-        "车辆与行程数据" if zh else "Vehicle and ride data",
-        height=85,
-        color="blue",
-    )
-    d.box(
-        320,
-        85,
-        520,
-        "账号会话与云端适配" if zh else "Account session and cloud adapter",
-        "受管理本地 API · 历史专用分页"
-        if zh
-        else "Managed local API · history-specific pagination",
-        "逐账号隔离 · 共享请求调度" if zh else "Account isolation · shared request scheduling",
-        color="blue",
-    )
-    d.line("M 270 127 H 310", both=True)
-    d.line("M 580 195 V 221")
-    d.box(
-        40,
-        230,
         800,
-        "原始数据与规范化模型" if zh else "Source evidence and normalized models",
-        "保留来源、采集时间与精度；区分原值、计算值及缺报"
+        "01  九号云服务" if zh else "01  Ninebot cloud",
+        "车辆 · 状态 · 电池 · 行程列表与详情"
         if zh
-        else (
-            "Keep source, receipt time and precision; "
-            "separate reported, calculated and missing values."
-        ),
+        else "Vehicles · status · battery · ride lists and details",
         height=85,
+        color="blue",
     )
-    d.line("M 240 320 V 346")
-    d.line("M 640 320 V 346")
+    d.line("M 440 170 V 205", both=True)
     d.box(
         40,
-        355,
+        215,
+        800,
+        "02  账号与请求协调" if zh else "02  Account and request coordination",
+        "独立会话与授权 · 合并相同在途请求 · 有界并发与退避"
+        if zh
+        else "Isolated sessions · shared reads · bounded concurrency and backoff",
+        height=85,
+        color="blue",
+    )
+    d.line("M 240 300 V 335")
+    d.line("M 640 300 V 335")
+    d.box(
+        40,
+        345,
         380,
-        "实时协调器" if zh else "Realtime coordinator",
-        "状态 · 电池 · 当前月份" if zh else "Status · battery · current month",
-        "需求 · 新鲜度 · 退避" if zh else "Demand · freshness · backoff",
+        "03A  实时更新" if zh else "03A  Realtime updates",
+        "逐车、逐数据组刷新" if zh else "Per-vehicle and per-group scheduling",
+        "需求 · 响应年龄 · 部分失败恢复" if zh else "Demand · response age · partial recovery",
         color="blue",
     )
     d.box(
         460,
-        355,
+        345,
         380,
-        "历史采集任务" if zh else "Historical acquisition",
-        "月份 · 行程 · 详情 · 轨迹" if zh else "Months · rides · details · tracks",
-        "断点 · 增量 · 请求预算" if zh else "Checkpoints · incremental work · budget",
+        "03B  历史采集" if zh else "03B  History acquisition",
+        "月份与分页 · 缺失详情 · 增量" if zh else "Month pages · missing details · updates",
+        "账号预算 · 断点 · 校验" if zh else "Account budget · checkpoints · validation",
         color="green",
     )
-    d.line("M 230 465 V 491")
-    d.line("M 650 465 V 491")
+    d.line("M 230 450 V 485")
+    d.line("M 650 450 V 485")
     d.box(
         40,
-        500,
+        495,
         380,
-        "Home Assistant 实体" if zh else "Home Assistant entities",
-        "传感器 · 锁 · 定位 · 图片 · 事件" if zh else "Sensors · locks · tracker · images · events",
-        "当前状态与自动化" if zh else "Current state and automations",
-        color="blue",
+        "04A  当前状态" if zh else "04A  Current state",
+        "实体 · 位置 · 状态事件" if zh else "Entities · location · state events",
+        "原生 HA 自动化与设备页面" if zh else "Native HA automations and device pages",
+        color="purple",
     )
     d.box(
         460,
-        500,
+        495,
         380,
-        "账号私有档案" if zh else "Private account archive",
-        "SQLite · 原始业务响应 · 行程模型" if zh else "SQLite · business evidence · ride models",
-        "本地查询 · 日历 · 聚合统计" if zh else "Local queries · calendar · aggregates",
+        "04B  本地账号档案" if zh else "04B  Local account archive",
+        "SQLite · 来源证据 · 较好轨迹" if zh else "SQLite · source evidence · best track",
+        "查询 Action · 日历 · 统计导入" if zh else "Query Actions · calendar · statistics import",
         color="green",
+    )
+    d.text(
+        40,
+        650,
+        "实体共享查询结果；浏览已保存历史使用本地档案。"
+        if zh
+        else "Entities share reads. Browsing saved history uses the local archive.",
+        "foot",
     )
     return d.render()
 
 
 def history(zh: bool) -> str:
     d = Diagram(
-        "增量采集、归档与本地读取" if zh else "Incremental acquisition and local history",
-        "按月发现与分页校验后去重，复用稳定详情，按预算补取，事务保存，再通过本地接口读取。"
+        "行程同步与本地复用" if zh else "Ride synchronization and local reuse",
+        "校验分页后增量补详情，事务保存标量、轨迹和来源，供本地查询。"
         if zh
-        else (
-            "Discover and validate month pages, deduplicate rides, reuse stable details, "
-            "fetch missing data within budget and commit the archive before local access."
-        ),
-        690,
+        else "Validated pages feed incremental detail acquisition and transactional local storage.",
+        780,
         "zh-Hans" if zh else "en",
     )
     d.box(
         40,
         85,
-        360,
-        "发现月份与分页" if zh else "Discover months and pages",
-        "首次扫描 · 近期增量 · 缺口补扫" if zh else "Initial scan · recent updates · gap repair",
-        "保存进度，重启后续接" if zh else "Persist progress and resume after restart",
+        380,
+        "01  发现与补扫" if zh else "01  Discover and reconcile",
+        "首次月份扫描 · 近期增量" if zh else "Initial month scan · recent updates",
+        "复用已验证分页 · 保存断点" if zh else "Reuse verified pages · persist checkpoints",
         color="blue",
     )
     d.box(
-        480,
+        460,
         85,
-        360,
-        "校验列表与行程 ID" if zh else "Validate lists and ride IDs",
-        "数量 · 去重 · 月份关系 · 覆盖" if zh else "Counts · deduplication · month membership",
-        "保留响应与分页依据" if zh else "Retain response and page evidence",
+        380,
+        "02  校验覆盖" if zh else "02  Validate coverage",
+        "总数 · 行程 ID · 月份关系" if zh else "Counts · ride IDs · month membership",
+        "重复／缺页进入补扫" if zh else "Repeated or missing pages need repair",
         color="blue",
     )
-    d.line("M 405 137 H 470")
-    d.line("M 660 195 V 218 H 440 V 236")
+    d.line("M 420 137 H 450")
+    d.line("M 650 190 V 220 H 440 V 240")
     d.box(
         40,
-        245,
+        250,
         800,
-        "只补取缺失、变化或尚未稳定的详情" if zh else "Fetch missing, changed or unsettled details",
-        "复用稳定详情；共享账号预算；多车轮转；失败退避"
+        "03  只补取需要的详情" if zh else "03  Fetch only details that need work",
+        "稳定详情复用 · 车辆轮转 · 共享额度 · 失败重试"
         if zh
-        else (
-            "Reuse stable details · share the account budget · "
-            "rotate vehicles · back off on failure"
-        ),
+        else "Reuse stable details · rotate vehicles · share request budget · retry gaps",
         height=85,
         color="green",
     )
-    d.line("M 440 335 V 361")
+    d.line("M 440 335 V 370")
     d.box(
         40,
-        370,
+        380,
         800,
-        "事务化私有 SQLite 档案" if zh else "Transactional private SQLite archive",
-        "规范化行程 + 压缩原始响应 + 收据、来源及采集时间"
+        "04  事务提交至账号 SQLite" if zh else "04  Commit to the account SQLite archive",
+        "规范化行程 + 压缩来源 + 分页依据 + 同步状态"
         if zh
-        else "Normalized rides + compressed business originals + receipts, source and capture time",
-        "分别保存最新详情与较好轨迹；容量达到上限时暂停写入"
+        else "Normalized rides + compressed sources + page evidence + sync state",
+        "最新标量与较好轨迹分别保留；达到容量上限暂停写入"
         if zh
-        else (
-            "Keep latest detail and best track separately; pause writes when the quota is reached."
-        ),
+        else "Keep latest facts and best geometry separately; pause writes at the capacity limit",
         height=110,
         color="green",
     )
-    d.line("M 230 485 V 521")
-    d.line("M 650 485 V 521")
+    d.line("M 240 490 V 530")
+    d.line("M 640 490 V 530")
     d.box(
         40,
-        530,
+        540,
         380,
-        "本地查询与轨迹分段" if zh else "Local queries and track chunks",
-        "响应型 Actions · 授权 WebSocket" if zh else "Response Actions · authorized WebSocket",
-        "读取本地档案，不触发云端补抓" if zh else "Local-only reads do not fetch the cloud",
+        "05A  本地读取" if zh else "05A  Local reads",
+        "响应 Action · 分页与轨迹分段" if zh else "Response Actions · pages and track chunks",
+        "授权 WebSocket · 日历" if zh else "Authorized WebSocket · calendar",
         color="purple",
     )
     d.box(
         460,
-        530,
+        540,
         380,
-        "HA 日历与长期统计" if zh else "HA calendar and statistics",
-        "本地行程日历 · 按日/月聚合" if zh else "Local ride calendar · day/month aggregates",
-        "显式导入 Recorder 统计" if zh else "Explicit import into Recorder statistics",
+        "05B  摘要与趋势" if zh else "05B  Summaries and trends",
+        "本月／今日／昨日／最近摘要" if zh else "Month · today · yesterday · latest ride",
+        "显式导入 HA 长期统计" if zh else "Explicit import to HA long-term statistics",
         color="purple",
     )
     d.text(
         40,
-        665,
-        "完整轨迹保留在档案中；实体只显示当前摘要。"
+        700,
+        "完整轨迹保存在档案中；实体展示小体积的当前摘要。"
         if zh
-        else "Full trails stay in the archive; entities expose current summaries.",
+        else "Full trails stay in the archive; entities expose compact current summaries.",
+        "foot",
+    )
+    d.text(
+        40,
+        732,
+        "本地浏览与云端补取分别调度。"
+        if zh
+        else "Local browsing and cloud acquisition have separate request paths.",
         "foot",
     )
     return d.render()
@@ -267,75 +251,171 @@ def history(zh: bool) -> str:
 
 def controls(zh: bool) -> str:
     d = Diagram(
-        "控制指令与状态回读" if zh else "Commands and observed state",
-        "控制启用与车辆许可后只发送一次指令，随后短时回读；实体状态以云端观测更新，座桶只能远程解锁。"
+        "控制指令与状态确认" if zh else "Commands and state confirmation",
+        "一次发送，十五秒内确认；座桶解锁显示保持五秒并有界观察锁舌。"
         if zh
-        else (
-            "Enabled, allowlisted commands are sent once, "
-            "followed by bounded status checks. State follows cloud observations; "
-            "seat locking is manual."
-        ),
-        470,
+        else "One command, a 15-second confirmation window and bounded seat-latch observation.",
+        635,
         "zh-Hans" if zh else "en",
     )
     d.box(
         40,
         85,
-        240,
-        "控制已启用" if zh else "Controls enabled",
-        "车辆许可列表" if zh else "Vehicle allowlist",
-        "账号归属与权限检查" if zh else "Ownership and access",
+        380,
+        "01  控制请求" if zh else "01  Control request",
+        "Lock 实体与按钮共用执行器" if zh else "Locks and buttons share one executor",
+        "开关 · 车辆许可 · 归属与权限" if zh else "Enablement · allowlist · ownership/access",
         color="blue",
     )
     d.box(
-        320,
+        460,
         85,
-        240,
-        "发送一次指令" if zh else "Send one command",
-        "锁实体与按钮共用" if zh else "Locks and buttons share",
-        "同一控制执行器" if zh else "one command executor",
+        380,
+        "02  发送一次" if zh else "02  Send once",
+        "车辆／云端判断执行条件" if zh else "Vehicle/cloud applies operating rules",
+        "新指令可替换旧确认观察" if zh else "New commands replace older observers",
         color="blue",
     )
-    d.box(
-        600,
-        85,
-        240,
-        "车辆与云端处理" if zh else "Vehicle and cloud",
-        "决定执行条件" if zh else "Apply operating rules",
-        "返回接受或失败" if zh else "Accept or reject request",
-        color="blue",
-    )
-    d.line("M 285 137 H 310")
-    d.line("M 565 137 H 590")
-    d.line("M 720 195 V 218 H 440 V 241")
+    d.line("M 420 137 H 450")
+    d.line("M 650 190 V 220 H 440 V 240")
     d.box(
         40,
         250,
         800,
-        "短时提高状态查询频率" if zh else "Temporarily increase status checks",
-        "约 0 / 2 / 5 秒确认目标；随后短时跟踪自动回锁"
+        "03  最多十五秒加速回读" if zh else "03  Accelerated readback for up to 15 seconds",
+        "新状态一经确认立即显示 · 不自动重发控制指令"
         if zh
-        else "Check the target at about 0 / 2 / 5 seconds; briefly follow automatic relocking.",
-        "通过新的状态更新实体；整个后续跟踪最多约 30 秒"
+        else "Publish the confirmed transition immediately · no automatic command replay",
+        "分别记录接受、未确认与失败"
         if zh
-        else "Update entities from fresh observations; follow-up ends within about 30 seconds.",
+        else "Keep acceptance, unconfirmed outcome and failure distinct",
         height=110,
         color="green",
     )
+    d.line("M 240 360 V 400")
+    d.line("M 640 360 V 400")
+    d.box(
+        40,
+        410,
+        380,
+        "04A  车辆锁" if zh else "04A  Vehicle lock",
+        "上锁＝远程关闭；解锁＝远程开启" if zh else "Lock = remote stop; unlock = remote start",
+        "短期跟随自动回锁" if zh else "Brief follow-up observes auto-relocking",
+        color="purple",
+    )
+    d.box(
+        460,
+        410,
+        380,
+        "04B  座桶锁" if zh else "04B  Seat lock",
+        "确认解锁后显示至少五秒" if zh else "Hold a verified unlock display for 5 seconds",
+        "锁舌最多观察六十秒；本地上锁" if zh else "Observe latch up to 60 seconds; close locally",
+        color="purple",
+    )
     d.text(
         40,
-        404,
-        "车辆锁：远程开启 / 关闭；座桶锁：远程打开、手动上锁。"
+        565,
+        "锁舌上报与座桶盖是否打开是两种不同信息。"
         if zh
-        else "Vehicle lock: remote start / stop. Seat lock: remote open, manual close.",
+        else "A latch report does not establish whether the compartment lid is open.",
         "foot",
     )
     d.text(
         40,
-        435,
-        "发送成功与已观测目标状态分别记录。"
+        597,
+        "读取异常、新指令或卸载会结束对应的后续观察。"
         if zh
-        else "Command acceptance and observed target state are recorded separately.",
+        else "Read errors, replacement commands or unloading end the corresponding observer.",
+        "foot",
+    )
+    return d.render()
+
+
+def archive(zh: bool) -> str:
+    d = Diagram(
+        "账号数据库的生命周期" if zh else "Account archive lifecycle",
+        "认证账号拥有唯一主库；旧来源校验合并；条目移除与导出导入分开管理。"
+        if zh
+        else "One account archive across entry removal, upgrades and transfers.",
+        720,
+        "zh-Hans" if zh else "en",
+    )
+    d.box(
+        40,
+        85,
+        380,
+        "账号认证" if zh else "Authenticated account",
+        "稳定账号身份 · 多辆车辆" if zh else "Stable account identity · multiple vehicles",
+        "删除重加可接回原档案" if zh else "Reconnect after removal and sign-in",
+        color="blue",
+    )
+    d.box(
+        460,
+        85,
+        380,
+        "旧库与导入来源" if zh else "Legacy and imported sources",
+        "隔离升级 · 归属／摘要／引用校验" if zh else "Isolated upgrade · owner/hash/link checks",
+        "去重合并后清理已验证副本" if zh else "Merge, then remove verified source copies",
+        color="blue",
+    )
+    d.line("M 230 190 V 220 H 330 V 250")
+    d.line("M 650 190 V 220 H 550 V 250")
+    d.box(
+        40,
+        260,
+        800,
+        "一个账号，一个私有 SQLite 主库" if zh else "One private SQLite database per account",
+        "行程与月份 · 最新详情 · 较好轨迹 · 压缩原始证据 · 同步断点"
+        if zh
+        else "Rides · latest details · best geometry · compressed evidence · checkpoints",
+        "串行数据库执行器 · 事务提交 · 容量限制 · 本地校验"
+        if zh
+        else "Serialized database worker · transactions · capacity limit · local verification",
+        height=110,
+        color="green",
+    )
+    d.line("M 230 370 V 415")
+    d.line("M 650 370 V 415")
+    d.box(
+        40,
+        425,
+        380,
+        "移除账号" if zh else "Remove an account",
+        "默认保留；同账号再次登录复用" if zh else "Retain by default; reuse on same-account login",
+        "取消保留则清理受管历史" if zh else "Opt out to delete managed account history",
+        color="purple",
+    )
+    d.box(
+        460,
+        425,
+        380,
+        "导出与恢复" if zh else "Export and restore",
+        "按账号／车辆选择一致性快照" if zh else "Consistent snapshots by account/vehicle",
+        "ZIP + SHA256 清单 · 校验后合并" if zh else "ZIP + SHA256 manifest · validated merge",
+        color="purple",
+    )
+    d.text(
+        40,
+        590,
+        "失败或未知来源保留待处理；已保存记录无按时间自动过期。"
+        if zh
+        else "Failed sources stay for review. Saved records have no age-based expiry.",
+        "foot",
+    )
+    d.text(
+        40,
+        624,
+        "账号档案、登录会话与 HA Recorder 分别管理。"
+        if zh
+        else "Account archives, sign-in sessions and HA Recorder have separate lifecycles.",
+        "foot",
+    )
+    d.text(
+        40,
+        658,
+        "升级前备份完整 HA；导出包可用于跨机器迁移。"
+        if zh
+        else "Back up HA before upgrading; use exports for migration between installations.",
         "foot",
     )
     return d.render()
@@ -347,7 +427,12 @@ def main() -> None:
     args = parser.parse_args()
     expected = {
         f"{name}-{language}.svg": render(language == "zh")
-        for name, render in (("overview", overview), ("history", history), ("controls", controls))
+        for name, render in (
+            ("overview", overview),
+            ("history", history),
+            ("controls", controls),
+            ("archive", archive),
+        )
         for language in ("en", "zh")
     }
     if not args.check:
