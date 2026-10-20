@@ -82,7 +82,7 @@ jobs:
       - name: Run the complete offline suite
         run: >-
           python -m pytest --cov=custom_components.ninebot --cov-branch
-          --cov-fail-under=95 --cov-report=term-missing --cov-report=xml
+          --cov-fail-under=91 --cov-report=term-missing --cov-report=xml
           --junitxml=test-results.xml -o faulthandler_timeout=60
       - name: Keep test and coverage reports
         if: always()

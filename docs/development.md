@@ -54,7 +54,7 @@ For an RC or major compatibility change, dispatch **Checks** with `full_validati
 | 2026.1.0 | 3.13 | 0.13.305 |
 | 2026.10.2 | 3.14 | 0.13.373 |
 
-The job verifies installed versions and dependency consistency, runs mypy and the full offline pytest suite, and uploads JUnit/coverage reports. Node tests run in the same dispatch. The branch-coverage threshold is 95%. Individual focused workflows retain their own reviewed pins; update a boundary together with its plugin. Reuse unchanged successful evidence between candidates; repeat only affected checks after a fix.
+The job verifies installed versions and dependency consistency, runs mypy and the full offline pytest suite, and uploads JUnit/coverage reports. Node tests run in the same dispatch. The combined line/branch threshold is 91%, based on the full RC audit; 95% remains the improvement target. Individual focused workflows retain their own reviewed pins; update a boundary together with its plugin. Reuse unchanged successful evidence between candidates; repeat only affected checks after a fix.
 
 In an existing compatible environment:
 

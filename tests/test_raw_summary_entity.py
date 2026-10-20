@@ -7,6 +7,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from custom_components.ninebot.raw import Endpoint, build_record
+from custom_components.ninebot.sensor import RawDataSummarySensor
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -18,8 +19,10 @@ async def test_raw_summary_default_and_enabled_state_are_small_private_and_local
     await hass.async_block_till_done()
     registry = er.async_get(hass)
     entity_id = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_raw_data_summary")
-    assert registry.async_get(entity_id).disabled_by is None
-    assert hass.states.get(entity_id) is not None
+    assert registry.async_get(entity_id).disabled_by is er.RegistryEntryDisabler.INTEGRATION
+    assert registry.async_get(entity_id).hidden_by is er.RegistryEntryHider.INTEGRATION
+    assert hass.states.get(entity_id) is None
+    entity = RawDataSummarySensor(entry, "SyntheticSN")
     coordinator = entry.runtime_data.coordinator
     before = coordinator.demand("SyntheticSN")
     counts = [
@@ -41,23 +44,19 @@ async def test_raw_summary_default_and_enabled_state_are_small_private_and_local
     )
     coordinator.async_update_listeners()
     await hass.async_block_till_done()
-    state = hass.states.get(entity_id)
-    assert state.state == "debug_disabled"
-    assert state.attributes["unknown_field_count"] > 0
-    # Icon translations are frontend metadata; HA need not put them in state.
-    assert set(state.attributes) - {"icon"} == {
+    assert entity.native_value == "debug_disabled"
+    attributes = entity.extra_state_attributes
+    assert attributes["unknown_field_count"] > 0
+    assert set(attributes) == {
         "format_version",
         "debug_mode",
         "record_count",
-        "options",
-        "device_class",
         "schema_path_count",
         "unknown_field_count",
         "redacted_field_count",
         "retained_bytes",
-        "friendly_name",
     }
-    encoded = json.dumps(state.attributes)
+    encoded = json.dumps(attributes)
     assert not any(value in encoded for value in ("private", "31.123", "dump_energy", "loc"))
     assert coordinator.demand("SyntheticSN") == before
     assert counts == [

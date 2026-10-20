@@ -49,7 +49,7 @@ def test_vehicle_measurements_do_not_follow_a_primary_pack_into_multiple_rows():
         10,
     ]
     unsupported = snapshot(pack("replacement", support=False))
-    assert descriptions[-1].value(unsupported) is None
+    assert descriptions[-1].value(unsupported) == "unsupported"
 
 
 def test_pack_entities_survive_reorder_but_not_replacement_or_identity_loss():

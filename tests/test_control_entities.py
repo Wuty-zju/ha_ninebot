@@ -116,16 +116,20 @@ async def test_configured_default_upgrade_preserves_user_disable_and_reports_loc
         "sensor", "ninebot", "SyntheticSN_control_availability"
     )
     assert hass.states.get(diagnostic).state == "disabled"
-    assert registry.async_get(rows[1].entity_id).disabled_by is er.RegistryEntryDisabler.USER
-    assert all(registry.async_get(rows[i].entity_id).disabled_by is None for i in (0, 2, 3))
-    assert all(hass.states.get(rows[i].entity_id).state == "unavailable" for i in (0, 2, 3))
+
+    def current_id(index):
+        return registry.async_get_entity_id("button", "ninebot", rows[index].unique_id)
+
+    assert registry.async_get(current_id(1)).disabled_by is er.RegistryEntryDisabler.USER
+    assert all(registry.async_get(current_id(i)).disabled_by is None for i in (0, 2, 3))
+    assert all(hass.states.get(current_id(i)).state == "unavailable" for i in (0, 2, 3))
     hass.config_entries.async_update_entry(
         entry, options={"enable_controls": True, "control_vehicles": ["SyntheticSN"]}
     )
     await hass.async_block_till_done()
     assert entry.runtime_data.configured_controls_enabled == 0
-    assert registry.async_get(rows[1].entity_id).disabled_by is er.RegistryEntryDisabler.USER
-    assert all(registry.async_get(rows[i].entity_id).disabled_by is None for i in (0, 2, 3))
+    assert registry.async_get(current_id(1)).disabled_by is er.RegistryEntryDisabler.USER
+    assert all(registry.async_get(current_id(i)).disabled_by is None for i in (0, 2, 3))
     assert hass.states.get(diagnostic).state == "ready"
     coordinator = entry.runtime_data.coordinator
     coordinator._authenticated = False
