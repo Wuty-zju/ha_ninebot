@@ -10,13 +10,13 @@ Thank you for improving Ninebot for Home Assistant. Start with a focused problem
 2. Follow the [task-to-code/test table](docs/development.md#start-with-a-task-not-the-whole-repository), not the whole release history.
 3. Preserve entity identity, account isolation, privacy, exact dependency pins and bounded asynchronous behavior.
 4. Update the relevant guide and both primary language pages when user behavior changes. Keep runtime resources inside the integration directory.
-5. Run the smallest meaningful offline checks from the [validation table](docs/development.md#select-the-smallest-meaningful-checks). State exactly what ran/skipped and why.
-6. Open a PR describing the problem, resulting behavior, compatibility/identity effects and evidence. Do not create a new permanent report per PR or bump a version for prose alone.
+5. Run the smallest meaningful offline checks from the [validation table](docs/development.md#select-the-smallest-meaningful-checks). Include the relevant check results.
+6. Open a PR describing the problem, resulting behavior, compatibility/identity effects and evidence. Do not create a new permanent report per PR for a prose-only change.
 
 ## Branch targets and releases
 
 - **`dev`** integrates reviewed development. Target it for features, development fixes and experimental UI work. Keep unfinished work isolated; do not make experimental cards necessary for core synchronization.
-- **`main`** is the stable release/promotion line. Stable fixes and stable documentation/tooling corrections can target it. The current 2.0 version remains a prerelease until stable acceptance; creating these branch roles does not certify b94 as stable.
+- **`main`** is the stable release/promotion line. Stable fixes and stable documentation/tooling corrections can target it. Accepted release candidates can be promoted to `main`; their GitHub Releases retain the prerelease flag until stable acceptance.
 - Use `feat/…`, `fix/…`, `docs/…`, `chore/…` or `perf/…` for one bounded task. Name the goal, not a beta number. Squash short topics when appropriate and retire them after integration; never reuse a squashed topic for the next task.
 - Promote an accepted development cycle to `main` with a normal merge, then synchronize `main` back into `dev`. Do not squash the long-lived branches. A stable hotfix must not merge unrelated next-cycle development; use a minimal fix or a traced backport.
 - Only create a temporary `release/<version>` when candidate stabilization and next-cycle development truly overlap. Promote the frozen branch, not the advancing `dev`.

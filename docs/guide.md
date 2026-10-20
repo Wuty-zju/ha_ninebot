@@ -9,7 +9,7 @@
 - A compatible 64-bit platform for the pinned runtime dependency. ARMv7/32-bit is unsupported; published Linux/macOS/Windows wheels do not certify every host or container architecture.
 - HACS for the recommended installation. This is a custom integration, not a Supervisor app/add-on or a built-in Core integration.
 
-The 2.0 series is currently a **prerelease**. Vendor service changes can affect availability. Back up your Home Assistant configuration and private storage before upgrading.
+The current 2.0 release candidate is **v2.0.0rc1**. Back up your Home Assistant configuration and private storage before upgrading.
 
 ## Install with HACS
 
@@ -41,7 +41,7 @@ Expired credentials use **Reauthenticate**. Reconfigure updates the same account
 
 ## Entities and data
 
-Availability depends on the vehicle model, permissions and actual cloud reports. Created entities are enabled/visible by default; existing user-disabled/hidden choices are respected. Feature options still control the corresponding runtime features.
+Available fields depend on the vehicle model, permissions and cloud reports. Standard entities are enabled and visible when their feature is active. Debug-only diagnostics follow the debug option; events and calendars have separate switches. Existing user-disabled or hidden choices are retained.
 
 | Group | Available information | Meaning and limits |
 |---|---|---|
@@ -52,11 +52,13 @@ Availability depends on the vehicle model, permissions and actual cloud reports.
 | Rides | Today/yesterday/month totals, last-ride metrics, monthly list coverage | Completeness is checked per metric. Missing evidence is not silently converted to zero. |
 | History | Sync state, month-scan progress, saved-detail progress, last successful sync | These are different scopes; 100% saved discovered details does not prove full cloud history. |
 | Controls | Vehicle/seat locks and retained remote buttons | Enabled controls, an allowlist and authorization required; see below. |
-| Native HA | Ride calendar, ride-completed/state-transition events, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
+| Native HA | Ride calendar, vehicle/trip events, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
 
 Durations retain native seconds and suggest **hours with four decimals** through HA's native conversion. Distance/range and Wh/km suggest one decimal; energy and maximum speed suggest integers. Presentation rounding does not round archived source facts. HA user overrides take precedence. Rated battery V/Ah produce a specification in kWh, not measured capacity or health.
 
 Cycle counts display not supported only when the cycle-support flag explicitly says so; unknown support stays unknown. Missing odometer is not reported, without invented distance. English and Simplified Chinese are the primary documentation languages; shipped entity/settings labels cover additional locales with English fallback for some longer text.
+
+Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
 
 ## Options
 
@@ -73,6 +75,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | History storage limit (Beta) | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
 | History request budget (Beta) | 60/account/hour; 0–120 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. Enter 0 to remove the hourly quota (not recommended); serialization and upstream backoff remain active. |
 | Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
+| Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. Retired low-confidence SOC estimators remain removed. |
 | Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
@@ -95,6 +98,7 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 | Symptom | Check first |
 |---|---|
 | Integration missing after download | Confirm the directory/domain, restart as prompted, and use a release compatible with your host architecture. |
+| First upgrade stays at initializing | Legacy archives are validated and consolidated before setup completes. Several databases can take a few minutes. Check the latest log time and allow the migration to finish. Repeated failures require the traceback and diagnostics. |
 | Authentication fails | Check the official App/account region; use reauth. Do not publish credentials or token files. |
 | Rated-parameter form rejects a vehicle | Close and reopen the form after the updated integration is actually loaded. Choose a currently discovered vehicle. |
 | Today/yesterday values unknown | Setup and midnight schedule a prompt refresh; incomplete lists or missing metrics still need evidence. Same-period verified values survive short outages. See [coverage and statistics](history.md#coverage-and-statistics). |
@@ -114,7 +118,6 @@ Optional map tiles contact an external provider only when enabled; see [map priv
 
 **Keep local trip history database (Beta)** is checked by default. Removing an account stops its tasks and retains trips, detailed tracks and recovery evidence. Adding the same authenticated account reconnects its archive; synchronization resumes under your selected options. If unchecked, the next account removal deletes that account’s managed archive and recovery copies. Unrecognized files are retained with a Repair. This setting does not delete Recorder history. Do not edit a running database or registry manually; see [migration](migration.md).
 
-Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
 
 
 ## Export and import history databases

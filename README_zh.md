@@ -6,7 +6,7 @@
 
 [English](README.md) · 简体中文
 
-[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%3Fper_page%3D1&query=%24%5B0%5D.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases) [![Home Assistant](https://img.shields.io/badge/Home_Assistant-2026.1.0%2B-18bcf2)](docs/guide_zh.md#环境要求) [![HACS Custom](https://img.shields.io/badge/HACS-Custom_repository-orange)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
+[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%3Fper_page%3D1&query=%24%5B0%5D.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases) [![HACS Custom](https://img.shields.io/badge/HACS-Custom_repository-orange)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
 
 [安装](#安装) · [功能](#可以做什么) · [骑行历史](#历史行程轨迹与详情同步) · [架构](#工作原理) · [文档](docs/README.md)
 
@@ -14,7 +14,7 @@
 
 查看九号车辆的电量、充电与状态，将骑行记录及精细 GPS 轨迹保存在自己的 Home Assistant 存储中，通过自动化查询历史，并使用原生日历、统计与日常车辆实体。
 
-> **2.0 目前为预发布版本。** 这是连接中国区九号 App 服务的独立社区集成。云端采集需要互联网，已保存历史可以本地查询。可视化界面与自定义卡片仍处于早期 alpha。
+> **当前推荐候选：[v2.0.0rc1](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc1)。** 连接中国区九号 App 服务；实时更新需要互联网，已保存行程可在本地查询。地图可视化与自定义卡片为早期 alpha。
 
 ## 可以做什么
 
@@ -26,7 +26,7 @@
 | **通信电池** | 独立的应急通信电池电量；设备电量指示仍关联主电池。 |
 | **骑行摘要** | 今日、昨日、本月的里程、次数、时长及能耗；最近行程的起止时间、里程、时长、最高/平均速度和单位里程能耗。 |
 | **历史档案** | 可续接的首次发现、增量更新、行程/GPS 详情保全、本地查询操作和逐车进度。 |
-| **HA 原生能力** | 行程日历、骑行完成事件、GPS 定位、车辆图片、响应型 Actions，以及显式日/月统计导入。 |
+| **HA 原生能力** | 行程日历、车辆／行程事件、GPS 定位、车辆图片、响应型 Actions，以及显式日/月统计导入。 |
 | **控制** | 车辆锁、座桶解锁、鸣笛及保留的远程开启/关闭按钮，操作后回读最新状态。 |
 
 可用字段取决于车型及云端上报。电池健康评分不是 SOH，配置的额定能量是规格值，不是实测容量。[实体含义、单位及可用性 →](docs/guide_zh.md#实体与数据)
@@ -46,7 +46,7 @@
 
 1. 打开 **HACS → ⋮ → 自定义存储库**。
 2. 添加 `https://github.com/Wuty-zju/ha_ninebot`，类别选择 **Integration**。
-3. 打开 **Ninebot**，选择需要的 **2.0 预发布版本**并下载；必要时在版本选择中开启预发布。
+3. 打开 **Ninebot**，选择需要的 **v2.0.0rc1**并下载；必要时在版本选择中开启预发布。
 4. 按提示重启 Home Assistant。
 5. 前往 **设置 → 设备与服务 → 添加集成 → Ninebot**。
 
@@ -82,6 +82,8 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 | 自动同步历史详情（Beta） | 新账号关闭 | 在请求预算内保存行程和轨迹详情。 |
 | 自动扫描历史行程（Beta） | 新账号关闭 | 首次发现及后续增量任务。 |
 | 控制及车辆许可列表 | 新账号开启 / 登录核验的全部车辆 | 已有选择保留，后续新增车辆不自动批准。 |
+| 保留本地历史数据库（Beta） | 开启 | 删除账号后保留，重新登录同账号接回。 |
+| 车辆事件（Beta） | 开启 | 行程上报、修订、完成与具体车辆状态转换。 |
 | 调试模式 | 关闭 | 显示有界的当前解析信息，方便排查。 |
 
 升级保留已有明确选择。其他选项包括刷新周期、电池标称参数、请求预算及档案配额。[默认值与范围 →](docs/guide_zh.md#配置选项)
@@ -113,7 +115,7 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 | **增量更新** | 复核近期活动、核对变化列表并重试缺口，不反复下载已稳定历史。 |
 | **本地校验** | 分批检查原件与分页关系，需处理的存储问题通过 Repairs 提示。 |
 
-同步状态、月份扫描进度、详情保存进度和最近成功时间分别解释不同阶段，也支持手动同步、暂停和继续。详情保存百分比针对**已发现记录**，月份覆盖情况另行显示列表缺口。
+历史行程扫描与详情保存进度位于设备诊断；同步按钮可启动或恢复任务，暂停按钮停止后台采集。调试模式增加同步状态和最近成功时间。详情百分比针对**已发现记录**，月份覆盖另行标明列表缺口。
 
 历史请求预算默认每账号每小时 **60 次逻辑请求**，通过数字输入框配置为 **1–120 次**，填写 **0** 则取消每小时配额（不推荐），请求串行、重试与云端退避仍然生效；档案默认每账号 **100 MiB**，可配置为 **32–2048 MiB**。达到配额时暂停写入并保留已有数据。本地记录不按年龄自动过期，长期保存取决于容量和备份。应在云端仍返回详情时完成保全，已简化或移除的上游轨迹无法在本地重建。
 
@@ -123,7 +125,7 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 |---|---|
 | 当前位置 | 设备位置定位实体及 HA 原生地图卡。 |
 | 按日期查看骑行 | 基于本地档案的原生行程日历。 |
-| 新行程自动化 | 建立启动基线后的骑行完成事件实体。 |
+| 新行程自动化 | 建立启动基线后的车辆／行程事件实体。 |
 | 已存行程/轨迹 | `ninebot.get_recorded_trips` 和 `ninebot.get_trip_detail`。 |
 | 日/月汇总 | `ninebot.get_statistics`。 |
 | 历史趋势图表 | 显式执行 `ninebot.import_statistics`，再使用原生统计图表。 |
@@ -133,7 +135,7 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 
 [历史指南及操作示例 →](docs/history_zh.md) · [覆盖与统计 →](docs/history_zh.md#覆盖与统计)
 
-**可视化状态：** 随附地图、界面和卡片为**早期 alpha**，可能重构或撤回。当前实验功能使用方式保留在[历史指南](docs/history_zh.md#添加历史地图)。本页聚焦同步与保全，不将界面截图作为成品或 demo 展示。
+**可视化状态：**随附地图和卡片为**早期 alpha**，将继续完善导航、联动视图与轨迹对比。[历史指南](docs/history_zh.md#添加历史地图)提供当前安装方法。
 
 ## 2.0 重构内容
 
@@ -146,7 +148,28 @@ Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和�
 | **HA 接入** | 原生传感器、锁、定位、图片、日历和事件，响应型操作及聚合统计。 |
 | **维护** | 诊断、Repairs、迁移记录、备份协调及有界本地校验/重建。 |
 
-已退役的低信度 SOC 能量估算保持移除。云端上报与有意义的配置规格各有用途。[迁移详情 →](docs/migration_zh.md) · [版本历史 →](CHANGELOG.md)
+重构还加入了车辆发现快速恢复、状态即时更新、跨天统计保留，以及删除并重新添加账号后的历史库复用。电池配置规格与实测值分别表达。[迁移详情 →](docs/migration_zh.md) · [版本历史 →](CHANGELOG.md)
+
+## 本地行程数据库
+
+每个已认证账号拥有**一个私有 SQLite 数据库**，供该账号的多辆车共用，并独立于集成条目保存。结构化记录方便查询，压缩的来源证据用于校验和后续解析。
+
+| 能力 | 实现方式 |
+|---|---|
+| **长期保留** | 无按年龄自动删除。默认移除账号仍保留历史，再次登录同账号自动接回。 |
+| **增量采集** | 月份／分页断点、行程 ID 去重和详情复用减少重复请求，重启后继续执行。 |
+| **轨迹保护** | 最新标量与较好轨迹分别选择，新简化路线到达后仍保留已有详细轨迹。 |
+| **高效读取** | 数据库操作在事件循环外串行执行；本地查询分页、轨迹分段，实时轮询单独调度。 |
+| **校验与恢复** | 事务、响应摘要、引用检查、有界审计及受支持的重建流程保护已有记录。 |
+| **导出与迁移** | 选定车辆或账号导出版本化 ZIP；导入先核验归属、结构和响应，再去重合并。 |
+| **升级清理** | 校验后整合旧库，成功合并的副本自动清理；不同来源证据保留在主库内。 |
+| **容量管理** | 达到账号额度时暂停写入，已有记录仍可使用，用户可提高上限。 |
+
+![账号历史独立于条目保留，支持经校验的导出、导入和整合](docs/assets/architecture/archive-zh.svg)
+
+**保留本地历史行程信息数据库（Beta）**默认开启，决定移除账号时的处理。管理员可在账号**配置**中导出／导入；下载链接十分钟失效，文件名区分 UTC 时间、账号／车辆数与导出范围。
+
+大版本升级前请备份 Home Assistant。首次升级存在多个旧库时，校验和合并可能需要数分钟。导出包包含私人位置记录，请妥善保存。[导出／导入说明 →](docs/guide_zh.md#导出和导入历史数据库) · [升级与回退 →](docs/migration_zh.md#存储升级与回滚)
 
 ## 工作原理
 

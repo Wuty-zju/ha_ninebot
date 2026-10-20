@@ -2,22 +2,23 @@
 
 [Documentation](README.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases)
 
-These are directions, not delivery dates or guarantees of vendor API availability. Implemented behavior is in the guides; speculative fields are not supported data.
+Current scope and next priorities for the 2.0 series. Usage and data contracts are maintained in the guides.
 
-## Available in 2.0 prereleases
+## Available in 2.0.0rc1
 
 - Account-isolated login/reauth, demand-aware realtime data, native vehicle/seat locks with bounded readback.
-- Vehicle/battery/range/location entities, calendars, completion events and historical query/statistics Actions.
+- Vehicle/battery/range/location entities, calendars, trip/vehicle events and historical query/statistics Actions.
 - Resumable first discovery and incremental history, private SQLite evidence, quality-preserving tracks, quotas, verification and supported local recovery.
-- Scoped local continuation versions, in-flight read sharing and measured per-read parsing reuse.
+- Account-owned archives, same-account reconnection, validated multi-account/vehicle export and import, schema 7 source consolidation.
+- Scoped local continuation versions, in-flight read sharing, discovery recovery and day-boundary statistics retention.
 
 已具备：多账号、实时实体/锁反馈、日历/统计/查询、可续接的历史行程/详情/精细GPS同步与私有归档、较好轨迹保护及有界校验恢复。
 
 ## Early alpha: visualization and cards
 
-Map-based visualization, UI interactions and custom cards are experimental **early alpha**. Existing code is an evolving prototype, not a stable showcase or demo. It may be substantially redesigned, changed or withdrawn at any time; future work can rebuild the interaction architecture rather than preserve its current appearance.
+Map visualization, UI interactions and custom cards are **early alpha**. Next work centers on a shared vehicle/date/ride selection, linked map/list/summary/chart views and clearer synchronization feedback. The interaction model may change as these workflows mature.
 
-地图可视化、UI交互和自定义卡片为**早期alpha**。现有代码是持续演进的原型，不是稳定展示或demo；后续可大幅完善、重构、修改或随时撤回，不承诺维持当前界面。
+地图可视化、UI 交互和自定义卡片为**早期 alpha**。后续围绕共享车辆／日期／行程选择、地图／列表／摘要／图表联动及同步反馈完善交互，界面结构会随之调整。
 
 ## Next candidates
 
@@ -25,7 +26,7 @@ Map-based visualization, UI interactions and custom cards are experimental **ear
 |---|---|---|
 | More intuitive history workspace | Clearer coverage/sync feedback; optional linked map/list/summary/chart cards | Shared selection/permissions without duplicate cloud reads or private-cache leaks. |
 | More vehicle and battery fields | Useful native HA representation across models/packs | Reviewed fixtures, units/enums, stable identity and meaningful state semantics. |
-| Archive/read efficiency | Faster startup/larger histories with bounded memory | Reproducible measurements; preserve integrity, better geometry and rollback. |
+| Archive/read efficiency | Migration progress, faster startup, clearer whole-archive/baseline coverage and bounded reads | Reproducible measurements; preserve integrity, better geometry and rollback. |
 | Documentation and distribution | English/Chinese onboarding, documented data contracts, HACS readiness | Accurate support matrix, attribution, valid packaging and explicit submission approval. |
 
 下一步候选：更直观的历史/同步反馈、按需拆分联动卡片、更多已取证实体/车型/电池能力、基于实测的存储读取优化，以及双语说明/HACS 准备。避免重复请求和实体身份变化。

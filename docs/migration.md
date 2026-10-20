@@ -55,7 +55,7 @@ Historical manual-job entities were retired separately from the current automati
 
 ## Archive schema and rollback
 
-Archive migrations validate the source, check space and create an exclusive consistent `rides.schema<old>-<digest>.sqlite3` recovery copy before transactional schema changes. Original evidence and checkpoints are retained; certificates can become stale under a newer verification contract.
+Archive migrations validate the source, check space and create an exclusive consistent `rides.schema<old>-<digest>.sqlite3` recovery copy before transactional schema changes. Source evidence and checkpoints are retained inside the account archive. After validated consolidation, inactive legacy files and schema safety copies are removed. Keep an external/full HA backup for rollback.
 
 Older versions may not read the upgraded schema or identity journal. Restore the matching full pre-upgrade backup in a deliberate recovery environment with the integration stopped. Keep the only recovery original intact; an older copy lacks data acquired after it was created. Do not overwrite a live archive, lower its schema marker manually or delete it to force setup.
 

@@ -6,7 +6,7 @@
 
 English · [简体中文](README_zh.md)
 
-[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%3Fper_page%3D1&query=%24%5B0%5D.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases) [![Home Assistant](https://img.shields.io/badge/Home_Assistant-2026.1.0%2B-18bcf2)](docs/guide.md#requirements) [![HACS Custom](https://img.shields.io/badge/HACS-Custom_repository-orange)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
+[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%3Fper_page%3D1&query=%24%5B0%5D.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases) [![HACS Custom](https://img.shields.io/badge/HACS-Custom_repository-orange)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
 
 [Install](#installation) · [Features](#what-you-can-do) · [Ride history](#ride-history-and-track-synchronization) · [Architecture](#how-it-works) · [Documentation](docs/README.md)
 
@@ -14,7 +14,7 @@ English · [简体中文](README_zh.md)
 
 Monitor your Ninebot's battery, charging and vehicle status. Keep ride records and detailed GPS tracks in your own Home Assistant storage, query them from automations, and use native calendars and statistics alongside everyday vehicle entities.
 
-> **2.0 is currently a prerelease.** This independent community integration connects to the Chinese Ninebot App service. Cloud acquisition needs internet access; saved history is available through local queries. Visualization and custom cards remain early alpha.
+> **Current release candidate: [v2.0.0rc1](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc1).** Connects to the Chinese Ninebot App service. Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
 
 ## What you can do
 
@@ -26,7 +26,7 @@ Monitor your Ninebot's battery, charging and vehicle status. Keep ride records a
 | **Communication battery** | Separate emergency communication battery SOC; main battery SOC remains the device's battery indicator. |
 | **Ride summaries** | Today/yesterday/month distance, count, duration and energy; Last Ride times, distance, duration, maximum/average speed and energy intensity. |
 | **Historical archive** | Resumable discovery, incremental updates, detailed ride/GPS preservation, local query Actions and per-vehicle progress. |
-| **Native HA features** | Ride calendar, completion events, GPS tracker, vehicle image, response Actions and explicit day/month statistics imports. |
+| **Native HA features** | Ride calendar, vehicle/trip events, GPS tracker, vehicle image, response Actions and explicit day/month statistics imports. |
 | **Controls** | Vehicle lock, seat unlock, bell and retained remote-start/stop buttons, with fresh status checks after commands. |
 
 Available fields vary by vehicle and cloud reports. Battery health score is a score, not SOH; configured rated energy is a specification, not measured capacity. [Entities, units and availability →](docs/guide.md#entities-and-data)
@@ -46,7 +46,7 @@ ARMv7/32-bit platforms are unsupported. [Platform and region details →](docs/g
 
 1. Open **HACS → ⋮ → Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with category **Integration**.
-3. Open **Ninebot**, select a **2.0 prerelease**, and download it. Enable prerelease versions in the selector if needed.
+3. Open **Ninebot**, select a **v2.0.0rc1**, and download it. Enable prerelease versions in the selector if needed.
 4. Restart Home Assistant when prompted.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -82,6 +82,8 @@ Each account owns its session, credentials directory and archive. Entry titles u
 | Background detail preservation (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
 | Automatic history sync (Beta) | Off for new accounts | Initial discovery and subsequent incremental work. |
 | Controls and vehicle allowlist | New accounts: on / sign-in-verified vehicles | Adjust command access for selected vehicles; existing choices are retained. |
+| Keep local history database (Beta) | On | Retain history after account removal and reconnect it on same-account sign-in. |
+| Vehicle events (Beta) | On | Trip reports, revisions, completions and concrete vehicle transitions. |
 | Debug mode | Off | Bounded parsed current information for investigation. |
 
 Existing explicit choices are retained on upgrade. Further options include polling intervals, nominal battery parameters, request budget and archive quota. [Defaults and ranges →](docs/guide.md#options)
@@ -113,7 +115,7 @@ Enable **Preserve trip details in background** and **Automatic history synchroni
 | **Incremental updates** | Revisit recent activity, reconcile changed lists and retry gaps without repeatedly downloading settled history. |
 | **Local verification** | Check retained objects and page relationships in bounded work; surface actionable storage problems through Repairs. |
 
-Sync status, month-scan progress, saved-detail progress and last-success entities explain different stages. Manual sync, pause and resume are available. Saved-detail percentage covers **discovered records**; month coverage reports list gaps separately.
+History scan and saved-detail progress are device diagnostics. The sync button starts or resumes work; pause stops background acquisition. Debug mode adds synchronization state and last-success diagnostics. Saved-detail percentage covers **discovered records**; month coverage reports list gaps separately.
 
 The default history budget is **60 logical requests per account/hour**, configurable from **1–120** in a numeric input. **0** removes the hourly quota (not recommended); request serialization, retries and upstream backoff still apply. Archive quota defaults to **100 MiB per account**, configurable from **32–2048 MiB**. Reaching the quota pauses writes and retains existing data. Local records have no age-based expiry; capacity and backups govern long-term retention. Save details while the cloud still returns them: removed or simplified upstream tracks cannot be recreated locally.
 
@@ -123,7 +125,7 @@ The default history budget is **60 logical requests per account/hour**, configur
 |---|---|
 | Current position | Device location tracker and native Map card. |
 | Rides by date | Native ride Calendar backed by the local archive. |
-| New-ride automation | Ride-completed Event entity, after its startup baseline. |
+| New-ride automation | Vehicle trip and state Event entities, after their startup baselines. |
 | Saved rides/tracks | `ninebot.get_recorded_trips` and `ninebot.get_trip_detail`. |
 | Day/month aggregates | `ninebot.get_statistics`. |
 | Historical trend charts | Explicit `ninebot.import_statistics`, then native statistics charts. |
@@ -133,7 +135,7 @@ Local-only query modes read the archive without cloud acquisition. Large lists a
 
 [History guide and Action examples →](docs/history.md) · [Coverage and statistics →](docs/history.md#coverage-and-statistics)
 
-**Visualization status:** bundled map/UI/cards are **early alpha** and may be redesigned or withdrawn. Current experimental instructions remain in the [history guide](docs/history.md#add-the-history-map). This README focuses on data synchronization and preservation; interface screenshots are not presented as a finished product or demo.
+**Visualization status:** the bundled map and cards are **early alpha**, with ongoing work on navigation, linked views and route comparison. Setup instructions are in the [history guide](docs/history.md#add-the-history-map).
 
 ## What's new in 2.0
 
@@ -146,7 +148,28 @@ Local-only query modes read the archive without cloud acquisition. Large lists a
 | **HA integration** | Native sensors, locks, tracker, images, calendars and events; response Actions and aggregate statistics. |
 | **Maintenance** | Diagnostics, Repairs, migration journals, backup coordination and bounded local verification/reconstruction. |
 
-Retired low-confidence SOC energy estimates remain removed. Cloud readings and useful configured specifications have distinct roles. [Migration details →](docs/migration.md) · [Release history →](CHANGELOG.md)
+The refactor also adds prompt discovery recovery, immediate status updates, stable day-boundary statistics and account-owned history that survives removing and re-adding an account. Configured battery specifications remain separate from measured values. [Migration details →](docs/migration.md) · [Release history →](CHANGELOG.md)
+
+## Your local ride database
+
+Each authenticated account has **one private SQLite database**, shared by its vehicles and independent of the integration entry. The archive combines structured records for efficient queries with compressed source evidence for verification and future parsing.
+
+| Capability | How it works |
+|---|---|
+| **Long-term ownership** | No age-based deletion. Removing an account retains history by default; signing into the same account reconnects it. |
+| **Incremental acquisition** | Month/page checkpoints, ride-ID deduplication and reusable details reduce repeat requests. Background tasks resume after restart. |
+| **Track protection** | Latest scalar facts and best saved geometry are selected independently. A newer simplified route keeps the earlier detailed track available. |
+| **Responsive access** | Serialized database work runs outside HA's event loop. Local queries use bounded pages and track chunks; live polling has its own schedule. |
+| **Integrity and recovery** | Transactions, payload hashes, reference checks, bounded audits and supported reconstruction protect retained records. |
+| **Portable backups** | Export selected vehicles or accounts as a versioned ZIP. Import validates ownership, schema and payloads, then deduplicates and merges. |
+| **Upgrade cleanup** | Verified legacy databases are consolidated; successfully merged copies are removed. Distinct source evidence stays in the main archive. |
+| **Capacity control** | The account quota pauses writes when full. Existing records remain available, and the user can raise the limit. |
+
+![Account history survives entry removal and supports validated export, import and consolidation](docs/assets/architecture/archive-en.svg)
+
+The default **Keep local trip history database (Beta)** option controls removal behavior. Export/import is available from account **Configure** and requires an administrator. Download links expire after ten minutes; filenames identify UTC time, account/vehicle counts and the selected scope.
+
+Back up Home Assistant before a major upgrade. A first upgrade with several older databases can take a few minutes while they are checked and merged. Preserve exported archives as private location records. [Export/import instructions →](docs/guide.md#export-and-import-history-databases) · [Upgrade and rollback →](docs/migration.md#archive-schema-and-rollback)
 
 ## How it works
 
@@ -172,7 +195,7 @@ Current summaries use HA's state machine. Full trails and business evidence stay
 
 Locks and buttons share the executor. Vehicle lock/unlock maps to remote stop/start; vehicle/cloud operating rules apply. HA follows with short-term status reads rather than assuming the target state. Seat unlock is remote; seat locking is manual.
 
-The authenticated local protocol client is managed automatically. Paginated history uses a dedicated adapter with the same account session. [Technical architecture, lifecycle and dependencies →](docs/architecture.md)
+The integration manages its authenticated local connection automatically. Paginated history uses a dedicated adapter with the same account session. [Technical architecture, lifecycle and dependencies →](docs/architecture.md)
 
 ## Privacy and data meaning
 

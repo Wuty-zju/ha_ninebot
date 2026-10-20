@@ -2,7 +2,7 @@
 
 [English overview](../README.md) · [中文首页](../README_zh.md)
 
-Choose the guide for your task. Current contracts live by topic; version-by-version changes remain in [CHANGELOG](../CHANGELOG.md).
+Documentation for **2.0.0rc1**. Start with setup, then enable the history features you need. Select a release tag to read documentation matching an older installation. Version-by-version changes are in [CHANGELOG](../CHANGELOG.md).
 
 | Task | English | 简体中文 |
 |---|---|---|
@@ -13,7 +13,7 @@ Choose the guide for your task. Current contracts live by topic; version-by-vers
 | Source/test routing and efficient development | [Development](development.md) | 英文正文含简中摘要 |
 | Delivered capabilities and future directions | [Roadmap](roadmap.md) | 同页双语 |
 
-New coding agents start with [AGENTS](../AGENTS.md), the relevant guide and the task table in [Development](development.md). Private captures and workstation manuals are not required to use this repository.
+New coding agents start with [AGENTS](../AGENTS.md), the relevant guide and the task table in [Development](development.md). The task table links directly to the relevant modules and offline tests.
 
 [Contribute](../CONTRIBUTING.md) · [Security/privacy reporting](../SECURITY.md) · [Synthetic asset provenance](assets/manifest.json)
 

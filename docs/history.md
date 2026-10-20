@@ -2,7 +2,7 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
-> **Visualization status: early alpha.** The map/UI/card instructions below describe the current experimental implementation, not a stable product or public demo. These components can be redesigned, changed or withdrawn at any time. Historical acquisition, local preservation and query contracts are documented separately.
+> **Map and cards: early alpha.** Navigation and linked views are under active development. The instructions below cover the current implementation; synchronization, storage and Actions work independently.
 
 ## Choose the right view
 
@@ -13,7 +13,7 @@
 | Rides on dates | Native Calendar | Local recorded rides; no GPS or implicit cloud fill. |
 | Day/month trends | `get_statistics` and explicit `import_statistics` | Verified aggregates; native statistics-graph after import. |
 | Automations or a custom dashboard | Response Actions | Bounded lists, detail chunks, provenance and coverage. |
-| A newly observed completion | Ride Event entity | A stable new observation after the startup baseline. |
+| Trip reports and vehicle transitions | Native Event entities | New or revised trip reports, confirmed completion and concrete status transitions after a baseline. |
 
 Historical rides and point arrays belong in the archive and bounded responses, not entity attributes or thousands of per-ride entities. Opening a history view does not increase live polling.
 
@@ -52,6 +52,8 @@ Existing `start`/`continue`/`status`/`cancel` range jobs remain supported (up to
 - **Monthly list coverage** describes the latest list response, not accumulated archive completeness. A 20/37 response is different from an archive that has reconciled all 37 IDs.
 
 Missing/foreign vehicles are not queried through stale ownership. Saved evidence remains, and a positive rediscovery can resume the checkpoint; absence from one accepted list does not prove physical unbinding.
+
+Synchronization progress sensors and controls appear in device diagnostics. Sync state and last-success entities additionally require debug mode; the calendar follows its own option. A diagnostic category does not change Recorder retention.
 
 ## Add the history map
 
@@ -242,7 +244,7 @@ Quota exhaustion pauses writes instead of silently evicting rides. Healthy reads
 | Recovery-source search | Searches only managed copies, with persisted bounded continuation and exact digest/owner/ride/source checks. Captured filename bounds are not an immutable filesystem snapshot. |
 | Missing-object startup recovery | Narrow validated schema-5 recovery from managed copies; preserves the original before atomic publication. Arbitrary schema/index corruption is not automatically repaired. |
 
-Reconstruction keeps `.recovery-<job_id>.sqlite3` beside the archive, space-checks before copying and verifies its hash. Existing recovery points are not overwritten or automatically deleted. Missing/invalid recovery points enter `blocked_recovery` without endless retries; restore the matching original before explicitly continuing. A backup may itself contain an invalid derived index and is not a certified restore image.
+Reconstruction keeps `.recovery-<job_id>.sqlite3` beside the archive, space-checks before copying and verifies its hash. Active reconstruction recovery points remain available for the job. Successful account consolidation removes verified inactive copies after their evidence has been merged. Missing/invalid recovery points enter `blocked_recovery` without endless retries; restore the matching original before explicitly continuing. A backup may itself contain an invalid derived index and is not a certified restore image.
 
 Quality-only corrections keep newer scalar observations and selected geometry. Explicit identity contradictions, missing parents/links or unprovable memberships stay unavailable/blocked. Byte-corrupt roles can be restored only from exact matching managed originals after bounded quarantine; partial repair preserves readable roles and reports gaps. Old checker jobs retain their cursor and cannot retroactively certify a wider new contract. Verification of raw objects, references, normalized projections and cloud completeness are separate scopes.
 

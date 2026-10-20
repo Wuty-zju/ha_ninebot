@@ -1,157 +1,142 @@
 # Development and validation
 
-[Documentation](README.md) · [Architecture](architecture.md) · [Product constraints](../AGENTS.md)
+[Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
 
 ## Start with a task, not the whole repository
 
-Inspect Git state and user changes first. Read the relevant guide/contract, then its code and fixture provenance. Release notes explain history; they are not instructions to reimplement completed milestones. No private workstation path or external developer workspace is required to understand this repository.
+Start with [AGENTS](../AGENTS.md), inspect the checkout, then read the relevant guide and source boundary below. Current behavior is documented by topic; [CHANGELOG](../CHANGELOG.md) records its evolution.
 
-| Task | Main source boundary | Relevant offline evidence |
+| Task | Source boundary | Offline evidence |
 |---|---|---|
-| Authentication/setup | config_flow/session/runtime/client | test_config_flow, test_sms_login, test_session, test_client |
-| Fields/entities/identity | adapters/models/entity/sensor/binary_sensor/migration/registry | Field inventory, fixture metadata, entity/migration/translation tests |
-| History acquisition | bootstrap/history_plan/preservation/incremental_runs/history_store | History lifecycle/protocol/retry/coverage tests |
-| Archive/integrity | ride_archive/detail_codec/object_checks/local_reconstruction | Archive/corruption/recovery/recorded-trip tests |
-| Account archive/portability | account_archive/archive_transfer/archive_options | test_account_archive, test_archive_options, test_archive_lifecycle |
-| Maps/local query | frontend/, history_websocket, recorded_actions | tests/frontend/, tests/browser/, authorization/detail tests |
-| Documentation/branding | README/docs/NOTICE/brand | Links, examples, factual/bilingual parity, asset provenance and packaging |
+| Account setup and authentication | `config_flow`, `account`, `session`, `runtime`, `client` | Config-flow, reauth, session, account-display and options tests |
+| Current data and entities | `adapters`, `models`, `entity`, platform modules, `registry`, `migration` | Field fixtures, normalization, identity, entity and translation tests |
+| Polling and recovery | `coordinator`, `realtime`, `demand`, `query_broker`, `backend` | Demand, broker, partial discovery, availability and cancellation tests |
+| Controls and events | `lock`, `control_polling`, `button`, `event`, `ride_reports`, `vehicle_events` | Confirmation, replacement command, latch observation and baseline tests |
+| History acquisition | `bootstrap`, `history_plan`, `preservation`, `incremental_runs`, `history_store` | Pagination, coverage, retry, budget and restart tests |
+| Day/month statistics | `daily_sync`, `travel_statistics`, `period_statistics`, `ride_presentation` | Daily-index repair, period completeness and rollover tests |
+| Archive and transfer | `ride_archive`, `account_archive`, `archive_transfer`, `archive_evidence`, `archive_options` | Schema, ownership, merge, retention, upload/download and backup tests |
+| Integrity and repair | `object_checks`, `archive_audit`, `local_reconstruction`, `startup_recovery` | Corruption, raw replay, reference and recovery tests |
+| Local history and maps | `recorded_actions`, `history_websocket`, `archive_browse`, `frontend/` | Service/authorization tests, Node tests and synthetic browser fixtures |
+| Documentation and releases | `docs/`, `scripts/`, `.github/workflows/` | Link/diagram checks, release-policy and package tests |
 
-Names identify module/test families; use `rg --files` and targeted search to select actual files rather than treating every family as a command.
+Use `rg --files` to locate test families and [fixture metadata](../tests/fixtures/ninecli/0.1.7/metadata.json) to establish provenance. Each source file stays responsible for its own layer; shared contracts belong in the relevant model or protocol.
 
 ## Repository layout
 
 ```text
-custom_components/ninebot/   All installable runtime code and assets
-  frontend/                 Bundled card, modules and vendored map library
-  brand/                    Integration branding
+custom_components/ninebot/   Installable Python, translations and bundled assets
+  frontend/                 Experimental history card and vendored map library
+  brand/                    Integration artwork
   licenses/                 Runtime attribution and source pins
-  translations/             HA locales; strings.json is the English source
-tests/                      Offline HA tests, synthetic browser/Node checks
-  fixtures/                 Recorded sanitized and synthetic inputs with metadata
-scripts/                    Development-only generation/profiling utilities
-.github/workflows/          Small automatic checks and scoped/manual test jobs
-docs/                       Public usage, architecture, migration and development
+tests/                      Offline HA, Node and synthetic browser tests
+  fixtures/                 Sanitized recorded responses and synthetic inputs
+scripts/                    Documentation, profiling and release utilities
+.github/workflows/          Automatic scoped checks and manual release jobs
+docs/                       User guides, architecture and development contracts
 ```
 
 ## Select the smallest meaningful checks
 
-| Change | Required scope |
+| Change | Validation |
 |---|---|
-| Public prose/links | Link/anchor and bilingual-fact checks, reviewed examples/assets; no HA environment. |
-| Python behavior | Ruff/format, affected typing and targeted pytest/fixture replay. |
-| Frontend behavior | Related Node tests; synthetic browser when rendering/interactions change. |
-| Auth/identity/schema/compatibility | Failure/migration/authorization regressions; broader pinned HA matrix once at a major boundary. |
-| Release packaging | HACS/Hassfest against the candidate, correct manifest/tag/release and runtime paths. |
+| Documentation | `python scripts/check_docs.py`, documentation unit tests and generated-diagram check |
+| Python behavior | Ruff/format, typing and affected offline pytest cases |
+| Frontend | Related Node tests; synthetic browser render for interaction/layout changes |
+| Identity, authentication or storage | Migration, authorization, cancellation and failure cases; both HA boundaries at major milestones |
+| Release candidate | Lightweight candidate checks, one full HA boundary run and final package verification |
 
-**Checks** automatically runs **Core lint** and the small standard-library **Release policy** guards on PRs and pushes to `main`/`dev`. HACS/Hassfest use unique check names. The complete HA/coverage/frontend matrix requires `workflow_dispatch` with **full_validation=true**; its default is false. **Focused statistics**, **History protocol** and **History browser** have affected-path scopes. **History profile** is an explicit synthetic measurement, not a timing SLA. Read current YAML before dispatching; a green lightweight badge does not prove the full matrix ran.
+**Checks** runs Core lint and Release policy on PRs and `main`/`dev` pushes. Documentation, HACS and Hassfest have separate jobs. Path-scoped workflows cover account configuration, history, statistics and browser behavior.
 
-In an existing compatible isolated environment:
+For an RC or major compatibility change, dispatch **Checks** with `full_validation=true` on the fixed candidate. The current full matrix pins:
+
+| Home Assistant | Python | Test plugin |
+|---|---|---|
+| 2026.1.0 | 3.13 | 0.13.305 |
+| 2026.10.2 | 3.14 | 0.13.373 |
+
+The job verifies installed versions and dependency consistency, runs mypy and the full offline pytest suite, and uploads JUnit/coverage reports. Node tests run in the same dispatch. The branch-coverage threshold is 95%. Individual focused workflows retain their own reviewed pins; update a boundary together with its plugin. Reuse unchanged successful evidence between candidates; repeat only affected checks after a fix.
+
+In an existing compatible environment:
 
 ```sh
 ruff check custom_components tests scripts
 ruff format --check custom_components tests scripts
 mypy custom_components/ninebot --follow-imports=silent
-python -m pytest -q tests/test_config_flow.py  # Choose affected tests.
+python -m pytest -q tests/test_config_flow.py
 node --test tests/frontend/*.mjs
 ```
 
-Do not install heavy HA environments for docs. Prefer Actions for expensive compatibility tests; do not repeat a successful unchanged suite without a new risk. Record candidate SHA, environment, checks and skips. Mock/fixture/CI success is not real cloud or physical-vehicle verification.
+Select the test files for the change. Cloud CI provides isolated heavy environments; local documentation work needs only Python's standard library.
 
 ## Fixtures and privacy
 
-Start with [fixture metadata](../tests/fixtures/ninecli/0.1.7/metadata.json) and [field-source mapping](../tests/fixtures/field_inventory/source-map.json). Distinguish recorded sanitized, synthetic and maintainer-confirmed inputs. Unknown units/aliases/CRS stay unverified until appropriate evidence exists.
+Record fixture source/version and distinguish recorded, synthetic and maintainer-confirmed values. Field semantics are indexed in [source-map.json](../tests/fixtures/field_inventory/source-map.json). Units, aliases and coordinate transformations need evidence before entering a production parser.
 
-No live cloud/SMS/control tests by default. No production HA writes, registry/database edits or automatic restart/deployment. Never commit credentials, real identities/locations/trails or local capture paths. Synthetic test captures need source/version and an explicit development-fixture label; private evidence remains outside this repository. Early-alpha UI/card captures are retained as development evidence, not promoted in README demos.
+Keep credentials, account/vehicle identifiers and precise routes out of Git. Use sanitized fixtures and mock servers for development. Live cloud, SMS, controls and production changes require specific authorization. Share reviewed diagnostics through Issues and use [SECURITY](../SECURITY.md) for sensitive reports.
 
 ## Collaboration
 
-Parallel work requires explicit authorization. Use isolated branches/worktrees with a fixed base, contract, owner and file scope. One integrator owns shared interfaces, manifest/version, translation aggregation, primary docs navigation and releases. Do not switch branches in another worker's checkout or concurrently mutate shared environments.
-
-Handoffs state base/head, scope, changed contracts, checks/skips and unresolved evidence. Keep them concise; do not create a permanent manual for every task/agent. Preserve user changes, branches, meaningful IDs and Recorder continuity. No force-push/destructive reset.
+Follow [CONTRIBUTING](../CONTRIBUTING.md#parallel-coding-agents). Give each authorized worker a fixed base, scoped files and a separate branch/worktree. One integrator owns shared models, versions, translations and publication. A handoff records the commit, changed contracts, check results and remaining work.
 
 ## Synthetic profiling
 
-`python -m scripts.profile_history --output /tmp/ninebot-profile.json` uses disposable deterministic 5k/50k/200k summaries and 512/4096/20000-point details. It does not read HA configuration, real accounts or existing archives. Same-runner comparisons use the identical profiler; reopening includes validation and is not OS-cold I/O. Never present small-sample results as a hardware SLA or change storage format before measuring.
+`python -m scripts.profile_history --output /tmp/ninebot-profile.json` measures disposable 5k/50k/200k summaries and 512/4096/20000-point details. Compare changes on the same runner and fixture. Startup includes validation; report the workload with each measurement. Database indexes, compression or journaling changes should follow those measurements.
 
 ## Publication
 
-Keep stages reviewable. Documentation-only updates do not bump versions or create empty prereleases. Actual behavior/packaging releases need relevant authorized checks, a real GitHub Release and truthful notes. Publishing, deploying production HA and applying for HACS default inclusion are separate actions; do not infer permission from a local docs task.
-
-## Branch and release channels
-
-See [CONTRIBUTING](../CONTRIBUTING.md#branch-targets-and-releases) for PR targets. `dev` is the reviewed integration/preview branch; `main` receives stable promotions and stable fixes. During the current transition, 2.0 is still prerelease. Historical tags/Releases remain intact. Short topic branches retire after integration; only main/dev are permanent by default. A temporary `release/<version>` isolates a frozen candidate only when development must advance concurrently.
-
-Run **Release preflight** manually from **main** with channel, exact manifest version (without `v`), source branch and reviewed full commit SHA. It has read-only permissions, reads fetched Git objects without executing candidate code, and **never creates a tag or Release**. It requires the SHA to equal the fetched source tip, the committed Ninebot version to match and the version tag to be unused. Preview requires an `a`/`b`/`rc` suffix and source `dev` or matching `release/<version>`; stable requires an unsuffixed version on `main`.
-
-The same offline check is available after fetching branches/tags:
-
-```sh
-python scripts/check_release.py --channel preview --version 2.0.0b95 \
-  --source dev --sha REPLACE_WITH_REVIEWED_FULL_SHA
-```
-
-This is request validation, not runtime or packaging certification. Before actual publication, verify candidate checks, final manifest/tag/ZIP/checksum, fresh remote source/tag state and authorized release scope. Use a draft with all assets attached before publishing; previews are prerelease/non-latest. Never move/reuse a published tag or silently change its assets. Code rollback does not reverse persisted schema migrations: use the matching HA backup when required.
-
-Record the actual tested SHA/tree, workflow/dependency/fixture/environment and results before reusing CI. Identical content can reuse related evidence, but changed content/configuration needs affected checks and every release still needs final channel/package verification. Full suites belong at meaningful compatibility/migration/RC boundaries. Production HA deployment and physical controls remain separate authorizations.
-
-简体中文：main/dev职责与当前2.0预发布状态分开判断。发布预检只读，不执行候选代码/发版本；核对来源tip、manifest、未使用tag与通道。完整HA/前端矩阵需显式勾选full_validation；普通PR相关检查即可。稳定修复不能带入整条下一轮dev，迁移回滚须匹配备份。
-
-## Documentation assets and preview
-
-The README uses static, accessible SVG architecture diagrams rather than interactive Mermaid blocks. Their English/Chinese text and layout are maintained together in `scripts/render_architecture.py`. Run `python3 scripts/render_architecture.py` after editing it; `python3 scripts/render_architecture.py --check` compares all six committed diagrams with the source. They are project-authored explanatory graphics, not UI screenshots, captured data or runtime assets. Review both languages, dark/light rendering and text fit after layout changes.
-
-The release badge reads `$[0].tag_name` from GitHub's `releases?per_page=1` JSON endpoint, including prereleases, as plain text. It follows published releases, not the development manifest or GitHub's stable-only `releases/latest`. Keep published tag spelling intact. GitHub asset download counters exclude automatic source archives and HACS source downloads; do not advertise them as total installations. Packaged releases starting with v2.0.0b95 provide `ninebot.zip` and `SHA256SUMS`; earlier source-only releases have no recoverable asset-download count.
-
-HACS's repository header and a cumulative README downloads badge also have different scopes. HACS selects the target asset's `download_count` for the selected release; it does not add all historical downloads. For example, Xiaomi Home publishes `xiaomi_home.zip`, while its current `hacs.json` does not enable `zip_release`. Having an attachment makes a counter visible but does not establish that every HACS installation downloads that attachment. See [HACS's counter implementation](https://github.com/hacs/integration/blob/cc187cf258940a2a7acb5404773625465d7bf5a8/custom_components/hacs/repositories/base.py#L1129) and [Xiaomi Home's release workflow](https://github.com/XiaoMi/ha_xiaomi_home/blob/75b3acb6325a3a8d295688b13904737d6738a6a5/.github/workflows/release.yaml).
-
-Packaged distribution uses `ninebot.zip` with integration contents directly at the ZIP root. Its release's `hacs.json` enables `zip_release: true` and `filename: ninebot.zip`; old tags retain their original source-archive settings and default-branch installation remains available. The README **Downloads** badge counts this filename across releases, excluding checksums. Set `label=Downloads&displayAssetName=false` to show only the label and number. **Stars** reads `$.stargazers_count` from GitHub repository metadata and links to the stargazers page. Both primary-language READMEs use identical counter URLs; the license stays in LICENSE and the acknowledgements rather than a header badge. Historical source downloads cannot be recovered, and downloads are not unique users. See [HACS configuration](https://www.hacs.xyz/docs/publish/start/#hacsjson).
-
-The reference projects both publish integration-directory ZIP assets: [Xiaomi Home](https://github.com/XiaoMi/ha_xiaomi_home/blob/75b3acb6325a3a8d295688b13904737d6738a6a5/.github/workflows/release.yaml) and [Xiaomi Miot](https://github.com/al-one/hass-xiaomi-miot/blob/a3a07b8504bacfee114a6052ae864d7dd149bf71/.github/workflows/release.yml). Miot also enables ZIP delivery in its [HACS manifest](https://github.com/al-one/hass-xiaomi-miot/blob/a3a07b8504bacfee114a6052ae864d7dd149bf71/hacs.json) and uses a release-download badge. Keep Ninebot's draft-first verification and non-replacement policy; attaching a package after publication with `overwrite: true` is unnecessary here.
+Versions use `2.0.0a1`, `2.0.0b1`, `2.0.0rc1` and `2.0.0`; tags and release titles add `v`. Every published version has a complete `ninebot.zip` and SHA256 checksum. Release notes use English with an equivalent collapsed Simplified Chinese section.
 
 ### Packaged publication workflow
 
-Use **Actions → Publish packaged release → Run workflow**, on **main**. This is separate from the read-only **Release preflight**. It reads reviewed candidate Git objects without checking out or executing candidate Python; dependency installation and full HA tests are not part of packaging.
+Run **Publish packaged release** from `main`, providing channel, version, source branch, full candidate SHA and bilingual notes. `publish=false` prepares artifacts for inspection; `publish=true` creates a draft, verifies its assets, then publishes it. The candidate must pass Core lint, Release policy, Documentation, HACS and Hassfest. The maintained workflow reads candidate Git objects and checks the source tip again before publication.
 
-1. Merge the actual update into `dev` for preview, or `main` for stable. Commit the exact manifest version and matching HACS ZIP settings; inspect the source-tip SHA and required CI results.
-2. Enter channel, version without `v`, source branch and full SHA. Supply English and equivalent Chinese change bullets; optional upgrade instructions need both languages.
-3. Leave **publish** off to prepare an artifact only. When publishing is intended, explicitly enable it. The preparation job checks the live source tip, successful GitHub Actions lint/policy/HACS/Hassfest checks, and any present documentation check.
-4. The builder reads only tracked regular blobs under `custom_components/ninebot`, including translations, frontend, brands and licenses. Sorted entries, fixed timestamps and source modes exclude dirty/untracked local files. It rejects links/generated files and checks every ZIP member's name, mode and bytes against Git. Artifacts include `ninebot.zip`, `SHA256SUMS` and a member/source manifest.
-5. A separate write-permission job rebuilds and compares the package digest. It creates a matching draft, uploads the ZIP/checksum without replacement, verifies GitHub's SHA256 digests and rechecks the source/CI before publication. Preview stays prerelease/non-Latest; stable sets Latest. Titles equal tags, and Chinese notes are folded below the English notes.
+The archive contains the contents of `custom_components/ninebot` at its root. Verify the downloaded ZIP/checksum against the tagged tree. GitHub downloads count this asset, including updates and repeat downloads. Published tags and package assets remain fixed.
 
-Only explicit dispatch can publish; ordinary pushes and PRs never create releases. Release operations are serialized. A matching interrupted draft can resume; existing names with different content, unrelated tags/releases and extra assets stop the run for inspection. A published matching release is verified without changing it. The source tip and checks must still match when resuming. Never delete a draft or replace an asset merely to get a green run; inspect its saved preparation/publication artifacts first.
+## Branch and release channels
 
-The workflow must already be maintained on main before activating ZIP distribution in a new preview. Do not enable ZIP settings in a published tag that has no package. No old tags or attachments are changed, and users do not need to reinstall or reconfigure their account to use the new delivery format.
+- `dev`: reviewed development and preview publication.
+- `main`: accepted-cycle promotion, release candidates and stable fixes.
+- Short `feat/`, `fix/`, `docs/`, `chore/` or `perf/` branches: one bounded task, PR into `dev`.
+- Temporary `release/<version>`: only when a frozen candidate must coexist with next-cycle development.
 
-Use `python3 scripts/check_docs.py` and `python3 -m unittest discover -s scripts/tests -p 'test_docs.py'`. Both use only the standard library. The **Documentation** workflow runs these on public documentation/tool changes without HA/pip/browser dependencies. It checks local Markdown/HTML-image references and anchors, NOTICE targets, paired language outlines and the synthetic-image manifest; translation meaning, remote availability and screenshot privacy still require review. Ignored local override files are excluded.
+Promote long-lived branches with normal merges, then merge `main` back into `dev`. Retire integrated topics after recording their PR/recovery reference. Use a minimal backport for stable fixes that must exclude later development.
 
-`python3 scripts/docs_preview.py` starts a loopback-only preview of the existing `tests/frontend/map-fixture.html`, never a HA account. Use the printed URL with `lang=en` or `lang=zh-Hans`; optional `scale=0.8` changes only the documentation shell. Select the second synthetic Compare checkbox for the desktop example. CSP blocks external connections/images; keep tiles off. Stop the process after use. The ordinary browser smoke fixture remains unchanged.
+Run the read-only preflight after fetching branches/tags:
 
-The [asset manifest](assets/manifest.json) records runtime commit, fixture digest, image language/size/hash, synthetic provenance and attribution. Desktop images are viewport captures of the real bundled card; the Chinese mobile example is the earlier b94 full-page synthetic render. Do not replace them with real accounts or a fabricated future UI. Preserve upstream Leaflet attribution; an image's synthetic flag alone is not a privacy audit.
+```sh
+python scripts/check_release.py --channel preview --version 2.0.0rc1 \
+  --source dev --sha REPLACE_WITH_REVIEWED_FULL_SHA
+```
+
+Preview publication accepts `dev` or the matching release branch; stable publication uses `main`. GitHub reserves **Latest** for full releases. RCs retain `prerelease=true`; README links identify the recommended candidate. See [GitHub release API](https://docs.github.com/en/rest/releases/releases#create-a-release).
+
+Code rollback and persisted-schema recovery are separate operations. Follow the [migration guide](migration.md#archive-schema-and-rollback) with a matching backup.
+
+## Documentation assets and preview
+
+```sh
+python -m unittest discover -s scripts/tests -p 'test_docs.py'
+python scripts/check_docs.py
+python scripts/render_architecture.py --check
+```
+
+Documentation CI validates local links/anchors, paired language outlines, NOTICE references, asset hashes and generated SVGs. Review English/Chinese meaning and rendering alongside these checks.
+
+The eight architecture SVGs are generated by `scripts/render_architecture.py`: data flow, acquisition, controls and account archive lifecycle, in English and Chinese. Edit the source, regenerate and inspect the affected images.
+
+`python scripts/docs_preview.py` provides a loopback synthetic frontend preview, including `/branding`. The [asset manifest](assets/manifest.json) records the existing synthetic captures and their source digests. Keep product screenshots separate from architecture diagrams; README currently uses diagrams only.
 
 ## HACS readiness and branding
 
-HACS custom-repository installation, validation, default-list admission and HA Core quality certification are different states. This repository currently advertises **Custom repository**. Follow the current [general](https://www.hacs.xyz/docs/publish/start/), [integration](https://www.hacs.xyz/docs/publish/integration/) and [default inclusion](https://www.hacs.xyz/docs/publish/include/) requirements when preparing an application.
+The repository distributes one integration under `custom_components/ninebot`, with runtime assets inside that directory. `manifest.json` supplies integration metadata; `hacs.json` selects the packaged ZIP and declared minimum HA. Installation currently uses **HACS Custom repository**.
 
-| Maintainer check | Repository state / next action |
-|---|---|
-| Single integration and runtime placement | Only `custom_components/ninebot`; runtime assets stay within it. Docs/preview/test utilities are development-only. |
-| Manifest | Domain/name/version/docs/issues/codeowners present; service/cloud_polling classification and exact dependency pin retained. |
-| HACS manifest | Name, integration layout, HA minimum and `country: CN` retained. English docs do not establish support outside CN. |
-| Open-source license and notices | MIT recognized; dependency/source limitations, runtime recon and Leaflet attribution retained. Do not imply the project MIT license grants trademark/image rights. |
-| Public documentation | EN/Chinese setup/history/migration and synchronization/data contracts, troubleshooting/upgrade/security and contribution paths. UI/cards are early alpha; screenshots are withdrawn from README. |
-| Description/topics/issues | Already present. Suggested About text: `Ninebot vehicle integration for Home Assistant — battery, charging, ride history and maps.` Existing About has a spelling error; changing remote settings is a separate maintainer step. |
-| Required validation | HACS and Hassfest must pass on the candidate without errors/ignores. A green old commit does not prove a new candidate. Documentation CI supplements, not replaces them. |
-| Release | Publish a full GitHub Release after successful checks when a meaningful authorized update is ready; a tag alone is insufficient. Do not create an empty prerelease just to publish docs. |
-| Default-list application | Not submitted by this docs change. Later prepare an alphabetically placed editable PR to `hacs/default`'s integration list as owner/major contributor. Recheck domain conflicts and the application template then. |
+Before applying for default inclusion, review the [HACS integration requirements](https://www.hacs.xyz/docs/publish/integration/) and [submission process](https://www.hacs.xyz/docs/publish/include/), then check:
 
-The current packaged `brand/icon.png` is 256×256 RGBA PNG, introduced in [479068c](https://github.com/Wuty-zju/ha_ninebot/commit/479068cc936efb0cda50ff9c845c3d60d33540c3). Repository history proves its inclusion, **not original artwork permission**. Maintainer confirmation of its source/rights remains necessary before claiming a completed provenance audit.
+- Final released manifest, package layout, public guides and issue tracker.
+- Successful HACS and Hassfest validation on the release candidate.
+- MIT license, [NOTICE](../NOTICE), runtime attribution and artwork permission.
+- Brand variants and readability on light/dark backgrounds.
 
-Local review at 96/32 px found the existing black/transparent icon readable on white and poor on dark fallback. The minimum icon file is present; an approved dark variant and optional @2x are quality follow-ups, not fabricated assets or a claim that they already exist. Use `scripts/docs_preview.py` → `/branding` to compare the unchanged asset. Do not replace it with another project's logo or an HA-official mark.
+The bundled `brand/icon.png` is a 256×256 transparent PNG. Its source/rights and a dark variant remain maintainer follow-ups. HA supports local custom-integration branding from 2026.3; older supported HA may use an upstream image or placeholder. HACS download/icon presentation also depends on the installed HACS version.
 
-Per [HA brand documentation](https://contributors.home-assistant.io/core/integrations/brands/), local custom-integration images are supported from HA 2026.3; older supported HA can fall back to an upstream image/placeholder. Do not raise the 2026.1 minimum solely for branding. Official icon conventions are 256×256, optional 512×512 @2x, transparent/trimmed PNG and dark variants where needed; use a separate landscape logo only if legitimate artwork exists.
-
-Before an actual store application, review the final **released** tree, validation results, description/topics and brand rights again. A prerelease is not automatically disqualified merely because it is a prerelease; the explicit prohibition concerns custom integrations used for testing/overriding Core integrations. Never mark the repo HACS Default or Gold before the respective process actually grants that state.
-
-简体中文：最低分发结构、manifest、许可证与本地图标已具备，文档改版不等于默认收录。检查最终发布版本的无 ignore HACS/Hassfest；不为文档发空版本。现图标暗色回退不清晰且原始授权仍待维护者确认；不编造品牌许可、不擅自更换资源/抬高最低 HA，不自动提交商店或修改远端设置。
-
-简体中文摘要：按任务读取指南/模块/fixture，小改相关检查、重大边界一次矩阵。默认离线、保护身份与私有数据；明确授权才并行，独立 worktree、单一整合者，文档-only 不发空版本。
+简体中文：按任务定位源码与测试，普通改动做相关检查，RC 在固定候选上完成一次最低／当前 HA 综合验证。英文与中文同步维护默认值、单位和迁移说明。短分支回 dev，验收后正常合 main 并回灌；预发布保留对应标志。历史库与身份迁移按专门指南操作，图表、资源和运行文件各有明确目录。

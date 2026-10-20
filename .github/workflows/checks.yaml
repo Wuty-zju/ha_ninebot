@@ -43,10 +43,11 @@ jobs:
       - run: python -m unittest discover -s scripts/tests -p 'test_release.py'
       - run: python -m unittest discover -s scripts/tests -p 'test_release_package.py'
   test:
-    # Full compatibility runs are requested for major updates, not every beta.
-    # A maintainer can dispatch this workflow on the branch/main being released.
+    # RC and major boundaries get one full run on the frozen candidate.
     if: github.event_name == 'workflow_dispatch' && inputs.full_validation
+    name: HA suite (${{ matrix.ha }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -55,11 +56,8 @@ jobs:
             test-plugin: '0.13.305'
             ha: '2026.1.0'
           - python: '3.14'
-            test-plugin: '0.13.370'
-            ha: '2026.10.0'
-          - python: '3.14'
-            test-plugin: '0.13.370'
-            ha: '2026.10.0b7'
+            test-plugin: '0.13.373'
+            ha: '2026.10.2'
     env:
       LITELLM_LOCAL_MODEL_COST_MAP: 'True'
     steps:
@@ -71,18 +69,28 @@ jobs:
         run: >-
           python -m pip install
           pytest-homeassistant-custom-component==${{ matrix.test-plugin }}
-          ninecli==0.1.7 ruff==0.16.10 mypy==2.4.0
-      # The latest test plugin still pins b4 when stable/b7 become available.
-      # Explicitly install the selected Core and verify its actual version.
-      - name: Install the selected Home Assistant boundary
-        run: python -m pip install homeassistant==${{ matrix.ha }}
+          homeassistant==${{ matrix.ha }} ninecli==0.1.7 mypy==2.4.0
+      - name: Check dependency consistency
+        run: python -m pip check
       - name: Verify the pinned Home Assistant test environment
         env:
           EXPECTED_HA: ${{ matrix.ha }}
         run: >-
           python -c 'import os; from importlib.metadata import version;
           assert version("homeassistant") == os.environ["EXPECTED_HA"]'
-      - run: ruff check custom_components tests scripts
-      - run: ruff format --check custom_components tests scripts
       - run: mypy custom_components/ninebot --follow-imports=silent
-      - run: python -m pytest --cov=custom_components.ninebot --cov-branch --cov-fail-under=95
+      - name: Run the complete offline suite
+        run: >-
+          python -m pytest --cov=custom_components.ninebot --cov-branch
+          --cov-fail-under=95 --cov-report=term-missing --cov-report=xml
+          --junitxml=test-results.xml -o faulthandler_timeout=60
+      - name: Keep test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ha-${{ matrix.ha }}-reports
+          path: |
+            test-results.xml
+            coverage.xml
+          if-no-files-found: warn
+          retention-days: 14
