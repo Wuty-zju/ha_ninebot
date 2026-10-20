@@ -16,7 +16,9 @@ from homeassistant.components.http import KEY_HASS, HomeAssistantView
 from homeassistant.components.http.auth import async_sign_path
 from homeassistant.components.http.const import KEY_HASS_USER
 from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.http import current_request
 from homeassistant.helpers.selector import (
     FileSelector,
@@ -129,6 +131,8 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
             elif backup_active(self.hass):
                 errors["base"] = "archive_busy"
             else:
+                if len(self.hass.data.get(DOWNLOADS, {})) >= 4:
+                    return self.async_abort(reason="archive_busy")
                 directory = Path(await self.hass.async_add_executor_job(tempfile.mkdtemp))
                 try:
                     snapshots = []
@@ -188,11 +192,14 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                     register_download(self.hass)
                     self.hass.data[DOWNLOADS][token] = (self._archive_user_id, package)
 
-                    async def cleanup() -> None:
+                    async def cleanup(_: Any) -> None:
+                        cancel_timer()
+                        remove_stop()
                         self.hass.data[DOWNLOADS].pop(token, None)
                         await self.hass.async_add_executor_job(shutil.rmtree, directory, True)
 
-                    self.hass.loop.call_later(600, lambda: self.hass.async_create_task(cleanup()))
+                    cancel_timer = async_call_later(self.hass, 600, cleanup)
+                    remove_stop = self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, cleanup)
                     url = async_sign_path(self.hass, URL + token, timedelta(minutes=10))
                     return self.async_show_form(
                         step_id="archive_download",

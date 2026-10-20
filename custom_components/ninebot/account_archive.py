@@ -102,9 +102,12 @@ async def async_prepare_account(hass: HomeAssistant, uid: str, max_bytes: int) -
                     await candidate.async_open()
                     await candidate.async_close()
                     await actor.async_merge_archive(copy)
-                    await hass.async_add_executor_job(
-                        _retire, source, target.parent / "retired" / source.parent.name
-                    )
+
+                    def retire() -> None:
+                        actor._db(write=True)  # Share the official backup barrier.
+                        _retire(source, target.parent / "retired" / source.parent.name)
+
+                    await actor._run(retire)
                 finally:
                     await candidate.async_close()
                     await hass.async_add_executor_job(shutil.rmtree, directory)

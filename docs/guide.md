@@ -112,10 +112,20 @@ Location display defaults on, and detail preservation can retain precise tracks.
 
 Optional map tiles contact an external provider only when enabled; see [map privacy](history.md#map-privacy-and-units). Protect backups and local session directories from other users and privileged processes.
 
-Removing an account closes its work and removes only its recognized archive/journal files; unusual files/recovery copies may be retained with a Repair rather than broadly deleted. Keep a complete backup before removal. Do not edit `.storage`, entity registries or a running archive manually. For upgrades/downgrades, follow the [migration guide](migration.md).
+**Keep local trip history database (Beta)** is checked by default. Removing an account stops its tasks and retains trips, detailed tracks and recovery evidence. Adding the same authenticated account reconnects its archive; synchronization resumes under your selected options. If unchecked, the next account removal deletes that account’s managed archive and recovery copies. Unrecognized files are retained with a Repair. This setting does not delete Recorder history. Do not edit a running database or registry manually; see [migration](migration.md).
 
 Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
 
+
+## Export and import history databases
+
+In the account’s **Configure** form, select **Export or import history database (Beta)** and submit. The next menu provides **Export database** and **Upload and import database**. These operations require a Home Assistant administrator.
+
+- **Export:** select one or more vehicles across loaded accounts. Download the ZIP using the administrator-bound link, valid for ten minutes. It contains consistent SQLite snapshots, historical source evidence and a versioned SHA256 manifest; no password or sign-in session is included.
+- **Import:** first sign in to every account represented in the package, upload the ZIP, select vehicles, then confirm the backup and merge. Account ownership, schema, references, raw payload hashes and ride identities are checked before merging. Better saved geometry survives a newer simplified response; repeated imports are deduplicated.
+- Each account is one transaction with a pre-merge recovery snapshot. Accounts completed before a later account fails remain committed; retrying the package is safe. Existing options, live authorization and active sync jobs are not replaced.
+
+Packages are private GPS records, not diagnostics. Transfer them securely; they are not encrypted by the integration. Uploads are limited to 100 MiB compressed and 512 MiB expanded, at most 16 accounts and 16 retained source snapshots per account. Split large exports by vehicle. Live archive capacity remains separate from retained recovery evidence, which has its own 512 MiB/account limit. Old migration originals are retained until deliberate deletion; HA backups should include the complete configuration directory.
 
 ## Connection interruptions
 

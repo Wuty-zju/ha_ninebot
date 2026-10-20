@@ -71,3 +71,7 @@ With debug off, related diagnostics are integration-disabled and hidden; enablin
 ## Trip events and duration display in b101
 
 The two standalone latest-trip start/end sensors are retired into the existing Vehicle trip event. Update dashboards/templates to its `latest_start_time` and `latest_end_time` attributes; archived rides and old Recorder rows are not deleted. Vehicle events now use concrete event types instead of `state_changed`; update automation filters. Event IDs and other trip sensor identities remain. Duration display is migrated once to hours/four decimals. Existing calendar/history options remain as selected; only new accounts default these Beta features off.
+
+## Account-owned archive directories
+
+This update moves from per-entry archive locations to a stable authenticated-account directory. It creates a new canonical archive, validates/merges matching old primary databases and retires recognized source directories without discarding migration originals. Existing SQLite codecs and entity identities remain intact; old archive layouts are no longer used for live writes. Same-account re-addition automatically reconnects this directory. Export before deliberate account-data deletion. Older integration versions do not understand the new account path: downgrading requires a matching HA backup, not copying a live database into an old entry path.
