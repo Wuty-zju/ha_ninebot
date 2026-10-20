@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0b105
+
+- Retain local ride history by default when removing an account, and reconnect the archive when the same account is added again. An account option allows deletion instead.
+- Consolidate retained entry archives into one account-owned database with validated ride deduplication, recovery snapshots and preservation of better track geometry.
+- Add administrator export and import for whole accounts or selected vehicles. Accept versioned ZIP packages or current-format SQLite files with validation, preview and confirmed merging.
+- Resume from verified historical pages and keep ongoing synchronization checkpoints instead of repeating the initial scan.
+
+### Upgrade notes
+
+- Back up Home Assistant before upgrading. Existing entry archives are validated and consolidated when the integration next loads; original files are retained for recovery.
+- After migration, reverting to an earlier version requires restoring a matching backup because earlier versions do not read the account-owned archive directory.
+
 ## 2.0.0b104
 
 - Preserve known vehicles, native routing and local trip history when cloud discovery returns an empty or incomplete list; retry discovery promptly without renewing uncertain ownership.
