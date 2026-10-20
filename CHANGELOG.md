@@ -1,5 +1,83 @@
 # Changelog
 
+## 2.0.0b105
+
+- Retain local ride history by default when removing an account, and reconnect the archive when the same account is added again. An account option allows deletion instead.
+- Consolidate retained entry archives into one account-owned database with validated ride deduplication, recovery snapshots and preservation of better track geometry.
+- Add administrator export and import for whole accounts or selected vehicles. Accept versioned ZIP packages or current-format SQLite files with validation, preview and confirmed merging.
+- Resume from verified historical pages and keep ongoing synchronization checkpoints instead of repeating the initial scan.
+
+### Upgrade notes
+
+- Back up Home Assistant before upgrading. Existing entry archives are validated and consolidated when the integration next loads; original files are retained for recovery.
+- After migration, reverting to an earlier version requires restoring a matching backup because earlier versions do not read the account-owned archive directory.
+
+## 2.0.0b104
+
+- Preserve known vehicles, native routing and local trip history when cloud discovery returns an empty or incomplete list; retry discovery promptly without renewing uncertain ownership.
+- Refresh demanded vehicle status independently of slow history rounds, publish successful readings immediately and reserve queue capacity for real-time queries.
+- Use bounded recovery backoff, respect server cooldowns and reduce background acquisition during discovery/connection failures. Expose retry timing and status freshness in sanitized diagnostics.
+- Retain entity identities, existing options, precise dependency pins and command confirmation behavior.
+
+## 2.0.0b103
+
+- Refresh demanded trip data at the business-day boundary and after entity setup, retaining request coalescing, account budgets and failure backoff.
+- Keep verified same-period daily, monthly and latest-trip values available during short connection failures and offline restart, with original receipt times and explicit cache status.
+- Update daily and monthly entities immediately when the local archive changes; preserve entity identities, original precision and strict historical-statistics validation.
+
+## 2.0.0b102
+
+- Enable controls and select all sign-in-verified vehicles for new accounts; retain existing user choices and use a 60-second default status interval.
+- Leave rated battery voltage/capacity empty until provided, accept either field independently and support clearing values.
+- Repair incomplete current-month ride lists on demand for daily statistics, sharing the account request budget without downloading details or tracks.
+- Rename latest distance, average consumption and average speed without changing entity identities.
+
+## 2.0.0b101
+
+- Make the ride calendar and historical acquisition opt-in for new accounts, retaining existing preferences and labeling history settings as Beta.
+- Move vehicle controls to the top of account options and use a native multi-select dropdown with clear vehicle identification.
+- Replace the hourly history quota slider with an integer input: default 60, or 0 for no hourly quota while retaining serialization and upstream backoff.
+
+- Allow new vehicle/seat unlock commands while an earlier confirmation is pending; newer commands replace the old readback without replaying an earlier command. A seat lock action may cancel an unconfirmed wait but cannot remotely close the compartment.
+- Add reported, revised and late-confirmed trip events and concrete power/charging/lock event types, with one default-on Beta switch for both event entities.
+- Move latest trip start/end into the existing trip event attributes, retiring the two standalone timestamp sensors. Update automations that reference those sensors.
+- Standardize trip/average-consumption names, add today/yesterday average consumption from complete matching records, and display native ride durations in hours with four decimals.
+- Clarify the read-only trip history calendar: no active event does not mean disabled.
+
+## 2.0.0b100
+
+- Extend vehicle and seat unlock confirmation to fifteen seconds with immediate target updates and bounded status polling.
+- Keep an observed seat unlock visible for at least five seconds while retaining the reported latch state separately. Observe seat status for up to sixty seconds, tapering after fifteen seconds.
+- Distinguish latch state from compartment-lid position; existing reports do not provide an independently verified lid-open field.
+
+## 2.0.0b99
+
+- Show compact ride time ranges and durations from original seconds, while retaining numeric sensor identities and native unit preferences.
+- Add vehicle state events for observed power, charging and lock transitions, with silent startup/reconnection baselines and localized summaries.
+- Clarify monthly trip-list completeness and history progress, and standardize recent-ride names across all supported translations.
+
+## 2.0.0b98
+
+- Consolidate history sync and resume into one diagnostic button; retain pause and the resume Action. Update synchronization icons from cached progress.
+- Gate debug-only history status, last-success and raw views without changing their identities or user-disabled preferences. Classify history progress/calendar as diagnostics and use the device name for the location entity by default.
+- Share one background-request policy across settings, manual actions and archive writes: default 60, maximum 120 per account/hour, with an adaptive scheduler and existing fairness/backoff.
+
+## 2.0.0b97
+
+- Observe lock commands with up to eight status reads across ten seconds, confirming each fresh target immediately and skipping overdue slots after slow responses.
+- Observe seat relocking for ten seconds after confirmation. Keep five seconds of recent-unlock feedback separate from the actual lock state.
+
+## 2.0.0b96
+
+- Simplify sign-in to account and password, then open vehicle feature settings. Keep SMS sign-in unavailable until delivery is verified.
+- Hide the opaque region suffix in automatic account titles while preserving custom titles and existing sessions.
+- Use one rated-parameter setup entry, keep location settings after sign-in and place debug mode last.
+
+## 2.0.0b95
+
+- Distribute `ninebot.zip` through HACS, with SHA256 checksums and verified runtime contents. Older releases retain source-archive installation.
+- Add draft-first automated package publication and cumulative package-download statistics in the English and Chinese documentation.
+
 ## 2.0.0b94
 
 - Reuse the validated selected geometry within each local detail read instead of scanning the same full trail twice. Each new read still validates source hashes, identity, full-track quality and offsets; partial corruption fallback and retained higher-quality geometry are unchanged.

@@ -31,11 +31,11 @@ All runtime Python, translations, branding and dashboard assets are inside that 
 
 ## Add accounts and vehicles
 
-Choose password or two-step SMS login. Passwords are used for authentication and are not stored in ConfigEntry or passed as process arguments. The SMS flow has offline regression coverage; live SMS verification is still pending. Private local sessions/tokens remain sensitive: protect the HA configuration and backups.
+Sign in with your account and password. SMS sign-in is temporarily unavailable and is not offered in setup, reauthentication or reconfiguration. Passwords are used for authentication and are not stored in ConfigEntry or passed as process arguments. After authentication, current HA opens account options; older HA completes feature selection in the same setup wizard. Private local sessions/tokens remain sensitive: protect the HA configuration and backups.
 
 Each integration entry represents **one account**, with its own session and historical archive. Add another entry for a different account. Vehicles are discovered within that account; shared physical vehicles can have separate account-scoped HA representations.
 
-Account titles use reported `username：account[region]`, omitting missing components. A routing value such as `bj` is not proof of your residence or the vehicle's location. User-provided entry titles are retained. HA determines the surrounding entry-section heading from the integration type; the integration does not patch global frontend translations.
+Account titles use reported `username：account`, omitting missing components. The opaque region metadata is retained internally and is not shown in the title. User-provided entry titles are retained. HA determines the surrounding entry-section heading from the integration type; the integration does not patch global frontend translations.
 
 Expired credentials use **Reauthenticate**. Reconfigure updates the same account; use a new entry to add another account. An older entry missing display metadata can make one enrichment read on successful setup; there is no recurring username polling loop.
 
@@ -51,10 +51,10 @@ Availability depends on the vehicle model, permissions and actual cloud reports.
 | Location and image | Device location tracker, vehicle image | Two valid fresh coordinates are required; no unverified coordinate conversion. The image is diagnostic. |
 | Rides | Today/yesterday/month totals, last-ride metrics, monthly list coverage | Completeness is checked per metric. Missing evidence is not silently converted to zero. |
 | History | Sync state, month-scan progress, saved-detail progress, last successful sync | These are different scopes; 100% saved discovered details does not prove full cloud history. |
-| Controls | Vehicle/seat locks and retained remote buttons | Explicit opt-in/allowlist and authorization required; see below. |
-| Native HA | Ride calendar, ride-completed event, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
+| Controls | Vehicle/seat locks and retained remote buttons | Enabled controls, an allowlist and authorization required; see below. |
+| Native HA | Ride calendar, ride-completed/state-transition events, query Actions, statistics import | Historical lists and tracks are not expanded into hundreds of entities. |
 
-Durations retain native seconds and suggest **hours with two decimals** through HA's native conversion. Distance/range and Wh/km suggest one decimal; energy and maximum speed suggest integers. Presentation rounding does not round archived source facts. HA user overrides take precedence. Rated battery V/Ah produce a specification in kWh, not measured capacity or health.
+Durations retain native seconds and suggest **hours with four decimals** through HA's native conversion. Distance/range and Wh/km suggest one decimal; energy and maximum speed suggest integers. Presentation rounding does not round archived source facts. HA user overrides take precedence. Rated battery V/Ah produce a specification in kWh, not measured capacity or health.
 
 Cycle counts display not supported only when the cycle-support flag explicitly says so; unknown support stays unknown. Missing odometer is not reported, without invented distance. English and Simplified Chinese are the primary documentation languages; shipped entity/settings labels cover additional locales with English fallback for some longer text.
 
@@ -64,15 +64,16 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 
 | Option | Default / range | Effect |
 |---|---|---|
-| Status interval | 120 s; 30–3600 s | Status demand only; battery/travel use separate 600 s periods and profiles 3600 s. These are client policy, not guaranteed cloud freshness. |
+| Status interval | 60 s; 30–3600 s | Status demand only; battery/travel use separate 600 s periods and profiles 3600 s. These are client policy, not guaranteed cloud freshness. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
-| Ride calendar | On | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
-| Preserve trip details | On for new accounts; existing opt-outs retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |
-| Automatic history sync | On for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
-| History storage limit | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
-| History request budget | 30/account/hour; 1–60 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. |
-| Controls + allowed vehicles | Off / empty | Explicitly permit guarded vehicle commands. History synchronization permissions are separate. |
-| Nominal battery parameters | Off | Optional configured voltage/capacity and rated energy. Retired low-confidence SOC estimators remain removed. |
+| Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
+| Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
+| Preserve trip details (Beta) | Off for new accounts; existing choices retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |
+| Automatic history sync (Beta) | Off for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
+| History storage limit (Beta) | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
+| History request budget (Beta) | 60/account/hour; 0–120 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. Enter 0 to remove the hourly quota (not recommended); serialization and upstream backoff remain active. |
+| Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
+| Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. Retired low-confidence SOC estimators remain removed. |
 | Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
 Requests are demand-aware, account-budgeted and shared when identical reads are in flight. Status, battery and travel have separate freshness and failure/backoff state. Unload/reload cancels work; a cache read does not become a new measurement.
@@ -81,7 +82,13 @@ Requests are demand-aware, account-budgeted and shared when identical reads are 
 
 Vehicle **unlock** requests remote start; **lock** requests remote stop. The vehicle/cloud decides its motion/P requirements. HA does not disable remote stop by guessing whether the vehicle is moving. Seat unlock opens the compartment; seat locking is manual only. The retained buttons use the same executor as the Lock entities.
 
-Each explicit request sends one command, never an automatic replay. Fresh status reads at approximately 0/2/5 seconds check the target; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. A cloud observation is not a physical guarantee; pending/unconfirmed/failed results are kept distinct. A competing command for the same physical vehicle reports busy instead of being queued for later execution.
+Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. A cloud observation is not a physical guarantee; pending/unconfirmed/failed results are kept distinct. A new command can replace the previous confirmation observer; only command transmission is serialized.
+
+After a verified seat unlock, its Lock display remains unlocked for at least five seconds while status queries continue. The `Reported latch state` attribute and vehicle state events retain the actual reported state throughout this display window. After five seconds, the Lock follows the latest valid latch reading. A separate status observation runs about once per second for fifteen seconds, then at 20/30/45/59.9 seconds, ending within sixty seconds. Missed read slots are skipped rather than sent in a burst.
+
+The reported latch can reset while the compartment lid remains open. Existing data does not provide an independently verified lid-open/closed field, so the integration does not infer lid position or create a lid-state entity. The five-second display window does not prove the lid is open. New commands, unloading, authentication loss, rate limits and read errors stop the follow-up.
+
+History sync and pause appear in device diagnostics. Sync also resumes a paused task; icons and the synchronization-state attribute distinguish running, paused and budget-wait states. History status, last successful sync and parsed raw views appear only with debug mode enabled; the calendar has its own switch. Diagnostic classification does not exclude Recorder; configure Recorder filters if needed.
 
 ## Troubleshooting
 
@@ -90,9 +97,10 @@ Each explicit request sends one command, never an automatic replay. Fresh status
 | Integration missing after download | Confirm the directory/domain, restart as prompted, and use a release compatible with your host architecture. |
 | Authentication fails | Check the official App/account region; use reauth. Do not publish credentials or token files. |
 | Rated-parameter form rejects a vehicle | Close and reopen the form after the updated integration is actually loaded. Choose a currently discovered vehicle. |
-| Today/yesterday values unknown | Open [coverage and statistics](history.md#coverage-and-statistics). A partial month or missing metric may not support a reliable daily total. |
-| Ride event unknown | It waits for a new stable completion after the startup baseline; it is not the last historical ride timestamp. |
+| Today/yesterday values unknown | Setup and midnight schedule a prompt refresh; incomplete lists or missing metrics still need evidence. Same-period verified values survive short outages. See [coverage and statistics](history.md#coverage-and-statistics). |
+| Ride/vehicle event unknown | Events wait for a new/revised trip report, stable completion or known status transition after their baseline. History imports and reconnection do not replay events. See [event semantics](history.md#ride-summaries-and-vehicle-events). |
 | History waiting for request budget | Inspect `next_request_at`, `retry_at`, `sync_phase`, pause/auth/capacity state; do not repeatedly request a full scan. |
+| Calendar shows “No current trip” / off | This is a historical calendar with no active event. Browse saved dates in HA Calendar; only the account option disables the feature. |
 | Custom element not found | Register the [bundled module resource](history.md#add-the-history-map), then reload the browser. |
 | Track missing or a single point | Check saved-detail state, coordinate option/permissions and cloud track quality. Old simplified data cannot recreate a lost trail. |
 | Storage Repair | Preserve the files and read [verification and recovery](history.md#verification-and-recovery). Do not delete the database/registry to silence it. |
@@ -104,4 +112,21 @@ Location display defaults on, and detail preservation can retain precise tracks.
 
 Optional map tiles contact an external provider only when enabled; see [map privacy](history.md#map-privacy-and-units). Protect backups and local session directories from other users and privileged processes.
 
-Removing an account closes its work and removes only its recognized archive/journal files; unusual files/recovery copies may be retained with a Repair rather than broadly deleted. Keep a complete backup before removal. Do not edit `.storage`, entity registries or a running archive manually. For upgrades/downgrades, follow the [migration guide](migration.md).
+**Keep local trip history database (Beta)** is checked by default. Removing an account stops its tasks and retains trips, detailed tracks and recovery evidence. Adding the same authenticated account reconnects its archive; synchronization resumes under your selected options. If unchecked, the next account removal deletes that account’s managed archive and recovery copies. Unrecognized files are retained with a Repair. This setting does not delete Recorder history. Do not edit a running database or registry manually; see [migration](migration.md).
+
+Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
+
+
+## Export and import history databases
+
+In the account’s **Configure** form, select **Export or import history database (Beta)** and submit. The next menu provides **Export database** and **Upload and import database**. These operations require a Home Assistant administrator.
+
+- **Export:** select one or more vehicles across loaded accounts. Download the ZIP using the administrator-bound link, valid for ten minutes. It contains consistent SQLite snapshots, historical source evidence and a versioned SHA256 manifest; no password or sign-in session is included.
+- **Import:** first sign in to every account represented in the package, upload the ZIP (or a standalone current-format SQLite database), select vehicles, then confirm the backup and merge. Account ownership, schema, references, raw payload hashes and ride identities are checked before merging. Better saved geometry survives a newer simplified response; repeated imports are deduplicated.
+- Each account is one transaction with a pre-merge recovery snapshot. Accounts completed before a later account fails remain committed; retrying the package is safe. Existing options, live authorization and active sync jobs are not replaced.
+
+Packages are private GPS records, not diagnostics. Transfer them securely; they are not encrypted by the integration. Uploads are limited to 100 MiB compressed and 512 MiB expanded, at most 16 accounts and 16 retained source snapshots per account. Split large exports by vehicle. Live archive capacity remains separate from retained recovery evidence, which has its own 512 MiB/account limit. Old migration originals are retained until deliberate deletion; HA backups should include the complete configuration directory.
+
+## Connection interruptions
+
+Temporary cloud or vehicle-discovery failures retain verified same-period trip statistics and saved history. Live readings keep their actual response age and become unavailable when stale. Recovery retries automatically; you do not need to remove/re-add the account. Controls for a vehicle missing from discovery remain blocked until it is verified again. Download integration diagnostics to inspect discovery retries, transport cooldown and actual status intervals. Configured polling intervals are targets; cloud outages and rate limits can delay new readings.

@@ -46,6 +46,7 @@ async def test_local_expiry_notifies_ha_without_cloud_poll(hass, entry, app_clie
     await hass.async_block_till_done()
     co = entry.runtime_data.coordinator
     co._async_unsub_refresh()
+    co.realtime.stop()
     registry = er.async_get(hass)
     battery = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_battery")
     app_client.async_get_status.reset_mock()
@@ -621,8 +622,8 @@ async def test_disabled_battery_and_travel_entities_stop_regular_polling_then_re
             "last_energy_intensity",
             "last_mileage",
             "last_ride_duration",
-            "last_ride_start",
-            "last_ride_end",
+            "today_energy_intensity",
+            "yesterday_energy_intensity",
             "last_ride_max_speed",
             "last_ride_average_speed",
             "health_score",

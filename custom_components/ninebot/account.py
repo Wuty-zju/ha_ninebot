@@ -32,8 +32,9 @@ class AccountDisplay:
         }
 
     def title(self, account: str) -> str:
-        title = f"{self.username}：{account}" if self.username else account
-        return f"{title}[{self.region}]" if self.region else title
+        # Region is retained as opaque metadata until its display semantics are
+        # verified. It is not a user-facing country or a routing override.
+        return f"{self.username}：{account}" if self.username else account
 
 
 def account_update(
@@ -48,12 +49,19 @@ def account_update(
     metadata = AccountDisplay.parse(data.get(ACCOUNT_METADATA)).as_dict() | display.as_dict()
     automatic = AccountDisplay.parse(metadata).title(account)
     previous_account = data.get("account", account)
-    previous_automatic = AccountDisplay.parse(data.get(ACCOUNT_METADATA)).title(previous_account)
+    previous_display = AccountDisplay.parse(data.get(ACCOUNT_METADATA))
+    previous_automatic = previous_display.title(previous_account)
+    legacy_automatic = (
+        f"{previous_automatic}[{previous_display.region}]"
+        if previous_display.region
+        else previous_automatic
+    )
     selected = (
         title
         if not force
         and title is not None
-        and title not in ("Ninebot", data.get(AUTOMATIC_TITLE), previous_automatic)
+        and title
+        not in ("Ninebot", data.get(AUTOMATIC_TITLE), previous_automatic, legacy_automatic)
         else automatic
     )
     return metadata, automatic, selected

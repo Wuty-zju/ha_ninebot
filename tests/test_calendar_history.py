@@ -85,6 +85,16 @@ async def test_offline_cold_start_calendar_and_latest_across_old_months(
         co = entry.runtime_data.coordinator
         entity = calendar(hass)
         assert isinstance(entity, NinebotRideCalendar) and entity.available
+        registry = er.async_get(hass)
+        trip_event = hass.states.get(registry.async_get_entity_id("event", "ninebot", f"{SN}_ride"))
+        assert (
+            trip_event.attributes["latest_start_time"] == (START + timedelta(hours=1)).isoformat()
+        )
+        assert (
+            trip_event.attributes["latest_end_time"]
+            == (START + timedelta(hours=1, seconds=600)).isoformat()
+        )
+        assert trip_event.state == "unknown"  # Local history is not a new event.
         assert not co._authenticated and not co.last_update_success
         assert entity.event is None and entity.state == "off" and not entity.supported_features
         before = co.data[SN]
@@ -94,6 +104,9 @@ async def test_offline_cold_start_calendar_and_latest_across_old_months(
         assert not events[0].all_day and events[0].location is None
         assert events[0].uid != "one" and len(events[0].uid) == 64
         assert "30 km/h" in events[0].description and "7.2 km/h" in events[0].description
+        assert "Ride time:" in events[0].description and " – " in events[0].description
+        assert "Last ride start:" not in events[0].description
+        assert "Last ride end:" not in events[0].description
         assert not await entity.async_get_events(hass, NOW, NOW + timedelta(days=1))
         client = await hass_client()
         response = await client.get(
@@ -113,7 +126,7 @@ async def test_offline_cold_start_calendar_and_latest_across_old_months(
         expected = {
             "last_mileage": (1.2, 1),
             "last_energy_raw": (100, 0),
-            "last_ride_duration": (600 / 3600, 2),
+            "last_ride_duration": (600 / 3600, 4),
             "last_ride_max_speed": (30, 0),
             "last_ride_average_speed": (7.2, 1),
         }

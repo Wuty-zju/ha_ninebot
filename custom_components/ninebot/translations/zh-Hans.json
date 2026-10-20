@@ -3,45 +3,30 @@
     "step": {
       "user": {
         "title": "添加账号",
-        "description": "密码仅用于本次登录验证，不保存到集成配置。 新账号默认在后台将行程历史及轨迹保存到本地，可在选项中关闭。",
+        "description": "使用账号和密码登录，验证后设置车辆功能。密码不会保存在集成配置中。",
         "data": {
           "account": "账号",
-          "password": "密码",
-          "debug_mode": "调试模式",
-          "enable_estimation": "启用电池额定参数",
-          "enable_coordinates": "显示车辆位置",
-          "login_method": "登录方式"
+          "password": "密码"
         },
-        "data_description": {
-          "debug_mode": "在解析信息实体中显示有界诊断视图，不增加请求。",
-          "enable_estimation": "可选额定电压与容量，不再从SOC变化推算充放电量。",
-          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。",
-          "enable_coordinates": "显示位置复用状态查询，不增加请求；位置可能进入 Home Assistant 历史。关闭后不暴露坐标，坐标系尚未核验。"
-        }
+        "data_description": {}
       },
       "reauth_confirm": {
         "title": "Ninebot",
         "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
           "account": "账号",
-          "password": "密码",
-          "login_method": "登录方式"
+          "password": "密码"
         },
-        "data_description": {
-          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
-        }
+        "data_description": {}
       },
       "reconfigure": {
         "title": "Ninebot",
         "description": "密码仅用于本次登录验证，不保存到集成配置。",
         "data": {
           "account": "账号",
-          "password": "密码",
-          "login_method": "登录方式"
+          "password": "密码"
         },
-        "data_description": {
-          "login_method": "选择短信后提交会发送一次验证码；密码方式需要填写密码。短信暂支持中国大陆手机号。"
-        }
+        "data_description": {}
       },
       "sms_account": {
         "title": "发送登录验证码",
@@ -57,6 +42,21 @@
           "code": "验证码",
           "resend": "重新发送验证码"
         }
+      },
+      "features": {
+        "title": "车辆功能",
+        "description": "账号已验证。选择车辆功能；电池额定电压与容量可在添加完成后的设备页面填写。",
+        "data": {
+          "enable_estimation": "设置电池额定参数",
+          "enable_coordinates": "显示车辆位置",
+          "enable_calendar": "启用行程日历（Beta）",
+          "debug_mode": "调试模式"
+        },
+        "data_description": {
+          "enable_estimation": "设置电池额定参数，包括电压和容量",
+          "enable_coordinates": "在地图和区域中使用车辆位置。",
+          "debug_mode": "显示有界的当前数据解析视图。可从集成菜单启用调试日志、下载日志和诊断信息。"
+        }
       }
     },
     "error": {
@@ -64,7 +64,7 @@
       "cannot_connect": "连接失败，请稍后重试",
       "upstream_error": "九号服务返回错误，请稍后重试",
       "invalid_response": "返回数据格式不符合预期",
-      "unsupported_platform": "ninecli 无法在当前平台启动",
+      "unsupported_platform": "车辆连接服务无法在此平台运行。",
       "busy": "会话正在使用，请稍后重试",
       "storage_error": "无法安全保存会话，请检查存储空间和权限",
       "password_required": "请填写密码或选择短信登录。",
@@ -80,7 +80,9 @@
       "session_update_failed": "会话更新未完成，已恢复旧会话。请重新开始认证。",
       "session_recovery_pending": "会话恢复尚未完成，备份已保留。请查看“修复”提示并重启 HA 后重试。",
       "sms_expired": "短信登录流程已过期，请重新开始。",
-      "storage_error": "本地会话保存失败，请检查存储后重试。"
+      "storage_error": "本地会话保存失败，请检查存储后重试。",
+      "sms_unavailable": "短信登录暂不可用，请使用密码登录。",
+      "onboarding_expired": "功能设置已过期，请重新添加账号。"
     },
     "initiate_flow": {
       "user": "添加账号"
@@ -90,30 +92,36 @@
     "step": {
       "init": {
         "title": "选项",
-        "description": "额定电池参数是可选规格。新账号默认显示位置，可以关闭。控制需要主动启用并指定车辆；云端接受命令不代表操作已完成。",
+        "description": "设置车辆功能与历史同步，按需开启远程控制。额定参数是电池规格，不代表实测容量。",
         "data": {
-          "poll_interval": "状态轮询间隔（秒）",
-          "enable_estimation": "启用电池额定参数",
-          "enable_coordinates": "显示车辆位置",
           "enable_controls": "启用车辆控制",
           "control_vehicles": "允许控制的车辆",
-          "debug_mode": "调试模式",
-          "configure_model": "配置电池额定参数",
-          "enable_calendar": "启用行程日历",
-          "preserve_history": "后台保全行程详情",
-          "history_requests_per_hour": "每账号每小时详情请求限额",
-          "auto_history_sync": "自动同步历史行程",
-          "history_storage_mib": "历史存储额度（MiB）"
+          "poll_interval": "状态轮询间隔（秒）",
+          "enable_coordinates": "显示车辆位置",
+          "configure_model": "设置电池额定参数",
+          "enable_vehicle_events": "启用车辆事件（Beta）",
+          "enable_calendar": "启用行程日历（Beta）",
+          "preserve_history": "自动同步历史详情（Beta）",
+          "history_requests_per_hour": "每账号每小时历史请求限额（Beta）",
+          "auto_history_sync": "自动扫描历史行程（Beta）",
+          "history_storage_mib": "历史存储额度（MiB）（Beta）",
+          "retain_history_database": "保留本地历史行程信息数据库（Beta）",
+          "manage_archive": "导出或导入历史数据库（Beta）",
+          "debug_mode": "调试模式"
         },
         "data_description": {
-          "debug_mode": "只显示已取得快照的安全解析，不输出账号、位置或轨迹。",
-          "configure_model": "选择HA中的车辆设备；与车辆的两个额定参数配置实体共用存储。",
-          "enable_coordinates": "显示位置复用状态查询，不增加请求；位置可能进入 Home Assistant 历史。关闭后不暴露坐标，坐标系尚未核验。",
-          "enable_calendar": "开关每辆车的本地行程日历。关闭不删除历史记录；重新开启沿用原实体。浏览日历不会请求云端。",
-          "preserve_history": "私有保存可得的行程详情和轨迹。关闭后停止后台任务，不删除已有档案。",
-          "history_requests_per_hour": "每个账号的后台月份与详情查询共享此预算；ninecli 内部重试不计在此逻辑请求数内。",
+          "debug_mode": "显示有界的当前数据解析视图。可从集成菜单启用调试日志、下载日志和诊断信息。",
+          "configure_model": "设置电池额定参数，包括电压和容量",
+          "enable_coordinates": "在地图和区域中使用车辆位置。",
+          "enable_calendar": "按日期浏览本地历史行程。日历显示“无当前行程”并不代表停用；关闭此选项才会停用日历，历史记录保留。",
+          "preserve_history": "将可获取的行程详情与轨迹保存到本地，首次扫描后按需增量补全。",
+          "history_requests_per_hour": "默认60；输入0为不限制每小时请求数（不推荐），或填写1–120的整数。月份与详情共享此限额；云端限流与错误退避仍然生效。",
           "auto_history_sync": "为账号内所有归属车辆发现可得历史，随后后台增量同步。",
-          "history_storage_mib": "每账号32–2048 MiB，默认100。降低额度不删除已存记录，超额时暂停写入。"
+          "history_storage_mib": "每账号32–2048 MiB，默认100。降低额度不删除已存记录，超额时暂停写入。",
+          "control_vehicles": "从此账号选择一辆或多辆允许远程控制的车辆。关闭控制会保留选择。",
+          "enable_vehicle_events": "同时开关车辆行程事件与车辆状态事件；默认开启。重新开启不会重放旧记录。",
+          "retain_history_database": "删除账号时保留历史及轨迹；重新添加同一账号后自动恢复。取消后，下次删除账号会删除受管归档及恢复副本。",
+          "manage_archive": "选择账号和车辆导出，或上传归档包校验并合并。文件包含私密位置与轨迹，请妥善保管。"
         }
       },
       "model_vehicle": {
@@ -124,19 +132,61 @@
       },
       "model_parameters": {
         "title": "标称电池参数",
-        "description": "填写额定电压与容量。修改参数更新同一个实体；此数值不代表实测容量或电池健康度。",
+        "description": "电压和容量均可留空，按电池额定规格填写。缺少任一项时不计算额定能量；不代表实测容量或健康度。",
         "data": {
           "voltage": "标称电压（V）",
           "capacity": "额定容量（Ah）"
         }
+      },
+      "archive": {
+        "title": "历史数据库（Beta）",
+        "menu_options": {
+          "archive_export": "导出数据库",
+          "archive_import": "上传并导入数据库"
+        }
+      },
+      "archive_export": {
+        "title": "导出历史数据库",
+        "description": "可选择一个或多个账号下的车辆。导出包含行程、详细轨迹和原始历史证据，不包含登录凭据。",
+        "data": {
+          "vehicles": "账号与车辆"
+        }
+      },
+      "archive_download": {
+        "title": "下载历史数据库",
+        "description": "[下载归档包]({url})。链接10分钟内有效，仅当前管理员可用。下载后提交完成。"
+      },
+      "archive_import": {
+        "title": "上传历史数据库",
+        "description": "上传导出的ZIP包或当前格式的单个SQLite数据库（最多100 MiB，ZIP解压后最多512 MiB）。请先登录文件内所有账号。上传后会校验并确认，不会立即写入。",
+        "data": {
+          "file": "上传数据库包"
+        }
+      },
+      "archive_confirm": {
+        "title": "确认合并历史数据库",
+        "description": "选择需要恢复的车辆。按账号事务合并并保留更完整的轨迹，不替换登录状态或运行中的同步任务。每个账号合并前生成恢复快照；已完成账号可安全重试。",
+        "data": {
+          "vehicles": "需要恢复的车辆",
+          "confirm": "确认备份并合并"
+        }
+      },
+      "archive_result": {
+        "title": "历史数据库已合并",
+        "description": "新增行程 / 新增详情：\n{result}\n\n本地查询现可使用导入数据；自动同步仍遵循你的配置。"
       }
     },
     "abort": {
-      "model_unavailable": "请先加载集成，再选择当前账户的车辆配置额定参数。"
+      "model_unavailable": "请先加载集成，再选择当前账户的车辆配置额定参数。",
+      "archive_admin_required": "仅Home Assistant管理员可导入或导出历史数据库。",
+      "archive_busy": "归档下载数量已达上限，请稍后重试。"
     },
     "error": {
       "model_unavailable": "请选择当前集成账户下可用的车辆设备。",
-      "model_storage_invalid": "电池参数存储不可写，请先处理修复提示。"
+      "model_storage_invalid": "电池参数存储不可写，请先处理修复提示。",
+      "control_vehicles_required": "请选择至少一辆允许控制的车辆。",
+      "archive_invalid": "无法完成归档操作。请核对账号、文件格式、完整性、容量与车辆身份。已完成的账号会保留，可安全重试；原始文件不被替换。",
+      "archive_busy": "正在备份，请稍后重试。"
     }
   },
   "entity": {
@@ -172,7 +222,7 @@
         "name": "本月里程"
       },
       "last_mileage": {
-        "name": "最后返回行程里程"
+        "name": "最近里程"
       },
       "month_energy_raw": {
         "name": "本月行程能耗"
@@ -198,17 +248,11 @@
       "last_ride_duration": {
         "name": "最近行程时长"
       },
-      "last_ride_start": {
-        "name": "最近行程开始时间"
-      },
-      "last_ride_end": {
-        "name": "最近行程结束时间"
-      },
       "last_ride_max_speed": {
         "name": "最近行程最高速度"
       },
       "last_ride_average_speed": {
-        "name": "最近行程总平均速度"
+        "name": "最近行程平均速度"
       },
       "control_availability": {
         "name": "车辆控制状态",
@@ -419,16 +463,16 @@
         }
       },
       "month_ride_count": {
-        "name": "本月骑行次数"
+        "name": "本月行程次数"
       },
       "month_duration": {
-        "name": "本月骑行总时长"
+        "name": "本月行程时长"
       },
       "returned_pack_count": {
         "name": "主电池组数"
       },
       "month_list_coverage": {
-        "name": "本月行程明细覆盖率"
+        "name": "本月行程列表完整率"
       },
       "battery_rated_energy": {
         "name": "主电池额定能量"
@@ -440,28 +484,28 @@
         "name": "昨日里程"
       },
       "today_ride_count": {
-        "name": "今日骑行次数"
+        "name": "今日行程次数"
       },
       "yesterday_ride_count": {
-        "name": "昨日骑行次数"
+        "name": "昨日行程次数"
       },
       "today_ride_duration": {
-        "name": "今日骑行时长"
+        "name": "今日行程时长"
       },
       "yesterday_ride_duration": {
-        "name": "昨日骑行时长"
+        "name": "昨日行程时长"
       },
       "today_ride_energy": {
-        "name": "今日骑行能耗"
+        "name": "今日行程能耗"
       },
       "yesterday_ride_energy": {
-        "name": "昨日骑行能耗"
+        "name": "昨日行程能耗"
       },
       "month_energy_intensity": {
-        "name": "本月单位里程能耗"
+        "name": "本月平均能耗"
       },
       "last_energy_intensity": {
-        "name": "最近行程单位里程能耗"
+        "name": "最近平均能耗"
       },
       "emergency_battery": {
         "name": "应急通信电池电量"
@@ -502,13 +546,19 @@
         }
       },
       "history_scan_progress": {
-        "name": "历史月份扫描进度"
+        "name": "历史行程扫描进度"
       },
       "history_detail_progress": {
         "name": "行程详情保存进度"
       },
       "history_sync_last_success": {
         "name": "最近成功同步"
+      },
+      "today_energy_intensity": {
+        "name": "今日平均能耗"
+      },
+      "yesterday_energy_intensity": {
+        "name": "昨日平均能耗"
       }
     },
     "binary_sensor": {
@@ -550,10 +600,56 @@
         "name": "远程关闭"
       },
       "history_sync": {
-        "name": "同步历史行程"
+        "name": "同步历史行程",
+        "state_attributes": {
+          "sync_state": {
+            "name": "同步状态",
+            "state": {
+              "disabled": "已关闭",
+              "paused": "已暂停",
+              "storage_full": "存储已满",
+              "storage_error": "存储错误",
+              "needs_login": "需要重新登录",
+              "waiting_connection": "等待连接",
+              "not_started": "尚未开始",
+              "waiting_retry": "等待重试",
+              "waiting_budget": "本地限速等待",
+              "discovering": "正在发现历史",
+              "preserving": "正在保存详情",
+              "verifying": "正在校验记录",
+              "incremental": "增量同步中",
+              "with_gaps": "已完成，有缺口",
+              "synced": "本地同步完成",
+              "vehicle_not_present": "账号车辆列表未包含此车"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "暂停历史同步"
+        "name": "暂停历史同步",
+        "state_attributes": {
+          "sync_state": {
+            "name": "同步状态",
+            "state": {
+              "disabled": "已关闭",
+              "paused": "已暂停",
+              "storage_full": "存储已满",
+              "storage_error": "存储错误",
+              "needs_login": "需要重新登录",
+              "waiting_connection": "等待连接",
+              "not_started": "尚未开始",
+              "waiting_retry": "等待重试",
+              "waiting_budget": "本地限速等待",
+              "discovering": "正在发现历史",
+              "preserving": "正在保存详情",
+              "verifying": "正在校验记录",
+              "incremental": "增量同步中",
+              "with_gaps": "已完成，有缺口",
+              "synced": "本地同步完成",
+              "vehicle_not_present": "账号车辆列表未包含此车"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "恢复历史同步"
@@ -579,13 +675,63 @@
     },
     "event": {
       "ride": {
-        "name": "骑行事件",
+        "name": "车辆行程事件",
         "state_attributes": {
           "event_type": {
             "name": "事件类型",
             "state": {
-              "completed": "骑行结束"
+              "completed": "骑行结束",
+              "reported": "行程已上报",
+              "updated": "行程已修订",
+              "late_reported": "迟到行程已确认"
             }
+          },
+          "time_range": {
+            "name": "行程时间"
+          },
+          "latest_ride": {
+            "name": "最近行程"
+          },
+          "latest_start_time": {
+            "name": "最近行程开始时间"
+          },
+          "latest_end_time": {
+            "name": "最近行程结束时间"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "车辆状态事件",
+        "state_attributes": {
+          "event_type": {
+            "name": "事件类型",
+            "state": {
+              "state_changed": "状态变化",
+              "powered_on": "车辆上电",
+              "powered_off": "车辆断电",
+              "charging_started": "开始充电",
+              "charging_stopped": "结束充电",
+              "locked": "车辆上锁",
+              "unlocked": "车辆解锁",
+              "seat_locked": "座桶上锁",
+              "seat_unlocked": "座桶解锁"
+            }
+          },
+          "changes": {
+            "name": "变化项",
+            "state": {
+              "powered_on": "车辆上电",
+              "powered_off": "车辆断电",
+              "charging_started": "开始充电",
+              "charging_stopped": "结束充电",
+              "locked": "车辆上锁",
+              "unlocked": "车辆解锁",
+              "seat_locked": "座桶上锁",
+              "seat_unlocked": "座桶解锁"
+            }
+          },
+          "summary": {
+            "name": "摘要"
           }
         }
       }
@@ -603,6 +749,21 @@
           },
           "last_operation": {
             "name": "最近操作"
+          },
+          "command_status": {
+            "name": "指令确认",
+            "state": {
+              "idle": "无等待指令",
+              "not_requested": "无需状态确认",
+              "pending": "等待响应，可再次发送指令",
+              "confirmed": "状态已确认",
+              "observed_target_command_uncertain": "状态已更新，指令结果未确认",
+              "already_in_target": "已处于目标状态",
+              "target_not_observed": "15秒内未确认，请检查车辆",
+              "unknown": "未获取确认状态",
+              "cancelled": "等待已取消",
+              "superseded": "等待已取消或由新指令接替"
+            }
           }
         }
       },
@@ -618,13 +779,58 @@
           },
           "last_operation": {
             "name": "最近操作"
+          },
+          "unlock_feedback": {
+            "name": "操作反馈",
+            "state": {
+              "recently_unlocked": "刚解锁",
+              "none": "无"
+            }
+          },
+          "reported_state": {
+            "name": "上报锁舌状态",
+            "state": {
+              "locked": "已锁定",
+              "unlocked": "已解锁",
+              "unknown": "未知"
+            }
+          },
+          "command_status": {
+            "name": "指令确认",
+            "state": {
+              "idle": "无等待指令",
+              "not_requested": "无需状态确认",
+              "pending": "等待响应，可再次发送指令",
+              "confirmed": "状态已确认",
+              "observed_target_command_uncertain": "状态已更新，指令结果未确认",
+              "already_in_target": "已处于目标状态",
+              "target_not_observed": "15秒内未确认，请检查车辆",
+              "unknown": "未获取确认状态",
+              "cancelled": "等待已取消",
+              "superseded": "等待已取消或由新指令接替"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "行程日历"
+        "name": "行程历史日历",
+        "state_attributes": {
+          "ride_time": {
+            "name": "行程时间"
+          },
+          "calendar_mode": {
+            "name": "日历用途",
+            "state": {
+              "historical_read_only": "历史行程（只读）"
+            }
+          }
+        },
+        "state": {
+          "off": "无当前行程",
+          "on": "行程进行中"
+        }
       }
     }
   },
@@ -633,10 +839,10 @@
       "message": "指令未发送，请检查控制设置和账号连接。"
     },
     "control_uncertain": {
-      "message": "操作结果不确定，请检查车辆。"
+      "message": "未能确认指令结果，请查看车辆状态。"
     },
     "control_readback_failed": {
-      "message": "指令已发送，暂时无法读取锁状态。"
+      "message": "未能确认车辆状态，请查看车辆。"
     },
     "busy": {
       "message": "车辆操作进行中，请稍后重试。"
@@ -690,10 +896,10 @@
       "message": "实体身份存储不可用，请检查修复提示。"
     },
     "seat_lock_manual": {
-      "message": "座桶只能手动上锁。"
+      "message": "请在车辆上关闭座桶。如需再次解锁，请直接发送解锁指令。"
     },
     "control_target_not_observed": {
-      "message": "指令已发送，尚未确认目标锁状态，请检查车辆。"
+      "message": "15秒内未确认，请查看车辆状态。"
     },
     "control_not_sent": {
       "message": "操作未发送：通信暂不可用，请稍后重试。"

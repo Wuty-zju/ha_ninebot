@@ -1,4 +1,4 @@
-"""Cloud-observed locks; requests never optimistically change the locked state."""
+"""Cloud-observed locks with a bounded seat-unlock presentation window."""
 
 from homeassistant.components.lock import LockEntity
 from homeassistant.core import HomeAssistant
@@ -12,7 +12,17 @@ from .runtime import NinebotConfigEntry
 
 
 class NinebotLock(NinebotEntity, LockEntity):
-    _unrecorded_attributes = unrecorded_attributes(frozenset({"last_operation"}))
+    _unrecorded_attributes = unrecorded_attributes(
+        frozenset(
+            {
+                "last_operation",
+                "unlock_feedback",
+                "reported_state",
+                "pending_action",
+                "command_status",
+            }
+        )
+    )
 
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
         identities = entry.runtime_data.identities
@@ -24,35 +34,52 @@ class NinebotLock(NinebotEntity, LockEntity):
     @property
     def extra_state_attributes(self) -> dict[str, object]:
         actions = ("buck",) if self.key == "seat_lock" else ("engine/start", "engine/stop")
-        outcomes = self.coordinator.control_results.diagnostics(self.sn)
-        latest = max(
-            (outcomes[action] for action in actions if action in outcomes),
-            key=lambda result: str(result["attempted_at"]),
-            default=None,
-        )
+        latest = self.coordinator.control_results.latest(self.sn, actions)
         return {
             "remote_lock_mode": "manual" if self.key == "seat_lock" else "remote",
             "last_operation": latest,
+            "command_status": latest.get("confirmation", "idle") if latest else "idle",
+            "pending_action": self.coordinator.pending_lock_action(self.sn, self.key),
+            **(
+                {
+                    "unlock_feedback": "recently_unlocked"
+                    if self.sn in self.coordinator.seat_unlock_feedback
+                    else "none",
+                    "reported_state": {
+                        True: "locked",
+                        False: "unlocked",
+                        None: "unknown",
+                    }[self.coordinator.lock_state(self.sn, self.key)],
+                }
+                if self.key == "seat_lock"
+                else {}
+            ),
         }
 
     @property
     def is_locked(self) -> bool | None:
-        return self.coordinator.lock_state(self.sn, self.key)
+        return self.coordinator.displayed_lock_state(self.sn, self.key)
 
     @property
     def is_locking(self) -> bool:
         return (
             self.key == "vehicle_lock"
-            and self.coordinator.pending_controls.get(self.sn) == "engine/stop"
+            and self.coordinator.pending_lock_action(self.sn, self.key) == "engine/stop"
+            and self.is_locked is not True
         )
 
     @property
     def is_unlocking(self) -> bool:
         action = "buck" if self.key == "seat_lock" else "engine/start"
-        return self.coordinator.pending_controls.get(self.sn) == action
+        return (
+            self.coordinator.pending_lock_action(self.sn, self.key) == action
+            and self.is_locked is not False
+        )
 
     async def async_lock(self, **kwargs: object) -> None:
         if self.key == "seat_lock":
+            if self.coordinator.cancel_seat_unlock_wait(self.sn):
+                return
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="seat_lock_manual")
         await self.coordinator.async_control(self.sn, "engine/stop")
 

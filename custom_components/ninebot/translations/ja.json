@@ -3,45 +3,30 @@
     "step": {
       "user": {
         "title": "アカウントを追加",
-        "description": "The password is used only for this login and is not stored in integration configuration. 新しいアカウントでは、走行履歴と軌跡をバックグラウンドでローカル保存します。オプションで無効にできます。",
+        "description": "Sign in with your account and password, then choose vehicle features. Your password is not saved in integration configuration.",
         "data": {
           "account": "アカウント",
-          "password": "パスワード",
-          "debug_mode": "デバッグモード",
-          "enable_estimation": "定格パラメーターを有効化",
-          "enable_coordinates": "車両の位置を表示",
-          "login_method": "ログイン方法"
+          "password": "パスワード"
         },
-        "data_description": {
-          "debug_mode": "Show a bounded diagnostic view without additional requests.",
-          "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
-        }
+        "data_description": {}
       },
       "reauth_confirm": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "アカウント",
-          "password": "パスワード",
-          "login_method": "ログイン方法"
+          "password": "パスワード"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "reconfigure": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "アカウント",
-          "password": "パスワード",
-          "login_method": "ログイン方法"
+          "password": "パスワード"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "sms_account": {
         "title": "Send login code",
@@ -57,6 +42,21 @@
           "code": "認証コード",
           "resend": "再送信"
         }
+      },
+      "features": {
+        "title": "Vehicle features",
+        "description": "Account verified. Choose vehicle features; rated voltage and capacity can be entered on the device page after setup.",
+        "data": {
+          "enable_estimation": "定格パラメーターを設定",
+          "enable_coordinates": "車両の位置を表示",
+          "enable_calendar": "走行履歴 (Beta)",
+          "debug_mode": "デバッグモード"
+        },
+        "data_description": {
+          "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
       }
     },
     "error": {
@@ -64,7 +64,7 @@
       "cannot_connect": "Cannot connect; try again later",
       "upstream_error": "Ninebot service returned an error; try later",
       "invalid_response": "Unexpected response format",
-      "unsupported_platform": "ninecli cannot start on this platform",
+      "unsupported_platform": "The vehicle connection service cannot run on this platform.",
       "busy": "Session is busy; try again later",
       "storage_error": "Cannot save session; check storage and permissions",
       "password_required": "Enter a password or choose SMS login.",
@@ -80,7 +80,9 @@
       "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
-      "storage_error": "Local session storage failed. Check storage and try again."
+      "storage_error": "Local session storage failed. Check storage and try again.",
+      "sms_unavailable": "SMS sign-in is unavailable. Use your password.",
+      "onboarding_expired": "Feature setup expired. Add the account again."
     },
     "initiate_flow": {
       "user": "アカウントを追加"
@@ -90,30 +92,36 @@
     "step": {
       "init": {
         "title": "オプション",
-        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
+        "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
-          "poll_interval": "状態更新間隔（秒）",
-          "enable_estimation": "定格パラメーターを有効化",
-          "enable_coordinates": "車両の位置を表示",
           "enable_controls": "車両操作を有効化",
           "control_vehicles": "操作を許可する車両",
-          "debug_mode": "デバッグモード",
+          "poll_interval": "状態更新間隔（秒）",
+          "enable_coordinates": "車両の位置を表示",
           "configure_model": "定格パラメーターを設定",
-          "enable_calendar": "走行履歴",
-          "preserve_history": "Preserve trip details in background",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "走行履歴の自動同期",
-          "history_storage_mib": "履歴保存上限（MiB）"
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
+          "enable_calendar": "走行履歴 (Beta)",
+          "preserve_history": "Automatically sync trip details (Beta)",
+          "history_requests_per_hour": "History requests per account per hour (Beta)",
+          "auto_history_sync": "Automatically scan trip history (Beta)",
+          "history_storage_mib": "履歴保存上限（MiB） (Beta)",
+          "retain_history_database": "Keep local trip history database (Beta)",
+          "manage_archive": "Export or import history database (Beta)",
+          "debug_mode": "デバッグモード"
         },
         "data_description": {
-          "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
-          "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
+          "configure_model": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
+          "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
+          "history_requests_per_hour": "既定値60。0は時間当たりの制限なし（非推奨）、通常は1～120の整数です。月と詳細の取得で共有し、クラウドの制限と再試行の待機は引き続き有効です。",
           "auto_history_sync": "所有する全車両の取得可能な履歴を取得し、その後は変更分をバックグラウンドで同期します。",
-          "history_storage_mib": "アカウントごとに32–2048 MiB、既定値100。上限を下げても保存済みデータは削除せず、書き込みを一時停止する場合があります。"
+          "history_storage_mib": "アカウントごとに32–2048 MiB、既定値100。上限を下げても保存済みデータは削除せず、書き込みを一時停止する場合があります。",
+          "control_vehicles": "このアカウントの車両を1台以上選択します。操作を無効にしても選択は保持されます。",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
+          "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
         }
       },
       "model_vehicle": {
@@ -129,14 +137,56 @@
           "voltage": "定格電圧 (V)",
           "capacity": "定格容量 (Ah)"
         }
+      },
+      "archive": {
+        "title": "History database (Beta)",
+        "menu_options": {
+          "archive_export": "Export database",
+          "archive_import": "Upload and import database"
+        }
+      },
+      "archive_export": {
+        "title": "Export history database",
+        "description": "Select vehicles from one or more accounts. The package includes trips, detailed tracks and historical source evidence, without sign-in credentials.",
+        "data": {
+          "vehicles": "Accounts and vehicles"
+        }
+      },
+      "archive_download": {
+        "title": "Download history database",
+        "description": "[Download archive package]({url}). This link expires in 10 minutes and is available only to this administrator. Submit after downloading."
+      },
+      "archive_import": {
+        "title": "Upload history database",
+        "description": "Upload an exported ZIP package or a current-format SQLite database (up to 100 MiB; ZIP up to 512 MiB expanded). Sign in to every included account first. Uploading validates and previews it before any merge.",
+        "data": {
+          "file": "Upload database package"
+        }
+      },
+      "archive_confirm": {
+        "title": "Confirm history database merge",
+        "description": "Select vehicles to restore. Each account merges transactionally and keeps the better track, without replacing sign-in state or running sync jobs. A recovery snapshot is saved before merging; completed accounts can be retried safely.",
+        "data": {
+          "vehicles": "Vehicles to restore",
+          "confirm": "Confirm backup and merge"
+        }
+      },
+      "archive_result": {
+        "title": "History database merged",
+        "description": "Added trips / added details:\n{result}\n\nLocal queries can now use the imported data. Automatic synchronization follows your existing settings."
       }
     },
     "abort": {
-      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters."
+      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
+      "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
+      "archive_busy": "The archive download limit has been reached. Try again later."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
-      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
+      "control_vehicles_required": "遠隔操作を許可する車両を1台以上選択してください。",
+      "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
+      "archive_busy": "A backup is in progress. Try again later."
     }
   },
   "entity": {
@@ -172,7 +222,7 @@
         "name": "今月: 距離"
       },
       "last_mileage": {
-        "name": "前回の走行: 距離"
+        "name": "直近の走行距離"
       },
       "month_energy_raw": {
         "name": "今月: 電力量"
@@ -197,12 +247,6 @@
       },
       "last_ride_duration": {
         "name": "前回の走行: 走行時間"
-      },
-      "last_ride_start": {
-        "name": "前回の走行: 開始時刻"
-      },
-      "last_ride_end": {
-        "name": "前回の走行: 終了時刻"
       },
       "last_ride_max_speed": {
         "name": "前回の走行: 最高速度"
@@ -428,7 +472,7 @@
         "name": "主バッテリー: 個数"
       },
       "month_list_coverage": {
-        "name": "今月: 走行記録の取得率"
+        "name": "今月の走行一覧の完全率"
       },
       "battery_rated_energy": {
         "name": "主バッテリー: 定格エネルギー"
@@ -502,13 +546,19 @@
         }
       },
       "history_scan_progress": {
-        "name": "月別履歴の取得進捗"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "走行詳細の保存進捗"
       },
       "history_sync_last_success": {
         "name": "履歴同期の最終成功日時"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -550,10 +600,56 @@
         "name": "遠隔施錠"
       },
       "history_sync": {
-        "name": "走行履歴を同期"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "無効",
+              "paused": "一時停止",
+              "storage_full": "ストレージ容量不足",
+              "storage_error": "ストレージエラー",
+              "needs_login": "再ログインが必要",
+              "waiting_connection": "接続待機中",
+              "not_started": "未開始",
+              "waiting_retry": "再試行待機中",
+              "waiting_budget": "リクエスト枠の回復待ち",
+              "discovering": "履歴を取得中",
+              "preserving": "詳細を保存中",
+              "verifying": "記録を検証中",
+              "incremental": "差分同期中",
+              "with_gaps": "一部不足で完了",
+              "synced": "ローカル同期完了",
+              "vehicle_not_present": "アカウントの車両一覧にありません"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "履歴同期を一時停止"
+        "name": "履歴同期を一時停止",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "無効",
+              "paused": "一時停止",
+              "storage_full": "ストレージ容量不足",
+              "storage_error": "ストレージエラー",
+              "needs_login": "再ログインが必要",
+              "waiting_connection": "接続待機中",
+              "not_started": "未開始",
+              "waiting_retry": "再試行待機中",
+              "waiting_budget": "リクエスト枠の回復待ち",
+              "discovering": "履歴を取得中",
+              "preserving": "詳細を保存中",
+              "verifying": "記録を検証中",
+              "incremental": "差分同期中",
+              "with_gaps": "一部不足で完了",
+              "synced": "ローカル同期完了",
+              "vehicle_not_present": "アカウントの車両一覧にありません"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "履歴同期を再開"
@@ -579,13 +675,63 @@
     },
     "event": {
       "ride": {
-        "name": "走行イベント",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
+          },
+          "time_range": {
+            "name": "走行時間帯"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "車両状態イベント",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "状態変更",
+              "powered_on": "電源オン",
+              "powered_off": "電源オフ",
+              "charging_started": "充電開始",
+              "charging_stopped": "充電終了",
+              "locked": "施錠",
+              "unlocked": "解錠",
+              "seat_locked": "シートボックス施錠",
+              "seat_unlocked": "シートボックス解錠"
+            }
+          },
+          "changes": {
+            "name": "変更項目",
+            "state": {
+              "powered_on": "電源オン",
+              "powered_off": "電源オフ",
+              "charging_started": "充電開始",
+              "charging_stopped": "充電終了",
+              "locked": "施錠",
+              "unlocked": "解錠",
+              "seat_locked": "シートボックス施錠",
+              "seat_unlocked": "シートボックス解錠"
+            }
+          },
+          "summary": {
+            "name": "概要"
           }
         }
       }
@@ -603,6 +749,21 @@
           },
           "last_operation": {
             "name": "直近の操作"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -618,13 +779,58 @@
           },
           "last_operation": {
             "name": "直近の操作"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
+          },
+          "reported_state": {
+            "name": "報告されたラッチ状態",
+            "state": {
+              "locked": "施錠",
+              "unlocked": "解錠",
+              "unknown": "不明"
+            }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "走行履歴"
+        "name": "Trip history calendar",
+        "state_attributes": {
+          "ride_time": {
+            "name": "走行時間帯"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
+          }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
+        }
       }
     }
   },
@@ -633,10 +839,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "操作結果が不明です。車両を確認してください。"
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "指令を送信しましたが、ロック状態を取得できません。"
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "車両操作が進行中か、アカウントの操作上限に達しています。終了後に再試行してください。"
@@ -690,10 +896,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "シート収納は手動でのみ施錠できます。"
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
-      "message": "指令を送信しましたが、要求したロック状態を確認できません。"
+      "message": "Not confirmed within 15 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "コマンドは送信されていません。通信が一時的に利用できません。後で再試行してください。"

@@ -11,7 +11,9 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
 
 from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, AccountDisplay, account_update
+from .account_archive import CONF_RETAIN_ARCHIVE, async_prepare_account, async_remove_account
 from .archive_lifecycle import async_remove_archive
+from .archive_options import register_download
 from .backup import backup_active, defer_removal
 from .client import NinecliClient
 from .const import (
@@ -27,11 +29,14 @@ from .entity import async_audit_device_identities
 from .event_store import RideEventPipeline
 from .exceptions import NinebotError
 from .frontend import async_register_frontend
+from .history_capacity import history_capacity_mib
 from .history_websocket import async_register_history_websocket
 from .identity import IdentityStore
 from .migration import async_migrate
 from .models import VehicleSnapshot
 from .registry import (
+    async_configure_debug_entities,
+    async_configure_event_entities,
     async_enable_configured_controls,
     async_enable_standard_entities,
     async_migrate_entity_ids,
@@ -46,6 +51,7 @@ from .storage import ModelStorage
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    register_download(hass)
     async_register_actions(hass)
     async_register_history_websocket(hass)
     await async_register_frontend(hass)
@@ -86,6 +92,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
     ir.async_delete_issue(hass, DOMAIN, f"session_recovery_{entry.entry_id}")
     client = NinecliClient(manager.path(key), async_get_clientsession(hass))
     store = ModelStorage(hass, entry.entry_id)
+    try:
+        await async_prepare_account(hass, uid, history_capacity_mib(entry.options) * 1024 * 1024)
+    except (ArchiveError, OSError, ValueError):
+        raise ConfigEntryNotReady(
+            "Local history could not be restored; originals are retained"
+        ) from None
     coordinator = NinebotCoordinator(hass, entry, client)
     entry.runtime_data = RuntimeData(
         client,
@@ -139,6 +151,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
             s.profile for s in coordinator.data.values()
         )
         entry.runtime_data.obsolete_entities_removed = async_remove_obsolete_entities(hass, entry)
+        async_configure_debug_entities(hass, entry)
+        async_configure_event_entities(hass, entry)
         entry.runtime_data.standard_entities_enabled = async_enable_standard_entities(hass, entry)
         entry.runtime_data.configured_controls_enabled = async_enable_configured_controls(
             hass, entry
@@ -150,7 +164,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
                 tuple(coordinator.data), dt_util.utcnow()
             )
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        coordinator.realtime.start()
         coordinator.preservation.start()
+        coordinator.async_schedule_statistics_refresh()
     except BaseException:
         if entry.runtime_data.events:
             await entry.runtime_data.events.async_close()
@@ -191,7 +207,9 @@ async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
 
     async def remove() -> None:
         try:
-            await async_remove_archive(hass, entry.entry_id)
+            if not entry.options.get(CONF_RETAIN_ARCHIVE, True):
+                await async_remove_account(hass, str(entry.data[CONF_BUSINESS_UID]), entry.entry_id)
+                await async_remove_archive(hass, entry.entry_id)
         except ArchiveError:
             ir.async_create_issue(
                 hass,

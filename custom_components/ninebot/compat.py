@@ -13,6 +13,15 @@ from homeassistant.helpers.entity import Entity
 validation: ModuleType = import_module("voluptuous")
 
 
+def post_create_options_supported() -> bool:
+    """Options chaining requires the post-creation hook, not just next_flow."""
+    from homeassistant import config_entries
+
+    return callable(getattr(config_entries.ConfigFlow, "async_on_create_entry", None)) and hasattr(
+        config_entries.FlowType, "OPTIONS_FLOW"
+    )
+
+
 def update_calendar_listeners(entity: Entity) -> None:
     """New Core subscriptions; older Core still supports ordinary range reads."""
     if callable(notify := getattr(entity, "async_update_event_listeners", None)):

@@ -9,6 +9,7 @@
   ],
   "config_flow": true,
   "dependencies": [
+    "file_upload",
     "http"
   ],
   "documentation": "https://github.com/Wuty-zju/ha_ninebot",
@@ -21,5 +22,5 @@
   "requirements": [
     "ninecli==0.1.7"
   ],
-  "version": "2.0.0b94"
+  "version": "2.0.0b105"
 }

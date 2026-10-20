@@ -10,7 +10,7 @@ Arrows describe data relationships, not upstream push. The frontend's local arch
 
 ## Accounts and lifecycle
 
-`config_flow.py` and `session.py` isolate candidate password/SMS sessions, validate identity and only then commit the account. Reauth/reconfigure keep the established business identity. Each ConfigEntry owns a coordinator, private token/config directory, archive actor and unload lifecycle. Different accounts do not share credentials or historical ownership.
+`config_flow.py` and `session.py` isolate candidate sessions, validate identity and only then commit the account. Public setup uses a password; the SMS implementation remains dormant pending delivery verification. Current HA chains into account options after creation; older HA selects features after authentication and before the candidate is committed. Reauth/reconfigure keep the established business identity. Each ConfigEntry owns a coordinator, private token/config directory, archive actor and unload lifecycle. Different accounts do not share credentials or historical ownership.
 
 `runtime.py` manages a local loopback child with a random Bearer token. Passwords go in the local HTTP request body, not process arguments or ConfigEntry. Arbitrary upstream host overrides are not exposed. Tokens/config files remain local secrets; same-user and privileged host processes are inside the trust boundary. Unload cancels tasks/subscriptions/readback and drains/closes the account resources.
 
@@ -22,7 +22,11 @@ Arrows describe data relationships, not upstream push. The frontend's local arch
 
 Transient GET transport failures can retry once within the same deadline. Authentication/schema errors and controls do not replay. Actual Retry-After metadata and existing group backoff apply. One cancelled reader does not cancel other consumers; abandoned work is reclaimed. Ownership/generation/request barriers prevent late/pre-command responses overwriting current state or confirming a command.
 
-Controls require explicit enablement, vehicle allowlist and fresh ownership/status. Known denials/ambiguity block dispatch; unknown permission remains unknown and cloud authorization decides. Vehicle/cloud enforces motion/P policy; HA does not infer it from ACC/power. Locks/buttons share one physical-vehicle command lease across accounts. Accepted command, observed cloud target and physical success remain distinct. See [confirmation behavior](guide.md#controls-and-confirmation).
+Controls require enablement, a vehicle allowlist and fresh ownership/status. New accounts enable controls for their sign-in-verified vehicles; existing choices and later vehicle additions are not overwritten. Known denials/ambiguity block dispatch; unknown permission remains unknown and cloud authorization decides. Vehicle/cloud enforces motion/P policy; HA does not infer it from ACC/power. Locks/buttons serialize command transmission for the same physical vehicle across accounts; newer commands can replace older confirmation observers. Accepted command, observed cloud target and physical success remain distinct. See [confirmation behavior](guide.md#controls-and-confirmation). The seat Lock presentation holds a verified unlock for five seconds; raw latch observations, confirmation and status events remain independent. Lid position is not inferred from the latch.
+
+`daily_sync.py` repairs only incomplete current-month normalized ride indexes for enabled daily consumers when the detail-preservation worker is off. It shares the durable hourly budget and existing read broker, processes one page per update and does not fetch details or persist raw GPS. Complete indexes are reused and metric reconciliation remains separate from upstream coverage claims.
+
+Shanghai day changes invalidate only a successful previous-day travel scheduling interval, never failure backoff or Retry-After. The midnight callback and post-platform setup use the normal coordinator request debouncer. The archive exposes an atomic memory-only current/previous-month projection and notifies daily/monthly/latest entities after writes. Entity presentation can use verified same-period cached facts with original receipts; `get_statistics` and Recorder export retain stricter closing-observation requirements. Cache continuity cannot create a new-day zero, transfer another period's totals or renew live freshness.
 
 ## Raw evidence and normalized models
 
@@ -55,7 +59,7 @@ Current sample freshness, per-metric statistical completeness, page enumeration,
 
 `RideArchive` is a per-account SQLite actor with serialized off-loop work, parameterized bounded reads and transactional updates. It holds normalized month/ride facts, membership, compressed/redacted business originals, task state, evidence receipts and private quarantine. Full track arrays stay out of Recorder/state; only an explicit native aggregate import writes statistics.
 
-The quota defaults to 100 MiB (options 32–2048 MiB/account); it is a write budget, not an automatic expiry policy. Capacity errors retain data and suspend writes. Unreadable/unsupported structural state is preserved with Repair. Supported reads can tolerate independently damaged detail roles without granting a write or deleting evidence. Backup hooks pause/drain writes and fence new setup writers; account removal only cleans recognized owned files, deferring when backup is active.
+The quota defaults to 100 MiB (options 32–2048 MiB/account); it is a write budget, not an automatic expiry policy. Capacity errors retain data and suspend writes. Unreadable/unsupported structural state is preserved with Repair. Supported reads can tolerate independently damaged detail roles without granting a write or deleting evidence. Backup hooks pause/drain writes and fence new setup writers; account removal retains history by default; explicit opt-out cleans recognized owned files, deferring when backup is active.
 
 Schema migrations validate old structure/ownership, make an exclusive recovery copy and commit atomically. Scope/checker changes invalidate outdated certificates rather than rewriting their historical meaning. The current schema includes object receipts/quarantine; their presence is not a claim that every reference or normalized metric is correct.
 
@@ -88,3 +92,26 @@ Repairs cover actionable identity/migration/storage/schema conditions. A tempora
 The backend abstraction permits future protocol replacement, but no production NativeBackend migration is promised by this documentation change. Source evidence and public contracts matter more than copying another application's heuristics.
 
 简体中文摘要：实时状态、历史采集、私有归档和 HA 展示分层；账号、权限、预算与生命周期隔离。原件、派生值、覆盖和完整性各自有证据范围；不猜单位/坐标，不为演示改业务。依赖精确固定并保留许可/源码可用性限制，地图底图为用户显式外部请求。
+
+
+## Connection recovery and retained availability
+
+An empty or smaller vehicle list is uncertain discovery, not conclusive proof that a known vehicle was unbound. Keep the last verified native routing entries and account-local archive; missing vehicles retain their original profile receipt and controls remain blocked until positively verified again. Previously verified read-only status polling is bounded by the existing profile validity window. Repeated omissions do not renew that window or prove revocation. Authentication invalidation and explicit lifecycle/ownership fences remain authoritative.
+
+Discovery errors use short, bounded backoff instead of the normal one-hour discovery interval. A single demand-driven timer refreshes due status and degraded discovery independently of the normal battery/travel round. It shares existing in-flight work, the account transaction lock and the global broker: no second service, credential owner or unlimited parallel requests. Successful status commits notify entities immediately. Polls use request-start-based targets; missed periods are coalesced rather than replayed.
+
+The broker reserves admission for real-time reads, honors Retry-After and bounds connection-recovery cooldown. Background history pauses for uncertain vehicles or a shared transport cooldown; positively verified vehicles in a partial result can continue from existing checkpoints. Active native authentication/cache writes are never preempted to meet a polling deadline. Local process recovery and bounded GET retries remain in the authenticated loopback client; control POSTs are never replayed.
+
+Diagnostics include uncertain-discovery counts, next retry, configured status interval, observed request intervals, missed deadlines and response age. Receipt time is not a verified vehicle report timestamp. A configured interval is a scheduling target, not a cloud availability guarantee: upstream outage, rate limits, fleet size and an already active slow request can delay fresh responses. Same-period verified history remains usable; expired instantaneous lock, location or battery readings do not become fresh through cache restoration.
+
+简体中文：空／缺车发现进入待复核，保留路由和本地历史，不刷新缺失车辆的归属有效期；控制待再次核验。独立有界状态定时器共享现有Broker与认证锁，成功立即更新；历史任务在发现／连接异常时让路并按断点恢复。服务端限流与在途事务仍受保护，轮询周期是目标而非云端成功保证；诊断显示实际间隔、响应年龄与下次重试。
+
+## Account archive lifecycle and portability
+
+`account_archive.py` binds `.storage/ninebot/accounts/<SHA256 business UID>/rides.sqlite3` to a verified account, independently of ConfigEntry lifetime. Setup validates the authenticated UID first, then merges matching legacy entry archives on isolated copies and retires their original directories. A failed migration retains its inputs; it never initializes over an unreadable archive. Entity IDs and Recorder storage are separate from this lifecycle.
+
+`archive_transfer.py` uses SQLite’s backup API on the existing SQL actor. Versioned ZIP manifests identify each account snapshot and its immutable historical evidence by SHA256. Vehicle exports filter every scoped table and remove unselected payloads/job metadata, then VACUUM the private snapshot. Uploads reject extra/duplicate members, traversal, symlinks, oversized content, executable SQLite objects, foreign owners, invalid references and corrupt raw payloads. Schema SQL from an upload is never executed in the destination.
+
+Imports replay reviewed vehicle/month/ride/membership/detail facts in a single account transaction. Newer month receipts win, historical membership is retained, and latest raw detail versus best geometry are selected independently. Imported profiles do not grant live ownership. Original page evidence is kept in bounded private `imports/` snapshots and re-exported; existing account checkpoints survive, and audit receipts, connection sessions and hourly budgets are not copied. If no local discovery baseline exists, verified committed page coverage is restored with in-flight query claims reset; an existing baseline is never replaced. Import receipts make retries idempotent; transactions and a pre-merge `recovery.sqlite3` provide separate rollback boundaries. Multi-account packages commit per account, not as a distributed transaction.
+
+Native options forms use HA file upload, administrator authorization and expiring signed downloads. No custom dashboard, public static archive directory, cloud upload or arbitrary filesystem path is needed. Full archive/transfer content remains outside entity attributes, Recorder and diagnostics. See [usage and limits](guide.md#export-and-import-history-databases).

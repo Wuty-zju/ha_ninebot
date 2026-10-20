@@ -21,13 +21,17 @@ from homeassistant.helpers.selector import (
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
+    SelectSelectorMode,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
 )
 
 from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, account_update
+from .account_archive import CONF_RETAIN_ARCHIVE
+from .archive_options import ArchiveOptionsMixin
 from .bootstrap import CONF_AUTO_HISTORY
+from .compat import post_create_options_supported
 from .compat import validation as vol
 from .const import (
     CONF_ACCOUNT,
@@ -38,6 +42,7 @@ from .const import (
     CONF_COORDINATES,
     CONF_DEBUG,
     CONF_ESTIMATION,
+    CONF_EVENTS,
     CONF_IDENTITY_SCHEME,
     CONF_POLL_INTERVAL,
     CONF_SESSION_KEY,
@@ -46,6 +51,7 @@ from .const import (
     DOMAIN,
 )
 from .exceptions import ErrorKind, NinebotError
+from .history_budget import CONF_BUDGET, MAX_BUDGET, MIN_BUDGET, configured_budget
 from .history_capacity import (
     CONF_HISTORY_CAPACITY,
     MAX_HISTORY_MIB,
@@ -54,7 +60,7 @@ from .history_capacity import (
 )
 from .identity import IDENTITY_VERSION
 from .parsing import number
-from .preservation import CONF_BUDGET, CONF_PRESERVE, DEFAULT_BUDGET
+from .preservation import CONF_PRESERVE
 from .services import resolve_vehicle
 from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
 
@@ -67,6 +73,11 @@ ERRORS = {
     ErrorKind.BUSY: "busy",
     ErrorKind.CLOSED: "cannot_connect",
 }
+
+# Keep the isolated implementation for offline protocol research. Re-enable the
+# public flow only after actual delivery and consumption have been verified.
+SMS_LOGIN_ENABLED = False
+ONBOARDING_LIFETIME = 600
 
 
 class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -81,6 +92,10 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._sms_timer: Any = None
         self._sms_task: asyncio.Task[Any] | None = None
         self._reloading = False
+        self._onboarding: Candidate | None = None
+        self._onboarding_account: str | None = None
+        self._onboarding_options: dict[str, Any] = {}
+        self._onboarding_timer: Any = None
 
     def _manager(self) -> SessionManager:
         from . import manager_for
@@ -96,6 +111,8 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None and prepared is None:
             if user_input.get("login_method") == "sms":
+                if not SMS_LOGIN_ENABLED:
+                    return self.async_abort(reason="sms_unavailable")
                 self._sms_origin = step
                 return await self._send_sms(user_input)
             if not user_input.get(CONF_PASSWORD):
@@ -138,6 +155,32 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             or entry.data.get(CONF_BUSINESS_UID) == candidate.uid
                         ):
                             return self.async_abort(reason="already_configured")
+                    if (
+                        self._entry is None
+                        and prepared is None
+                        and not post_create_options_supported()
+                    ):
+                        # Old HA has no post-create hook. Complete feature
+                        # selection after verification, before committing; no
+                        # credential or transaction lock survives the form.
+                        self._onboarding = candidate
+                        candidate = None
+                        self._onboarding_account = account
+                        self._onboarding_options = {
+                            CONF_ESTIMATION: False,
+                            CONF_COORDINATES: DEFAULT_COORDINATES,
+                            CONF_CALENDAR: False,
+                            CONF_DEBUG: False,
+                        }
+
+                        @callback
+                        def expire_features(_: Any) -> None:
+                            self.hass.config_entries.flow.async_abort(self.flow_id)
+
+                        self._onboarding_timer = async_call_later(
+                            self.hass, ONBOARDING_LIFETIME, expire_features
+                        )
+                        return await self.async_step_features()
                     if self._entry and self._entry.state == ConfigEntryState.LOADED:
                         unloaded = await self.hass.config_entries.async_unload(self._entry.entry_id)
                         if not unloaded:
@@ -177,8 +220,13 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         title=title,
                         data=data,
                         options={
-                            CONF_PRESERVE: True,
-                            CONF_AUTO_HISTORY: True,
+                            CONF_CONTROLS: True,
+                            CONF_CONTROL_VEHICLES: list(candidate.vehicles),
+                            CONF_POLL_INTERVAL: DEFAULT_POLL_INTERVAL,
+                            CONF_RETAIN_ARCHIVE: True,
+                            CONF_PRESERVE: False,
+                            CONF_AUTO_HISTORY: False,
+                            CONF_CALENDAR: bool(user_input.get(CONF_CALENDAR, False)),
                             **{
                                 key: bool(
                                     user_input.get(
@@ -269,13 +317,19 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_ACCOUNT, default=default): str,
-                    vol.Optional("login_method", default="password"): SelectSelector(
-                        SelectSelectorConfig(
-                            options=["password", "sms"], translation_key="login_method"
-                        )
-                    ),
-                    vol.Optional(CONF_PASSWORD): TextSelector(
-                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    (vol.Optional if SMS_LOGIN_ENABLED else vol.Required)(
+                        CONF_PASSWORD
+                    ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
+                    **(
+                        {
+                            vol.Optional("login_method", default="password"): SelectSelector(
+                                SelectSelectorConfig(
+                                    options=["password", "sms"], translation_key="login_method"
+                                )
+                            )
+                        }
+                        if SMS_LOGIN_ENABLED
+                        else {}
                     ),
                     **(
                         {
@@ -285,9 +339,43 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             ): bool
                             for key in (CONF_DEBUG, CONF_ESTIMATION, CONF_COORDINATES)
                         }
-                        if self._entry is None
+                        if SMS_LOGIN_ENABLED and self._entry is None
                         else {}
                     ),
+                }
+            ),
+        )
+
+    async def async_on_create_entry(self, result: ConfigFlowResult) -> ConfigFlowResult:
+        """New Core opens the account settings after the account exists."""
+        if post_create_options_supported():
+            options = await self.hass.config_entries.options.async_init(result["result"].entry_id)
+            result["next_flow"] = (
+                config_entries.FlowType("options_flow"),
+                options["flow_id"],
+            )
+        return result
+
+    async def async_step_features(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Equivalent post-login feature setup on Core without flow chaining."""
+        if self._onboarding is None or self._onboarding_account is None:
+            return self.async_abort(reason="onboarding_expired")
+        if user_input is not None:
+            candidate, self._onboarding = self._onboarding, None
+            if self._onboarding_timer:
+                self._onboarding_timer()
+                self._onboarding_timer = None
+            return await self._credentials(
+                "user", {CONF_ACCOUNT: self._onboarding_account, **user_input}, candidate
+            )
+        return self.async_show_form(
+            step_id="features",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(key, default=value): bool
+                    for key, value in self._onboarding_options.items()
                 }
             ),
         )
@@ -317,6 +405,12 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @callback
     def async_remove(self) -> None:
+        if self._onboarding_timer:
+            self._onboarding_timer()
+            self._onboarding_timer = None
+        if self._onboarding:
+            candidate, self._onboarding = self._onboarding, None
+            self.hass.async_create_task(self._manager().async_discard(candidate))
         if self._sms_timer:
             self._sms_timer()
             self._sms_timer = None
@@ -365,6 +459,8 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_sms_account(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        if not SMS_LOGIN_ENABLED:
+            return self.async_abort(reason="sms_unavailable")
         if user_input is None:
             return self.async_show_form(
                 step_id="sms_account", data_schema=vol.Schema({vol.Required(CONF_ACCOUNT): str})
@@ -374,6 +470,8 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_sms_code(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        if not SMS_LOGIN_ENABLED:
+            return self.async_abort(reason="sms_unavailable")
         if self._sms is None:
             return self.async_abort(reason="sms_expired")
         errors = {}
@@ -454,27 +552,37 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return NinebotOptionsFlow()
 
 
-class NinebotOptionsFlow(config_entries.OptionsFlow):
+class NinebotOptionsFlow(ArchiveOptionsMixin):
     def __init__(self) -> None:
         self._pending_options: dict[str, Any] = {}
         self._model_vehicle: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
             self._pending_options = {**self.config_entry.options, **user_input}
-            configure_model = self._pending_options.pop("configure_model", False)
-            if configure_model:
-                return await self.async_step_model_vehicle()
-            return self.async_create_entry(title="", data=self._pending_options)
-        options = self.config_entry.options
+            if self._pending_options.get(CONF_CONTROLS) and not self._pending_options.get(
+                CONF_CONTROL_VEHICLES
+            ):
+                errors[CONF_CONTROL_VEHICLES] = "control_vehicles_required"
+            else:
+                if self._pending_options.pop("manage_archive", False):
+                    return await self.async_step_archive()
+                configure_model = self._pending_options.pop("configure_model", False)
+                if configure_model:
+                    return await self.async_step_model_vehicle()
+                return self.async_create_entry(title="", data=self._pending_options)
+        options = {**self.config_entry.options, **(user_input or {})}
         runtime = getattr(self.config_entry, "runtime_data", None)
         vehicles = runtime.coordinator.data if runtime else {}
         choices = [
-            SelectOptionDict(value=sn, label=snapshot.profile.name)
+            SelectOptionDict(value=sn, label=f"{snapshot.profile.name} · {sn[-6:]}")
             for sn, snapshot in vehicles.items()
             if snapshot.present
         ]
-        for sn in options.get(CONF_CONTROL_VEHICLES, []):
+        # Keep previously saved choices selectable when validation redisplays
+        # an empty selection and vehicle discovery is temporarily unavailable.
+        for sn in self.config_entry.options.get(CONF_CONTROL_VEHICLES, []):
             if sn not in {choice["value"] for choice in choices}:
                 snapshot = vehicles.get(sn)
                 choices.append(
@@ -482,19 +590,25 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                 )
         return self.async_show_form(
             step_id="init",
+            errors=errors,
             data_schema=vol.Schema(
                 {
+                    vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
+                    vol.Optional(
+                        CONF_CONTROL_VEHICLES, default=options.get(CONF_CONTROL_VEHICLES, [])
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=choices, multiple=True, mode=SelectSelectorMode.DROPDOWN
+                        )
+                    ),
                     vol.Required(
                         CONF_POLL_INTERVAL,
                         default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
                     ): vol.All(vol.Coerce(int), vol.Range(min=30, max=3600)),
                     vol.Optional(
-                        CONF_ESTIMATION, default=options.get(CONF_ESTIMATION, False)
-                    ): bool,
-                    vol.Optional(
                         CONF_COORDINATES, default=options.get(CONF_COORDINATES, DEFAULT_COORDINATES)
                     ): bool,
-                    vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
+                    vol.Optional(CONF_EVENTS, default=options.get(CONF_EVENTS, True)): bool,
                     vol.Optional(CONF_CALENDAR, default=options.get(CONF_CALENDAR, True)): bool,
                     vol.Optional(CONF_PRESERVE, default=options.get(CONF_PRESERVE, False)): bool,
                     vol.Optional(
@@ -506,14 +620,15 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     ): vol.All(
                         vol.Coerce(int), vol.Range(min=MIN_HISTORY_MIB, max=MAX_HISTORY_MIB)
                     ),
+                    vol.Required(
+                        CONF_BUDGET, default=configured_budget(options)
+                    ): HistoryBudgetSelector(),
                     vol.Optional(
-                        CONF_BUDGET, default=options.get(CONF_BUDGET, DEFAULT_BUDGET)
-                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
+                        CONF_RETAIN_ARCHIVE, default=options.get(CONF_RETAIN_ARCHIVE, True)
+                    ): bool,
+                    vol.Optional("manage_archive", default=False): bool,
                     vol.Optional("configure_model", default=False): bool,
-                    vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
-                    vol.Optional(
-                        CONF_CONTROL_VEHICLES, default=options.get(CONF_CONTROL_VEHICLES, [])
-                    ): SelectSelector(SelectSelectorConfig(options=choices, multiple=True)),
+                    vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
                 }
             ),
         )
@@ -569,20 +684,42 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
         errors = {}
         if user_input is not None:
             try:
-                runtime.models.configure(sn, user_input)
+                runtime.models.configure(
+                    sn, {key: user_input.get(key) for key in ("voltage", "capacity")}
+                )
             except ValueError:
                 errors["base"] = "model_storage_invalid"
             else:
+                self._pending_options[CONF_ESTIMATION] = True
                 runtime.coordinator.async_set_updated_data(dict(runtime.coordinator.data))
                 return self.async_create_entry(title="", data=self._pending_options)
         schema = {}
         for key, maximum, unit in (("voltage", 300, "V"), ("capacity", 500, "Ah")):
             value = getattr(model, key)
-            field = vol.Required(key) if value is None else vol.Required(key, default=value)
+            field = vol.Optional(
+                key, description={"suggested_value": value} if value is not None else None
+            )
             schema[field] = parameter_validator(maximum, unit)
         return self.async_show_form(
             step_id="model_parameters", data_schema=vol.Schema(schema), errors=errors
         )
+
+
+class HistoryBudgetSelector(NumberSelector):
+    """A native input box, retaining integers and explicit unlimited zero."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            NumberSelectorConfig(
+                min=MIN_BUDGET, max=MAX_BUDGET, step=1, mode=NumberSelectorMode.BOX
+            )
+        )
+
+    def __call__(self, value: Any) -> int:
+        result = number(value, MIN_BUDGET, MAX_BUDGET)
+        if result is None or not result.is_integer():
+            raise vol.Invalid("History budget must be an integer from 0 to 120")
+        return int(result)
 
 
 class RatedParameterSelector(NumberSelector):

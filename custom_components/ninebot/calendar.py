@@ -8,6 +8,7 @@ from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
@@ -20,6 +21,7 @@ from .const import CONF_CALENDAR, DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .ride_archive import ArchiveError, ArchiveFailure
 from .ride_models import Ride
+from .ride_presentation import ride_time_range
 from .runtime import NinebotConfigEntry
 
 
@@ -28,6 +30,7 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "ride_calendar", "calendar", "travel")
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._labels: dict[str, str] = {}
         self._last_available: bool | None = None
 
@@ -49,6 +52,8 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "source": "ride_archive",
+            "calendar_mode": "historical_read_only",
+            "state_meaning": "no_active_event",
             "coverage": "observed_subset",
             "selection_basis": SELECTION_BASIS,
         }
@@ -68,10 +73,12 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
                 "last_ride_average_speed",
                 "last_energy_raw",
                 "last_energy_intensity",
-                "last_ride_start",
-                "last_ride_end",
             )
         }
+        self._labels["ride_time"] = translations.get(
+            f"component.{DOMAIN}.entity.calendar.ride_calendar.state_attributes.ride_time.name",
+            "Ride time",
+        )
         if isinstance(statistics := self.coordinator.statistics, ArchiveStatistics):
             self.async_on_remove(
                 statistics.async_add_archive_listener(self.sn, self._archive_updated)
@@ -106,7 +113,7 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
                 if ride.duration_s is not None
                 else None,
                 "h",
-                2,
+                4,
             ),
             (
                 "last_ride_max_speed",
@@ -134,14 +141,11 @@ class NinebotRideCalendar(NinebotEntity, CalendarEntity):
                 1,
             ),
         )
-        times = [
-            f"{self._labels.get(key, key)}: {dt_util.as_local(value).isoformat()}"
-            for key, value in (
-                ("last_ride_start", ride.started_at),
-                ("last_ride_end", ride.ended_at),
-            )
-            if value is not None
-        ]
+        interval = ride_time_range(
+            dt_util.as_local(ride.started_at) if ride.started_at else None,
+            dt_util.as_local(ride.ended_at) if ride.ended_at else None,
+        )
+        times = [f"{self._labels.get('ride_time', 'Ride time')}: {interval}"] if interval else []
         for key, value, unit, digits in metrics:
             if value is None:
                 continue

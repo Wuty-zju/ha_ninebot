@@ -58,3 +58,28 @@ def test_partial_cache_rejects_unreviewed_routes_and_symlinks(tmp_path):
     with pytest.raises(NinebotError):
         read_cache(tmp_path)
     assert outside.read_bytes() == original
+
+
+@pytest.mark.parametrize("observed", [frozenset(), frozenset({"one"})])
+def test_silent_omission_preserves_verified_routes(tmp_path, observed):
+    import json
+
+    from custom_components.ninebot.vehicle_cache import reconcile_cache
+
+    old = {
+        "vehicles": [
+            {"wnumber": "one", "business_line": "ebike"},
+            {"wnumber": "two", "business_line": "motor"},
+        ]
+    }
+    current = {"vehicles": [row for row in old["vehicles"] if row["wnumber"] in observed]}
+    previous = json.dumps(old).encode()
+    (tmp_path / "vehicles.json").write_text(json.dumps(current))
+    assert not reconcile_cache(tmp_path, previous, observed, True)
+    assert json.loads((tmp_path / "vehicles.json").read_bytes()) == old
+
+
+def test_first_empty_account_is_not_a_removed_known_vehicle(tmp_path):
+    from custom_components.ninebot.vehicle_cache import reconcile_cache
+
+    assert reconcile_cache(tmp_path, None, frozenset(), True)

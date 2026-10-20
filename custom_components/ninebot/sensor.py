@@ -35,6 +35,7 @@ from .battery import current_battery, identified_battery
 from .capabilities import CONTROL_BUTTONS, CONTROL_STATES, control_state
 from .compat import unrecorded_attributes
 from .const import BUSINESS_TIMEZONE, CONF_DEBUG, CONF_ESTIMATION, DETAIL_INTERVAL
+from .debug_entities import DEBUG_SENSOR_KEYS
 from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .history_entities import HISTORY_SENSORS, HistoryProgressSensor
@@ -402,18 +403,6 @@ SENSORS = (
         value=lambda s: ride_value(s, "duration_s"),
     ),
     Description(
-        key="last_ride_start",
-        group="travel",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value=lambda s: ride_value(s, "started_at"),
-    ),
-    Description(
-        key="last_ride_end",
-        group="travel",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value=lambda s: ride_value(s, "ended_at"),
-    ),
-    Description(
         key="last_ride_max_speed",
         group="travel",
         device_class=SensorDeviceClass.SPEED,
@@ -470,6 +459,8 @@ class RawDataSummarySensor(NinebotEntity, SensorEntity):
 
     def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
         super().__init__(entry, sn, "raw_data_summary", "sensor", "profile")
+        self._attr_entity_registry_enabled_default = entry.options.get(CONF_DEBUG) is True
+        self._attr_entity_registry_visible_default = entry.options.get(CONF_DEBUG) is True
 
     @property
     def available(self) -> bool:
@@ -518,11 +509,14 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             unique_id=unique_id,
         )
         self.entity_description = description
+        if description.key in DEBUG_SENSOR_KEYS:
+            self._attr_entity_registry_enabled_default = entry.options.get(CONF_DEBUG) is True
+            self._attr_entity_registry_visible_default = entry.options.get(CONF_DEBUG) is True
         self._attr_translation_key = description.translation_key or description.key
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        if self.entity_description.key.startswith("last_") and isinstance(
+        if self.entity_description.key.startswith(("last_", "month_")) and isinstance(
             statistics := self.coordinator.statistics, ArchiveStatistics
         ):
             self.async_on_remove(
@@ -533,9 +527,34 @@ class NinebotSensor(NinebotEntity, SensorEntity):
     def _archive_updated(self) -> None:
         self.async_write_ha_state()
 
+    def _month_presentation(self) -> tuple[VehicleSnapshot | None, datetime | None]:
+        snapshot = self.snapshot
+        if snapshot is None or not self.entity_description.key.startswith("month_"):
+            return snapshot, None
+        now = dt_util.utcnow()
+        month = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).strftime("%Y%m")
+        statistics = self.coordinator.statistics
+        saved = (
+            statistics.month_snapshot(self.sn, month)
+            if isinstance(statistics, ArchiveStatistics)
+            else None
+        )
+        observed = snapshot.travel_freshness.succeeded_at
+        if (
+            self.coordinator.fresh(self.sn, "travel")
+            and snapshot.travel is not None
+            and snapshot.travel.month == month
+            and self.entity_description.value(snapshot) is not None
+            and (saved is None or (observed is not None and saved[1] <= observed))
+        ):
+            return snapshot, None
+        if saved is not None and saved[1] <= now:
+            return replace(snapshot, travel=saved[0]), saved[1]
+        return snapshot, None
+
     def _presentation(self) -> tuple[VehicleSnapshot | None, ArchivedRide | None]:
         """Overlay one archived ride for this entity, never mutate live snapshots."""
-        snapshot = self.snapshot
+        snapshot, _ = self._month_presentation()
         statistics = self.coordinator.statistics
         if (
             snapshot is None
@@ -551,6 +570,14 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             and live.ended_at is not None
             and archived.ride.ended_at is not None
             and live.ended_at >= archived.ride.ended_at
+            and (
+                snapshot.travel_freshness.succeeded_at is not None
+                and snapshot.travel_freshness.succeeded_at >= archived.received_at
+            )
+            and (
+                live.ride_id != archived.ride.ride_id
+                or self.entity_description.value(snapshot) is not None
+            )
         ):
             return snapshot, None
         ride = archived.ride
@@ -565,7 +592,7 @@ class NinebotSensor(NinebotEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        if self._presentation()[1] is not None:
+        if self._presentation()[1] is not None or self._month_presentation()[1] is not None:
             return self.coordinator.local_vehicle_available(self.sn)
         return super().available
 
@@ -583,7 +610,7 @@ class NinebotSensor(NinebotEntity, SensorEntity):
         if value in ("unsupported", "not_reported"):
             return None
         if description.key in {"month_duration", "last_ride_duration"}:
-            return 2
+            return 4
         if description.key in {"endurance", "range_estimated", "range_ai"}:
             return 1
         if value == 0:
@@ -621,7 +648,20 @@ class NinebotSensor(NinebotEntity, SensorEntity):
         if self.entity_description.device_class is SensorDeviceClass.DURATION:
             attributes["duration_seconds"] = self.native_value
         if self._data_group == "travel":
-            received = archived.received_at if archived else snapshot.travel_freshness.succeeded_at
+            month_received = self._month_presentation()[1]
+            received = (
+                month_received
+                or (archived.received_at if archived else None)
+                or snapshot.travel_freshness.succeeded_at
+            )
+            attributes["data_fresh"] = (
+                not archived
+                and month_received is None
+                and self.coordinator.fresh(self.sn, "travel")
+            )
+            if month_received is not None:
+                attributes["source"] = "ride_archive"
+                attributes["observation_state"] = "cached"
             attributes.update(
                 query_month=snapshot.travel.month if snapshot.travel else None,
                 received_at=received.isoformat() if received else None,
@@ -666,6 +706,19 @@ class RatedEnergySensor(NinebotEntity, SensorEntity):
 
 
 DAY_FIELDS: dict[str, tuple[DayMetric, int, str | None, SensorDeviceClass | None]] = {
+    "today_mileage": ("distance_km", 0, UnitOfLength.KILOMETERS, SensorDeviceClass.DISTANCE),
+    "today_energy_intensity": (
+        "energy_intensity_wh_per_km",
+        0,
+        UnitOfEnergyDistance.WATT_HOUR_PER_KM,
+        SensorDeviceClass.ENERGY_DISTANCE,
+    ),
+    "yesterday_energy_intensity": (
+        "energy_intensity_wh_per_km",
+        1,
+        UnitOfEnergyDistance.WATT_HOUR_PER_KM,
+        SensorDeviceClass.ENERGY_DISTANCE,
+    ),
     "yesterday_mileage": ("distance_km", 1, UnitOfLength.KILOMETERS, SensorDeviceClass.DISTANCE),
     "today_ride_count": ("ride_count", 0, None, None),
     "yesterday_ride_count": ("ride_count", 1, None, None),
@@ -679,8 +732,10 @@ DAY_FIELDS: dict[str, tuple[DayMetric, int, str | None, SensorDeviceClass | None
 class DayStatisticsSensor(NinebotEntity, SensorEntity):
     """Small daily projection; missing windows never become zero-valued rides."""
 
-    def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
-        super().__init__(entry, sn, key, "sensor", "travel")
+    def __init__(
+        self, entry: NinebotConfigEntry, sn: str, key: str, *, unique_id: str | None = None
+    ) -> None:
+        super().__init__(entry, sn, key, "sensor", "travel", unique_id=unique_id)
         (
             self.field,
             self.days_ago,
@@ -689,21 +744,38 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
         ) = DAY_FIELDS[key]
         if self._attr_device_class is SensorDeviceClass.DURATION:
             self._attr_suggested_unit_of_measurement = UnitOfTime.HOURS
+        if self._attr_device_class is SensorDeviceClass.ENERGY_DISTANCE:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def suggested_display_precision(self) -> int:
         if self._attr_device_class is SensorDeviceClass.DURATION:
-            return 2
+            return 4
         if self.native_value == 0:
             return 0
-        if self._attr_device_class is SensorDeviceClass.DISTANCE:
+        if self._attr_device_class in {
+            SensorDeviceClass.DISTANCE,
+            SensorDeviceClass.ENERGY_DISTANCE,
+        }:
             return 1
         return 0
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        statistics = self.coordinator.statistics
+        if isinstance(statistics, ArchiveStatistics):
+            self.async_on_remove(
+                statistics.async_add_archive_listener(self.sn, self._archive_updated)
+            )
+
+    @callback
+    def _archive_updated(self) -> None:
+        self.async_write_ha_state()
 
     def _summary(self) -> DaySummary:
         now = dt_util.utcnow()
         day = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date() - timedelta(days=self.days_ago)
-        return day_summary(self.coordinator.statistics, self.sn, day, now)
+        return day_summary(self.coordinator.statistics, self.sn, day, now, allow_cached=True)
 
     @property
     def available(self) -> bool:
@@ -736,6 +808,9 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
             "adjacent_revision": summary.adjacent_revision,
             "ride_window_complete": summary.rides_complete,
             "completeness_basis": summary.completeness_basis,
+            "observation_state": summary.observation_state,
+            "data_fresh": self.coordinator.fresh(self.sn, "travel")
+            and summary.observation_state == "current",
             "availability_reason": summary.reason(self.field),
             "storage": self.coordinator.statistics.source_mode,
             **({"duration_seconds": summary.duration_s} if self.field == "duration_s" else {}),
@@ -896,7 +971,9 @@ async def async_setup_entry(
     def factory(sn: str) -> Iterable[Entity]:
         snapshot = entry.runtime_data.coordinator.data[sn]
         yield from (
-            NinebotSensor(entry, sn, d) for d in (*SENSORS, *battery_descriptions(snapshot))
+            NinebotSensor(entry, sn, d)
+            for d in (*SENSORS, *battery_descriptions(snapshot))
+            if d.key != "today_mileage"
         )
         yield ControlAvailabilitySensor(entry, sn)
         yield RawDataSummarySensor(entry, sn)
@@ -923,7 +1000,9 @@ async def async_setup_entry(
         if uid in seen:
             continue
         seen.add(uid)
-        if key in equivalent:
+        if key == "today_mileage":
+            existing.append(DayStatisticsSensor(entry, sn, key, unique_id=uid))
+        elif key in equivalent:
             existing.append(NinebotSensor(entry, sn, equivalent[key], unique_id=uid))
         elif key in {"bms_voltage", "batt_temp", "bms_cycles"}:
             existing.append(

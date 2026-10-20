@@ -80,8 +80,10 @@ async def test_debug_opt_in_reuses_identity_and_never_adds_query_demand(hass, en
     hass.config_entries.async_update_entry(entry, options={"debug_mode": False})
     await hass.async_block_till_done()
     state = hass.states.get(row_id)
-    assert state.state == "debug_disabled"
-    assert "parsed" not in state.attributes
+    assert state is None
+    row = er.async_get(hass).async_get(row_id)
+    assert row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+    assert row.hidden_by is er.RegistryEntryHider.INTEGRATION
     assert er.async_get(hass).async_get(row_id).unique_id == "SyntheticSN_raw_data_summary"
 
 
@@ -96,7 +98,6 @@ async def test_options_and_number_share_rated_parameters(hass, entry, app_client
         form["flow_id"],
         {
             "poll_interval": 120,
-            "enable_estimation": True,
             "debug_mode": True,
             "configure_model": True,
         },
@@ -170,3 +171,68 @@ async def test_debug_health_states_follow_group_freshness(hass, entry, app_clien
         assert debug_view(snapshot, co, BatteryParameters())[0] == "stale"
         broken = replace(snapshot, status_freshness=Freshness(error=ErrorKind.CONNECTION))
         assert debug_view(broken, co, BatteryParameters())[0] == "error"
+
+
+async def test_debug_gate_reloads_without_losing_identity_or_user_disable(hass, entry, app_client):
+    hass.config_entries.async_update_entry(entry, options={"debug_mode": True})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    keys = (
+        "raw_data_summary",
+        "history_sync_state",
+        "history_sync_last_success",
+        "month_list_coverage",
+    )
+    ids = {
+        key: registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}") for key in keys
+    }
+    registry.async_update_entity(
+        ids["month_list_coverage"], disabled_by=er.RegistryEntryDisabler.USER
+    )
+    hass.config_entries.async_update_entry(entry, options={"debug_mode": False})
+    await hass.async_block_till_done()
+    for key in keys:
+        row = registry.async_get(ids[key])
+        assert row.disabled_by is (
+            er.RegistryEntryDisabler.USER
+            if key == "month_list_coverage"
+            else er.RegistryEntryDisabler.INTEGRATION
+        )
+        assert hass.states.get(ids[key]) is None
+    hass.config_entries.async_update_entry(entry, options={"debug_mode": True})
+    await hass.async_block_till_done()
+    for key in keys:
+        assert registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}") == ids[key]
+        if key == "month_list_coverage":
+            assert registry.async_get(ids[key]).disabled_by is er.RegistryEntryDisabler.USER
+        else:
+            assert registry.async_get(ids[key]).disabled_by is None
+            assert hass.states.get(ids[key]) is not None
+
+
+async def test_rated_parameters_allow_unfilled_partial_and_explicit_clear(hass, entry, app_client):
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    for values, expected in (
+        ({}, (None, None)),
+        ({"voltage": 72}, (72, None)),
+        ({"capacity": 38}, (None, 38)),
+        ({}, (None, None)),
+    ):
+        form = await hass.config_entries.options.async_init(entry.entry_id)
+        form = await hass.config_entries.options.async_configure(
+            form["flow_id"],
+            {"configure_model": True},
+        )
+        form = await hass.config_entries.options.async_configure(
+            form["flow_id"],
+            {"model_vehicle": "SyntheticSN"},
+        )
+        assert all(not isinstance(key, vol.Required) for key in form["data_schema"].schema)
+        result = await hass.config_entries.options.async_configure(form["flow_id"], values)
+        assert result["type"].value == "create_entry"
+        await hass.async_block_till_done()
+        model = entry.runtime_data.models.model("SyntheticSN")
+        assert (model.voltage, model.capacity) == expected
+        assert model.nominal is None

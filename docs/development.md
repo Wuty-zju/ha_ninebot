@@ -12,6 +12,7 @@ Inspect Git state and user changes first. Read the relevant guide/contract, then
 | Fields/entities/identity | adapters/models/entity/sensor/binary_sensor/migration/registry | Field inventory, fixture metadata, entity/migration/translation tests |
 | History acquisition | bootstrap/history_plan/preservation/incremental_runs/history_store | History lifecycle/protocol/retry/coverage tests |
 | Archive/integrity | ride_archive/detail_codec/object_checks/local_reconstruction | Archive/corruption/recovery/recorded-trip tests |
+| Account archive/portability | account_archive/archive_transfer/archive_options | test_account_archive, test_archive_options, test_archive_lifecycle |
 | Maps/local query | frontend/, history_websocket, recorded_actions | tests/frontend/, tests/browser/, authorization/detail tests |
 | Documentation/branding | README/docs/NOTICE/brand | Links, examples, factual/bilingual parity, asset provenance and packaging |
 

@@ -268,10 +268,10 @@ def history(zh: bool) -> str:
 def controls(zh: bool) -> str:
     d = Diagram(
         "控制指令与状态回读" if zh else "Commands and observed state",
-        "显式启用与车辆许可后只发送一次指令，随后短时回读；实体状态以云端观测更新，座桶只能远程解锁。"
+        "控制启用与车辆许可后只发送一次指令，随后短时回读；实体状态以云端观测更新，座桶只能远程解锁。"
         if zh
         else (
-            "Explicitly enabled, allowlisted commands are sent once, "
+            "Enabled, allowlisted commands are sent once, "
             "followed by bounded status checks. State follows cloud observations; "
             "seat locking is manual."
         ),
@@ -282,7 +282,7 @@ def controls(zh: bool) -> str:
         40,
         85,
         240,
-        "用户明确开启" if zh else "Explicit opt-in",
+        "控制已启用" if zh else "Controls enabled",
         "车辆许可列表" if zh else "Vehicle allowlist",
         "账号归属与权限检查" if zh else "Ownership and access",
         color="blue",

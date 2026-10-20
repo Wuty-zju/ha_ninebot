@@ -1,0 +1,79 @@
+name: Account configuration
+on:
+  pull_request:
+    paths:
+      - 'custom_components/ninebot/account_archive.py'
+      - 'custom_components/ninebot/archive_transfer.py'
+      - 'custom_components/ninebot/archive_options.py'
+      - 'tests/test_account_archive.py'
+      - 'tests/test_archive_options.py'
+      - 'tests/test_statistics_continuity.py'
+      - 'custom_components/ninebot/daily_sync.py'
+      - 'tests/test_daily_sync.py'
+      - 'custom_components/ninebot/coordinator.py'
+      - 'custom_components/ninebot/lock.py'
+      - 'custom_components/ninebot/control_polling.py'
+      - 'tests/test_lock_controls.py'
+      - 'tests/test_control_polling.py'
+      - 'custom_components/ninebot/account.py'
+      - 'custom_components/ninebot/event.py'
+      - 'custom_components/ninebot/ride_reports.py'
+      - 'tests/test_ride_reports.py'
+      - 'tests/test_registry.py'
+      - 'tests/test_ride_entities.py'
+      - 'tests/test_period_statistics.py'
+      - 'custom_components/ninebot/vehicle_events.py'
+      - 'custom_components/ninebot/ride_presentation.py'
+      - 'custom_components/ninebot/calendar.py'
+      - 'tests/test_vehicle_events.py'
+      - 'tests/test_ride_presentation.py'
+      - 'tests/test_event_pipeline.py'
+      - 'tests/test_ride_events.py'
+      - 'custom_components/ninebot/config_flow.py'
+      - 'custom_components/ninebot/compat.py'
+      - 'custom_components/ninebot/session.py'
+      - 'custom_components/ninebot/strings.json'
+      - 'custom_components/ninebot/translations/**'
+      - 'tests/test_config_flow.py'
+      - 'tests/test_account_display.py'
+      - 'tests/test_debug_and_model_options.py'
+      - 'tests/test_sms_login.py'
+      - '.github/workflows/account-configuration.yaml'
+permissions:
+  contents: read
+concurrency:
+  group: account-config-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    name: Account configuration (${{ matrix.ha }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: '3.13'
+            plugin: '0.13.305'
+            ha: '2026.1.0'
+          - python: '3.14'
+            plugin: '0.13.370'
+            ha: '2026.10.1'
+    env:
+      LITELLM_LOCAL_MODEL_COST_MAP: 'True'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: >-
+          python -m pip install pytest-homeassistant-custom-component==${{ matrix.plugin }}
+          ninecli==0.1.7 mypy==2.4.0
+      - run: python -m pip install homeassistant==${{ matrix.ha }}
+      - run: mypy custom_components/ninebot --follow-imports=silent
+      - run: >-
+          python -m pytest -q tests/test_account_archive.py tests/test_archive_options.py tests/test_archive_runtime.py tests/test_account_display.py tests/test_config_flow.py
+          tests/test_debug_and_model_options.py tests/test_model_options_http.py tests/test_sms_login.py
+          tests/test_session.py tests/test_translations.py tests/test_history_entities.py tests/test_calendar_history.py
+          tests/test_vehicle_events.py tests/test_ride_presentation.py tests/test_event_pipeline.py tests/test_ride_events.py
+          tests/test_lock_controls.py tests/test_control_polling.py tests/test_lock_migration.py tests/test_control_results.py
+          tests/test_coordinator.py tests/test_statistics_continuity.py tests/test_ride_reports.py tests/test_registry.py tests/test_ride_entities.py tests/test_period_statistics.py

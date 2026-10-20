@@ -3,45 +3,30 @@
     "step": {
       "user": {
         "title": "Konto hinzufügen",
-        "description": "The password is used only for this login and is not stored in integration configuration. Neue Konten speichern Fahrten und Routen im Hintergrund lokal. Dies lässt sich in den Optionen deaktivieren.",
+        "description": "Sign in with your account and password, then choose vehicle features. Your password is not saved in integration configuration.",
         "data": {
           "account": "Konto",
-          "password": "Passwort",
-          "debug_mode": "Debugmodus",
-          "enable_estimation": "Batterienennwerte aktivieren",
-          "enable_coordinates": "Fahrzeugposition anzeigen",
-          "login_method": "Anmeldemethode"
+          "password": "Passwort"
         },
-        "data_description": {
-          "debug_mode": "Show a bounded diagnostic view without additional requests.",
-          "enable_estimation": "Optional rated V and Ah; no SOC-derived charging or energy counters.",
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified."
-        }
+        "data_description": {}
       },
       "reauth_confirm": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Konto",
-          "password": "Passwort",
-          "login_method": "Anmeldemethode"
+          "password": "Passwort"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "reconfigure": {
         "title": "Ninebot",
         "description": "The password is used only for this login and is not stored in integration configuration.",
         "data": {
           "account": "Konto",
-          "password": "Passwort",
-          "login_method": "Anmeldemethode"
+          "password": "Passwort"
         },
-        "data_description": {
-          "login_method": "Submitting SMS mode sends one code. Password mode requires a password. SMS currently supports mainland China mobile numbers."
-        }
+        "data_description": {}
       },
       "sms_account": {
         "title": "Send login code",
@@ -57,6 +42,21 @@
           "code": "Bestätigungscode",
           "resend": "Erneut senden"
         }
+      },
+      "features": {
+        "title": "Vehicle features",
+        "description": "Account verified. Choose vehicle features; rated voltage and capacity can be entered on the device page after setup.",
+        "data": {
+          "enable_estimation": "Batterienennwerte konfigurieren",
+          "enable_coordinates": "Fahrzeugposition anzeigen",
+          "enable_calendar": "Fahrten (Beta)",
+          "debug_mode": "Debugmodus"
+        },
+        "data_description": {
+          "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
       }
     },
     "error": {
@@ -64,7 +64,7 @@
       "cannot_connect": "Cannot connect; try again later",
       "upstream_error": "Ninebot service returned an error; try later",
       "invalid_response": "Unexpected response format",
-      "unsupported_platform": "ninecli cannot start on this platform",
+      "unsupported_platform": "The vehicle connection service cannot run on this platform.",
       "busy": "Session is busy; try again later",
       "storage_error": "Cannot save session; check storage and permissions",
       "password_required": "Enter a password or choose SMS login.",
@@ -80,7 +80,9 @@
       "session_update_failed": "Session update failed and the previous session was restored. Start reauthentication again.",
       "session_recovery_pending": "Session recovery is pending and backups are retained. Review the Repair issue and restart HA before retrying.",
       "sms_expired": "The SMS login flow expired. Start again.",
-      "storage_error": "Local session storage failed. Check storage and try again."
+      "storage_error": "Local session storage failed. Check storage and try again.",
+      "sms_unavailable": "SMS sign-in is unavailable. Use your password.",
+      "onboarding_expired": "Feature setup expired. Add the account again."
     },
     "initiate_flow": {
       "user": "Konto hinzufügen"
@@ -90,30 +92,36 @@
     "step": {
       "init": {
         "title": "Optionen",
-        "description": "Rated battery parameters are optional specifications. Location is enabled for new accounts and can be disabled. Controls require explicit opt-in and a vehicle allowlist; cloud acceptance does not confirm completion.",
+        "description": "Choose vehicle features and history synchronization, and enable remote controls if needed. Rated battery parameters are specifications, not measured capacity.",
         "data": {
-          "poll_interval": "Statusintervall (Sekunden)",
-          "enable_estimation": "Batterienennwerte aktivieren",
-          "enable_coordinates": "Fahrzeugposition anzeigen",
           "enable_controls": "Fahrzeugsteuerung aktivieren",
           "control_vehicles": "Zugelassene Fahrzeuge",
-          "debug_mode": "Debugmodus",
+          "poll_interval": "Statusintervall (Sekunden)",
+          "enable_coordinates": "Fahrzeugposition anzeigen",
           "configure_model": "Batterienennwerte konfigurieren",
-          "enable_calendar": "Fahrten",
-          "preserve_history": "Preserve trip details in background",
-          "history_requests_per_hour": "Detail request budget per account/hour",
-          "auto_history_sync": "Automatische Verlaufssynchronisierung",
-          "history_storage_mib": "Verlaufsspeicherlimit (MiB)"
+          "enable_vehicle_events": "Enable vehicle events (Beta)",
+          "enable_calendar": "Fahrten (Beta)",
+          "preserve_history": "Automatically sync trip details (Beta)",
+          "history_requests_per_hour": "History requests per account per hour (Beta)",
+          "auto_history_sync": "Automatically scan trip history (Beta)",
+          "history_storage_mib": "Verlaufsspeicherlimit (MiB) (Beta)",
+          "retain_history_database": "Keep local trip history database (Beta)",
+          "manage_archive": "Export or import history database (Beta)",
+          "debug_mode": "Debugmodus"
         },
         "data_description": {
-          "debug_mode": "Show the existing safe parsed snapshot without account, location or trail data.",
-          "configure_model": "Select the HA vehicle device. Parameters share storage with the two vehicle configuration controls.",
-          "enable_coordinates": "Showing location uses the existing status query and may save location history in Home Assistant. Disable it to stop exposing coordinates. The coordinate reference is unverified.",
-          "enable_calendar": "Show a local ride calendar for each vehicle. Turning it off preserves recorded history and entity identity. Browsing does not query the cloud.",
-          "preserve_history": "Off by default. Preserve known rides, resume selected ranges/months, and reconcile the previous month during the first week. Cloud coverage may remain partial.",
-          "history_requests_per_hour": "Shared account budget for background month and detail queries; ninecli internal retries are not counted as logical operations.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
+          "configure_model": "Set rated battery parameters, including voltage and capacity.",
+          "enable_coordinates": "Show vehicle location on maps and use it in zones.",
+          "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
+          "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
+          "history_requests_per_hour": "Standard 60; 0 bedeutet kein Stundenlimit (nicht empfohlen), sonst 1–120. Monats- und Detailabfragen teilen das Limit; Cloud-Limits und Wiederholungswartezeiten gelten weiterhin.",
           "auto_history_sync": "Verfügbaren Verlauf aller eigenen Fahrzeuge erfassen, danach Änderungen im Hintergrund synchronisieren.",
-          "history_storage_mib": "32–2048 MiB je Konto, Standard 100. Ein kleineres Limit löscht keine Daten und kann Schreibvorgänge pausieren."
+          "history_storage_mib": "32–2048 MiB je Konto, Standard 100. Ein kleineres Limit löscht keine Daten und kann Schreibvorgänge pausieren.",
+          "control_vehicles": "Wähle ein oder mehrere Fahrzeuge dieses Kontos. Das Ausschalten der Steuerung behält die Auswahl bei.",
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
+          "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
         }
       },
       "model_vehicle": {
@@ -129,14 +137,56 @@
           "voltage": "Nennspannung (V)",
           "capacity": "Nennkapazität (Ah)"
         }
+      },
+      "archive": {
+        "title": "History database (Beta)",
+        "menu_options": {
+          "archive_export": "Export database",
+          "archive_import": "Upload and import database"
+        }
+      },
+      "archive_export": {
+        "title": "Export history database",
+        "description": "Select vehicles from one or more accounts. The package includes trips, detailed tracks and historical source evidence, without sign-in credentials.",
+        "data": {
+          "vehicles": "Accounts and vehicles"
+        }
+      },
+      "archive_download": {
+        "title": "Download history database",
+        "description": "[Download archive package]({url}). This link expires in 10 minutes and is available only to this administrator. Submit after downloading."
+      },
+      "archive_import": {
+        "title": "Upload history database",
+        "description": "Upload an exported ZIP package or a current-format SQLite database (up to 100 MiB; ZIP up to 512 MiB expanded). Sign in to every included account first. Uploading validates and previews it before any merge.",
+        "data": {
+          "file": "Upload database package"
+        }
+      },
+      "archive_confirm": {
+        "title": "Confirm history database merge",
+        "description": "Select vehicles to restore. Each account merges transactionally and keeps the better track, without replacing sign-in state or running sync jobs. A recovery snapshot is saved before merging; completed accounts can be retried safely.",
+        "data": {
+          "vehicles": "Vehicles to restore",
+          "confirm": "Confirm backup and merge"
+        }
+      },
+      "archive_result": {
+        "title": "History database merged",
+        "description": "Added trips / added details:\n{result}\n\nLocal queries can now use the imported data. Automatic synchronization follows your existing settings."
       }
     },
     "abort": {
-      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters."
+      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
+      "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
+      "archive_busy": "The archive download limit has been reached. Try again later."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
-      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving."
+      "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
+      "control_vehicles_required": "Wähle mindestens ein Fahrzeug für die Fernsteuerung.",
+      "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
+      "archive_busy": "A backup is in progress. Try again later."
     }
   },
   "entity": {
@@ -172,7 +222,7 @@
         "name": "Diesen Monat: Strecke"
       },
       "last_mileage": {
-        "name": "Letzte Fahrt: Strecke"
+        "name": "Letzte Fahrstrecke"
       },
       "month_energy_raw": {
         "name": "Diesen Monat: Energie"
@@ -197,12 +247,6 @@
       },
       "last_ride_duration": {
         "name": "Letzte Fahrt: Fahrtdauer"
-      },
-      "last_ride_start": {
-        "name": "Letzte Fahrt: Startzeit"
-      },
-      "last_ride_end": {
-        "name": "Letzte Fahrt: Endzeit"
       },
       "last_ride_max_speed": {
         "name": "Letzte Fahrt: Höchstgeschwindigkeit"
@@ -428,7 +472,7 @@
         "name": "Hauptbatterie: Anzahl"
       },
       "month_list_coverage": {
-        "name": "Diesen Monat: Fahrtenabdeckung"
+        "name": "Vollständigkeit der monatlichen Fahrtenliste"
       },
       "battery_rated_energy": {
         "name": "Hauptbatterie: Nennenergie"
@@ -502,13 +546,19 @@
         }
       },
       "history_scan_progress": {
-        "name": "Fortschritt der Monatsprüfung"
+        "name": "History scan progress"
       },
       "history_detail_progress": {
         "name": "Gespeicherte Fahrtdetails"
       },
       "history_sync_last_success": {
         "name": "Letzte erfolgreiche Verlaufssynchronisierung"
+      },
+      "today_energy_intensity": {
+        "name": "Today average consumption"
+      },
+      "yesterday_energy_intensity": {
+        "name": "Yesterday average consumption"
       }
     },
     "binary_sensor": {
@@ -550,10 +600,56 @@
         "name": "Aus der Ferne verriegeln"
       },
       "history_sync": {
-        "name": "Verlauf synchronisieren"
+        "name": "Sync trip history",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Deaktiviert",
+              "paused": "Pausiert",
+              "storage_full": "Speicher voll",
+              "storage_error": "Speicherfehler",
+              "needs_login": "Anmeldung erforderlich",
+              "waiting_connection": "Warten auf Verbindung",
+              "not_started": "Nicht gestartet",
+              "waiting_retry": "Warten auf Wiederholung",
+              "waiting_budget": "Warten auf Anfragebudget",
+              "discovering": "Verlauf wird erfasst",
+              "preserving": "Details werden gespeichert",
+              "verifying": "Datensätze werden geprüft",
+              "incremental": "Inkrementelle Synchronisierung",
+              "with_gaps": "Mit Lücken abgeschlossen",
+              "synced": "Lokal synchronisiert",
+              "vehicle_not_present": "Fahrzeug fehlt in der Kontoliste"
+            }
+          }
+        }
       },
       "history_pause": {
-        "name": "Verlaufssynchronisierung pausieren"
+        "name": "Verlaufssynchronisierung pausieren",
+        "state_attributes": {
+          "sync_state": {
+            "name": "Synchronization state",
+            "state": {
+              "disabled": "Deaktiviert",
+              "paused": "Pausiert",
+              "storage_full": "Speicher voll",
+              "storage_error": "Speicherfehler",
+              "needs_login": "Anmeldung erforderlich",
+              "waiting_connection": "Warten auf Verbindung",
+              "not_started": "Nicht gestartet",
+              "waiting_retry": "Warten auf Wiederholung",
+              "waiting_budget": "Warten auf Anfragebudget",
+              "discovering": "Verlauf wird erfasst",
+              "preserving": "Details werden gespeichert",
+              "verifying": "Datensätze werden geprüft",
+              "incremental": "Inkrementelle Synchronisierung",
+              "with_gaps": "Mit Lücken abgeschlossen",
+              "synced": "Lokal synchronisiert",
+              "vehicle_not_present": "Fahrzeug fehlt in der Kontoliste"
+            }
+          }
+        }
       },
       "history_resume": {
         "name": "Verlaufssynchronisierung fortsetzen"
@@ -579,13 +675,63 @@
     },
     "event": {
       "ride": {
-        "name": "Fahrtereignis",
+        "name": "Vehicle trip event",
         "state_attributes": {
           "event_type": {
             "name": "Event type",
             "state": {
-              "completed": "Completed"
+              "completed": "Completed",
+              "reported": "Trip reported",
+              "updated": "Trip updated",
+              "late_reported": "Late trip confirmed"
             }
+          },
+          "time_range": {
+            "name": "Fahrtzeit"
+          },
+          "latest_ride": {
+            "name": "Latest trip"
+          },
+          "latest_start_time": {
+            "name": "Latest trip start"
+          },
+          "latest_end_time": {
+            "name": "Latest trip end"
+          }
+        }
+      },
+      "vehicle_event": {
+        "name": "Fahrzeugstatusereignis",
+        "state_attributes": {
+          "event_type": {
+            "name": "Event type",
+            "state": {
+              "state_changed": "Status geändert",
+              "powered_on": "Eingeschaltet",
+              "powered_off": "Ausgeschaltet",
+              "charging_started": "Laden begonnen",
+              "charging_stopped": "Laden beendet",
+              "locked": "Verriegelt",
+              "unlocked": "Entriegelt",
+              "seat_locked": "Sitzfach verriegelt",
+              "seat_unlocked": "Sitzfach entriegelt"
+            }
+          },
+          "changes": {
+            "name": "Änderungen",
+            "state": {
+              "powered_on": "Eingeschaltet",
+              "powered_off": "Ausgeschaltet",
+              "charging_started": "Laden begonnen",
+              "charging_stopped": "Laden beendet",
+              "locked": "Verriegelt",
+              "unlocked": "Entriegelt",
+              "seat_locked": "Sitzfach verriegelt",
+              "seat_unlocked": "Sitzfach entriegelt"
+            }
+          },
+          "summary": {
+            "name": "Zusammenfassung"
           }
         }
       }
@@ -603,6 +749,21 @@
           },
           "last_operation": {
             "name": "Letzter Vorgang"
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       },
@@ -618,13 +779,58 @@
           },
           "last_operation": {
             "name": "Letzter Vorgang"
+          },
+          "unlock_feedback": {
+            "name": "Operation feedback",
+            "state": {
+              "recently_unlocked": "Recently unlocked",
+              "none": "None"
+            }
+          },
+          "reported_state": {
+            "name": "Gemeldeter Riegelzustand",
+            "state": {
+              "locked": "Verriegelt",
+              "unlocked": "Entriegelt",
+              "unknown": "Unbekannt"
+            }
+          },
+          "command_status": {
+            "name": "Command confirmation",
+            "state": {
+              "idle": "No pending command",
+              "not_requested": "No state confirmation requested",
+              "pending": "Waiting; another command may be sent",
+              "confirmed": "State confirmed",
+              "observed_target_command_uncertain": "State updated; command result uncertain",
+              "already_in_target": "Already in target state",
+              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "unknown": "State could not be confirmed",
+              "cancelled": "Waiting cancelled",
+              "superseded": "Waiting cancelled or replaced by another command"
+            }
           }
         }
       }
     },
     "calendar": {
       "ride_calendar": {
-        "name": "Fahrten"
+        "name": "Trip history calendar",
+        "state_attributes": {
+          "ride_time": {
+            "name": "Fahrtzeit"
+          },
+          "calendar_mode": {
+            "name": "Calendar purpose",
+            "state": {
+              "historical_read_only": "Historical rides (read only)"
+            }
+          }
+        },
+        "state": {
+          "off": "No current trip",
+          "on": "Trip in progress"
+        }
       }
     }
   },
@@ -633,10 +839,10 @@
       "message": "Command not sent: enable controls, allow this vehicle, and check authentication, fresh data and known denials. Vehicle control status explains the current blocker."
     },
     "control_uncertain": {
-      "message": "Befehlsergebnis unklar. Fahrzeug prüfen."
+      "message": "Could not confirm the command result. Check the vehicle state."
     },
     "control_readback_failed": {
-      "message": "Befehl gesendet; Schlosszustand nicht lesbar."
+      "message": "Could not confirm the vehicle state. Check the vehicle."
     },
     "busy": {
       "message": "Ein Fahrzeugvorgang läuft bereits oder das Steuerungslimit des Kontos ist erreicht. Danach erneut versuchen."
@@ -690,10 +896,10 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "Das Sitzfach kann nur manuell verriegelt werden."
+      "message": "Close the seat compartment at the vehicle. To unlock again, send another unlock command."
     },
     "control_target_not_observed": {
-      "message": "Befehl gesendet; gewünschter Schlosszustand noch nicht bestätigt."
+      "message": "Not confirmed within 15 seconds. Check the vehicle state."
     },
     "control_not_sent": {
       "message": "Befehl nicht gesendet: Die Kommunikation ist vorübergehend nicht verfügbar. Später erneut versuchen."

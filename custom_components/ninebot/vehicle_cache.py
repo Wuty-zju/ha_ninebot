@@ -63,34 +63,49 @@ def restore_cache(directory: Path, data: bytes | None) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def native_rows(data: bytes | None) -> list[dict[str, Any]]:
+    try:
+        raw = json.loads(data) if data else {}
+    except (ValueError, UnicodeError):
+        raise NinebotError(ErrorKind.PROTOCOL) from None
+    values = raw.get("vehicles") if isinstance(raw, dict) else None
+    if values is None:
+        return []
+    if not isinstance(values, list) or any(
+        not isinstance(row, dict)
+        or not isinstance(row.get("wnumber"), str)
+        or not row["wnumber"].strip()
+        or row.get("business_line") not in {"ebike", "motor"}
+        for row in values
+    ):
+        raise NinebotError(ErrorKind.PROTOCOL)
+    return values
+
+
 def merge_partial_cache(directory: Path, previous: bytes | None) -> None:
     """Merge native rows by identity; never invent a business-line mapping."""
     current = read_cache(directory)
 
-    def rows(data: bytes | None) -> list[dict[str, Any]]:
-        try:
-            raw = json.loads(data) if data else {}
-        except (ValueError, UnicodeError):
-            raise NinebotError(ErrorKind.PROTOCOL) from None
-        values = raw.get("vehicles") if isinstance(raw, dict) else None
-        if values is None:
-            return []
-        if not isinstance(values, list) or any(
-            not isinstance(row, dict)
-            or not isinstance(row.get("wnumber"), str)
-            or not row["wnumber"].strip()
-            or row.get("business_line") not in {"ebike", "motor"}
-            for row in values
-        ):
-            raise NinebotError(ErrorKind.PROTOCOL)
-        return values
-
-    new = rows(current)
+    new = native_rows(current)
     if not new:
         raise NinebotError(ErrorKind.SERVICE)
     identities = {row["wnumber"] for row in new}
-    merged = {"vehicles": new + [row for row in rows(previous) if row["wnumber"] not in identities]}
+    merged = {
+        "vehicles": new + [row for row in native_rows(previous) if row["wnumber"] not in identities]
+    }
     data = json.dumps(merged, ensure_ascii=False).encode()
     if len(data) > MAX_RESPONSE_BYTES:
         raise NinebotError(ErrorKind.PROTOCOL)
     restore_cache(directory, data)
+
+
+def reconcile_cache(
+    directory: Path, previous: bytes | None, observed: frozenset[str], complete: bool
+) -> bool:
+    """Retain known native routes on silent omissions; never infer new routes."""
+    missing = {row["wnumber"] for row in native_rows(previous)} - observed
+    if not observed and (missing or not complete):
+        restore_cache(directory, previous)
+    elif missing or not complete:
+        merge_partial_cache(directory, previous)
+    return complete and not missing

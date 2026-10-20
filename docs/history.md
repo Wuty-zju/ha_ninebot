@@ -19,15 +19,15 @@ Historical rides and point arrays belong in the archive and bounded responses, n
 
 ## Enable preservation and synchronization
 
-In account options, review **Preserve trip details in background**, **Automatic history synchronization**, storage quota and history request budget. New accounts enable preservation/automatic sync; existing explicit choices are retained. Turning preservation off keeps saved data but suspends background work. Location response/display consent is a separate option; protecting archived GPS/backups remains necessary.
+In account options, review **Preserve trip details in background**, **Automatic history synchronization**, storage quota and history request budget. Calendar, preservation and automatic sync are Beta features and default off for new accounts; existing choices are retained. Enable preservation and automatic sync to start background acquisition. Turning preservation off keeps saved data but suspends background work. Location response/display consent is a separate option; protecting archived GPS/backups remains necessary.
 
 First discovery persists a fixed baseline from the client's `200001` month lower bound through the bootstrap month for each owned vehicle. This is a **client search policy**, not an official earliest-history boundary. Empty months do not prove earlier history is impossible. Work is resumable and budgeted, so a first scan may take a long time. New months, current/previous-month changes and older gaps have separate incremental scheduling; stable saved details are reused instead of continually downloaded.
 
-Month pages and detail requests share the durable account budget (default 30 logical calls/hour), with fairness between vehicles and priority below live telemetry/controls. Retries/backoff, authentication, pause, backup and storage guards apply. Restarting does not reset the request budget. Recent details can receive bounded stability follow-up; late arrivals/corrections do not require rescanning all stable months. Within the local 150–180-day risk band, pending details prioritize older confirmed ride ends; this is not a guaranteed server deletion deadline.
+Month pages and detail requests share the durable account budget (default 60 logical calls/hour; numeric input 1–120, or 0 for no hourly quota, not recommended), with fairness between vehicles and priority below live telemetry/controls. Retries/backoff, authentication, pause, backup and storage guards apply. Restarting does not reset a positive request budget. Zero only removes that quota; request serialization and upstream backoff still apply. Recent details can receive bounded stability follow-up; late arrivals/corrections do not require rescanning all stable months. Within the local 150–180-day risk band, pending details prioritize older confirmed ride ends; this is not a guaranteed server deletion deadline.
 
 ### Manual and incremental controls
 
-The vehicle's **Sync history / Pause history sync / Resume history sync** buttons use the same scoped Action. They do not operate vehicle locks. History mutations require HA control permission; status is read-only. Preservation must be enabled; manually requested work can proceed while automatic sync is off without enabling new automatic scans.
+The vehicle's **Sync history / Pause history sync** diagnostic buttons (Sync also resumes paused work) use the same scoped Action. They do not operate vehicle locks. History mutations require HA control permission; status is read-only. Preservation must be enabled; manually requested work can proceed while automatic sync is off without enabling new automatic scans.
 
 ```yaml
 action: ninebot.sync_history
@@ -105,6 +105,20 @@ Coordinates are plotted as received: CRS is unverified, with no automatic WGS/GC
 
 Private projections are cleared on user/connection/date/vehicle scope change, revoked access and card removal. Full trails/raw do not enter HA entity attributes, Recorder, diagnostics or localStorage. Explicit GPS Action responses can still be recorded in automation traces; protect them.
 
+## Ride summaries and vehicle events
+
+Numeric day/month/latest-trip sensors retain their meaningful identities, units and history. Use **average consumption** for Wh/km; today/yesterday averages divide energy by distance from the same complete ride set, never mix a chart distance with partial-list energy. No rides or zero distance yields no average. Monthly/today/yesterday keep distance, trip count, duration, energy and average consumption. Latest trip is one record, with distance, duration, energy, average consumption and maximum/average speed; it does not need a redundant count-of-one sensor.
+
+**Vehicle trip event** replaces the two standalone latest-start/end timestamp sensors. Read `latest_start_time`, `latest_end_time` or the small GPS-free `latest_ride` object from the existing event entity. Event identity stays unchanged; update automations that referenced the retired sensors. The event timestamp is when HA observed an event, not the ride's physical start/end. `reported` means a new recent cloud record, `updated` a revised report, `completed` a stable completion, and `late_reported` a late completion report. Power-on is not inferred to be a ride start. Historical imports update the latest-data attributes without replaying ride events.
+
+**Vehicle state event** emits the concrete type `powered_on`, `powered_off`, `charging_started`, `charging_stopped`, `locked`, `unlocked`, `seat_locked` or `seat_unlocked`. Each transition is published separately; `changes` retains the full same-receipt batch and `summary` describes that transition. `observed_at` is cloud observation time; `observation_revision` identifies the receipt. The legacy `state_changed` type can restore an old display but is no longer emitted. Update automations filtering that generic type.
+
+The default-on **Enable vehicle events (Beta)** option controls both entities. User-disabled entities remain disabled. Startup, re-enabling, reconnection, invalid values and observation gaps establish silent baselines. Completion keeps its durable deduplication; live report/update notifications use a bounded runtime cursor and are not a physical push stream. No extra cloud polling is created.
+
+Durations retain native seconds and suggest hours with **four decimals**, including the history-calendar descriptions. The initial display migration applies once; subsequent user unit/precision changes are retained. Compact workbench views still render original seconds, such as **45 sec**, **31 min 46 sec** or **1 hr 2 min 3 sec**.
+
+**Month trip list completeness** is a debug diagnostic: unique valid returned ride IDs divided by the server's reported month count. It is separate from **History scan progress** (verified months) and **Saved-detail progress** (saved details for discovered IDs). None alone proves a complete historical GPS archive. Debug classification and the absence of a statistics state class do not exclude ordinary Recorder states; use explicit Recorder filters when required. Full raw export is not provided by the parsed debug view or sanitized diagnostics.
+
 ## Query Actions
 
 Use Developer Tools → Actions or a response-capable automation/script. Targets are **HA vehicle device IDs**, not Ninebot serials. Month input is `YYYYMM`; dates are inclusive Shanghai business days. [services.yaml](../custom_components/ninebot/services.yaml) is the authoritative field list.
@@ -154,11 +168,17 @@ Response `field_states`, sources, units, precision and `detail_context` distingu
 
 Restricted HA readers need read access to the vehicle's Ninebot calendar and, for GPS, tracker. Full readers follow standard HA permissions. Checks run before work and before returning; ownership/generation still applies. Synchronization mutations/statistics imports need control permission. Trusted no-user-context automations keep normal HA behavior.
 
+With history-detail synchronization off, enabled daily sensors can still fill a capped current-month list one page per account update. This uses the shared hourly budget, ownership/pause checks and bounded retries, and stores normalized list facts only. Full-history discovery and detail/track downloads remain off. Complete local indexes are reused; missing or conflicting metrics remain explicitly unknown rather than being replaced with zero.
+
 ## Coverage and statistics
 
 Cloud monthly totals, the latest returned list, accumulated local rides, saved details, geometric quality and integrity checks are **separate evidence scopes**. Stored list completeness or a zero missing-month count never proves the upstream's entire history. `upstream_history_complete` remains unverified.
 
-Today/yesterday count, duration and Wh need a verified complete selection or locally accumulated IDs/count/distance that reconcile with the month; energy and duration additionally reconcile independently. Missing/conflicting fields stay unknown; proven empty windows return zero. Historical days require observations after the day ends, and current-day data has freshness constraints. Rides are attributed wholly to their Shanghai **end date**, with no invented midnight allocation. Month boundaries can require adjacent-month evidence.
+Today/yesterday count, duration and Wh need a verified complete selection or locally accumulated IDs/count/distance that reconcile with the month; energy and duration additionally reconcile independently. Missing/conflicting fields stay unknown; proven empty windows return zero. Rides are attributed wholly to their Shanghai **end date**, with no invented midnight allocation. Month boundaries can require adjacent-month evidence.
+
+Numeric entities retain verified values for the same date/month through a short outage or restart. Attributes preserve the actual receipt time and distinguish `current`, `cached`, `awaiting_day_close` and `reported_history`; cached values do not claim a new cloud observation. Yesterday can show its last verified same-day report while waiting for a closing report. A new day/month never inherits the previous period's totals. After setup and at Shanghai midnight, demanded trip data is scheduled promptly through the existing coalesced requests and backoff. Archive updates notify affected entities without another poll.
+
+Strict `get_statistics` daily responses and Recorder imports still require post-day-close observations for historical days and sufficiently fresh current-day evidence. Entity display continuity does not certify a period as complete for historical import. A first-ever account can remain unknown while its index is being filled; zero-distance average consumption is undefined, with `availability_reason: zero_distance` rather than an invented average.
 
 `get_statistics` separates server month totals from conditional daily values; omitted future padding is not a zero. Missing months invalidate the affected complete-range summary. Wh/km is matching `sum(Wh) / sum(km)`, not mean per-ride ratios; zero distance cannot produce a valid intensity. Daily/month totals reset, so they are not forced into `total_increasing` entities.
 
@@ -202,7 +222,7 @@ initial_view: dayGridMonth
 
 The read-only calendar shows valid past ride times/metrics from local storage. It does not fetch missing months/details or write Recorder. Its current state may be `off` when only past rides exist; browse dates rather than attributes. Complete-list withdrawals can remove current selections while preserving evidence; partial omissions retain known rides. Queries are bounded to five years, 5,000 rides and 8 MiB. Newer HA can subscribe to changed calendar ranges; older supported HA can navigate/read normally.
 
-Ride Event state is the timestamp of a **new completion event**, not last-ride end. Two independent unchanged travel observations over ten minutes establish stability; startup/re-enable sets a baseline and does not replay historical rides. IDs are durably deduplicated; later corrections update facts without a second event. Unknown before the first new event is expected. Restored event timestamps never trigger automations; rides during downtime can be missed.
+Trip Event state is the timestamp of the most recent report/update/completion event, not last-ride end. Two independent unchanged travel observations over ten minutes establish stability; startup/re-enable sets a baseline and does not replay historical rides. IDs are durably deduplicated; later corrections can emit a report-update event, but never repeat the completion event. Unknown before the first new event is expected. Restored event timestamps never trigger automations; rides during downtime can be missed.
 
 Native `type: map` with the location tracker and `hours_to_show: 24` shows only positions Recorder actually observed. It cannot reconstruct downloaded historical trail arrays; use the bundled workbench for a saved ride.
 
@@ -227,3 +247,5 @@ Reconstruction keeps `.recovery-<job_id>.sqlite3` beside the archive, space-chec
 Quality-only corrections keep newer scalar observations and selected geometry. Explicit identity contradictions, missing parents/links or unprovable memberships stay unavailable/blocked. Byte-corrupt roles can be restored only from exact matching managed originals after bounded quarantine; partial repair preserves readable roles and reports gaps. Old checker jobs retain their cursor and cannot retroactively certify a wider new contract. Verification of raw objects, references, normalized projections and cloud completeness are separate scopes.
 
 Use the current `sync_status`, `verify_status` or reconstruction result to distinguish pending/invalid/repaired/with-gaps outcomes. Do not delete private storage or manually replace a live database to improve a percentage. Keep unresolved Repairs and evidence for supported recovery. Detailed boundaries live in [architecture](architecture.md#storage-and-integrity); original version-specific behavior remains in [release history](../CHANGELOG.md).
+
+History belongs to the authenticated account, not the configuration entry. Removing/re-adding an account retains and reconnects its archive by default. Use the [archive export/import tools](guide.md#export-and-import-history-databases) for selected vehicles or multiple accounts; imports merge facts and better tracks without starting cloud queries. Historical page evidence from merged sources remains in private recovery snapshots; an absent discovery baseline can resume validated committed page coverage with in-flight request claims reset; an existing local baseline is never replaced.

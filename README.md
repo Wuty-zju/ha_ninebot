@@ -69,19 +69,19 @@ The Downloads badge counts `ninebot.zip` downloads across releases, including up
 
 ## Add your accounts
 
-Choose **password** or **two-step SMS** login. Ninebot discovers the account's vehicles and creates supported entities. Review account options, then add another integration entry for each additional account.
+Sign in with your account and **password**; vehicle features are configured after authentication. Ninebot discovers the account's vehicles and creates supported entities. Review account options, then add another integration entry for each additional account.
 
-Each account owns its session, credentials directory and archive. Entry titles use the reported **username, account and service region**, omitting missing components. Reauthentication and reconfiguration update the established account. Passwords are not stored in ConfigEntry or passed as process arguments; local session tokens and backups should be protected.
+Each account owns its session, credentials directory and archive. Entry titles use the reported **username and account**, omitting missing components. Reauthentication and reconfiguration update the established account. Passwords are not stored in ConfigEntry or passed as process arguments; local session tokens and backups should be protected.
 
 ### Choose what runs
 
 | Option | Default | Purpose |
 |---|---|---|
 | Precise location | On | Current position and authorized track responses; no separate precision request. |
-| Ride calendar | On | Local rides on a native HA calendar. |
-| Background detail preservation | On for new accounts | Save detailed rides/tracks within the request budget. |
-| Automatic history sync | On for new accounts | Initial discovery and subsequent incremental work. |
-| Controls and vehicle allowlist | Off / empty | Explicitly enable commands for selected vehicles. |
+| Ride calendar (Beta) | Off for new accounts | Local rides on a native HA calendar. |
+| Background detail preservation (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
+| Automatic history sync (Beta) | Off for new accounts | Initial discovery and subsequent incremental work. |
+| Controls and vehicle allowlist | New accounts: on / sign-in-verified vehicles | Adjust command access for selected vehicles; existing choices are retained. |
 | Debug mode | Off | Bounded parsed current information for investigation. |
 
 Existing explicit choices are retained on upgrade. Further options include polling intervals, nominal battery parameters, request budget and archive quota. [Defaults and ranges →](docs/guide.md#options)
@@ -104,7 +104,7 @@ Scalar values and track quality have separate lifecycles. A corrected total can 
 
 ### How synchronization progresses
 
-Enable **Preserve trip details in background** and **Automatic history synchronization** in account options. Both default on for new accounts.
+Enable **Preserve trip details in background** and **Automatic history synchronization** in account options. Both default off for new accounts; enable them when you want background acquisition. Existing choices are retained.
 
 | Stage | Work performed |
 |---|---|
@@ -115,7 +115,7 @@ Enable **Preserve trip details in background** and **Automatic history synchroni
 
 Sync status, month-scan progress, saved-detail progress and last-success entities explain different stages. Manual sync, pause and resume are available. Saved-detail percentage covers **discovered records**; month coverage reports list gaps separately.
 
-The default history budget is **30 logical requests per account/hour**. Archive quota defaults to **100 MiB per account**, configurable from **32–2048 MiB**. Reaching the quota pauses writes and retains existing data. Local records have no age-based expiry; capacity and backups govern long-term retention. Save details while the cloud still returns them: removed or simplified upstream tracks cannot be recreated locally.
+The default history budget is **60 logical requests per account/hour**, configurable from **1–120** in a numeric input. **0** removes the hourly quota (not recommended); request serialization, retries and upstream backoff still apply. Archive quota defaults to **100 MiB per account**, configurable from **32–2048 MiB**. Reaching the quota pauses writes and retains existing data. Local records have no age-based expiry; capacity and backups govern long-term retention. Save details while the cloud still returns them: removed or simplified upstream tracks cannot be recreated locally.
 
 ### Use the recorded information
 
@@ -139,7 +139,7 @@ Local-only query modes read the archive without cloud acquisition. Large lists a
 
 | Layer | Refactor and resulting behavior |
 |---|---|
-| **Accounts** | Separate entries, sessions and archives; password/SMS setup, reauth and reconfigure. |
+| **Accounts** | Separate entries, sessions and archives; password setup, reauth and reconfigure. |
 | **Data model** | Reviewed normalization, source metadata, distinct range fields, explicit missing values and original precision. |
 | **Realtime updates** | Per-vehicle/group freshness, demand scheduling, shared in-flight reads, partial failures and backoff. |
 | **History lifecycle** | Resumable discovery, incremental detail preservation, transactional SQLite storage and quality-aware track retention. |
@@ -156,7 +156,7 @@ Retired low-confidence SOC energy estimates remain removed. Cloud readings and u
 
 Each account owns its session/resources. A shared scheduler coordinates cloud reads across vehicles: current state refreshes by data group, while history advances in background steps. Source evidence and normalized values remain distinguishable.
 
-Typical schedules are **120 s for status**, **600 s for battery/travel** and **3600 s for profiles**, subject to enabled features, freshness and backoff. Identical in-flight reads share work; there is no cloud poll per entity.
+Typical schedules are **60 s for status**, **600 s for battery/travel** and **3600 s for profiles**, subject to enabled features, freshness and backoff. Identical in-flight reads share work; there is no cloud poll per entity.
 
 ### History is acquired once, then reused locally
 

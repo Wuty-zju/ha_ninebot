@@ -2,9 +2,11 @@ import json
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.storage import Store
 
 from custom_components.ninebot import adapters
 from custom_components.ninebot.models import VehicleProfile, VehicleSnapshot
@@ -12,10 +14,10 @@ from custom_components.ninebot.sensor import SENSORS, NinebotSensor, last_timed_
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 FIXTURES = Path(__file__).parent / "fixtures/ninecli/0.1.7"
+REAL_WRITE = Store._async_write_data
+REAL_LOAD = Store._async_load
 KEYS = {
     "last_ride_duration",
-    "last_ride_start",
-    "last_ride_end",
     "last_ride_max_speed",
     "last_ride_average_speed",
 }
@@ -24,55 +26,71 @@ KEYS = {
 async def test_last_ride_native_values_classes_visible_defaults_and_state_size(
     hass, entry, app_client, freezer
 ):
-    freezer.move_to(datetime(2026, 9, 26, tzinfo=UTC))
-    month = json.loads((FIXTURES / "travel-nonempty.json").read_text())
-    app_client.async_get_travel.return_value = month
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    registry = er.async_get(hass)
-    descriptions = {description.key: description for description in SENSORS}
-    expected = {
-        "last_ride_duration": (83, "duration", "s"),
-        "last_ride_start": (datetime(2026, 9, 25, 8, tzinfo=UTC), "timestamp", None),
-        "last_ride_end": (datetime(2026, 9, 25, 8, 1, 23, tzinfo=UTC), "timestamp", None),
-        "last_ride_max_speed": (23, "speed", "km/h"),
-        "last_ride_average_speed": (300 / 83 * 3.6, "speed", "km/h"),
-    }
-    for key, (value, device_class, unit) in expected.items():
-        row = registry.async_get(
-            registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
-        )
-        assert row.disabled_by is None
-        assert row.unit_of_measurement == unit and row.original_device_class == device_class
-        assert hass.states.get(row.entity_id) is not None
-        sensor = NinebotSensor(entry, "SyntheticSN", descriptions[key])
-        assert sensor.available and sensor.has_entity_name
-        assert (
-            sensor.native_value == pytest.approx(value)
-            if isinstance(value, float)
-            else sensor.native_value == value
-        )
-        assert sensor.state_class is None
-        assert sensor.extra_state_attributes == {
-            "query_month": "202609",
-            "received_at": "2026-09-26T00:00:00+00:00",
-            "ride_phase": "stabilizing",
-            "completion_basis": None,
+    with (
+        patch.object(Store, "_async_write_data", REAL_WRITE),
+        patch.object(Store, "_async_load", REAL_LOAD),
+    ):
+        # Event cursor acknowledgement intentionally requires a real on-disk write.
+        # HA's default Store write mock makes the event unavailable after baseline.
+        # Use real atomic I/O only inside this disposable test configuration.
+        freezer.move_to(datetime(2026, 9, 26, tzinfo=UTC))
+        month = json.loads((FIXTURES / "travel-nonempty.json").read_text())
+        app_client.async_get_travel.return_value = month
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        registry = er.async_get(hass)
+        descriptions = {description.key: description for description in SENSORS}
+        expected = {
+            "last_ride_duration": (83, "duration", "h"),
+            "last_ride_max_speed": (23, "speed", "km/h"),
+            "last_ride_average_speed": (300 / 83 * 3.6, "speed", "km/h"),
         }
-        assert sensor.translation_key == key
-        registry.async_update_entity(row.entity_id, disabled_by=None)
-    # Isolated HA reload registers enabled entities; no production runtime is touched.
-    assert await hass.config_entries.async_reload(entry.entry_id)
-    await hass.async_block_till_done()
-    start = registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_last_ride_start")
-    assert hass.states.get(start).state == "2026-09-25T08:00:00+00:00"
-    for key in KEYS:
-        entity_id = registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
-        attributes = hass.states.get(entity_id).attributes
-        for forbidden in ("raw", "rides", "track", "latitude", "longitude", "speed_samples"):
-            assert forbidden not in attributes
-    app_client.async_get_trip_detail.assert_not_awaited()
-    app_client.async_control.assert_not_awaited()
+        for key, (value, device_class, unit) in expected.items():
+            row = registry.async_get(
+                registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
+            )
+            assert row.disabled_by is None
+            assert row.unit_of_measurement == unit and row.original_device_class == device_class
+            assert hass.states.get(row.entity_id) is not None
+            sensor = NinebotSensor(entry, "SyntheticSN", descriptions[key])
+            assert sensor.available and sensor.has_entity_name
+            assert (
+                sensor.native_value == pytest.approx(value)
+                if isinstance(value, float)
+                else sensor.native_value == value
+            )
+            assert sensor.state_class is None
+            assert sensor.extra_state_attributes["query_month"] == "202609"
+            if key == "last_ride_duration":
+                assert sensor.extra_state_attributes["duration_seconds"] == 83
+                assert sensor.suggested_display_precision == 4
+            assert sensor.translation_key == key
+            registry.async_update_entity(row.entity_id, disabled_by=None)
+        # Isolated HA reload registers enabled entities; no production runtime is touched.
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+        assert (
+            registry.async_get_entity_id("sensor", "ninebot", "SyntheticSN_last_ride_start") is None
+        )
+        # This recorded fixture is an incomplete month, not a verified archive
+        # membership proof. Reobserve its mock response after reload.
+        co = entry.runtime_data.coordinator
+        await co._group("SyntheticSN", "travel", force=True)
+        co.async_set_updated_data(dict(co.data))
+        await hass.async_block_till_done()
+        event = hass.states.get(
+            registry.async_get_entity_id("event", "ninebot", "SyntheticSN_ride")
+        )
+        assert entry.runtime_data.events.available
+        assert event.attributes["latest_start_time"] == "2026-09-25T08:00:00+00:00"
+        assert event.attributes["latest_end_time"] == "2026-09-25T08:01:23+00:00"
+        for key in KEYS:
+            entity_id = registry.async_get_entity_id("sensor", "ninebot", f"SyntheticSN_{key}")
+            attributes = hass.states.get(entity_id).attributes
+            for forbidden in ("raw", "rides", "track", "latitude", "longitude", "speed_samples"):
+                assert forbidden not in attributes
+        app_client.async_get_trip_detail.assert_not_awaited()
+        app_client.async_control.assert_not_awaited()
 
 
 def test_unknown_order_future_and_conflicting_times_do_not_create_new_values():

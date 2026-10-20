@@ -15,14 +15,14 @@ def test_display_metadata_whitelist_bounds_and_custom_title():
         {"username": "Rider", "region": "bj", "phone": "private", "token": "secret"}
     )
     assert display.as_dict() == {"username": "Rider", "region": "bj"}
-    assert display.title("test-account") == "Rider：test-account[bj]"
+    assert display.title("test-account") == "Rider：test-account"
     assert "Rider" not in repr(display)
     assert AccountDisplay.parse({"username": "x" * 65, "region": "unsafe\nvalue"}).as_dict() == {}
     data = {"account_display": display.as_dict(), "automatic_title": display.title("test-account")}
     assert account_update(data, "test-account", AccountDisplay(), "My account")[2] == "My account"
     assert (
         account_update(data, "test-account", AccountDisplay("New"), data["automatic_title"])[2]
-        == "New：test-account[bj]"
+        == "New：test-account"
     )
 
 
@@ -142,3 +142,21 @@ def test_source_precision_preserves_reported_scale_and_detail_corrections():
         {"travel_id": "test", "speed": "49.5"}, "202610", source=Endpoint.TRIP_DETAIL
     )
     assert dict(merge_detail(summary, corrected).precision)["speed"] == 1
+
+
+def test_opaque_region_retained_but_not_in_automatic_title():
+    from custom_components.ninebot.account import AccountDisplay, account_update
+
+    prior = {
+        "account": "fake",
+        "account_display": {"username": "Rider", "region": "bj"},
+        "automatic_title": "Rider：fake[bj]",
+    }
+    for old_title in ("Ninebot", "Rider：fake[bj]", "Rider：fake"):
+        metadata, automatic, title = account_update(prior, "fake", AccountDisplay(), old_title)
+        assert metadata == {"username": "Rider", "region": "bj"}
+        assert title == automatic == "Rider：fake"
+    assert account_update(prior, "fake", AccountDisplay(), "My vehicles")[2] == "My vehicles"
+    # Older entries can be recognized without the automatic_title journal.
+    prior.pop("automatic_title")
+    assert account_update(prior, "fake", AccountDisplay(), "Rider：fake[bj]")[2] == "Rider：fake"

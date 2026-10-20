@@ -139,6 +139,9 @@ async def test_partial_discovery_is_positive_evidence_not_vehicle_removal(coordi
     assert co.controls_enabled("synthetic-one", "bell")
     assert not co.controls_enabled("synthetic-two", "bell")
     assert "profile_query_failed" in co.control_decision("synthetic-two", "bell").blockers
+    assert co.background_ready()
+    assert co.background_ready("synthetic-one")
+    assert not co.background_ready("synthetic-two")
     with patch(
         "custom_components.ninebot.coordinator.dt_util.utcnow",
         return_value=old + timedelta(hours=4),
@@ -147,8 +150,8 @@ async def test_partial_discovery_is_positive_evidence_not_vehicle_removal(coordi
     co.client.vehicle_discovery_complete = True
     co._next_attempt[("", "profile")] = 0
     await co._async_update_data()
-    assert not co.data["synthetic-two"].present
-    assert co.discovery_diagnostics()["complete"] is True
+    assert co.data["synthetic-two"].present
+    assert co.discovery_diagnostics()["complete"] is False
 
 
 async def test_empty_month_preserved_while_last_ride_falls_back(coordinator, freezer):
@@ -329,7 +332,7 @@ async def test_overlapping_normalization_parses_same_content_once(coordinator):
     assert not co._normalizations
 
 
-async def test_late_profile_parser_cannot_remove_newly_confirmed_vehicle(coordinator):
+async def test_overlapping_discovery_shares_parser_and_next_round_confirms_vehicle(coordinator):
     from custom_components.ninebot import adapters
 
     co = coordinator
@@ -352,9 +355,18 @@ async def test_late_profile_parser_cannot_remove_newly_confirmed_vehicle(coordin
             {"wnumber": "synthetic-one"},
             {"wnumber": "synthetic-two"},
         ]
-        await co._list(datetime.now(UTC))
+        newer = asyncio.create_task(co._list(datetime.now(UTC)))
+        await asyncio.sleep(0)
+        # Both observers share the same in-flight discovery/parse. The newly
+        # configured reply belongs to the next real discovery, not this one.
+        assert co.client.async_list_vehicles.await_count == 2
         release.set()
-        await older
+        await asyncio.wait_for(asyncio.gather(older, newer), 2)
+    assert co.local_vehicle_available("synthetic-two")
+    assert co.data["synthetic-two"].profile_freshness.error is ErrorKind.SERVICE
+    co._next_attempt[("", "profile")] = 0
+    await co._list(datetime.now(UTC))
+    assert co.data["synthetic-two"].profile_freshness.error is None
     assert co.data["synthetic-two"].present
     assert co.fresh("synthetic-two", "status")
 
@@ -465,15 +477,15 @@ async def test_auth_is_account_failure_service_error_is_not(coordinator):
     assert not co._control_leases
 
 
-async def test_removed_vehicle_kept_and_new_vehicle_discovered(coordinator):
+async def test_missing_vehicle_retained_and_new_vehicle_discovered(coordinator):
     co = coordinator
     await co._async_update_data()
     co._next_attempt[("", "profile")] = 0
     co.client.async_list_vehicles.return_value = [{"wnumber": "new"}]
     result = await co._async_update_data()
-    assert not result["synthetic-one"].present
+    assert result["synthetic-one"].present
     assert result["new"].present
-    assert not co.fresh("synthetic-one", "profile")
+    assert co.data["synthetic-one"].profile_freshness.error is ErrorKind.SERVICE
 
 
 async def test_rediscovery_requeries_all_groups_without_reviving_old_status(coordinator):
@@ -482,7 +494,7 @@ async def test_rediscovery_requeries_all_groups_without_reviving_old_status(coor
     co.client.async_list_vehicles.return_value = [{"wnumber": "synthetic-two"}]
     co._next_attempt[("", "profile")] = 0
     await co._async_update_data()
-    assert not co.data["synthetic-one"].present
+    co.data["synthetic-one"] = replace(co.data["synthetic-one"], present=False)
     for group in ("status", "battery", "travel"):
         co._next_attempt[("synthetic-one", group)] = float("inf")
     co.client.async_get_status.side_effect = NinebotError(ErrorKind.CONNECTION)
@@ -686,7 +698,7 @@ async def test_history_query_auth_policy_queue_and_unload(coordinator):
     co.client.async_get_travel.assert_awaited_once_with("synthetic-one", "202001")
 
 
-async def test_removed_ownership_clears_private_query_cache(coordinator):
+async def test_suspect_omission_retains_private_cache_and_local_history(coordinator):
     from custom_components.ninebot.raw import Endpoint
 
     co = coordinator
@@ -695,9 +707,9 @@ async def test_removed_ownership_clears_private_query_cache(coordinator):
     co.client.async_list_vehicles.return_value = [{"wnumber": "synthetic-two"}]
     co._next_attempt[("", "profile")] = 0
     await co._async_update_data()
-    assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is None
-    with pytest.raises(HomeAssistantError):
-        await co.async_query_month("synthetic-one", "202001")
+    assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is not None
+    assert co.local_vehicle_available("synthetic-one")
+    assert "profile_query_failed" in co.control_decision("synthetic-one", "bell").blockers
 
 
 async def test_cancelled_raw_preparation_cannot_repopulate_unloaded_cache(coordinator):
@@ -1082,13 +1094,13 @@ async def test_freshness_measures_actual_request_completion_and_retry_is_bounded
     freshness = co.data["synthetic-one"].status_freshness
     assert freshness.attempted_at == start
     assert freshness.succeeded_at == start + timedelta(seconds=20)
-    assert co._next_attempt[("synthetic-one", "status")] == start.timestamp() + 20 + co.interval
+    assert co._next_attempt[("synthetic-one", "status")] == start.timestamp() + co.interval
     co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
     delay = co._next_attempt[("synthetic-one", "status")] - start.timestamp()
-    assert 24 <= delay <= 36
+    assert 4 <= delay <= 6
     for _ in range(20):
         co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
-    assert co._next_attempt[("synthetic-one", "status")] <= start.timestamp() + 120
+    assert co._next_attempt[("synthetic-one", "status")] <= start.timestamp() + 60
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
@@ -1170,7 +1182,9 @@ async def test_new_vehicle_and_failed_battery_discovery_do_not_need_existing_ent
         await co._async_update_data()
         assert all(value.battery_freshness.succeeded_at is not None for value in co.data.values())
         co.client.async_get_status.assert_not_awaited()
-        co.client.async_get_travel.assert_not_awaited()
+        # Initial list bootstrap was deferred during the shared cooldown.
+        assert co.client.async_get_travel.await_count == 4
+        co.client.async_get_travel.reset_mock()
         co.client.async_get_battery.reset_mock()
         freezer.move_to(now + timedelta(seconds=601))
         await co._async_update_data()
@@ -1199,7 +1213,7 @@ async def test_retired_soc_model_does_not_force_endpoint_requests(coordinator):
     co.client.async_get_travel.assert_not_awaited()
 
 
-async def test_local_month_boundary_expires_travel_without_cloud_io(coordinator):
+async def test_local_month_boundary_expires_travel_and_schedules_coalesced_refresh(coordinator):
     co = coordinator
     before = datetime(2026, 9, 30, 15, 59, 59, tzinfo=UTC)
     with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=before):
@@ -1209,10 +1223,15 @@ async def test_local_month_boundary_expires_travel_without_cloud_io(coordinator)
             notify, deadline = timer.call_args.args[1:]
             assert deadline == before + timedelta(seconds=1)
             co.client.reset_mock()
-            with patch(
-                "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+            with (
+                patch(
+                    "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+                ),
+                patch.object(co, "async_request_refresh") as refresh,
             ):
                 notify(deadline)
+                await asyncio.gather(*tuple(co._active))
+                refresh.assert_awaited_once()
                 assert not co.fresh("synthetic-one", "travel")
             co.client.async_get_status.assert_not_awaited()
             co.client.async_get_travel.assert_not_awaited()
@@ -1240,7 +1259,7 @@ async def test_raw_capture_propagates_metadata_without_discarding_valid_telemetr
     assert co.raw.get(Endpoint.STATUS, "synthetic-one", now=datetime.now(UTC)) is record
 
 
-async def test_local_day_boundary_notifies_without_cloud_requests(coordinator):
+async def test_local_day_boundary_notifies_then_requests_normal_refresh(coordinator):
     co = coordinator
     before = datetime(2026, 9, 25, 15, 59, 59, tzinfo=UTC)
     with patch("custom_components.ninebot.coordinator.dt_util.utcnow", return_value=before):
@@ -1250,10 +1269,15 @@ async def test_local_day_boundary_notifies_without_cloud_requests(coordinator):
             notify, deadline = timer.call_args.args[1:]
             assert deadline == before + timedelta(seconds=1)
             co.client.reset_mock()
-            with patch(
-                "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+            with (
+                patch(
+                    "custom_components.ninebot.coordinator.dt_util.utcnow", return_value=deadline
+                ),
+                patch.object(co, "async_request_refresh") as refresh,
             ):
                 notify(deadline)
+                await asyncio.gather(*tuple(co._active))
+                refresh.assert_awaited_once()
             co.client.async_get_travel.assert_not_awaited()
             co.client.async_get_status.assert_not_awaited()
 
@@ -1363,3 +1387,180 @@ async def test_rejected_current_raw_never_binds_old_cached_body_to_new_projectio
         "synthetic-one", current, guard=lambda: True
     )
     assert checked.status == "stale" and not checked.projection_verified
+
+
+async def test_midnight_travel_due_ignores_success_delay_but_not_backoff(coordinator, freezer):
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot.raw import Endpoint, build_record
+
+    co = coordinator
+    before = datetime(2026, 10, 7, 15, 59, 59, tzinfo=UTC)
+    freezer.move_to(before)
+    await co._async_update_data()
+    sn = "synthetic-one"
+    # An Action's later old-day receipt is not a sample for the new day.
+    raw = build_record(
+        Endpoint.TRAVEL,
+        {"times": 0, "list": [], "total_mileages": 0},
+        before + timedelta(microseconds=100),
+        "202610",
+    )
+    co.raw.put(raw, vehicle=sn)
+    freezer.tick(1)
+    now = dt_util.utcnow()
+    assert co._next_attempt[(sn, "travel")] > now.timestamp()
+    assert co._due(sn, "travel", now.timestamp())
+    co.client.async_get_travel.reset_mock()
+    await co._group(sn, "travel", include_last_ride=False)
+    co.client.async_get_travel.assert_awaited_once_with(sn, "202610")
+    assert co.data[sn].travel_freshness.succeeded_at == now
+    assert not co._due(sn, "travel", now.timestamp())
+    key = (sn, "travel")
+    co.data[sn] = replace(
+        co.data[sn], travel_freshness=replace(co.data[sn].travel_freshness, succeeded_at=before)
+    )
+    co._failures[key] = 1
+    co._next_attempt[key] = now.timestamp() + 60
+    assert not co._due(sn, "travel", now.timestamp())
+    co._failures[key] = 0
+    co._retry_after_until[key] = now.timestamp() + 120
+    co._next_attempt[key] = now.timestamp() + 120
+    assert not co._due(sn, "travel", now.timestamp())
+
+
+async def test_complete_empty_discovery_keeps_both_vehicles_and_retries_quickly(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    receipts = {sn: s.profile_freshness.succeeded_at for sn, s in co.data.items()}
+    ownership = dict(co._ownership)
+    co.client.async_list_vehicles.return_value = []
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    now = datetime.now(UTC).timestamp()
+    assert all(co.local_vehicle_available(sn) for sn in receipts)
+    assert co._ownership == ownership
+    assert all(co.data[sn].profile_freshness.succeeded_at == t for sn, t in receipts.items())
+    assert co._failures[("", "profile")] == 1
+    assert 0 < co._next_attempt[("", "profile")] - now < 13
+    assert co.discovery_diagnostics()["suspect_count"] == 2
+    assert not co.background_ready()
+    # Repeated uncertain absence is never upgraded to authoritative revocation.
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    assert all(co.local_vehicle_available(sn) for sn in receipts)
+    co.client.async_list_vehicles.return_value = [{"wnumber": sn} for sn in receipts]
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    assert co.discovery_diagnostics()["complete"] is True
+    assert not co._suspect and co.background_ready()
+
+
+async def test_discovery_failure_cannot_clear_durable_profile_catalog(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    before = {p.sn for p in await co.statistics.async_cached_profiles()}
+    co.client.async_list_vehicles.return_value = []
+    co._next_attempt[("", "profile")] = 0
+    await co._async_update_data()
+    assert {p.sn for p in await co.statistics.async_cached_profiles()} == before
+    old = co.data["synthetic-one"].profile_freshness.succeeded_at
+    with patch(
+        "custom_components.ninebot.coordinator.dt_util.utcnow",
+        return_value=old + timedelta(hours=4),
+    ):
+        assert co.local_vehicle_available("synthetic-one")
+        assert not co.status_pollable("synthetic-one")
+        co.client.async_get_status.reset_mock()
+        await co.async_poll_status()
+        co.client.async_get_status.assert_not_awaited()
+
+
+async def test_recovery_timer_updates_status_while_slow_battery_round_is_waiting(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    entered, release = asyncio.Event(), asyncio.Event()
+    co.client.async_get_status.return_value = {"dump_energy": 67}
+    original = co._normalize
+
+    async def slow_normalize(record, sn, scope, operation):
+        if record and record.endpoint.value == "battery":
+            entered.set()
+            await release.wait()
+        return await original(record, sn, scope, operation)
+
+    co._normalize = slow_normalize
+    co._next_attempt[("synthetic-one", "battery")] = 0
+    poll = asyncio.create_task(co._async_update_data())
+    await asyncio.wait_for(entered.wait(), 2)
+    co._next_attempt[("synthetic-one", "status")] = 0
+    assert not poll.done()
+    co.realtime.running = True
+    await co.realtime._run()
+    assert co.data["synthetic-one"].status.battery == 67
+    assert not poll.done()
+    release.set()
+    await poll
+    co.realtime.stop()
+
+
+async def test_recovery_is_singleflight_cancellable_and_honors_cooldown(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    for sn in co.data:
+        co._next_attempt[(sn, "status")] = 0
+    co.broker._cooldown_until = asyncio.get_running_loop().time() + 20
+    with patch("custom_components.ninebot.realtime.async_call_later") as timer:
+        co.realtime.start()
+        assert timer.call_args.args[1] >= 19
+    co.broker._cooldown_until = 0
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    async def status(sn):
+        entered.set()
+        await release.wait()
+        return {"dump_energy": 66}
+
+    co.client.async_get_status.side_effect = status
+    co.client.async_get_status.reset_mock()
+    co.realtime._wake(None)
+    await asyncio.wait_for(entered.wait(), 2)
+    task = co.realtime.task
+    co.realtime._wake(None)
+    assert co.realtime.task is task
+    await co.async_close()
+    assert task.done() and co.realtime.cancel is None
+    assert not co.realtime.running
+
+
+async def test_recovery_backoff_keeps_retry_after_and_does_not_wait_an_hour(coordinator):
+    # Async fixture is resolved by pytest-asyncio, no network or clock sleeps.
+    co = coordinator
+    with patch("custom_components.ninebot.coordinator.random.uniform", return_value=1):
+        co._attempt_finished("", "profile", 100, 3600, False)
+        assert co._next_attempt[("", "profile")] == 110
+        co._attempt_finished("synthetic-one", "status", 100, 30, False)
+        assert co._next_attempt[("synthetic-one", "status")] == 105
+        co._retry_after_until[("synthetic-one", "status")] = 400
+        co._attempt_finished("synthetic-one", "status", 110, 30, False)
+        assert co._next_attempt[("synthetic-one", "status")] == 400
+
+
+async def test_all_status_service_failures_yield_background_until_recovery(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co.client.async_get_status.side_effect = NinebotError(ErrorKind.SERVICE)
+    co.client.async_get_battery.reset_mock()
+    co.client.async_get_travel.reset_mock()
+    for sn in co.data:
+        for group in ("status", "battery", "travel"):
+            co._next_attempt[(sn, group)] = 0
+    await co._async_update_data()
+    assert co.status_recovering() and not co.background_ready()
+    co.client.async_get_battery.assert_not_awaited()
+    co.client.async_get_travel.assert_not_awaited()
+    co.client.async_get_status.side_effect = None
+    for sn in co.data:
+        co._next_attempt[(sn, "status")] = 0
+    await co.async_poll_status()
+    assert not co.status_recovering() and co.background_ready()

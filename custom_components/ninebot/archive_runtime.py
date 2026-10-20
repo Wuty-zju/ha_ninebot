@@ -13,6 +13,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
+from .account_archive import account_path
 from .archive_statistics import ArchiveStatisticsView, StatisticsReader
 from .archive_timeline import ArchivedRide
 from .backup import register_archive, unregister_archive
@@ -27,6 +28,9 @@ from .statistics_store import StoredMonth, StoredRide, TravelStatisticsStore
 
 def archive_path(hass: HomeAssistant, entry_id: str) -> Path:
     """Never put account identifiers in a filename or share an entry directory."""
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is not None and (uid := entry.data.get("business_uid")):
+        return account_path(hass, str(uid))
     entry_scope = hashlib.sha256(entry_id.encode()).hexdigest()
     return Path(hass.config.path(".storage", DOMAIN, "archives", entry_scope, "rides.sqlite3"))
 
@@ -44,7 +48,7 @@ class ArchiveStatistics(TravelStatisticsStore):
     ) -> None:
         super().__init__(hass, entry_id)
         self.archive = RideArchive(
-            archive_path(hass, entry_id),
+            account_path(hass, business_uid),
             hashlib.sha256(business_uid.encode()).hexdigest(),
             max_bytes=max_bytes,
         )
@@ -58,6 +62,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection = ArchiveStatisticsView()
         self._projection_month = ""
         self._latest: dict[str, ArchivedRide | None] = {}
+        self._month_snapshots: dict[tuple[str, str], tuple[TravelMonth, datetime]] = {}
         self._projection_revisions: dict[str, int] = {}
         self.persistence_enabled = False
         register_archive(hass, self.archive)
@@ -191,6 +196,10 @@ class ArchiveStatistics(TravelStatisticsStore):
         """Memory-only historical projection, without any live freshness claim."""
         return self._latest.get(sn) if self.archive_ready else None
 
+    def month_snapshot(self, sn: str, month: str) -> tuple[TravelMonth, datetime] | None:
+        """Read the atomic archive projection without renewing cloud freshness."""
+        return self._month_snapshots.get((sn, month)) if self.archive_ready else None
+
     async def async_view(self, sn: str, months: tuple[str, ...]) -> StatisticsReader:
         if not self.archive_ready:
             view = copy(self)
@@ -218,11 +227,12 @@ class ArchiveStatistics(TravelStatisticsStore):
             blocked_metrics = dict(self._projection.blocked_metrics)
             bases = dict(self._projection.completeness_bases)
             latest = dict(self._latest)
+            month_snapshots = dict(self._month_snapshots)
             revisions = dict(self._projection_revisions)
             vehicles = (vehicle,)
         else:
             records, selections, blocked_metrics, bases = {}, {}, {}, {}
-            latest, revisions = {}, {}
+            latest, revisions, month_snapshots = {}, {}, {}
             vehicles = tuple(sorted(self._vehicles))
         for sn in vehicles:
             snapshot = await self.archive.async_projection(
@@ -230,6 +240,9 @@ class ArchiveStatistics(TravelStatisticsStore):
             )
             view = await self.hass.async_add_executor_job(
                 ArchiveStatisticsView.from_months, sn, snapshot.months
+            )
+            month_snapshots.update(
+                {(sn, row.travel.month): (row.travel, row.received_at) for row in snapshot.months}
             )
             records.update(view.records)
             selections.update(view.selections)
@@ -255,6 +268,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection_month = month
         self.months, self.rides = months, rides
         self._latest = latest
+        self._month_snapshots = month_snapshots
         self._projection_revisions = revisions
 
     async def async_refresh_projection(self) -> None:
@@ -408,4 +422,5 @@ class ArchiveStatistics(TravelStatisticsStore):
             unregister_archive(self.hass, self.archive)
             self.archive_ready = False
             self._latest.clear()
+            self._month_snapshots.clear()
             self._projection_revisions.clear()

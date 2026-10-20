@@ -26,7 +26,7 @@ import aiohttp
 from .adapters import profiles
 from .const import CLI_TIMEOUT, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
-from .vehicle_cache import cache_io, merge_partial_cache, read_cache, restore_cache
+from .vehicle_cache import cache_io, read_cache, reconcile_cache, restore_cache
 
 
 def response_data(status: int, raw: object) -> Any:
@@ -364,14 +364,18 @@ class NinecliClient:
                         raise NinebotError(ErrorKind.PROTOCOL)
                     # The same identity contract used by the coordinator must
                     # pass before accepting the native routing-cache update.
-                    profiles(raw)
+                    found = profiles(raw)
                     # Native 0.1.7 returns exit 0 even if one or both business
                     # lists failed. Diagnostic output is opaque, not auth proof.
-                    complete = not diagnostic.strip()
-                    if not complete:
-                        if not raw:
-                            raise NinebotError(ErrorKind.SERVICE)
-                        await cache_io(merge_partial_cache, self.config_dir, previous_cache)
+                    complete = await cache_io(
+                        reconcile_cache,
+                        self.config_dir,
+                        previous_cache,
+                        frozenset(profile.sn for profile in found),
+                        not diagnostic.strip(),
+                    )
+                    if not complete and not raw:
+                        raise NinebotError(ErrorKind.SERVICE)
                     self.vehicle_discovery_complete = complete
                     accepted = True
                     return raw

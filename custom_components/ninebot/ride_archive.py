@@ -54,6 +54,7 @@ from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .detail_codec import ArchivedDetail, CorruptPayload, packed, scoped_ride, unpacked
 from .detail_health import HistoryHealth
 from .exceptions import NinebotError
+from .history_budget import request_interval, valid_budget
 from .history_plan import HistoryPlan
 from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
@@ -328,6 +329,25 @@ class RideArchive:
                 raise ArchiveError(ArchiveFailure.CAPACITY)
             self._space_checked_at = time.monotonic()
         return self._connection
+
+    async def async_export_archive(
+        self, target: Path, vehicles: tuple[str, ...] | None = None
+    ) -> None:
+        """Consistent private snapshot on the account's existing SQL actor."""
+        from .archive_transfer import snapshot
+
+        await self._run(lambda: snapshot(self._db(), target, vehicles))
+
+    async def async_merge_archive(
+        self,
+        source: Path,
+        vehicles: tuple[str, ...] | None = None,
+        evidence_sources: tuple[Path, ...] = (),
+    ) -> dict[str, int]:
+        """Validate and merge without a second writer or cloud operation."""
+        from .archive_transfer import merge
+
+        return await self._run(lambda: merge(self, source, vehicles, evidence_sources))
 
     async def async_prepare_backup(self) -> None:
         """Reject new writes immediately, then drain earlier SQL operations."""
@@ -850,13 +870,14 @@ class RideArchive:
             db.execute("UPDATE meta SET value=? WHERE key='revision'", (str(value),))
         return value
 
-    async def async_profiles(self) -> tuple[VehicleProfile, ...]:
+    async def async_profiles(self, *, include_absent: bool = False) -> tuple[VehicleProfile, ...]:
         return await self._run(
             lambda: tuple(
                 restored_profile(decoded(row[0]))
                 for row in self._db().execute(
-                    "SELECT profile FROM vehicles WHERE present=1 AND profile IS NOT "
-                    "NULL ORDER BY vehicle"
+                    "SELECT profile FROM vehicles WHERE "
+                    + ("" if include_absent else "present=1 AND ")
+                    + "profile IS NOT NULL ORDER BY vehicle"
                 )
             )
         )
@@ -1671,10 +1692,10 @@ class RideArchive:
         if paused is not None and paused[0] == "1":
             return False
         limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
-        if limit is not None and float(limit[0]) > epoch:
+        if budget and limit is not None and float(limit[0]) > epoch:
             return False
         for key, value in (
-            ("preservation_budget", str(epoch + 3600 / budget)),
+            ("preservation_budget", str(epoch + request_interval(budget))),
             ("preservation_cursor", vehicle),
             (
                 "preservation_detail_cursor" if kind == "detail" else "preservation_month_cursor",
@@ -1699,7 +1720,7 @@ class RideArchive:
     ) -> bool:
         """Reserve one month operation before I/O, with the same account detail budget."""
         utc_string(now)
-        if type(budget) is not int or not 1 <= budget <= 60:
+        if not valid_budget(budget):
             raise ValueError("Invalid preservation budget")
 
         def reserve() -> bool:
@@ -1760,7 +1781,7 @@ class RideArchive:
         from .month_tasks import claim
 
         utc_string(now)
-        if type(budget) is not int or not 1 <= budget <= 60:
+        if not valid_budget(budget):
             raise ValueError("Invalid month budget")
 
         def commit() -> "MonthTask | None":
@@ -1818,7 +1839,7 @@ class RideArchive:
         self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
     ) -> "PreservationTask | None":
         utc_string(now)
-        if type(budget) is not int or not 1 <= budget <= 60:
+        if not valid_budget(budget):
             raise ValueError("Invalid preservation budget")
         return await self._run(
             partial(self._preservation_claim, vehicle_key(sn), now, budget), guard=guard
@@ -1836,7 +1857,7 @@ class RideArchive:
             if self._history_paused(vehicle):
                 return None
             limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
-            if limit is not None and float(limit[0]) > epoch:
+            if budget and limit is not None and float(limit[0]) > epoch:
                 return None
             rows = db.execute(
                 "SELECT r.id,r.data,r.revision,m.value,h.value FROM rides r LEFT JOIN meta m "
@@ -1922,7 +1943,7 @@ class RideArchive:
                         (key, encoded(state)),
                     )
                     continue
-                interval = 3600 / budget
+                interval = request_interval(budget)
                 state["attempts"] = min(255, state["attempts"] + 1)
                 state["next_attempt"] = epoch + max(60, interval)
                 db.execute(
@@ -3022,7 +3043,7 @@ class RideArchive:
         from .history_store import put_root, resolve, root
 
         observed = utc_string(now)
-        if type(budget) is not int or not 1 <= budget <= 60:
+        if not valid_budget(budget):
             raise ValueError("Invalid history budget")
 
         def claim() -> HistoryPlan | None:

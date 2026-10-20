@@ -126,6 +126,8 @@ class QueryBroker:
         else:
             pending = [*self._jobs, *([self._active] if self._active else [])]
             limit = self._read_limit if key else self._command_limit
+            if key and priority is Priority.BACKGROUND:
+                limit = max(1, limit - 2)  # Leave admission for due status reads.
             same_budget = sum((job.key is not None) == (key is not None) for job in pending)
             if len(pending) >= self._max_pending or same_budget >= limit:
                 raise NinebotError(ErrorKind.BUSY)
@@ -227,7 +229,7 @@ class QueryBroker:
                         }:
                             self._connection_failures += 1
                             if self._connection_failures >= 2:
-                                delay = max(delay or 0, min(120, 15 * self._connection_failures))
+                                delay = max(delay or 0, min(60, 15 * self._connection_failures))
                         if delay:
                             self._cooldown_kind = err.kind
                             self._cooldown_until = max(
@@ -259,9 +261,15 @@ class QueryBroker:
             "pending": len(self._jobs) + (self._active is not None),
             "waiters": self._waiters,
             "closed": self._closed,
+            "retry_in_seconds": self.retry_delay,
+            "connection_failures": self._connection_failures,
             "counts": dict(self._counters),
             "errors": dict(self._errors),
         }
+
+    @property
+    def retry_delay(self) -> float:
+        return max(0, self._cooldown_until - asyncio.get_running_loop().time())
 
     @property
     def cooling_down(self) -> bool:

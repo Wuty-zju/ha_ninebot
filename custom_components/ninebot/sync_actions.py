@@ -8,8 +8,9 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.util import dt as dt_util
 
 from .compat import validation as vol
+from .history_budget import configured_budget
 from .month_tasks import MAX_SELECTED_MONTHS, progress
-from .preservation import CONF_BUDGET, CONF_PRESERVE, DEFAULT_BUDGET
+from .preservation import CONF_PRESERVE
 from .ride_archive import ArchiveError, ArchiveFailure
 from .services import assert_query_scope, query_month, resolve_vehicle, validation_error
 from .sync_job import public_progress
@@ -71,13 +72,7 @@ async def async_sync_history(hass: HomeAssistant, call: ServiceCall) -> dict[str
     co = entry.runtime_data.coordinator
     manager = co.history_sync
     operation = call.data["operation"]
-    budget = (
-        entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
-        if entry.options.get(CONF_PRESERVE) is True
-        else None
-    )
-    if budget is not None and (type(budget) is not int or not 1 <= budget <= 60):
-        budget = DEFAULT_BUDGET
+    budget = configured_budget(entry.options) if entry.options.get(CONF_PRESERVE) is True else None
     try:
         if operation.startswith("reconstruct"):
             return await async_reconstruct_history(hass, call)
@@ -132,9 +127,7 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         now = dt_util.utcnow()
         await runner.async_seed((sn,), now)
         baseline = await archive.async_history_plan(sn)
-        budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
-        if type(budget) is not int or not 1 <= budget <= 60:
-            budget = DEFAULT_BUDGET
+        budget = configured_budget(entry.options)
         selected = call.data.get("months")
         if selected is not None or call.data.get("force"):
             # Explicit months become durable work, including old months and all selections.
@@ -281,9 +274,7 @@ async def async_sparse_history(hass: HomeAssistant, call: ServiceCall) -> dict[s
     manager, archive = co.preservation.months, co.statistics.archive
     operation = call.data["operation"]
     months = call.data.get("months")
-    budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
-    if type(budget) is not int or not 1 <= budget <= 60:
-        budget = DEFAULT_BUDGET
+    budget = configured_budget(entry.options)
     performed = False
     if operation == "repair":
         if months is None:

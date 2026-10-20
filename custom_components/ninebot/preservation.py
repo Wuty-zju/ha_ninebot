@@ -6,7 +6,7 @@ import json
 import math
 import random
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -16,6 +16,9 @@ from homeassistant.util import dt as dt_util
 
 from .archive_codec import RIDE_VALUES, ride_data
 from .exceptions import NinebotError
+from .history_budget import CONF_BUDGET as CONF_BUDGET
+from .history_budget import DEFAULT_BUDGET as DEFAULT_BUDGET
+from .history_budget import configured_budget, request_interval
 from .history_progress import HistoryProgress, project_progress
 from .query_broker import Priority
 from .raw import Endpoint
@@ -26,8 +29,6 @@ if TYPE_CHECKING:
     from .coordinator import NinebotCoordinator
 
 CONF_PRESERVE = "preserve_history"
-CONF_BUDGET = "history_requests_per_hour"
-DEFAULT_BUDGET = 30
 
 
 def mutable_detail(ride: Ride, now: datetime) -> bool:
@@ -79,7 +80,9 @@ class HistoryPreservation:
             return
         self.status = "idle"
         self._remove = async_track_time_interval(
-            self.co.hass, self.async_tick, timedelta(seconds=60)
+            self.co.hass,
+            self.async_tick,
+            timedelta(seconds=max(1, request_interval(configured_budget(entry.options)))),
         )
 
     async def async_tick(self, now: datetime) -> None:
@@ -129,6 +132,8 @@ class HistoryPreservation:
                 continue
             self.audit.publish(sn, await co.statistics.archive.async_history_audit(sn), owns)
             evidence = await co.statistics.archive.async_history_evidence(sn, guard=owns)
+            if co.config_entry and configured_budget(co.config_entry.options) == 0:
+                evidence = replace(evidence, budget_at=None)
             value = project_progress(
                 evidence,
                 now,
@@ -154,20 +159,23 @@ class HistoryPreservation:
 
     async def _step(self, now: datetime) -> None:
         co, archive = self.co, self.co.statistics.archive
+        if not co.background_ready():
+            self.status = "waiting"
+            return
         if not co.statistics.writable:
             self.status = "storage_paused"
             return
         vehicles, turn = await archive.async_preservation_order(
-            tuple(sn for sn in co.data if co.local_vehicle_available(sn))
+            tuple(
+                sn for sn in co.data if co.local_vehicle_available(sn) and co.background_ready(sn)
+            )
         )
         if not vehicles:
             return
         entry = co.config_entry
         if entry is None:
             return
-        budget = entry.options.get(CONF_BUDGET, DEFAULT_BUDGET)
-        if type(budget) is not int or not 1 <= budget <= 60:
-            budget = DEFAULT_BUDGET
+        budget = configured_budget(entry.options)
         await self.bootstrap.async_seed(vehicles, now)
         vehicles = tuple(sn for sn in vehicles if sn not in self.bootstrap.paused)
         await self.incremental.async_seed(vehicles, now)
