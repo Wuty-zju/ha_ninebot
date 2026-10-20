@@ -13,6 +13,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
+from .account_archive import account_path
 from .archive_statistics import ArchiveStatisticsView, StatisticsReader
 from .archive_timeline import ArchivedRide
 from .backup import register_archive, unregister_archive
@@ -27,6 +28,9 @@ from .statistics_store import StoredMonth, StoredRide, TravelStatisticsStore
 
 def archive_path(hass: HomeAssistant, entry_id: str) -> Path:
     """Never put account identifiers in a filename or share an entry directory."""
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is not None and (uid := entry.data.get("business_uid")):
+        return account_path(hass, str(uid))
     entry_scope = hashlib.sha256(entry_id.encode()).hexdigest()
     return Path(hass.config.path(".storage", DOMAIN, "archives", entry_scope, "rides.sqlite3"))
 
@@ -44,7 +48,7 @@ class ArchiveStatistics(TravelStatisticsStore):
     ) -> None:
         super().__init__(hass, entry_id)
         self.archive = RideArchive(
-            archive_path(hass, entry_id),
+            account_path(hass, business_uid),
             hashlib.sha256(business_uid.encode()).hexdigest(),
             max_bytes=max_bytes,
         )

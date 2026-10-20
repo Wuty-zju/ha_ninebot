@@ -11,8 +11,8 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
 
 from custom_components.ninebot import async_remove_entry, async_setup_entry
+from custom_components.ninebot.account_archive import async_remove_account
 from custom_components.ninebot.adapters import travel
-from custom_components.ninebot.archive_lifecycle import async_remove_archive
 from custom_components.ninebot.archive_runtime import ArchiveStatistics, archive_path
 from custom_components.ninebot.backup import (
     ACTORS_KEY,
@@ -27,6 +27,9 @@ pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 @pytest.fixture
 async def runtime(hass, entry, app_client):
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "retain_history_database": False}
+    )
     with patch("custom_components.ninebot.coordinator.NinebotCoordinator._schedule_refresh"):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -108,17 +111,17 @@ async def test_entry_removal_isolated_and_no_follow(hass, entry, runtime, tmp_pa
     archive.path.unlink()
     archive.path.symlink_to(outside)
     with pytest.raises(ArchiveError):
-        await async_remove_archive(hass, entry.entry_id)
+        await async_remove_account(hass, entry.data["business_uid"])
     assert outside.read_bytes() == b"do not remove" and archive.path.is_symlink()
     archive.path.unlink()
     ancestor = archive.path.parent
     ancestor.rmdir()
     ancestor.symlink_to(outside.parent, target_is_directory=True)
     with pytest.raises(ArchiveError):
-        await async_remove_archive(hass, entry.entry_id)
+        await async_remove_account(hass, entry.data["business_uid"])
     assert outside.read_bytes() == b"do not remove"
     ancestor.unlink()
-    await async_remove_archive(hass, entry.entry_id)  # Already absent.
+    await async_remove_account(hass, entry.data["business_uid"])  # Already absent.
     assert other.read_bytes() == b"other account original"
 
 

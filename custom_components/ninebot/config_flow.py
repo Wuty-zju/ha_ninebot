@@ -28,6 +28,8 @@ from homeassistant.helpers.selector import (
 )
 
 from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, account_update
+from .account_archive import CONF_RETAIN_ARCHIVE
+from .archive_options import ArchiveOptionsMixin
 from .bootstrap import CONF_AUTO_HISTORY
 from .compat import post_create_options_supported
 from .compat import validation as vol
@@ -221,6 +223,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_CONTROLS: True,
                             CONF_CONTROL_VEHICLES: list(candidate.vehicles),
                             CONF_POLL_INTERVAL: DEFAULT_POLL_INTERVAL,
+                            CONF_RETAIN_ARCHIVE: True,
                             CONF_PRESERVE: False,
                             CONF_AUTO_HISTORY: False,
                             CONF_CALENDAR: bool(user_input.get(CONF_CALENDAR, False)),
@@ -549,7 +552,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return NinebotOptionsFlow()
 
 
-class NinebotOptionsFlow(config_entries.OptionsFlow):
+class NinebotOptionsFlow(ArchiveOptionsMixin):
     def __init__(self) -> None:
         self._pending_options: dict[str, Any] = {}
         self._model_vehicle: str | None = None
@@ -563,6 +566,8 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
             ):
                 errors[CONF_CONTROL_VEHICLES] = "control_vehicles_required"
             else:
+                if self._pending_options.pop("manage_archive", False):
+                    return await self.async_step_archive()
                 configure_model = self._pending_options.pop("configure_model", False)
                 if configure_model:
                     return await self.async_step_model_vehicle()
@@ -618,6 +623,10 @@ class NinebotOptionsFlow(config_entries.OptionsFlow):
                     vol.Required(
                         CONF_BUDGET, default=configured_budget(options)
                     ): HistoryBudgetSelector(),
+                    vol.Optional(
+                        CONF_RETAIN_ARCHIVE, default=options.get(CONF_RETAIN_ARCHIVE, True)
+                    ): bool,
+                    vol.Optional("manage_archive", default=False): bool,
                     vol.Optional("configure_model", default=False): bool,
                     vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
                 }

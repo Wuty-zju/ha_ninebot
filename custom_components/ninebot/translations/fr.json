@@ -105,6 +105,8 @@
           "history_requests_per_hour": "History requests per account per hour (Beta)",
           "auto_history_sync": "Automatically scan trip history (Beta)",
           "history_storage_mib": "Limite de stockage historique (MiB) (Beta)",
+          "retain_history_database": "Keep local trip history database (Beta)",
+          "manage_archive": "Export or import history database (Beta)",
           "debug_mode": "Mode débogage"
         },
         "data_description": {
@@ -117,7 +119,9 @@
           "auto_history_sync": "Découvrir l’historique disponible de tous les véhicules du compte, puis synchroniser les changements.",
           "history_storage_mib": "32–2048 MiB par compte, 100 par défaut. Réduire la limite conserve les données et peut suspendre les écritures.",
           "control_vehicles": "Choisissez un ou plusieurs véhicules de ce compte. Désactiver les commandes conserve la sélection.",
-          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events."
+          "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
+          "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
         }
       },
       "model_vehicle": {
@@ -133,15 +137,56 @@
           "voltage": "Tension nominale (V)",
           "capacity": "Capacité nominale (Ah)"
         }
+      },
+      "archive": {
+        "title": "History database (Beta)",
+        "menu_options": {
+          "archive_export": "Export database",
+          "archive_import": "Upload and import database"
+        }
+      },
+      "archive_export": {
+        "title": "Export history database",
+        "description": "Select vehicles from one or more accounts. The package includes trips, detailed tracks and historical source evidence, without sign-in credentials.",
+        "data": {
+          "vehicles": "Accounts and vehicles"
+        }
+      },
+      "archive_download": {
+        "title": "Download history database",
+        "description": "[Download archive package]({url}). This link expires in 10 minutes and is available only to this administrator. Submit after downloading."
+      },
+      "archive_import": {
+        "title": "Upload history database",
+        "description": "Upload an exported ZIP package or a current-format SQLite database (up to 100 MiB; ZIP up to 512 MiB expanded). Sign in to every included account first. Uploading validates and previews it before any merge.",
+        "data": {
+          "file": "Upload database package"
+        }
+      },
+      "archive_confirm": {
+        "title": "Confirm history database merge",
+        "description": "Select vehicles to restore. Each account merges transactionally and keeps the better track, without replacing sign-in state or running sync jobs. A recovery snapshot is saved before merging; completed accounts can be retried safely.",
+        "data": {
+          "vehicles": "Vehicles to restore",
+          "confirm": "Confirm backup and merge"
+        }
+      },
+      "archive_result": {
+        "title": "History database merged",
+        "description": "Added trips / added details:\n{result}\n\nLocal queries can now use the imported data. Automatic synchronization follows your existing settings."
       }
     },
     "abort": {
-      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters."
+      "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
+      "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
+      "archive_busy": "The archive download limit has been reached. Try again later."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
       "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
-      "control_vehicles_required": "Sélectionnez au moins un véhicule à contrôler à distance."
+      "control_vehicles_required": "Sélectionnez au moins un véhicule à contrôler à distance.",
+      "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
+      "archive_busy": "A backup is in progress. Try again later."
     }
   },
   "entity": {

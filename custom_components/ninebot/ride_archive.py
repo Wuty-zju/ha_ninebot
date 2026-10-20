@@ -330,6 +330,25 @@ class RideArchive:
             self._space_checked_at = time.monotonic()
         return self._connection
 
+    async def async_export_archive(
+        self, target: Path, vehicles: tuple[str, ...] | None = None
+    ) -> None:
+        """Consistent private snapshot on the account's existing SQL actor."""
+        from .archive_transfer import snapshot
+
+        await self._run(lambda: snapshot(self._db(), target, vehicles))
+
+    async def async_merge_archive(
+        self,
+        source: Path,
+        vehicles: tuple[str, ...] | None = None,
+        evidence_sources: tuple[Path, ...] = (),
+    ) -> dict[str, int]:
+        """Validate and merge without a second writer or cloud operation."""
+        from .archive_transfer import merge
+
+        return await self._run(lambda: merge(self, source, vehicles, evidence_sources))
+
     async def async_prepare_backup(self) -> None:
         """Reject new writes immediately, then drain earlier SQL operations."""
         self.backup_paused = True
@@ -851,13 +870,14 @@ class RideArchive:
             db.execute("UPDATE meta SET value=? WHERE key='revision'", (str(value),))
         return value
 
-    async def async_profiles(self) -> tuple[VehicleProfile, ...]:
+    async def async_profiles(self, *, include_absent: bool = False) -> tuple[VehicleProfile, ...]:
         return await self._run(
             lambda: tuple(
                 restored_profile(decoded(row[0]))
                 for row in self._db().execute(
-                    "SELECT profile FROM vehicles WHERE present=1 AND profile IS NOT "
-                    "NULL ORDER BY vehicle"
+                    "SELECT profile FROM vehicles WHERE "
+                    + ("" if include_absent else "present=1 AND ")
+                    + "profile IS NOT NULL ORDER BY vehicle"
                 )
             )
         )
