@@ -74,7 +74,7 @@ if TYPE_CHECKING:
     from .month_tasks import MonthTask
     from .preservation import PreservationTask
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 MIN_FREE_BYTES = 32 * 1024 * 1024
@@ -414,6 +414,7 @@ class RideArchive:
         if db.execute("PRAGMA user_version").fetchone()[0] != version:
             raise ArchiveError(ArchiveFailure.SCHEMA)
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        from .archive_evidence import COLUMNS as EVIDENCE_COLUMNS
         from .history_store import COLUMNS as HISTORY_COLUMNS
         from .history_store import LEGACY_COLUMNS
         from .month_source import COLUMNS as SOURCE_COLUMNS
@@ -425,6 +426,7 @@ class RideArchive:
             | (HISTORY_COLUMNS if version >= 4 else LEGACY_COLUMNS if version == 3 else {})
             | (CHECK_COLUMNS if version >= 5 else {})
             | (SOURCE_COLUMNS if version >= 6 else {})
+            | (EVIDENCE_COLUMNS if version >= 7 else {})
         )
         if tables != columns_by_table.keys():
             raise ArchiveError(ArchiveFailure.SCHEMA)
@@ -636,6 +638,10 @@ class RideArchive:
                 raise ValueError("Invalid archived ride index")
             stamp(observed)
 
+        if version >= 7:
+            from .archive_evidence import check as check_evidence
+
+            check_evidence(db)
         if version >= 6:
             from .month_source import check as check_month_sources
 
@@ -703,7 +709,7 @@ class RideArchive:
             probe = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True)
             try:
                 version = probe.execute("PRAGMA user_version").fetchone()[0]
-                if version not in (1, 2, 3, 4, 5, SCHEMA_VERSION):
+                if version not in (1, 2, 3, 4, 5, 6, SCHEMA_VERSION):
                     raise ArchiveError(ArchiveFailure.SCHEMA)
                 missing_details = False
                 try:
@@ -737,6 +743,7 @@ class RideArchive:
             db = sqlite3.connect(self.path)
             try:
                 with db:
+                    from .archive_evidence import SCHEMA as EVIDENCE_SCHEMA
                     from .history_store import SCHEMA as HISTORY_SCHEMA
                     from .month_source import SCHEMA as SOURCE_SCHEMA
                     from .object_checks import SCHEMA as CHECK_SCHEMA
@@ -747,6 +754,7 @@ class RideArchive:
                         *HISTORY_SCHEMA,
                         *CHECK_SCHEMA,
                         *SOURCE_SCHEMA,
+                        *EVIDENCE_SCHEMA,
                     ):
                         db.execute(sql)
                     db.executemany(
@@ -814,6 +822,7 @@ class RideArchive:
             db.execute(f"PRAGMA max_page_count={max(pages, self.max_bytes // size)}")
             db.execute("BEGIN IMMEDIATE")
             try:
+                from .archive_evidence import SCHEMA as EVIDENCE_SCHEMA
                 from .history_store import PAYLOAD_SCHEMA
                 from .history_store import SCHEMA as HISTORY_SCHEMA
                 from .month_source import SCHEMA as SOURCE_SCHEMA
@@ -823,7 +832,8 @@ class RideArchive:
                     *(DETAIL_SCHEMA if version == 1 else ()),
                     *(HISTORY_SCHEMA if version < 3 else PAYLOAD_SCHEMA if version == 3 else ()),
                     *(CHECK_SCHEMA if version < 5 else ()),
-                    *SOURCE_SCHEMA,
+                    *(SOURCE_SCHEMA if version < 6 else ()),
+                    *EVIDENCE_SCHEMA,
                 ):
                     db.execute(sql)
                 # Preserve cursors/counts, but don't promote a pre-schema5 scan
@@ -1396,7 +1406,7 @@ class RideArchive:
             # Crash between backup publication and recording its hash: reuse
             # only a structurally checked copy carrying this exact job/scope.
             source_version = target.execute("PRAGMA user_version").fetchone()[0]
-            if source_version not in (5, SCHEMA_VERSION):
+            if source_version not in (5, 6, SCHEMA_VERSION):
                 raise RecoveryPointError("Unverified local recovery schema")
             self._check(target, source_version, allow_time_index_drift=True)
             captured = get(target, vehicle)

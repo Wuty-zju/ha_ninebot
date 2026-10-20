@@ -147,25 +147,25 @@
       },
       "archive_export": {
         "title": "Export history database",
-        "description": "Select vehicles from one or more accounts. The package includes trips, detailed tracks and historical source evidence, without sign-in credentials.",
+        "description": "Select vehicles from one or more accounts. The package contains trips, tracks and preserved business originals, without sign-in credentials.",
         "data": {
           "vehicles": "Accounts and vehicles"
         }
       },
       "archive_download": {
         "title": "Download history database",
-        "description": "[Download archive package]({url}). This link expires in 10 minutes and is available only to this administrator. Submit after downloading."
+        "description": "{download_link}\n\nThe link expires in 10 minutes and is bound to this administrator. Submit after downloading."
       },
       "archive_import": {
         "title": "Upload history database",
-        "description": "Upload an exported ZIP package or a current-format SQLite database (up to 100 MiB; ZIP up to 512 MiB expanded). Sign in to every included account first. Uploading validates and previews it before any merge.",
+        "description": "Upload an exported ZIP package or a supported earlier SQLite database (up to 100 MiB; ZIP up to 512 MiB expanded). Sign in to every included account first. Copies are upgraded and validated before preview; confirmation is required to merge.",
         "data": {
           "file": "Upload database package"
         }
       },
       "archive_confirm": {
         "title": "Confirm history database merge",
-        "description": "Select vehicles to restore. Each account merges transactionally and keeps the better track, without replacing sign-in state or running sync jobs. A recovery snapshot is saved before merging; completed accounts can be retried safely.",
+        "description": "Select vehicles to restore. Each account merges all selected sources transactionally and preserves better tracks. Temporary recovery files are removed after a checked commit; failed merges keep their recovery point. Completed accounts can be retried safely.",
         "data": {
           "vehicles": "Vehicles to restore",
           "confirm": "Confirm backup and merge"
@@ -985,6 +985,10 @@
     "ride_archive_object_corrupt": {
       "title": "Sebagian data perjalanan gagal diverifikasi",
       "description": "Catatan lain tetap dapat digunakan. Simpan cadangan dan verifikasi objek lokal terdampak; jangan hapus arsip."
+    },
+    "archive_cleanup": {
+      "title": "Older history files need review",
+      "description": "Some older history files could not be verified or are still in use. They were kept; the current account database remains available. Back up Home Assistant before resolving these files."
     }
   },
   "services": {

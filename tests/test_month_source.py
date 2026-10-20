@@ -229,6 +229,7 @@ async def test_schema5_migration_keeps_original_backup_and_missing_source_explic
     await store.async_close()
     with closing(sqlite3.connect(path)) as db, db:
         db.execute("DROP TABLE month_sources")
+        db.execute("DROP TABLE IF EXISTS archive_evidence")
         db.execute("PRAGMA user_version=5")
     original = path.read_bytes()
     original_logical = logical_digest(path)
@@ -241,7 +242,7 @@ async def test_schema5_migration_keeps_original_backup_and_missing_source_explic
         assert len(copies) == 1 and logical_digest(copies[0]) == original_logical
         assert hashlib.sha256(original).hexdigest() in copies[0].name
         with closing(sqlite3.connect(path)) as db:
-            assert db.execute("PRAGMA user_version").fetchone()[0] == 6
+            assert db.execute("PRAGMA user_version").fetchone()[0] == 7
     finally:
         await migrated.async_close()
 
@@ -254,6 +255,7 @@ async def test_schema6_failed_ddl_keeps_schema5_and_recovery_copy(store, monkeyp
     await store.async_close()
     with closing(sqlite3.connect(path)) as db, db:
         db.execute("DROP TABLE month_sources")
+        db.execute("DROP TABLE IF EXISTS archive_evidence")
         db.execute("PRAGMA user_version=5")
     original = path.read_bytes()
     original_logical = logical_digest(path)
@@ -299,6 +301,7 @@ async def test_schema5_missing_detail_recovers_before_schema6_migration(store):
     await store.async_close()
     with closing(sqlite3.connect(path)) as db, db:
         db.execute("DROP TABLE month_sources")
+        db.execute("DROP TABLE IF EXISTS archive_evidence")
         db.execute("PRAGMA user_version=5")
     copy = path.with_name("rides.recovery-" + "1" * 32 + ".sqlite3")
     shutil.copyfile(path, copy)
@@ -333,6 +336,7 @@ async def test_schema5_in_progress_reconstruction_keeps_old_recovery_point_after
     for target in (path, copy):
         with closing(sqlite3.connect(target)) as db, db:
             db.execute("DROP TABLE month_sources")
+            db.execute("DROP TABLE IF EXISTS archive_evidence")
             db.execute("PRAGMA user_version=5")
     checksum = hashlib.sha256(copy.read_bytes()).hexdigest()
     with closing(sqlite3.connect(path)) as db, db:
