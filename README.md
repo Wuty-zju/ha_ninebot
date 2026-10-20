@@ -46,7 +46,7 @@ ARMv7/32-bit platforms are unsupported. [Platform and region details →](docs/g
 
 1. Open **HACS → ⋮ → Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with category **Integration**.
-3. Open **Ninebot**, select a **v2.0.0rc1**, and download it. Enable prerelease versions in the selector if needed.
+3. Open **Ninebot**, select **v2.0.0rc1**, and download it.
 4. Restart Home Assistant when prompted.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 

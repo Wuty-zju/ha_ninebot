@@ -124,7 +124,7 @@ def release_body(
     older = [
         (version_key(r["tag_name"]), r["tag_name"])
         for r in catalog
-        if not r["draft"] and (channel == "preview" or not r["prerelease"])
+        if not r["draft"] and (channel in {"preview", "candidate"} or not r["prerelease"])
     ]
     previous = max(
         (pair for pair in older if pair[0] is not None and pair[0] < current), default=None
@@ -350,7 +350,7 @@ def publish(
         if (latest or {}).get("id") != (after_latest or {}).get("id"):
             raise ValueError("Latest changed during preview publication")
     elif (after_latest or {}).get("id") != final["id"]:
-        raise ValueError("Stable Latest was not confirmed")
+        raise ValueError("Release Latest was not confirmed")
     return report | {
         "status": "published_verified",
         "release_id": final["id"],
@@ -360,7 +360,7 @@ def publish(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--channel", required=True, choices=("preview", "stable"))
+    parser.add_argument("--channel", required=True, choices=("preview", "candidate", "stable"))
     parser.add_argument("--version", required=True)
     parser.add_argument("--source", required=True)
     parser.add_argument("--sha", required=True)

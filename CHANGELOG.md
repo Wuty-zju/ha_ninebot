@@ -5,6 +5,7 @@
 - Prepare the first 2.0 release candidate, carrying forward the account-owned schema 7 archive, validated history transfer, incremental synchronization and connection-recovery fixes from the beta series.
 - Expand the English and Chinese installation, history, database and migration guides. Document account removal/reconnection, scoped export/import, capacity management and first-upgrade consolidation.
 - Refresh the architecture diagrams and contributor navigation, including the account archive lifecycle and current lock-confirmation timing.
+- Add an explicit promoted-candidate publication channel: RC versions from main can be published as a regular Release and Latest.
 - Update the full CI boundary to Home Assistant 2026.1.0 and 2026.10.2, verify dependency consistency, retain test/coverage reports and require documentation validation before publication. Refresh legacy test expectations and establish a measured 91% coverage floor.
 
 ### Upgrade notes

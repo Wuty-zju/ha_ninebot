@@ -15,7 +15,7 @@
 
 1. HACS 右上角三点菜单 → **自定义仓库**。
 2. 添加 `https://github.com/Wuty-zju/ha_ninebot`，类型选择 **集成 Integration**。
-3. 打开 **Ninebot**，选择需要的 2.0 预发布版本并下载；必要时在版本选择中开启 beta/prerelease。
+3. 打开 **Ninebot**，选择 **v2.0.0rc1** 并下载。
 4. 按提示重启 HA。文件版本更新不代表运行中的集成已加载新版。
 5. **设置 → 设备与服务 → 添加集成 → Ninebot**。
 

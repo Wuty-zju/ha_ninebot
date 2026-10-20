@@ -88,14 +88,14 @@ Versions use `2.0.0a1`, `2.0.0b1`, `2.0.0rc1` and `2.0.0`; tags and release titl
 
 ### Packaged publication workflow
 
-Run **Publish packaged release** from `main`, providing channel, version, source branch, full candidate SHA and bilingual notes. `publish=false` prepares artifacts for inspection; `publish=true` creates a draft, verifies its assets, then publishes it. The candidate must pass Core lint, Release policy, Documentation, HACS and Hassfest. The maintained workflow reads candidate Git objects and checks the source tip again before publication.
+Run **Publish packaged release** from `main`, providing channel (`preview`, `candidate` or `stable`), version, source branch, full candidate SHA and bilingual notes. `publish=false` prepares artifacts for inspection; `publish=true` creates a draft, verifies its assets, then publishes it. The candidate must pass Core lint, Release policy, Documentation, HACS and Hassfest. The maintained workflow reads candidate Git objects and checks the source tip again before publication.
 
 The archive contains the contents of `custom_components/ninebot` at its root. Verify the downloaded ZIP/checksum against the tagged tree. GitHub downloads count this asset, including updates and repeat downloads. Published tags and package assets remain fixed.
 
 ## Branch and release channels
 
 - `dev`: reviewed development and preview publication.
-- `main`: accepted-cycle promotion, release candidates and stable fixes.
+- `main`: accepted-cycle promotion, recommended release candidates and stable fixes.
 - Short `feat/`, `fix/`, `docs/`, `chore/` or `perf/` branches: one bounded task, PR into `dev`.
 - Temporary `release/<version>`: only when a frozen candidate must coexist with next-cycle development.
 
@@ -104,11 +104,11 @@ Promote long-lived branches with normal merges, then merge `main` back into `dev
 Run the read-only preflight after fetching branches/tags:
 
 ```sh
-python scripts/check_release.py --channel preview --version 2.0.0rc1 \
-  --source dev --sha REPLACE_WITH_REVIEWED_FULL_SHA
+python scripts/check_release.py --channel candidate --version 2.0.0rc1 \
+  --source main --sha REPLACE_WITH_REVIEWED_FULL_SHA
 ```
 
-Preview publication accepts `dev` or the matching release branch; stable publication uses `main`. GitHub reserves **Latest** for full releases. RCs retain `prerelease=true`; README links identify the recommended candidate. See [GitHub release API](https://docs.github.com/en/rest/releases/releases#create-a-release).
+Preview publication accepts `dev` or the matching release branch and sets `prerelease=true`. Stable publication uses an unsuffixed version from `main`. The explicit `candidate` channel accepts only an `rc` version from `main` and publishes it as a regular Release with **Latest**, as selected for v2.0.0rc1. The RC suffix identifies the candidate stage; the GitHub flag controls distribution. See [GitHub release API](https://docs.github.com/en/rest/releases/releases#create-a-release).
 
 Code rollback and persisted-schema recovery are separate operations. Follow the [migration guide](migration.md#archive-schema-and-rollback) with a matching backup.
 

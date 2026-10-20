@@ -16,14 +16,14 @@ Thank you for improving Ninebot for Home Assistant. Start with a focused problem
 ## Branch targets and releases
 
 - **`dev`** integrates reviewed development. Target it for features, development fixes and experimental UI work. Keep unfinished work isolated; do not make experimental cards necessary for core synchronization.
-- **`main`** is the stable release/promotion line. Stable fixes and stable documentation/tooling corrections can target it. Accepted release candidates can be promoted to `main`; their GitHub Releases retain the prerelease flag until stable acceptance.
+- **`main`** is the stable release/promotion line. Stable fixes and stable documentation/tooling corrections can target it. Accepted release candidates can be promoted to `main`; the maintainer selects preview distribution or an explicitly promoted RC Release.
 - Use `feat/…`, `fix/…`, `docs/…`, `chore/…` or `perf/…` for one bounded task. Name the goal, not a beta number. Squash short topics when appropriate and retire them after integration; never reuse a squashed topic for the next task.
 - Promote an accepted development cycle to `main` with a normal merge, then synchronize `main` back into `dev`. Do not squash the long-lived branches. A stable hotfix must not merge unrelated next-cycle development; use a minimal fix or a traced backport.
 - Only create a temporary `release/<version>` when candidate stabilization and next-cycle development truly overlap. Promote the frozen branch, not the advancing `dev`.
 
-Feature PRs do not each require a release. Publish useful preview increments from `dev` (or a frozen release branch); publish accepted stable versions from `main`. Keep old tags/Releases immutable, preserve meaningful IDs/data, and do not delete active branches or worktrees. Branch cleanup needs verified integration and recovery evidence.
+Feature PRs do not each require a release. Publish useful preview increments from `dev` (or a frozen release branch); publish accepted stable versions or promoted RCs from `main`. Keep old tags/Releases immutable, preserve meaningful IDs/data, and do not delete active branches or worktrees. Branch cleanup needs verified integration and recovery evidence.
 
-简体中文：普通开发从dev开短分支并PR回dev；main用于稳定提升/修复，当前2.0仍是预发布。长期分支正常merge，稳定补丁不夹带下一轮功能；按完整成果发预览版，保留旧tag/Release。发布前参考[预检与门槛](docs/development.md#branch-and-release-channels)。
+简体中文：普通开发从dev开短分支并PR回dev；main用于验收提升／修复，推荐RC可经明确选择发布为Release／Latest。长期分支正常merge，稳定补丁不夹带下一轮功能；按完整成果发预览版，保留旧tag/Release。发布前参考[预检与门槛](docs/development.md#branch-and-release-channels)。
 
 ## Documentation and examples
 

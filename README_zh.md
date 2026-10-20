@@ -46,7 +46,7 @@
 
 1. 打开 **HACS → ⋮ → 自定义存储库**。
 2. 添加 `https://github.com/Wuty-zju/ha_ninebot`，类别选择 **Integration**。
-3. 打开 **Ninebot**，选择需要的 **v2.0.0rc1**并下载；必要时在版本选择中开启预发布。
+3. 打开 **Ninebot**，选择 **v2.0.0rc1** 并下载。
 4. 按提示重启 Home Assistant。
 5. 前往 **设置 → 设备与服务 → 添加集成 → Ninebot**。
 

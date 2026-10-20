@@ -18,6 +18,7 @@ class ReleasePolicy(unittest.TestCase):
             ("preview", "2.0.0a1", "dev"),
             ("preview", "2.0.0rc1", "release/2.0.0"),
             ("stable", "2.0.0", "main"),
+            ("candidate", "2.0.0rc1", "main"),
         ):
             with self.subTest(channel=channel, source=source):
                 validate_request(channel, version, source, COMMIT)
@@ -35,6 +36,10 @@ class ReleasePolicy(unittest.TestCase):
             ("preview", "2.0.0b95", "dev;echo unexpected", COMMIT),
             ("preview", "2.0.0b95\n", "dev", COMMIT),
             ("unknown", "2.0.0b95", "dev", COMMIT),
+            ("candidate", "2.0.0b95", "main", COMMIT),
+            ("candidate", "2.0.0a1", "main", COMMIT),
+            ("candidate", "2.0.0", "main", COMMIT),
+            ("candidate", "2.0.0rc1", "dev", COMMIT),
         ):
             with self.subTest(channel=channel, version=version, source=source):
                 with self.assertRaises(ValueError):

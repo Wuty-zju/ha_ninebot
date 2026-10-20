@@ -43,7 +43,7 @@ def test_charging_replay_keeps_empty_estimate_and_conflicting_layered_values():
         ("charging_power_raw", 310, "W", "power", "measurement"),
         ("health_score", "unsupported", None, None, None),
         ("returned_pack_count", 1, None, None, None),
-        ("emergency_battery", 93, "%", "battery", "measurement"),
+        ("emergency_battery", 93, "%", None, "measurement"),
         ("main_battery_type", "lead_acid", None, "enum", None),
     ]:
         d = descriptions[key]

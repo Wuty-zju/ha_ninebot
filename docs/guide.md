@@ -15,7 +15,7 @@ The current 2.0 release candidate is **v2.0.0rc1**. Back up your Home Assistant 
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with type **Integration**.
-3. Open **Ninebot**, choose the desired 2.0 prerelease, and download it. Enable beta/prerelease versions in the version selector if necessary.
+3. Open **Ninebot**, choose **v2.0.0rc1**, and download it.
 4. Restart Home Assistant when prompted. A downloaded file version alone does not mean the running integration has loaded it.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
