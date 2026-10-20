@@ -54,6 +54,7 @@ from .parsing import integer
 from .preservation import CONF_PRESERVE, HistoryPreservation
 from .query_broker import Priority, QueryBroker, QueryKey, QueryReceipt
 from .raw import Endpoint, RawLimitError, RawRecord, RawStore, build_record
+from .realtime import RealtimePolling
 from .ride_archive import ArchiveError
 from .ride_lifecycle import RideLifecycle
 from .travel_observation import MonthObservation
@@ -141,6 +142,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._normalizations: dict[QueryKey, asyncio.Task[Any]] = {}
         self._shared_waiters: dict[asyncio.Task[Any], int] = {}
         self._list_freshness = Freshness()
+        self._discovery: dict[QueryKey, asyncio.Task[None]] = {}
+        self._suspect: set[str] = set()
+        self.status_intervals: dict[str, float] = {}
+        self.status_deadline_misses: dict[str, int] = {}
+        self._last_status_started: dict[str, datetime] = {}
+        self.realtime = RealtimePolling(self)
         self._next_attempt: dict[tuple[str, str], float] = {}
         self._retry_after_until: dict[tuple[str, str], float] = {}
         self._failures: dict[tuple[str, str], int] = {}
@@ -158,6 +165,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     def _invalidate_auth(self) -> None:
         self._authenticated = False
+        self.realtime.stop()
         self._generation += 1
         self._clear_seat_feedback()
 
@@ -349,6 +357,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
     @callback
     def _async_refresh_finished(self) -> None:
         self._schedule_validity_check()
+        self.realtime.schedule()
 
     def fresh(self, sn: str, group: str) -> bool:
         snapshot = self.data.get(sn)
@@ -415,14 +424,26 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         failures = 0 if success else self._failures.get(key, 0) + 1
         self._failures[key] = failures
         # Keep retries bounded and never stack catch-up cycles.
-        delay = interval if success else min(interval, 30 * 2 ** min(failures - 1, 6))
+        delay = (
+            interval
+            if success
+            else min(
+                60 if group in {"profile", "status"} else interval,
+                (10 if group == "profile" else 5 if group == "status" else 30)
+                * 2 ** min(failures - 1, 6),
+            )
+        )
         if not success:
-            delay = min(interval, delay * random.uniform(0.8, 1.2))
+            delay *= random.uniform(0.8, 1.2)
         if success:
             self._retry_after_until.pop(key, None)
         self._next_attempt[key] = max(self._retry_after_until.get(key, 0), stamp + delay)
 
     async def _list(self, now: datetime) -> None:
+        key = self._key("", Endpoint.VEHICLES)
+        await self._shared(self._discovery, key, lambda: self._list_update(now))
+
+    async def _list_update(self, now: datetime) -> None:
         stamp = now.timestamp()
         if not self._due("", "profile", stamp):
             return
@@ -445,6 +466,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 and err.request_revision < self._committed.get(("", "profile"), 0)
             ):
                 return
+            degraded_before = self._list_freshness.error is not None
+            self._suspect = {sn for sn, value in self.data.items() if value.present}
             self._list_freshness = replace(self._list_freshness, attempted_at=now, error=err.kind)
             self.data = {
                 sn: replace(
@@ -459,33 +482,34 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 self._retry_after_until[("", "profile")] = (
                     dt_util.utcnow().timestamp() + err.retry_after
                 )
-            self._attempt_finished("", "profile", stamp, VEHICLE_INTERVAL, False)
+            self._attempt_finished(
+                "", "profile", dt_util.utcnow().timestamp(), VEHICLE_INTERVAL, False
+            )
+            if not degraded_before and self.data:
+                LOGGER.warning(
+                    "Vehicle discovery failed (%s); retaining known data and retrying",
+                    err.kind.value,
+                )
             if self._list_freshness.succeeded_at is None:
                 raise UpdateFailed(err.kind.value, retry_after=err.retry_after) from err
             return
         sns = {profile.sn for profile in found}
+        # Silence on stderr is not proof that all upstream business lists
+        # succeeded. Absence alone cannot revoke a previously verified owner.
+        missing = {sn for sn, value in self.data.items() if value.present and sn not in sns}
+        complete = result.vehicles_complete and not missing
+        degraded_before = self._list_freshness.error is not None
+        self._suspect = missing
         retained = dict(self.data)
         for sn, snapshot in self.data.items():
             if sn in sns:
                 continue
-            if result.vehicles_complete:
-                if not snapshot.present:
-                    continue
-                self._ownership[sn] = self._ownership.get(sn, 0) + 1
-                self._clear_seat_feedback(sn)
-                self.raw.discard_vehicle(sn)
-                for cache_key in tuple(self._normalized):
-                    if cache_key[1] == sn:
-                        self._normalized.pop(cache_key)
-                self.ride_lifecycles.pop(sn, None)
-                retained[sn] = replace(snapshot, present=False)
-            else:
-                retained[sn] = replace(
-                    snapshot,
-                    profile_freshness=replace(
-                        snapshot.profile_freshness, attempted_at=now, error=ErrorKind.SERVICE
-                    ),
-                )
+            retained[sn] = replace(
+                snapshot,
+                profile_freshness=replace(
+                    snapshot.profile_freshness, attempted_at=now, error=ErrorKind.SERVICE
+                ),
+            )
         self.data = retained
         observed = Freshness(result.started_at or now, result.received_at)
         for profile in found:
@@ -505,14 +529,16 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 self.raw.discard_vehicle(profile.sn)
         finished = result.received_at
         self._list_freshness = Freshness(
-            now, finished, None if result.vehicles_complete else ErrorKind.SERVICE
+            now,
+            finished if complete else self._list_freshness.succeeded_at,
+            None if complete else ErrorKind.SERVICE,
         )
         self._authenticated = True
         self._committed[("", "profile")] = result.request_revision
         await self.statistics.async_record_profiles(
             tuple(found),
             finished,
-            result.vehicles_complete,
+            complete,
             lambda: (
                 self._current_read(key, result.request_revision)
                 and self._committed.get(("", "profile")) == result.request_revision
@@ -521,7 +547,13 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         if self._current_read(key, result.request_revision) and (
             self._committed.get(("", "profile")) == result.request_revision
         ):
-            self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, True)
+            self._attempt_finished("", "profile", finished.timestamp(), VEHICLE_INTERVAL, complete)
+            if not complete and not degraded_before:
+                LOGGER.warning(
+                    "Vehicle discovery is incomplete; retaining known vehicles and retrying"
+                )
+            elif complete and degraded_before:
+                LOGGER.info("Vehicle discovery recovered")
             await self.preservation.async_refresh_progress(tuple(self.data), finished)
 
     async def _group(
@@ -571,9 +603,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return
         if not self._owns(key):
             return
+        if not self.status_pollable(sn):
+            return
         snapshot = self.data[sn]
         success = False
         cached_success: datetime | None = None
+        status_started = now
         request_revision = 0
         try:
             if group == "status":
@@ -589,6 +624,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 )
                 request_revision = result.request_revision
                 # Validate explicit identity before retaining any new raw data.
+                status_started = result.started_at or now
                 status = await self.hass.async_add_executor_job(
                     partial(adapters.status, result.payload, expected_sn=sn)
                 )
@@ -774,6 +810,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 return
             previous_seat_locked = self.lock_state(sn, "seat_lock")
             if group == "status":
+                previous_start = self._last_status_started.get(sn)
+                if previous_start and status_started >= previous_start:
+                    interval = (status_started - previous_start).total_seconds()
+                    self.status_intervals[sn] = interval
+                    if interval > self.interval * 1.5:
+                        self.status_deadline_misses[sn] = self.status_deadline_misses.get(sn, 0) + 1
+                self._last_status_started[sn] = status_started
+                if current.status_freshness.error is not None:
+                    LOGGER.info("Status query recovered")
                 self.data[sn] = replace(
                     current, status=updated.status, status_freshness=updated.status_freshness
                 )
@@ -814,6 +859,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     dt_util.utcnow().timestamp() + err.retry_after,
                 )
             if group == "status":
+                if snapshot.status_freshness.error is None:
+                    LOGGER.warning("Status query failed (%s); retrying", err.kind.value)
                 failed = replace(snapshot.status_freshness, attempted_at=now, error=err.kind)
                 self.data[sn] = replace(snapshot, status_freshness=failed)
             elif group == "battery":
@@ -825,10 +872,21 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._attempt_finished(
             sn,
             group,
-            (cached_success if success and cached_success else dt_util.utcnow()).timestamp(),
+            (
+                status_started
+                if success and group == "status"
+                else cached_success
+                if success and cached_success
+                else dt_util.utcnow()
+            ).timestamp(),
             self.interval if group == "status" else DETAIL_INTERVAL,
             success,
         )
+        if group == "status":
+            # Publish each committed receipt even while another vehicle or
+            # background group is still awaiting its response.
+            self.async_update_listeners()
+            self.realtime.schedule()
 
     def _retained_month_source(self, record: RawRecord | None) -> RawRecord | None:
         # Persisting unknown month fields may retain location data. Use the
@@ -1129,7 +1187,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             now=dt_util.utcnow(),
         )
 
-    def discovery_diagnostics(self) -> dict[str, str | bool | None]:
+    def discovery_diagnostics(self) -> dict[str, str | bool | int | float | None]:
         """Batch quality is separate from each positively observed identity."""
         freshness = self._list_freshness
         return {
@@ -1137,7 +1195,33 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             "attempted_at": freshness.attempted_at.isoformat() if freshness.attempted_at else None,
             "succeeded_at": freshness.succeeded_at.isoformat() if freshness.succeeded_at else None,
             "error": freshness.error.value if freshness.error else None,
+            "suspect_count": len(self._suspect),
+            "retry_in_seconds": max(
+                0, self._next_attempt.get(("", "profile"), 0) - dt_util.utcnow().timestamp()
+            ),
         }
+
+    def status_pollable(self, sn: str) -> bool:
+        snapshot = self.data.get(sn)
+        return bool(
+            snapshot
+            and snapshot.present
+            and self._authenticated
+            and not self._stopping
+            and (sn not in self._suspect or self.fresh(sn, "profile"))
+        )
+
+    def background_ready(self) -> bool:
+        return not self.broker.cooling_down and self._list_freshness.error is None
+
+    async def async_poll_status(self) -> None:
+        sns = [
+            sn
+            for sn in self.data
+            if self.status_pollable(sn) and "status" in self.demand(sn).groups
+        ]
+        for start in range(0, len(sns), 8):
+            await asyncio.gather(*(self._group(sn, "status") for sn in sns[start : start + 8]))
 
     async def _async_update_data(self) -> dict[str, VehicleSnapshot]:
         task = asyncio.current_task()
@@ -1146,6 +1230,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         try:
             if self._stopping:
                 return self.data
+            if self.data:
+                await self.async_poll_status()
             await self._list(dt_util.utcnow())
             sns = [sn for sn, value in self.data.items() if value.present]
             demands = {sn: self.demand(sn) for sn in sns}
@@ -1158,6 +1244,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     *(self._group(sn, "status") for sn in window if "status" in demands[sn].groups)
                 )
                 for group in ("battery", "travel"):
+                    if self.broker.cooling_down:
+                        break
                     await asyncio.gather(
                         *(
                             self._group(
@@ -1167,11 +1255,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                                 include_previous_month=demands[sn].previous_month,
                             )
                             for sn in window
-                            if group in demands[sn].groups
+                            if group in demands[sn].groups and sn not in self._suspect
                         )
                     )
             try:
-                await self.daily_sync.async_step(dt_util.utcnow())
+                if self.background_ready():
+                    await self.daily_sync.async_step(dt_util.utcnow())
             except ArchiveError as err:
                 self.statistics.record_error(err)
             return dict(self.data)
@@ -1638,6 +1727,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     async def async_close(self) -> None:
         self._stopping = True
+        self.realtime.stop()
         self._generation += 1
         self._clear_seat_feedback()
         if self._validity_cancel:

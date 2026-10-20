@@ -159,6 +159,9 @@ class HistoryPreservation:
 
     async def _step(self, now: datetime) -> None:
         co, archive = self.co, self.co.statistics.archive
+        if not co.background_ready():
+            self.status = "waiting"
+            return
         if not co.statistics.writable:
             self.status = "storage_paused"
             return

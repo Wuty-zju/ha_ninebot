@@ -115,3 +115,8 @@ Optional map tiles contact an external provider only when enabled; see [map priv
 Removing an account closes its work and removes only its recognized archive/journal files; unusual files/recovery copies may be retained with a Repair rather than broadly deleted. Keep a complete backup before removal. Do not edit `.storage`, entity registries or a running archive manually. For upgrades/downgrades, follow the [migration guide](migration.md).
 
 Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
+
+
+## Connection interruptions
+
+Temporary cloud or vehicle-discovery failures retain verified same-period trip statistics and saved history. Live readings keep their actual response age and become unavailable when stale. Recovery retries automatically; you do not need to remove/re-add the account. Controls for a vehicle missing from discovery remain blocked until it is verified again. Download integration diagnostics to inspect discovery retries, transport cooldown and actual status intervals. Configured polling intervals are targets; cloud outages and rate limits can delay new readings.

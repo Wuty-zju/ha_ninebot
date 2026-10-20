@@ -92,3 +92,16 @@ Repairs cover actionable identity/migration/storage/schema conditions. A tempora
 The backend abstraction permits future protocol replacement, but no production NativeBackend migration is promised by this documentation change. Source evidence and public contracts matter more than copying another application's heuristics.
 
 简体中文摘要：实时状态、历史采集、私有归档和 HA 展示分层；账号、权限、预算与生命周期隔离。原件、派生值、覆盖和完整性各自有证据范围；不猜单位/坐标，不为演示改业务。依赖精确固定并保留许可/源码可用性限制，地图底图为用户显式外部请求。
+
+
+## Connection recovery and retained availability
+
+An empty or smaller vehicle list is uncertain discovery, not conclusive proof that a known vehicle was unbound. Keep the last verified native routing entries and account-local archive; missing vehicles retain their original profile receipt and controls remain blocked until positively verified again. Previously verified read-only status polling is bounded by the existing profile validity window. Repeated omissions do not renew that window or prove revocation. Authentication invalidation and explicit lifecycle/ownership fences remain authoritative.
+
+Discovery errors use short, bounded backoff instead of the normal one-hour discovery interval. A single demand-driven timer refreshes due status and degraded discovery independently of the normal battery/travel round. It shares existing in-flight work, the account transaction lock and the global broker: no second service, credential owner or unlimited parallel requests. Successful status commits notify entities immediately. Polls use request-start-based targets; missed periods are coalesced rather than replayed.
+
+The broker reserves admission for real-time reads, honors Retry-After and bounds connection-recovery cooldown. Background history pauses during incomplete discovery or shared transport cooldown; recovery resumes from existing checkpoints. Active native authentication/cache writes are never preempted to meet a polling deadline. Local process recovery and bounded GET retries remain in the authenticated loopback client; control POSTs are never replayed.
+
+Diagnostics include uncertain-discovery counts, next retry, configured status interval, observed request intervals, missed deadlines and response age. Receipt time is not a verified vehicle report timestamp. A configured interval is a scheduling target, not a cloud availability guarantee: upstream outage, rate limits, fleet size and an already active slow request can delay fresh responses. Same-period verified history remains usable; expired instantaneous lock, location or battery readings do not become fresh through cache restoration.
+
+简体中文：空／缺车发现进入待复核，保留路由和本地历史，不刷新缺失车辆的归属有效期；控制待再次核验。独立有界状态定时器共享现有Broker与认证锁，成功立即更新；历史任务在发现／连接异常时让路并按断点恢复。服务端限流与在途事务仍受保护，轮询周期是目标而非云端成功保证；诊断显示实际间隔、响应年龄与下次重试。

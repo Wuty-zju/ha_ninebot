@@ -154,6 +154,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
                 tuple(coordinator.data), dt_util.utcnow()
             )
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        coordinator.realtime.start()
         coordinator.preservation.start()
         coordinator.async_schedule_statistics_refresh()
     except BaseException:
