@@ -86,6 +86,13 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
         value = self.coordinator.preservation.progress.get(self.sn)
         if value is None:
             return None
+        if (
+            self.key == "history_sync_state"
+            and self.sn in self.coordinator._suspect
+            and value.state
+            not in {"disabled", "paused", "needs_login", "storage_full", "storage_error"}
+        ):
+            return "waiting_connection"
         values: dict[str, str | int | datetime | None] = {
             "history_sync_state": value.state,
             "history_scan_progress": value.scan_percent,

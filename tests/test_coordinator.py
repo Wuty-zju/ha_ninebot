@@ -1091,13 +1091,13 @@ async def test_freshness_measures_actual_request_completion_and_retry_is_bounded
     freshness = co.data["synthetic-one"].status_freshness
     assert freshness.attempted_at == start
     assert freshness.succeeded_at == start + timedelta(seconds=20)
-    assert co._next_attempt[("synthetic-one", "status")] == start.timestamp() + 20 + co.interval
+    assert co._next_attempt[("synthetic-one", "status")] == start.timestamp() + co.interval
     co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
     delay = co._next_attempt[("synthetic-one", "status")] - start.timestamp()
-    assert 24 <= delay <= 36
+    assert 4 <= delay <= 6
     for _ in range(20):
         co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
-    assert co._next_attempt[("synthetic-one", "status")] <= start.timestamp() + 120
+    assert co._next_attempt[("synthetic-one", "status")] <= start.timestamp() + 60
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
@@ -1179,7 +1179,9 @@ async def test_new_vehicle_and_failed_battery_discovery_do_not_need_existing_ent
         await co._async_update_data()
         assert all(value.battery_freshness.succeeded_at is not None for value in co.data.values())
         co.client.async_get_status.assert_not_awaited()
-        co.client.async_get_travel.assert_not_awaited()
+        # Initial list bootstrap was deferred during the shared cooldown.
+        assert co.client.async_get_travel.await_count == 4
+        co.client.async_get_travel.reset_mock()
         co.client.async_get_battery.reset_mock()
         freezer.move_to(now + timedelta(seconds=601))
         await co._async_update_data()

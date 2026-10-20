@@ -124,6 +124,7 @@ async def test_worker_uses_background_budget_and_persists_full_detail(tmp_path):
             local_vehicle_available=lambda sn: sn == SN,
             fresh=lambda sn, group: True,
             _authenticated=True,
+            background_ready=lambda: True,
             statistics=SimpleNamespace(
                 archive=archive,
                 writable=True,
@@ -413,6 +414,7 @@ async def test_detail_uses_current_clock_after_seed_and_publishes_active_phase(
             local_vehicle_available=lambda sn: sn == SN,
             fresh=lambda sn, group: True,
             _authenticated=True,
+            background_ready=lambda: True,
             statistics=SimpleNamespace(
                 archive=archive,
                 writable=True,
@@ -679,6 +681,7 @@ async def test_detail_and_month_vehicle_rotations_do_not_phase_lock_after_restar
         _ownership={"A": 1, "B": 1},
         data={"A": object(), "B": object()},
         _authenticated=True,
+        background_ready=lambda: True,
         local_vehicle_available=lambda sn: sn in {"A", "B"},
         fresh=lambda sn, group: True,
         raw=RawStore(),

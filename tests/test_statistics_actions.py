@@ -42,6 +42,7 @@ async def statistics_device(hass, entry, app_client, freezer):
     with patch("custom_components.ninebot.coordinator.NinebotCoordinator._schedule_refresh"):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
+        entry.runtime_data.coordinator.realtime.stop()
         yield next(
             device.id
             for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)

@@ -189,6 +189,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     self._authenticated
                     and key.vehicle in self.data
                     and self.data[key.vehicle].present
+                    and (key.vehicle not in self._suspect or key.endpoint == Endpoint.STATUS.value)
                 )
             )
         )
