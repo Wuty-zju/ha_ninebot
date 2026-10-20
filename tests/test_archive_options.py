@@ -1,8 +1,10 @@
 """Actual HA options/upload/download API; synthetic archives, no cloud or browser."""
 
+import hashlib
 import io
 import json
 import re
+import sqlite3
 import zipfile
 from unittest.mock import patch
 
@@ -15,8 +17,9 @@ from custom_components.ninebot.archive_options import DOWNLOADS
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
+@pytest.mark.parametrize("legacy_upload", [False, True])
 async def test_native_export_download_upload_and_confirm(
-    hass, entry, app_client, hass_client, hass_client_no_auth
+    hass, entry, app_client, hass_client, hass_client_no_auth, tmp_path, legacy_upload
 ):
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -62,6 +65,28 @@ async def test_native_export_download_upload_and_confirm(
         assert manifest["accounts"][0]["vehicles"]
     response = await browser.get(download.split("?", 1)[0])
     assert response.status == 401
+    if legacy_upload:
+        with zipfile.ZipFile(io.BytesIO(package)) as bundle:
+            members = {name: bundle.read(name) for name in bundle.namelist()}
+        manifest = json.loads(members["manifest.json"])
+        record = manifest["accounts"][0]
+        database = tmp_path / "schema6.sqlite3"
+        database.write_bytes(members[record["file"]])
+        with sqlite3.connect(database) as db:
+            db.execute("DROP TABLE archive_evidence")
+            db.execute("PRAGMA user_version=6")
+        members[record["file"]] = database.read_bytes()
+        record.update(
+            sha256=hashlib.sha256(database.read_bytes()).hexdigest(),
+            bytes=database.stat().st_size,
+            schema=6,
+        )
+        members["manifest.json"] = json.dumps(manifest).encode()
+        rebuilt = io.BytesIO()
+        with zipfile.ZipFile(rebuilt, "w") as bundle:
+            for name, value in members.items():
+                bundle.writestr(name, value)
+        package = rebuilt.getvalue()
     await client.post(url, json={})
     await hass.async_block_till_done()
     response = await client.post(
