@@ -372,3 +372,22 @@ async def test_close_while_waiting_global_gate_reclaims_worker():
         (await asyncio.gather(task, return_exceptions=True))[0], asyncio.CancelledError
     )
     assert broker._worker.done() and not broker._flights
+
+
+async def test_background_backlog_leaves_status_admission_reserved(broker):
+    release = asyncio.Event()
+
+    async def hold():
+        await release.wait()
+
+    tasks = [
+        asyncio.create_task(broker.async_read(key(str(i)), hold, lambda: True, Priority.BACKGROUND))
+        for i in range(10)
+    ]
+    await until(lambda: broker.diagnostics()["pending"] == 10)
+    with pytest.raises(NinebotError):
+        await broker.async_read(key("extra-bg"), hold, lambda: True, Priority.BACKGROUND)
+    status = asyncio.create_task(broker.async_read(key("due"), hold, lambda: True, Priority.STATUS))
+    await until(lambda: broker.diagnostics()["pending"] == 11)
+    release.set()
+    await asyncio.gather(*tasks, status)

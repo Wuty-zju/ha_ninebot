@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0b104
+
+- Preserve known vehicles, native routing and local trip history when cloud discovery returns an empty or incomplete list; retry discovery promptly without renewing uncertain ownership.
+- Refresh demanded vehicle status independently of slow history rounds, publish successful readings immediately and reserve queue capacity for real-time queries.
+- Use bounded recovery backoff, respect server cooldowns and reduce background acquisition during discovery/connection failures. Expose retry timing and status freshness in sanitized diagnostics.
+- Retain entity identities, existing options, precise dependency pins and command confirmation behavior.
+
 ## 2.0.0b103
 
 - Refresh demanded trip data at the business-day boundary and after entity setup, retaining request coalescing, account budgets and failure backoff.

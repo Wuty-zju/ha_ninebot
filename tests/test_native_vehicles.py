@@ -266,16 +266,24 @@ async def test_failed_discovery_restores_cache_not_tokens(tmp_path, native, mode
         await client.async_close()
 
 
-async def test_clean_empty_account_is_complete_and_keeps_native_removal(tmp_path, native):
+@pytest.mark.parametrize("known", [False, True])
+async def test_clean_empty_discovery_does_not_erase_known_routes(tmp_path, native, known):
     install, _, _, _ = native
-    (tmp_path / "vehicles.json").write_text('{"vehicles":[{"wnumber":"synthetic-old"}]}')
+    old = b'{"vehicles":[{"wnumber":"synthetic-old","business_line":"ebike"}]}'
+    if known:
+        (tmp_path / "vehicles.json").write_bytes(old)
     install(
         f"from pathlib import Path;"
         f"Path({str(tmp_path / 'vehicles.json')!r}).write_text('{{\"vehicles\":null}}');print('[]')"
     )
     async with aiohttp.ClientSession() as session:
         client = NinecliClient(tmp_path, session)
-        assert await client.async_list_vehicles() == []
-        assert client.vehicle_discovery_complete is True
-        assert json.loads((tmp_path / "vehicles.json").read_text())["vehicles"] is None
+        if known:
+            with pytest.raises(NinebotError):
+                await client.async_list_vehicles()
+            assert not client.vehicle_discovery_complete
+            assert (tmp_path / "vehicles.json").read_bytes() == old
+        else:
+            assert await client.async_list_vehicles() == []
+            assert client.vehicle_discovery_complete
         await client.async_close()

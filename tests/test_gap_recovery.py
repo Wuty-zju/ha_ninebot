@@ -110,6 +110,7 @@ async def context(hass, tmp_path, monkeypatch):
         _ownership={SN: 1},
         data={SN: object()},
         _authenticated=True,
+        background_ready=lambda: True,
         local_vehicle_available=lambda sn: sn in co.data,
         fresh=lambda *a: True,
         raw=RawStore(),

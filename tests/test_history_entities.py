@@ -80,7 +80,7 @@ async def test_history_buttons_pause_resume_and_sync_without_physical_controls(
     app_client.async_control.assert_not_awaited()
 
 
-async def test_missing_account_vehicle_is_explicit_and_original_history_resumes(
+async def test_uncertain_discovery_keeps_local_history_and_recovery_resumes(
     hass, entry, app_client
 ):
     from datetime import timedelta
@@ -110,21 +110,18 @@ async def test_missing_account_vehicle_is_explicit_and_original_history_resumes(
     co._next_attempt[("", "profile")] = 0
     await co.async_refresh()
     await hass.async_block_till_done()
-    assert not co.local_vehicle_available(SN)
-    assert co._ownership[SN] > original_ownership
+    assert co.local_vehicle_available(SN)
+    assert co._ownership.get(SN, 0) == original_ownership
     state = hass.states.get(status_id)
-    assert state.state == "vehicle_not_present"
-    assert state.attributes["vehicle_present"] is False
-    assert state.attributes["vehicle_list_complete"] is True
-    assert state.attributes["vehicle_list_last_success"] is not None
-    assert "saved_details" not in state.attributes and "discovered_rides" not in state.attributes
+    assert state.state == "waiting_connection"
+    assert co.discovery_diagnostics()["complete"] is False
     for key in HISTORY_SENSORS[1:]:
         identity = registry.async_get_entity_id("sensor", "ninebot", f"{SN}_{key}")
-        assert hass.states.get(identity).state == "unavailable"
+        assert hass.states.get(identity).state != "unavailable"
     with pytest.raises(NinebotError) as err:
         await co.async_query_history_page(SN, "202608", 1)
     assert err.value.kind is ErrorKind.CLOSED
-    assert not await co.preservation.bootstrap.async_step((SN,), now, 60)
+    await co.preservation.async_tick(now)
     assert await co.statistics.archive.async_history_plan(SN) == baseline
     app_client.async_control.assert_not_awaited()
 
