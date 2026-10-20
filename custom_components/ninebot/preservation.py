@@ -166,7 +166,9 @@ class HistoryPreservation:
             self.status = "storage_paused"
             return
         vehicles, turn = await archive.async_preservation_order(
-            tuple(sn for sn in co.data if co.local_vehicle_available(sn))
+            tuple(
+                sn for sn in co.data if co.local_vehicle_available(sn) and co.background_ready(sn)
+            )
         )
         if not vehicles:
             return

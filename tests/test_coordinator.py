@@ -139,6 +139,9 @@ async def test_partial_discovery_is_positive_evidence_not_vehicle_removal(coordi
     assert co.controls_enabled("synthetic-one", "bell")
     assert not co.controls_enabled("synthetic-two", "bell")
     assert "profile_query_failed" in co.control_decision("synthetic-two", "bell").blockers
+    assert co.background_ready()
+    assert co.background_ready("synthetic-one")
+    assert not co.background_ready("synthetic-two")
     with patch(
         "custom_components.ninebot.coordinator.dt_util.utcnow",
         return_value=old + timedelta(hours=4),

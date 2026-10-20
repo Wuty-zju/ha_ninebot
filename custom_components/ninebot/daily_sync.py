@@ -58,7 +58,11 @@ class DailyStatisticsSync:
         current = local.strftime("%Y%m")
         months = (current, previous_month(current)) if local.day <= 2 else (current,)
         vehicles = sorted(
-            sn for sn in co.data if co.local_vehicle_available(sn) and co.demand(sn).previous_month
+            sn
+            for sn in co.data
+            if co.local_vehicle_available(sn)
+            and co.background_ready(sn)
+            and co.demand(sn).previous_month
         )
         self.cursors = {
             key: value
