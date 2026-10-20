@@ -1,6 +1,6 @@
 # ha_ninebot product constraints
 
-Check actual Git state and user changes before editing. Start with README/docs/README and the task-to-source/test table in docs/development.md; follow CONTRIBUTING.md for delivery. Read only relevant contracts and fixture metadata, not the entire release history. Private handbooks/captures/workspace tools stay outside this repository; no local paths are required for standalone contributions.
+Check actual Git state and user changes before editing. Start with README/docs/README and the task-to-source/test table in docs/development.md; follow CONTRIBUTING.md for delivery. Read only relevant contracts and fixture metadata, not the entire release history. Use docs/releases/2.0.md for the beta-to-RC design timeline; current topic guides remain the behavior contract. Private handbooks/captures/workspace tools stay outside this repository; no local paths are required for standalone contributions.
 
 ## Product constraints
 

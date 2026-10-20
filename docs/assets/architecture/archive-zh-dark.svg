@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="703" viewBox="0 0 960 703" role="img" aria-labelledby="title desc" xml:lang="zh-Hans">
+<title id="title">一个账号，一份长期档案</title>
+<desc id="desc">稳定账号身份 · 校验整合 · 可迁移快照</desc>
+<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
+<rect width="960" height="703" rx="16" fill="#0d1117"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">一个账号，一份长期档案</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">稳定账号身份 · 校验整合 · 可迁移快照</text>
+<rect x="40" y="112" width="428" height="137" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / A</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">认证账号</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">稳定身份与多辆车辆</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">重新添加同账号后接回档案</text>
+<rect x="492" y="112" width="428" height="137" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="516" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / B</text>
+<text x="516" y="166" font-size="21" font-weight="650" fill="#e6edf3">旧库或导入来源</text>
+<text x="516" y="197" font-size="17" font-weight="400" fill="#aebdce">归属、结构、摘要与引用校验</text>
+<text x="516" y="222" font-size="17" font-weight="400" fill="#aebdce">校验合并成功后清理副本</text>
+<path d="M254 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M706 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="297" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02</text>
+<text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">私有账号 SQLite 数据库</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">行程、详情、较好轨迹、来源证据与断点</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">串行执行器、事务、容量限制与本地校验</text>
+<path d="M480 434 V453 H254 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 466 L254 472 L258 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M480 434 V453 H706 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 466 L706 472 L710 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="482" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / A</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">移除与接回</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">默认保留历史</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">取消保留后清理受管历史</text>
+<rect x="492" y="482" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="516" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / B</text>
+<text x="516" y="536" font-size="21" font-weight="650" fill="#e6edf3">导出与合并</text>
+<text x="516" y="567" font-size="17" font-weight="400" fill="#aebdce">选择账号与车辆</text>
+<text x="516" y="592" font-size="17" font-weight="400" fill="#aebdce">版本化 ZIP 与 SHA256 清单</text>
+<text x="40" y="660" font-size="16" font-weight="400" fill="#aebdce">已保存记录无按时间过期。账号档案、登录会话与 Recorder 分别管理。</text>
+</svg>

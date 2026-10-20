@@ -1,454 +1,439 @@
-"""Render the bilingual README architecture diagrams with the standard library.
+"""Generate accessible bilingual architecture SVGs in explicit light/dark palettes.
 
-The SVGs are documentation, not runtime resources or dashboard screenshots.
-Run with --check in documentation CI to detect stale generated diagrams.
+Edit the diagram content here. --check is deterministic and needs only stdlib.
+README uses GitHub picture/source selection rather than CSS inside the SVG.
 """
 
 import argparse
+import re
+import unicodedata
 from html import escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs/assets/architecture"
+PALETTES = {
+    "light": {
+        "page": "#ffffff",
+        "text": "#182536",
+        "muted": "#475569",
+        "border": "#cbd5e1",
+        "line": "#64748b",
+        "blue": "#edf5ff",
+        "green": "#edf9f4",
+        "purple": "#f5f1fc",
+        "accent": "#245da8",
+    },
+    "dark": {
+        "page": "#0d1117",
+        "text": "#e6edf3",
+        "muted": "#aebdce",
+        "border": "#475569",
+        "line": "#94a3b8",
+        "blue": "#15263b",
+        "green": "#142d28",
+        "purple": "#28203a",
+        "accent": "#91bfff",
+    },
+}
 
 
-class Diagram:
-    def __init__(self, title: str, description: str, height: int, language: str) -> None:
-        self.parts = [
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="880" height="{height}" '
-            f'viewBox="0 0 880 {height}" role="img" aria-labelledby="title desc" '
-            f'xml:lang="{language}">',
-            f'<title id="title">{escape(title)}</title>',
-            f'<desc id="desc">{escape(description)}</desc>',
-            """<defs>
-  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse">
-    <path d="M0 0 L8 4 L0 8 Z" fill="#64748b"/>
-  </marker>
-</defs>
-<style>
-  text {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans',
-    'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #172b4d}
-  .title {font-size: 27px; font-weight: 700}
-  .label {font-size: 21px; font-weight: 650}
-  .body {font-size: 17px; fill: #475569}
-  .foot {font-size: 16px; fill: #475569}
-  .page {fill: #f8fafc; stroke: #dbe4ef}
-  .card {fill: #fff; stroke: #cbd5e1; stroke-width: 1.5}
-  .blue {fill: #eff6ff; stroke: #93c5fd}
-  .green {fill: #f0fdfa; stroke: #5eead4}
-  .purple {fill: #faf5ff; stroke: #d8b4fe}
-  .line {fill: none; stroke: #64748b; stroke-width: 2; marker-end: url(#arrow)}
-</style>""",
-            f'<rect class="page" x="1" y="1" width="878" height="{height - 2}" rx="20"/>',
-        ]
-        self.text(36, 48, title, "title")
-
-    def text(self, x: int, y: int, value: str, kind: str = "body") -> None:
-        self.parts.append(f'<text class="{kind}" x="{x}" y="{y}">{escape(value)}</text>')
-
-    def box(
-        self,
-        x: int,
-        y: int,
-        width: int,
-        title: str,
-        *lines: str,
-        height: int = 105,
-        color: str = "card",
-    ) -> None:
-        self.parts.append(
-            f'<rect class="card {color}" x="{x}" y="{y}" '
-            f'width="{width}" height="{height}" rx="12"/>'
+def text_width(value: str, size: int) -> float:
+    """Conservative layout estimate; final SVGs also receive a rendered review."""
+    return sum(
+        size
+        * (
+            1
+            if unicodedata.east_asian_width(c) in {"W", "F"}
+            else 0.32
+            if c.isspace()
+            else 0.72
+            if c.isupper()
+            else 0.60
         )
-        self.text(x + 20, y + 32, title, "label")
-        for index, line in enumerate(lines):
-            self.text(x + 20, y + 60 + index * 24, line)
-
-    def line(self, path: str, *, both: bool = False) -> None:
-        start = ' marker-start="url(#arrow)"' if both else ""
-        self.parts.append(f'<path class="line" d="{path}"{start}/>')
-
-    def render(self) -> str:
-        return "\n".join([*self.parts, "</svg>", ""])
+        for c in value
+    )
 
 
-def overview(zh: bool) -> str:
-    d = Diagram(
-        "实时更新与历史采集" if zh else "Live updates and historical acquisition",
-        "逐账号隔离，实时和历史分别调度，共享请求协调。"
-        if zh
-        else "Account-isolated sessions share bounded scheduling across live and historical work.",
-        700,
-        "zh-Hans" if zh else "en",
-    )
-    d.box(
-        40,
-        85,
-        800,
-        "01  九号云服务" if zh else "01  Ninebot cloud",
-        "车辆 · 状态 · 电池 · 行程列表与详情"
-        if zh
-        else "Vehicles · status · battery · ride lists and details",
-        height=85,
-        color="blue",
-    )
-    d.line("M 440 170 V 205", both=True)
-    d.box(
-        40,
-        215,
-        800,
-        "02  账号与请求协调" if zh else "02  Account and request coordination",
-        "独立会话与授权 · 合并相同在途请求 · 有界并发与退避"
-        if zh
-        else "Isolated sessions · shared reads · bounded concurrency and backoff",
-        height=85,
-        color="blue",
-    )
-    d.line("M 240 300 V 335")
-    d.line("M 640 300 V 335")
-    d.box(
-        40,
-        345,
-        380,
-        "03A  实时更新" if zh else "03A  Realtime updates",
-        "逐车、逐数据组刷新" if zh else "Per-vehicle and per-group scheduling",
-        "需求 · 响应年龄 · 部分失败恢复" if zh else "Demand · response age · partial recovery",
-        color="blue",
-    )
-    d.box(
-        460,
-        345,
-        380,
-        "03B  历史采集" if zh else "03B  History acquisition",
-        "月份与分页 · 缺失详情 · 增量" if zh else "Month pages · missing details · updates",
-        "账号预算 · 断点 · 校验" if zh else "Account budget · checkpoints · validation",
-        color="green",
-    )
-    d.line("M 230 450 V 485")
-    d.line("M 650 450 V 485")
-    d.box(
-        40,
-        495,
-        380,
-        "04A  当前状态" if zh else "04A  Current state",
-        "实体 · 位置 · 状态事件" if zh else "Entities · location · state events",
-        "原生 HA 自动化与设备页面" if zh else "Native HA automations and device pages",
-        color="purple",
-    )
-    d.box(
-        460,
-        495,
-        380,
-        "04B  本地账号档案" if zh else "04B  Local account archive",
-        "SQLite · 来源证据 · 较好轨迹" if zh else "SQLite · source evidence · best track",
-        "查询 Action · 日历 · 统计导入" if zh else "Query Actions · calendar · statistics import",
-        color="green",
-    )
-    d.text(
-        40,
-        650,
-        "实体共享查询结果；浏览已保存历史使用本地档案。"
-        if zh
-        else "Entities share reads. Browsing saved history uses the local archive.",
-        "foot",
-    )
-    return d.render()
+def wrap(value: str, width: int, size: int) -> list[str]:
+    tokens = re.findall(r"[\u2e80-\uffff]|[^\s\u2e80-\uffff]+|\s+", value)
+    result, current = [], ""
+    for token in tokens:
+        if current and text_width(current + token, size) > width:
+            result.append(current.rstrip())
+            current = token.lstrip()
+        else:
+            current += token
+    if current.strip():
+        result.append(current.rstrip())
+    if any(text_width(line, size) > width for line in result):
+        raise ValueError(f"Unbreakable diagram label: {value}")
+    return result
 
 
-def history(zh: bool) -> str:
-    d = Diagram(
-        "行程同步与本地复用" if zh else "Ride synchronization and local reuse",
-        "校验分页后增量补详情，事务保存标量、轨迹和来源，供本地查询。"
-        if zh
-        else "Validated pages feed incremental detail acquisition and transactional local storage.",
-        780,
-        "zh-Hans" if zh else "en",
-    )
-    d.box(
-        40,
-        85,
-        380,
-        "01  发现与补扫" if zh else "01  Discover and reconcile",
-        "首次月份扫描 · 近期增量" if zh else "Initial month scan · recent updates",
-        "复用已验证分页 · 保存断点" if zh else "Reuse verified pages · persist checkpoints",
-        color="blue",
-    )
-    d.box(
-        460,
-        85,
-        380,
-        "02  校验覆盖" if zh else "02  Validate coverage",
-        "总数 · 行程 ID · 月份关系" if zh else "Counts · ride IDs · month membership",
-        "重复／缺页进入补扫" if zh else "Repeated or missing pages need repair",
-        color="blue",
-    )
-    d.line("M 420 137 H 450")
-    d.line("M 650 190 V 220 H 440 V 240")
-    d.box(
-        40,
-        250,
-        800,
-        "03  只补取需要的详情" if zh else "03  Fetch only details that need work",
-        "稳定详情复用 · 车辆轮转 · 共享额度 · 失败重试"
-        if zh
-        else "Reuse stable details · rotate vehicles · share request budget · retry gaps",
-        height=85,
-        color="green",
-    )
-    d.line("M 440 335 V 370")
-    d.box(
-        40,
-        380,
-        800,
-        "04  事务提交至账号 SQLite" if zh else "04  Commit to the account SQLite archive",
-        "规范化行程 + 压缩来源 + 分页依据 + 同步状态"
-        if zh
-        else "Normalized rides + compressed sources + page evidence + sync state",
-        "最新标量与较好轨迹分别保留；达到容量上限暂停写入"
-        if zh
-        else "Keep latest facts and best geometry separately; pause writes at the capacity limit",
-        height=110,
-        color="green",
-    )
-    d.line("M 240 490 V 530")
-    d.line("M 640 490 V 530")
-    d.box(
-        40,
-        540,
-        380,
-        "05A  本地读取" if zh else "05A  Local reads",
-        "响应 Action · 分页与轨迹分段" if zh else "Response Actions · pages and track chunks",
-        "授权 WebSocket · 日历" if zh else "Authorized WebSocket · calendar",
-        color="purple",
-    )
-    d.box(
-        460,
-        540,
-        380,
-        "05B  摘要与趋势" if zh else "05B  Summaries and trends",
-        "本月／今日／昨日／最近摘要" if zh else "Month · today · yesterday · latest ride",
-        "显式导入 HA 长期统计" if zh else "Explicit import to HA long-term statistics",
-        color="purple",
-    )
-    d.text(
-        40,
-        700,
-        "完整轨迹保存在档案中；实体展示小体积的当前摘要。"
-        if zh
-        else "Full trails stay in the archive; entities expose compact current summaries.",
-        "foot",
-    )
-    d.text(
-        40,
-        732,
-        "本地浏览与云端补取分别调度。"
-        if zh
-        else "Local browsing and cloud acquisition have separate request paths.",
-        "foot",
-    )
-    return d.render()
+# Each row has one full-width stage or two aligned parallel stages.
+# A card contains a heading and two short descriptions, never implementation dumps.
+CONTENT = {
+    "overview": (
+        ("Live state and historical data", "实时状态与历史数据"),
+        (
+            "Account isolation · shared request coordination · separate data lifecycles",
+            "账号隔离 · 共享请求协调 · 独立的数据生命周期",
+        ),
+        [
+            [
+                (
+                    "Ninebot cloud",
+                    "九号云服务",
+                    "Vehicles, status, battery and travel",
+                    "车辆、状态、电池与行程",
+                    "Account-authenticated access",
+                    "账号认证访问",
+                )
+            ],
+            [
+                (
+                    "Account & request coordination",
+                    "账号与请求协调",
+                    "Managed local service; controlled history pagination",
+                    "受管理的本机服务；受控历史分页",
+                    "Shared reads, bounded concurrency and backoff",
+                    "共享读取、有界并发与退避",
+                )
+            ],
+            [
+                (
+                    "Realtime coordinator",
+                    "实时协调器",
+                    "Per vehicle and data group",
+                    "逐车、逐数据组管理",
+                    "Demand, freshness and recovery",
+                    "需求、响应年龄与异常恢复",
+                ),
+                (
+                    "History acquisition",
+                    "历史采集",
+                    "Month pages and missing details",
+                    "月份分页与缺失详情",
+                    "Budgets, checkpoints and validation",
+                    "额度、断点与校验",
+                ),
+            ],
+            [
+                (
+                    "Home Assistant state",
+                    "Home Assistant 状态",
+                    "Sensors, locks, tracker and events",
+                    "传感器、锁、定位与事件",
+                    "Device pages and automations",
+                    "设备页面与自动化",
+                ),
+                (
+                    "Private account archive",
+                    "私有账号档案",
+                    "SQLite, source evidence and tracks",
+                    "SQLite、来源证据与轨迹",
+                    "Local queries, calendar and statistics",
+                    "本地查询、日历与统计",
+                ),
+            ],
+        ],
+        (
+            "Entities share reads; browsing saved history uses the local archive.",
+            "实体共享查询结果；浏览已保存历史使用本地档案。",
+        ),
+    ),
+    "history": (
+        ("Incremental ride preservation", "行程增量保全"),
+        (
+            "Discover → validate → fill gaps → commit → reuse locally",
+            "发现 → 校验 → 补齐缺口 → 提交 → 本地复用",
+        ),
+        [
+            [
+                (
+                    "Discover and validate",
+                    "发现与校验",
+                    "Month scan, recent updates and reusable page evidence",
+                    "月份扫描、近期增量与可复用的分页依据",
+                    "Check counts, ride identities and month membership",
+                    "核对数量、行程身份与月份关联",
+                )
+            ],
+            [
+                (
+                    "Fetch missing details",
+                    "补取缺失详情",
+                    "Reuse saved details; rotate work across vehicles",
+                    "复用已保存详情，在车辆间轮转任务",
+                    "Shared budget, durable retries and restart checkpoints",
+                    "共享额度、持久化重试与重启断点",
+                )
+            ],
+            [
+                (
+                    "Commit the account archive",
+                    "提交账号档案",
+                    "Transactional rides, compressed sources and sync state",
+                    "事务保存行程、压缩来源与同步状态",
+                    "Latest facts and best geometry retained independently",
+                    "最新标量与较好轨迹分别保留",
+                )
+            ],
+            [
+                (
+                    "Local history access",
+                    "本地历史访问",
+                    "Paged Actions and track chunks",
+                    "分页 Action 与轨迹分段",
+                    "Authorized WebSocket and calendar",
+                    "鉴权 WebSocket 与日历",
+                ),
+                (
+                    "Summaries and trends",
+                    "摘要与趋势",
+                    "Month, today, yesterday and latest ride",
+                    "本月、今日、昨日与最近行程",
+                    "Explicit HA statistics import",
+                    "显式导入 HA 长期统计",
+                ),
+            ],
+        ],
+        (
+            "Capacity limits pause writes; retained records remain available locally.",
+            "达到容量上限暂停写入；已保存记录仍可在本地读取。",
+        ),
+    ),
+    "controls": (
+        ("Commands and observed state", "控制指令与观察状态"),
+        (
+            "Shared executor · immediate confirmed updates · bounded follow-up",
+            "共享执行器 · 确认后立即更新 · 有界跟随",
+        ),
+        [
+            [
+                (
+                    "Authorize and send once",
+                    "授权并发送一次",
+                    "Locks and buttons share enablement, allowlist and access checks",
+                    "锁与按钮共享启用、车辆许可及访问检查",
+                    "A new command can replace an older confirmation observer",
+                    "新指令可以替换旧的确认观察任务",
+                )
+            ],
+            [
+                (
+                    "Accelerated status readback",
+                    "加速状态回读",
+                    "Up to 15 seconds; publish the observed transition immediately",
+                    "最多十五秒；观察到状态变化立即发布",
+                    "Distinguish acceptance, unconfirmed outcome and failure",
+                    "区分接口接受、状态未确认与失败",
+                )
+            ],
+            [
+                (
+                    "Vehicle lock",
+                    "车辆锁",
+                    "Remote stop locks; remote start unlocks",
+                    "远程关闭上锁；远程开启解锁",
+                    "Briefly follow automatic relocking",
+                    "短时跟随自动回锁",
+                ),
+                (
+                    "Seat lock",
+                    "座桶锁",
+                    "Verified unlock display held for 5 s",
+                    "确认解锁后显示至少五秒",
+                    "Observe latch up to 60 s; close locally",
+                    "最多观察锁舌六十秒；本地上锁",
+                ),
+            ],
+        ],
+        (
+            "Latch position does not establish lid position. "
+            "Control commands are never replayed automatically.",
+            "锁舌位置不能证明座桶盖是否打开。控制指令不自动重发。",
+        ),
+    ),
+    "archive": (
+        ("One account, one durable archive", "一个账号，一份长期档案"),
+        (
+            "Stable account identity · validated consolidation · portable snapshots",
+            "稳定账号身份 · 校验整合 · 可迁移快照",
+        ),
+        [
+            [
+                (
+                    "Authenticated account",
+                    "认证账号",
+                    "Stable identity and multiple vehicles",
+                    "稳定身份与多辆车辆",
+                    "Reconnect after account re-addition",
+                    "重新添加同账号后接回档案",
+                ),
+                (
+                    "Legacy or imported sources",
+                    "旧库或导入来源",
+                    "Owner, schema, hash and reference checks",
+                    "归属、结构、摘要与引用校验",
+                    "Remove copies after validated merge",
+                    "校验合并成功后清理副本",
+                ),
+            ],
+            [
+                (
+                    "Private account SQLite database",
+                    "私有账号 SQLite 数据库",
+                    "Rides, details, best geometry, source evidence and checkpoints",
+                    "行程、详情、较好轨迹、来源证据与断点",
+                    "Serialized worker, transactions, capacity limits and local audits",
+                    "串行执行器、事务、容量限制与本地校验",
+                )
+            ],
+            [
+                (
+                    "Remove and reconnect",
+                    "移除与接回",
+                    "History retained by default",
+                    "默认保留历史",
+                    "Opt out to remove managed history",
+                    "取消保留后清理受管历史",
+                ),
+                (
+                    "Export and merge",
+                    "导出与合并",
+                    "Choose accounts and vehicles",
+                    "选择账号与车辆",
+                    "Versioned ZIP and SHA256 manifest",
+                    "版本化 ZIP 与 SHA256 清单",
+                ),
+            ],
+        ],
+        (
+            "Saved records have no age-based expiry. "
+            "Account archives, sessions and Recorder remain separate.",
+            "已保存记录无按时间过期。账号档案、登录会话与 Recorder 分别管理。",
+        ),
+    ),
+}
 
 
-def controls(zh: bool) -> str:
-    d = Diagram(
-        "控制指令与状态确认" if zh else "Commands and state confirmation",
-        "一次发送，十五秒内确认；座桶解锁显示保持五秒并有界观察锁舌。"
-        if zh
-        else "One command, a 15-second confirmation window and bounded seat-latch observation.",
-        635,
-        "zh-Hans" if zh else "en",
+def render(name: str, language: str, theme: str) -> str:
+    title, subtitle, rows, foot = CONTENT[name]
+    index = language == "zh"
+    palette = PALETTES[theme]
+    parts: list[str] = []
+
+    def text(x: int, y: int, value: str, size: int, color: str, weight: int = 400) -> None:
+        parts.append(
+            f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{weight}" '
+            f'fill="{palette[color]}">{escape(value)}</text>'
+        )
+
+    def arrow(x1: int, y1: int, x2: int, y2: int) -> None:
+        parts.append(
+            f'<path d="M{x1} {y1} V{(y1 + y2) // 2} H{x2} V{y2}" '
+            f'fill="none" stroke="{palette["line"]}" stroke-width="2"/>'
+        )
+        parts.append(
+            f'<path d="M{x2 - 4} {y2 - 6} L{x2} {y2} L{x2 + 4} {y2 - 6}" '
+            f'fill="none" stroke="{palette["line"]}" stroke-width="2"/>'
+        )
+
+    text(40, 46, title[index], 27, "text", 700)
+    text(40, 77, subtitle[index], 16, "muted")
+    y, previous = 112, []
+    for number, row in enumerate(rows, 1):
+        width = 880 if len(row) == 1 else 428
+        cards = []
+        height = 0
+        for column, card in enumerate(row):
+            heading = wrap(card[index], width - 48, 21)
+            body = [
+                line
+                for value in (card[2 + index], card[4 + index])
+                for line in wrap(value, width - 48, 17)
+            ]
+            height = max(height, 60 + len(heading) * 27 + len(body) * 25)
+            cards.append((40 + column * 452, heading, body))
+        centers = [x + width // 2 for x, _, _ in cards]
+        if previous:
+            old_y, old_centers = previous
+            pairs = (
+                zip(old_centers, centers, strict=True)
+                if len(old_centers) == len(centers)
+                else ((a, b) for a in old_centers for b in centers)
+            )
+            for start, end in pairs:
+                arrow(start, old_y, end, y - 10)
+        fill = "blue" if number == 1 else "purple" if number == len(rows) else "green"
+        for column, (x, heading, body) in enumerate(cards):
+            parts.append(
+                f'<rect x="{x}" y="{y}" width="{width}" height="{height}" '
+                f'rx="12" fill="{palette[fill]}" stroke="{palette["border"]}"/>'
+            )
+            stage = f"{number:02}" + (f" / {chr(65 + column)}" if len(row) > 1 else "")
+            text(x + 24, y + 25, stage, 12, "accent", 700)
+            baseline = y + 54
+            for line in heading:
+                text(x + 24, baseline, line, 21, "text", 650)
+                baseline += 27
+            baseline += 4
+            for line in body:
+                text(x + 24, baseline, line, 17, "muted")
+                baseline += 25
+        previous = (y + height, centers)
+        y += height + 48
+    for line in wrap(foot[index], 880, 16):
+        text(40, y - 7, line, 16, "muted")
+        y += 24
+    height = y + 12
+    return "\n".join(
+        [
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="960" height="{height}" '
+            f'viewBox="0 0 960 {height}" role="img" aria-labelledby="title desc" '
+            f'xml:lang="{"zh-Hans" if index else "en"}">',
+            f'<title id="title">{escape(title[index])}</title>',
+            f'<desc id="desc">{escape(subtitle[index])}</desc>',
+            '<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", '
+            '"Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>',
+            f'<rect width="960" height="{height}" rx="16" fill="{palette["page"]}"/>',
+            *parts,
+            "</svg>",
+            "",
+        ]
     )
-    d.box(
-        40,
-        85,
-        380,
-        "01  控制请求" if zh else "01  Control request",
-        "Lock 实体与按钮共用执行器" if zh else "Locks and buttons share one executor",
-        "开关 · 车辆许可 · 归属与权限" if zh else "Enablement · allowlist · ownership/access",
-        color="blue",
-    )
-    d.box(
-        460,
-        85,
-        380,
-        "02  发送一次" if zh else "02  Send once",
-        "车辆／云端判断执行条件" if zh else "Vehicle/cloud applies operating rules",
-        "新指令可替换旧确认观察" if zh else "New commands replace older observers",
-        color="blue",
-    )
-    d.line("M 420 137 H 450")
-    d.line("M 650 190 V 220 H 440 V 240")
-    d.box(
-        40,
-        250,
-        800,
-        "03  最多十五秒加速回读" if zh else "03  Accelerated readback for up to 15 seconds",
-        "新状态一经确认立即显示 · 不自动重发控制指令"
-        if zh
-        else "Publish the confirmed transition immediately · no automatic command replay",
-        "分别记录接受、未确认与失败"
-        if zh
-        else "Keep acceptance, unconfirmed outcome and failure distinct",
-        height=110,
-        color="green",
-    )
-    d.line("M 240 360 V 400")
-    d.line("M 640 360 V 400")
-    d.box(
-        40,
-        410,
-        380,
-        "04A  车辆锁" if zh else "04A  Vehicle lock",
-        "上锁＝远程关闭；解锁＝远程开启" if zh else "Lock = remote stop; unlock = remote start",
-        "短期跟随自动回锁" if zh else "Brief follow-up observes auto-relocking",
-        color="purple",
-    )
-    d.box(
-        460,
-        410,
-        380,
-        "04B  座桶锁" if zh else "04B  Seat lock",
-        "确认解锁后显示至少五秒" if zh else "Hold a verified unlock display for 5 seconds",
-        "锁舌最多观察六十秒；本地上锁" if zh else "Observe latch up to 60 seconds; close locally",
-        color="purple",
-    )
-    d.text(
-        40,
-        565,
-        "锁舌上报与座桶盖是否打开是两种不同信息。"
-        if zh
-        else "A latch report does not establish whether the compartment lid is open.",
-        "foot",
-    )
-    d.text(
-        40,
-        597,
-        "读取异常、新指令或卸载会结束对应的后续观察。"
-        if zh
-        else "Read errors, replacement commands or unloading end the corresponding observer.",
-        "foot",
-    )
-    return d.render()
 
 
-def archive(zh: bool) -> str:
-    d = Diagram(
-        "账号数据库的生命周期" if zh else "Account archive lifecycle",
-        "认证账号拥有唯一主库；旧来源校验合并；条目移除与导出导入分开管理。"
-        if zh
-        else "One account archive across entry removal, upgrades and transfers.",
-        720,
-        "zh-Hans" if zh else "en",
-    )
-    d.box(
-        40,
-        85,
-        380,
-        "账号认证" if zh else "Authenticated account",
-        "稳定账号身份 · 多辆车辆" if zh else "Stable account identity · multiple vehicles",
-        "删除重加可接回原档案" if zh else "Reconnect after removal and sign-in",
-        color="blue",
-    )
-    d.box(
-        460,
-        85,
-        380,
-        "旧库与导入来源" if zh else "Legacy and imported sources",
-        "隔离升级 · 归属／摘要／引用校验" if zh else "Isolated upgrade · owner/hash/link checks",
-        "去重合并后清理已验证副本" if zh else "Merge, then remove verified source copies",
-        color="blue",
-    )
-    d.line("M 230 190 V 220 H 330 V 250")
-    d.line("M 650 190 V 220 H 550 V 250")
-    d.box(
-        40,
-        260,
-        800,
-        "一个账号，一个私有 SQLite 主库" if zh else "One private SQLite database per account",
-        "行程与月份 · 最新详情 · 较好轨迹 · 压缩原始证据 · 同步断点"
-        if zh
-        else "Rides · latest details · best geometry · compressed evidence · checkpoints",
-        "串行数据库执行器 · 事务提交 · 容量限制 · 本地校验"
-        if zh
-        else "Serialized database worker · transactions · capacity limit · local verification",
-        height=110,
-        color="green",
-    )
-    d.line("M 230 370 V 415")
-    d.line("M 650 370 V 415")
-    d.box(
-        40,
-        425,
-        380,
-        "移除账号" if zh else "Remove an account",
-        "默认保留；同账号再次登录复用" if zh else "Retain by default; reuse on same-account login",
-        "取消保留则清理受管历史" if zh else "Opt out to delete managed account history",
-        color="purple",
-    )
-    d.box(
-        460,
-        425,
-        380,
-        "导出与恢复" if zh else "Export and restore",
-        "按账号／车辆选择一致性快照" if zh else "Consistent snapshots by account/vehicle",
-        "ZIP + SHA256 清单 · 校验后合并" if zh else "ZIP + SHA256 manifest · validated merge",
-        color="purple",
-    )
-    d.text(
-        40,
-        590,
-        "失败或未知来源保留待处理；已保存记录无按时间自动过期。"
-        if zh
-        else "Failed sources stay for review. Saved records have no age-based expiry.",
-        "foot",
-    )
-    d.text(
-        40,
-        624,
-        "账号档案、登录会话与 HA Recorder 分别管理。"
-        if zh
-        else "Account archives, sign-in sessions and HA Recorder have separate lifecycles.",
-        "foot",
-    )
-    d.text(
-        40,
-        658,
-        "升级前备份完整 HA；导出包可用于跨机器迁移。"
-        if zh
-        else "Back up HA before upgrading; use exports for migration between installations.",
-        "foot",
-    )
-    return d.render()
+def outputs() -> dict[str, str]:
+    return {
+        f"{name}-{language}{'-dark' if theme == 'dark' else ''}.svg": render(name, language, theme)
+        for name in CONTENT
+        for language in ("en", "zh")
+        for theme in PALETTES
+    }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    expected = {
-        f"{name}-{language}.svg": render(language == "zh")
-        for name, render in (
-            ("overview", overview),
-            ("history", history),
-            ("controls", controls),
-            ("archive", archive),
-        )
-        for language in ("en", "zh")
-    }
-    if not args.check:
-        OUTPUT.mkdir(parents=True, exist_ok=True)
-        for name, text in expected.items():
-            (OUTPUT / name).write_text(text, encoding="utf-8")
-    else:
+    expected = outputs()
+    if args.check:
         stale = [
             name
-            for name, text in expected.items()
-            if not (OUTPUT / name).is_file() or (OUTPUT / name).read_text(encoding="utf-8") != text
+            for name, value in expected.items()
+            if not (OUTPUT / name).is_file() or (OUTPUT / name).read_text(encoding="utf-8") != value
         ]
         if stale:
             raise SystemExit("Regenerate architecture diagrams: " + ", ".join(stale))
+    else:
+        OUTPUT.mkdir(parents=True, exist_ok=True)
+        for name, value in expected.items():
+            (OUTPUT / name).write_text(value, encoding="utf-8")
     state = "match" if args.check else "written"
-    print(f"Architecture diagrams: {len(expected)} bilingual SVGs {state}")
+    print(f"Architecture: {len(expected)} bilingual light/dark SVGs {state}")
 
 
 if __name__ == "__main__":
