@@ -40,7 +40,6 @@ def month(identity="ride", sn=SN):
             "list": [
                 {
                     "travel_id": identity,
-                    "id": "detail-" + identity,
                     "mileages": 1.2,
                     "duration": 60,
                     "start_time": int(NOW.timestamp()),
@@ -70,7 +69,6 @@ async def detail(actor, *, simple=False, at=NOW, identity="ride"):
     summary = (await actor.async_month(SN, "202610")).travel.rides[0]
     raw = {
         "travel_id": identity,
-        "id": "detail-" + identity,
         "trail": "120,30,1,1;120.001,30.001,2,2" + ("" if simple else ";120.002,30.002,3,3"),
         "is_show_simple_point": simple,
     }
@@ -175,7 +173,7 @@ async def test_vehicle_subset_roundtrip_does_not_leak_other_vehicle(tmp_path):
     actor = await populated(tmp_path / "source" / "rides.sqlite3")
     try:
         await actor.async_record_profiles(
-            (VehicleProfile("Other", "Other", "Model"),), NOW + timedelta(seconds=1), False
+            (VehicleProfile("Other", "Other", "Model"),), NOW + timedelta(seconds=1), complete=False
         )
         await actor.async_record_month("Other", month("other", "Other"), NOW)
         exported = tmp_path / "subset.sqlite3"
@@ -289,3 +287,52 @@ async def test_malformed_packages_and_executable_schema_rejected(tmp_path, fault
         assert not (tmp_path / "escape").exists()
     finally:
         await actor.async_close()
+
+
+async def test_multiple_account_package_and_standalone_database(tmp_path):
+    from custom_components.ninebot.archive_transfer import unpack_upload
+
+    actors = [
+        await populated(tmp_path / name / "rides.sqlite3", uid=name) for name in ("first", "second")
+    ]
+    try:
+        paths = []
+        for index, actor in enumerate(actors):
+            path = tmp_path / f"{index}.sqlite3"
+            await actor.async_export_archive(path)
+            paths.append((actor.owner, path))
+        package = tmp_path / "accounts.zip"
+        pack(package, paths)
+        sources = unpack_upload(package, tmp_path / "accounts")
+        assert {owner for owner, _ in sources} == {a.owner for a in actors}
+        standalone = unpack_upload(paths[0][1], tmp_path / "standalone")
+        assert standalone[0][0] == actors[0].owner
+        db = readonly(standalone[0][1])
+        try:
+            validate(actors[0], db)
+        finally:
+            db.close()
+    finally:
+        for actor in actors:
+            await actor.async_close()
+
+
+async def test_additional_source_evidence_reexports_with_selected_vehicle(tmp_path):
+    actor = await populated(tmp_path / "current" / "rides.sqlite3")
+    destination = RideArchive(tmp_path / "destination" / "rides.sqlite3", actor.owner)
+    try:
+        path = tmp_path / "source.sqlite3"
+        await actor.async_export_archive(path)
+        package = tmp_path / "evidence.zip"
+        pack(package, [(actor.owner, path)], {actor.owner: [path]})
+        sources = unpack(package, tmp_path / "unpacked")
+        assert len(sources) == 2
+        await destination.async_open()
+        result = await destination.async_merge_archive(
+            sources[0][1], (vehicle_key(SN),), (sources[1][1],)
+        )
+        assert result["rides"] == 1
+        assert len(list((destination.path.parent / "imports").glob("*.sqlite3"))) == 1
+    finally:
+        await actor.async_close()
+        await destination.async_close()

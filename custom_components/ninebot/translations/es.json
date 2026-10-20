@@ -158,7 +158,7 @@
       },
       "archive_import": {
         "title": "Upload history database",
-        "description": "Upload an exported ZIP package (up to 100 MiB; 512 MiB expanded). Sign in to every account in the package first. Uploading validates and previews it before any merge.",
+        "description": "Upload an exported ZIP package or a current-format SQLite database (up to 100 MiB; ZIP up to 512 MiB expanded). Sign in to every included account first. Uploading validates and previews it before any merge.",
         "data": {
           "file": "Upload database package"
         }
@@ -178,7 +178,8 @@
     },
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
-      "archive_admin_required": "Only Home Assistant administrators can import or export history databases."
+      "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
+      "archive_busy": "The archive download limit has been reached. Try again later."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",

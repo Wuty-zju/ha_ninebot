@@ -158,7 +158,7 @@
       },
       "archive_import": {
         "title": "上传历史数据库",
-        "description": "上传导出的ZIP包（最多100 MiB，解压后最多512 MiB）。请先登录包内所有账号。上传后会校验并确认，不会立即写入。",
+        "description": "上传导出的ZIP包或当前格式的单个SQLite数据库（最多100 MiB，ZIP解压后最多512 MiB）。请先登录文件内所有账号。上传后会校验并确认，不会立即写入。",
         "data": {
           "file": "上传数据库包"
         }
@@ -178,7 +178,8 @@
     },
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
-      "archive_admin_required": "仅Home Assistant管理员可导入或导出历史数据库。"
+      "archive_admin_required": "仅Home Assistant管理员可导入或导出历史数据库。",
+      "archive_busy": "归档下载数量已达上限，请稍后重试。"
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",

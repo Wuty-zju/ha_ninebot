@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .archive_codec import decoded, restored_ride, stamp
+from .archive_codec import decoded, merged_ride, restored_ride, stamp
 from .detail_codec import scoped_ride, unpacked
 from .raw import Endpoint
 from .travel import select_geometry
@@ -213,19 +213,28 @@ def merge(
                     old = actor._ride(row[0], row[1])
                     candidate = restored_ride(decoded(row[2]))
                     if old and (
-                        old[0].detail_id != candidate.detail_id
+                        (
+                            old[0].detail_id is not None
+                            and candidate.detail_id is not None
+                            and old[0].detail_id != candidate.detail_id
+                        )
                         or old[0].query_month != candidate.query_month
                     ):
                         raise ValueError("Conflicting ride identity")
-                    actor._upsert_ride(row[0], candidate, row[3])
+                    if old and old[1] >= row[3]:
+                        candidate = merged_ride(candidate, old[0])
+                        actor._upsert_ride(row[0], candidate, old[1], ordered=True)
+                    else:
+                        actor._upsert_ride(row[0], candidate, row[3])
             for row in incoming.execute("SELECT * FROM months"):
                 if row[0] not in selected:
                     continue
                 old = db.execute(
-                    "SELECT observed FROM months WHERE vehicle=? AND month=?", row[:2]
+                    "SELECT observed,revision FROM months WHERE vehicle=? AND month=?", row[:2]
                 ).fetchone()
                 if old is None or old[0] < row[3]:
-                    _insert(db, "months", row)
+                    replacement = (*row[:4], max(row[4], old[1] if old else 0) + 1, *row[5:])
+                    _insert(db, "months", replacement)
                     db.execute(
                         "UPDATE membership SET latest=0 WHERE vehicle=? AND month=?", row[:2]
                     )
@@ -314,9 +323,25 @@ def merge(
                     "DELETE FROM detail_payloads WHERE vehicle=? AND ride=? AND hash NOT IN (?,?)",
                     (vehicle, ride_id, latest_hash, geometry_hash),
                 )
-                db.execute(
-                    "DELETE FROM payload_checks WHERE vehicle=? AND kind='detail'", (vehicle,)
+                from .detail_health import put as put_health
+
+                saved = actor._private_detail(vehicle, ride_id, 1)
+                assert saved is not None and saved.latest_quality is not None
+                assert saved.selected_quality is not None
+                put_health(
+                    db,
+                    vehicle,
+                    ride_id,
+                    latest_hash,
+                    geometry_hash,
+                    saved.latest_quality,
+                    saved.selected_quality,
                 )
+            from .payload_inventory import advance
+
+            for vehicle in selected:
+                db.execute("DELETE FROM payload_checks WHERE vehicle=?", (vehicle,))
+                advance(db, vehicle)
             db.execute("INSERT INTO meta VALUES (?,?)", (receipt, "1"))
             actor._revision(bump=True)
             actor._check(db)
@@ -439,3 +464,29 @@ def unpack(source: Path, target: Path) -> list[tuple[str, Path]]:
         if {i.filename for i in infos} != expected:
             raise ValueError("Unexpected package members")
         return result
+
+
+def unpack_upload(source: Path, target: Path) -> list[tuple[str, Path]]:
+    """Accept a portable package or a current-schema standalone database."""
+    with source.open("rb") as stream:
+        sqlite_header = stream.read(16) == b"SQLite format 3\x00"
+    if not sqlite_header:
+        return unpack(source, target)
+    if source.stat().st_size > MAX_PACKAGE:
+        raise ValueError("Database exceeds upload budget")
+    db = readonly(source)
+    try:
+        row = db.execute("SELECT value FROM meta WHERE key='owner'").fetchone()
+        if (
+            not row
+            or not isinstance(owner := row[0], str)
+            or len(owner) != 64
+            or any(c not in "0123456789abcdef" for c in owner)
+        ):
+            raise ValueError("Invalid database owner")
+        target.mkdir(mode=0o700, parents=True, exist_ok=False)
+        path = target / f"{owner}-0.sqlite3"
+        snapshot(db, path)
+        return [(owner, path)]
+    finally:
+        db.close()

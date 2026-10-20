@@ -30,7 +30,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .account_archive import account_lock, owner_key
-from .archive_transfer import pack, readonly, snapshot, unpack, validate
+from .archive_transfer import pack, readonly, snapshot, unpack_upload, validate
 from .backup import backup_active
 from .compat import validation as vol
 from .const import CONF_BUSINESS_UID, DOMAIN
@@ -253,7 +253,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                 def staged() -> list[tuple[str, Path]]:
                     assert self._archive_directory is not None
                     with process_uploaded_file(self.hass, user_input["file"]) as uploaded:
-                        return unpack(uploaded, self._archive_directory / "accounts")
+                        return unpack_upload(uploaded, self._archive_directory / "accounts")
 
                 self._archive_sources = await self.hass.async_add_executor_job(staged)
                 return await self.async_step_archive_confirm()
@@ -272,7 +272,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
             step_id="archive_import",
             errors=errors,
             data_schema=vol.Schema(
-                {vol.Required("file"): FileSelector(FileSelectorConfig(accept=".zip"))}
+                {vol.Required("file"): FileSelector(FileSelectorConfig(accept=".zip,.sqlite3,.db"))}
             ),
         )
 
