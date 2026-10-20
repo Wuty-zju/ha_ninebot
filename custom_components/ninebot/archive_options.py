@@ -7,6 +7,7 @@ import sqlite3
 import tempfile
 import zipfile
 from datetime import UTC, datetime, timedelta
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -212,7 +213,12 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                     url = async_sign_path(self.hass, URL + token, timedelta(minutes=10))
                     return self.async_show_form(
                         step_id="archive_download",
-                        description_placeholders={"url": url, "filename": filename},
+                        description_placeholders={
+                            "url": url,
+                            "filename": filename,
+                            "download_link": f'<a href="{escape(url, quote=True)}" target="_blank" '
+                            f'rel="noopener noreferrer" download>{filename}</a>',
+                        },
                         data_schema=vol.Schema({}),
                     )
                 except (ArchiveError, OSError, ValueError, sqlite3.Error):

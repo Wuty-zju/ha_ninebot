@@ -154,7 +154,7 @@
       },
       "archive_download": {
         "title": "下载历史数据库",
-        "description": "<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\" download>下載歸檔包</a>\n\n**{filename}**\n\n連結十分鐘內有效，僅目前管理員可用。下載後提交即可。"
+        "description": "{download_link}\n\n連結十分鐘內有效，僅目前管理員可用。下載後提交即可。"
       },
       "archive_import": {
         "title": "上传历史数据库",

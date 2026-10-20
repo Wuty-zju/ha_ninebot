@@ -40,6 +40,7 @@ async def test_native_export_download_upload_and_confirm(
     assert form["step_id"] == "archive_download", form
     download = form["description_placeholders"]["url"]
     filename = form["description_placeholders"]["filename"]
+    assert 'target="_blank"' in form["description_placeholders"]["download_link"]
     assert re.fullmatch(
         r"ninebot-history_\d{8}T\d{12}Z_1accounts_\d+vehicles_[0-9a-f]{12}_[0-9a-f]{12}\.zip",
         filename,

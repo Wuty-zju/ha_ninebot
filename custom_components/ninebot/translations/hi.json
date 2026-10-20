@@ -154,7 +154,7 @@
       },
       "archive_download": {
         "title": "Download history database",
-        "description": "<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\" download>Download archive package</a>\n\n**{filename}**\n\nThe link expires in 10 minutes and is bound to this administrator. Submit after downloading."
+        "description": "{download_link}\n\nThe link expires in 10 minutes and is bound to this administrator. Submit after downloading."
       },
       "archive_import": {
         "title": "Upload history database",

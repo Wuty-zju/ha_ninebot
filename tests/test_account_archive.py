@@ -506,3 +506,18 @@ async def test_superseded_detail_originals_survive_without_source_databases(tmp_
     finally:
         await target.async_close()
         await source.async_close()
+
+
+async def test_running_reconstruction_keeps_its_rollback_point(hass, entry):
+    path = account_path(hass, UID)
+    actor = await populated(path)
+    await detail(actor)
+    job = await actor.async_reconstruction_job(
+        SN, "start", NOW + timedelta(seconds=2), guard=lambda: True
+    )
+    await actor._run(lambda: actor._reconstruction_backup(vehicle_key(SN), job))
+    recovery = path.with_name(f"rides.recovery-{job.job_id}.sqlite3")
+    before = recovery.read_bytes()
+    await actor.async_close()
+    await async_prepare_account(hass, UID, 100 * 1024 * 1024)
+    assert recovery.read_bytes() == before

@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -44,11 +45,33 @@ def _sources(hass: HomeAssistant, uid: str) -> list[Path]:
     root = Path(hass.config.path(".storage", DOMAIN))
     canonical = account_path(hass, uid)
     candidates: list[Path] = []
+    active_recovery = False
+    if canonical.is_file() and not canonical.is_symlink():
+        try:
+            db = readonly(canonical)
+            try:
+                active_recovery = any(
+                    json.loads(value).get("state") not in {"cancelled", "complete", "with_gaps"}
+                    for (value,) in db.execute(
+                        "SELECT value FROM meta WHERE key LIKE 'local_reconstruction:%'"
+                    )
+                ) or any(
+                    not json.loads(value).get("finished", False)
+                    for (value,) in db.execute(
+                        "SELECT value FROM meta WHERE key LIKE 'payload_search:%'"
+                    )
+                )
+            finally:
+                db.close()
+        except (OSError, ValueError, sqlite3.Error):
+            active_recovery = True
 
     def files(folder: Path, *, imports: bool = False) -> None:
         if folder.is_symlink() or not folder.is_dir():
             return
         for path in folder.iterdir():
+            if active_recovery and ".recovery-" in path.name:
+                continue  # A running repair owns its rollback point and search interval.
             known = (
                 bool(re.fullmatch(r"[0-9a-f]{64}\.sqlite3", path.name))
                 if imports
@@ -151,6 +174,8 @@ async def async_prepare_account(hass: HomeAssistant, uid: str, max_bytes: int) -
         if backup_active(hass):
             raise ArchiveError(ArchiveFailure.BUSY)
         target = account_path(hass, uid)
+        if any(other.path == target for other in hass.data.get(ACTORS_KEY, {}).values()):
+            raise ArchiveError(ArchiveFailure.BUSY)
         sources = await hass.async_add_executor_job(_sources, hass, uid)
         if not sources:
 
