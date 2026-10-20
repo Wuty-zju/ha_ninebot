@@ -118,6 +118,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
             profiles = await entry.runtime_data.coordinator.statistics.archive.async_profiles(
                 include_absent=True
             )
+            choices.append(SelectOptionDict(value=f"{owner}:*", label=entry.title))
             choices.extend(
                 SelectOptionDict(
                     value=f"{owner}:{profile.sn}", label=f"{entry.title} · {profile.name}"
@@ -153,7 +154,10 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                         async with account_lock(self.hass, str(entry.data[CONF_BUSINESS_UID])):
                             archive = entry.runtime_data.coordinator.statistics.archive
                             await archive.async_export_archive(
-                                path, tuple(vehicle_key(sn) for sn in vehicles)
+                                path,
+                                None
+                                if "*" in vehicles
+                                else tuple(vehicle_key(sn) for sn in vehicles),
                             )
 
                         def source_snapshots(
@@ -172,10 +176,14 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                                     available = {
                                         r[0] for r in db.execute("SELECT vehicle FROM vehicles")
                                     }
-                                    keys = tuple(
-                                        vehicle_key(sn)
-                                        for sn in vehicles
-                                        if vehicle_key(sn) in available
+                                    keys = (
+                                        tuple(sorted(available))
+                                        if "*" in vehicles
+                                        else tuple(
+                                            vehicle_key(sn)
+                                            for sn in vehicles
+                                            if vehicle_key(sn) in available
+                                        )
                                     )
                                     if not keys:
                                         continue
@@ -309,6 +317,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                         db.close()
 
                 profiles = await self.hass.async_add_executor_job(inspect)
+                choices.append(SelectOptionDict(value=f"{owner}:*", label=accounts[owner].title))
                 choices.extend(
                     SelectOptionDict(
                         value=f"{owner}:{vehicle}", label=f"{accounts[owner].title} · {name}"
@@ -349,15 +358,15 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                         sources = tuple(
                             p for o, p in self._archive_sources if o == owner and p != path
                         )
-                        result = await stats.archive.async_merge_archive(path, selected, sources)
+                        result = await stats.archive.async_merge_archive(
+                            path, None if "*" in selected else selected, sources
+                        )
                         profiles = await stats.archive.async_profiles(include_absent=True)
                         stats._vehicles.update(profile.sn for profile in profiles)
                         await stats.async_refresh_projection()
                         for profile in profiles:
                             stats._notify_change(profile.sn, None)
-                        entry.runtime_data.coordinator.async_set_updated_data(
-                            dict(entry.runtime_data.coordinator.data)
-                        )
+                        entry.runtime_data.coordinator.async_update_listeners()
                     results.append(f"{entry.title}: +{result['rides']} / +{result['details']}")
                 await self._archive_cleanup()
                 return self.async_show_form(

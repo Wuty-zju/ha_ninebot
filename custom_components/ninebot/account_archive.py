@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import sqlite3
+import stat
 import tempfile
 from pathlib import Path
 
@@ -117,53 +118,70 @@ async def async_prepare_account(hass: HomeAssistant, uid: str, max_bytes: int) -
 
 
 def _safe_remove(root: Path, owner: str, *, check_only: bool = False) -> None:
-    path = root / owner
-    if not path.exists():
-        return
-    if root.is_symlink() or path.is_symlink():
-        raise ArchiveError(ArchiveFailure.STORAGE)
-    # Preflight the entire owned tree; unknown files mean no deletion at all.
-    allowed: list[Path] = []
-    for current, dirs, files in os.walk(path, followlinks=False):
-        directory = Path(current)
-        rel = directory.relative_to(path).parts
-        if rel and not (
-            rel == ("retired",)
-            or rel == ("imports",)
-            or len(rel) == 2
-            and rel[0] == "retired"
-            and _HEX.fullmatch(rel[1])
-        ):
+    """Preflight a bounded owned tree using no-follow directory descriptors."""
+    descriptors: list[int] = []
+    files: list[tuple[int, str]] = []
+    directories: list[tuple[int, str]] = []
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+
+    def walk(directory: int, rel: tuple[str, ...]) -> None:
+        if len(descriptors) > 128 or len(files) > 4096:
             raise ArchiveError(ArchiveFailure.STORAGE)
-        if any((directory / name).is_symlink() for name in (*dirs, *files)):
-            raise ArchiveError(ArchiveFailure.STORAGE)
-        for name in files:
-            known = (
-                bool(_DB.fullmatch(name))
-                if rel and rel[0] == "retired"
-                else name == "pending.sqlite3" or bool(re.fullmatch(r"[0-9a-f]{64}\.sqlite3", name))
-                if rel == ("imports",)
-                else bool(_DB.fullmatch(name))
-                or name
-                in {
-                    "rides.sqlite3",
-                    "rides.sqlite3-journal",
-                    "rides.sqlite3-wal",
-                    "rides.sqlite3-shm",
+        for name in os.listdir(directory):
+            mode = os.stat(name, dir_fd=directory, follow_symlinks=False).st_mode
+            if stat.S_ISDIR(mode):
+                permitted = (not rel and name in {"imports", "retired"}) or (
+                    rel == ("retired",) and _HEX.fullmatch(name)
+                )
+                if not permitted:
+                    raise ArchiveError(ArchiveFailure.STORAGE)
+                child = os.open(name, flags, dir_fd=directory)
+                descriptors.append(child)
+                walk(child, (*rel, name))
+                directories.append((directory, name))
+                continue
+            if rel == ("imports",):
+                known = name == "pending.sqlite3" or bool(
+                    re.fullmatch(r"[0-9a-f]{64}\.sqlite3", name)
+                )
+            elif not rel:
+                known = bool(_DB.fullmatch(name)) or name in {
                     "recovery.sqlite3",
                     "recovery.pending.sqlite3",
                 }
-            )
-            p = directory / name
-            if not known or not p.is_file():
+            else:
+                known = bool(_DB.fullmatch(name))
+            if not stat.S_ISREG(mode) or not known:
                 raise ArchiveError(ArchiveFailure.STORAGE)
-            allowed.append(p)
-    if check_only:
-        return
-    for p in allowed:
-        p.unlink()
-    for current, _, _ in os.walk(path, topdown=False):
-        Path(current).rmdir()
+            files.append((directory, name))
+
+    try:
+        for ancestor in (root.parent.parent, root.parent, root):
+            if ancestor.is_symlink():
+                raise ArchiveError(ArchiveFailure.STORAGE)
+        try:
+            parent = os.open(root, flags)
+        except FileNotFoundError:
+            return
+        descriptors.append(parent)
+        try:
+            directory = os.open(owner, flags, dir_fd=parent)
+        except FileNotFoundError:
+            return
+        descriptors.append(directory)
+        walk(directory, ())
+        if check_only:
+            return
+        for descriptor, name in files:
+            os.unlink(name, dir_fd=descriptor)
+        for descriptor, name in directories:
+            os.rmdir(name, dir_fd=descriptor)
+        os.rmdir(owner, dir_fd=parent)
+    except OSError:
+        raise ArchiveError(ArchiveFailure.STORAGE) from None
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)
 
 
 async def async_remove_account(hass: HomeAssistant, uid: str) -> None:

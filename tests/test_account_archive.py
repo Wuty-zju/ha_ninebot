@@ -65,7 +65,7 @@ async def populated(path, uid=UID, identity="ride", sn=SN):
         raise
 
 
-async def detail(actor, *, simple=False, at=NOW, identity="ride"):
+async def detail(actor, *, simple=False, at=NOW + timedelta(seconds=1), identity="ride"):
     summary = (await actor.async_month(SN, "202610")).travel.rides[0]
     raw = {
         "travel_id": identity,
@@ -152,15 +152,15 @@ async def test_merge_preserves_best_geometry_and_latest_receipt(tmp_path, older_
     full = await populated(tmp_path / "full" / "rides.sqlite3")
     simple = await populated(tmp_path / "simple" / "rides.sqlite3")
     try:
-        await detail(full, at=NOW if older_geometry else NOW + timedelta(seconds=2))
-        await detail(simple, simple=True, at=NOW + timedelta(seconds=1))
+        await detail(full, at=NOW + timedelta(seconds=1 if older_geometry else 3))
+        await detail(simple, simple=True, at=NOW + timedelta(seconds=2))
         source, target = (full, simple) if older_geometry else (simple, full)
         exported = tmp_path / "export.sqlite3"
         await source.async_export_archive(exported)
         await target.async_merge_archive(exported)
         saved = await target.async_private_detail(SN, "ride")
         assert saved.ride.total_track_points == 3
-        assert saved.latest.received_at == NOW + timedelta(seconds=1 if older_geometry else 2)
+        assert saved.latest.received_at == NOW + timedelta(seconds=2 if older_geometry else 3)
         assert await target.async_merge_archive(exported) == {"rides": 0, "details": 0}
         assert (await target.async_private_detail(SN, "ride")).revision == saved.revision
         assert (target.path.parent / "recovery.sqlite3").is_file()
