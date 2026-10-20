@@ -6,7 +6,7 @@
 
 - Home Assistant **2026.1.0 or newer** and internet access to the Chinese Ninebot App service.
 - A Ninebot account with vehicles visible in the official App. Other service regions are unverified.
-- A compatible 64-bit platform for the pinned runtime dependency. ARMv7/32-bit is unsupported; published Linux/macOS/Windows wheels do not certify every host or container architecture.
+- A compatible 64-bit host/container for the pinned runtime dependency. ARMv7/32-bit is unsupported.
 - HACS for the recommended installation. This is a custom integration, not a Supervisor app/add-on or a built-in Core integration.
 
 The current 2.0 release candidate is **v2.0.0rc1**. Back up your Home Assistant configuration and private storage before upgrading.
@@ -21,7 +21,7 @@ The current 2.0 release candidate is **v2.0.0rc1**. Back up your Home Assistant 
 
 [Open the HACS repository](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) · [Add Ninebot](https://my.home-assistant.io/redirect/config_flow_start/?domain=ninebot)
 
-These links open your configured Home Assistant instance; they do not install HACS itself. The repository is currently distributed as a **custom repository**, not advertised as a HACS default listing.
+These links open your configured Home Assistant instance. Install HACS first, then add this **custom repository**.
 
 ## Install manually
 
@@ -66,7 +66,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 
 | Option | Default / range | Effect |
 |---|---|---|
-| Status interval | 60 s; 30–3600 s | Status demand only; battery/travel use separate 600 s periods and profiles 3600 s. These are client policy, not guaranteed cloud freshness. |
+| Status interval | 60 s; 30–3600 s | Status refresh target; battery/travel use separate 600 s periods and profiles 3600 s. Demand, response age and backoff control each group. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
@@ -85,7 +85,7 @@ Requests are demand-aware, account-budgeted and shared when identical reads are 
 
 Vehicle **unlock** requests remote start; **lock** requests remote stop. The vehicle/cloud decides its motion/P requirements. HA does not disable remote stop by guessing whether the vehicle is moving. Seat unlock opens the compartment; seat locking is manual only. The retained buttons use the same executor as the Lock entities.
 
-Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. A cloud observation is not a physical guarantee; pending/unconfirmed/failed results are kept distinct. A new command can replace the previous confirmation observer; only command transmission is serialized.
+Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. Confirmation uses fresh cloud observations; pending/unconfirmed/failed results are kept distinct. A new command can replace the previous confirmation observer; only command transmission is serialized.
 
 After a verified seat unlock, its Lock display remains unlocked for at least five seconds while status queries continue. The `Reported latch state` attribute and vehicle state events retain the actual reported state throughout this display window. After five seconds, the Lock follows the latest valid latch reading. A separate status observation runs about once per second for fifteen seconds, then at 20/30/45/59.9 seconds, ending within sixty seconds. Missed read slots are skipped rather than sent in a burst.
 
