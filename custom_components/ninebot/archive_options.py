@@ -115,7 +115,9 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
         accounts = loaded_accounts(self.hass)
         choices: list[SelectOptionDict] = []
         for owner, entry in accounts.items():
-            profiles = await entry.runtime_data.coordinator.statistics.archive.async_profiles()
+            profiles = await entry.runtime_data.coordinator.statistics.archive.async_profiles(
+                include_absent=True
+            )
             choices.extend(
                 SelectOptionDict(
                     value=f"{owner}:{profile.sn}", label=f"{entry.title} · {profile.name}"
@@ -348,10 +350,10 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                             p for o, p in self._archive_sources if o == owner and p != path
                         )
                         result = await stats.archive.async_merge_archive(path, selected, sources)
-                        profiles = await stats.archive.async_profiles()
+                        profiles = await stats.archive.async_profiles(include_absent=True)
                         stats._vehicles.update(profile.sn for profile in profiles)
                         await stats.async_refresh_projection()
-                        for profile in await stats.archive.async_profiles():
+                        for profile in profiles:
                             stats._notify_change(profile.sn, None)
                         entry.runtime_data.coordinator.async_set_updated_data(
                             dict(entry.runtime_data.coordinator.data)

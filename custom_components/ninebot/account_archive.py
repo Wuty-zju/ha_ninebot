@@ -103,7 +103,7 @@ async def async_prepare_account(hass: HomeAssistant, uid: str, max_bytes: int) -
                     await candidate.async_close()
                     await actor.async_merge_archive(copy)
 
-                    def retire() -> None:
+                    def retire(source: Path = source) -> None:
                         actor._db(write=True)  # Share the official backup barrier.
                         _retire(source, target.parent / "retired" / source.parent.name)
 

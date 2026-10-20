@@ -870,13 +870,14 @@ class RideArchive:
             db.execute("UPDATE meta SET value=? WHERE key='revision'", (str(value),))
         return value
 
-    async def async_profiles(self) -> tuple[VehicleProfile, ...]:
+    async def async_profiles(self, *, include_absent: bool = False) -> tuple[VehicleProfile, ...]:
         return await self._run(
             lambda: tuple(
                 restored_profile(decoded(row[0]))
                 for row in self._db().execute(
-                    "SELECT profile FROM vehicles WHERE present=1 AND profile IS NOT "
-                    "NULL ORDER BY vehicle"
+                    "SELECT profile FROM vehicles WHERE "
+                    + ("" if include_absent else "present=1 AND ")
+                    + "profile IS NOT NULL ORDER BY vehicle"
                 )
             )
         )

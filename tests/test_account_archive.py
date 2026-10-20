@@ -55,9 +55,15 @@ def month(identity="ride", sn=SN):
 async def populated(path, uid=UID, identity="ride", sn=SN):
     actor = RideArchive(path, owner_key(uid))
     await actor.async_open()
-    await actor.async_record_profiles((VehicleProfile(sn, "Scooter", "Model"),), NOW, complete=True)
-    await actor.async_record_month(sn, month(identity, sn), NOW)
-    return actor
+    try:
+        await actor.async_record_profiles(
+            (VehicleProfile(sn, "Scooter", "Model"),), NOW, complete=True
+        )
+        await actor.async_record_month(sn, month(identity, sn), NOW)
+        return actor
+    except BaseException:
+        await actor.async_close()
+        raise
 
 
 async def detail(actor, *, simple=False, at=NOW, identity="ride"):
