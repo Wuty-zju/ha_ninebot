@@ -64,7 +64,7 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
         _ownership=dict.fromkeys(VEHICLES, 1),
         data=dict.fromkeys(VEHICLES, object()),
         _authenticated=True,
-        background_ready=lambda: True,
+        background_ready=lambda *args: True,
         local_vehicle_available=lambda sn: sn in VEHICLES,
         fresh=lambda sn, group: True,
         raw=RawStore(),

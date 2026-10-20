@@ -1223,12 +1223,17 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             for value in active
         )
 
-    def background_ready(self) -> bool:
-        return (
-            not self.broker.cooling_down
-            and self._list_freshness.error is None
-            and not self.status_recovering()
-        )
+    def background_ready(self, sn: str | None = None) -> bool:
+        if self.broker.cooling_down or self.status_recovering():
+            return False
+        verified = {
+            vehicle
+            for vehicle, value in self.data.items()
+            if value.present and vehicle not in self._suspect
+        }
+        if sn is not None:
+            return sn in verified and self.fresh(sn, "profile")
+        return self._list_freshness.error is None or bool(verified)
 
     async def async_poll_status(self) -> None:
         sns = [
