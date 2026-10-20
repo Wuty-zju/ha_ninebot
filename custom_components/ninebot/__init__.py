@@ -208,7 +208,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
     async def remove() -> None:
         try:
             if not entry.options.get(CONF_RETAIN_ARCHIVE, True):
-                await async_remove_account(hass, str(entry.data[CONF_BUSINESS_UID]))
+                await async_remove_account(hass, str(entry.data[CONF_BUSINESS_UID]), entry.entry_id)
                 await async_remove_archive(hass, entry.entry_id)
         except ArchiveError:
             ir.async_create_issue(

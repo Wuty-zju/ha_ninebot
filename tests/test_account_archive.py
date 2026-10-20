@@ -369,3 +369,19 @@ async def test_restore_verified_discovery_without_restarting_month_scan(tmp_path
     finally:
         await actor.async_close()
         await destination.async_close()
+
+
+async def test_deferred_deletion_cannot_erase_readded_account(hass, entry):
+    from custom_components.ninebot.backup import async_pre_backup, async_post_backup
+
+    actor = await populated(account_path(hass, UID))
+    await actor.async_close()
+    hass.config_entries.async_update_entry(entry, options={CONF_RETAIN_ARCHIVE: False})
+    await async_pre_backup(hass)
+    await async_remove_entry(hass, entry)
+    replacement = MockConfigEntry(
+        domain="ninebot", unique_id="replacement", data={"business_uid": UID}
+    )
+    replacement.add_to_hass(hass)
+    await async_post_backup(hass)
+    assert actor.path.is_file()

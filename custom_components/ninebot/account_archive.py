@@ -193,8 +193,15 @@ def _safe_remove(root: Path, owner: str, *, check_only: bool = False) -> None:
             os.close(descriptor)
 
 
-async def async_remove_account(hass: HomeAssistant, uid: str) -> None:
+async def async_remove_account(hass: HomeAssistant, uid: str, entry_id: str | None = None) -> None:
     async with account_lock(hass, uid):
+        # A backup can defer deletion past removal/re-addition of the old entry.
+        # Never erase a database already reclaimed by another authenticated entry.
+        if entry_id is not None and any(
+            entry.entry_id != entry_id and entry.data.get("business_uid") == uid
+            for entry in hass.config_entries.async_entries(DOMAIN)
+        ):
+            raise ArchiveError(ArchiveFailure.BUSY)
         sources = await hass.async_add_executor_job(_sources, hass, uid)
         targets = [(account_path(hass, uid).parent.parent, owner_key(uid))]
         targets.extend((p.parent.parent, p.parent.name) for p in sources)
