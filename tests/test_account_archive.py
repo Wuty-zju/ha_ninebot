@@ -336,3 +336,36 @@ async def test_additional_source_evidence_reexports_with_selected_vehicle(tmp_pa
     finally:
         await actor.async_close()
         await destination.async_close()
+
+
+async def test_restore_verified_discovery_without_restarting_month_scan(tmp_path):
+    from custom_components.ninebot.history_plan import HistoryPlan, HistoryState
+
+    actor = await populated(tmp_path / "source" / "rides.sqlite3")
+    destination = RideArchive(tmp_path / "target" / "rides.sqlite3", actor.owner)
+    try:
+        plan = HistoryPlan.create("a" * 32, vehicle_key(SN), "202610", "202610", NOW.isoformat())
+        await actor.async_set_history_plan(SN, plan, None, guard=lambda: True)
+        raw = build_record(
+            Endpoint.TRAVEL,
+            {"times": 1, "list": [{"travel_id": "ride"}]},
+            NOW + timedelta(seconds=1),
+            "202610",
+            backend_version="0.1.7",
+            endpoint_version="0.1.7+native.history.v1",
+        )
+        receipt = await actor.async_accept_history_page(SN, plan, raw, guard=lambda: True)
+        assert receipt.root.discovery_complete
+        exported = tmp_path / "source.sqlite3"
+        await actor.async_export_archive(exported)
+        await destination.async_open()
+        await destination.async_merge_archive(exported)
+        restored = await destination.async_history_plan(SN)
+        assert restored.discovery_complete and restored.verified_months == 1
+        assert restored.state is HistoryState.PRESERVE
+        assert await destination.async_history_page(
+            SN, plan.plan_id, "202610", 1, guard=lambda: True
+        )
+    finally:
+        await actor.async_close()
+        await destination.async_close()

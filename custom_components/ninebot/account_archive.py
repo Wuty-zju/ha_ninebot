@@ -42,7 +42,7 @@ def _sources(hass: HomeAssistant, uid: str) -> list[Path]:
     root = Path(hass.config.path(".storage", DOMAIN, "archives"))
     if root.is_symlink() or not root.is_dir():
         return []
-    result = []
+    result: list[tuple[int, int, Path]] = []
     for folder in root.iterdir():
         if folder.is_symlink() or not folder.is_dir() or not _HEX.fullmatch(folder.name):
             continue
@@ -56,10 +56,19 @@ def _sources(hass: HomeAssistant, uid: str) -> list[Path]:
         try:
             row = db.execute("SELECT value FROM meta WHERE key='owner'").fetchone()
             if row == (owner_key(uid),):
-                result.append(path)
+                tables = {
+                    r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                }
+                verified = (
+                    db.execute("SELECT count(*) FROM history_months WHERE verified=1").fetchone()[0]
+                    if "history_months" in tables
+                    else 0
+                )
+                rides = db.execute("SELECT count(*) FROM rides").fetchone()[0]
+                result.append((verified, rides, path))
         finally:
             db.close()
-    return sorted(result)
+    return [p for _, _, p in sorted(result, key=lambda item: (-item[0], -item[1], str(item[2])))]
 
 
 def _copy_source(path: Path, target: Path) -> None:

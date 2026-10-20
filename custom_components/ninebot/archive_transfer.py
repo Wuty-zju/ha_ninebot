@@ -13,10 +13,11 @@ import stat
 import time
 import zipfile
 from collections.abc import Iterable
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .archive_codec import decoded, merged_ride, restored_ride, stamp
+from .archive_codec import decoded, encoded, merged_ride, restored_ride, stamp
 from .detail_codec import scoped_ride, unpacked
 from .raw import Endpoint
 from .travel import select_geometry
@@ -54,6 +55,8 @@ def readonly(path: Path) -> sqlite3.Connection:
 
 def snapshot(db: sqlite3.Connection, target: Path, vehicles: tuple[str, ...] | None = None) -> None:
     """SQLite backup API gives a consistent committed image, including WAL sources."""
+    if db.in_transaction:
+        raise ValueError("Cannot snapshot an uncommitted writer")
     target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     size = (
         db.execute("PRAGMA page_size").fetchone()[0] * db.execute("PRAGMA page_count").fetchone()[0]
@@ -94,6 +97,8 @@ def snapshot(db: sqlite3.Connection, target: Path, vehicles: tuple[str, ...] | N
         out.execute("VACUUM")
     finally:
         out.close()
+    with target.open("rb") as stream:
+        os.fsync(stream.fileno())
 
 
 def validate(actor: "RideArchive", db: sqlite3.Connection) -> None:
@@ -123,6 +128,47 @@ def validate(actor: "RideArchive", db: sqlite3.Connection) -> None:
 
 def _insert(db: sqlite3.Connection, table: str, row: tuple[Any, ...]) -> None:
     db.execute(f"INSERT OR REPLACE INTO {table} VALUES ({','.join('?' for _ in row)})", row)
+
+
+def adopt_discovery(db: sqlite3.Connection, source: sqlite3.Connection, vehicle: str) -> None:
+    """Restore committed page coverage only when no local baseline exists."""
+    from .history_plan import HistoryState, plan_data, restored
+
+    if db.execute("SELECT 1 FROM history_roots WHERE vehicle=?", (vehicle,)).fetchone():
+        return
+    row = source.execute("SELECT data FROM history_roots WHERE vehicle=?", (vehicle,)).fetchone()
+    if row is None:
+        return
+
+    def resumed(value: str) -> str:
+        plan = restored(decoded(value))
+        if plan.state in {HistoryState.QUERYING, HistoryState.WAITING}:
+            plan = replace(
+                plan,
+                state=HistoryState.DISCOVER if plan.next_month else HistoryState.PRESERVE,
+                retry_at=None,
+                reason=None,
+                attempts=0,
+            )
+        return encoded(plan_data(plan))
+
+    db.execute("INSERT INTO history_roots VALUES (?,?)", (vehicle, resumed(row[0])))
+    for key, value in source.execute(
+        "SELECT key,value FROM meta WHERE key LIKE ?", (f"history_run:{vehicle}:%",)
+    ):
+        current = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        if current is not None and current != (resumed(value),):
+            raise ValueError("Conflicting local discovery evidence")
+        db.execute("INSERT OR IGNORE INTO meta VALUES (?,?)", (key, resumed(value)))
+    for table in ("history_pages", "history_months", "history_ids"):
+        for row in source.execute(f"SELECT * FROM {table} WHERE vehicle=?", (vehicle,)):
+            _insert(db, table, row)
+    for digest, body in source.execute(
+        "SELECT digest,body FROM history_payloads WHERE digest IN "
+        "(SELECT digest FROM history_pages WHERE vehicle=?)",
+        (vehicle,),
+    ):
+        db.execute("INSERT OR IGNORE INTO history_payloads VALUES (?,?)", (digest, body))
 
 
 def merge(
@@ -340,6 +386,7 @@ def merge(
             from .payload_inventory import advance
 
             for vehicle in selected:
+                adopt_discovery(db, incoming, vehicle)
                 db.execute("DELETE FROM payload_checks WHERE vehicle=?", (vehicle,))
                 advance(db, vehicle)
             db.execute("INSERT INTO meta VALUES (?,?)", (receipt, "1"))
