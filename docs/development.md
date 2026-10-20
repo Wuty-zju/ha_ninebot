@@ -56,7 +56,7 @@ docs/                       User guides, architecture and development contracts
 | Identity, authentication or storage | Migration, authorization, cancellation and failure cases; both HA boundaries at major milestones |
 | Release candidate | Lightweight candidate checks, one full HA boundary run and final package verification |
 
-**Checks** runs Core lint and Release policy on PRs and `main`/`dev` pushes. Documentation, HACS and Hassfest have separate jobs. Path-scoped workflows cover account configuration, history, statistics and browser behavior.
+**Checks** runs Core lint and Release policy on PRs and `main`/`dev` pushes. Documentation, HACS and Hassfest have separate jobs. **Runtime checks** builds one deduplicated test plan for every PR from `.github/ci.json`. Known account/history/statistics/live scopes are combined; a new unmapped runtime file falls back to the offline suite. Critical account and compatibility changes select both HA boundaries. Frontend changes keep their separate Node/browser job. The plan and test reports are retained as Actions artifacts.
 
 For an RC or major compatibility change, dispatch **Checks** with `full_validation=true` on the fixed candidate. The current full matrix pins:
 
@@ -65,7 +65,7 @@ For an RC or major compatibility change, dispatch **Checks** with `full_validati
 | 2026.1.0 | 3.13 | 0.13.305 |
 | 2026.10.2 | 3.14 | 0.13.373 |
 
-The job verifies installed versions and dependency consistency, runs mypy and the full offline pytest suite, and uploads JUnit/coverage reports. Node tests run in the same dispatch. The combined line/branch threshold is 91%, based on the full RC audit; 95% remains the improvement target. Documentation-only topics run the lightweight jobs. Promotion PRs may reuse a successful full result only when runtime, tests and relevant workflow inputs are unchanged; record the source SHA/run in the PR instead of launching another matrix. Individual focused workflows retain their own reviewed pins; update a boundary together with its plugin. Reuse unchanged successful evidence between candidates; repeat only affected checks after a fix.
+The job verifies installed versions and dependency consistency, runs mypy and the full offline pytest suite, and uploads JUnit/coverage reports. Node tests run in the same dispatch. The combined line/branch threshold is 91%, based on the full RC audit; 95% remains the improvement target. Documentation-only topics run the lightweight jobs. Promotion PRs may reuse a successful full result only when runtime, tests and relevant workflow inputs are unchanged; record the source SHA/run in the PR instead of launching another matrix. Both focused and complete HA jobs use the exact boundary/plugin pairs in `.github/ci.json`; update a boundary and its plugin together. Dependency consistency is checked after installation. Reuse unchanged successful evidence between candidates; repeat only affected checks after a fix.
 
 In an existing compatible environment:
 
@@ -77,7 +77,14 @@ python -m pytest -q tests/test_config_flow.py
 node --test tests/frontend/*.mjs
 ```
 
-Select the test files for the change. Cloud CI provides isolated heavy environments; local documentation work needs only Python's standard library.
+Select the test files for the change. Cloud CI provides isolated heavy environments; local documentation work needs only Python's standard library. A local test plan needs no HA installation:
+
+```sh
+python scripts/ci.py --plan --base FULL_BASE_SHA --head FULL_HEAD_SHA --output ci-scope.json
+```
+
+Update the owning scope in `.github/ci.json` when adding a source/test boundary. CI selection has standard-library regression tests for new files, shared fixtures, overlapping scopes and renames. Documentation validation runs for every candidate so the release gate can always find its result. Workflow-only changes run a small pipeline canary; they do not automatically render the map or repeat archive profiling.
+
 
 ## Fixtures and privacy
 
