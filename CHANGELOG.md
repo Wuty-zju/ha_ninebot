@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Clean up cancelled or failed history exports after pending filesystem work finishes. Reserve export slots before creating files, and retain completed downloads until their normal expiry or shutdown cleanup.
+
 ## 2.0.0rc1
 
 - Prepare the first 2.0 release candidate, carrying forward the account-owned schema 7 archive, validated history transfer, incremental synchronization and connection-recovery fixes from the beta series.
