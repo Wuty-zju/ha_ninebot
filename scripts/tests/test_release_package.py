@@ -265,6 +265,20 @@ class PackageAndPublication(unittest.TestCase):
                 candidate_gate(self.api, "dev", self.sha)
         self.assertEqual(self.api.writes, [])
 
+    def test_documentation_check_is_required_before_publication(self):
+        original = self.api.request
+
+        def missing_docs(path, **kwargs):
+            result = original(path, **kwargs)
+            if path.startswith("commits/"):
+                result["check_runs"] = [r for r in result["check_runs"] if r["name"] != "docs"]
+            return result
+
+        self.api.request = missing_docs
+        with self.assertRaisesRegex(ValueError, "successful GitHub Actions"):
+            self.run_publish(apply=True)
+        self.assertEqual(self.api.writes, [])
+
     def test_preparation_digest_cannot_change_before_publish(self):
         with self.assertRaisesRegex(ValueError, "preparation job"):
             self.run_publish(apply=True, expected_digest="d" * 64)
