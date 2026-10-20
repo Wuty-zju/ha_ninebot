@@ -39,6 +39,7 @@ def readonly(path: Path) -> sqlite3.Connection:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_EXPANDED:
         raise ValueError("Invalid archive file")
     db = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=3)
+    db.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 4 * 1024 * 1024)
     db.execute("PRAGMA query_only=ON")
     db.execute("PRAGMA trusted_schema=OFF")
     deadline = time.monotonic() + 120
@@ -54,6 +55,11 @@ def readonly(path: Path) -> sqlite3.Connection:
 def snapshot(db: sqlite3.Connection, target: Path, vehicles: tuple[str, ...] | None = None) -> None:
     """SQLite backup API gives a consistent committed image, including WAL sources."""
     target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    size = (
+        db.execute("PRAGMA page_size").fetchone()[0] * db.execute("PRAGMA page_count").fetchone()[0]
+    )
+    if shutil.disk_usage(target.parent).free < size * 2 + 32 * 1024 * 1024:
+        raise ValueError("Insufficient snapshot space")
     fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     os.close(fd)
     out = sqlite3.connect(target)
@@ -120,7 +126,10 @@ def _insert(db: sqlite3.Connection, table: str, row: tuple[Any, ...]) -> None:
 
 
 def merge(
-    actor: "RideArchive", source: Path, vehicles: tuple[str, ...] | None = None
+    actor: "RideArchive",
+    source: Path,
+    vehicles: tuple[str, ...] | None = None,
+    evidence_sources: tuple[Path, ...] = (),
 ) -> dict[str, int]:
     """One account transaction, deterministic replay, no source DDL/checkpoints."""
     db = actor._db(write=True)
@@ -138,24 +147,47 @@ def merge(
         receipt = (
             "account_import:"
             + hashlib.sha256(
-                (digest_file(source) + ":" + ",".join(sorted(selected))).encode()
+                (
+                    digest_file(source)
+                    + ":"
+                    + ":".join(digest_file(p) for p in evidence_sources)
+                    + ":"
+                    + ",".join(sorted(selected))
+                ).encode()
             ).hexdigest()
         )
         if db.execute("SELECT 1 FROM meta WHERE key=?", (receipt,)).fetchone():
             return {"rides": 0, "details": 0}
-        # Keep verified original page evidence independently of the live query model.
+        # Evidence is immutable and separate from live jobs. Validate every file
+        # before any account facts are changed; subset copies exclude other cars.
         imports = actor.path.parent / "imports"
         imports.mkdir(mode=0o700, exist_ok=True)
-        evidence = imports / (digest_file(source) + ".sqlite3")
-        if not evidence.exists():
-            if (
-                sum(p.stat().st_size for p in imports.glob("*.sqlite3")) + source.stat().st_size
-                > MAX_EXPANDED
-            ):
-                raise ValueError("Recovery evidence budget exceeded")
-            with source.open("rb") as src, evidence.open("xb") as dst:
-                os.chmod(evidence, 0o600)
-                shutil.copyfileobj(src, dst, length=1024 * 1024)
+        for original in (source, *evidence_sources):
+            original_db = readonly(original)
+            try:
+                validate(actor, original_db)
+                available = {r[0] for r in original_db.execute("SELECT vehicle FROM vehicles")}
+                keys = tuple(sorted(selected & available))
+                if not keys:
+                    continue
+                pending_evidence = imports / "pending.sqlite3"
+                pending_evidence.unlink(missing_ok=True)
+                snapshot(original_db, pending_evidence, keys)
+                evidence = imports / (digest_file(pending_evidence) + ".sqlite3")
+                if evidence.exists():
+                    pending_evidence.unlink()
+                    continue
+                if (
+                    sum(p.stat().st_size for p in imports.glob("*.sqlite3"))
+                    + pending_evidence.stat().st_size
+                    > MAX_EXPANDED
+                    or len(list(imports.glob("*.sqlite3"))) > 16
+                ):
+                    pending_evidence.unlink()
+                    raise ValueError("Recovery evidence budget exceeded")
+                os.replace(pending_evidence, evidence)
+            finally:
+                original_db.close()
         # Keep a consistent rollback image independently of transaction rollback.
         recovery = actor.path.parent / "recovery.sqlite3"
         pending = actor.path.parent / "recovery.pending.sqlite3"
@@ -295,24 +327,46 @@ def merge(
         incoming.close()
 
 
-def pack(target: Path, snapshots: Iterable[tuple[str, Path]]) -> None:
+def pack(
+    target: Path,
+    snapshots: Iterable[tuple[str, Path]],
+    evidence: dict[str, list[Path]] | None = None,
+) -> None:
     records = []
+    expanded = 0
     with zipfile.ZipFile(target, "x", compression=zipfile.ZIP_DEFLATED) as bundle:
         os.chmod(target, 0o600)
         for owner, path in snapshots:
             name = f"accounts/{owner}.sqlite3"
-            records.append(
-                {
-                    "owner": owner,
-                    "file": name,
-                    "sha256": digest_file(path),
-                    "bytes": path.stat().st_size,
-                }
-            )
+            record: dict[str, Any] = {
+                "owner": owner,
+                "file": name,
+                "sha256": digest_file(path),
+                "bytes": path.stat().st_size,
+                "evidence": [],
+            }
             bundle.write(path, name)
-        if not 1 <= len(records) <= MAX_ACCOUNTS:
-            raise ValueError("Invalid account count")
+            expanded += path.stat().st_size
+            seen_sources: set[str] = set()
+            for original in (evidence or {}).get(owner, []):
+                digest = digest_file(original)
+                if digest in seen_sources:
+                    continue
+                seen_sources.add(digest)
+                if len(seen_sources) > 16:
+                    raise ValueError("Recovery source budget exceeded")
+                member = f"evidence/{owner}/{digest}.sqlite3"
+                record["evidence"].append(
+                    {"file": member, "sha256": digest, "bytes": original.stat().st_size}
+                )
+                bundle.write(original, member)
+                expanded += original.stat().st_size
+            records.append(record)
+        if not 1 <= len(records) <= MAX_ACCOUNTS or expanded > MAX_EXPANDED:
+            raise ValueError("Package exceeds account or expanded byte budget")
         bundle.writestr("manifest.json", json.dumps({"format": FORMAT, "accounts": records}))
+    if target.stat().st_size > MAX_PACKAGE:
+        raise ValueError("Package exceeds upload budget; export fewer vehicles")
 
 
 def unpack(source: Path, target: Path) -> list[tuple[str, Path]]:
@@ -320,7 +374,7 @@ def unpack(source: Path, target: Path) -> list[tuple[str, Path]]:
         raise ValueError("Package exceeds upload budget")
     with zipfile.ZipFile(source) as bundle:
         infos = bundle.infolist()
-        if len(infos) > MAX_ACCOUNTS + 1 or len({i.filename for i in infos}) != len(infos):
+        if len(infos) > MAX_ACCOUNTS * 17 + 1 or len({i.filename for i in infos}) != len(infos):
             raise ValueError("Invalid package members")
         if sum(i.file_size for i in infos) > MAX_EXPANDED:
             raise ValueError("Expanded package exceeds budget")
@@ -329,36 +383,59 @@ def unpack(source: Path, target: Path) -> list[tuple[str, Path]]:
             raise ValueError("Invalid manifest budget")
         manifest = json.loads(bundle.read(manifest_info))
         if (
-            manifest.get("format") != FORMAT
+            not isinstance(manifest, dict)
+            or manifest.get("format") != FORMAT
             or not isinstance(records := manifest.get("accounts"), list)
             or not 1 <= len(records) <= MAX_ACCOUNTS
         ):
             raise ValueError("Unsupported package format")
         expected = {"manifest.json"}
         result = []
+        owners = set()
         target.mkdir(mode=0o700, parents=True, exist_ok=False)
         for record in records:
+            if not isinstance(record, dict):
+                raise ValueError("Invalid account record")
             owner = record["owner"]
             if (
                 not isinstance(owner, str)
                 or len(owner) != 64
                 or any(c not in "0123456789abcdef" for c in owner)
+                or owner in owners
             ):
                 raise ValueError("Invalid account identity")
-            name = f"accounts/{owner}.sqlite3"
-            if record["file"] != name or name in expected:
-                raise ValueError("Invalid account member")
-            expected.add(name)
-            info = bundle.getinfo(name)
-            if stat.S_ISLNK(info.external_attr >> 16) or info.file_size != record["bytes"]:
-                raise ValueError("Invalid database member")
-            path = target / f"{owner}.sqlite3"
-            with bundle.open(info) as src, path.open("xb") as dst:
-                os.chmod(path, 0o600)
-                shutil.copyfileobj(src, dst, length=1024 * 1024)
-            if digest_file(path) != record["sha256"]:
-                raise ValueError("Invalid database digest")
-            result.append((owner, path))
+            owners.add(owner)
+            evidence = record.get("evidence", [])
+            if not isinstance(evidence, list) or len(evidence) > 16:
+                raise ValueError("Invalid evidence budget")
+            for number, member in enumerate([record, *evidence]):
+                if not isinstance(member, dict):
+                    raise ValueError("Invalid source record")
+                digest = member["sha256"]
+                if (
+                    not isinstance(digest, str)
+                    or len(digest) != 64
+                    or any(c not in "0123456789abcdef" for c in digest)
+                ):
+                    raise ValueError("Invalid source digest")
+                name = (
+                    f"accounts/{owner}.sqlite3"
+                    if number == 0
+                    else f"evidence/{owner}/{digest}.sqlite3"
+                )
+                if member["file"] != name or name in expected:
+                    raise ValueError("Invalid account member")
+                expected.add(name)
+                info = bundle.getinfo(name)
+                if stat.S_ISLNK(info.external_attr >> 16) or info.file_size != member["bytes"]:
+                    raise ValueError("Invalid database member")
+                path = target / f"{owner}-{number}.sqlite3"
+                with bundle.open(info) as src, path.open("xb") as dst:
+                    os.chmod(path, 0o600)
+                    shutil.copyfileobj(src, dst, length=1024 * 1024)
+                if digest_file(path) != digest:
+                    raise ValueError("Invalid database digest")
+                result.append((owner, path))
         if {i.filename for i in infos} != expected:
             raise ValueError("Unexpected package members")
         return result

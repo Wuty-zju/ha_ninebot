@@ -2,7 +2,9 @@
 
 import secrets
 import shutil
+import sqlite3
 import tempfile
+import zipfile
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -12,8 +14,10 @@ from homeassistant import config_entries
 from homeassistant.components.file_upload import process_uploaded_file
 from homeassistant.components.http import KEY_HASS, HomeAssistantView
 from homeassistant.components.http.auth import async_sign_path
+from homeassistant.components.http.const import KEY_HASS_USER
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.http import current_request
 from homeassistant.helpers.selector import (
     FileSelector,
     FileSelectorConfig,
@@ -24,7 +28,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .account_archive import account_lock, owner_key
-from .archive_transfer import pack, readonly, unpack, validate
+from .archive_transfer import pack, readonly, snapshot, unpack, validate
 from .backup import backup_active
 from .compat import validation as vol
 from .const import CONF_BUSINESS_UID, DOMAIN
@@ -50,7 +54,7 @@ class ArchiveDownload(HomeAssistantView):
     name = "api:ninebot:archive"
 
     async def get(self, request: web.Request, token: str) -> web.StreamResponse:
-        user = request.get("hass_user")
+        user = request.get(KEY_HASS_USER)
         if user is None or not user.is_admin:
             raise web.HTTPForbidden
         hass = request.app[KEY_HASS]
@@ -80,9 +84,17 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
     _archive_directory: Path | None = None
     _archive_sources: list[tuple[str, Path]] | None = None
 
+    _archive_user_id: str | None = None
+
     async def _archive_admin(self) -> bool:
-        user = await self.hass.auth.async_get_user(self.context.get("user_id", ""))
-        return bool(user and user.is_admin)
+        request = current_request.get()
+        user = request.get(KEY_HASS_USER) if request is not None else None
+        if user is None or not user.is_admin:
+            return False
+        if self._archive_user_id is not None and self._archive_user_id != user.id:
+            return False
+        self._archive_user_id = user.id
+        return True
 
     async def async_step_archive(
         self, user_input: dict[str, Any] | None = None
@@ -99,7 +111,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
         if not await self._archive_admin():
             return self.async_abort(reason="archive_admin_required")
         accounts = loaded_accounts(self.hass)
-        choices = []
+        choices: list[SelectOptionDict] = []
         for owner, entry in accounts.items():
             profiles = await entry.runtime_data.coordinator.statistics.archive.async_profiles()
             choices.extend(
@@ -120,6 +132,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                 directory = Path(await self.hass.async_add_executor_job(tempfile.mkdtemp))
                 try:
                     snapshots = []
+                    evidence: dict[str, list[Path]] = {}
                     for owner, entry in accounts.items():
                         vehicles = tuple(
                             value.split(":", 1)[1]
@@ -136,12 +149,44 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                             await archive.async_export_archive(
                                 path, tuple(vehicle_key(sn) for sn in vehicles)
                             )
+
+                        def source_snapshots(
+                            archive: Any = archive,
+                            owner: str = owner,
+                            vehicles: tuple[str, ...] = vehicles,
+                        ) -> list[Path]:
+                            sources = []
+                            from .ride_archive import vehicle_key
+
+                            for index, original in enumerate(
+                                sorted((archive.path.parent / "imports").glob("*.sqlite3"))
+                            ):
+                                db = readonly(original)
+                                try:
+                                    available = {
+                                        r[0] for r in db.execute("SELECT vehicle FROM vehicles")
+                                    }
+                                    keys = tuple(
+                                        vehicle_key(sn)
+                                        for sn in vehicles
+                                        if vehicle_key(sn) in available
+                                    )
+                                    if not keys:
+                                        continue
+                                    output = directory / f"{owner}-source-{index}.sqlite3"
+                                    snapshot(db, output, keys)
+                                    sources.append(output)
+                                finally:
+                                    db.close()
+                            return sources
+
+                        evidence[owner] = await self.hass.async_add_executor_job(source_snapshots)
                         snapshots.append((owner, path))
                     package = directory / "ninebot-history.zip"
-                    await self.hass.async_add_executor_job(pack, package, snapshots)
+                    await self.hass.async_add_executor_job(pack, package, snapshots, evidence)
                     token = secrets.token_urlsafe(32)
                     register_download(self.hass)
-                    self.hass.data[DOWNLOADS][token] = (self.context["user_id"], package)
+                    self.hass.data[DOWNLOADS][token] = (self._archive_user_id, package)
 
                     async def cleanup() -> None:
                         self.hass.data[DOWNLOADS].pop(token, None)
@@ -203,7 +248,15 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
 
                 self._archive_sources = await self.hass.async_add_executor_job(staged)
                 return await self.async_step_archive_confirm()
-            except (ArchiveError, OSError, ValueError, KeyError):
+            except (
+                ArchiveError,
+                OSError,
+                ValueError,
+                KeyError,
+                TypeError,
+                sqlite3.Error,
+                zipfile.BadZipFile,
+            ):
                 await self._archive_cleanup()
                 errors["base"] = "archive_invalid"
         return self.async_show_form(
@@ -222,7 +275,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
         if not self._archive_sources:
             return await self.async_step_archive_import()
         accounts = loaded_accounts(self.hass)
-        choices = []
+        choices: list[SelectOptionDict] = []
         errors = {}
         try:
             for owner, path in self._archive_sources:
@@ -253,6 +306,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                     )
                     for vehicle, name in profiles
                 )
+            choices = list({choice["value"]: choice for choice in choices}.values())
             if user_input is not None:
                 selections = user_input.get("vehicles", [])
                 if (
@@ -268,7 +322,11 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                         data_schema=self._archive_confirmation_schema(choices),
                     )
                 results = []
+                completed: set[str] = set()
                 for owner, path in self._archive_sources:
+                    if owner in completed:
+                        continue
+                    completed.add(owner)
                     selected = tuple(
                         value.split(":", 1)[1]
                         for value in selections
@@ -279,7 +337,12 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                     entry = accounts[owner]
                     async with account_lock(self.hass, str(entry.data[CONF_BUSINESS_UID])):
                         stats = entry.runtime_data.coordinator.statistics
-                        result = await stats.archive.async_merge_archive(path, selected)
+                        sources = tuple(
+                            p for o, p in self._archive_sources if o == owner and p != path
+                        )
+                        result = await stats.archive.async_merge_archive(path, selected, sources)
+                        profiles = await stats.archive.async_profiles()
+                        stats._vehicles.update(profile.sn for profile in profiles)
                         await stats.async_refresh_projection()
                         for profile in await stats.archive.async_profiles():
                             stats._notify_change(profile.sn, None)
@@ -293,7 +356,15 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                     description_placeholders={"result": "\n".join(results)},
                     data_schema=vol.Schema({}),
                 )
-        except (ArchiveError, OSError, ValueError, KeyError):
+        except (
+            ArchiveError,
+            OSError,
+            ValueError,
+            KeyError,
+            TypeError,
+            sqlite3.Error,
+            zipfile.BadZipFile,
+        ):
             errors["base"] = "archive_invalid"
         return self.async_show_form(
             step_id="archive_confirm",
@@ -302,7 +373,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
         )
 
     @staticmethod
-    def _archive_confirmation_schema(choices: list[SelectOptionDict]) -> vol.Schema:
+    def _archive_confirmation_schema(choices: list[SelectOptionDict]) -> Any:
         return vol.Schema(
             {
                 vol.Required("vehicles"): SelectSelector(

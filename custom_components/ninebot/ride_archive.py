@@ -339,12 +339,15 @@ class RideArchive:
         await self._run(lambda: snapshot(self._db(), target, vehicles))
 
     async def async_merge_archive(
-        self, source: Path, vehicles: tuple[str, ...] | None = None
+        self,
+        source: Path,
+        vehicles: tuple[str, ...] | None = None,
+        evidence_sources: tuple[Path, ...] = (),
     ) -> dict[str, int]:
         """Validate and merge without a second writer or cloud operation."""
         from .archive_transfer import merge
 
-        return await self._run(lambda: merge(self, source, vehicles))
+        return await self._run(lambda: merge(self, source, vehicles, evidence_sources))
 
     async def async_prepare_backup(self) -> None:
         """Reject new writes immediately, then drain earlier SQL operations."""

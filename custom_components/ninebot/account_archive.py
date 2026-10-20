@@ -12,6 +12,7 @@ from pathlib import Path
 from homeassistant.core import HomeAssistant
 
 from .archive_transfer import readonly, snapshot
+from .backup import backup_active, register_archive, unregister_archive
 from .const import DOMAIN
 from .ride_archive import ArchiveError, ArchiveFailure, RideArchive
 
@@ -81,11 +82,14 @@ def _retire(source: Path, destination: Path) -> None:
 async def async_prepare_account(hass: HomeAssistant, uid: str, max_bytes: int) -> None:
     """Adopt all verified old entry archives before opening the runtime actor."""
     async with account_lock(hass, uid):
+        if backup_active(hass):
+            raise ArchiveError(ArchiveFailure.BUSY)
         sources = await hass.async_add_executor_job(_sources, hass, uid)
         if not sources:
             return
         target = account_path(hass, uid)
         actor = RideArchive(target, owner_key(uid), max_bytes=max_bytes)
+        register_archive(hass, actor)
         try:
             await actor.async_open()
             for source in sources:
@@ -106,9 +110,10 @@ async def async_prepare_account(hass: HomeAssistant, uid: str, max_bytes: int) -
                     await hass.async_add_executor_job(shutil.rmtree, directory)
         finally:
             await actor.async_close()
+            unregister_archive(hass, actor)
 
 
-def _safe_remove(root: Path, owner: str) -> None:
+def _safe_remove(root: Path, owner: str, *, check_only: bool = False) -> None:
     path = root / owner
     if not path.exists():
         return
@@ -133,21 +138,25 @@ def _safe_remove(root: Path, owner: str) -> None:
             known = (
                 bool(_DB.fullmatch(name))
                 if rel and rel[0] == "retired"
-                else bool(re.fullmatch(r"[0-9a-f]{64}\.sqlite3", name))
+                else name == "pending.sqlite3" or bool(re.fullmatch(r"[0-9a-f]{64}\.sqlite3", name))
                 if rel == ("imports",)
-                else name
+                else bool(_DB.fullmatch(name))
+                or name
                 in {
                     "rides.sqlite3",
                     "rides.sqlite3-journal",
                     "rides.sqlite3-wal",
                     "rides.sqlite3-shm",
                     "recovery.sqlite3",
+                    "recovery.pending.sqlite3",
                 }
             )
             p = directory / name
             if not known or not p.is_file():
                 raise ArchiveError(ArchiveFailure.STORAGE)
             allowed.append(p)
+    if check_only:
+        return
     for p in allowed:
         p.unlink()
     for current, _, _ in os.walk(path, topdown=False):
@@ -156,6 +165,15 @@ def _safe_remove(root: Path, owner: str) -> None:
 
 async def async_remove_account(hass: HomeAssistant, uid: str) -> None:
     async with account_lock(hass, uid):
-        await hass.async_add_executor_job(
-            _safe_remove, account_path(hass, uid).parent.parent, owner_key(uid)
-        )
+        sources = await hass.async_add_executor_job(_sources, hass, uid)
+        targets = [(account_path(hass, uid).parent.parent, owner_key(uid))]
+        targets.extend((p.parent.parent, p.parent.name) for p in sources)
+
+        def remove() -> None:
+            # Check all known same-owner locations before unlinking any file.
+            for root, scope in targets:
+                _safe_remove(root, scope, check_only=True)
+            for root, scope in targets:
+                _safe_remove(root, scope)
+
+        await hass.async_add_executor_job(remove)
