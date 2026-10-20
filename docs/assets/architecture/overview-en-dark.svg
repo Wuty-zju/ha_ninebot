@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="888" viewBox="0 0 960 888" role="img" aria-labelledby="title desc" xml:lang="en">
+<title id="title">Live state and historical data</title>
+<desc id="desc">Account isolation · shared request coordination · separate data lifecycles</desc>
+<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
+<rect width="960" height="888" rx="16" fill="#0d1117"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">Live state and historical data</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">Account isolation · shared request coordination · separate data lifecycles</text>
+<rect x="40" y="112" width="880" height="137" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">Ninebot cloud</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">Vehicles, status, battery and travel</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">Account-authenticated access</text>
+<path d="M480 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="297" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02</text>
+<text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">Account &amp; request coordination</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">Managed local service; controlled history pagination</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">Shared reads, bounded concurrency and backoff</text>
+<path d="M480 434 V453 H254 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 466 L254 472 L258 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M480 434 V453 H706 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 466 L706 472 L710 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="482" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / A</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">Realtime coordinator</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">Per vehicle and data group</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">Demand, freshness and recovery</text>
+<rect x="492" y="482" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="516" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / B</text>
+<text x="516" y="536" font-size="21" font-weight="650" fill="#e6edf3">History acquisition</text>
+<text x="516" y="567" font-size="17" font-weight="400" fill="#aebdce">Month pages and missing details</text>
+<text x="516" y="592" font-size="17" font-weight="400" fill="#aebdce">Budgets, checkpoints and validation</text>
+<path d="M254 619 V638 H254 V657" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 651 L254 657 L258 651" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M706 619 V638 H706 V657" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 651 L706 657 L710 651" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="667" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="64" y="692" font-size="12" font-weight="700" fill="#91bfff">04 / A</text>
+<text x="64" y="721" font-size="21" font-weight="650" fill="#e6edf3">Home Assistant state</text>
+<text x="64" y="752" font-size="17" font-weight="400" fill="#aebdce">Sensors, locks, tracker and events</text>
+<text x="64" y="777" font-size="17" font-weight="400" fill="#aebdce">Device pages and automations</text>
+<rect x="492" y="667" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="516" y="692" font-size="12" font-weight="700" fill="#91bfff">04 / B</text>
+<text x="516" y="721" font-size="21" font-weight="650" fill="#e6edf3">Private account archive</text>
+<text x="516" y="752" font-size="17" font-weight="400" fill="#aebdce">SQLite, source evidence and tracks</text>
+<text x="516" y="777" font-size="17" font-weight="400" fill="#aebdce">Local queries, calendar and statistics</text>
+<text x="40" y="845" font-size="16" font-weight="400" fill="#aebdce">Entities share reads; browsing saved history uses the local archive.</text>
+</svg>

@@ -36,8 +36,8 @@ jobs:
         run: |
           git worktree add --detach "$RUNNER_TEMP/ninebot-profile-baseline" "$BASELINE_REF"
           cp scripts/profile_history.py "$RUNNER_TEMP/ninebot-profile-baseline/scripts/profile_history.py"
-      # Full 5k/50k/200k results establish the baseline. This change only removes
-      # duplicate detail parsing; the 5k case retains every track-size workload.
+      # Compare identical 5k workloads on one runner, including every track size.
+      # Run 50k/200k locally in an existing environment or at a performance milestone.
       - name: Measure base runtime on this runner
         working-directory: ${{ runner.temp }}/ninebot-profile-baseline
         env:

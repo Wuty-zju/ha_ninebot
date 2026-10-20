@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="728" viewBox="0 0 960 728" role="img" aria-labelledby="title desc" xml:lang="en">
+<title id="title">One account, one durable archive</title>
+<desc id="desc">Stable account identity · validated consolidation · portable snapshots</desc>
+<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
+<rect width="960" height="728" rx="16" fill="#0d1117"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">One account, one durable archive</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">Stable account identity · validated consolidation · portable snapshots</text>
+<rect x="40" y="112" width="428" height="162" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / A</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">Authenticated account</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">Stable identity and multiple vehicles</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">Reconnect after account re-addition</text>
+<rect x="492" y="112" width="428" height="162" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="516" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / B</text>
+<text x="516" y="166" font-size="21" font-weight="650" fill="#e6edf3">Legacy or imported sources</text>
+<text x="516" y="197" font-size="17" font-weight="400" fill="#aebdce">Owner, schema, hash and reference</text>
+<text x="516" y="222" font-size="17" font-weight="400" fill="#aebdce">checks</text>
+<text x="516" y="247" font-size="17" font-weight="400" fill="#aebdce">Remove copies after validated merge</text>
+<path d="M254 274 V293 H480 V312" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 306 L480 312 L484 306" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M706 274 V293 H480 V312" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 306 L480 312 L484 306" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="322" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="347" font-size="12" font-weight="700" fill="#91bfff">02</text>
+<text x="64" y="376" font-size="21" font-weight="650" fill="#e6edf3">Private account SQLite database</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">Rides, details, best geometry, source evidence and checkpoints</text>
+<text x="64" y="432" font-size="17" font-weight="400" fill="#aebdce">Serialized worker, transactions, capacity limits and local audits</text>
+<path d="M480 459 V478 H254 V497" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 491 L254 497 L258 491" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M480 459 V478 H706 V497" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 491 L706 497 L710 491" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="507" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="64" y="532" font-size="12" font-weight="700" fill="#91bfff">03 / A</text>
+<text x="64" y="561" font-size="21" font-weight="650" fill="#e6edf3">Remove and reconnect</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">History retained by default</text>
+<text x="64" y="617" font-size="17" font-weight="400" fill="#aebdce">Opt out to remove managed history</text>
+<rect x="492" y="507" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="516" y="532" font-size="12" font-weight="700" fill="#91bfff">03 / B</text>
+<text x="516" y="561" font-size="21" font-weight="650" fill="#e6edf3">Export and merge</text>
+<text x="516" y="592" font-size="17" font-weight="400" fill="#aebdce">Choose accounts and vehicles</text>
+<text x="516" y="617" font-size="17" font-weight="400" fill="#aebdce">Versioned ZIP and SHA256 manifest</text>
+<text x="40" y="685" font-size="16" font-weight="400" fill="#aebdce">Saved records have no age-based expiry. Account archives, sessions and Recorder remain separate.</text>
+</svg>

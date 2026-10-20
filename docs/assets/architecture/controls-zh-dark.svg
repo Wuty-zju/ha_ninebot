@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="703" viewBox="0 0 960 703" role="img" aria-labelledby="title desc" xml:lang="zh-Hans">
+<title id="title">控制指令与观察状态</title>
+<desc id="desc">共享执行器 · 确认后立即更新 · 有界跟随</desc>
+<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
+<rect width="960" height="703" rx="16" fill="#0d1117"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">控制指令与观察状态</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">共享执行器 · 确认后立即更新 · 有界跟随</text>
+<rect x="40" y="112" width="880" height="137" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">授权并发送一次</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">锁与按钮共享启用、车辆许可及访问检查</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">新指令可以替换旧的确认观察任务</text>
+<path d="M480 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="297" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02</text>
+<text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">加速状态回读</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">最多十五秒；观察到状态变化立即发布</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">区分接口接受、状态未确认与失败</text>
+<path d="M480 434 V453 H254 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 466 L254 472 L258 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M480 434 V453 H706 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 466 L706 472 L710 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="482" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / A</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">车辆锁</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">远程关闭上锁；远程开启解锁</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">短时跟随自动回锁</text>
+<rect x="492" y="482" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="516" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / B</text>
+<text x="516" y="536" font-size="21" font-weight="650" fill="#e6edf3">座桶锁</text>
+<text x="516" y="567" font-size="17" font-weight="400" fill="#aebdce">确认解锁后显示至少五秒</text>
+<text x="516" y="592" font-size="17" font-weight="400" fill="#aebdce">最多观察锁舌六十秒；本地上锁</text>
+<text x="40" y="660" font-size="16" font-weight="400" fill="#aebdce">锁舌位置不能证明座桶盖是否打开。控制指令不自动重发。</text>
+</svg>

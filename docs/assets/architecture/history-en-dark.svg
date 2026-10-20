@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="888" viewBox="0 0 960 888" role="img" aria-labelledby="title desc" xml:lang="en">
+<title id="title">Incremental ride preservation</title>
+<desc id="desc">Discover → validate → fill gaps → commit → reuse locally</desc>
+<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
+<rect width="960" height="888" rx="16" fill="#0d1117"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">Incremental ride preservation</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">Discover → validate → fill gaps → commit → reuse locally</text>
+<rect x="40" y="112" width="880" height="137" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">Discover and validate</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">Month scan, recent updates and reusable page evidence</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">Check counts, ride identities and month membership</text>
+<path d="M480 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="297" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02</text>
+<text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">Fetch missing details</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">Reuse saved details; rotate work across vehicles</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">Shared budget, durable retries and restart checkpoints</text>
+<path d="M480 434 V453 H480 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 466 L480 472 L484 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="482" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">Commit the account archive</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">Transactional rides, compressed sources and sync state</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">Latest facts and best geometry retained independently</text>
+<path d="M480 619 V638 H254 V657" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 651 L254 657 L258 651" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M480 619 V638 H706 V657" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 651 L706 657 L710 651" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="667" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="64" y="692" font-size="12" font-weight="700" fill="#91bfff">04 / A</text>
+<text x="64" y="721" font-size="21" font-weight="650" fill="#e6edf3">Local history access</text>
+<text x="64" y="752" font-size="17" font-weight="400" fill="#aebdce">Paged Actions and track chunks</text>
+<text x="64" y="777" font-size="17" font-weight="400" fill="#aebdce">Authorized WebSocket and calendar</text>
+<rect x="492" y="667" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="516" y="692" font-size="12" font-weight="700" fill="#91bfff">04 / B</text>
+<text x="516" y="721" font-size="21" font-weight="650" fill="#e6edf3">Summaries and trends</text>
+<text x="516" y="752" font-size="17" font-weight="400" fill="#aebdce">Month, today, yesterday and latest ride</text>
+<text x="516" y="777" font-size="17" font-weight="400" fill="#aebdce">Explicit HA statistics import</text>
+<text x="40" y="845" font-size="16" font-weight="400" fill="#aebdce">Capacity limits pause writes; retained records remain available locally.</text>
+</svg>

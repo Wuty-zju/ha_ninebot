@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="888" viewBox="0 0 960 888" role="img" aria-labelledby="title desc" xml:lang="zh-Hans">
+<title id="title">行程增量保全</title>
+<desc id="desc">发现 → 校验 → 补齐缺口 → 提交 → 本地复用</desc>
+<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
+<rect width="960" height="888" rx="16" fill="#0d1117"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">行程增量保全</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">发现 → 校验 → 补齐缺口 → 提交 → 本地复用</text>
+<rect x="40" y="112" width="880" height="137" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">发现与校验</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">月份扫描、近期增量与可复用的分页依据</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">核对数量、行程身份与月份关联</text>
+<path d="M480 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="297" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02</text>
+<text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">补取缺失详情</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">复用已保存详情，在车辆间轮转任务</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">共享额度、持久化重试与重启断点</text>
+<path d="M480 434 V453 H480 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M476 466 L480 472 L484 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="482" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">提交账号档案</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">事务保存行程、压缩来源与同步状态</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">最新标量与较好轨迹分别保留</text>
+<path d="M480 619 V638 H254 V657" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 651 L254 657 L258 651" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M480 619 V638 H706 V657" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 651 L706 657 L710 651" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="667" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="64" y="692" font-size="12" font-weight="700" fill="#91bfff">04 / A</text>
+<text x="64" y="721" font-size="21" font-weight="650" fill="#e6edf3">本地历史访问</text>
+<text x="64" y="752" font-size="17" font-weight="400" fill="#aebdce">分页 Action 与轨迹分段</text>
+<text x="64" y="777" font-size="17" font-weight="400" fill="#aebdce">鉴权 WebSocket 与日历</text>
+<rect x="492" y="667" width="428" height="137" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="516" y="692" font-size="12" font-weight="700" fill="#91bfff">04 / B</text>
+<text x="516" y="721" font-size="21" font-weight="650" fill="#e6edf3">摘要与趋势</text>
+<text x="516" y="752" font-size="17" font-weight="400" fill="#aebdce">本月、今日、昨日与最近行程</text>
+<text x="516" y="777" font-size="17" font-weight="400" fill="#aebdce">显式导入 HA 长期统计</text>
+<text x="40" y="845" font-size="16" font-weight="400" fill="#aebdce">达到容量上限暂停写入；已保存记录仍可在本地读取。</text>
+</svg>
