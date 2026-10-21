@@ -2,69 +2,18 @@ name: History browser
 on:
   pull_request:
     paths:
-      - 'custom_components/ninebot/services.py'
-      - 'custom_components/ninebot/history_websocket.py'
-      - 'custom_components/ninebot/__init__.py'
-      - 'tests/test_history_websocket.py'
       - 'custom_components/ninebot/frontend/**'
-      - 'tests/test_services.py'
       - 'tests/frontend/**'
       - 'tests/browser/**'
-      - '.github/workflows/history-browser.yaml'
 permissions:
   contents: read
 concurrency:
   group: history-browser-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.scope.outputs.backend }}
-      frontend: ${{ steps.scope.outputs.frontend }}
-      websocket: ${{ steps.scope.outputs.websocket }}
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          fetch-depth: 0
-      - id: scope
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-paths.txt
-          if grep -Eq '^(custom_components/ninebot/(history_websocket|__init__).py|tests/test_history_websocket.py)$' changed-paths.txt; then
-            echo 'websocket=true' >> "$GITHUB_OUTPUT"
-          fi
-          # The focused archive suite already covers services when archive code changes.
-          if grep -Eq '^(custom_components/ninebot/services.py|tests/test_services.py|.github/workflows/history-browser.yaml)$' changed-paths.txt && ! grep -Eq '^custom_components/ninebot/ride_archive.py$' changed-paths.txt; then
-            echo 'backend=true' >> "$GITHUB_OUTPUT"
-          fi
-          if grep -Eq '^(custom_components/ninebot/frontend/|tests/frontend/|tests/browser/|.github/workflows/history-browser.yaml)' changed-paths.txt; then
-            echo 'frontend=true' >> "$GITHUB_OUTPUT"
-          fi
-  backend:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          python-version: '3.13'
-      - name: Install isolated minimum HA environment
-        run: >-
-          python -m pip install pytest-homeassistant-custom-component==0.13.305
-          homeassistant==2026.1.0 ninecli==0.1.7 mypy==2.4.0
-      - run: mypy custom_components/ninebot --follow-imports=silent
-      - name: Replay affected detail and archive boundaries
-        run: >-
-          python -m pytest -q tests/test_services.py tests/test_travel.py
-          tests/test_private_detail_archive.py
   frontend:
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -87,32 +36,3 @@ jobs:
           path: ${{ runner.temp }}/ninebot-map-smoke
           if-no-files-found: error
           retention-days: 7
-
-  websocket:
-    needs: changes
-    if: needs.changes.outputs.websocket == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - python: '3.13'
-            plugin: '0.13.305'
-            ha: '2026.1.0'
-          - python: '3.14'
-            plugin: '0.13.370'
-            ha: '2026.10.0'
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          python-version: ${{ matrix.python }}
-      - run: python -m pip install pytest-homeassistant-custom-component==${{ matrix.plugin }} ninecli==0.1.7
-      - run: python -m pip install homeassistant==${{ matrix.ha }}
-      - name: Verify selected boundary
-        env:
-          EXPECTED_HA: ${{ matrix.ha }}
-        run: >-
-          python -c 'import os; from importlib.metadata import version;
-          assert version("homeassistant") == os.environ["EXPECTED_HA"]'
-      - run: timeout 120s python -m pytest -q --maxfail=1 --timeout=20 -o faulthandler_timeout=15 tests/test_history_websocket.py tests/test_frontend_history.py

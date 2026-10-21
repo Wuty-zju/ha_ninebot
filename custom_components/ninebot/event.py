@@ -216,7 +216,7 @@ class NinebotVehicleEvent(NinebotObservedEvent):
 
     def _observe(self) -> None:
         sample = self.coordinator.status_observation(self.sn)
-        changes = self._cursor.observe(sample, max_gap_s=max(3 * self.coordinator.interval, 180))
+        changes = self._cursor.observe(sample, max_gap_s=self.coordinator.polling.max_age("status"))
         if sample is not None and changes:
             for change in changes:
                 self._trigger_event(

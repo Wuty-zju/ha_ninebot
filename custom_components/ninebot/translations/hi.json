@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "वाहन नियंत्रण सक्षम करें",
           "control_vehicles": "अनुमत वाहन",
-          "poll_interval": "अपडेट अंतराल (सेकंड)",
+          "polling_profile": "अपडेट की गति",
           "enable_coordinates": "वाहन का स्थान दिखाएँ",
           "configure_model": "निर्धारित मान सेट करें",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "इस खाते से एक या अधिक वाहन चुनें। नियंत्रण बंद करने पर चयन बना रहता है।",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "स्थिति/बैटरी/यात्रा अंतराल: {polling_setting}। चार्जिंग और गतिविधि के अनुसार बदलते हैं। चयन न करने पर कस्टम अंतराल बना रहता है।"
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "पासवर्ड से लॉगिन",
         "sms": "SMS से लॉगिन"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "बहुत तेज़",
+        "faster": "तेज़",
+        "balanced": "संतुलित",
+        "slower": "धीमी",
+        "very_slow": "बहुत धीमी"
       }
     }
   }

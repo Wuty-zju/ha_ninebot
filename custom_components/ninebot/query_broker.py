@@ -33,6 +33,9 @@ class QueryReceipt[T]:
     started_at: datetime
     received_at: datetime
     revision: int
+    started_monotonic: float | None = None
+    received_monotonic: float | None = None
+    queued_seconds: float = 0
 
 
 @dataclass
@@ -46,6 +49,7 @@ class _Job:
     future: asyncio.Future[QueryReceipt[Any]]
     waiters: int = 0
     task: asyncio.Task[QueryReceipt[Any]] | None = None
+    submitted_monotonic: float = 0
 
 
 class _Cooldown(NinebotError):
@@ -68,9 +72,11 @@ class QueryBroker:
         *,
         max_pending: int = 16,
         on_auth_failure: Callable[[], None] | None = None,
+        monotonic: Callable[[], float] | None = None,
     ) -> None:
         self._wire_gate = wire_gate
         self._clock = clock
+        self.monotonic = monotonic or asyncio.get_running_loop().time
         self._max_pending = max_pending
         self._command_limit = min(4, max_pending)
         self._read_limit = max(1, max_pending - min(4, max_pending // 4))
@@ -135,6 +141,7 @@ class QueryBroker:
             future = asyncio.get_running_loop().create_future()
             future.add_done_callback(lambda done: None if done.cancelled() else done.exception())
             job = _Job(key, vehicle, operation, guard, priority, self._sequence, future)
+            job.submitted_monotonic = self.monotonic()
             self._jobs.append(job)
             if key:
                 self._flights[key] = job
@@ -184,12 +191,13 @@ class QueryBroker:
         async with self._wire_gate:
             if self._closed or not job.guard():
                 raise NinebotError(ErrorKind.CLOSED)
-            delay = self._cooldown_until - asyncio.get_running_loop().time()
+            delay = self._cooldown_until - self.monotonic()
             if delay > 0:
                 raise _Cooldown(self._cooldown_kind, retry_after=delay)
             self._revision += 1
             revision = self._revision
             started = self._clock()
+            started_monotonic = self.monotonic()
             try:
                 value = await job.operation()
             except NinebotError as err:
@@ -199,7 +207,15 @@ class QueryBroker:
                 raise NinebotError(ErrorKind.CLOSED)
             self._connection_failures = 0
             self._counters["completed"] += 1
-            return QueryReceipt(value, started, self._clock(), revision)
+            return QueryReceipt(
+                value,
+                started,
+                self._clock(),
+                revision,
+                started_monotonic,
+                self.monotonic(),
+                max(0, started_monotonic - job.submitted_monotonic),
+            )
 
     async def _run(self) -> None:
         try:
@@ -234,7 +250,7 @@ class QueryBroker:
                             self._cooldown_kind = err.kind
                             self._cooldown_until = max(
                                 self._cooldown_until,
-                                asyncio.get_running_loop().time() + delay,
+                                self.monotonic() + delay,
                             )
                     if not job.future.done():
                         job.future.set_exception(err)
@@ -269,11 +285,11 @@ class QueryBroker:
 
     @property
     def retry_delay(self) -> float:
-        return max(0, self._cooldown_until - asyncio.get_running_loop().time())
+        return max(0, self._cooldown_until - self.monotonic())
 
     @property
     def cooling_down(self) -> bool:
-        return self._cooldown_until > asyncio.get_running_loop().time()
+        return self._cooldown_until > self.monotonic()
 
     async def async_close(self) -> None:
         self._closed = True

@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "เปิดใช้การควบคุมรถ",
           "control_vehicles": "รถที่อนุญาต",
-          "poll_interval": "ช่วงอัปเดต (วินาที)",
+          "polling_profile": "ความเร็วในการอัปเดต",
           "enable_coordinates": "แสดงตำแหน่งรถ",
           "configure_model": "ตั้งค่าพิกัดแบตเตอรี่",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "เลือกยานพาหนะอย่างน้อยหนึ่งคันจากบัญชีนี้ การปิดการควบคุมจะเก็บตัวเลือกไว้",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "ช่วงสถานะ/แบตเตอรี่/การเดินทาง: {polling_setting} ปรับตามการชาร์จและกิจกรรม หากไม่เลือกจะคงช่วงเวลาที่กำหนดเองไว้"
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "เข้าสู่ระบบด้วยรหัสผ่าน",
         "sms": "เข้าสู่ระบบด้วย SMS"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "เร็วมาก",
+        "faster": "เร็วขึ้น",
+        "balanced": "สมดุล",
+        "slower": "ช้าลง",
+        "very_slow": "ช้ามาก"
       }
     }
   }

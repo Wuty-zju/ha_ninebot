@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "Voertuigbediening inschakelen",
           "control_vehicles": "Toegestane voertuigen",
-          "poll_interval": "Statusinterval (seconden)",
+          "polling_profile": "Updatesnelheid",
           "enable_coordinates": "Voertuiglocatie tonen",
           "configure_model": "Nominale parameters instellen",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "Kies een of meer voertuigen van dit account. De selectie blijft bewaard als bediening wordt uitgezet.",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "Intervallen status/accu/ritten: {polling_setting}. Laden en activiteit passen ze aan. Zonder keuze blijft een aangepast interval behouden."
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "Inloggen met wachtwoord",
         "sms": "Inloggen via sms"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "Zeer snel",
+        "faster": "Sneller",
+        "balanced": "Gebalanceerd",
+        "slower": "Langzamer",
+        "very_slow": "Zeer langzaam"
       }
     }
   }

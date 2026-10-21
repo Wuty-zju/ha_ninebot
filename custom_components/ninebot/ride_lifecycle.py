@@ -6,11 +6,11 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from .const import DETAIL_INTERVAL
+from .polling_policy import RIDE_COMPLETION_QUIET_SECONDS
 from .ride_events import SEEN_LIMIT, completed_report, ride_key
 from .ride_models import Ride
 
-QUIET_WINDOW = timedelta(seconds=DETAIL_INTERVAL)
+QUIET_WINDOW = timedelta(seconds=RIDE_COMPLETION_QUIET_SECONDS)
 
 
 def fingerprint(ride: Ride) -> str:

@@ -34,7 +34,7 @@ from .archive_timeline import SELECTION_BASIS, ArchivedRide
 from .battery import current_battery, identified_battery
 from .capabilities import CONTROL_BUTTONS, CONTROL_STATES, control_state
 from .compat import unrecorded_attributes
-from .const import BUSINESS_TIMEZONE, CONF_DEBUG, CONF_ESTIMATION, DETAIL_INTERVAL
+from .const import BUSINESS_TIMEZONE, CONF_DEBUG, CONF_ESTIMATION
 from .debug_entities import DEBUG_SENSOR_KEYS
 from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
@@ -43,6 +43,7 @@ from .models import LastRide, TravelMonth, VehicleSnapshot
 from .observations import ENTITY_FIELDS, RawField
 from .parsing import boolean, display_scalar, integer, number
 from .period_statistics import DayMetric, DaySummary, day_summary
+from .polling_policy import DAY_OBSERVATION_MAX_AGE
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
 from .travel_statistics import energy_statistics
@@ -101,7 +102,7 @@ def today_mileage(snapshot: VehicleSnapshot, now: datetime) -> float | None:
         or travel.month != local.strftime("%Y%m")
         or travel.summary.month != travel.month
         or travel.summary.chart_status != "valid"
-        or not snapshot.travel_freshness.valid(now, 3 * DETAIL_INTERVAL)
+        or not snapshot.travel_freshness.valid(now, DAY_OBSERVATION_MAX_AGE)
         or succeeded is None
         or succeeded.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date() != local.date()
     ):

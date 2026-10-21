@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "啟用車輛控制",
           "control_vehicles": "允許控制的車輛",
-          "poll_interval": "狀態刷新間隔（秒）",
+          "polling_profile": "更新速度",
           "enable_coordinates": "顯示車輛位置",
           "configure_model": "設定電池額定參數",
           "enable_vehicle_events": "啟用車輛事件（Beta）",
@@ -121,7 +121,8 @@
           "control_vehicles": "從此帳號選擇一輛或多輛允許遠端控制的車輛。關閉控制會保留選擇。",
           "enable_vehicle_events": "同時開關車輛行程事件与車輛狀態事件；預設開啟。重新開啟不会重放旧記錄。",
           "retain_history_database": "删除账号时保留历史及轨迹；重新添加同一账号后自动恢复。取消后，下次删除账号会删除受管归档及恢复副本。",
-          "manage_archive": "选择账号和车辆导出，或上传归档包校验并合并。文件包含私密位置与轨迹，请妥善保管。"
+          "manage_archive": "选择账号和车辆导出，或上传归档包校验并合并。文件包含私密位置与轨迹，请妥善保管。",
+          "polling_profile": "目前狀態／電池／行程目標週期：{polling_setting}。依充電和車輛活動自動調整。未選擇新檔位時保留原有自訂週期。"
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "密碼登入",
         "sms": "簡訊登入"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "極快",
+        "faster": "更快",
+        "balanced": "均衡",
+        "slower": "更慢",
+        "very_slow": "極慢"
       }
     }
   }

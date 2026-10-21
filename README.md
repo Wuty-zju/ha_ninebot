@@ -14,7 +14,7 @@ English · [简体中文](README_zh.md)
 
 Monitor your Ninebot's battery, charging and vehicle status. Keep ride records and detailed GPS tracks in your own Home Assistant storage, query them from automations, and use native calendars and statistics alongside everyday vehicle entities.
 
-> **Current release candidate: [v2.0.0rc1](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc1).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
+> **Current release candidate: [v2.0.0rc2](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc2).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
 
 ## What you can do
 
@@ -46,7 +46,7 @@ ARMv7/32-bit platforms are unsupported. [Requirements and platform details →](
 
 1. Open **HACS → ⋮ → Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with category **Integration**.
-3. Open **Ninebot**, select **v2.0.0rc1**, and download it.
+3. Open **Ninebot**, select **v2.0.0rc2**, enable pre-releases if needed, and download it.
 4. Restart Home Assistant when prompted.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -77,6 +77,7 @@ Each account owns its session, credentials directory and archive. Entry titles u
 
 | Option | Default | Purpose |
 |---|---|---|
+| Update speed | Balanced | Five adaptive profiles; old custom intervals remain until explicitly changed. |
 | Precise location | On | Current position and authorized track responses; no separate precision request. |
 | Ride calendar (Beta) | Off for new accounts | Local rides on a native HA calendar. |
 | Background detail preservation (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
@@ -185,7 +186,7 @@ Back up Home Assistant before a major upgrade. A first upgrade with several olde
 
 Each account owns its session/resources. A shared scheduler coordinates cloud reads across vehicles: current state refreshes by data group, while history advances in background steps. Source evidence and normalized values remain distinguishable.
 
-Typical schedules are **60 s for status**, **600 s for battery/travel** and **3600 s for profiles**, subject to enabled features, freshness and backoff. Identical in-flight reads share work; there is no cloud poll per entity.
+The **Balanced** profile targets status/BMS at **60/60 seconds** while parked, **15/30 seconds** while charging and **10/30 seconds** with ACC active. Current-month ride summaries use **600/120 seconds** while parked/active; vehicle profiles refresh hourly. Each vehicle and group has independent deadlines and shared reads. [Five update-speed profiles →](docs/guide.md#update-speed)
 
 ### History is acquired once, then reused locally
 

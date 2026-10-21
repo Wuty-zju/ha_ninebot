@@ -1,11 +1,16 @@
 """Actual HA options/upload/download API; synthetic archives, no cloud or browser."""
 
+import asyncio
 import hashlib
 import io
 import json
 import re
 import sqlite3
+import tempfile
+import threading
 import zipfile
+from contextlib import AsyncExitStack
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -13,6 +18,12 @@ from aiohttp import FormData
 from homeassistant.setup import async_setup_component
 
 from custom_components.ninebot.archive_options import DOWNLOADS
+from custom_components.ninebot.archive_resources import (
+    PENDING_EXPORTS,
+    ExportBusy,
+    export_workspace,
+    finish_job,
+)
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -32,7 +43,7 @@ async def test_native_export_download_upload_and_confirm(
     url = f"/api/config/config_entries/options/flow/{form['flow_id']}"
     fields = {f["name"]: f for f in form["data_schema"]}
     assert fields["retain_history_database"]["default"] is True
-    response = await client.post(url, json={"poll_interval": 60, "manage_archive": True})
+    response = await client.post(url, json={"polling_profile": "balanced", "manage_archive": True})
     form = await response.json()
     assert form["step_id"] == "archive"
     response = await client.post(url, json={"next_step_id": "archive_export"})
@@ -94,7 +105,7 @@ async def test_native_export_download_upload_and_confirm(
     )
     form = await response.json()
     url = f"/api/config/config_entries/options/flow/{form['flow_id']}"
-    await client.post(url, json={"poll_interval": 60, "manage_archive": True})
+    await client.post(url, json={"polling_profile": "balanced", "manage_archive": True})
     await client.post(url, json={"next_step_id": "archive_import"})
     data = FormData()
     data.add_field("file", package, filename="history.zip", content_type="application/zip")
@@ -130,7 +141,76 @@ async def test_archive_options_require_admin(hass, entry, app_client):
         return_value=False,
     ):
         result = await hass.config_entries.options.async_configure(
-            result["flow_id"], {"poll_interval": 60, "manage_archive": True}
+            result["flow_id"], {"polling_profile": "balanced", "manage_archive": True}
         )
     assert result["type"] == "abort"
     assert result["reason"] == "archive_admin_required"
+
+
+@pytest.mark.parametrize("phase", ["create", "pack"])
+async def test_cancel_export_drains_filesystem_before_removing_directory(hass, tmp_path, phase):
+    loop = asyncio.get_running_loop()
+    started = asyncio.Event()
+    release = threading.Event()
+    directories = []
+    mkdtemp = tempfile.mkdtemp
+
+    def create(**kwargs):
+        directory = Path(mkdtemp(dir=tmp_path, **kwargs))
+        directories.append(directory)
+        if phase == "create":
+            loop.call_soon_threadsafe(started.set)
+            assert release.wait(5)
+        return str(directory)
+
+    def pack(directory):
+        loop.call_soon_threadsafe(started.set)
+        assert release.wait(5)
+        (directory / "synthetic.zip").write_bytes(b"synthetic")
+
+    async def export():
+        async with export_workspace(hass, {}) as workspace:
+            if phase == "pack":
+                await finish_job(hass, pack, workspace.directory)
+
+    with patch("custom_components.ninebot.archive_resources.tempfile.mkdtemp", create):
+        task = asyncio.create_task(export())
+        try:
+            await asyncio.wait_for(started.wait(), 5)
+            task.cancel()
+            await asyncio.sleep(0)
+            assert directories[0].exists()
+            assert not task.done()
+        finally:
+            release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert not directories[0].exists()
+    assert not hass.data[PENDING_EXPORTS]
+
+
+async def test_export_admission_includes_in_progress_work_and_releases_slots(hass):
+    downloads = {"existing-download": object()}
+    async with AsyncExitStack() as stack:
+        for _ in range(3):
+            await stack.enter_async_context(export_workspace(hass, downloads))
+        with pytest.raises(ExportBusy):
+            async with export_workspace(hass, downloads):
+                pytest.fail("Exceeded the four-export limit")
+    assert not hass.data[PENDING_EXPORTS]
+    async with export_workspace(hass, downloads) as workspace:
+        directory = workspace.directory
+        assert directory.is_dir()
+    assert not directory.exists()
+
+
+async def test_completed_export_transfers_directory_to_download_cleanup(hass):
+    async with export_workspace(hass, {}) as workspace:
+        directory = workspace.directory
+        (directory / "synthetic.zip").write_bytes(b"synthetic")
+        workspace.published = True
+    assert (directory / "synthetic.zip").exists()
+    assert not hass.data[PENDING_EXPORTS]
+    # The normal download expiry/HA-stop owner can now remove the completed file.
+    (directory / "synthetic.zip").unlink()
+    directory.rmdir()

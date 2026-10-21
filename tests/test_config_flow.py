@@ -68,7 +68,7 @@ async def test_user_success_no_password_stored(hass, flow_manager):
     assert entry.title == "fake-account"
     assert entry.options["enable_controls"] is True
     assert entry.options["control_vehicles"] == []
-    assert entry.options["poll_interval"] == 60
+    assert entry.options["polling_profile"] == "balanced"
     assert entry.options["enable_coordinates"] is True
     assert entry.options["enable_calendar"] is False
     assert entry.options["preserve_history"] is False
@@ -105,7 +105,7 @@ async def test_account_title_metadata_and_explicit_location_off(hass, flow_manag
     if result.get("next_flow"):
         _, flow_id = result["next_flow"]
         configured = await hass.config_entries.options.async_configure(
-            flow_id, {"poll_interval": 120, "enable_coordinates": False}
+            flow_id, {"polling_profile": "slower", "enable_coordinates": False}
         )
         assert configured["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["enable_coordinates"] is False
@@ -215,7 +215,7 @@ async def test_options_defaults_are_safe(hass, entry, flow_manager):
     result = await hass.config_entries.options.async_configure(
         form["flow_id"],
         {
-            "poll_interval": 120,
+            "polling_profile": "slower",
             "enable_coordinates": False,
             "enable_controls": False,
         },
@@ -418,10 +418,10 @@ async def test_history_options_expose_capacity_and_keep_explicit_auto_off(
         options={"preserve_history": True, "auto_history_sync": False, "history_storage_mib": 256},
     )
     form = await hass.config_entries.options.async_init(entry.entry_id)
-    defaults = form["data_schema"]({"poll_interval": 120})
+    defaults = form["data_schema"]({"polling_profile": "slower"})
     assert defaults["auto_history_sync"] is False and defaults["history_storage_mib"] == 256
     result = await hass.config_entries.options.async_configure(
-        form["flow_id"], {"poll_interval": 150}
+        form["flow_id"], {"polling_profile": "very_slow"}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["auto_history_sync"] is False
@@ -546,7 +546,9 @@ async def test_options_single_parameters_entry_debug_last_preserves_old_options(
     assert "configure_model" in keys and "enable_estimation" not in keys
     assert keys[:2] == ["enable_controls", "control_vehicles"]
     assert keys[-1] == "debug_mode"
-    await hass.config_entries.options.async_configure(form["flow_id"], {"poll_interval": 120})
+    await hass.config_entries.options.async_configure(
+        form["flow_id"], {"polling_profile": "slower"}
+    )
     assert entry.options["enable_estimation"] is True
     assert entry.options["enable_coordinates"] is False
     assert entry.options["debug_mode"] is True
@@ -559,11 +561,11 @@ async def test_options_single_parameters_entry_debug_last_preserves_old_options(
 @pytest.mark.parametrize("budget", [0, 60, 120])
 async def test_history_budget_default_sixty_and_explicit_120(hass, entry, flow_manager, budget):
     form = await hass.config_entries.options.async_init(entry.entry_id)
-    defaults = form["data_schema"]({"poll_interval": 120})
+    defaults = form["data_schema"]({"polling_profile": "slower"})
     assert defaults["history_requests_per_hour"] == 60
     assert defaults["enable_vehicle_events"] is True
     result = await hass.config_entries.options.async_configure(
-        form["flow_id"], {"poll_interval": 120, "history_requests_per_hour": budget}
+        form["flow_id"], {"polling_profile": "slower", "history_requests_per_hour": budget}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["history_requests_per_hour"] == budget
@@ -620,11 +622,11 @@ async def test_new_account_controls_select_verified_vehicles_once(hass, flow_man
     stored = result["result"]
     assert stored.options["enable_controls"] is True
     assert stored.options["control_vehicles"] == ["SyntheticA", "SyntheticB"]
-    assert stored.options["poll_interval"] == 60
+    assert stored.options["polling_profile"] == "balanced"
     hass.config_entries.async_update_entry(
         stored,
         options={
-            **stored.options,
+            **{k: v for k, v in stored.options.items() if k != "polling_profile"},
             "enable_controls": False,
             "control_vehicles": ["SyntheticB"],
             "poll_interval": 180,
@@ -634,4 +636,5 @@ async def test_new_account_controls_select_verified_vehicles_once(hass, flow_man
     defaults = form["data_schema"]({})
     assert defaults["enable_controls"] is False
     assert defaults["control_vehicles"] == ["SyntheticB"]
-    assert defaults["poll_interval"] == 180
+    assert "polling_profile" not in defaults
+    assert stored.options["poll_interval"] == 180

@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "Activar controles",
           "control_vehicles": "Vehículos autorizados",
-          "poll_interval": "Intervalo de actualización (segundos)",
+          "polling_profile": "Velocidad de actualización",
           "enable_coordinates": "Mostrar ubicación del vehículo",
           "configure_model": "Configurar parámetros nominales",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "Elige uno o varios vehículos de esta cuenta. Desactivar el control conserva la selección.",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "Intervalos de estado/batería/viajes: {polling_setting}. Se ajustan a la carga y actividad. Sin selección se conserva el intervalo personalizado."
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "Acceso con contraseña",
         "sms": "Acceso por SMS"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "Muy rápida",
+        "faster": "Más rápida",
+        "balanced": "Equilibrada",
+        "slower": "Más lenta",
+        "very_slow": "Muy lenta"
       }
     }
   }

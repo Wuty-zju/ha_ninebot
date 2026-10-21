@@ -103,12 +103,12 @@ CONTENT = {
             ],
             [
                 (
-                    "Realtime coordinator",
-                    "实时协调器",
-                    "Per vehicle and data group",
-                    "逐车、逐数据组管理",
-                    "Demand, freshness and recovery",
-                    "需求、响应年龄与异常恢复",
+                    "Adaptive live polling",
+                    "自适应实时调度",
+                    "Vehicle/group deadlines and boosts",
+                    "逐车逐组周期与短时加速",
+                    "Shared reads, freshness and recovery",
+                    "共享读取、有效期与恢复",
                 ),
                 (
                     "History acquisition",

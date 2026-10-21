@@ -6,6 +6,7 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
+from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
 from html import escape
 from pathlib import Path
@@ -32,6 +33,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .account_archive import account_lock, owner_key
+from .archive_resources import ExportBusy, export_workspace, finish_job
 from .archive_transfer import pack, readonly, unpack_upload, validate
 from .backup import backup_active
 from .compat import validation as vol
@@ -138,91 +140,111 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
             elif backup_active(self.hass):
                 errors["base"] = "archive_busy"
             else:
-                if len(self.hass.data.get(DOWNLOADS, {})) >= 4:
-                    return self.async_abort(reason="archive_busy")
-                directory = Path(await self.hass.async_add_executor_job(tempfile.mkdtemp))
                 try:
-                    snapshots = []
-                    scope: list[str] = []
-                    vehicle_count = 0
-                    for owner, entry in accounts.items():
-                        vehicles = tuple(
-                            value.split(":", 1)[1]
-                            for value in selections
-                            if value.startswith(owner + ":")
-                        )
-                        if not vehicles:
-                            continue
-                        path = directory / f"{owner}.sqlite3"
-                        from .ride_archive import vehicle_key
-
-                        async with account_lock(self.hass, str(entry.data[CONF_BUSINESS_UID])):
-                            archive = entry.runtime_data.coordinator.statistics.archive
-                            await archive.async_export_archive(
-                                path,
-                                None
-                                if "*" in vehicles
-                                else tuple(vehicle_key(sn) for sn in vehicles),
+                    async with export_workspace(
+                        self.hass, self.hass.data.get(DOWNLOADS, {})
+                    ) as workspace:
+                        directory = workspace.directory
+                        assert directory is not None
+                        snapshots = []
+                        scope: list[str] = []
+                        vehicle_count = 0
+                        for owner, entry in accounts.items():
+                            vehicles = tuple(
+                                value.split(":", 1)[1]
+                                for value in selections
+                                if value.startswith(owner + ":")
                             )
+                            if not vehicles:
+                                continue
+                            path = directory / f"{owner}.sqlite3"
+                            from .ride_archive import vehicle_key
 
-                        def inspect_scope(path: Path = path, owner: str = owner) -> list[str]:
-                            db = readonly(path)
-                            try:
-                                return [
-                                    owner + ":" + row[0]
-                                    for row in db.execute("SELECT vehicle FROM vehicles")
-                                ]
-                            finally:
-                                db.close()
+                            async with account_lock(self.hass, str(entry.data[CONF_BUSINESS_UID])):
+                                archive = entry.runtime_data.coordinator.statistics.archive
+                                await archive.async_export_archive(
+                                    path,
+                                    None
+                                    if "*" in vehicles
+                                    else tuple(vehicle_key(sn) for sn in vehicles),
+                                )
 
-                        selected_scope = await self.hass.async_add_executor_job(inspect_scope)
-                        scope.extend(selected_scope)
-                        vehicle_count += len(selected_scope)
-                        snapshots.append((owner, path))
-                    created = datetime.now(UTC)
-                    export_id = secrets.token_hex(6)
-                    scope_id = hashlib.sha256(",".join(sorted(scope)).encode()).hexdigest()[:12]
-                    filename = (
-                        f"ninebot-history_{created.strftime('%Y%m%dT%H%M%S%fZ')}_"
-                        f"{len(snapshots)}accounts_{vehicle_count}vehicles_{scope_id}_{export_id}.zip"
-                    )
-                    package = directory / filename
-                    await self.hass.async_add_executor_job(
-                        pack,
-                        package,
-                        snapshots,
-                        None,
-                        {
-                            "created_at": created.isoformat(),
-                            "export_id": export_id,
-                            "scope_id": scope_id,
-                        },
-                    )
-                    token = secrets.token_urlsafe(32)
-                    register_download(self.hass)
-                    self.hass.data[DOWNLOADS][token] = (self._archive_user_id, package)
+                            def inspect_scope(path: Path = path, owner: str = owner) -> list[str]:
+                                db = readonly(path)
+                                try:
+                                    return [
+                                        owner + ":" + row[0]
+                                        for row in db.execute("SELECT vehicle FROM vehicles")
+                                    ]
+                                finally:
+                                    db.close()
 
-                    async def cleanup(_: Any) -> None:
-                        cancel_timer()
-                        remove_stop()
-                        self.hass.data[DOWNLOADS].pop(token, None)
-                        await self.hass.async_add_executor_job(shutil.rmtree, directory, True)
+                            selected_scope = await finish_job(self.hass, inspect_scope)
+                            scope.extend(selected_scope)
+                            vehicle_count += len(selected_scope)
+                            snapshots.append((owner, path))
+                        created = datetime.now(UTC)
+                        export_id = secrets.token_hex(6)
+                        scope_id = hashlib.sha256(",".join(sorted(scope)).encode()).hexdigest()[:12]
+                        filename = (
+                            f"ninebot-history_{created.strftime('%Y%m%dT%H%M%S%fZ')}_"
+                            f"{len(snapshots)}accounts_{vehicle_count}vehicles_{scope_id}_{export_id}.zip"
+                        )
+                        package = directory / filename
+                        await finish_job(
+                            self.hass,
+                            pack,
+                            package,
+                            snapshots,
+                            None,
+                            {
+                                "created_at": created.isoformat(),
+                                "export_id": export_id,
+                                "scope_id": scope_id,
+                            },
+                        )
+                        token = secrets.token_urlsafe(32)
+                        register_download(self.hass)
+                        url = async_sign_path(self.hass, URL + token, timedelta(minutes=10))
+                        form = self.async_show_form(
+                            step_id="archive_download",
+                            description_placeholders={
+                                "url": url,
+                                "filename": filename,
+                                "download_link": f'<a href="{escape(url, quote=True)}" '
+                                'target="_blank" '
+                                f'rel="noopener noreferrer" download>{filename}</a>',
+                            },
+                            data_schema=vol.Schema({}),
+                        )
+                        cleaned = False
 
-                    cancel_timer = async_call_later(self.hass, 600, cleanup)
-                    remove_stop = self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, cleanup)
-                    url = async_sign_path(self.hass, URL + token, timedelta(minutes=10))
-                    return self.async_show_form(
-                        step_id="archive_download",
-                        description_placeholders={
-                            "url": url,
-                            "filename": filename,
-                            "download_link": f'<a href="{escape(url, quote=True)}" target="_blank" '
-                            f'rel="noopener noreferrer" download>{filename}</a>',
-                        },
-                        data_schema=vol.Schema({}),
-                    )
+                        async def cleanup(_: Any) -> None:
+                            nonlocal cleaned
+                            if cleaned:
+                                return
+                            cleaned = True
+                            cancel_timer()
+                            remove_stop()
+                            self.hass.data[DOWNLOADS].pop(token, None)
+                            await finish_job(self.hass, shutil.rmtree, directory, True)
+
+                        # No await between download registration and ownership transfer.
+                        with ExitStack() as rollback:
+                            self.hass.data[DOWNLOADS][token] = (self._archive_user_id, package)
+                            rollback.callback(self.hass.data[DOWNLOADS].pop, token, None)
+                            cancel_timer = async_call_later(self.hass, 600, cleanup)
+                            rollback.callback(cancel_timer)
+                            remove_stop = self.hass.bus.async_listen_once(
+                                EVENT_HOMEASSISTANT_STOP, cleanup
+                            )
+                            rollback.callback(remove_stop)
+                            workspace.published = True
+                            rollback.pop_all()
+                        return form
+                except ExportBusy:
+                    return self.async_abort(reason="archive_busy")
                 except (ArchiveError, OSError, ValueError, sqlite3.Error):
-                    await self.hass.async_add_executor_job(shutil.rmtree, directory, True)
                     errors["base"] = "archive_invalid"
         return self.async_show_form(
             step_id="archive_export",

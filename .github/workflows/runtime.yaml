@@ -1,0 +1,71 @@
+name: Runtime checks
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: runtime-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  scope:
+    name: Runtime scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      runtime: ${{ steps.scope.outputs.runtime }}
+      matrix: ${{ steps.scope.outputs.matrix }}
+      plan: ${{ steps.scope.outputs.plan }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/ci.py --plan --base "$BASE_SHA" --head "$HEAD_SHA" --output ci-scope.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: runtime-scope
+          path: ci-scope.json
+          retention-days: 14
+  regression:
+    needs: scope
+    if: needs.scope.outputs.runtime == 'true'
+    name: Runtime regression (${{ matrix.ha }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.scope.outputs.matrix) }}
+    env:
+      LITELLM_LOCAL_MODEL_COST_MAP: 'True'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: .github/ci.json
+      - name: Install and verify selected boundary
+        env:
+          BOUNDARY: ${{ matrix.boundary }}
+        run: python scripts/ci.py --install "$BOUNDARY"
+      - run: mypy custom_components/ninebot --follow-imports=silent
+      - name: Run the selected offline tests once
+        env:
+          CI_PLAN: ${{ needs.scope.outputs.plan }}
+        run: |
+          python -c 'import os; from pathlib import Path; Path("ci-scope.json").write_text(os.environ["CI_PLAN"])'
+          python scripts/ci.py --run-tests ci-scope.json
+      - name: Keep regression results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: runtime-${{ matrix.ha }}-results
+          path: |
+            test-results.xml
+            coverage.xml
+          if-no-files-found: warn
+          retention-days: 14

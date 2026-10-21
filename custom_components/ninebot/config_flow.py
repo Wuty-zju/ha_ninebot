@@ -47,7 +47,6 @@ from .const import (
     CONF_POLL_INTERVAL,
     CONF_SESSION_KEY,
     DEFAULT_COORDINATES,
-    DEFAULT_POLL_INTERVAL,
     DOMAIN,
 )
 from .exceptions import ErrorKind, NinebotError
@@ -60,6 +59,7 @@ from .history_capacity import (
 )
 from .identity import IDENTITY_VERSION
 from .parsing import number
+from .polling_policy import CONF_POLLING_PROFILE, PRESETS, PollingPolicy
 from .preservation import CONF_PRESERVE
 from .services import resolve_vehicle
 from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
@@ -222,7 +222,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         options={
                             CONF_CONTROLS: True,
                             CONF_CONTROL_VEHICLES: list(candidate.vehicles),
-                            CONF_POLL_INTERVAL: DEFAULT_POLL_INTERVAL,
+                            CONF_POLLING_PROFILE: "balanced",
                             CONF_RETAIN_ARCHIVE: True,
                             CONF_PRESERVE: False,
                             CONF_AUTO_HISTORY: False,
@@ -561,6 +561,10 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
         errors: dict[str, str] = {}
         if user_input is not None:
             self._pending_options = {**self.config_entry.options, **user_input}
+            if user_input.get(CONF_POLLING_PROFILE) in PRESETS:
+                self._pending_options.pop(CONF_POLL_INTERVAL, None)
+            else:
+                self._pending_options.pop(CONF_POLLING_PROFILE, None)
             if self._pending_options.get(CONF_CONTROLS) and not self._pending_options.get(
                 CONF_CONTROL_VEHICLES
             ):
@@ -588,9 +592,20 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                 choices.append(
                     SelectOptionDict(value=sn, label=snapshot.profile.name if snapshot else sn)
                 )
+        policy = PollingPolicy.from_options(options)
+        # An optional, unselected field preserves a legacy custom interval.
+        # Selecting one of the five profiles is the explicit migration choice.
+        profile_field = (
+            vol.Optional(CONF_POLLING_PROFILE)
+            if policy.name == "legacy"
+            else vol.Required(CONF_POLLING_PROFILE, default=policy.name)
+        )
         return self.async_show_form(
             step_id="init",
             errors=errors,
+            description_placeholders={
+                "polling_setting": (f"{policy.status}/{policy.battery}/{policy.travel} s")
+            },
             data_schema=vol.Schema(
                 {
                     vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
@@ -601,10 +616,13 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                             options=choices, multiple=True, mode=SelectSelectorMode.DROPDOWN
                         )
                     ),
-                    vol.Required(
-                        CONF_POLL_INTERVAL,
-                        default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-                    ): vol.All(vol.Coerce(int), vol.Range(min=30, max=3600)),
+                    profile_field: SelectSelector(
+                        SelectSelectorConfig(
+                            options=list(PRESETS),
+                            translation_key=CONF_POLLING_PROFILE,
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
                     vol.Optional(
                         CONF_COORDINATES, default=options.get(CONF_COORDINATES, DEFAULT_COORDINATES)
                     ): bool,

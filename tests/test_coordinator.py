@@ -658,7 +658,8 @@ async def test_newer_action_month_is_reused_by_poll_without_extending_timestamp(
     co.client.async_get_travel.assert_not_awaited()
     assert co.data["synthetic-one"].travel.mileage == 3
     assert co.data["synthetic-one"].travel_freshness.succeeded_at == record.received_at
-    assert co._next_attempt[("synthetic-one", "travel")] == record.received_at.timestamp() + 600
+    age = (datetime.now(UTC) - record.received_at).total_seconds()
+    assert co._next_attempt[("synthetic-one", "travel")] == co.monotonic() - age + 600
 
 
 async def test_history_query_auth_policy_queue_and_unload(coordinator):
@@ -1089,18 +1090,19 @@ async def test_freshness_measures_actual_request_completion_and_retry_is_bounded
         return {"dump_energy": 75}
 
     co.client.async_get_status.side_effect = status
+    started = co.monotonic()
     with patch("custom_components.ninebot.coordinator.dt_util.utcnow", now):
         await co.async_refresh_vehicle("synthetic-one")
     freshness = co.data["synthetic-one"].status_freshness
     assert freshness.attempted_at == start
     assert freshness.succeeded_at == start + timedelta(seconds=20)
-    assert co._next_attempt[("synthetic-one", "status")] == start.timestamp() + co.interval
-    co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
-    delay = co._next_attempt[("synthetic-one", "status")] - start.timestamp()
+    assert abs(co._next_attempt[("synthetic-one", "status")] - started - co.interval) < 1
+    co._attempt_finished("synthetic-one", "status", started, 120, False)
+    delay = co._next_attempt[("synthetic-one", "status")] - started
     assert 4 <= delay <= 6
     for _ in range(20):
-        co._attempt_finished("synthetic-one", "status", start.timestamp(), 120, False)
-    assert co._next_attempt[("synthetic-one", "status")] <= start.timestamp() + 60
+        co._attempt_finished("synthetic-one", "status", started, 120, False)
+    assert co._next_attempt[("synthetic-one", "status")] <= started + 60
 
 
 @pytest.mark.parametrize("coordinator", [True], indirect=True)
@@ -1409,24 +1411,24 @@ async def test_midnight_travel_due_ignores_success_delay_but_not_backoff(coordin
     co.raw.put(raw, vehicle=sn)
     freezer.tick(1)
     now = dt_util.utcnow()
-    assert co._next_attempt[(sn, "travel")] > now.timestamp()
-    assert co._due(sn, "travel", now.timestamp())
+    assert co._next_attempt[(sn, "travel")] > co.monotonic()
+    assert co._due(sn, "travel", co.monotonic())
     co.client.async_get_travel.reset_mock()
     await co._group(sn, "travel", include_last_ride=False)
     co.client.async_get_travel.assert_awaited_once_with(sn, "202610")
     assert co.data[sn].travel_freshness.succeeded_at == now
-    assert not co._due(sn, "travel", now.timestamp())
+    assert not co._due(sn, "travel", co.monotonic())
     key = (sn, "travel")
     co.data[sn] = replace(
         co.data[sn], travel_freshness=replace(co.data[sn].travel_freshness, succeeded_at=before)
     )
     co._failures[key] = 1
-    co._next_attempt[key] = now.timestamp() + 60
-    assert not co._due(sn, "travel", now.timestamp())
+    co._next_attempt[key] = co.monotonic() + 60
+    assert not co._due(sn, "travel", co.monotonic())
     co._failures[key] = 0
-    co._retry_after_until[key] = now.timestamp() + 120
-    co._next_attempt[key] = now.timestamp() + 120
-    assert not co._due(sn, "travel", now.timestamp())
+    co._retry_after_until[key] = co.monotonic() + 120
+    co._next_attempt[key] = co.monotonic() + 120
+    assert not co._due(sn, "travel", co.monotonic())
 
 
 async def test_complete_empty_discovery_keeps_both_vehicles_and_retries_quickly(coordinator):
@@ -1437,7 +1439,7 @@ async def test_complete_empty_discovery_keeps_both_vehicles_and_retries_quickly(
     co.client.async_list_vehicles.return_value = []
     co._next_attempt[("", "profile")] = 0
     await co._async_update_data()
-    now = datetime.now(UTC).timestamp()
+    now = co.monotonic()
     assert all(co.local_vehicle_available(sn) for sn in receipts)
     assert co._ownership == ownership
     assert all(co.data[sn].profile_freshness.succeeded_at == t for sn, t in receipts.items())
@@ -1497,6 +1499,7 @@ async def test_recovery_timer_updates_status_while_slow_battery_round_is_waiting
     assert not poll.done()
     co.realtime.running = True
     await co.realtime._run()
+    await asyncio.wait_for(co.realtime.jobs[("synthetic-one", "status")], 2)
     assert co.data["synthetic-one"].status.battery == 67
     assert not poll.done()
     release.set()
@@ -1525,12 +1528,25 @@ async def test_recovery_is_singleflight_cancellable_and_honors_cooldown(coordina
     co.client.async_get_status.reset_mock()
     co.realtime._wake(None)
     await asyncio.wait_for(entered.wait(), 2)
-    task = co.realtime.task
+    tasks = dict(co.realtime.jobs)
     co.realtime._wake(None)
-    assert co.realtime.task is task
+    if co.realtime.task:
+        await co.realtime.task
+    assert all(co.realtime.jobs[key] is task for key, task in tasks.items())
     await co.async_close()
-    assert task.done() and co.realtime.cancel is None
+    assert all(task.done() for task in tasks.values()) and co.realtime.cancel is None
+    assert not co.realtime.jobs
     assert not co.realtime.running
+
+
+async def test_early_wake_cancels_the_pending_timer_even_after_stop(coordinator):
+    from unittest.mock import Mock
+
+    cancel = Mock()
+    coordinator.realtime.cancel = cancel
+    coordinator.realtime._wake(None)
+    cancel.assert_called_once_with()
+    assert coordinator.realtime.cancel is None
 
 
 async def test_recovery_backoff_keeps_retry_after_and_does_not_wait_an_hour(coordinator):
@@ -1564,3 +1580,248 @@ async def test_all_status_service_failures_yield_background_until_recovery(coord
         co._next_attempt[(sn, "status")] = 0
     await co.async_poll_status()
     assert not co.status_recovering() and co.background_ready()
+
+
+def independent_clock(co, value=1000.0):
+    clock = [value]
+    co.monotonic = lambda: clock[0]
+    co.broker.monotonic = co.monotonic
+    return clock
+
+
+async def test_group_deadlines_are_monotonic_when_wall_clock_changes(coordinator, freezer):
+    from homeassistant.util import dt as dt_util
+
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    deadline = co._next_attempt[("synthetic-one", "status")]
+    assert deadline == clock[0] + 60
+    freezer.move_to(dt_util.utcnow() - timedelta(hours=2))
+    assert not co._due("synthetic-one", "status", co.monotonic())
+    freezer.tick(4 * 3600)
+    assert not co._due("synthetic-one", "status", co.monotonic())
+    assert co._next_attempt[("synthetic-one", "status")] == deadline
+    clock[0] = deadline
+    assert co._due("synthetic-one", "status", co.monotonic())
+
+
+async def test_battery_can_refresh_independently_without_status_consumers(coordinator):
+    from custom_components.ninebot.demand import ConsumerContext, Need
+
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.client.reset_mock()
+    clock[0] += 60
+    co._next_attempt[("synthetic-one", "status")] = clock[0] + 600
+    with patch.object(
+        co, "async_contexts", return_value=(ConsumerContext("synthetic-one", Need.BATTERY),)
+    ):
+        await co.realtime._run()
+        assert set(co.realtime.jobs) == {("synthetic-one", "battery")}
+        await asyncio.gather(*list(co.realtime.jobs.values()))
+    co.client.async_get_battery.assert_awaited_once_with("synthetic-one")
+    co.client.async_get_status.assert_not_awaited()
+    co.client.async_get_travel.assert_not_awaited()
+    assert co.polling.max_age("battery") == 1800
+
+
+async def test_dispatcher_does_not_wait_for_slow_battery_normalization(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    entered, release = asyncio.Event(), asyncio.Event()
+    normalize = co._normalize
+
+    async def slow_battery(record, sn, scope, operation):
+        if record and record.endpoint.value == "battery" and sn == "synthetic-one":
+            entered.set()
+            await release.wait()
+        return await normalize(record, sn, scope, operation)
+
+    co._normalize = slow_battery
+    co.client.async_get_status.return_value = {"dump_energy": 63}
+    co._next_attempt[("synthetic-one", "battery")] = 0
+    await co.realtime._run()
+    battery = co.realtime.jobs[("synthetic-one", "battery")]
+    await asyncio.wait_for(entered.wait(), 2)
+    clock[0] += 60
+    await co.realtime._run()
+    status = co.realtime.jobs[("synthetic-one", "status")]
+    assert co.realtime.jobs[("synthetic-one", "battery")] is battery
+    await asyncio.wait_for(status, 2)
+    assert not battery.done()
+    assert co.data["synthetic-one"].status.battery == 63
+    release.set()
+    await asyncio.gather(*list(co.realtime.jobs.values()))
+
+
+async def test_dispatcher_admission_is_bounded_and_gives_battery_a_turn(coordinator):
+    from custom_components.ninebot.demand import ConsumerContext, Need
+    from custom_components.ninebot.realtime import MAX_DISPATCHED
+
+    co = coordinator
+    clock = independent_clock(co)
+    sns = [f"synthetic-{index:03d}" for index in range(18)]
+    co.client.async_list_vehicles.return_value = [{"wnumber": sn} for sn in sns]
+    contexts = tuple(
+        ConsumerContext(sn, need) for sn in sns for need in (Need.STATUS, Need.BATTERY)
+    )
+    with patch.object(co, "async_contexts", return_value=contexts):
+        await co._async_update_data()
+        clock[0] += 60
+        await co.realtime._run()
+        assert len(co.realtime.jobs) == 3  # Local periodic admission reserves a small burst.
+        clock[0] += 1
+        await co.realtime._run()
+        assert len(co.realtime.jobs) <= MAX_DISPATCHED
+        assert any(group == "battery" for _, group in co.realtime.jobs)
+        first = list(co.realtime.jobs.values())
+        await co.realtime._run()
+        assert list(co.realtime.jobs.values()) == first
+        await asyncio.gather(*first)
+
+
+async def test_activity_uses_status_flags_and_keeps_vehicles_independent(coordinator):
+    co = coordinator
+    independent_clock(co)
+    co.client.async_get_status.side_effect = lambda sn: {
+        "pwr": 1,
+        "charging": sn == "synthetic-one",
+        "loc": {"acc": 1 if sn == "synthetic-two" else 0, "lock": 1},
+    }
+    await co._async_update_data()
+    assert [co.poll_interval("synthetic-one", g) for g in ("status", "battery", "travel")] == [
+        15,
+        30,
+        600,
+    ]
+    assert [co.poll_interval("synthetic-two", g) for g in ("status", "battery", "travel")] == [
+        10,
+        30,
+        120,
+    ]
+    assert co.polling.max_age("status") == 180
+    co._invalidate_auth()
+    assert co.activity == {}
+
+
+async def test_charge_transition_replans_both_acceleration_and_expiry(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    co.client.async_get_status.return_value = {"pwr": 1, "charging": False}
+    await co._async_update_data()
+    assert co.poll_interval("synthetic-one", "status") == 60  # pwr=1 alone is not activity.
+    clock[0] = 1010
+    co.client.async_get_status.return_value = {"charging": True, "loc": {"acc": 0, "lock": 1}}
+    await co._group("synthetic-one", "status", force=True)
+    assert co.poll_interval("synthetic-one", "status") == 10
+    assert co.group_deadline("synthetic-one", "battery", clock[0]) == clock[0]
+    clock[0] = 1129
+    co.client.async_get_status.return_value = {"charging": False, "loc": {"acc": 0, "lock": 1}}
+    await co._group("synthetic-one", "status", force=True)
+    assert co._next_attempt[("synthetic-one", "status")] == 1139
+    clock[0] = 1130
+    assert co.poll_interval("synthetic-one", "status") == 60
+    assert co.group_deadline("synthetic-one", "status", clock[0]) == 1189
+
+
+async def test_boost_does_not_bypass_group_failure_or_server_retry_after(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    co.client.async_get_status.return_value = {"pwr": 1, "charging": False}
+    await co._async_update_data()
+    key = ("synthetic-one", "battery")
+    co._failures[key] = 1
+    co._retry_after_until[key] = co._next_attempt[key] = 2000
+    clock[0] += 10
+    co.client.async_get_status.return_value = {"charging": True}
+    await co._group("synthetic-one", "status", force=True)
+    assert co.poll_interval("synthetic-one", "battery") == 15
+    assert co.group_deadline(*key, clock[0]) == 2000
+    assert not co._due(*key, clock[0])
+
+
+async def test_stop_requests_only_current_month_and_advances_a_bounded_followup(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    co.client.async_get_status.return_value = {"loc": {"acc": 1, "lock": 0}}
+    await co._async_update_data()
+    clock[0] += 20
+    co.client.async_get_status.return_value = {"loc": {"acc": 0, "lock": 1}}
+    await co._group("synthetic-one", "status", force=True)
+    assert co.group_deadline("synthetic-one", "travel", clock[0]) == 1035
+    co.client.async_get_travel.reset_mock()
+    clock[0] = 1035
+    await co._group("synthetic-one", "travel", include_last_ride=False)
+    assert co.client.async_get_travel.await_count == 1
+    assert co.group_deadline("synthetic-one", "travel", clock[0]) == 1065
+    co.client.async_get_trip_detail.assert_not_awaited()
+
+
+async def test_normal_round_cannot_bypass_periodic_admission(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.realtime.running = True
+    clock[0] += 60
+    for _ in range(3):
+        co.periodic_budget.take(clock[0])
+    co.client.reset_mock()
+    await co._async_update_data()
+    assert not co.realtime.jobs
+    co.client.async_get_status.assert_not_awaited()
+    co.client.async_get_battery.assert_not_awaited()
+    co.client.async_get_travel.assert_not_awaited()
+    assert co.polling_diagnostics("synthetic-one")["periodic_admission_delay_seconds"] == 1
+
+
+async def test_offline_bootstrap_still_recovers_with_dispatcher_enabled(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co._authenticated = False
+    co._next_attempt[("", "profile")] = 0
+    co.realtime.running = True
+    co.client.async_list_vehicles.reset_mock()
+    await co._async_update_data()
+    co.client.async_list_vehicles.assert_awaited_once()
+    assert co._authenticated
+
+
+async def test_boost_failure_backoff_uses_the_base_group_policy(coordinator):
+    co = coordinator
+    with patch("custom_components.ninebot.coordinator.random.uniform", return_value=1):
+        co._attempt_finished("synthetic-one", "battery", 100, 15, False)
+        assert co._next_attempt[("synthetic-one", "battery")] == 130
+        co._attempt_finished("synthetic-one", "battery", 130, 15, False)
+        assert co._next_attempt[("synthetic-one", "battery")] == 190
+
+
+async def test_normal_refresh_observes_its_admitted_status_result(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.realtime.running = True
+    clock[0] += 60
+    co.client.async_get_status.return_value = {"dump_energy": 47}
+    data = await co._async_update_data()
+    assert data["synthetic-one"].status.battery == 47
+    assert data["synthetic-two"].status.battery == 47
+
+
+async def test_native_explicit_refresh_keeps_due_data_semantics_without_periodic_credit(
+    coordinator,
+):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.realtime.running = True
+    clock[0] += 60
+    for _ in range(3):
+        co.periodic_budget.take(clock[0])
+    co.client.async_get_status.return_value = {"dump_energy": 46}
+    await co.async_refresh()
+    assert co.data["synthetic-one"].status.battery == 46
+    assert co.data["synthetic-two"].status.battery == 46
+    assert not co._explicit_refresh_tasks

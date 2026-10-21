@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0rc2
+
+- Add five adaptive update-speed profiles with native selectors and translations; retain custom intervals until explicitly changed. Apply polling-only changes without reopening the account or archive.
+- Adapt current queries to charging and ACC activity, with finite charge-transition, external-unlock and stop follow-ups. Keep trips settling through bounded current-month checks and preserve lock-confirmation behavior.
+- Apply shared local periodic admission, fair deferral and safe activity diagnostics. Avoid routine warning logs for isolated status-query failures.
+- Schedule status, battery, travel and discovery independently with bounded asynchronous admission and monotonic deadlines. Keep current readings responsive while another group normalizes or saves data.
+- Use separate 60-second status and battery targets by default, retaining legacy custom intervals until a preset is selected. Keep observation validity, query caches and the ten-minute ride-completion window independent of polling speed.
+- Keep daily-index repair on its own cadence and expose safe per-group targets, retry waits, queue time and request duration in diagnostics.
+- Clean up cancelled or failed history exports after pending filesystem work finishes. Reserve export slots before creating files, and retain completed downloads until their normal expiry or shutdown cleanup.
+
+- Publish rediscovered vehicles immediately and complete native manual refreshes before returning. Reap archive worker threads off-loop before closure finishes.
+
 ## 2.0.0rc1
 
 - Prepare the first 2.0 release candidate, carrying forward the account-owned schema 7 archive, validated history transfer, incremental synchronization and connection-recovery fixes from the beta series.
