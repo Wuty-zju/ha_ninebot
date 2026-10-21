@@ -112,3 +112,12 @@ def test_entity_context_preserves_the_actual_function_dependency(platform, key, 
 @pytest.mark.parametrize("key", ["history_sync", "history_pause", "history_resume"])
 def test_history_controls_only_need_profile_context(key):
     assert entity_context("one", "button", key, "profile").need is Need.PROFILE
+
+
+def test_adaptive_mode_has_an_explicit_status_dependency_but_discovery_does_not():
+    result = polling_demand(
+        settled(), [ConsumerContext("one", Need.BATTERY)], now=NOW, activity_tracking=True
+    )
+    assert result.groups == {"battery", "status"}
+    assert "activity_tracking" in result.reasons
+    assert not polling_demand(settled(), [None], now=NOW, activity_tracking=True).groups

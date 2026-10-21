@@ -1614,6 +1614,7 @@ async def test_battery_can_refresh_independently_without_status_consumers(coordi
     await co._async_update_data()
     co.client.reset_mock()
     clock[0] += 60
+    co._next_attempt[("synthetic-one", "status")] = clock[0] + 600
     with patch.object(
         co, "async_contexts", return_value=(ConsumerContext("synthetic-one", Need.BATTERY),)
     ):
@@ -1671,9 +1672,156 @@ async def test_dispatcher_admission_is_bounded_and_gives_battery_a_turn(coordina
         await co._async_update_data()
         clock[0] += 60
         await co.realtime._run()
-        assert len(co.realtime.jobs) == MAX_DISPATCHED
+        assert len(co.realtime.jobs) == 3  # Local periodic admission reserves a small burst.
+        clock[0] += 1
+        await co.realtime._run()
+        assert len(co.realtime.jobs) <= MAX_DISPATCHED
         assert any(group == "battery" for _, group in co.realtime.jobs)
         first = list(co.realtime.jobs.values())
         await co.realtime._run()
         assert list(co.realtime.jobs.values()) == first
         await asyncio.gather(*first)
+
+
+async def test_activity_uses_status_flags_and_keeps_vehicles_independent(coordinator):
+    co = coordinator
+    independent_clock(co)
+    co.client.async_get_status.side_effect = lambda sn: {
+        "pwr": 1,
+        "charging": sn == "synthetic-one",
+        "loc": {"acc": 1 if sn == "synthetic-two" else 0, "lock": 1},
+    }
+    await co._async_update_data()
+    assert [co.poll_interval("synthetic-one", g) for g in ("status", "battery", "travel")] == [
+        15,
+        30,
+        600,
+    ]
+    assert [co.poll_interval("synthetic-two", g) for g in ("status", "battery", "travel")] == [
+        10,
+        30,
+        120,
+    ]
+    assert co.polling.max_age("status") == 180
+    co._invalidate_auth()
+    assert co.activity == {}
+
+
+async def test_charge_transition_replans_both_acceleration_and_expiry(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    co.client.async_get_status.return_value = {"pwr": 1, "charging": False}
+    await co._async_update_data()
+    assert co.poll_interval("synthetic-one", "status") == 60  # pwr=1 alone is not activity.
+    clock[0] = 1010
+    co.client.async_get_status.return_value = {"charging": True, "loc": {"acc": 0, "lock": 1}}
+    await co._group("synthetic-one", "status", force=True)
+    assert co.poll_interval("synthetic-one", "status") == 10
+    assert co.group_deadline("synthetic-one", "battery", clock[0]) == clock[0]
+    clock[0] = 1129
+    co.client.async_get_status.return_value = {"charging": False, "loc": {"acc": 0, "lock": 1}}
+    await co._group("synthetic-one", "status", force=True)
+    assert co._next_attempt[("synthetic-one", "status")] == 1139
+    clock[0] = 1130
+    assert co.poll_interval("synthetic-one", "status") == 60
+    assert co.group_deadline("synthetic-one", "status", clock[0]) == 1189
+
+
+async def test_boost_does_not_bypass_group_failure_or_server_retry_after(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    co.client.async_get_status.return_value = {"pwr": 1, "charging": False}
+    await co._async_update_data()
+    key = ("synthetic-one", "battery")
+    co._failures[key] = 1
+    co._retry_after_until[key] = co._next_attempt[key] = 2000
+    clock[0] += 10
+    co.client.async_get_status.return_value = {"charging": True}
+    await co._group("synthetic-one", "status", force=True)
+    assert co.poll_interval("synthetic-one", "battery") == 15
+    assert co.group_deadline(*key, clock[0]) == 2000
+    assert not co._due(*key, clock[0])
+
+
+async def test_stop_requests_only_current_month_and_advances_a_bounded_followup(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    co.client.async_get_status.return_value = {"loc": {"acc": 1, "lock": 0}}
+    await co._async_update_data()
+    clock[0] += 20
+    co.client.async_get_status.return_value = {"loc": {"acc": 0, "lock": 1}}
+    await co._group("synthetic-one", "status", force=True)
+    assert co.group_deadline("synthetic-one", "travel", clock[0]) == 1035
+    co.client.async_get_travel.reset_mock()
+    clock[0] = 1035
+    await co._group("synthetic-one", "travel", include_last_ride=False)
+    assert co.client.async_get_travel.await_count == 1
+    assert co.group_deadline("synthetic-one", "travel", clock[0]) == 1065
+    co.client.async_get_trip_detail.assert_not_awaited()
+
+
+async def test_normal_round_cannot_bypass_periodic_admission(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.realtime.running = True
+    clock[0] += 60
+    for _ in range(3):
+        co.periodic_budget.take(clock[0])
+    co.client.reset_mock()
+    await co._async_update_data()
+    assert not co.realtime.jobs
+    co.client.async_get_status.assert_not_awaited()
+    co.client.async_get_battery.assert_not_awaited()
+    co.client.async_get_travel.assert_not_awaited()
+    assert co.polling_diagnostics("synthetic-one")["periodic_admission_delay_seconds"] == 1
+
+
+async def test_offline_bootstrap_still_recovers_with_dispatcher_enabled(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co._authenticated = False
+    co._next_attempt[("", "profile")] = 0
+    co.realtime.running = True
+    co.client.async_list_vehicles.reset_mock()
+    await co._async_update_data()
+    co.client.async_list_vehicles.assert_awaited_once()
+    assert co._authenticated
+
+
+async def test_boost_failure_backoff_uses_the_base_group_policy(coordinator):
+    co = coordinator
+    with patch("custom_components.ninebot.coordinator.random.uniform", return_value=1):
+        co._attempt_finished("synthetic-one", "battery", 100, 15, False)
+        assert co._next_attempt[("synthetic-one", "battery")] == 130
+        co._attempt_finished("synthetic-one", "battery", 130, 15, False)
+        assert co._next_attempt[("synthetic-one", "battery")] == 190
+
+
+async def test_normal_refresh_observes_its_admitted_status_result(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.realtime.running = True
+    clock[0] += 60
+    co.client.async_get_status.return_value = {"dump_energy": 47}
+    data = await co._async_update_data()
+    assert data["synthetic-one"].status.battery == 47
+    assert data["synthetic-two"].status.battery == 47
+
+
+async def test_native_explicit_refresh_keeps_due_data_semantics_without_periodic_credit(
+    coordinator,
+):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.realtime.running = True
+    clock[0] += 60
+    for _ in range(3):
+        co.periodic_budget.take(clock[0])
+    co.client.async_get_status.return_value = {"dump_energy": 46}
+    await co.async_refresh()
+    assert co.data["synthetic-one"].status.battery == 46
+    assert co.data["synthetic-two"].status.battery == 46
+    assert not co._explicit_refresh_tasks

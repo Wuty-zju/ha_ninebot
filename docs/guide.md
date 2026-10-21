@@ -81,6 +81,12 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. Retired low-confidence SOC estimators remain removed. |
 | Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
+With the default policy, charging targets status/battery at 15/30 seconds; ACC activity targets status/battery/travel at 10/30/120 seconds. New charge transitions, external unlocks and stops open finite observation windows. ACC indicates activity; power alone does not prove movement. Old custom intervals keep their previous behavior until a preset is selected.
+
+After activity stops, up to six current-month summary checks help settle recent trips. They reuse in-flight reads and never download old trip details. Existing lock confirmation and follow-up stay independent; a control command is never automatically repeated.
+
+Periodic reads use local admission budgets: one per second per account with a burst of three, and two per second across accounts with a burst of six. Requests are fairly deferred under pressure. These are local scheduling protections; bootstrap, explicit queries, controls and the separately budgeted history worker retain their own bounded paths. Upstream retry instructions take precedence. Diagnostics distinguish target intervals, observed intervals, queue delays and deferral reasons.
+
 Requests are demand-aware, account-budgeted and shared when identical reads are in flight. Status, battery and travel have separate freshness and failure/backoff state. Unload/reload cancels work; a cache read does not become a new measurement.
 
 ## Controls and confirmation

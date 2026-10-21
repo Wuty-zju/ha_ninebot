@@ -79,6 +79,7 @@ def polling_demand(
     contexts: Iterable[object],
     *,
     now: datetime,
+    activity_tracking: bool = False,
 ) -> PollingDemand:
     """Discovery/audit listeners without typed contexts do not imply all groups.
 
@@ -123,4 +124,13 @@ def polling_demand(
         reasons.add("battery_discovery")
     if not snapshot.present:
         return PollingDemand(frozenset(), False, ("vehicle_absent",))
+    if activity_tracking and needs & {
+        Need.BATTERY,
+        Need.MONTH,
+        Need.DAY,
+        Need.LAST_RIDE,
+        Need.RIDE_EVENT,
+    }:
+        groups.add("status")
+        reasons.add("activity_tracking")
     return PollingDemand(frozenset(groups), last_ride, tuple(sorted(reasons)), Need.DAY in needs)
