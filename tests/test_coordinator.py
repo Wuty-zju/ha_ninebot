@@ -1710,6 +1710,7 @@ async def test_activity_uses_status_flags_and_keeps_vehicles_independent(coordin
 async def test_charge_transition_replans_both_acceleration_and_expiry(coordinator):
     co = coordinator
     clock = independent_clock(co)
+    co.client.async_get_status.return_value = {"pwr": 1, "charging": False}
     await co._async_update_data()
     assert co.poll_interval("synthetic-one", "status") == 60  # pwr=1 alone is not activity.
     clock[0] = 1010
@@ -1729,6 +1730,7 @@ async def test_charge_transition_replans_both_acceleration_and_expiry(coordinato
 async def test_boost_does_not_bypass_group_failure_or_server_retry_after(coordinator):
     co = coordinator
     clock = independent_clock(co)
+    co.client.async_get_status.return_value = {"pwr": 1, "charging": False}
     await co._async_update_data()
     key = ("synthetic-one", "battery")
     co._failures[key] = 1
@@ -1785,3 +1787,12 @@ async def test_offline_bootstrap_still_recovers_with_dispatcher_enabled(coordina
     await co._async_update_data()
     co.client.async_list_vehicles.assert_awaited_once()
     assert co._authenticated
+
+
+async def test_boost_failure_backoff_uses_the_base_group_policy(coordinator):
+    co = coordinator
+    with patch("custom_components.ninebot.coordinator.random.uniform", return_value=1):
+        co._attempt_finished("synthetic-one", "battery", 100, 15, False)
+        assert co._next_attempt[("synthetic-one", "battery")] == 130
+        co._attempt_finished("synthetic-one", "battery", 130, 15, False)
+        assert co._next_attempt[("synthetic-one", "battery")] == 190

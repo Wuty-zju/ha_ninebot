@@ -170,5 +170,7 @@ class RealtimePolling:
         finally:
             self.jobs.pop((sn, group), None)
             if not co._stopping:
+                if group == "profile":
+                    co.async_update_listeners()
                 co._schedule_validity_check()
             self.schedule()

@@ -441,6 +441,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         key = (sn, group)
         failures = 0 if success else self._failures.get(key, 0) + 1
         self._failures[key] = failures
+        if not success:
+            interval = max(interval, self.polling.interval(group))
         # Keep retries bounded and never stack catch-up cycles.
         delay = (
             interval
