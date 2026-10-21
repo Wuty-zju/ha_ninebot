@@ -185,7 +185,7 @@ Back up Home Assistant before a major upgrade. A first upgrade with several olde
 
 Each account owns its session/resources. A shared scheduler coordinates cloud reads across vehicles: current state refreshes by data group, while history advances in background steps. Source evidence and normalized values remain distinguishable.
 
-Typical schedules are **60 s for status**, **600 s for battery/travel** and **3600 s for profiles**, subject to enabled features, freshness and backoff. Identical in-flight reads share work; there is no cloud poll per entity.
+Typical schedules are **60 s for status/battery**, **600 s for travel** and **3600 s for profiles**, subject to enabled features, freshness and backoff. Identical in-flight reads share work; there is no cloud poll per entity.
 
 ### History is acquired once, then reused locally
 

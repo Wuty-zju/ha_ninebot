@@ -38,7 +38,9 @@ async def async_get_config_entry_diagnostics(
                 "present": snapshot.present,
                 "groups": groups,
                 "status_timing": {
-                    "target_interval_seconds": runtime.coordinator.interval,
+                    "target_interval_seconds": runtime.coordinator.poll_interval(
+                        snapshot.profile.sn, "status"
+                    ),
                     "last_interval_seconds": runtime.coordinator.status_intervals.get(
                         snapshot.profile.sn
                     ),
@@ -52,6 +54,7 @@ async def async_get_config_entry_diagnostics(
                     if snapshot.status_freshness.succeeded_at
                     else None,
                 },
+                "polling": runtime.coordinator.polling_diagnostics(snapshot.profile.sn),
                 "polling_demand": runtime.coordinator.demand(snapshot.profile.sn).diagnostics(),
                 "battery_count": len(snapshot.battery.batteries),
                 "battery_model": battery_summary(snapshot.battery),

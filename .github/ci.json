@@ -216,7 +216,8 @@
         "custom_components/ninebot/travel.py",
         "tests/test_travel.py",
         "custom_components/ninebot/archive_runtime.py",
-        "tests/test_accumulated_statistics.py"
+        "tests/test_accumulated_statistics.py",
+        "custom_components/ninebot/ride_lifecycle.py"
       ],
       "tests": [
         "tests/test_accumulated_statistics.py",
@@ -239,7 +240,8 @@
         "tests/test_statistics_actions.py",
         "tests/test_statistics_continuity.py",
         "tests/test_statistics_export.py",
-        "tests/test_travel.py"
+        "tests/test_travel.py",
+        "tests/test_ride_lifecycle.py"
       ]
     },
     "live": {
@@ -262,7 +264,8 @@
         "tests/test_lock_controls.py",
         "tests/test_daily_sync.py",
         "tests/test_statistics_continuity.py",
-        "tests/test_setup_entities.py"
+        "tests/test_setup_entities.py",
+        "tests/test_polling_policy.py"
       ]
     },
     "websocket": {
@@ -294,6 +297,26 @@
       "tests": [
         "tests/test_setup_entities.py",
         "tests/test_translations.py"
+      ]
+    },
+    "entities": {
+      "paths": [
+        "custom_components/ninebot/sensor.py",
+        "custom_components/ninebot/binary_sensor.py",
+        "custom_components/ninebot/device_tracker.py",
+        "custom_components/ninebot/image.py",
+        "custom_components/ninebot/number.py"
+      ],
+      "tests": [
+        "tests/test_setup_entities.py",
+        "tests/test_ride_entities.py",
+        "tests/test_current_observations.py",
+        "tests/test_entity_simplification.py",
+        "tests/test_control_entities.py",
+        "tests/test_battery.py",
+        "tests/test_translations.py",
+        "tests/test_statistics_continuity.py",
+        "tests/test_identity_migration.py"
       ]
     }
   },

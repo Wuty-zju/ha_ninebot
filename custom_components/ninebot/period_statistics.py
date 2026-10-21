@@ -7,8 +7,9 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 from .archive_statistics import StatisticsReader
-from .const import BUSINESS_TIMEZONE, DETAIL_INTERVAL
+from .const import BUSINESS_TIMEZONE
 from .parsing import previous_month
+from .polling_policy import DAY_OBSERVATION_MAX_AGE
 from .statistics_store import timestamp
 
 type DayMetric = Literal[
@@ -65,7 +66,7 @@ def day_summary(
         or (
             not allow_cached
             and day == business_today
-            and (now - sampled).total_seconds() > 3 * DETAIL_INTERVAL
+            and (now - sampled).total_seconds() > DAY_OBSERVATION_MAX_AGE
         )
     ):
         return DaySummary(
@@ -79,7 +80,7 @@ def day_summary(
         "awaiting_day_close"
         if day < business_today and sampled_day == day
         else "cached"
-        if day == business_today and (now - sampled).total_seconds() > 3 * DETAIL_INTERVAL
+        if day == business_today and (now - sampled).total_seconds() > DAY_OBSERVATION_MAX_AGE
         else "current"
         if day == business_today
         else "reported_history"

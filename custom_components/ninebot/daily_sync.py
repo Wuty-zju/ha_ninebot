@@ -19,6 +19,7 @@ from .exceptions import NinebotError
 from .history_budget import configured_budget
 from .models import TravelMonth
 from .parsing import previous_month
+from .polling_policy import DAILY_REPAIR_INTERVAL
 from .preservation import CONF_PRESERVE, retry_delay
 from .raw import RawRecord
 from .ride_archive import ArchiveError
@@ -48,9 +49,12 @@ class DailyStatisticsSync:
         self.co = co
         self.cursors: dict[tuple[str, str], DailyCursor] = {}
         self._last_vehicle: str | None = None
+        self.next_due = 0.0
 
     async def async_step(self, now: datetime) -> None:
         co, store = self.co, self.co.statistics
+        if co.monotonic() < self.next_due:
+            return
         entry = co.config_entry
         if entry is None or not store.writable or entry.options.get(CONF_PRESERVE) is True:
             return  # The opted-in history worker already owns paginated acquisition.
@@ -88,6 +92,7 @@ class DailyStatisticsSync:
                     cursor = self.cursors[(sn, month)] = DailyCursor(total)
                 if cursor.retry_at > now.timestamp():
                     continue
+                self.next_due = co.monotonic() + DAILY_REPAIR_INTERVAL
                 owns = co.preservation.months.guard(sn)
                 if not await store.archive.async_background_budget(
                     sn, now, configured_budget(entry.options), guard=owns
