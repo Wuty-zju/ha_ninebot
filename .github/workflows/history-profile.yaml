@@ -1,5 +1,6 @@
 name: Synthetic history profile
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'scripts/profile_history.py'
@@ -11,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: history-profile-${{ github.event.pull_request.number }}
+  group: history-profile-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   profile:
@@ -31,7 +32,7 @@ jobs:
       - run: python scripts/ci.py --install minimum --profile
       - name: Prepare the base runtime with the identical profiler
         env:
-          BASELINE_REF: ${{ github.event.pull_request.base.sha }}
+          BASELINE_REF: ${{ github.event.pull_request.base.sha || github.sha }}
         run: |
           git worktree add --detach "$RUNNER_TEMP/ninebot-profile-baseline" "$BASELINE_REF"
           cp scripts/profile_history.py "$RUNNER_TEMP/ninebot-profile-baseline/scripts/profile_history.py"
