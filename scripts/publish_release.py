@@ -10,6 +10,7 @@ import json
 import os
 import re
 import time
+from http.client import HTTPException
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
@@ -61,8 +62,8 @@ class GitHub:
                     return None
                 reason = f"HTTP {error.code}"
                 retry = error.code >= 500
-            except (URLError, TimeoutError):
-                reason = "network timeout or connection failure"
+            except (URLError, TimeoutError, HTTPException, ConnectionError, json.JSONDecodeError):
+                reason = "network or response failure"
                 retry = True
             if not retry or attempt + 1 == attempts:
                 raise RuntimeError(

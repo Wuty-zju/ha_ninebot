@@ -56,7 +56,7 @@ docs/                       User guides, architecture and development contracts
 | Identity, authentication or storage | Migration, authorization, cancellation and failure cases; both HA boundaries at major milestones |
 | Release candidate | Lightweight candidate checks, one full HA boundary run and final package verification |
 
-**Checks** runs Core lint and Release policy on PRs and `main`/`dev` pushes. Documentation, HACS and Hassfest have separate jobs. **Runtime checks** builds one deduplicated test plan for every PR from `.github/ci.json`. Known account/history/statistics/live scopes are combined; a new unmapped runtime file falls back to the offline suite. Critical account and compatibility changes select both HA boundaries. Frontend changes keep their separate Node/browser job. The plan and test reports are retained as Actions artifacts.
+**Checks** runs Core lint and Release policy on PRs and `main`/`dev` pushes. Documentation, HACS and Hassfest have separate jobs. **Runtime checks** builds one deduplicated test plan for every PR from `.github/ci.json`, comparing the topic with its shared ancestor so later base changes do not inflate the selection. Known account/history/statistics/live scopes are combined; a new unmapped runtime file falls back to the offline suite. Critical account and compatibility changes select both HA boundaries. Frontend changes keep their separate Node/browser job. The plan and test reports are retained as Actions artifacts.
 
 When the selected plan already contains every offline test file, Runtime checks collects the same 91% coverage gate and reports in that run. A successful complete two-boundary candidate result can be reused; run Node tests once on the frozen frontend inputs.
 
@@ -110,7 +110,7 @@ Versions use `2.0.0a1`, `2.0.0b1`, `2.0.0rc1` and `2.0.0`; tags and release titl
 
 Run **Publish packaged release** from `main`, providing channel (`preview`, `candidate` or `stable`), version, source branch, full candidate SHA and bilingual notes. RC and stable publication also requires the ID of a successful full **Checks** dispatch. `publish=false` prepares artifacts for inspection; `publish=true` creates a draft, verifies its assets, then publishes it. The candidate must pass Core lint, Release policy, Documentation, HACS and Hassfest. The maintained workflow reads candidate Git objects and checks the source tip again before publication.
 
-The publisher verifies the selected run belongs to this repository, ran the maintained Checks workflow, completed both pinned HA suites and the frontend tests, and used identical runtime/test/CI/dependency Git inputs. Its run ID, source SHA and input digest are included in the publication report. Selected Runtime regressions cannot stand in for this evidence.
+The publisher verifies the selected run belongs to this repository, ran the maintained Checks workflow, completed both pinned HA suites and the frontend tests, and used identical runtime/test/CI/dependency Git inputs. Its run ID, source SHA and input digest are included in the publication report. The digest covers runtime, HA/frontend tests, installation/selection code, workflow configuration and dependency declarations. Publication/documentation tools keep their own current-SHA lint and policy tests; a change confined to those tools can reuse unchanged HA/frontend evidence. Selected Runtime regressions cannot stand in for this evidence.
 
 Normal `dev` → `main` and `main` → `dev` promotions can reuse a successful full dispatch with matching Git inputs. If no matching evidence is available, the existing regression plan runs. Lint, documentation, HACS, Hassfest and source-tip gates still run for the promoted SHA. History browser/profile workflows also support explicit manual dispatch for changes to their own commands or dependencies.
 
@@ -163,4 +163,4 @@ Before applying for default inclusion, review the [HACS integration requirements
 
 The bundled `brand/icon.png` is a 256×256 transparent PNG. Its source/rights and a dark variant remain maintainer follow-ups. HA supports local custom-integration branding from 2026.3; older supported HA may use an upstream image or placeholder. HACS download/icon presentation also depends on the installed HACS version.
 
-简体中文：按任务定位源码与测试，普通改动做相关检查，RC 在固定候选上完成一次最低／当前 HA 综合验证。英文与中文同步维护默认值、单位和迁移说明。短分支回 dev，验收后正常合 main 并回灌；预发布保留对应标志。历史库与身份迁移按专门指南操作，图表、资源和运行文件各有明确目录。
+简体中文：RC／正式发版须提供完整Checks运行ID，发布器核对仓库、工作流、两HA和Node步骤及输入摘要；主线提升只复用相同输入的成功结果，轻量同SHA门禁照常。按任务定位源码与测试，普通改动做相关检查，RC 在固定候选上完成一次最低／当前 HA 综合验证。英文与中文同步维护默认值、单位和迁移说明。短分支回 dev，验收后正常合 main 并回灌；预发布保留对应标志。历史库与身份迁移按专门指南操作，图表、资源和运行文件各有明确目录。

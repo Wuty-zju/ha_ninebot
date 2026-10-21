@@ -406,6 +406,41 @@ class PackageAndPublication(unittest.TestCase):
                 verify_full_run(self.api, self.repo, self.sha, 42)
         self.api.request = original
 
+    def test_partial_api_responses_retry_reads_but_not_mutations(self):
+        import io
+        from http.client import IncompleteRead
+        from unittest.mock import patch
+
+        from scripts.publish_release import GitHub
+
+        for method, expected_calls in (("GET", 2), ("POST", 1)):
+            with (
+                patch("scripts.publish_release.time.sleep"),
+                patch(
+                    "scripts.publish_release.urlopen",
+                    side_effect=[IncompleteRead(b"synthetic"), io.BytesIO(b'{"ok":true}')],
+                ) as request,
+            ):
+                api = GitHub("synthetic/repository", "synthetic-token")
+                if method == "GET":
+                    self.assertEqual(api.request("actions/runs/42"), {"ok": True})
+                else:
+                    with self.assertRaises(RuntimeError):
+                        api.request("releases", method=method, payload={"name": "synthetic"})
+                self.assertEqual(request.call_count, expected_calls)
+
+    def test_validation_scope_distinguishes_runtime_ci_from_release_tools(self):
+        before = self.sha
+        (self.repo / "scripts").mkdir()
+        (self.repo / "scripts/publish_release.py").write_text("# publication transport correction")
+        self.git("add", ".")
+        self.commit()
+        self.assertEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+        (self.repo / "scripts/ci.py").write_text("# different HA installation or test command")
+        self.git("add", ".")
+        self.commit()
+        self.assertNotEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+
 
 if __name__ == "__main__":
     unittest.main()

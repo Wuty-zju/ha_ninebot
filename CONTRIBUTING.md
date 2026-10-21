@@ -21,7 +21,7 @@ Thank you for improving Ninebot for Home Assistant. Start with a focused problem
 - Promote an accepted development cycle to `main` with a normal merge, then synchronize `main` back into `dev`. Do not squash the long-lived branches. A stable hotfix must not merge unrelated next-cycle development; use a minimal fix or a traced backport.
 - Only create a temporary `release/<version>` when candidate stabilization and next-cycle development truly overlap. Promote the frozen branch, not the advancing `dev`.
 
-Feature PRs do not each require a release. Publish useful preview increments from `dev` (or a frozen release branch); publish accepted stable versions or promoted RCs from `main`. Published tags and package assets stay fixed; release descriptions can be corrected with a recorded audit. Preserve meaningful IDs/data and active branches/worktrees. Branch cleanup needs verified integration and recovery evidence.
+Feature PRs do not each require a release. Publish useful preview increments from `dev` (or a frozen release branch); publish accepted stable versions or promoted RCs from `main`. Include the successful full validation run and reviewed candidate SHA when preparing an RC or stable release. Matching runtime, tests, CI and dependency inputs allow promotion to reuse that evidence. Published tags and package assets stay fixed; release descriptions can be corrected with a recorded audit. Preserve meaningful IDs/data and active branches/worktrees. Branch cleanup needs verified integration and recovery evidence.
 
 简体中文：普通开发从dev开短分支并PR回dev；main用于验收提升／修复，推荐RC可经明确选择发布为Release／Latest。长期分支正常merge，稳定补丁不夹带下一轮功能；按完整成果发预览版，保留旧tag/Release。发布前参考[预检与门槛](docs/development.md#branch-and-release-channels)。
 

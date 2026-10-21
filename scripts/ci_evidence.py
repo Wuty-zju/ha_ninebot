@@ -6,7 +6,9 @@ import re
 import subprocess
 from pathlib import Path
 
-INPUTS = ("custom_components", "tests", "scripts", ".github", "pyproject.toml", "hacs.json")
+# Full HA/mypy/Node inputs. Publication/documentation tools have current-SHA
+# lint/policy gates; changing those does not require reinstalling both HA stacks.
+INPUTS = ("custom_components", "tests", "scripts/ci.py", ".github", "pyproject.toml", "hacs.json")
 
 
 def git(repo: Path, *args: str) -> bytes:
@@ -82,6 +84,7 @@ def verify_full_run(api, repo: Path, sha: str, run_id: int) -> dict:
         "input_sha256": digest,
         "url": run["html_url"],
         "jobs": sorted(jobs),
+        "scope": "HA suites, mypy and frontend; tooling gates remain candidate-specific",
     }
 
 

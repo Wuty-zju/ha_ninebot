@@ -198,6 +198,8 @@ response_variable: imported
 
 Import reads existing data and queues up to eight native series: day/month distance (km), energy (Wh), ride count and duration (s). Recorder must run; HA timezone must be `Asia/Shanghai`. Only closed verified periods enter; no spreading monthly Wh across days. `status: queued` means queue acknowledgement, not a durable commit. Repeated periods replace previous values; corrections rebuild later cumulative sums without double counting. Missing updates retain prior verified points with warnings. Incompatible metadata/units or over 12,000 points/series reject the batch.
 
+Native statistics IDs currently include the integration entry identity. Removing and re-adding an account reconnects its ride archive, but a subsequent statistics import can use a new series. Existing Recorder series and dashboard references remain intact. Keep the returned IDs when maintaining charts; account-stable series migration will require an explicit mapping rather than automatic merging.
+
 Use returned `dashboard_cards` or the actual returned `statistic_id`:
 
 ```yaml
