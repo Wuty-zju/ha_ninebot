@@ -260,15 +260,30 @@ def test_invalid_wire_is_sanitized(value):
 @pytest.mark.parametrize(
     "status,kind", [(429, ErrorKind.SERVICE), (302, ErrorKind.SERVICE), (500, ErrorKind.SERVICE)]
 )
+@pytest.mark.parametrize(
+    "retry_header,delay",
+    [
+        ("120", 120),
+        (None, 60),
+        ("bad", 60),
+        ("Sun, 01 Jan 2100 00:00:00 GMT", 900),
+        ("-1", 60),
+        ("9999", 900),
+        ("0", 0),
+    ],
+)
 async def test_transport_errors_never_refresh_or_follow_redirects(
-    tmp_path, monkeypatch, status, kind
+    tmp_path, monkeypatch, status, kind, retry_header, delay
 ):
     credentials(tmp_path)
 
     async def handle(request):
         return web.Response(
             status=status,
-            headers={"Retry-After": "120", "Location": "https://example.invalid/secret"},
+            headers={
+                **({"Retry-After": retry_header} if retry_header is not None else {}),
+                "Location": "https://example.invalid/secret",
+            },
         )
 
     app = web.Application()
@@ -281,7 +296,8 @@ async def test_transport_errors_never_refresh_or_follow_redirects(
             await client.async_get_travel_page("synthetic", "202610", 1, expected_uid=UID)
         assert err.value.kind is kind
         if status == 429:
-            assert err.value.retry_after == 120
+            assert err.value.retry_after == delay
+            assert err.value.retryable is False
         client._request_locked.assert_not_awaited()
         await client.async_close()
 

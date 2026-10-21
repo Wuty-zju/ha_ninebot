@@ -10,6 +10,9 @@ from .const import DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .runtime import NinebotConfigEntry
 
+# The account broker owns wire admission; command observers remain replaceable.
+PARALLEL_UPDATES = 0
+
 
 class NinebotLock(NinebotEntity, LockEntity):
     _unrecorded_attributes = unrecorded_attributes(

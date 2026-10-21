@@ -427,5 +427,22 @@ async def test_daily_sensors_share_atomic_projection_and_validation_decode(hass)
         ) as restore:
             await stats.archive._run(lambda: stats.archive._check(stats.archive._db()))
             assert restore.call_count == 1
+async def test_import_facade_notifies_after_history_only_profiles_are_projected(hass):
+    stats = ArchiveStatistics(hass, "import-view", "synthetic-business")
+    notified = []
+    try:
+        await stats.async_load()
+        await stats.archive.async_record_profiles((PROFILE,), NOW, complete=False)
+        await stats.archive.async_record_month(SN, many_rides(count=2), NOW)
+        remove = stats.async_add_archive_listener(
+            SN, lambda: notified.append(stats.month(SN, "202609"))
+        )
+        try:
+            await stats.async_refresh_after_import()
+            await hass.async_block_till_done()
+            assert notified and notified[-1].ride_count == 2
+            assert SN in stats._vehicles
+        finally:
+            remove()
     finally:
         await stats.async_close()
