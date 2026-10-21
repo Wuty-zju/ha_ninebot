@@ -15,6 +15,9 @@ from .entity import NinebotEntity, async_setup_dynamic
 from .parsing import boolean
 from .runtime import NinebotConfigEntry
 
+# The account broker owns wire admission; command observers remain replaceable.
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class Description(BinarySensorEntityDescription):

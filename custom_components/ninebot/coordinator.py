@@ -1967,6 +1967,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         )
         return result.readback is ReadbackOutcome.REFRESHED
 
+    async def async_archive_imported(self) -> None:
+        """Refresh local history without changing live discovery or ownership."""
+        await self.statistics.async_refresh_after_import()
+        if not self._stopping:
+            self.async_update_listeners()
+
     async def async_close(self) -> None:
         self._stopping = True
         self.realtime.stop()

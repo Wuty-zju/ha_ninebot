@@ -55,7 +55,8 @@
         "tests/test_account_display.py",
         "tests/test_debug_and_model_options.py",
         "tests/test_sms_login.py",
-        "custom_components/ninebot/archive_resources.py"
+        "custom_components/ninebot/archive_resources.py",
+        "custom_components/ninebot/button.py"
       ],
       "tests": [
         "tests/test_account_archive.py",
