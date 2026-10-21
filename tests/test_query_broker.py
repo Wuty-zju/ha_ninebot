@@ -391,3 +391,46 @@ async def test_background_backlog_leaves_status_admission_reserved(broker):
     await until(lambda: broker.diagnostics()["pending"] == 11)
     release.set()
     await asyncio.gather(*tasks, status)
+
+
+@pytest.mark.parametrize("vehicles", [10, 50])
+async def test_many_vehicle_bounded_dispatch_finishes_without_starvation(vehicles):
+    """The dispatcher submits at most eight jobs; measure logical queue bounds."""
+    clock = [0.0]
+    broker = QueryBroker(asyncio.Semaphore(2), lambda: NOW, monotonic=lambda: clock[0])
+    admission = asyncio.Semaphore(8)
+    completed, receipts = [], []
+
+    async def read(vehicle, group):
+        async with admission:
+
+            async def operation():
+                # Deterministic slow wire: advance logical time, yield to waiters.
+                clock[0] += 0.1
+                await asyncio.sleep(0)
+                completed.append((vehicle, group))
+
+            receipts.append(
+                await broker.async_read(
+                    QueryKey(0, vehicle, group),
+                    operation,
+                    lambda: True,
+                    Priority.STATUS if group == "status" else Priority.BACKGROUND,
+                )
+            )
+
+    try:
+        await asyncio.gather(
+            *(
+                read(str(vehicle), group)
+                for vehicle in range(vehicles)
+                for group in ("status", "battery")
+            )
+        )
+        assert len(set(completed)) == 2 * vehicles
+        assert max(receipt.queued_seconds for receipt in receipts) <= 1.5
+        await until(lambda: broker.diagnostics()["pending"] == 0)
+        assert broker.diagnostics()["waiters"] == 0
+    finally:
+        await broker.async_close()
+    assert not broker._jobs and not broker._flights
