@@ -100,6 +100,7 @@ class ScopeTests(unittest.TestCase):
         )
         self.assertEqual(len(changed_paths("a" * 40, "b" * 40)), 2)
         self.assertIn("--no-renames", output.call_args.args[0])
+        self.assertIn("a" * 40 + "..." + "b" * 40, output.call_args.args[0])
         with self.assertRaises(ValueError):
             changed_paths("dev; ignored", "b" * 40)
 

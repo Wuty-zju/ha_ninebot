@@ -352,10 +352,6 @@ class PackageAndPublication(unittest.TestCase):
             with self.assertRaises(ValueError):
                 release_body("o/r", "v2.0.0b95", "preview", [], en, zh, upgrade)
 
-
-if __name__ == "__main__":
-    unittest.main()
-
     def test_full_validation_reuses_docs_but_rejects_changed_runtime(self):
         evidence = verify_full_run(self.api, self.repo, self.sha, 42)
         before = self.sha
@@ -409,3 +405,7 @@ if __name__ == "__main__":
             with self.subTest(variant=variant), self.assertRaises(ValueError):
                 verify_full_run(self.api, self.repo, self.sha, 42)
         self.api.request = original
+
+
+if __name__ == "__main__":
+    unittest.main()

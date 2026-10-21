@@ -70,7 +70,7 @@ def changed_paths(base: str, head: str) -> list[str]:
     if not all(re.fullmatch(r"[0-9a-fA-F]{40}", sha) for sha in (base, head)):
         raise ValueError("Use full commit SHAs for the selected diff")
     result = subprocess.check_output(
-        ["git", "diff", "--name-only", "--no-renames", "-z", base, head], cwd=ROOT
+        ["git", "diff", "--name-only", "--no-renames", "-z", f"{base}...{head}"], cwd=ROOT
     )
     return [path.decode() for path in result.split(b"\0") if path]
 
