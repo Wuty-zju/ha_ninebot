@@ -280,6 +280,15 @@ class ArchiveStatistics(TravelStatisticsStore):
             except ArchiveError as err:
                 self.record_error(err)
 
+    async def async_refresh_after_import(self) -> None:
+        """Commit the archive's profile set and projections before notifying readers."""
+        async with self._archive_lock:
+            profiles = await self.archive.async_profiles(include_absent=True)
+            self._vehicles.update(profile.sn for profile in profiles)
+            await self._project()
+        for profile in profiles:
+            self._notify_change(profile.sn, None)
+
     async def async_record(
         self,
         sn: str,

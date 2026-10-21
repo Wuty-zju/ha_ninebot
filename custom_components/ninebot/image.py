@@ -12,6 +12,9 @@ from .entity import NinebotEntity, async_setup_dynamic
 from .image_urls import public_image_url
 from .runtime import NinebotConfigEntry
 
+# The account broker owns wire admission; command observers remain replaceable.
+PARALLEL_UPDATES = 0
+
 LOGGER = logging.getLogger(__name__)
 
 

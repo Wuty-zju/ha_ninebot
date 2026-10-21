@@ -48,6 +48,9 @@ from .ride_models import Ride
 from .runtime import NinebotConfigEntry
 from .travel_statistics import energy_statistics
 
+# The account broker owns wire admission; command observers remain replaceable.
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class Description(SensorEntityDescription):

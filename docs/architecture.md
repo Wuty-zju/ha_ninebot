@@ -19,6 +19,8 @@ Arrows describe data relationships, not upstream push. The frontend's local arch
 
 `backend.py` defines `NinebotBackend` and `BackendResult` with endpoint, source version, request/receipt timing and revision. `NinecliBackend` currently uses the precisely pinned managed serve client. Vehicle business-route initialization has a controlled native CLI exception. Explicit historical month/page reads use the reviewed native encrypted `native_history.py` adapter with existing account session/serialization; managed serve remains the token refresh writer. The serve client handles ongoing live queries; the native adapter handles explicit paginated history with the same account session.
 
+Archive imports refresh local profiles and projections through a single coordinator entry point before notifying statistics, calendar and history subscribers. Live ownership remains a discovery decision. Entity platforms delegate concurrency to the account broker, allowing a new control command to replace its previous confirmation observer.
+
 ## Realtime scheduling and controls
 
 `coordinator.py`, `demand.py` and `query_broker.py` track per-vehicle/per-group demand, freshness, partial failures and backoff. Identical in-flight reads share their result/error without renewing source receipt times. Status has bounded priority; background work and other vehicles receive turns. An account has one wire transaction; the shared gate allows two across accounts. Admission is bounded (12 reads + 4 commands, 64 readers overall, 32 on one shared read).
