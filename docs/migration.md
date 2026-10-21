@@ -6,6 +6,7 @@
 
 Existing custom polling intervals keep their previous targets until a profile is selected in Options. Existing 60-second/default entries use Balanced. Polling-only changes apply to the existing runtime. Archive schema, entity identities, history switches and control confirmation windows are unchanged. An earlier integration version does not interpret the new profile option; select its interval again after a code rollback.
 
+Removing an account clears its entry-owned credentials, rated parameters and event cursor. The history retention option controls the separate account archive. Session cleanup checks ownership and active references before touching files; a cleanup Repair identifies files that could not be safely removed.
 Import cancellation waits for active file work and archive readers to finish before removing the staging directory. Interrupted legacy consolidation keeps its original source for the next attempt.
 
 ## Before upgrading

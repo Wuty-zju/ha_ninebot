@@ -990,6 +990,10 @@
     "archive_cleanup": {
       "title": "旧历史文件需要检查",
       "description": "部分旧历史文件无法校验或仍在使用，已保留，当前账号数据库仍可使用。处理这些文件前请备份 Home Assistant。"
+    },
+    "session_cleanup": {
+      "title": "已删除账号的凭据需要清理",
+      "description": "无法安全删除该账号的本地登录会话。请检查存储权限和 Ninebot 会话目录后清理遗留会话。保留的行程历史独立存储。"
     }
   },
   "services": {
