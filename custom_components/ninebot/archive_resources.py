@@ -1,4 +1,4 @@
-"""Cancellation-safe temporary export ownership and bounded admission."""
+"""Cancellation-safe temporary workspace ownership and bounded export admission."""
 
 import asyncio
 import shutil
@@ -24,24 +24,51 @@ class ExportBusy(Exception):
 async def finish_job[T](hass: HomeAssistant, operation: Callable[..., T], *args: Any) -> T:
     """Drain filesystem work before cancellation can release its directory."""
     job = hass.async_add_executor_job(operation, *args)
+    cancelled = False
     try:
-        return await asyncio.shield(job)
-    except asyncio.CancelledError:
-        try:
-            await job
-        finally:
-            raise
+        while not job.done():
+            try:
+                await asyncio.shield(job)
+            except asyncio.CancelledError:
+                cancelled = True
+        return job.result()
+    finally:
+        if cancelled:
+            raise asyncio.CancelledError
 
 
 @dataclass
-class ExportWorkspace:
-    """Owned by the flow until the download manager accepts the completed file."""
+class TemporaryWorkspace:
+    """Record ownership inside the worker, before cancellation can hide its result."""
 
     directory: Path | None = None
-    published: bool = False
 
-    def create(self) -> None:
-        self.directory = Path(tempfile.mkdtemp(prefix="ninebot-export-"))
+    def create(self, prefix: str = "ninebot-export-") -> None:
+        self.directory = Path(tempfile.mkdtemp(prefix=prefix))
+
+    async def async_close(self, hass: HomeAssistant) -> None:
+        if self.directory is not None:
+            await finish_job(hass, shutil.rmtree, self.directory, True)
+            self.directory = None
+
+
+@asynccontextmanager
+async def temporary_workspace(
+    hass: HomeAssistant, prefix: str
+) -> AsyncIterator[TemporaryWorkspace]:
+    workspace = TemporaryWorkspace()
+    try:
+        await finish_job(hass, workspace.create, prefix)
+        yield workspace
+    finally:
+        await workspace.async_close(hass)
+
+
+@dataclass
+class ExportWorkspace(TemporaryWorkspace):
+    """Owned by the flow until the download manager accepts the completed file."""
+
+    published: bool = False
 
 
 @asynccontextmanager

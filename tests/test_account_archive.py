@@ -548,3 +548,57 @@ async def test_removed_entry_clears_credentials_and_entry_stores_but_retains_arc
     assert await runtime.models._store.async_load() is None
     assert await cursor.async_load() is None
     assert await hass.async_add_executor_job(account_path(hass, UID).exists)
+
+
+async def test_cancel_legacy_copy_drains_before_temporary_cleanup(hass, entry, tmp_path):
+    import asyncio
+    import tempfile
+    import threading
+    from unittest.mock import patch
+
+    from custom_components.ninebot.account_archive import _copy_source
+
+    legacy = Path(
+        hass.config.path(
+            ".storage",
+            "ninebot",
+            "archives",
+            hashlib.sha256(entry.entry_id.encode()).hexdigest(),
+            "rides.sqlite3",
+        )
+    )
+    actor = await populated(legacy)
+    await actor.async_close()
+    started = asyncio.Event()
+    release = threading.Event()
+    loop = asyncio.get_running_loop()
+    directories = []
+    mkdtemp = tempfile.mkdtemp
+
+    def create(**kwargs):
+        directory = Path(mkdtemp(dir=tmp_path, **kwargs))
+        directories.append(directory)
+        return str(directory)
+
+    def copy(source, destination):
+        loop.call_soon_threadsafe(started.set)
+        assert release.wait(5)
+        assert destination.parent.exists()
+        _copy_source(source, destination)
+
+    with (
+        patch("custom_components.ninebot.archive_resources.tempfile.mkdtemp", create),
+        patch("custom_components.ninebot.account_archive._copy_source", copy),
+    ):
+        task = asyncio.create_task(async_prepare_account(hass, UID, 100 * 1024 * 1024))
+        try:
+            await asyncio.wait_for(started.wait(), 5)
+            task.cancel()
+            await asyncio.sleep(0)
+            assert directories[0].exists() and not task.done()
+        finally:
+            release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert await hass.async_add_executor_job(legacy.exists)  # Keep unmerged sources.
+    assert not directories[0].exists()
