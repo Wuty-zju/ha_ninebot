@@ -805,7 +805,7 @@
               "confirmed": "State confirmed",
               "observed_target_command_uncertain": "State updated; command result uncertain",
               "already_in_target": "Already in target state",
-              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "target_not_observed": "잠금 해제 명령을 보냈습니다. 시트 아래 수납함을 확인하세요.",
               "unknown": "State could not be confirmed",
               "cancelled": "Waiting cancelled",
               "superseded": "Waiting cancelled or replaced by another command"
@@ -928,6 +928,9 @@
     },
     "history_object_corrupt": {
       "message": "일부 저장된 주행 데이터 검증 실패"
+    },
+    "seat_unlock_sent": {
+      "message": "잠금 해제 명령을 보냈습니다. 시트 아래 수납함을 확인하세요."
     }
   },
   "issues": {

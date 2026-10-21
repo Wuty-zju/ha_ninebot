@@ -636,5 +636,5 @@ async def test_new_account_controls_select_verified_vehicles_once(hass, flow_man
     defaults = form["data_schema"]({})
     assert defaults["enable_controls"] is False
     assert defaults["control_vehicles"] == ["SyntheticB"]
-    assert "polling_profile" not in defaults
+    assert defaults["polling_profile"] == "balanced"
     assert stored.options["poll_interval"] == 180

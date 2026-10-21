@@ -32,8 +32,7 @@ class VehicleActivity:
     ) -> frozenset[str]:
         """Only newer, timely receipts update a baseline or open a finite window."""
         if (
-            policy.name == "legacy"
-            or revision <= self.revision
+            revision <= self.revision
             or not 0 <= now - observed_at <= policy.max_age("status")
             or (self.observed_at is not None and observed_at < self.observed_at)
         ):
@@ -71,7 +70,7 @@ class VehicleActivity:
         return True
 
     def reasons(self, policy: PollingPolicy, now: float) -> tuple[str, ...]:
-        if policy.name == "legacy" or self.observed_at is None:
+        if self.observed_at is None:
             return ()
         reasons = [name for name, expiry in self.leases.items() if now < expiry]
         if 0 <= now - self.observed_at <= policy.max_age("status"):

@@ -805,7 +805,7 @@
               "confirmed": "State confirmed",
               "observed_target_command_uncertain": "State updated; command result uncertain",
               "already_in_target": "Already in target state",
-              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "target_not_observed": "تم إرسال أمر فتح القفل. تحقق من الحجرة أسفل المقعد.",
               "unknown": "State could not be confirmed",
               "cancelled": "Waiting cancelled",
               "superseded": "Waiting cancelled or replaced by another command"
@@ -928,6 +928,9 @@
     },
     "history_object_corrupt": {
       "message": "فشل التحقق من بعض بيانات الرحلات المحفوظة"
+    },
+    "seat_unlock_sent": {
+      "message": "تم إرسال أمر فتح القفل. تحقق من الحجرة أسفل المقعد."
     }
   },
   "issues": {

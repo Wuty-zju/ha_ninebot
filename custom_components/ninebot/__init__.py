@@ -34,7 +34,7 @@ from .history_websocket import async_register_history_websocket
 from .identity import IdentityStore
 from .migration import async_migrate
 from .models import VehicleSnapshot
-from .polling_policy import POLLING_OPTIONS
+from .polling_policy import CONF_POLLING_PROFILE, POLLING_OPTIONS, PollingPolicy
 from .registry import (
     async_configure_debug_entities,
     async_configure_event_entities,
@@ -81,6 +81,11 @@ def manager_for(hass: HomeAssistant) -> SessionManager:
 async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> bool:
     if backup_active(hass):
         raise ConfigEntryNotReady("Ninebot archive backup is in progress")
+    profile = PollingPolicy.from_options(entry.options).name
+    if entry.options.get(CONF_POLLING_PROFILE) != profile:
+        options = {**entry.options, CONF_POLLING_PROFILE: profile}
+        options.pop("poll_interval", None)
+        hass.config_entries.async_update_entry(entry, options=options)
     manager = manager_for(hass)
     key = entry.data[CONF_SESSION_KEY]
     await manager.async_recover(key)

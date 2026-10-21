@@ -805,7 +805,7 @@
               "confirmed": "State confirmed",
               "observed_target_command_uncertain": "State updated; command result uncertain",
               "already_in_target": "Already in target state",
-              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "target_not_observed": "Orden de desbloqueo enviada. Comprueba el compartimento del asiento.",
               "unknown": "State could not be confirmed",
               "cancelled": "Waiting cancelled",
               "superseded": "Waiting cancelled or replaced by another command"
@@ -928,6 +928,9 @@
     },
     "history_object_corrupt": {
       "message": "Algunos datos locales no superaron la verificación"
+    },
+    "seat_unlock_sent": {
+      "message": "Orden de desbloqueo enviada. Comprueba el compartimento del asiento."
     }
   },
   "issues": {

@@ -805,7 +805,7 @@
               "confirmed": "状态已确认",
               "observed_target_command_uncertain": "状态已更新，指令结果未确认",
               "already_in_target": "已处于目标状态",
-              "target_not_observed": "15秒内未确认，请检查车辆",
+              "target_not_observed": "解锁指令已发送，请检查座桶状态。",
               "unknown": "未获取确认状态",
               "cancelled": "等待已取消",
               "superseded": "等待已取消或由新指令接替"
@@ -928,6 +928,9 @@
     },
     "history_object_corrupt": {
       "message": "部分本地行程数据校验失败"
+    },
+    "seat_unlock_sent": {
+      "message": "解锁指令已发送，请检查座桶状态。"
     }
   },
   "issues": {

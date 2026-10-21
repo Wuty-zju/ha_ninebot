@@ -82,7 +82,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 
 | Option | Default / range | Effect |
 |---|---|---|
-| Update speed | Balanced; five profiles | Per-vehicle/group targets adapt to charging and ACC. Existing custom intervals remain until a profile is selected; polling-only changes reuse the runtime. |
+| Update speed | Balanced; five profiles | Per-vehicle/group targets adapt to charging and ACC. Polling-only changes reuse the runtime. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
@@ -95,7 +95,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. Retired low-confidence SOC estimators remain removed. |
 | Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
-With the default policy, charging targets status/battery at 15/30 seconds; ACC activity targets status/battery/travel at 10/30/120 seconds. New charge transitions, external unlocks and stops open finite observation windows. ACC indicates activity; power alone does not prove movement. Old custom intervals keep their previous behavior until a preset is selected.
+With the default policy, charging targets status/battery at 15/30 seconds; ACC activity targets status/battery/travel at 10/30/120 seconds. New charge transitions, external unlocks and stops open finite observation windows. ACC indicates activity; power alone does not prove movement.
 
 After activity stops, up to six current-month summary checks help settle recent trips. They reuse in-flight reads and never download old trip details. Existing lock confirmation and follow-up stay independent; a control command is never automatically repeated.
 
@@ -108,6 +108,8 @@ Requests are demand-aware, account-budgeted and shared when identical reads are 
 Vehicle **unlock** requests remote start; **lock** requests remote stop. The vehicle/cloud decides its motion/P requirements. HA does not disable remote stop by guessing whether the vehicle is moving. Seat unlock opens the compartment; seat locking is manual only. The retained buttons use the same executor as the Lock entities.
 
 Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. Confirmation uses fresh cloud observations; pending/unconfirmed/failed results are kept distinct. A new command can replace the previous confirmation observer; only command transmission is serialized.
+
+If a seat-unlock command is accepted but no unlock is observed, the message is “Unlock command sent. Check the seat compartment.”
 
 After a verified seat unlock, its Lock display remains unlocked for at least five seconds while status queries continue. The `Reported latch state` attribute and vehicle state events retain the actual reported state throughout this display window. After five seconds, the Lock follows the latest valid latch reading. A separate status observation runs about once per second for fifteen seconds, then at 20/30/45/59.9 seconds, ending within sixty seconds. Missed read slots are skipped rather than sent in a burst.
 
