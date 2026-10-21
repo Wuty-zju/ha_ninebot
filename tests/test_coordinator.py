@@ -1808,3 +1808,20 @@ async def test_normal_refresh_observes_its_admitted_status_result(coordinator):
     data = await co._async_update_data()
     assert data["synthetic-one"].status.battery == 47
     assert data["synthetic-two"].status.battery == 47
+
+
+async def test_native_explicit_refresh_keeps_due_data_semantics_without_periodic_credit(
+    coordinator,
+):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.realtime.running = True
+    clock[0] += 60
+    for _ in range(3):
+        co.periodic_budget.take(clock[0])
+    co.client.async_get_status.return_value = {"dump_energy": 46}
+    await co.async_refresh()
+    assert co.data["synthetic-one"].status.battery == 46
+    assert co.data["synthetic-two"].status.battery == 46
+    assert not co._explicit_refresh_tasks

@@ -112,6 +112,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         )
         self.interval = self.polling.status
         self.monotonic = monotonic or asyncio.get_running_loop().time
+        self._explicit_refresh_tasks: set[asyncio.Task[Any]] = set()
         super().__init__(
             hass,
             LOGGER,
@@ -1410,6 +1411,22 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         for start in range(0, len(sns), 8):
             await asyncio.gather(*(self._group(sn, "status") for sn in sns[start : start + 8]))
 
+    async def async_refresh(self) -> None:
+        """Keep explicit Core refreshes synchronous with their due observations.
+
+        Core's scheduled timer calls its own refresh worker. Task ownership
+        distinguishes that periodic path without propagating a manual flag
+        into future callbacks or changing authentication/ownership guards.
+        """
+        task = asyncio.current_task()
+        if task:
+            self._explicit_refresh_tasks.add(task)
+        try:
+            await super().async_refresh()
+        finally:
+            if task:
+                self._explicit_refresh_tasks.discard(task)
+
     async def _async_update_data(self) -> dict[str, VehicleSnapshot]:
         task = asyncio.current_task()
         if task:
@@ -1417,7 +1434,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         try:
             if self._stopping:
                 return self.data
-            if self.realtime.running and self.data and self._authenticated:
+            if (
+                self.realtime.running
+                and self.data
+                and self._authenticated
+                and task not in self._explicit_refresh_tasks
+            ):
                 # Periodic rounds share the dispatcher and its admission budget.
                 # Bootstrap and explicit manual/control reads keep their own paths.
                 self.realtime.dispatch()
@@ -1938,7 +1960,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         if self._shutdown_task is None:
             current = asyncio.current_task()
             tasks = (
-                self._active | set(self._forced.values()) | set(self._control_followups.values())
+                self._active
+                | set(self._forced.values())
+                | set(self._control_followups.values())
+                | self._explicit_refresh_tasks
             ) - {current}
             for task in tasks:
                 task.cancel()
