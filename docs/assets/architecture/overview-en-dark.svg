@@ -23,9 +23,9 @@
 <path d="M702 466 L706 472 L710 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <rect x="40" y="482" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / A</text>
-<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">Realtime coordinator</text>
-<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">Per vehicle and data group</text>
-<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">Demand, freshness and recovery</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">Adaptive live polling</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">Vehicle/group deadlines and boosts</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">Shared reads, freshness and recovery</text>
 <rect x="492" y="482" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="516" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / B</text>
 <text x="516" y="536" font-size="21" font-weight="650" fill="#e6edf3">History acquisition</text>

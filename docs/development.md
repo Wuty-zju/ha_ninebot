@@ -10,7 +10,7 @@ Start with [AGENTS](../AGENTS.md), inspect the checkout, then read the relevant 
 |---|---|---|
 | Account setup and authentication | `config_flow`, `account`, `session`, `runtime`, `client` | Config-flow, reauth, session, account-display and options tests |
 | Current data and entities | `adapters`, `models`, `entity`, platform modules, `registry`, `migration` | Field fixtures, normalization, identity, entity and translation tests |
-| Polling and recovery | `coordinator`, `realtime`, `demand`, `query_broker`, `backend` | Demand, broker, partial discovery, availability and cancellation tests |
+| Polling and recovery | `polling_policy`, `polling_activity`, `coordinator`, `realtime`, `demand`, `query_broker`, `backend` | Demand, broker, partial discovery, availability and cancellation tests |
 | Controls and events | `lock`, `control_polling`, `button`, `event`, `ride_reports`, `vehicle_events` | Confirmation, replacement command, latch observation and baseline tests |
 | History acquisition | `bootstrap`, `history_plan`, `preservation`, `incremental_runs`, `history_store` | Pagination, coverage, retry, budget and restart tests |
 | Day/month statistics | `daily_sync`, `travel_statistics`, `period_statistics`, `ride_presentation` | Daily-index repair, period completeness and rollover tests |
@@ -122,8 +122,8 @@ Promote long-lived branches with normal merges, then merge `main` back into `dev
 Run the read-only preflight after fetching branches/tags:
 
 ```sh
-python scripts/check_release.py --channel candidate --version 2.0.0rc1 \
-  --source main --sha REPLACE_WITH_REVIEWED_FULL_SHA
+python scripts/check_release.py --channel preview --version 2.0.0rc2 \
+  --source dev --sha REPLACE_WITH_REVIEWED_FULL_SHA
 ```
 
 Preview publication accepts `dev` or the matching release branch and sets `prerelease=true`. Stable publication uses an unsuffixed version from `main`. The explicit `candidate` channel accepts only an `rc` version from `main` and publishes it as a regular Release with **Latest**, as selected for v2.0.0rc1. The RC suffix identifies the candidate stage; the GitHub flag controls distribution. See [GitHub release API](https://docs.github.com/en/rest/releases/releases#create-a-release).
