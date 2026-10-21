@@ -19,8 +19,6 @@ Arrows describe data relationships, not upstream push. The frontend's local arch
 
 `backend.py` defines `NinebotBackend` and `BackendResult` with endpoint, source version, request/receipt timing and revision. `NinecliBackend` currently uses the precisely pinned managed serve client. Vehicle business-route initialization has a controlled native CLI exception. Explicit historical month/page reads use the reviewed native encrypted `native_history.py` adapter with existing account session/serialization; managed serve remains the token refresh writer. The serve client handles ongoing live queries; the native adapter handles explicit paginated history with the same account session.
 
-Archive imports refresh local profiles and projections through a single coordinator entry point before notifying statistics, calendar and history subscribers. Live ownership remains a discovery decision. Entity platforms delegate concurrency to the account broker, allowing a new control command to replace its previous confirmation observer.
-
 ## Realtime scheduling and controls
 
 `coordinator.py`, `demand.py` and `query_broker.py` track per-vehicle/per-group demand, freshness, partial failures and backoff. Identical in-flight reads share their result/error without renewing source receipt times. Status has bounded priority; background work and other vehicles receive turns. An account has one wire transaction; the shared gate allows two across accounts. Admission is bounded (12 reads + 4 commands, 64 readers overall, 32 on one shared read).
@@ -64,6 +62,8 @@ Repeated/empty/schema-invalid pages, changing totals and unverified membership m
 Current sample freshness, per-metric statistical completeness, page enumeration, root discovery, saved-detail coverage and payload/reference integrity have separate meanings. `last_success` is accepted progress; `last_completed` is task completion. Neither is a universal cloud snapshot certificate.
 
 ## Storage and integrity
+
+Daily sensors share a bounded immutable projection per vehicle and date. New archive projections, business-day rollover and receipt/freshness boundaries invalidate the cached view; distance, energy, duration, completeness and source metadata use the same calculation. Archive validation restores each month once while retaining all ownership, schema and payload checks.
 
 `RideArchive` is a per-account SQLite actor with serialized off-loop work, parameterized bounded reads and transactional updates. It holds normalized month/ride facts, membership, compressed/redacted business originals, task state, evidence receipts and private quarantine. Full track arrays stay in the archive. An explicit native aggregate import writes selected day/month totals to Recorder statistics. Ordinary scalar entity states follow HA Recorder configuration.
 
@@ -125,6 +125,8 @@ Diagnostics include uncertain-discovery counts, next retry, configured status in
 `archive_transfer.py` uses SQLite’s backup API on the existing SQL actor. Versioned ZIP manifests identify each account snapshot and its immutable historical evidence by SHA256. Vehicle exports filter every scoped table and remove unselected payloads/job metadata, then VACUUM the private snapshot. Uploads reject extra/duplicate members, traversal, symlinks, oversized content, executable SQLite objects, foreign owners, invalid references and corrupt raw payloads. Schema SQL from an upload is never executed in the destination.
 
 Imports replay reviewed vehicle/month/ride/membership/detail facts in a single account transaction. Newer month receipts win, historical membership is retained, and latest raw detail versus best geometry are selected independently. Imported profiles do not grant live ownership. Distinct page/month/detail originals are content-deduplicated in schema 7 `archive_evidence` inside the canonical account database and included in subset exports; existing account checkpoints survive, and audit receipts, connection sessions and hourly budgets are not copied. If no local discovery baseline exists, verified committed page coverage is restored with in-flight query claims reset; an existing baseline is never replaced. Import receipts make retries idempotent; SQLite transactions provide rollback; a temporary pre-merge recovery image is removed after a checked commit and retained on failure. Multi-account packages commit per account, not as a distributed transaction.
+
+Archive imports refresh local profiles and projections through a single coordinator entry point before notifying statistics, calendar and history subscribers. Live ownership remains a discovery decision. Entity platforms delegate concurrency to the account broker, allowing a new control command to replace its previous confirmation observer.
 
 Native options forms use HA file upload, administrator authorization and expiring signed downloads. Temporary workspaces retain ownership through cancellation; file operations finish before staging data is removed. Deleted entries release their credentials and small entry-owned stores independently of the account archive retention option. Unsafe credential cleanup raises a Repair. Account/vehicle selection defines transfer scope. Full archive/transfer content remains outside entity attributes, Recorder and diagnostics. See [usage and limits](guide.md#export-and-import-history-databases).
 

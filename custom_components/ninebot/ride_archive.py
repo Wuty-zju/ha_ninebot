@@ -611,15 +611,16 @@ class RideArchive:
                 raise ValueError("Invalid archived profile scope")
         for _, key, data, observed, revision, backend, ids in db.execute("SELECT * FROM months"):
             previous_month(key)
+            month = restored_month(decoded(data))
             if (
-                restored_month(decoded(data)).month != key
+                month.month != key
                 or revision < 1
                 or (backend is not None and version_metadata(backend) != backend)
             ):
                 raise ValueError("Invalid archived month")
             stamp(observed)
             identities = self._ids(ids)
-            summary = restored_month(decoded(data)).summary
+            summary = month.summary
             if summary is None or summary.unique_ride_count != len(identities):
                 raise ValueError("Invalid archived month membership")
         for _, key, data, observed, revision, started, ended in db.execute("SELECT * FROM rides"):

@@ -230,6 +230,50 @@ class SessionManager:
             raise NinebotError(ErrorKind.PROTOCOL)
         return self.root / key
 
+    async def async_remove(
+        self, key: str, expected_uid: str, referenced: Callable[[], bool]
+    ) -> bool:
+        """Remove only an unreferenced entry's credentials after transactions exit."""
+        async with self.transaction(key):
+            if referenced():
+                return False
+            async with self._lock:
+
+                def remove() -> None:
+                    if self.root.is_symlink():
+                        raise NinebotError(ErrorKind.PROTOCOL)
+                    destination = self.path(key)
+                    backup = self.root / f".backup-{key}"
+                    journal = self.root / f".transaction-{key}.json"
+                    temporary = self.root / f".journal-{key}.tmp"
+                    paths = [destination, backup, journal, temporary]
+                    if any(path.is_symlink() for path in paths):
+                        raise NinebotError(ErrorKind.PROTOCOL)
+                    directories = [destination, backup]
+                    if journal.exists():
+                        record = json.loads(journal.read_bytes())
+                        name = record.get("candidate") if isinstance(record, dict) else None
+                        if (
+                            not isinstance(name, str)
+                            or re.fullmatch(r"\.candidate-[\w-]+", name) is None
+                        ):
+                            raise NinebotError(ErrorKind.PROTOCOL)
+                        directories.append(self.root / name)
+                    # Validate every identity before removing any credential file.
+                    for directory in directories:
+                        if directory.is_symlink() or (
+                            directory.exists() and session_uid(directory) != expected_uid
+                        ):
+                            raise NinebotError(ErrorKind.PROTOCOL)
+                    for directory in directories:
+                        if directory.exists():
+                            shutil.rmtree(directory)
+                    journal.unlink(missing_ok=True)
+                    temporary.unlink(missing_ok=True)
+
+                await finish_io(remove)
+                return True
+
     def _candidate_dir(self) -> Path:
         private_directory(self.root)
         return Path(tempfile.mkdtemp(prefix=".candidate-", dir=self.root))

@@ -98,3 +98,9 @@ class ModelStorage:
         if self._writable and self._dirty:
             await self._store.async_save(self._data())
             self._dirty = False
+
+    async def async_remove(self) -> None:
+        """Discard entry-owned specifications, including a pending delayed save."""
+        self._writable = False
+        self._dirty = False
+        await self._store.async_remove()
