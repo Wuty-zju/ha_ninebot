@@ -92,7 +92,10 @@ class RealtimePolling:
 
     @callback
     def _wake(self, _now: object) -> None:
-        self.cancel = None
+        # A manual/early wake must consume the scheduled handle too.
+        if self.cancel:
+            self.cancel()
+            self.cancel = None
         if not self.running or self.co._stopping or not self.co._authenticated or self.task:
             return
         self.task = self.co.hass.async_create_task(self._run())

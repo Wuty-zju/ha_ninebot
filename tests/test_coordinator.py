@@ -1539,6 +1539,16 @@ async def test_recovery_is_singleflight_cancellable_and_honors_cooldown(coordina
     assert not co.realtime.running
 
 
+async def test_early_wake_cancels_the_pending_timer_even_after_stop(coordinator):
+    from unittest.mock import Mock
+
+    cancel = Mock()
+    coordinator.realtime.cancel = cancel
+    coordinator.realtime._wake(None)
+    cancel.assert_called_once_with()
+    assert coordinator.realtime.cancel is None
+
+
 async def test_recovery_backoff_keeps_retry_after_and_does_not_wait_an_hour(coordinator):
     # Async fixture is resolved by pytest-asyncio, no network or clock sleeps.
     co = coordinator
