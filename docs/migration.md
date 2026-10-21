@@ -2,6 +2,12 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
+## rc3 to rc4
+
+rc4 includes the polling-profile and seat-unlock message corrections from PR #152. New accounts and legacy numeric polling settings use Balanced once; an existing valid profile is retained. Seat-unlock confirmation uses a concise seat-specific message.
+
+Account cleanup, cancelled resource work, rated-parameter persistence and daily-index demand are more robust. A failed parameter save remains pending and can be retried after its Repair is resolved. History progress and per-vehicle summary updates avoid redundant local reads. Account/entity identities and archive schema 7 carry forward; no account recreation or history import is needed.
+
 ## rc2 to rc3
 
 Upgrade through HACS or replace the integration directory, then restart Home Assistant. Existing configuration, entity identities and schema 7 archives continue unchanged. No account removal or database rebuild is required.

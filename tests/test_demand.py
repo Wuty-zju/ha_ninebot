@@ -95,6 +95,7 @@ def test_removed_vehicle_never_creates_demand_even_for_model_and_event():
         ("sensor", "month_energy_intensity", "travel", Need.MONTH),
         ("sensor", "last_energy_intensity", "travel", Need.LAST_RIDE),
         ("sensor", "yesterday_mileage", "travel", Need.DAY),
+        ("sensor", "today_mileage", "travel", Need.DAY),
         ("sensor", "today_ride_energy", "travel", Need.DAY),
         ("sensor", "last_mileage", "travel", Need.LAST_RIDE),
         ("event", "ride", "travel", Need.RIDE_EVENT),

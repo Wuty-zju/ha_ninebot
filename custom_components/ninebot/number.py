@@ -36,6 +36,8 @@ class ModelNumber(NinebotEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         try:
             self.entry.runtime_data.models.configure(self.sn, {self.field: value})
+            if not await self.entry.runtime_data.models.async_save():
+                raise ValueError("Battery parameters were not saved")
         except ValueError as err:
             raise HomeAssistantError(
                 translation_domain=DOMAIN, translation_key="model_storage_invalid"

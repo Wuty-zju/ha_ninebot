@@ -14,7 +14,7 @@ English · [简体中文](README_zh.md)
 
 Monitor your Ninebot's battery, charging and vehicle status. Keep ride records and detailed GPS tracks in your own Home Assistant storage, query them from automations, and use native calendars and statistics alongside everyday vehicle entities.
 
-> **Current release candidate: [v2.0.0rc3](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc3).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
+> **Current release candidate: [v2.0.0rc4](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc4).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
 
 ## What you can do
 
@@ -31,7 +31,7 @@ Monitor your Ninebot's battery, charging and vehicle status. Keep ride records a
 
 Available fields vary by vehicle and cloud reports. Battery health score is a score, not SOH; configured rated energy is a specification, not measured capacity. [Entities, units and availability →](docs/guide.md#entities-and-data)
 
-The third release candidate refines resource cleanup, account removal, rate-limit recovery and shared daily statistics. The account archive remains portable across re-addition; imports drain active file work on cancellation, and backup completion isolates each account's cleanup. Existing entity identities, control behavior and schema 7 data stay in place.
+The fourth release candidate strengthens resource cleanup, account removal and battery-setting persistence. Daily statistics declare their repair dependencies, while history progress and per-vehicle caches avoid duplicate work. Polling profiles and seat-unlock feedback include the latest corrections. Entity identities, control timing and schema 7 archives carry forward.
 
 ## Installation
 
@@ -48,7 +48,7 @@ ARMv7/32-bit platforms are unsupported. [Requirements and platform details →](
 
 1. Open **HACS → ⋮ → Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with category **Integration**.
-3. Open **Ninebot**, select **v2.0.0rc3**, enable pre-releases if needed, and download it.
+3. Open **Ninebot**, select **v2.0.0rc4**, enable pre-releases if needed, and download it.
 4. Restart Home Assistant when prompted.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -109,7 +109,7 @@ Scalar values and track quality have separate lifecycles. A corrected total can 
 
 ### How synchronization progresses
 
-Enable **Preserve trip details in background** and **Automatic history synchronization** in account options. Both default off for new accounts; enable them when you want background acquisition. Existing choices are retained.
+Enable **Automatically sync trip details (Beta)** and **Automatically scan trip history (Beta)** in account options. Both default off for new accounts; enable them when you want background acquisition. Existing choices are retained.
 
 | Stage | Work performed |
 |---|---|

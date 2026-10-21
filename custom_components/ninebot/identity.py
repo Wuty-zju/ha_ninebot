@@ -20,6 +20,7 @@ from homeassistant.util import json as json_util
 from homeassistant.util import slugify
 from homeassistant.util.file import WriteError
 
+from .async_utils import async_drain
 from .compat import device_by_identifier, device_entry_ids, is_child_device
 from .const import CONF_ACCOUNT, CONF_BUSINESS_UID, DOMAIN
 from .models import VehicleProfile
@@ -208,10 +209,7 @@ class IdentityStore:
             )
         )
         try:
-            await asyncio.shield(task)
-        except asyncio.CancelledError:
-            await task
-            raise
+            await async_drain(task)
         except OSError:
             self._repair("entity_id_storage_invalid")
             raise

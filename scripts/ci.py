@@ -162,7 +162,7 @@ def main() -> None:
         if not args.base or not args.head:
             parser.error("--plan requires --base and --head")
         result = select(changed_paths(args.base, args.head), config, available)
-        if os.environ.get("CI_REUSE_PROMOTION") == "true":
+        if os.environ.get("CI_REUSE_FULL_VALIDATION") == "true":
             from scripts.ci_evidence import find_full_run
             from scripts.publish_release import GitHub
 
@@ -175,7 +175,7 @@ def main() -> None:
             if evidence:
                 result["reused_full_validation"] = evidence
                 result["tests"] = []
-                result["reasons"].append("verified-promotion-reuse")
+                result["reasons"].append("verified-full-validation-reuse")
         output = os.environ.get("GITHUB_OUTPUT")
         if output:
             with open(output, "a") as stream:

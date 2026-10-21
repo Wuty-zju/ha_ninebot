@@ -698,6 +698,8 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                 runtime.models.configure(
                     sn, {key: user_input.get(key) for key in ("voltage", "capacity")}
                 )
+                if not await runtime.models.async_save():
+                    raise ValueError("Battery parameters were not saved")
             except ValueError:
                 errors["base"] = "model_storage_invalid"
             else:

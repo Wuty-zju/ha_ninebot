@@ -43,7 +43,6 @@ from .models import LastRide, TravelMonth, VehicleSnapshot
 from .observations import ENTITY_FIELDS, RawField
 from .parsing import boolean, display_scalar, integer, number
 from .period_statistics import DayMetric, DaySummary, day_summary
-from .polling_policy import DAY_OBSERVATION_MAX_AGE
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
 from .travel_statistics import energy_statistics
@@ -91,29 +90,6 @@ def source_precision(snapshot: VehicleSnapshot, key: str) -> int | None:
         if ride and field:
             return dict(ride.precision).get(field)
     return None
-
-
-def today_mileage(snapshot: VehicleSnapshot, now: datetime) -> float | None:
-    """Project only a validated chart sampled on the current business day."""
-    local = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE))
-    travel = snapshot.travel
-    succeeded = snapshot.travel_freshness.succeeded_at
-    if (
-        not snapshot.present
-        or travel is None
-        or travel.summary is None
-        or travel.month != local.strftime("%Y%m")
-        or travel.summary.month != travel.month
-        or travel.summary.chart_status != "valid"
-        or not snapshot.travel_freshness.valid(now, DAY_OBSERVATION_MAX_AGE)
-        or succeeded is None
-        or succeeded.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date() != local.date()
-    ):
-        return None
-    return next(
-        (point.distance_km for point in travel.summary.daily_mileage if point.day == local.date()),
-        None,
-    )
 
 
 def raw_attributes(snapshot: VehicleSnapshot, field: RawField) -> dict[str, Any]:
@@ -272,18 +248,6 @@ SENSORS = (
         group="status",
         value=lambda s: s.status.charge_remaining,
         attributes=remaining_charge_attributes,
-    ),
-    Description(
-        key="today_mileage",
-        group="travel",
-        device_class=SensorDeviceClass.DISTANCE,
-        native_unit_of_measurement=UnitOfLength.KILOMETERS,
-        value=lambda s: today_mileage(s, dt_util.utcnow()),
-        attributes=lambda s: {
-            "source": "travel.detail",
-            "business_timezone": BUSINESS_TIMEZONE,
-            "query_month": s.travel.month if s.travel else None,
-        },
     ),
     Description(
         key="month_mileage",
@@ -978,9 +942,7 @@ async def async_setup_entry(
     def factory(sn: str) -> Iterable[Entity]:
         snapshot = entry.runtime_data.coordinator.data[sn]
         yield from (
-            NinebotSensor(entry, sn, d)
-            for d in (*SENSORS, *battery_descriptions(snapshot))
-            if d.key != "today_mileage"
+            NinebotSensor(entry, sn, d) for d in (*SENSORS, *battery_descriptions(snapshot))
         )
         yield ControlAvailabilitySensor(entry, sn)
         yield RawDataSummarySensor(entry, sn)
@@ -1001,7 +963,7 @@ async def async_setup_entry(
         for description in SENSORS
         for key in (description.key, *description.aliases)
     }
-    known = set(equivalent) | {"bms_voltage", "batt_temp", "bms_cycles"}
+    known = set(equivalent) | {"bms_voltage", "batt_temp", "bms_cycles", "today_mileage"}
     existing: list[Entity] = []
     for sn, key, uid in legacy_rows(hass, entry, "sensor", known):
         if uid in seen:

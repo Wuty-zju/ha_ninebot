@@ -1,24 +1,64 @@
 """Rated parameters only; legacy counters are deliberately not migrated."""
 
+import asyncio
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
+from homeassistant.util import json as json_util
+from homeassistant.util.file import WriteError
 
+from .async_utils import async_drain
 from .battery_parameters import BatteryParameters
 from .const import DOMAIN
 from .parsing import number
 
 
+class ParameterStorage(Store[dict[str, Any]]):
+    """Acknowledge native delayed/final writes without losing a failed save."""
+
+    def __init__(
+        self, hass: HomeAssistant, key: str, written: Callable[[dict | None], None]
+    ) -> None:
+        super().__init__(hass, 1, key, private=True)
+        self._written = written
+
+    async def _async_write_data(self, data: dict) -> None:
+        try:
+            await super()._async_write_data(data)
+        except (OSError, WriteError, json_util.SerializationError):
+            self._written(None)
+        else:
+            self._written(data["data"])
+
+
 class ModelStorage:
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
-        self._store = Store[dict[str, Any]](hass, 1, f"ninebot.{entry_id}.energy_v2", private=True)
+        self._store = ParameterStorage(hass, f"ninebot.{entry_id}.energy_v2", self._written)
         self.models: dict[str, BatteryParameters] = {}
         self._hass = hass
         self._issue_id = f"model_storage_{entry_id}"
         self._writable = False
         self._dirty = False
+        self._save_lock = asyncio.Lock()
+
+    def _written(self, data: dict | None) -> None:
+        issue = f"{self._issue_id}_write"
+        if data is None:
+            self._dirty = True
+            ir.async_create_issue(
+                self._hass,
+                DOMAIN,
+                issue,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="model_storage_write",
+            )
+        elif data == self._data():
+            self._dirty = False
+            ir.async_delete_issue(self._hass, DOMAIN, issue)
 
     async def async_load(self) -> None:
         self._writable = False
@@ -94,13 +134,15 @@ class ModelStorage:
         if self._writable and self._dirty:
             self._store.async_delay_save(self._data, 5)
 
-    async def async_save(self) -> None:
-        if self._writable and self._dirty:
-            await self._store.async_save(self._data())
-            self._dirty = False
+    async def async_save(self) -> bool:
+        async with self._save_lock:
+            if self._writable and self._dirty:
+                await async_drain(asyncio.create_task(self._store.async_save(self._data())))
+            return self._writable and not self._dirty
 
     async def async_remove(self) -> None:
         """Discard entry-owned specifications, including a pending delayed save."""
-        self._writable = False
-        self._dirty = False
-        await self._store.async_remove()
+        async with self._save_lock:
+            self._writable = False
+            self._dirty = False
+            await self._store.async_remove()

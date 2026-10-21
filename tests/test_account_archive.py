@@ -610,3 +610,34 @@ async def test_cancel_legacy_copy_drains_before_temporary_cleanup(hass, entry, t
             await task
     assert await hass.async_add_executor_job(legacy.exists)  # Keep unmerged sources.
     assert not directories[0].exists()
+
+
+@pytest.mark.parametrize("failed_store", ["statistics", "identity", "models", "events"])
+async def test_one_entry_store_removal_failure_does_not_skip_other_cleanup(
+    hass, entry, app_client, failed_store
+):
+    from unittest.mock import AsyncMock
+
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.ninebot import manager_for
+    from custom_components.ninebot.event_store import RideEventPipeline
+    from custom_components.ninebot.identity import IdentityStore
+    from custom_components.ninebot.statistics_store import TravelStatisticsStore
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    operations = {name: AsyncMock() for name in ("statistics", "identity", "models", "events")}
+    operations[failed_store].side_effect = OSError("synthetic")
+    manager = manager_for(hass)
+    with (
+        patch.object(TravelStatisticsStore, "async_remove", operations["statistics"]),
+        patch.object(IdentityStore, "async_remove", operations["identity"]),
+        patch.object(entry.runtime_data.models, "async_remove", operations["models"]),
+        patch.object(RideEventPipeline, "async_remove_store", operations["events"]),
+        patch.object(manager, "async_remove", new_callable=AsyncMock) as credentials,
+    ):
+        await async_remove_entry(hass, entry)
+    for operation in operations.values():
+        operation.assert_awaited_once()
+    credentials.assert_awaited_once()
+    assert ir.async_get(hass).async_get_issue("ninebot", f"entry_cleanup_{entry.entry_id}")

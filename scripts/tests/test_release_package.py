@@ -476,6 +476,49 @@ class PackageAndPublication(unittest.TestCase):
             self.sha,
         )
 
+    def test_version_and_issue_templates_reuse_runtime_but_dependencies_do_not(self):
+        before = self.sha
+        manifest_path = self.repo / "custom_components/ninebot/manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["version"] = "2.0.0rc4"
+        manifest_path.write_text(json.dumps(manifest))
+        issue = self.repo / ".github/ISSUE_TEMPLATE/bug.yml"
+        issue.parent.mkdir(parents=True)
+        issue.write_text("name: Synthetic issue form\n")
+        self.git("add", ".")
+        self.commit()
+        self.assertEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+        manifest["requirements"] = ["synthetic==2.0.0"]
+        manifest_path.write_text(json.dumps(manifest))
+        self.git("add", ".")
+        self.commit()
+        self.assertNotEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+
+    def test_executed_workflows_and_ha_boundary_always_invalidate_full_evidence(self):
+        for name in ("checks.yaml", "runtime.yaml", "history-browser.yaml", "history-profile.yaml"):
+            with self.subTest(name=name):
+                before = self.sha
+                path = self.repo / ".github/workflows" / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("# changed execution inputs\n")
+                self.git("add", ".")
+                self.commit()
+                self.assertNotEqual(
+                    input_digest(self.repo, before), input_digest(self.repo, self.sha)
+                )
+        before = self.sha
+        (self.repo / ".github/ci.json").write_text('{"changed": true}')
+        self.git("add", ".")
+        self.commit()
+        self.assertNotEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+
+    def test_invalid_manifest_cannot_supply_validation_evidence(self):
+        (self.repo / "custom_components/ninebot/manifest.json").write_text("[]")
+        self.git("add", ".")
+        self.commit()
+        with self.assertRaisesRegex(ValueError, "manifest"):
+            input_digest(self.repo, self.sha)
+
 
 if __name__ == "__main__":
     unittest.main()

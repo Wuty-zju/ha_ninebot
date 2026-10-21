@@ -122,7 +122,7 @@
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
-          "polling_profile": "Intervallen status/accu/ritten: {polling_setting}. Laden en activiteit passen ze aan. Zonder keuze blijft een aangepast interval behouden."
+          "polling_profile": "Intervallen status/accu/ritten: {polling_setting}. Laden en activiteit passen ze aan."
         }
       },
       "model_vehicle": {
@@ -997,6 +997,14 @@
     "session_cleanup": {
       "title": "Deleted account credentials need cleanup",
       "description": "The removed account's local session could not be safely deleted. Check storage permissions and the Ninebot session directory before removing the orphaned session. Retained trip history is separate."
+    },
+    "entry_cleanup": {
+      "title": "Accountopruiming onvolledig",
+      "description": "Sommige instellingen van het verwijderde account konden niet worden gewist. Controleer de opslagrechten. Bewaarde ritten worden apart beheerd."
+    },
+    "model_storage_write": {
+      "title": "Battery parameter storage unavailable",
+      "description": "De batterijparameters konden niet worden opgeslagen. Controleer vrije ruimte en opslagrechten en sla de parameters opnieuw op."
     }
   },
   "services": {

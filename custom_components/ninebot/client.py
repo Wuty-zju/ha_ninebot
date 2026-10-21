@@ -22,6 +22,7 @@ from urllib.parse import quote
 import aiohttp
 
 from .adapters import profiles
+from .async_utils import async_drain
 from .const import CLI_TIMEOUT, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .http_policy import rate_limit_delay
@@ -151,11 +152,7 @@ class NinecliClient:
         if process is None:
             return
         task = asyncio.create_task(self._reap(process))
-        try:
-            await asyncio.shield(task)
-        except asyncio.CancelledError:
-            await task
-            raise
+        await async_drain(task)
 
     @staticmethod
     async def _reap(process: asyncio.subprocess.Process) -> None:

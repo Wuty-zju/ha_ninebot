@@ -27,6 +27,8 @@ async def test_cancelled_cache_worker_finishes_before_its_caller_returns():
     assert entered.is_set()
     task.cancel()
     await asyncio.sleep(0)
+    task.cancel()
+    await asyncio.sleep(0)
     assert not task.done()
     release.set()
     with pytest.raises(asyncio.CancelledError):

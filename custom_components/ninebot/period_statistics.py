@@ -47,25 +47,28 @@ class DaySummary:
 
 
 class DaySummaryCache:
-    """Bounded shared views for one immutable archive projection at a time."""
+    """Bounded shared views keyed by each vehicle’s immutable archive projection."""
 
     def __init__(self) -> None:
-        self._projection: object | None = None
+        self._projections: dict[str, object] = {}
         self._values: dict[tuple[object, ...], DaySummary] = {}
 
     def summary(
         self,
         store: StatisticsReader,
-        projection: object,
+        projection: object | None,
         sn: str,
         day: date,
         now: datetime,
         *,
         allow_cached: bool = False,
     ) -> DaySummary:
-        if self._projection is not projection:
-            self._projection = projection
-            self._values.clear()
+        if sn not in self._projections or self._projections[sn] is not projection:
+            if len(self._projections) >= 512:
+                self._projections.clear()
+                self._values.clear()
+            self._projections[sn] = projection
+            self._values = {key: value for key, value in self._values.items() if key[0] != sn}
         record = store.month(sn, day.strftime("%Y%m"))
         adjacent = store.month(sn, previous_month(day.strftime("%Y%m"))) if day.day == 1 else None
         # Values depend on receipt/freshness boundaries, not every wall-clock tick.

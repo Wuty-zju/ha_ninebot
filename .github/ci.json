@@ -56,7 +56,9 @@
         "tests/test_debug_and_model_options.py",
         "tests/test_sms_login.py",
         "custom_components/ninebot/archive_resources.py",
-        "custom_components/ninebot/button.py"
+        "custom_components/ninebot/button.py",
+        "custom_components/ninebot/async_utils.py",
+        "tests/test_async_utils.py"
       ],
       "tests": [
         "tests/test_account_archive.py",
@@ -84,7 +86,8 @@
         "tests/test_sms_login.py",
         "tests/test_statistics_continuity.py",
         "tests/test_translations.py",
-        "tests/test_vehicle_events.py"
+        "tests/test_vehicle_events.py",
+        "tests/test_async_utils.py"
       ]
     },
     "history": {

@@ -24,7 +24,7 @@ from .period_statistics import DaySummary, DaySummaryCache
 from .raw import RawRecord
 from .ride_archive import DEFAULT_MAX_BYTES, ArchiveError, ArchiveFailure, ArchiveMonth, RideArchive
 from .ride_models import Ride
-from .statistics_store import StoredMonth, StoredRide, TravelStatisticsStore
+from .statistics_store import StoredRide, TravelStatisticsStore
 
 
 def archive_path(hass: HomeAssistant, entry_id: str) -> Path:
@@ -65,6 +65,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection_month = ""
         self._latest: dict[str, ArchivedRide | None] = {}
         self._month_snapshots: dict[tuple[str, str], tuple[TravelMonth, datetime]] = {}
+        self._day_projection_tokens: dict[str, object] = {}
         self._projection_revisions: dict[str, int] = {}
         self.persistence_enabled = False
         register_archive(hass, self.archive)
@@ -199,7 +200,7 @@ class ArchiveStatistics(TravelStatisticsStore):
     ) -> DaySummary:
         if self.archive_ready:
             return self._day_summaries.summary(
-                self, self._projection, sn, day, now, allow_cached=allow_cached
+                self, self._day_projection_tokens.get(sn), sn, day, now, allow_cached=allow_cached
             )
         from .period_statistics import day_summary
 
@@ -241,11 +242,12 @@ class ArchiveStatistics(TravelStatisticsStore):
             bases = dict(self._projection.completeness_bases)
             latest = dict(self._latest)
             month_snapshots = dict(self._month_snapshots)
+            tokens = dict(self._day_projection_tokens)
             revisions = dict(self._projection_revisions)
             vehicles = (vehicle,)
         else:
             records, selections, blocked_metrics, bases = {}, {}, {}, {}
-            latest, revisions, month_snapshots = {}, {}, {}
+            latest, tokens, revisions, month_snapshots = {}, {}, {}, {}
             vehicles = tuple(sorted(self._vehicles))
         for sn in vehicles:
             snapshot = await self.archive.async_projection(
@@ -262,6 +264,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             blocked_metrics.update(view.blocked_metrics)
             bases.update(view.completeness_bases)
             latest[sn] = snapshot.latest
+            tokens[sn] = object()
             revisions[sn] = snapshot.revision
         if guard is not None and not guard():
             return
@@ -271,17 +274,28 @@ class ArchiveStatistics(TravelStatisticsStore):
             blocked_metrics=blocked_metrics,
             completeness_bases=bases,
         )
-        months: dict[str, dict[str, StoredMonth]] = {}
-        rides: dict[str, dict[str, StoredRide]] = {}
-        for (key, query_month), record in records.items():
-            months.setdefault(key, {})[query_month] = record
-            for ride in selections[(key, query_month)][0]:
-                rides.setdefault(key, {})[ride.ride_id] = ride
+        partial = vehicle is not None and self._projection_month == month
+        months = dict(self.months) if partial else {}
+        rides = dict(self.rides) if partial else {}
+        for sn in vehicles:
+            key = self.vehicle_key(sn)
+            selected_months = {
+                query_month: record
+                for (owner, query_month), record in records.items()
+                if owner == key
+            }
+            months[key] = selected_months
+            rides[key] = {
+                ride.ride_id: ride
+                for query_month in selected_months
+                for ride in selections[(key, query_month)][0]
+            }
         self._projection = projection
         self._projection_month = month
         self.months, self.rides = months, rides
         self._latest = latest
         self._month_snapshots = month_snapshots
+        self._day_projection_tokens = tokens
         self._projection_revisions = revisions
 
     async def async_refresh_projection(self) -> None:
@@ -445,4 +459,5 @@ class ArchiveStatistics(TravelStatisticsStore):
             self.archive_ready = False
             self._latest.clear()
             self._month_snapshots.clear()
+            self._day_projection_tokens.clear()
             self._projection_revisions.clear()

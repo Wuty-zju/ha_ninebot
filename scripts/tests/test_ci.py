@@ -17,6 +17,19 @@ class ScopeTests(unittest.TestCase):
     def plan(self, *paths):
         return select(list(paths), self.config, self.available)
 
+    def test_same_repository_reuse_keeps_forks_on_the_scoped_plan(self):
+        workflow = (ROOT / ".github/workflows/runtime.yaml").read_text()
+        self.assertIn(
+            "CI_REUSE_FULL_VALIDATION: ${{ "
+            "github.event.pull_request.head.repo.full_name == github.repository }}",
+            workflow,
+        )
+        self.assertIn("verified-full-validation-reuse", (ROOT / "scripts/ci.py").read_text())
+        self.assertIn(
+            "tests/test_async_utils.py",
+            self.plan("custom_components/ninebot/async_utils.py")["tests"],
+        )
+
     def test_documentation_does_not_request_a_runtime_environment(self):
         plan = self.plan("README.md", "docs/guide.md")
         self.assertEqual(plan["tests"], [])
