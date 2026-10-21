@@ -97,7 +97,7 @@ async def async_pre_backup(hass: HomeAssistant) -> None:
 async def async_post_backup(hass: HomeAssistant) -> None:
     state: BackupState | None = hass.data.pop(BACKUP_KEY, None)
     if state is None:
-        pending = hass.data.pop(REMOVALS_KEY, [])
+        pending: list[Callable[[], Awaitable[None]]] = hass.data.pop(REMOVALS_KEY, [])
         if not pending:
             return
         state = BackupState([], pending)
