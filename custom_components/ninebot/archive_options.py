@@ -1,10 +1,10 @@
 """Native options-flow archive management, with admin-only temporary downloads."""
 
+import asyncio
 import hashlib
 import secrets
 import shutil
 import sqlite3
-import tempfile
 import zipfile
 from contextlib import ExitStack
 from datetime import UTC, datetime, timedelta
@@ -33,7 +33,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .account_archive import account_lock, owner_key
-from .archive_resources import ExportBusy, export_workspace, finish_job
+from .archive_resources import ExportBusy, TemporaryWorkspace, export_workspace, finish_job
 from .archive_transfer import pack, readonly, unpack_upload, validate
 from .backup import backup_active
 from .compat import validation as vol
@@ -89,7 +89,8 @@ def register_download(hass: HomeAssistant) -> None:
 class ArchiveOptionsMixin(config_entries.OptionsFlow):
     """Selecting a file only stages it; no import before explicit confirmation."""
 
-    _archive_directory: Path | None = None
+    _archive_workspace: TemporaryWorkspace | None = None
+    _archive_operation_lock: asyncio.Lock | None = None
     _archive_sources: list[tuple[str, Path]] | None = None
 
     _archive_user_id: str | None = None
@@ -268,29 +269,46 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
     def _pending_archive_options(self) -> dict[str, Any]:
         return dict(getattr(self, "_pending_options", None) or self.config_entry.options)
 
+    @property
+    def _archive_lock(self) -> asyncio.Lock:
+        if self._archive_operation_lock is None:
+            self._archive_operation_lock = asyncio.Lock()
+        return self._archive_operation_lock
+
     async def _archive_cleanup(self) -> None:
-        directory, self._archive_directory = self._archive_directory, None
+        # Called inside the operation lock; the worker has already drained.
+        if self._archive_workspace is not None:
+            await self._archive_workspace.async_close(self.hass)
+            self._archive_workspace = None
         self._archive_sources = None
-        if directory:
-            await self.hass.async_add_executor_job(shutil.rmtree, directory, True)
+
+    async def _archive_close(self) -> None:
+        async with self._archive_lock:
+            await self._archive_cleanup()
 
     async def async_step_archive_import(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        async with self._archive_lock:
+            return await self._archive_import(user_input)
+
+    async def _archive_import(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if not await self._archive_admin():
             return self.async_abort(reason="archive_admin_required")
         errors = {}
         if user_input is not None:
             await self._archive_cleanup()
-            self._archive_directory = Path(await self.hass.async_add_executor_job(tempfile.mkdtemp))
+            workspace = self._archive_workspace = TemporaryWorkspace()
             try:
+                await finish_job(self.hass, workspace.create, "ninebot-import-")
+                directory = workspace.directory
+                assert directory is not None
 
                 def staged() -> list[tuple[str, Path]]:
-                    assert self._archive_directory is not None
                     with process_uploaded_file(self.hass, user_input["file"]) as uploaded:
-                        return unpack_upload(uploaded, self._archive_directory / "accounts")
+                        return unpack_upload(uploaded, directory / "accounts")
 
-                self._archive_sources = await self.hass.async_add_executor_job(staged)
+                self._archive_sources = await finish_job(self.hass, staged)
                 for owner, path in self._archive_sources:
                     if owner not in loaded_accounts(self.hass):
                         raise ValueError("Sign in to the package account first")
@@ -299,13 +317,16 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                         db = readonly(path)  # Reject executable schema before any migration.
                         db.close()
 
-                    await self.hass.async_add_executor_job(safe_source)
+                    await finish_job(self.hass, safe_source)
                     candidate = RideArchive(path, owner)
                     try:
                         await candidate.async_open()
                     finally:
                         await candidate.async_close()
-                return await self.async_step_archive_confirm()
+                return await self._archive_confirm()
+            except asyncio.CancelledError:
+                await self._archive_cleanup()
+                raise
             except (
                 ArchiveError,
                 OSError,
@@ -328,10 +349,18 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
     async def async_step_archive_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        async with self._archive_lock:
+            try:
+                return await self._archive_confirm(user_input)
+            except asyncio.CancelledError:
+                await self._archive_cleanup()
+                raise
+
+    async def _archive_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if not await self._archive_admin():
             return self.async_abort(reason="archive_admin_required")
         if not self._archive_sources:
-            return await self.async_step_archive_import()
+            return await self._archive_import()
         accounts = loaded_accounts(self.hass)
         choices: list[SelectOptionDict] = []
         errors = {}
@@ -357,7 +386,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                     finally:
                         db.close()
 
-                profiles = await self.hass.async_add_executor_job(inspect)
+                profiles = await finish_job(self.hass, inspect)
                 choices.append(SelectOptionDict(value=f"{owner}:*", label=accounts[owner].title))
                 choices.extend(
                     SelectOptionDict(
@@ -450,6 +479,6 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
         return self.async_create_entry(title="", data=self._pending_archive_options())
 
     def async_remove(self) -> None:
-        if self._archive_directory:
-            self.hass.async_create_task(self._archive_cleanup())
+        if self._archive_workspace:
+            self.hass.async_create_task(self._archive_close())
         super().async_remove()

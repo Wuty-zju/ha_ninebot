@@ -6,6 +6,8 @@
 
 Existing custom polling intervals keep their previous targets until a profile is selected in Options. Existing 60-second/default entries use Balanced. Polling-only changes apply to the existing runtime. Archive schema, entity identities, history switches and control confirmation windows are unchanged. An earlier integration version does not interpret the new profile option; select its interval again after a code rollback.
 
+Import cancellation waits for active file work and archive readers to finish before removing the staging directory. Interrupted legacy consolidation keeps its original source for the next attempt.
+
 ## Before upgrading
 
 Back up the **complete matching Home Assistant configuration/storage**: registries, ConfigEntries, account sessions, identity/nominal-parameter stores and private archives/recovery copies. Protect these files as credentials and location history. A code-only downgrade or SQLite-only copy does not reverse entity or storage migration.
