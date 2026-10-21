@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "車両操作を有効化",
           "control_vehicles": "操作を許可する車両",
-          "poll_interval": "状態更新間隔（秒）",
+          "polling_profile": "更新速度",
           "enable_coordinates": "車両の位置を表示",
           "configure_model": "定格パラメーターを設定",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "このアカウントの車両を1台以上選択します。操作を無効にしても選択は保持されます。",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "現在の状態／バッテリー／走行の間隔：{polling_setting}。充電と車両の活動に応じて調整します。未選択の場合は既存のカスタム間隔を維持します。"
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "パスワードログイン",
         "sms": "SMSログイン"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "非常に速い",
+        "faster": "速い",
+        "balanced": "バランス",
+        "slower": "遅い",
+        "very_slow": "非常に遅い"
       }
     }
   }

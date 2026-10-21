@@ -5,6 +5,7 @@ import unittest
 from custom_components.ninebot.polling_policy import (
     DAY_OBSERVATION_MAX_AGE,
     MONTH_CACHE_SECONDS,
+    PRESETS,
     RIDE_COMPLETION_QUIET_SECONDS,
     PollingPolicy,
 )
@@ -25,6 +26,35 @@ class PolicyTests(unittest.TestCase):
             policy = PollingPolicy.from_options({"poll_interval": value})
             self.assertEqual(policy.name, "legacy")
             self.assertEqual((policy.status, policy.battery, policy.travel), (value, 600, 600))
+
+    def test_explicit_profiles_override_legacy_values_and_bound_every_scene(self):
+        previous = None
+        for name, policy in PRESETS.items():
+            self.assertEqual(
+                PollingPolicy.from_options({"polling_profile": name, "poll_interval": 37}), policy
+            )
+            intervals = tuple(policy.interval(g) for g in ("status", "battery", "travel"))
+            if previous:
+                self.assertTrue(all(a <= b for a, b in zip(previous, intervals, strict=True)))
+            previous = intervals
+            for reason in (
+                "charging",
+                "active",
+                "charge_transition",
+                "recent_unlock",
+                "recent_stop",
+            ):
+                for group in ("status", "battery", "travel", "profile"):
+                    self.assertGreaterEqual(policy.scene_interval(group, reason), 2)
+                    self.assertLessEqual(
+                        policy.scene_interval(group, reason), policy.interval(group)
+                    )
+            self.assertEqual(policy.profile, 3600)
+        for invalid in ("unknown", None, [], {}):
+            self.assertEqual(
+                PollingPolicy.from_options({"polling_profile": invalid, "poll_interval": 37}).name,
+                "legacy",
+            )
 
     def test_invalid_values_have_a_bounded_fallback(self):
         for value in (None, {}, True, "invalid", float("inf"), float("nan")):

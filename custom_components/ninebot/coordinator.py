@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import random
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
 from datetime import datetime, timedelta
 from functools import partial
@@ -174,6 +174,24 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self._forced: dict[str, asyncio.Task[bool]] = {}
         self._shutdown_task: asyncio.Task[None] | None = None
         self._validity_cancel: Callable[[], None] | None = None
+
+    async def async_reconfigure_polling(self, options: Mapping[str, object]) -> None:
+        """Retarget polling without replacing sessions, archive owners or identities."""
+        policy = PollingPolicy.from_options(options)
+        if self._stopping or policy == self.polling:
+            return
+        self.polling = policy
+        self.interval = policy.status
+        self.update_interval = timedelta(seconds=policy.status)
+        self.activity.clear()
+        for sn in self.data:
+            for group in ("status", "battery", "travel"):
+                self._replan_group(sn, group)
+        self.realtime.schedule()
+        self._schedule_validity_check()
+        # Core resets its ordinary timer after this native refresh; source
+        # receipts and failure deadlines retain their actual timestamps.
+        await self.async_request_refresh()
 
     def _invalidate_auth(self) -> None:
         self._authenticated = False

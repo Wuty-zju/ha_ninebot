@@ -3320,6 +3320,7 @@ class RideArchive:
         try:
             await self._run(finish, lifecycle=True)
         finally:
-            # The worker queue has drained; wait=False cannot block HA's loop.
-            self._executor.shutdown(wait=False, cancel_futures=False)
+            # Reap the drained worker off-loop before reporting closure. A
+            # nonblocking shutdown can otherwise leave a thread past unload.
+            await asyncio.to_thread(self._executor.shutdown, wait=True, cancel_futures=False)
             self._opened = False

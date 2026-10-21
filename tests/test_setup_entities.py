@@ -320,7 +320,9 @@ async def test_options_reload_reaps_old_runtime_and_reuses_session_manager(hass,
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     old = entry.runtime_data
-    hass.config_entries.async_update_entry(entry, options={"poll_interval": 240})
+    hass.config_entries.async_update_entry(
+        entry, options={"poll_interval": 240, "enable_coordinates": True}
+    )
     await hass.async_block_till_done()
     assert old.coordinator._stopping
     assert old.coordinator._shutdown_task.done()
@@ -796,3 +798,31 @@ async def test_tracker_uses_standalone_main_battery_without_deprecated_property(
     assert "battery_level" not in hass.states.get(tracker.entity_id).attributes
     assert registry.async_get(tracker.entity_id).unique_id == tracker.unique_id
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_polling_only_and_noop_updates_reuse_runtime_and_archive(hass, entry, app_client):
+    from unittest.mock import patch
+
+    from custom_components.ninebot import async_update_options
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    runtime = entry.runtime_data
+    archive = runtime.coordinator.statistics.archive
+    with patch.object(hass.config_entries, "async_reload", return_value=True) as reload:
+        await async_update_options(hass, entry)
+        reload.assert_not_awaited()
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, "polling_profile": "faster"}
+        )
+        await hass.async_block_till_done()
+        assert entry.runtime_data is runtime
+        assert runtime.coordinator.statistics.archive is archive
+        assert runtime.coordinator.interval == 30
+        assert runtime.coordinator.update_interval.total_seconds() == 30
+        assert runtime.coordinator.polling.name == "faster"
+        reload.assert_not_awaited()
+        # Authentication changes retain the established reload boundary.
+        hass.config_entries.async_update_entry(entry, data={**entry.data, "display_revision": 2})
+        await hass.async_block_till_done()
+        reload.assert_awaited_once_with(entry.entry_id)

@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "Aktifkan kontrol",
           "control_vehicles": "Kendaraan yang diizinkan",
-          "poll_interval": "Interval pembaruan (detik)",
+          "polling_profile": "Kecepatan pembaruan",
           "enable_coordinates": "Tampilkan lokasi kendaraan",
           "configure_model": "Atur parameter nominal",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "Pilih satu atau beberapa kendaraan akun ini. Mematikan kendali tetap menyimpan pilihan.",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "Interval status/baterai/perjalanan: {polling_setting}. Menyesuaikan pengisian dan aktivitas. Tanpa pilihan, interval khusus dipertahankan."
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "Masuk dengan kata sandi",
         "sms": "Masuk melalui SMS"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "Sangat cepat",
+        "faster": "Lebih cepat",
+        "balanced": "Seimbang",
+        "slower": "Lebih lambat",
+        "very_slow": "Sangat lambat"
       }
     }
   }

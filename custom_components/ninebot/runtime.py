@@ -2,6 +2,7 @@
 
 from asyncio import Lock
 from dataclasses import dataclass, field
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 
@@ -27,6 +28,9 @@ class RuntimeData:
     statistics_import_lock: Lock = field(default_factory=Lock)
     statistics_import_pending: int = 0
     identities: IdentityStore | None = None
+    options_update_lock: Lock = field(default_factory=Lock)
+    applied_options: dict[str, Any] | None = None
+    applied_data: dict[str, Any] | None = None
 
 
 type NinebotConfigEntry = ConfigEntry[RuntimeData]

@@ -43,7 +43,7 @@ async def test_native_export_download_upload_and_confirm(
     url = f"/api/config/config_entries/options/flow/{form['flow_id']}"
     fields = {f["name"]: f for f in form["data_schema"]}
     assert fields["retain_history_database"]["default"] is True
-    response = await client.post(url, json={"poll_interval": 60, "manage_archive": True})
+    response = await client.post(url, json={"polling_profile": "balanced", "manage_archive": True})
     form = await response.json()
     assert form["step_id"] == "archive"
     response = await client.post(url, json={"next_step_id": "archive_export"})
@@ -105,7 +105,7 @@ async def test_native_export_download_upload_and_confirm(
     )
     form = await response.json()
     url = f"/api/config/config_entries/options/flow/{form['flow_id']}"
-    await client.post(url, json={"poll_interval": 60, "manage_archive": True})
+    await client.post(url, json={"polling_profile": "balanced", "manage_archive": True})
     await client.post(url, json={"next_step_id": "archive_import"})
     data = FormData()
     data.add_field("file", package, filename="history.zip", content_type="application/zip")
@@ -141,7 +141,7 @@ async def test_archive_options_require_admin(hass, entry, app_client):
         return_value=False,
     ):
         result = await hass.config_entries.options.async_configure(
-            result["flow_id"], {"poll_interval": 60, "manage_archive": True}
+            result["flow_id"], {"polling_profile": "balanced", "manage_archive": True}
         )
     assert result["type"] == "abort"
     assert result["reason"] == "archive_admin_required"

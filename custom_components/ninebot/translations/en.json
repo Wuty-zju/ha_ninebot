@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "Enable vehicle controls",
           "control_vehicles": "Vehicles allowed for control",
-          "poll_interval": "Status polling interval (seconds)",
+          "polling_profile": "Update speed",
           "enable_coordinates": "Show vehicle location",
           "configure_model": "Set rated battery parameters",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "Choose one or more vehicles from this account. Turning controls off keeps your selection.",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "Current status/battery/travel targets: {polling_setting}. Vehicles adjust to charging and activity. Leave unselected to keep a custom interval."
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "Password",
         "sms": "SMS code"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "Very fast",
+        "faster": "Faster",
+        "balanced": "Balanced",
+        "slower": "Slower",
+        "very_slow": "Very slow"
       }
     }
   }

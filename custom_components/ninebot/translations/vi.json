@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "Bật điều khiển xe",
           "control_vehicles": "Xe được phép điều khiển",
-          "poll_interval": "Khoảng cập nhật (giây)",
+          "polling_profile": "Tốc độ cập nhật",
           "enable_coordinates": "Hiển thị vị trí xe",
           "configure_model": "Cấu hình thông số định mức",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "Chọn một hoặc nhiều xe của tài khoản này. Tắt điều khiển vẫn giữ lựa chọn.",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "Chu kỳ trạng thái/pin/chuyến đi: {polling_setting}. Điều chỉnh theo sạc và hoạt động. Không chọn sẽ giữ chu kỳ tùy chỉnh."
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "Đăng nhập bằng mật khẩu",
         "sms": "Đăng nhập qua SMS"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "Rất nhanh",
+        "faster": "Nhanh hơn",
+        "balanced": "Cân bằng",
+        "slower": "Chậm hơn",
+        "very_slow": "Rất chậm"
       }
     }
   }

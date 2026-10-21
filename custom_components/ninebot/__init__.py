@@ -34,6 +34,7 @@ from .history_websocket import async_register_history_websocket
 from .identity import IdentityStore
 from .migration import async_migrate
 from .models import VehicleSnapshot
+from .polling_policy import POLLING_OPTIONS
 from .registry import (
     async_configure_debug_entities,
     async_configure_event_entities,
@@ -172,6 +173,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
             await entry.runtime_data.events.async_close()
         await coordinator.async_close()
         raise
+    entry.runtime_data.applied_options = dict(entry.options)
+    entry.runtime_data.applied_data = dict(entry.data)
     entry.async_on_unload(entry.add_update_listener(async_update_options))
     entry.async_on_unload(
         coordinator.async_add_listener(lambda: async_audit_device_identities(hass, entry))
@@ -190,6 +193,23 @@ async def async_unload_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
 
 
 async def async_update_options(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    runtime = getattr(entry, "runtime_data", None)
+    if not isinstance(runtime, RuntimeData) or runtime.applied_options is None:
+        await hass.config_entries.async_reload(entry.entry_id)
+        return
+    async with runtime.options_update_lock:
+        options, data = dict(entry.options), dict(entry.data)
+        changed = {
+            key
+            for key in runtime.applied_options.keys() | options.keys()
+            if runtime.applied_options.get(key) != options.get(key)
+        }
+        if data == runtime.applied_data and not changed:
+            return
+        if data == runtime.applied_data and changed <= POLLING_OPTIONS:
+            await runtime.coordinator.async_reconfigure_polling(options)
+            runtime.applied_options = options
+            return
     await hass.config_entries.async_reload(entry.entry_id)
 
 

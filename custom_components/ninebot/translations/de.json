@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "Fahrzeugsteuerung aktivieren",
           "control_vehicles": "Zugelassene Fahrzeuge",
-          "poll_interval": "Statusintervall (Sekunden)",
+          "polling_profile": "Aktualisierungstempo",
           "enable_coordinates": "Fahrzeugposition anzeigen",
           "configure_model": "Batterienennwerte konfigurieren",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "Wähle ein oder mehrere Fahrzeuge dieses Kontos. Das Ausschalten der Steuerung behält die Auswahl bei.",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "Aktuelle Intervalle für Status/Batterie/Fahrten: {polling_setting}. Laden und Aktivität passen sie an. Ohne Auswahl bleibt ein eigenes Intervall erhalten."
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "Passwortanmeldung",
         "sms": "SMS-Anmeldung"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "Sehr schnell",
+        "faster": "Schneller",
+        "balanced": "Ausgewogen",
+        "slower": "Langsamer",
+        "very_slow": "Sehr langsam"
       }
     }
   }

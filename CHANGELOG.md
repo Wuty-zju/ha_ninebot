@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add five adaptive update-speed profiles with native selectors and translations; retain custom intervals until explicitly changed. Apply polling-only changes without reopening the account or archive.
+
 - Adapt current queries to charging and ACC activity, with finite charge-transition, external-unlock and stop follow-ups. Keep trips settling through bounded current-month checks and preserve lock-confirmation behavior.
 - Apply shared local periodic admission, fair deferral and safe activity diagnostics. Avoid routine warning logs for isolated status-query failures.
 

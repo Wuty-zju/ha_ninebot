@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "Включить управление",
           "control_vehicles": "Разрешённый транспорт",
-          "poll_interval": "Интервал обновления (секунды)",
+          "polling_profile": "Скорость обновления",
           "enable_coordinates": "Показывать положение транспорта",
           "configure_model": "Настроить номинальные параметры",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "Выберите транспортные средства этого аккаунта. Отключение управления сохраняет выбор.",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "Интервалы состояния/батареи/поездок: {polling_setting}. Учитываются зарядка и активность. Без выбора сохраняется свой интервал."
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "Вход по паролю",
         "sms": "Вход по SMS"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "Очень быстро",
+        "faster": "Быстрее",
+        "balanced": "Сбалансированно",
+        "slower": "Медленнее",
+        "very_slow": "Очень медленно"
       }
     }
   }

@@ -845,3 +845,13 @@ def test_worker_scheduler_remains_bounded_with_zero_budget(budget, seconds):
     with patch("custom_components.ninebot.preservation.async_track_time_interval") as track:
         worker.start()
     assert track.call_args.args[2] == timedelta(seconds=seconds)
+
+
+async def test_archive_close_reaps_worker_before_return(tmp_path):
+    archive = RideArchive(tmp_path / "close-worker.sqlite3", OWNER)
+    await archive.async_open()
+    workers = tuple(archive._executor._threads)
+    assert workers and any(worker.is_alive() for worker in workers)
+    await archive.async_close()
+    assert not any(worker.is_alive() for worker in workers)
+    await archive.async_close()
