@@ -104,6 +104,38 @@ class ScopeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             changed_paths("dev; ignored", "b" * 40)
 
+    def test_diverged_topic_does_not_select_unrelated_base_changes(self):
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+
+            def git(*args):
+                return subprocess.check_output(["git", "-C", directory, *args], text=True).strip()
+
+            git("init", "--quiet", "-b", "main")
+            git("config", "user.name", "Synthetic")
+            git("config", "user.email", "synthetic@example.invalid")
+            (repo / "README.md").write_text("baseline")
+            git("add", ".")
+            git("commit", "--quiet", "-m", "baseline")
+            git("switch", "--quiet", "-c", "topic")
+            (repo / "README.md").write_text("topic documentation")
+            git("commit", "--quiet", "-am", "docs")
+            head = git("rev-parse", "HEAD")
+            git("switch", "--quiet", "main")
+            (repo / "custom_components").mkdir()
+            (repo / "custom_components/unrelated.py").write_text("# other topic")
+            git("add", ".")
+            git("commit", "--quiet", "-m", "unrelated runtime")
+            base = git("rev-parse", "HEAD")
+            with patch("scripts.ci.ROOT", repo):
+                paths = changed_paths(base, head)
+            self.assertEqual(paths, ["README.md"])
+            self.assertEqual(self.plan(*paths)["tests"], [])
+
     @patch("scripts.ci.version")
     @patch("scripts.ci.subprocess.run")
     def test_install_checks_the_exact_boundary_and_dependency_consistency(self, run, installed):
