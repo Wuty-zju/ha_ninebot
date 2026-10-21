@@ -427,6 +427,10 @@ async def test_daily_sensors_share_atomic_projection_and_validation_decode(hass)
         ) as restore:
             await stats.archive._run(lambda: stats.archive._check(stats.archive._db()))
             assert restore.call_count == 1
+    finally:
+        await stats.async_close()
+
+
 async def test_import_facade_notifies_after_history_only_profiles_are_projected(hass):
     stats = ArchiveStatistics(hass, "import-view", "synthetic-business")
     notified = []
