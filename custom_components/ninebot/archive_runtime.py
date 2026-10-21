@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 from collections.abc import Callable
 from copy import copy
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -20,6 +20,7 @@ from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
+from .period_statistics import DaySummary, DaySummaryCache
 from .raw import RawRecord
 from .ride_archive import DEFAULT_MAX_BYTES, ArchiveError, ArchiveFailure, ArchiveMonth, RideArchive
 from .ride_models import Ride
@@ -60,6 +61,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._archive_lock = asyncio.Lock()
         self._vehicles: set[str] = set()
         self._projection = ArchiveStatisticsView()
+        self._day_summaries = DaySummaryCache()
         self._projection_month = ""
         self._latest: dict[str, ArchivedRide | None] = {}
         self._month_snapshots: dict[tuple[str, str], tuple[TravelMonth, datetime]] = {}
@@ -191,6 +193,17 @@ class ArchiveStatistics(TravelStatisticsStore):
         if self.archive_ready:
             return self._projection.month_completeness_basis(sn, month)
         return super().month_completeness_basis(sn, month)
+
+    def day_summary(
+        self, sn: str, day: date, now: datetime, *, allow_cached: bool = False
+    ) -> DaySummary:
+        if self.archive_ready:
+            return self._day_summaries.summary(
+                self, self._projection, sn, day, now, allow_cached=allow_cached
+            )
+        from .period_statistics import day_summary
+
+        return day_summary(self, sn, day, now, allow_cached=allow_cached)
 
     def latest_ride(self, sn: str) -> ArchivedRide | None:
         """Memory-only historical projection, without any live freshness claim."""

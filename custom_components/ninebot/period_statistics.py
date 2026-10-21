@@ -46,6 +46,48 @@ class DaySummary:
         return dict(self.availability).get(metric, "available")
 
 
+class DaySummaryCache:
+    """Bounded shared views for one immutable archive projection at a time."""
+
+    def __init__(self) -> None:
+        self._projection: object | None = None
+        self._values: dict[tuple[object, ...], DaySummary] = {}
+
+    def summary(
+        self,
+        store: StatisticsReader,
+        projection: object,
+        sn: str,
+        day: date,
+        now: datetime,
+        *,
+        allow_cached: bool = False,
+    ) -> DaySummary:
+        if self._projection is not projection:
+            self._projection = projection
+            self._values.clear()
+        record = store.month(sn, day.strftime("%Y%m"))
+        adjacent = store.month(sn, previous_month(day.strftime("%Y%m"))) if day.day == 1 else None
+        # Values depend on receipt/freshness boundaries, not every wall-clock tick.
+        # Source changes replace the immutable projection; dates distinguish rollover.
+        sampled = timestamp(record.received_at) if record else None
+        adjacent_sampled = timestamp(adjacent.received_at) if adjacent else None
+        key = (
+            sn,
+            day,
+            allow_cached,
+            now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date(),
+            sampled is not None and sampled > now,
+            sampled is not None and (now - sampled).total_seconds() > DAY_OBSERVATION_MAX_AGE,
+            adjacent_sampled is not None and adjacent_sampled > now,
+        )
+        if key not in self._values:
+            if len(self._values) >= 512:
+                self._values.clear()
+            self._values[key] = day_summary(store, sn, day, now, allow_cached=allow_cached)
+        return self._values[key]
+
+
 def day_summary(
     store: StatisticsReader, sn: str, day: date, now: datetime, *, allow_cached: bool = False
 ) -> DaySummary:

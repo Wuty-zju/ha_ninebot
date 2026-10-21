@@ -776,7 +776,10 @@ class DayStatisticsSensor(NinebotEntity, SensorEntity):
     def _summary(self) -> DaySummary:
         now = dt_util.utcnow()
         day = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).date() - timedelta(days=self.days_ago)
-        return day_summary(self.coordinator.statistics, self.sn, day, now, allow_cached=True)
+        statistics = self.coordinator.statistics
+        if isinstance(statistics, ArchiveStatistics):
+            return statistics.day_summary(self.sn, day, now, allow_cached=True)
+        return day_summary(statistics, self.sn, day, now, allow_cached=True)
 
     @property
     def available(self) -> bool:
