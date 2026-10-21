@@ -408,7 +408,7 @@ async def test_daily_sensors_share_atomic_projection_and_validation_decode(hass)
     stats = ArchiveStatistics(hass, "shared-day", "synthetic-business")
     try:
         await stats.async_load()
-        await stats.async_record_profiles((PROFILE,), NOW)
+        await stats.async_record_profiles((PROFILE,), NOW, True, lambda: True)
         await stats.async_record(SN, many_rides(count=2), NOW)
         day = datetime(2026, 9, 20, tzinfo=UTC).date()
         with patch(
