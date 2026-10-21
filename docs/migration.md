@@ -2,6 +2,10 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
+## rc1 to rc2
+
+Existing custom polling intervals keep their previous targets until a profile is selected in Options. Existing 60-second/default entries use Balanced. Polling-only changes apply to the existing runtime. Archive schema, entity identities, history switches and control confirmation windows are unchanged. An earlier integration version does not interpret the new profile option; select its interval again after a code rollback.
+
 ## Before upgrading
 
 Back up the **complete matching Home Assistant configuration/storage**: registries, ConfigEntries, account sessions, identity/nominal-parameter stores and private archives/recovery copies. Protect these files as credentials and location history. A code-only downgrade or SQLite-only copy does not reverse entity or storage migration.

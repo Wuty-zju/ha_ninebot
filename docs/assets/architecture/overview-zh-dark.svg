@@ -23,9 +23,9 @@
 <path d="M702 466 L706 472 L710 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <rect x="40" y="482" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / A</text>
-<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">实时协调器</text>
-<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">逐车、逐数据组管理</text>
-<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">需求、响应年龄与异常恢复</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">自适应实时调度</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">逐车逐组周期与短时加速</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">共享读取、有效期与恢复</text>
 <rect x="492" y="482" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="516" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / B</text>
 <text x="516" y="536" font-size="21" font-weight="650" fill="#e6edf3">历史采集</text>

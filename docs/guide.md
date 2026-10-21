@@ -11,7 +11,7 @@
 
 The current connection has been verified against the Chinese App service; additional service regions require validation.
 
-The current 2.0 release candidate is **v2.0.0rc1**. Back up your Home Assistant configuration and private storage before upgrading.
+The current 2.0 release candidate is **v2.0.0rc2**. Back up your Home Assistant configuration and private storage before upgrading.
 
 ### Update speed
 
@@ -31,7 +31,7 @@ Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject 
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with type **Integration**.
-3. Open **Ninebot**, choose **v2.0.0rc1**, and download it.
+3. Open **Ninebot**, choose **v2.0.0rc2**, enable pre-releases if needed, and download it.
 4. Restart Home Assistant when prompted. A downloaded file version alone does not mean the running integration has loaded it.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -74,7 +74,7 @@ Durations retain native seconds and suggest **hours with four decimals** through
 
 Cycle counts display not supported only when the cycle-support flag explicitly says so; unknown support stays unknown. Missing odometer is not reported, without invented distance. English and Simplified Chinese are the primary documentation languages; shipped entity/settings labels cover additional locales with English fallback for some longer text.
 
-Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per account update, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
+Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per 60-second repair opportunity, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
 
 ## Options
 
@@ -82,7 +82,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 
 | Option | Default / range | Effect |
 |---|---|---|
-| Status interval | 60 s; 30–3600 s | Status refresh target; battery uses a separate 60 s target by default, travel 600 s and profiles 3600 s; legacy custom status intervals retain their previous battery period. Demand, response age and backoff control each group. |
+| Update speed | Balanced; five profiles | Per-vehicle/group targets adapt to charging and ACC. Existing custom intervals remain until a profile is selected; polling-only changes reuse the runtime. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |

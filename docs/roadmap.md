@@ -14,6 +14,16 @@ Current scope and next priorities for the 2.0 series. Usage and data contracts a
 
 已具备：多账号、实时实体/锁反馈、日历/统计/查询、可续接的历史行程/详情/精细GPS同步与私有归档、较好轨迹保护及有界校验恢复。
 
+## Added in 2.0.0rc2
+
+- Independent monotonic status, battery, travel and profile scheduling, with per-group freshness and retry deadlines.
+- Five native update-speed profiles, bounded charging/activity/stop boosts and shared periodic admission. Custom intervals stay until explicitly changed.
+- Polling-only configuration updates keep the running session and archive; unchanged saves avoid a reload.
+- Cancellation-safe export resources, completed archive-worker shutdown, immediate discovery publication and synchronous explicit refresh completion.
+- Centralized CI selection/pins and one candidate documentation gate, with focused checks during development.
+
+rc2新增：逐车逐组单调时钟调度、五档原生配置、有界场景加速、旧值保留及配置差异热更新；完善导出／线程清理和发现／手动刷新边界，统一选测和发布门槛。
+
 ## Early alpha: visualization and cards
 
 Map visualization, UI interactions and custom cards are **early alpha**. Next work centers on a shared vehicle/date/ride selection, linked map/list/summary/chart views and clearer synchronization feedback. The interaction model may change as these workflows mature.
