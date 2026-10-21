@@ -265,7 +265,8 @@
         "tests/test_daily_sync.py",
         "tests/test_statistics_continuity.py",
         "tests/test_setup_entities.py",
-        "tests/test_polling_policy.py"
+        "tests/test_polling_policy.py",
+        "tests/test_polling_activity.py"
       ]
     },
     "websocket": {

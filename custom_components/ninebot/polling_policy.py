@@ -17,6 +17,9 @@ class PollingPolicy:
     travel: int = 600
     profile: int = 3600
     name: str = "balanced"
+    charging: tuple[int, int] = (15, 30)
+    active: tuple[int, int, int] = (10, 30, 120)
+    short: tuple[int, int] = (5, 15)
 
     @classmethod
     def from_options(cls, options: Mapping[str, object]) -> "PollingPolicy":
@@ -50,3 +53,19 @@ class PollingPolicy:
             "travel": max(1800, 3 * self.travel),
             "profile": 3 * self.profile,
         }[group]
+
+    def scene_interval(self, group: str, reason: str) -> int:
+        targets = {
+            "charging": dict(zip(("status", "battery"), self.charging, strict=True)),
+            "active": dict(zip(("status", "battery", "travel"), self.active, strict=True)),
+            "charge_transition": {
+                "status": max(self.short[0], min(self.charging[0], self.active[0])),
+                "battery": self.short[1],
+            },
+            "recent_unlock": {"status": self.short[0]},
+            "recent_stop": {
+                "status": max(self.short[0], self.active[0]),
+                "battery": self.active[1],
+            },
+        }
+        return min(self.interval(group), targets.get(reason, {}).get(group, self.interval(group)))
