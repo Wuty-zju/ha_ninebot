@@ -441,6 +441,41 @@ class PackageAndPublication(unittest.TestCase):
         self.commit()
         self.assertNotEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
 
+    def test_validation_fetches_tested_commit_missing_from_a_shallow_checkout(self):
+        tested = self.sha
+        self.git("branch", "-M", "main")
+        (self.repo / "README.md").write_text("Later documentation commit")
+        self.git("add", ".")
+        self.commit()
+        clone = self.root / "shallow"
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--quiet",
+                "--no-local",
+                "--depth=1",
+                "--single-branch",
+                "--branch",
+                "main",
+                self.repo.as_uri(),
+                str(clone),
+            ],
+            check=True,
+        )
+        missing = subprocess.run(
+            ["git", "-C", str(clone), "cat-file", "-e", tested], capture_output=True
+        )
+        self.assertNotEqual(missing.returncode, 0)
+        proof = verify_full_run(self.api, clone, self.sha, 42)
+        self.assertEqual(proof["head_sha"], tested)
+        self.assertEqual(
+            subprocess.check_output(
+                ["git", "-C", str(clone), "rev-parse", "HEAD"], text=True
+            ).strip(),
+            self.sha,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
