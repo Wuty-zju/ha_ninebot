@@ -498,3 +498,63 @@ async def test_account_display_read_is_optional_except_auth_and_isolated(tmp_pat
             await manager.async_discard(candidate)
         client.async_get_account.assert_awaited_once()
         client.async_close.assert_awaited()
+
+
+@pytest.mark.parametrize("pending", [False, True])
+async def test_remove_credentials_and_transaction_artifacts_only_for_owner(tmp_path, pending):
+    root = tmp_path / "sessions"
+    root.mkdir()
+    key, other = "a" * 32, "b" * 32
+    write(root / key)
+    write(root / other, "other")
+    stage = root / ".candidate-remove"
+    async with aiohttp.ClientSession() as http:
+        manager = SessionManager(root, http)
+        if pending:
+            write(stage)
+            await manager.async_commit(Candidate(stage, "fake-uid"), key)
+        assert not await manager.async_remove(key, "fake-uid", lambda: True)
+        assert session_uid(root / key) == "fake-uid"
+        with pytest.raises(NinebotError):
+            await manager.async_remove(key, "wrong", lambda: False)
+        assert session_uid(root / key) == "fake-uid"
+        assert await manager.async_remove(key, "fake-uid", lambda: False)
+        assert sorted(p.name for p in root.iterdir()) == [other]
+        assert await manager.async_remove(key, "fake-uid", lambda: False)
+        assert session_uid(root / other) == "other"
+
+
+async def test_removal_waits_for_transaction_and_rechecks_shared_reference(tmp_path):
+    root = tmp_path / "sessions"
+    root.mkdir()
+    key = "c" * 32
+    write(root / key)
+    referenced = False
+    async with aiohttp.ClientSession() as http:
+        manager = SessionManager(root, http)
+        async with manager.transaction(key):
+            removal = asyncio.create_task(manager.async_remove(key, "fake-uid", lambda: referenced))
+            await asyncio.sleep(0)
+            assert not removal.done()
+            referenced = True
+        assert not await removal
+        assert session_uid(root / key) == "fake-uid"
+
+
+async def test_removal_rejects_symlink_and_other_owner_backup(tmp_path):
+    root = tmp_path / "sessions"
+    root.mkdir()
+    key = "d" * 32
+    write(root / key)
+    backup = root / f".backup-{key}"
+    write(backup, "different")
+    async with aiohttp.ClientSession() as http:
+        manager = SessionManager(root, http)
+        with pytest.raises(NinebotError):
+            await manager.async_remove(key, "fake-uid", lambda: False)
+        assert session_uid(root / key) == "fake-uid"
+        await asyncio.to_thread(backup.rename, root / "foreign")
+        await asyncio.to_thread(backup.symlink_to, root / "foreign")
+        with pytest.raises(NinebotError):
+            await manager.async_remove(key, "fake-uid", lambda: False)
+        assert session_uid(root / "foreign") == "different"
