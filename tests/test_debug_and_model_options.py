@@ -97,7 +97,7 @@ async def test_options_and_number_share_rated_parameters(hass, entry, app_client
     form = await hass.config_entries.options.async_configure(
         form["flow_id"],
         {
-            "poll_interval": 120,
+            "polling_profile": "slower",
             "debug_mode": True,
             "configure_model": True,
         },

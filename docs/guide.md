@@ -13,6 +13,20 @@ The current connection has been verified against the Chinese App service; additi
 
 The current 2.0 release candidate is **v2.0.0rc1**. Back up your Home Assistant configuration and private storage before upgrading.
 
+### Update speed
+
+Choose **Very fast**, **Faster**, **Balanced** (default), **Slower** or **Very slow** in Options. The values below are target intervals in seconds; vehicles adjust independently. Status contains SOC, range, locks, charging, ACC and location. Battery contains BMS data. Travel reads the current month summary/list.
+
+| Profile | Parked status / battery / travel | Charging status / battery | ACC active status / battery / travel |
+|---|---|---|---|
+| Very fast | 15 / 30 / 300 | 5 / 10 | 2 / 10 / 30 |
+| Faster | 30 / 30 / 600 | 10 / 15 | 5 / 15 / 60 |
+| Balanced | 60 / 60 / 600 | 15 / 30 | 10 / 30 / 120 |
+| Slower | 120 / 180 / 1200 | 30 / 60 | 30 / 60 / 300 |
+| Very slow | 300 / 600 / 1800 | 60 / 120 | 60 / 180 / 600 |
+
+Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject to shared admission, queueing and server backoff. Status and battery are separate requests; querying SOC or location uses the shared status response. Existing custom numeric intervals stay unchanged until a profile is selected. Changing only update speed keeps the session, local archive and entity identities in place. Feature, privacy and authentication changes retain their reload behavior.
+
 ## Install with HACS
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.

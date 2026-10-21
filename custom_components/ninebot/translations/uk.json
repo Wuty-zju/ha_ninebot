@@ -96,7 +96,7 @@
         "data": {
           "enable_controls": "Увімкнути керування",
           "control_vehicles": "Дозволений транспорт",
-          "poll_interval": "Інтервал оновлення (секунди)",
+          "polling_profile": "Швидкість оновлення",
           "enable_coordinates": "Показувати розташування транспорту",
           "configure_model": "Налаштувати номінальні параметри",
           "enable_vehicle_events": "Enable vehicle events (Beta)",
@@ -121,7 +121,8 @@
           "control_vehicles": "Виберіть транспортні засоби цього облікового запису. Вимкнення керування зберігає вибір.",
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
-          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure."
+          "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
+          "polling_profile": "Інтервали стану/батареї/поїздок: {polling_setting}. Враховуються заряджання й активність. Без вибору зберігається власний інтервал."
         }
       },
       "model_vehicle": {
@@ -1211,6 +1212,15 @@
       "options": {
         "password": "Вхід за паролем",
         "sms": "Вхід через SMS"
+      }
+    },
+    "polling_profile": {
+      "options": {
+        "very_fast": "Дуже швидко",
+        "faster": "Швидше",
+        "balanced": "Збалансовано",
+        "slower": "Повільніше",
+        "very_slow": "Дуже повільно"
       }
     }
   }

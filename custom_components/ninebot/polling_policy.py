@@ -3,6 +3,8 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+CONF_POLLING_PROFILE = "polling_profile"
+POLLING_OPTIONS = frozenset({CONF_POLLING_PROFILE, "poll_interval"})
 MONTH_CACHE_SECONDS = 600
 TRIP_DETAIL_CACHE_SECONDS = 900
 RIDE_COMPLETION_QUIET_SECONDS = 600
@@ -24,6 +26,9 @@ class PollingPolicy:
     @classmethod
     def from_options(cls, options: Mapping[str, object]) -> "PollingPolicy":
         """Retain custom status intervals until the owner selects a preset."""
+        preset = options.get(CONF_POLLING_PROFILE)
+        if isinstance(preset, str) and preset in PRESETS:
+            return PRESETS[preset]
         value = options.get("poll_interval", 60)
         try:
             interval = (
@@ -69,3 +74,20 @@ class PollingPolicy:
             },
         }
         return min(self.interval(group), targets.get(reason, {}).get(group, self.interval(group)))
+
+
+PRESETS: dict[str, PollingPolicy] = {
+    "very_fast": PollingPolicy(
+        15, 30, 300, name="very_fast", charging=(5, 10), active=(2, 10, 30), short=(2, 5)
+    ),
+    "faster": PollingPolicy(
+        30, 30, 600, name="faster", charging=(10, 15), active=(5, 15, 60), short=(5, 10)
+    ),
+    "balanced": PollingPolicy(),
+    "slower": PollingPolicy(
+        120, 180, 1200, name="slower", charging=(30, 60), active=(30, 60, 300), short=(15, 30)
+    ),
+    "very_slow": PollingPolicy(
+        300, 600, 1800, name="very_slow", charging=(60, 120), active=(60, 180, 600), short=(30, 60)
+    ),
+}

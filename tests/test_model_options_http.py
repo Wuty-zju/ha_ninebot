@@ -23,7 +23,7 @@ async def test_model_device_selection_through_http(hass, entry, app_client, hass
     url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
     response = await client.post(
         url,
-        json={"poll_interval": 120, "configure_model": True},
+        json={"polling_profile": "slower", "configure_model": True},
     )
     assert response.status == 200
     form = await response.json()
@@ -67,7 +67,7 @@ async def test_model_device_selection_through_http(hass, entry, app_client, hass
     assert (await response.json())["type"] == "create_entry"
     await hass.async_block_till_done()
     assert entry.runtime_data.models.model("SyntheticSN").nominal == 1.44
-    assert entry.options["poll_interval"] == 120
+    assert entry.options["polling_profile"] == "slower"
     assert "model_vehicle" not in entry.options
 
 
@@ -86,7 +86,7 @@ async def test_options_cancel_keeps_other_options_and_rated_parameters(
         )
     ).json()
     url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
-    await client.post(url, json={"poll_interval": 90, "configure_model": True})
+    await client.post(url, json={"polling_profile": "faster", "configure_model": True})
     device = next(
         device
         for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
@@ -116,7 +116,7 @@ async def test_empty_or_wrong_type_vehicle_is_field_scoped_not_an_option_enum(
         )
     ).json()
     url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
-    await client.post(url, json={"poll_interval": 120, "configure_model": True})
+    await client.post(url, json={"polling_profile": "slower", "configure_model": True})
     response = await client.post(url, json={"model_vehicle": value})
     data = await response.json()
     if value == "":
@@ -159,3 +159,62 @@ async def test_optional_rated_parameters_roundtrip_and_clear(hass, entry, app_cl
         model = entry.runtime_data.models.model("SyntheticSN")
         assert (model.voltage, model.capacity) == expected
         assert model.nominal is None
+
+
+@pytest.mark.parametrize("legacy", [None, 37, 300])
+async def test_polling_profile_native_form_preserves_custom_until_selected(
+    hass, entry, app_client, hass_client, legacy
+):
+    from unittest.mock import patch
+
+    if legacy is not None:
+        hass.config_entries.async_update_entry(entry, options={"poll_interval": legacy})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert await async_setup_component(hass, "config", {})
+    client = await hass_client()
+    initial = await (
+        await client.post(
+            "/api/config/config_entries/options/flow", json={"handler": entry.entry_id}
+        )
+    ).json()
+    fields = {item["name"]: item for item in initial["data_schema"]}
+    assert "poll_interval" not in fields
+    profile = fields["polling_profile"]
+    assert profile["selector"]["select"]["options"] == [
+        "very_fast",
+        "faster",
+        "balanced",
+        "slower",
+        "very_slow",
+    ]
+    assert profile["selector"]["select"]["translation_key"] == "polling_profile"
+    if legacy is None:
+        assert profile["default"] == "balanced"
+    else:
+        assert "default" not in profile and not profile["required"]
+    url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
+    for invalid in ("custom", "very-fast", 123):
+        response = await client.post(url, json={"polling_profile": invalid})
+        assert response.status == 400
+    with patch.object(hass.config_entries, "async_reload", return_value=True):
+        response = await client.post(url, json={})
+        assert response.status == 200
+        await hass.async_block_till_done()
+    if legacy is not None:
+        assert entry.options["poll_interval"] == legacy
+        assert "polling_profile" not in entry.options
+    initial = await (
+        await client.post(
+            "/api/config/config_entries/options/flow", json={"handler": entry.entry_id}
+        )
+    ).json()
+    with patch.object(hass.config_entries, "async_reload", return_value=True):
+        response = await client.post(
+            f"/api/config/config_entries/options/flow/{initial['flow_id']}",
+            json={"polling_profile": "faster"},
+        )
+        assert response.status == 200
+        await hass.async_block_till_done()
+    assert entry.options["polling_profile"] == "faster"
+    assert "poll_interval" not in entry.options
