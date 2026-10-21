@@ -523,8 +523,9 @@ async def test_running_reconstruction_keeps_its_rollback_point(hass, entry):
     assert recovery.read_bytes() == before
 
 
+@pytest.mark.parametrize("archive_failure", [False, True])
 async def test_removed_entry_clears_credentials_and_entry_stores_but_retains_archive(
-    hass, entry, app_client
+    hass, entry, app_client, archive_failure
 ):
     from homeassistant.helpers.storage import Store
 
@@ -543,7 +544,14 @@ async def test_removed_entry_clears_credentials_and_entry_stores_but_retains_arc
     await runtime.models.async_save()
     cursor = Store(hass, 1, f"ninebot.{entry.entry_id}.rides_v1", private=True)
     await cursor.async_save({"synthetic": True})
-    await async_remove_entry(hass, entry)
+    if archive_failure:
+        hass.config_entries.async_update_entry(entry, options={CONF_RETAIN_ARCHIVE: False})
+        with patch(
+            "custom_components.ninebot.async_remove_account", side_effect=OSError("synthetic")
+        ):
+            await async_remove_entry(hass, entry)
+    else:
+        await async_remove_entry(hass, entry)
     assert not await hass.async_add_executor_job(directory.exists)
     assert await runtime.models._store.async_load() is None
     assert await cursor.async_load() is None
