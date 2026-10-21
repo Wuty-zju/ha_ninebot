@@ -13,6 +13,9 @@ from .const import DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .runtime import NinebotConfigEntry
 
+# The account broker owns wire admission; command observers remain replaceable.
+PARALLEL_UPDATES = 0
+
 
 class NinebotButton(NinebotEntity, ButtonEntity):
     def __init__(self, entry: NinebotConfigEntry, sn: str, key: str, action: str | None) -> None:

@@ -431,12 +431,7 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                         result = await stats.archive.async_merge_archive(
                             path, None if "*" in selected else selected, sources
                         )
-                        profiles = await stats.archive.async_profiles(include_absent=True)
-                        stats._vehicles.update(profile.sn for profile in profiles)
-                        await stats.async_refresh_projection()
-                        for profile in profiles:
-                            stats._notify_change(profile.sn, None)
-                        entry.runtime_data.coordinator.async_update_listeners()
+                        await entry.runtime_data.coordinator.async_archive_imported()
                     results.append(f"{entry.title}: +{result['rides']} / +{result['details']}")
                 await self._archive_cleanup()
                 return self.async_show_form(

@@ -19,6 +19,9 @@ from .ride_reports import RideReportCursor
 from .runtime import NinebotConfigEntry
 from .vehicle_events import TRANSITIONS, StatusEventCursor
 
+# The account broker owns wire admission; command observers remain replaceable.
+PARALLEL_UPDATES = 0
+
 
 @dataclass
 class RideEventExtraData(EventExtraStoredData):

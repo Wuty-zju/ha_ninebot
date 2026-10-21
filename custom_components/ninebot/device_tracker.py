@@ -9,6 +9,9 @@ from .const import CONF_COORDINATES, DEFAULT_COORDINATES
 from .entity import NinebotEntity, async_setup_dynamic
 from .runtime import NinebotConfigEntry
 
+# The account broker owns wire admission; command observers remain replaceable.
+PARALLEL_UPDATES = 0
+
 
 class NinebotTracker(NinebotEntity, TrackerEntity):
     _attr_source_type = SourceType.GPS

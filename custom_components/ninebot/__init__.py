@@ -230,7 +230,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
             if not entry.options.get(CONF_RETAIN_ARCHIVE, True):
                 await async_remove_account(hass, str(entry.data[CONF_BUSINESS_UID]), entry.entry_id)
                 await async_remove_archive(hass, entry.entry_id)
-        except ArchiveError:
+        except (ArchiveError, OSError):
             ir.async_create_issue(
                 hass,
                 DOMAIN,
@@ -248,3 +248,29 @@ async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
         await remove()
     await TravelStatisticsStore(hass, entry.entry_id).async_remove()
     await IdentityStore(hass, entry).async_remove()
+
+    key = entry.data.get(CONF_SESSION_KEY)
+    if isinstance(key, str):
+        try:
+            await manager_for(hass).async_remove(
+                key,
+                str(entry.data[CONF_BUSINESS_UID]),
+                lambda: any(
+                    other.entry_id != entry.entry_id and other.data.get(CONF_SESSION_KEY) == key
+                    for other in hass.config_entries.async_entries(DOMAIN)
+                ),
+            )
+        except (NinebotError, OSError, ValueError):
+            ir.async_create_issue(
+                hass,
+                DOMAIN,
+                f"session_cleanup_{entry.entry_id}",
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="session_cleanup",
+            )
+    models = (
+        runtime.models if isinstance(runtime, RuntimeData) else ModelStorage(hass, entry.entry_id)
+    )
+    await models.async_remove()
+    await RideEventPipeline.async_remove_store(hass, entry.entry_id)
