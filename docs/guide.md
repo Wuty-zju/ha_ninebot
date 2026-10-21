@@ -25,7 +25,7 @@ Choose **Very fast**, **Faster**, **Balanced** (default), **Slower** or **Very s
 | Slower | 120 / 180 / 1200 | 30 / 60 | 30 / 60 / 300 |
 | Very slow | 300 / 600 / 1800 | 60 / 120 | 60 / 180 / 600 |
 
-Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject to shared admission, queueing and server backoff. Status and battery are separate requests; querying SOC or location uses the shared status response. Existing custom numeric intervals stay unchanged until a profile is selected. Changing only update speed keeps the session, local archive and entity identities in place. Feature, privacy and authentication changes retain their reload behavior.
+Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject to shared admission, queueing and server backoff. Status and battery are separate requests; querying SOC or location uses the shared status response. Changing only update speed keeps the session, local archive and entity identities in place. Feature, privacy and authentication changes retain their reload behavior.
 
 ## Install with HACS
 
