@@ -1756,7 +1756,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if not refreshed:
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
-                    translation_key="control_target_not_observed"
+                    translation_key="seat_unlock_sent"
+                    if action == "buck"
+                    else "control_target_not_observed"
                     if result.confirmation is Confirmation.TARGET_NOT_OBSERVED
                     else "control_readback_failed",
                 ) from None

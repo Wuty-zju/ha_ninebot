@@ -99,6 +99,23 @@ async def test_uncertain_post_stays_uncertain_even_when_target_observed(controls
     co.client.async_control.assert_awaited_once()
 
 
+@pytest.mark.parametrize("raw", [payload(), {}])
+async def test_accepted_seat_unlock_without_confirmation_has_seat_specific_feedback(controls, raw):
+    controls.client.async_get_status_once.return_value = raw
+    with pytest.raises(HomeAssistantError) as error:
+        await controls.async_control("SyntheticSN", "buck")
+    assert error.value.translation_key == "seat_unlock_sent"
+    controls.client.async_control.assert_awaited_once_with("SyntheticSN", "buck")
+
+
+async def test_uncertain_seat_unlock_does_not_claim_command_was_accepted(controls):
+    controls.client.async_control.side_effect = NinebotError(ErrorKind.CONNECTION)
+    controls.client.async_get_status_once.return_value = payload()
+    with pytest.raises(HomeAssistantError) as error:
+        await controls.async_control("SyntheticSN", "buck")
+    assert error.value.translation_key == "control_uncertain"
+
+
 @pytest.mark.parametrize("acc", [None, 0, 1, 2])
 async def test_stop_sends_without_motion_or_p_telemetry(controls, entry, acc):
     co = controls

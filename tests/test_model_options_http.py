@@ -162,7 +162,7 @@ async def test_optional_rated_parameters_roundtrip_and_clear(hass, entry, app_cl
 
 
 @pytest.mark.parametrize("legacy", [None, 37, 300])
-async def test_polling_profile_native_form_preserves_custom_until_selected(
+async def test_polling_profile_native_form_defaults_to_balanced_and_preserves_selection(
     hass, entry, app_client, hass_client, legacy
 ):
     from unittest.mock import patch
@@ -189,10 +189,7 @@ async def test_polling_profile_native_form_preserves_custom_until_selected(
         "very_slow",
     ]
     assert profile["selector"]["select"]["translation_key"] == "polling_profile"
-    if legacy is None:
-        assert profile["default"] == "balanced"
-    else:
-        assert "default" not in profile and not profile["required"]
+    assert profile["default"] == "balanced" and profile["required"]
     url = f"/api/config/config_entries/options/flow/{initial['flow_id']}"
     for invalid in ("custom", "very-fast", 123):
         response = await client.post(url, json={"polling_profile": invalid})
@@ -201,9 +198,8 @@ async def test_polling_profile_native_form_preserves_custom_until_selected(
         response = await client.post(url, json={})
         assert response.status == 200
         await hass.async_block_till_done()
-    if legacy is not None:
-        assert entry.options["poll_interval"] == legacy
-        assert "polling_profile" not in entry.options
+    assert entry.options["polling_profile"] == "balanced"
+    assert "poll_interval" not in entry.options
     initial = await (
         await client.post(
             "/api/config/config_entries/options/flow", json={"handler": entry.entry_id}

@@ -21,11 +21,10 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy.max_age("battery"), 1800)
         self.assertEqual(policy.max_age("travel"), 1800)
 
-    def test_custom_values_keep_their_original_targets(self):
+    def test_numeric_options_use_balanced(self):
         for value in (30, 37, 120, 300, 3600):
             policy = PollingPolicy.from_options({"poll_interval": value})
-            self.assertEqual(policy.name, "legacy")
-            self.assertEqual((policy.status, policy.battery, policy.travel), (value, 600, 600))
+            self.assertEqual(policy, PRESETS["balanced"])
 
     def test_explicit_profiles_override_legacy_values_and_bound_every_scene(self):
         previous = None
@@ -53,14 +52,14 @@ class PolicyTests(unittest.TestCase):
         for invalid in ("unknown", None, [], {}):
             self.assertEqual(
                 PollingPolicy.from_options({"polling_profile": invalid, "poll_interval": 37}).name,
-                "legacy",
+                "balanced",
             )
 
     def test_invalid_values_have_a_bounded_fallback(self):
         for value in (None, {}, True, "invalid", float("inf"), float("nan")):
             self.assertEqual(PollingPolicy.from_options({"poll_interval": value}), PollingPolicy())
-        self.assertEqual(PollingPolicy.from_options({"poll_interval": 999999}).status, 3600)
-        self.assertEqual(PollingPolicy.from_options({"poll_interval": 0}).status, 30)
+        self.assertEqual(PollingPolicy.from_options({"poll_interval": 999999}).status, 60)
+        self.assertEqual(PollingPolicy.from_options({"poll_interval": 0}).status, 60)
 
     def test_faster_targets_do_not_change_cache_or_completion_semantics(self):
         policy = PollingPolicy(status=2, battery=10, travel=30)

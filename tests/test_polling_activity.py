@@ -101,13 +101,13 @@ class ActivityTests(unittest.TestCase):
         self.scene.travel_observed(711, 711)
         self.assertIsNone(self.scene.closing_deadline(711))
 
-    def test_legacy_policy_retains_its_original_behavior(self):
+    def test_numeric_options_use_balanced_activity(self):
         policy = PollingPolicy.from_options({"poll_interval": 37})
         self.scene.observe(
             policy, now=100, observed_at=100, revision=1, charging=True, active=True, locked=False
         )
-        self.assertEqual(self.scene.interval(policy, "status", 100), 37)
-        self.assertEqual(self.scene.interval(policy, "battery", 100), 600)
+        self.assertEqual(self.scene.interval(policy, "status", 100), 10)
+        self.assertEqual(self.scene.interval(policy, "battery", 100), 30)
 
     def test_diagnostics_contains_only_reasons_and_bounded_counts(self):
         self.observe(100, 1)

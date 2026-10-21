@@ -79,7 +79,7 @@ Each account owns its session, credentials directory and archive. Entry titles u
 
 | Option | Default | Purpose |
 |---|---|---|
-| Update speed | Balanced | Five adaptive profiles; old custom intervals remain until explicitly changed. |
+| Update speed | Balanced | Five adaptive profiles with per-vehicle activity boosts. |
 | Precise location | On | Current position and authorized track responses; no separate precision request. |
 | Ride calendar (Beta) | Off for new accounts | Local rides on a native HA calendar. |
 | Background detail preservation (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
