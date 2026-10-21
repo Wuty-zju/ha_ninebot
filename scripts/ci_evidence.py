@@ -25,6 +25,22 @@ def input_digest(repo: Path, sha: str) -> str:
     return hashlib.sha256(rows).hexdigest()
 
 
+def ensure_commit(repo: Path, sha: str) -> None:
+    """Read the trusted tested SHA even after a squash retires its topic branch."""
+    if re.fullmatch(r"[0-9a-f]{40}", sha) is None:
+        raise ValueError("Validation requires a full Git commit SHA")
+    probe = subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "-e", f"{sha}^{{commit}}"],
+        capture_output=True,
+    )
+    if probe.returncode:
+        subprocess.run(
+            ["git", "-C", str(repo), "fetch", "--no-tags", "origin", sha],
+            check=True,
+            capture_output=True,
+        )
+
+
 def verify_full_run(api, repo: Path, sha: str, run_id: int) -> dict:
     if type(run_id) is not int or run_id <= 0:
         raise ValueError("Select a successful full validation run")
@@ -37,6 +53,7 @@ def verify_full_run(api, repo: Path, sha: str, run_id: int) -> dict:
         or run.get("head_repository", {}).get("full_name") != api.repository
     ):
         raise ValueError("Full validation must be a successful maintained Checks dispatch")
+    ensure_commit(repo, run["head_sha"])
     digest = input_digest(repo, sha)
     if input_digest(repo, run["head_sha"]) != digest:
         raise ValueError("Full validation inputs differ from the candidate")
