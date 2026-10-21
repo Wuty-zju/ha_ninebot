@@ -1,6 +1,5 @@
 """Cancellation-safe temporary workspace ownership and bounded export admission."""
 
-import asyncio
 import shutil
 import tempfile
 from collections.abc import AsyncIterator, Callable, Mapping
@@ -11,6 +10,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
+from .async_utils import async_drain
 from .const import DOMAIN
 
 PENDING_EXPORTS = f"{DOMAIN}_pending_exports"
@@ -24,17 +24,7 @@ class ExportBusy(Exception):
 async def finish_job[T](hass: HomeAssistant, operation: Callable[..., T], *args: Any) -> T:
     """Drain filesystem work before cancellation can release its directory."""
     job = hass.async_add_executor_job(operation, *args)
-    cancelled = False
-    try:
-        while not job.done():
-            try:
-                await asyncio.shield(job)
-            except asyncio.CancelledError:
-                cancelled = True
-        return job.result()
-    finally:
-        if cancelled:
-            raise asyncio.CancelledError
+    return await async_drain(job)
 
 
 @dataclass

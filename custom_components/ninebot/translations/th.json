@@ -122,7 +122,7 @@
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
-          "polling_profile": "ช่วงสถานะ/แบตเตอรี่/การเดินทาง: {polling_setting} ปรับตามการชาร์จและกิจกรรม หากไม่เลือกจะคงช่วงเวลาที่กำหนดเองไว้"
+          "polling_profile": "ช่วงสถานะ/แบตเตอรี่/การเดินทาง: {polling_setting} ปรับตามการชาร์จและกิจกรรม"
         }
       },
       "model_vehicle": {
@@ -805,7 +805,7 @@
               "confirmed": "State confirmed",
               "observed_target_command_uncertain": "State updated; command result uncertain",
               "already_in_target": "Already in target state",
-              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "target_not_observed": "ส่งคำสั่งปลดล็อกแล้ว โปรดตรวจสอบช่องเก็บของใต้เบาะ",
               "unknown": "State could not be confirmed",
               "cancelled": "Waiting cancelled",
               "superseded": "Waiting cancelled or replaced by another command"
@@ -928,6 +928,9 @@
     },
     "history_object_corrupt": {
       "message": "ข้อมูลการเดินทางบางส่วนตรวจสอบไม่ผ่าน"
+    },
+    "seat_unlock_sent": {
+      "message": "ส่งคำสั่งปลดล็อกแล้ว โปรดตรวจสอบช่องเก็บของใต้เบาะ"
     }
   },
   "issues": {
@@ -994,6 +997,14 @@
     "session_cleanup": {
       "title": "Deleted account credentials need cleanup",
       "description": "The removed account's local session could not be safely deleted. Check storage permissions and the Ninebot session directory before removing the orphaned session. Retained trip history is separate."
+    },
+    "entry_cleanup": {
+      "title": "การล้างข้อมูลบัญชียังไม่เสร็จ",
+      "description": "ไม่สามารถลบการตั้งค่าบางส่วนของบัญชีที่นำออกได้ โปรดตรวจสอบสิทธิ์พื้นที่จัดเก็บ ประวัติการเดินทางที่เก็บไว้ได้รับการจัดการแยกกัน"
+    },
+    "model_storage_write": {
+      "title": "Battery parameter storage unavailable",
+      "description": "ไม่สามารถบันทึกพารามิเตอร์แบตเตอรี่ได้ โปรดตรวจสอบพื้นที่ว่างและสิทธิ์พื้นที่จัดเก็บ แล้วบันทึกอีกครั้ง"
     }
   },
   "services": {

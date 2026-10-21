@@ -561,10 +561,10 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
         errors: dict[str, str] = {}
         if user_input is not None:
             self._pending_options = {**self.config_entry.options, **user_input}
-            if user_input.get(CONF_POLLING_PROFILE) in PRESETS:
-                self._pending_options.pop(CONF_POLL_INTERVAL, None)
-            else:
-                self._pending_options.pop(CONF_POLLING_PROFILE, None)
+            self._pending_options[CONF_POLLING_PROFILE] = PollingPolicy.from_options(
+                self._pending_options
+            ).name
+            self._pending_options.pop(CONF_POLL_INTERVAL, None)
             if self._pending_options.get(CONF_CONTROLS) and not self._pending_options.get(
                 CONF_CONTROL_VEHICLES
             ):
@@ -593,13 +593,6 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                     SelectOptionDict(value=sn, label=snapshot.profile.name if snapshot else sn)
                 )
         policy = PollingPolicy.from_options(options)
-        # An optional, unselected field preserves a legacy custom interval.
-        # Selecting one of the five profiles is the explicit migration choice.
-        profile_field = (
-            vol.Optional(CONF_POLLING_PROFILE)
-            if policy.name == "legacy"
-            else vol.Required(CONF_POLLING_PROFILE, default=policy.name)
-        )
         return self.async_show_form(
             step_id="init",
             errors=errors,
@@ -616,7 +609,7 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                             options=choices, multiple=True, mode=SelectSelectorMode.DROPDOWN
                         )
                     ),
-                    profile_field: SelectSelector(
+                    vol.Required(CONF_POLLING_PROFILE, default=policy.name): SelectSelector(
                         SelectSelectorConfig(
                             options=list(PRESETS),
                             translation_key=CONF_POLLING_PROFILE,
@@ -705,6 +698,8 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                 runtime.models.configure(
                     sn, {key: user_input.get(key) for key in ("voltage", "capacity")}
                 )
+                if not await runtime.models.async_save():
+                    raise ValueError("Battery parameters were not saved")
             except ValueError:
                 errors["base"] = "model_storage_invalid"
             else:

@@ -20,6 +20,7 @@ from homeassistant.util import dt as dt_util
 from . import adapters
 from .archive_browse import RecordedCursors
 from .archive_runtime import ArchiveStatistics
+from .async_utils import async_drain
 from .backend import BackendResult, NinebotBackend, NinecliBackend
 from .capabilities import CONTROL_ACTIONS, ControlDecision, VehicleCapabilities, decide_control
 from .client import NinecliClient
@@ -1756,7 +1757,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if not refreshed:
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
-                    translation_key="control_target_not_observed"
+                    translation_key="seat_unlock_sent"
+                    if action == "buck"
+                    else "control_target_not_observed"
                     if result.confirmation is Confirmation.TARGET_NOT_OBSERVED
                     else "control_readback_failed",
                 ) from None
@@ -1992,11 +1995,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             for task in tasks:
                 task.cancel()
             self._shutdown_task = asyncio.create_task(self._shutdown(tasks))
-        try:
-            await asyncio.shield(self._shutdown_task)
-        except asyncio.CancelledError:
-            await self._shutdown_task
-            raise
+        await async_drain(self._shutdown_task)
 
     async def _shutdown(self, tasks: set[asyncio.Task[Any]]) -> None:
         """Finish cleanup before propagating cancellation of the unload caller."""

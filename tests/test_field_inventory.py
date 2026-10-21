@@ -82,3 +82,24 @@ def test_recorded_command_shape_is_classified_separately_from_business_telemetry
         assert all(
             set(row["classification"].split("/")) <= set("ABCDEFGHIJ") for row in endpoint["fields"]
         )
+
+
+def test_current_inventory_links_live_implementation_and_historical_provenance():
+    inventory = json.loads((INVENTORY_FIXTURES / "current-field-usage.json").read_text())
+    assert all(source_available(path) for path in inventory["sources"])
+    for source in inventory["historical_sources"]:
+        assert len(source["source_commit"]) == 40
+        assert len(source["sha256"]) == 64
+        assert source["source_commit"] in source["url"]
+    indexed = {
+        (group["endpoint"], row["path"]): row
+        for group in inventory["observed_endpoints"]
+        for row in group["fields"]
+    }
+    for endpoint, path in (
+        ("battery", "$.battery_main.electricity"),
+        ("status", "$.barrel_lock_status"),
+    ):
+        row = indexed[endpoint, path]
+        assert row["device_class"] == "—"
+        assert all(source_available(path) for path in row["implementation_sources"])

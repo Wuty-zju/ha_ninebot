@@ -122,7 +122,7 @@
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
-          "polling_profile": "현재 상태/배터리/주행 간격: {polling_setting}. 충전 및 차량 활동에 따라 조정합니다. 선택하지 않으면 사용자 지정 간격을 유지합니다."
+          "polling_profile": "현재 상태/배터리/주행 간격: {polling_setting}. 충전 및 차량 활동에 따라 조정합니다."
         }
       },
       "model_vehicle": {
@@ -805,7 +805,7 @@
               "confirmed": "State confirmed",
               "observed_target_command_uncertain": "State updated; command result uncertain",
               "already_in_target": "Already in target state",
-              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "target_not_observed": "잠금 해제 명령을 보냈습니다. 시트 아래 수납함을 확인하세요.",
               "unknown": "State could not be confirmed",
               "cancelled": "Waiting cancelled",
               "superseded": "Waiting cancelled or replaced by another command"
@@ -928,6 +928,9 @@
     },
     "history_object_corrupt": {
       "message": "일부 저장된 주행 데이터 검증 실패"
+    },
+    "seat_unlock_sent": {
+      "message": "잠금 해제 명령을 보냈습니다. 시트 아래 수납함을 확인하세요."
     }
   },
   "issues": {
@@ -994,6 +997,14 @@
     "session_cleanup": {
       "title": "Deleted account credentials need cleanup",
       "description": "The removed account's local session could not be safely deleted. Check storage permissions and the Ninebot session directory before removing the orphaned session. Retained trip history is separate."
+    },
+    "entry_cleanup": {
+      "title": "계정 정리가 완료되지 않음",
+      "description": "삭제한 계정의 일부 설정을 지울 수 없습니다. 저장소 권한을 확인하세요. 보관한 주행 기록은 별도로 관리됩니다."
+    },
+    "model_storage_write": {
+      "title": "Battery parameter storage unavailable",
+      "description": "배터리 정격 매개변수를 저장할 수 없습니다. 여유 공간과 저장소 권한을 확인한 다음 다시 저장하세요."
     }
   },
   "services": {

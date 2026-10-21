@@ -122,7 +122,7 @@
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
-          "polling_profile": "Intervalli stato/batteria/viaggi: {polling_setting}. Si adattano a ricarica e attività. Nessuna selezione mantiene l’intervallo personalizzato."
+          "polling_profile": "Intervalli stato/batteria/viaggi: {polling_setting}. Si adattano a ricarica e attività."
         }
       },
       "model_vehicle": {
@@ -805,7 +805,7 @@
               "confirmed": "State confirmed",
               "observed_target_command_uncertain": "State updated; command result uncertain",
               "already_in_target": "Already in target state",
-              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "target_not_observed": "Comando di sblocco inviato. Controlla il vano sottosella.",
               "unknown": "State could not be confirmed",
               "cancelled": "Waiting cancelled",
               "superseded": "Waiting cancelled or replaced by another command"
@@ -928,6 +928,9 @@
     },
     "history_object_corrupt": {
       "message": "Alcuni dati locali non superano la verifica"
+    },
+    "seat_unlock_sent": {
+      "message": "Comando di sblocco inviato. Controlla il vano sottosella."
     }
   },
   "issues": {
@@ -994,6 +997,14 @@
     "session_cleanup": {
       "title": "Deleted account credentials need cleanup",
       "description": "The removed account's local session could not be safely deleted. Check storage permissions and the Ninebot session directory before removing the orphaned session. Retained trip history is separate."
+    },
+    "entry_cleanup": {
+      "title": "Pulizia account incompleta",
+      "description": "Alcune impostazioni dell’account rimosso non sono state eliminate. Controlla i permessi di archiviazione. I viaggi conservati sono gestiti separatamente."
+    },
+    "model_storage_write": {
+      "title": "Battery parameter storage unavailable",
+      "description": "Impossibile salvare i parametri della batteria. Controlla lo spazio libero e i permessi, quindi salva nuovamente i parametri."
     }
   },
   "services": {

@@ -1,17 +1,15 @@
 {
   "schema_version": 1,
-  "date": "2026-10-08",
-  "implementation_version": "2.0.0b43",
-  "implementation_base_commit": "85d300878d27f3593876a1c88646a47258876055",
+  "date": "2026-10-21",
+  "implementation_version": "2.0.0rc4",
+  "implementation_base_commit": "eca7fd3884b3fe08fe71727f288cf6df0711426a",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [
-    "docs/evidence/v2x-field-inventory.json",
-    "tests/fixtures/ninecli/0.1.7/metadata.json",
-    "docs/v2x-行程字段与解析契约.md",
-    "docs/v2x-电池身份与设备模型契约.md",
-    "docs/v2x-ninecli输入输出与车辆缓存契约.md",
-    "docs/v2x-全面数据适配与连续开发.md"
+    "docs/guide.md",
+    "docs/architecture.md",
+    "tests/fixtures/field_inventory/source-map.json",
+    "tests/fixtures/ninecli/0.1.7/metadata.json"
   ],
   "observed_endpoints": [
     {
@@ -955,7 +953,7 @@
           "unit": "—",
           "classification": "A",
           "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
-          "device_class": "enum",
+          "device_class": "—",
           "state_class": "—",
           "entity_category": "—",
           "compatibility": "C0",
@@ -967,7 +965,12 @@
             "tests/fixtures/ninecli/0.1.7/status-charging.json",
             "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "R3b/b38已交付座桶Lock：旧sensor UID字符串保留、跨domain history独立；buck单向解锁、有界目标确认；远程lock明确手动提示。见控制手册R3b。"
+          "current_use": "seat_lock原生Lock；0锁定／1解锁，buck只请求解锁。确认15秒，观察到解锁后显示至少5秒；上报锁舌与显示分开，不推断盖子开合。未确认时使用座桶专属提示。",
+          "implementation_sources": [
+            "custom_components/ninebot/lock.py",
+            "custom_components/ninebot/control_polling.py",
+            "tests/test_lock_controls.py"
+          ]
         },
         {
           "path": "$.battery_exist",
@@ -1711,7 +1714,11 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "默认启用单包/有身份分包评分或原值；score不是SOH/%，循环原值不绕过support；旧正式循环计数保留支持门禁。"
+          "current_use": "主电池健康评分；0显示不支持，其余保留上报值。不是SOH或百分比；单包／有稳定身份的分包使用同一规则。",
+          "implementation_sources": [
+            "custom_components/ninebot/sensor.py",
+            "tests/test_entity_simplification.py"
+          ]
         },
         {
           "path": "$.battery_main",
@@ -1746,7 +1753,7 @@
           "unit": "%",
           "classification": "A/H",
           "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
-          "device_class": "battery",
+          "device_class": "—",
           "state_class": "measurement",
           "entity_category": "—",
           "compatibility": "C0",
@@ -1758,7 +1765,11 @@
             "tests/fixtures/ninecli/0.1.7/battery-charging.json",
             "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "b35已交付普通应急通信电池Sensor，BATTERY/%/measurement、整数1%显示；严格0..100/缺值，保留runtime raw。"
+          "current_use": "应急通信电池百分比Sensor，measurement、1%整数显示；不声明BATTERY device class，设备电量由主电池SOC表示。严格0..100，缺值保持未知。",
+          "implementation_sources": [
+            "custom_components/ninebot/sensor.py",
+            "tests/test_setup_entities.py"
+          ]
         },
         {
           "path": "$.battery_type",
@@ -3283,5 +3294,37 @@
     "custom_components/ninebot/observations.py",
     "custom_components/ninebot/sensor.py",
     "custom_components/ninebot/lock.py"
+  ],
+  "historical_sources": [
+    {
+      "source_path": "docs/evidence/v2x-field-inventory.json",
+      "source_commit": "3071fb9b9441be05f3bb0fdb829afb7fe12c7a61",
+      "sha256": "5b132ddaf3dd1d27a02cf655dc955086da1c6efa131c9bcb3d17728c430b868e",
+      "url": "https://github.com/Wuty-zju/ha_ninebot/blob/3071fb9b9441be05f3bb0fdb829afb7fe12c7a61/docs/evidence/v2x-field-inventory.json"
+    },
+    {
+      "source_path": "docs/v2x-行程字段与解析契约.md",
+      "source_commit": "fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422",
+      "sha256": "48105ca9790f3a5c5b0572bfdcbdba62befe2659edc504bc1fc9a6e7ee28445e",
+      "url": "https://github.com/Wuty-zju/ha_ninebot/blob/fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422/docs/v2x-行程字段与解析契约.md"
+    },
+    {
+      "source_path": "docs/v2x-电池身份与设备模型契约.md",
+      "source_commit": "fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422",
+      "sha256": "4abc34c3f1b73ba1e368f88ff8ee0239ddf2c1e4b9139289b35e2cacc7084a80",
+      "url": "https://github.com/Wuty-zju/ha_ninebot/blob/fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422/docs/v2x-电池身份与设备模型契约.md"
+    },
+    {
+      "source_path": "docs/v2x-ninecli输入输出与车辆缓存契约.md",
+      "source_commit": "fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422",
+      "sha256": "a22533b1c008b960169265dd727bfec1b5eae0fb951cb9a82819dab7c8a6b51e",
+      "url": "https://github.com/Wuty-zju/ha_ninebot/blob/fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422/docs/v2x-ninecli输入输出与车辆缓存契约.md"
+    },
+    {
+      "source_path": "docs/v2x-全面数据适配与连续开发.md",
+      "source_commit": "fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422",
+      "sha256": "cab627e7a6bcd8ab49cc771967026725c952f4f17367c693444970817ef2e9f4",
+      "url": "https://github.com/Wuty-zju/ha_ninebot/blob/fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422/docs/v2x-全面数据适配与连续开发.md"
+    }
   ]
 }

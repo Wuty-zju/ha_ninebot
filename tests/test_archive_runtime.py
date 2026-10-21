@@ -450,3 +450,35 @@ async def test_import_facade_notifies_after_history_only_profiles_are_projected(
             remove()
     finally:
         await stats.async_close()
+
+
+async def test_one_vehicle_projection_keeps_other_vehicle_views_and_daily_cache(hass):
+    from dataclasses import replace
+
+    store = ArchiveStatistics(hass, "partitioned-day", "synthetic-owner")
+    other = "synthetic-second"
+    try:
+        await store.async_load()
+        await store.async_record_profiles(
+            (PROFILE, replace(PROFILE, sn=other)), NOW, True, lambda: True
+        )
+        await store.async_record(SN, many_rides(count=2), NOW)
+        await store.async_record(other, many_rides(count=2), NOW)
+        day = datetime(2026, 9, 20, tzinfo=UTC).date()
+        baseline = store.day_summary(other, day, NOW, allow_cached=True)
+        key = store.vehicle_key(other)
+        other_months, other_rides = store.months[key], store.rides[key]
+        with patch(
+            "custom_components.ninebot.period_statistics.day_summary", wraps=day_summary
+        ) as calculate:
+            await store.async_record(SN, many_rides(count=3), NOW + timedelta(seconds=1))
+            assert store.day_summary(other, day, NOW, allow_cached=True) is baseline
+            assert calculate.call_count == 0
+            assert store.months[key] is other_months and store.rides[key] is other_rides
+            assert (
+                store.day_summary(SN, day, NOW + timedelta(seconds=1), allow_cached=True).ride_count
+                == 3
+            )
+            assert calculate.call_count == 1
+    finally:
+        await store.async_close()

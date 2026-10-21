@@ -855,3 +855,28 @@ async def test_archive_close_reaps_worker_before_return(tmp_path):
     await archive.async_close()
     assert not any(worker.is_alive() for worker in workers)
     await archive.async_close()
+
+
+@pytest.mark.parametrize("vehicles", [1, 10, 50])
+async def test_progress_snapshot_halves_actor_admission_and_keeps_values(tmp_path, vehicles):
+    archive = RideArchive(tmp_path / "progress.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        names = [f"synthetic-{index}" for index in range(vehicles)]
+        with patch.object(archive, "_run", wraps=archive._run) as actor:
+            expected = [
+                (
+                    await archive.async_history_audit(sn),
+                    await archive.async_history_evidence(sn, guard=lambda: True),
+                )
+                for sn in names
+            ]
+            assert actor.await_count == 2 * vehicles
+            actor.reset_mock()
+            combined = [
+                await archive.async_history_progress(sn, guard=lambda: True) for sn in names
+            ]
+            assert actor.await_count == vehicles
+        assert combined == expected
+    finally:
+        await archive.async_close()

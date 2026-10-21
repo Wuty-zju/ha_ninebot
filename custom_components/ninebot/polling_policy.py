@@ -25,22 +25,11 @@ class PollingPolicy:
 
     @classmethod
     def from_options(cls, options: Mapping[str, object]) -> "PollingPolicy":
-        """Retain custom status intervals until the owner selects a preset."""
+        """Use Balanced unless a supported profile has already been selected."""
         preset = options.get(CONF_POLLING_PROFILE)
         if isinstance(preset, str) and preset in PRESETS:
             return PRESETS[preset]
-        value = options.get("poll_interval", 60)
-        try:
-            interval = (
-                max(30, min(3600, int(value)))
-                if isinstance(value, (int, float, str)) and not isinstance(value, bool)
-                else 60
-            )
-        except (TypeError, ValueError, OverflowError):
-            interval = 60
-        if interval == 60:
-            return cls()
-        return cls(status=interval, battery=600, name="legacy")
+        return PRESETS["balanced"]
 
     def interval(self, group: str) -> int:
         return {

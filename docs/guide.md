@@ -11,7 +11,7 @@
 
 The current connection has been verified against the Chinese App service; additional service regions require validation.
 
-The current 2.0 release candidate is **v2.0.0rc3**. Back up your Home Assistant configuration and private storage before upgrading.
+The current 2.0 release candidate is **v2.0.0rc4**. Back up your Home Assistant configuration and private storage before upgrading.
 
 ### Update speed
 
@@ -25,13 +25,13 @@ Choose **Very fast**, **Faster**, **Balanced** (default), **Slower** or **Very s
 | Slower | 120 / 180 / 1200 | 30 / 60 | 30 / 60 / 300 |
 | Very slow | 300 / 600 / 1800 | 60 / 120 | 60 / 180 / 600 |
 
-Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject to shared admission, queueing and server backoff. Status and battery are separate requests; querying SOC or location uses the shared status response. Existing custom numeric intervals stay unchanged until a profile is selected. Changing only update speed keeps the session, local archive and entity identities in place. Feature, privacy and authentication changes retain their reload behavior.
+Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject to shared admission, queueing and server backoff. Status and battery are separate requests; querying SOC or location uses the shared status response. Changing only update speed keeps the session, local archive and entity identities in place. Feature, privacy and authentication changes retain their reload behavior.
 
 ## Install with HACS
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with type **Integration**.
-3. Open **Ninebot**, choose **v2.0.0rc3**, enable pre-releases if needed, and download it.
+3. Open **Ninebot**, choose **v2.0.0rc4**, enable pre-releases if needed, and download it.
 4. Restart Home Assistant when prompted. A downloaded file version alone does not mean the running integration has loaded it.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -82,20 +82,20 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 
 | Option | Default / range | Effect |
 |---|---|---|
-| Update speed | Balanced; five profiles | Per-vehicle/group targets adapt to charging and ACC. Existing custom intervals remain until a profile is selected; polling-only changes reuse the runtime. |
+| Update speed | Balanced; five profiles | Per-vehicle/group targets adapt to charging and ACC. Polling-only changes reuse the runtime. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
-| Preserve trip details (Beta) | Off for new accounts; existing choices retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |
-| Automatic history sync (Beta) | Off for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
+| Automatically sync trip details (Beta) | Off for new accounts; existing choices retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |
+| Automatically scan trip history (Beta) | Off for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
 | History storage limit (Beta) | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
 | History request budget (Beta) | 60/account/hour; 0–120 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. Enter 0 to remove the hourly quota (not recommended); serialization and upstream backoff remain active. |
 | Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
 | Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
-| Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. Retired low-confidence SOC estimators remain removed. |
+| Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. A failed save keeps the edit pending and reports a storage Repair; save again after resolving it. Retired low-confidence SOC estimators remain removed. |
 | Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
-With the default policy, charging targets status/battery at 15/30 seconds; ACC activity targets status/battery/travel at 10/30/120 seconds. New charge transitions, external unlocks and stops open finite observation windows. ACC indicates activity; power alone does not prove movement. Old custom intervals keep their previous behavior until a preset is selected.
+With the default policy, charging targets status/battery at 15/30 seconds; ACC activity targets status/battery/travel at 10/30/120 seconds. New charge transitions, external unlocks and stops open finite observation windows. ACC indicates activity; power alone does not prove movement.
 
 After activity stops, up to six current-month summary checks help settle recent trips. They reuse in-flight reads and never download old trip details. Existing lock confirmation and follow-up stay independent; a control command is never automatically repeated.
 
@@ -105,9 +105,11 @@ Requests are demand-aware, account-budgeted and shared when identical reads are 
 
 ## Controls and confirmation
 
-Vehicle **unlock** requests remote start; **lock** requests remote stop. The vehicle/cloud decides its motion/P requirements. HA does not disable remote stop by guessing whether the vehicle is moving. Seat unlock opens the compartment; seat locking is manual only. The retained buttons use the same executor as the Lock entities.
+Vehicle **unlock** requests remote start; **lock** requests remote stop. The vehicle/cloud decides its motion/P requirements. HA does not disable remote stop by guessing whether the vehicle is moving. Seat unlock releases the latch so the cover can be opened by hand; seat locking is manual only. The retained buttons use the same executor as the Lock entities.
 
 Each explicit request sends one command, never an automatic replay. Up to sixteen fresh status reads over fifteen seconds check the target and publish a confirmed transition immediately; a bounded follow-up at 10/20/25 seconds can observe automatic relocking. The whole follow-up ends within 30 seconds or earlier on errors/unload/new commands. Confirmation uses fresh cloud observations; pending/unconfirmed/failed results are kept distinct. A new command can replace the previous confirmation observer; only command transmission is serialized.
+
+If a seat-unlock command is accepted but no unlock is observed, the message is “Unlock command sent. Check the seat compartment.”
 
 After a verified seat unlock, its Lock display remains unlocked for at least five seconds while status queries continue. The `Reported latch state` attribute and vehicle state events retain the actual reported state throughout this display window. After five seconds, the Lock follows the latest valid latch reading. A separate status observation runs about once per second for fifteen seconds, then at 20/30/45/59.9 seconds, ending within sixty seconds. Missed read slots are skipped rather than sent in a burst.
 

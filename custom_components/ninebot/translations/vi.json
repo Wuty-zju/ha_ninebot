@@ -122,7 +122,7 @@
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
-          "polling_profile": "Chu kỳ trạng thái/pin/chuyến đi: {polling_setting}. Điều chỉnh theo sạc và hoạt động. Không chọn sẽ giữ chu kỳ tùy chỉnh."
+          "polling_profile": "Chu kỳ trạng thái/pin/chuyến đi: {polling_setting}. Điều chỉnh theo sạc và hoạt động."
         }
       },
       "model_vehicle": {
@@ -805,7 +805,7 @@
               "confirmed": "State confirmed",
               "observed_target_command_uncertain": "State updated; command result uncertain",
               "already_in_target": "Already in target state",
-              "target_not_observed": "Not confirmed within 15 seconds; check vehicle",
+              "target_not_observed": "Đã gửi lệnh mở khóa. Hãy kiểm tra cốp xe.",
               "unknown": "State could not be confirmed",
               "cancelled": "Waiting cancelled",
               "superseded": "Waiting cancelled or replaced by another command"
@@ -928,6 +928,9 @@
     },
     "history_object_corrupt": {
       "message": "Một số dữ liệu chuyến đi không vượt qua kiểm tra"
+    },
+    "seat_unlock_sent": {
+      "message": "Đã gửi lệnh mở khóa. Hãy kiểm tra cốp xe."
     }
   },
   "issues": {
@@ -994,6 +997,14 @@
     "session_cleanup": {
       "title": "Deleted account credentials need cleanup",
       "description": "The removed account's local session could not be safely deleted. Check storage permissions and the Ninebot session directory before removing the orphaned session. Retained trip history is separate."
+    },
+    "entry_cleanup": {
+      "title": "Chưa hoàn tất dọn dẹp tài khoản",
+      "description": "Không thể xóa một số cài đặt của tài khoản đã gỡ. Hãy kiểm tra quyền lưu trữ. Lịch sử chuyến đi được giữ lại được quản lý riêng."
+    },
+    "model_storage_write": {
+      "title": "Battery parameter storage unavailable",
+      "description": "Không thể lưu thông số pin. Hãy kiểm tra dung lượng trống và quyền lưu trữ rồi lưu lại thông số."
     }
   },
   "services": {

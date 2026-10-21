@@ -130,8 +130,8 @@ class HistoryPreservation:
                 self.progress.pop(sn, None)
                 self.audit.views.pop(sn, None)
                 continue
-            self.audit.publish(sn, await co.statistics.archive.async_history_audit(sn), owns)
-            evidence = await co.statistics.archive.async_history_evidence(sn, guard=owns)
+            audit, evidence = await co.statistics.archive.async_history_progress(sn, guard=owns)
+            self.audit.publish(sn, audit, owns)
             if co.config_entry and configured_budget(co.config_entry.options) == 0:
                 evidence = replace(evidence, budget_at=None)
             value = project_progress(

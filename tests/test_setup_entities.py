@@ -17,6 +17,34 @@ def current_id(hass, row):
     return value
 
 
+@pytest.mark.parametrize(
+    "profile", [None, "invalid", [], "very_fast", "faster", "balanced", "slower", "very_slow"]
+)
+async def test_polling_profile_is_initialized_once_and_keeps_user_choice(
+    hass, entry, app_client, profile
+):
+    options = {"poll_interval": 37, "enable_coordinates": False, "polling_profile": profile}
+    hass.config_entries.async_update_entry(entry, options=options)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    expected = profile if isinstance(profile, str) and profile != "invalid" else "balanced"
+    assert entry.options["polling_profile"] == expected
+    assert entry.options["enable_coordinates"] is False
+    if expected == profile:
+        assert dict(entry.options) == options
+    else:
+        assert "poll_interval" not in entry.options
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "polling_profile": "slower"}
+    )
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.options["polling_profile"] == "slower"
+    assert entry.runtime_data.coordinator.polling.name == "slower"
+
+
 async def test_manual_auth_failure_updates_entities_and_starts_ui_reauth(hass, entry, app_client):
     from homeassistant.exceptions import ConfigEntryAuthFailed
 
@@ -327,7 +355,7 @@ async def test_options_reload_reaps_old_runtime_and_reuses_session_manager(hass,
     assert old.coordinator._stopping
     assert old.coordinator._shutdown_task.done()
     assert entry.runtime_data is not old
-    assert entry.runtime_data.coordinator.interval == 240
+    assert entry.runtime_data.coordinator.interval == 60
     assert entry.runtime_data.session is old.session
 
 
