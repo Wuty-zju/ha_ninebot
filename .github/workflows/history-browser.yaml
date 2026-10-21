@@ -1,5 +1,6 @@
 name: History browser
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'custom_components/ninebot/frontend/**'
@@ -8,7 +9,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: history-browser-${{ github.event.pull_request.number }}
+  group: history-browser-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   frontend:
