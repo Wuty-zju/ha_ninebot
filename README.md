@@ -14,7 +14,7 @@ English · [简体中文](README_zh.md)
 
 Monitor your Ninebot's battery, charging and vehicle status. Keep ride records and detailed GPS tracks in your own Home Assistant storage, query them from automations, and use native calendars and statistics alongside everyday vehicle entities.
 
-> **Current release candidate: [v2.0.0rc2](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc2).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
+> **Current release candidate: [v2.0.0rc3](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc3).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
 
 ## What you can do
 
@@ -31,6 +31,8 @@ Monitor your Ninebot's battery, charging and vehicle status. Keep ride records a
 
 Available fields vary by vehicle and cloud reports. Battery health score is a score, not SOH; configured rated energy is a specification, not measured capacity. [Entities, units and availability →](docs/guide.md#entities-and-data)
 
+The third release candidate refines resource cleanup, account removal, rate-limit recovery and shared daily statistics. The account archive remains portable across re-addition; imports drain active file work on cancellation, and backup completion isolates each account's cleanup. Existing entity identities, control behavior and schema 7 data stay in place.
+
 ## Installation
 
 ### Requirements
@@ -46,7 +48,7 @@ ARMv7/32-bit platforms are unsupported. [Requirements and platform details →](
 
 1. Open **HACS → ⋮ → Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with category **Integration**.
-3. Open **Ninebot**, select **v2.0.0rc2**, enable pre-releases if needed, and download it.
+3. Open **Ninebot**, select **v2.0.0rc3**, enable pre-releases if needed, and download it.
 4. Restart Home Assistant when prompted.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -87,7 +89,7 @@ Each account owns its session, credentials directory and archive. Entry titles u
 | Vehicle events (Beta) | On | Trip reports, revisions, completions and concrete vehicle transitions. |
 | Debug mode | Off | Bounded parsed current information for investigation. |
 
-Existing explicit choices are retained on upgrade. Further options include polling intervals, nominal battery parameters, request budget and archive quota. [Defaults and ranges →](docs/guide.md#options)
+Existing explicit choices are retained on upgrade. Further options include adaptive update profiles, nominal battery parameters, request budget and archive quota. [Defaults and ranges →](docs/guide.md#options)
 
 <a id="your-ride-history-on-a-map"></a>
 
