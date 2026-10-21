@@ -7,6 +7,7 @@
 - Apply consistent bounded Retry-After handling to native history and local REST reads; resume every archive before isolating deferred backup cleanup failures.
 - Share daily summary projections across sensor consumers and restore each archived month once during validation.
 - Centralize import projection notifications and declare broker-managed platform concurrency, preserving replaceable control confirmations.
+- Retry interrupted GitHub metadata reads without replaying release mutations.
 - Verify complete candidate validation provenance and matching Git inputs, reuse valid promotion evidence, and select topic changes from the shared ancestor.
 - Refresh the English/Chinese guides, upgrade notes and development contracts.
 
