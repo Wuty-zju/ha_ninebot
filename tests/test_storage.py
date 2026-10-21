@@ -83,3 +83,37 @@ async def test_delayed_parameter_write_reports_failure_without_losing_retry(
     assert store._dirty
     assert ir.async_get(hass).async_get_issue("ninebot", "model_storage_synthetic-delay_write")
     assert await store.async_save()
+
+
+async def test_remove_waits_for_native_delayed_write_and_does_not_recreate_file(hass, tmp_path):
+    import asyncio
+    from pathlib import Path
+    from unittest.mock import patch
+
+    from homeassistant.helpers.storage import Store
+
+    hass.config.config_dir = str(tmp_path)
+    store = ModelStorage(hass, "synthetic-remove")
+    await store.async_load()
+    store.configure("car", {"voltage": 72})
+    entered, release = asyncio.Event(), asyncio.Event()
+    original = Store._async_write_data
+
+    async def delayed_write(native_store, data):
+        entered.set()
+        await release.wait()
+        await original(native_store, data)
+
+    with patch.object(Store, "_async_write_data", delayed_write):
+        write = asyncio.create_task(store._store._async_callback_delayed_write())
+        await entered.wait()
+        removal = asyncio.create_task(store.async_remove())
+        try:
+            await asyncio.sleep(0)
+            assert not removal.done()
+        finally:
+            release.set()
+            await write
+            await removal
+    assert not await hass.async_add_executor_job(Path(store._store.path).exists)
+    assert not store.writable

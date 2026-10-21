@@ -33,6 +33,12 @@ class ParameterStorage(Store[dict[str, Any]]):
         else:
             self._written(data["data"])
 
+    async def async_remove(self) -> None:
+        """Finish native delayed writes before unlinking the entry-owned file."""
+        async with self._write_lock:
+            self._data = None
+            await super().async_remove()
+
 
 class ModelStorage:
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
