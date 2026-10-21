@@ -1,18 +1,24 @@
-"""One demand-driven status/recovery timer, independent of slow history rounds."""
+"""One bounded deadline dispatcher; slow groups cannot hold the account timer."""
 
 import asyncio
+import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .demand import Group
 from .exceptions import NinebotAuthError
+from .ride_archive import ArchiveError
 
 if TYPE_CHECKING:
     from .coordinator import NinebotCoordinator
+
+LOGGER = logging.getLogger(__name__)
+MAX_DISPATCHED = 8
 
 
 class RealtimePolling:
@@ -21,6 +27,9 @@ class RealtimePolling:
         self.running = False
         self.cancel: Callable[[], None] | None = None
         self.task: asyncio.Task[None] | None = None
+        self.jobs: dict[tuple[str, str], asyncio.Task[None]] = {}
+        self._status_streak = 0
+        self._unexpected: set[type[Exception]] = set()
 
     @callback
     def start(self) -> None:
@@ -34,24 +43,51 @@ class RealtimePolling:
             self.cancel()
             self.cancel = None
 
+    def _busy(self, sn: str, group: str) -> bool:
+        return (
+            (sn, group) in self.jobs
+            or (group == "profile" and bool(self.co._discovery))
+            or any(key.vehicle == sn and key.endpoint == group for key in self.co._groups)
+        )
+
+    def _deadlines(self) -> list[tuple[float, str, str]]:
+        co, now = self.co, self.co.monotonic()
+        keys = [("", "profile")]
+        for sn in co.data:
+            if not co.status_pollable(sn):
+                continue
+            keys.extend(
+                (sn, group)
+                for group in co.demand(sn).groups
+                if group == "status" or co.background_ready(sn)
+            )
+        deadlines = []
+        for sn, group in keys:
+            if self._busy(sn, group):
+                continue
+            deadline = co._next_attempt.get((sn, group), 0)
+            if deadline > now and co._due(sn, group, now):
+                deadline = now  # Business-day rollover, without bypassing backoff.
+            deadlines.append((deadline, sn, group))
+        return deadlines
+
     @callback
     def schedule(self) -> None:
         if self.cancel:
             self.cancel()
             self.cancel = None
         co = self.co
-        if not self.running or co._stopping or not co._authenticated or self.task:
+        if (
+            not self.running
+            or co._stopping
+            or not co._authenticated
+            or self.task
+            or len(self.jobs) >= MAX_DISPATCHED
+        ):
             return
-        now = dt_util.utcnow().timestamp()
-        deadlines = [
-            co._next_attempt.get((sn, "status"), now)
-            for sn in co.data
-            if co.status_pollable(sn) and "status" in co.demand(sn).groups
-        ]
-        if co._list_freshness.error is not None:
-            deadlines.append(co._next_attempt.get(("", "profile"), now))
+        deadlines = self._deadlines()
         if deadlines:
-            delay = max(1, min(deadlines) - now, co.broker.retry_delay)
+            delay = max(1, min(row[0] for row in deadlines) - co.monotonic(), co.broker.retry_delay)
             self.cancel = async_call_later(co.hass, delay, self._wake)
 
     @callback
@@ -66,19 +102,59 @@ class RealtimePolling:
     async def _run(self) -> None:
         co = self.co
         try:
-            # Priority applies to queued work. Never preempt an active native
-            # token/cache transaction or replay a physical control command.
-            await co.async_poll_status()
-            if co._list_freshness.error is not None:
+            if co._stopping or not co._authenticated or co.broker.cooling_down:
+                return
+            due = [row for row in self._deadlines() if row[0] <= co.monotonic()]
+            while due and len(self.jobs) < MAX_DISPATCHED:
+                status = [row for row in due if row[2] == "status"]
+                other = [row for row in due if row[2] != "status"]
+                # Reserve turns for older lower-priority groups, as in the broker.
+                pool = other if other and self._status_streak >= 3 else status or other
+                row = min(pool, key=lambda item: (item[0], item[1], item[2]))
+                due.remove(row)
+                _, sn, group = row
+                self._status_streak = self._status_streak + 1 if group == "status" else 0
+                key = (sn, group)
+                task = co.hass.async_create_task(self._execute(sn, group))
+                self.jobs[key] = task
+                co._active.add(task)
+                task.add_done_callback(co._active.discard)
+                task.add_done_callback(lambda done: None if done.cancelled() else done.exception())
+        finally:
+            self.task = None
+            self.schedule()
+
+    async def _execute(self, sn: str, group: str) -> None:
+        co = self.co
+        try:
+            if co._stopping or not co._authenticated:
+                return
+            if group == "profile":
                 await co._list(dt_util.utcnow())
-                await co.async_poll_status()
+            else:
+                demand = co.demand(sn)
+                if group not in demand.groups:
+                    return
+                await co._group(
+                    sn,
+                    cast(Group, group),
+                    include_last_ride=demand.last_ride,
+                    include_previous_month=demand.previous_month,
+                )
         except NinebotAuthError:
             co._manual_auth_failure()
         except UpdateFailed:
             pass  # Discovery already retained its typed failure and retry deadline.
+        except ArchiveError as err:
+            co.statistics.record_error(err)
+            co._attempt_finished(sn, group, co.monotonic(), co.poll_interval(sn, group), False)
+        except Exception as err:
+            if type(err) not in self._unexpected:
+                self._unexpected.add(type(err))
+                LOGGER.error("Polling task failed (%s)", type(err).__name__)
+            co._attempt_finished(sn, group, co.monotonic(), co.poll_interval(sn, group), False)
         finally:
-            self.task = None
+            self.jobs.pop((sn, group), None)
             if not co._stopping:
-                co.async_update_listeners()
                 co._schedule_validity_check()
             self.schedule()

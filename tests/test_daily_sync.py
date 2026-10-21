@@ -138,3 +138,20 @@ async def test_first_setup_admits_daily_paging_without_waiting_status_period(
     assert app_client.async_get_status.await_count == 1
     assert app_client.async_get_travel.await_count == 1
     app_client.async_get_trip_detail.assert_not_awaited()
+
+
+async def test_daily_repair_has_an_independent_cadence_even_without_hourly_quota(
+    hass, entry, app_client, freezer
+):
+    hass.config_entries.async_update_entry(entry, options={"history_requests_per_hour": 0})
+    co, query = await setup(hass, entry, app_client, freezer)
+    with patch.object(co, "async_query_history_page", query):
+        await co.daily_sync.async_step(dt_util.utcnow())
+        for _ in range(29):
+            freezer.tick(2)
+            await co.daily_sync.async_step(dt_util.utcnow())
+        assert query.await_count == 1
+        freezer.tick(2)
+        await co.daily_sync.async_step(dt_util.utcnow())
+        assert query.await_count == 2
+    app_client.async_get_trip_detail.assert_not_awaited()

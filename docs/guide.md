@@ -68,7 +68,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 
 | Option | Default / range | Effect |
 |---|---|---|
-| Status interval | 60 s; 30–3600 s | Status refresh target; battery/travel use separate 600 s periods and profiles 3600 s. Demand, response age and backoff control each group. |
+| Status interval | 60 s; 30–3600 s | Status refresh target; battery uses a separate 60 s target by default, travel 600 s and profiles 3600 s; legacy custom status intervals retain their previous battery period. Demand, response age and backoff control each group. |
 | Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Schedule status, battery, travel and discovery independently with bounded asynchronous admission and monotonic deadlines. Keep current readings responsive while another group normalizes or saves data.
+- Use separate 60-second status and battery targets by default, retaining legacy custom intervals until a preset is selected. Keep observation validity, query caches and the ten-minute ride-completion window independent of polling speed.
+- Keep daily-index repair on its own cadence and expose safe per-group targets, retry waits, queue time and request duration in diagnostics.
+
 - Clean up cancelled or failed history exports after pending filesystem work finishes. Reserve export slots before creating files, and retain completed downloads until their normal expiry or shutdown cleanup.
 
 ## 2.0.0rc1

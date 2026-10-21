@@ -25,6 +25,9 @@ class BackendResult:
     request_revision: int = 0
     provider: str = "ninecli"
     page: int | None = None
+    started_monotonic: float | None = None
+    received_monotonic: float | None = None
+    queued_seconds: float | None = None
 
 
 class NinebotBackend(Protocol):
