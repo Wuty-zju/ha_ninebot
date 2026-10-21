@@ -521,3 +521,92 @@ async def test_running_reconstruction_keeps_its_rollback_point(hass, entry):
     await actor.async_close()
     await async_prepare_account(hass, UID, 100 * 1024 * 1024)
     assert recovery.read_bytes() == before
+
+
+@pytest.mark.parametrize("archive_failure", [False, True])
+async def test_removed_entry_clears_credentials_and_entry_stores_but_retains_archive(
+    hass, entry, app_client, archive_failure
+):
+    from homeassistant.helpers.storage import Store
+
+    from custom_components.ninebot import manager_for
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    runtime = entry.runtime_data
+    directory = manager_for(hass).path(entry.data["session_key"])
+
+    def credentials():
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "tokens.json").write_text(json.dumps({"business_uid": UID}))
+
+    await hass.async_add_executor_job(credentials)
+    runtime.models.configure(SN, {"voltage": 72})
+    await runtime.models.async_save()
+    cursor = Store(hass, 1, f"ninebot.{entry.entry_id}.rides_v1", private=True)
+    await cursor.async_save({"synthetic": True})
+    if archive_failure:
+        hass.config_entries.async_update_entry(entry, options={CONF_RETAIN_ARCHIVE: False})
+        with patch(
+            "custom_components.ninebot.async_remove_account", side_effect=OSError("synthetic")
+        ):
+            await async_remove_entry(hass, entry)
+    else:
+        await async_remove_entry(hass, entry)
+    assert not await hass.async_add_executor_job(directory.exists)
+    assert await runtime.models._store.async_load() is None
+    assert await cursor.async_load() is None
+    assert await hass.async_add_executor_job(account_path(hass, UID).exists)
+
+
+async def test_cancel_legacy_copy_drains_before_temporary_cleanup(hass, entry, tmp_path):
+    import asyncio
+    import tempfile
+    import threading
+    from unittest.mock import patch
+
+    from custom_components.ninebot.account_archive import _copy_source
+
+    legacy = Path(
+        hass.config.path(
+            ".storage",
+            "ninebot",
+            "archives",
+            hashlib.sha256(entry.entry_id.encode()).hexdigest(),
+            "rides.sqlite3",
+        )
+    )
+    actor = await populated(legacy)
+    await actor.async_close()
+    started = asyncio.Event()
+    release = threading.Event()
+    loop = asyncio.get_running_loop()
+    directories = []
+    mkdtemp = tempfile.mkdtemp
+
+    def create(**kwargs):
+        directory = Path(mkdtemp(dir=tmp_path, **kwargs))
+        directories.append(directory)
+        return str(directory)
+
+    def copy(source, destination):
+        loop.call_soon_threadsafe(started.set)
+        assert release.wait(5)
+        assert destination.parent.exists()
+        _copy_source(source, destination)
+
+    with (
+        patch("custom_components.ninebot.archive_resources.tempfile.mkdtemp", create),
+        patch("custom_components.ninebot.account_archive._copy_source", copy),
+    ):
+        task = asyncio.create_task(async_prepare_account(hass, UID, 100 * 1024 * 1024))
+        try:
+            await asyncio.wait_for(started.wait(), 5)
+            task.cancel()
+            await asyncio.sleep(0)
+            assert directories[0].exists() and not task.done()
+        finally:
+            release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert await hass.async_add_executor_job(legacy.exists)  # Keep unmerged sources.
+    assert not directories[0].exists()

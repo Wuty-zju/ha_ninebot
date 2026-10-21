@@ -5,15 +5,14 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import sqlite3
 import stat
-import tempfile
 from pathlib import Path
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
+from .archive_resources import finish_job, temporary_workspace
 from .archive_transfer import readonly, snapshot
 from .backup import ACTORS_KEY, backup_active, register_archive, unregister_archive
 from .const import DOMAIN
@@ -207,28 +206,28 @@ async def async_prepare_account(hass: HomeAssistant, uid: str, max_bytes: int) -
                     failed = True
                     continue
                 # Migrate a private copy, never rewrite an old evidence original.
-                directory = await hass.async_add_executor_job(tempfile.mkdtemp)
-                copy = Path(directory) / "rides.sqlite3"
-                candidate = RideArchive(copy, owner_key(uid), max_bytes=max_bytes)
-                try:
-                    identity = await hass.async_add_executor_job(_identity, source)
-                    await hass.async_add_executor_job(_copy_source, source, copy)
-                    await candidate.async_open()
-                    await candidate.async_close()
-                    await actor.async_merge_archive(copy)
+                async with temporary_workspace(hass, "ninebot-migrate-") as workspace:
+                    assert workspace.directory is not None
+                    copy = workspace.directory / "rides.sqlite3"
+                    candidate = RideArchive(copy, owner_key(uid), max_bytes=max_bytes)
+                    try:
+                        identity = await hass.async_add_executor_job(_identity, source)
+                        await finish_job(hass, _copy_source, source, copy)
+                        await candidate.async_open()
+                        await candidate.async_close()
+                        await actor.async_merge_archive(copy)
 
-                    def discard(
-                        source: Path = source, identity: tuple[int, int, int, int] = identity
-                    ) -> None:
-                        actor._db(write=True)  # Share the official backup barrier.
-                        _discard(source, identity, target.parent.parent.parent)
+                        def discard(
+                            source: Path = source, identity: tuple[int, int, int, int] = identity
+                        ) -> None:
+                            actor._db(write=True)  # Share the official backup barrier.
+                            _discard(source, identity, target.parent.parent.parent)
 
-                    await actor._run(discard)
-                except (ArchiveError, OSError, ValueError, sqlite3.Error):
-                    failed = True  # Keep the source; one failure cannot hide healthy history.
-                finally:
-                    await candidate.async_close()
-                    await hass.async_add_executor_job(shutil.rmtree, directory)
+                        await actor._run(discard)
+                    except (ArchiveError, OSError, ValueError, sqlite3.Error):
+                        failed = True  # Keep the source; one failure cannot hide healthy history.
+                    finally:
+                        await candidate.async_close()
             issue = f"archive_cleanup_{owner_key(uid)}"
             if failed:
                 ir.async_create_issue(

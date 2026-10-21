@@ -55,6 +55,10 @@ def read_cursor_file(path: Path, key: str) -> dict[str, Any] | None:
 class RideEventPipeline:
     """One event consumer per vehicle; event and cursor are not an HA transaction."""
 
+    @staticmethod
+    async def async_remove_store(hass: HomeAssistant, entry_id: str) -> None:
+        await Store(hass, 1, f"ninebot.{entry_id}.rides_v1", private=True).async_remove()
+
     def __init__(self, hass: HomeAssistant, entry_id: str, co: NinebotCoordinator) -> None:
         self.hass = hass
         self.coordinator = co

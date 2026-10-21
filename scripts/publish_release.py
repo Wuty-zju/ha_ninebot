@@ -10,6 +10,7 @@ import json
 import os
 import re
 import time
+from http.client import HTTPException
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
@@ -17,6 +18,7 @@ from urllib.request import Request, urlopen
 
 from scripts.build_release import FILENAME, build_package, git_bytes
 from scripts.check_release import validate_request
+from scripts.ci_evidence import verify_full_run
 
 REQUIRED_CHECKS = {"Core lint", "Release policy", "docs", "HACS validation", "Hassfest validation"}
 APP_ID = 15368  # GitHub Actions, also required by the repository branch protections.
@@ -60,8 +62,8 @@ class GitHub:
                     return None
                 reason = f"HTTP {error.code}"
                 retry = error.code >= 500
-            except (URLError, TimeoutError):
-                reason = "network timeout or connection failure"
+            except (URLError, TimeoutError, HTTPException, ConnectionError, json.JSONDecodeError):
+                reason = "network or response failure"
                 retry = True
             if not retry or attempt + 1 == attempts:
                 raise RuntimeError(
@@ -226,6 +228,7 @@ def publish(
     *,
     apply: bool = False,
     expected_digest: str | None = None,
+    validation_run: int | None = None,
 ) -> dict:
     validate_request(channel, version, source, sha)
     local_tip = (
@@ -234,6 +237,9 @@ def publish(
     if local_tip != sha:
         raise ValueError("Fetched candidate source tip changed")
     candidate_gate(api, source, sha)
+    validation = None
+    if validation_run is not None or channel != "preview" or "rc" in version:
+        validation = verify_full_run(api, repo, sha, validation_run or 0)
     tag = f"v{version}"
     catalog = releases(api)
     body = release_body(
@@ -260,6 +266,7 @@ def publish(
         "bytes": package["bytes"],
         "member_count": len(package["members"]),
         "status": "prepared",
+        "full_validation": validation,
         "prerelease": channel == "preview",
     }
     if not apply:
@@ -323,6 +330,8 @@ def publish(
         check_asset(asset, assets[asset["name"]])
     if existing["draft"]:
         candidate_gate(api, source, sha)
+        if validation is not None:
+            verify_full_run(api, repo, sha, validation["run_id"])
         # Recheck the live draft and tag immediately before public visibility.
         check_release(
             api.request(f"releases/{existing['id']}"), tag, sha, channel == "preview", body
@@ -387,6 +396,9 @@ def main() -> None:
         os.environ.get("UPGRADE_NOTES_ZH", ""),
         apply=args.publish,
         expected_digest=os.environ.get("EXPECTED_PACKAGE_SHA") or None,
+        validation_run=int(os.environ["VALIDATION_RUN_ID"])
+        if os.environ.get("VALIDATION_RUN_ID")
+        else None,
     )
     (args.output / "publication.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))

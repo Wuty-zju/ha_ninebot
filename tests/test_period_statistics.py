@@ -277,3 +277,44 @@ def test_future_adjacent_receipt_cannot_prove_a_closed_window(hass):
     result = day_summary(store, "one", date(2026, 10, 1), now)
     assert result.ride_count is None
     assert result.reason("ride_count") == "adjacent_month_not_observed"
+
+
+@pytest.mark.parametrize("allow_cached", [False, True])
+def test_shared_day_projection_reuses_work_and_preserves_time_boundaries(hass, allow_cached):
+    from custom_components.ninebot.period_statistics import DaySummaryCache
+
+    store = record(hass)
+    cache, projection = DaySummaryCache(), object()
+    with patch(
+        "custom_components.ninebot.period_statistics.day_summary", wraps=day_summary
+    ) as calculate:
+        for day in (NOW.date(), YESTERDAY):
+            expected = day_summary(store, "one", day, NOW, allow_cached=allow_cached)
+            for _ in range(15):
+                assert (
+                    cache.summary(store, projection, "one", day, NOW, allow_cached=allow_cached)
+                    == expected
+                )
+        assert calculate.call_count == 2
+    # Receipt becoming current, exact freshness expiry, day/month rollover and
+    # wall-clock correction all have the same meaning as the uncached function.
+    for now in (
+        NOW - timedelta(seconds=1),
+        NOW,
+        NOW + timedelta(seconds=1800),
+        NOW + timedelta(seconds=1801),
+        NOW + timedelta(days=1),
+        datetime(2026, 11, 1, tzinfo=UTC),
+        NOW,
+    ):
+        for day in (NOW.date(), YESTERDAY, date(2026, 10, 1)):
+            assert cache.summary(
+                store, projection, "one", day, now, allow_cached=allow_cached
+            ) == day_summary(store, "one", day, now, allow_cached=allow_cached)
+    assert cache.summary(store, projection, "other", YESTERDAY, NOW).distance_km is None
+    raw = sample()
+    raw["ec"] = raw["list"][0]["ec"] = 10
+    store.update("one", travel(raw, "202610"), NOW + timedelta(seconds=1))
+    assert cache.summary(
+        store, object(), "one", YESTERDAY, NOW + timedelta(seconds=1), allow_cached=allow_cached
+    ) == day_summary(store, "one", YESTERDAY, NOW + timedelta(seconds=1), allow_cached=allow_cached)

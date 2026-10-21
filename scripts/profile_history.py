@@ -21,6 +21,7 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from importlib.metadata import version
 from pathlib import Path
+from unittest.mock import patch
 
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.archive_codec import decoded, ride_data
@@ -331,6 +332,18 @@ async def profile(scale, repeats, directory):
         result["query_plans"] = await actor._run(lambda: traced_plans(actor))
         sample = json.dumps(ride_data(first_page.records[0].ride))
         result["scalar_json_decode"] = measure(lambda: decoded(sample), repeats)
+
+        def validation():
+            from custom_components.ninebot.archive_codec import restored_month
+
+            timings = measure(lambda: actor._check(actor._db()), repeats)
+            with patch(
+                "custom_components.ninebot.ride_archive.restored_month", wraps=restored_month
+            ) as restored:
+                actor._check(actor._db())
+                return {"timings": timings, "month_restore_calls": restored.call_count}
+
+        result["archive_validation"] = await actor._run(validation)
         result["temp_trigger_updates"] = await actor._run(lambda: trigger_cost(actor))
         result["details"] = await details(actor, final, min(repeats, 5))
         result["database_bytes"] = path.stat().st_size

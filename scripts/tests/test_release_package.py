@@ -9,6 +9,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from scripts.build_release import build_package, committed_files, verify_package
+from scripts.ci_evidence import input_digest, verify_full_run
 from scripts.publish_release import APP_ID, REQUIRED_CHECKS, candidate_gate, publish, release_body
 
 
@@ -27,6 +28,42 @@ class FakeGitHub:
     def request(self, path, *, method="GET", payload=None, data=None, content_type=None):
         if method != "GET":
             self.writes.append((method, path))
+        if path == "actions/runs/42":
+            return {
+                "status": "completed",
+                "conclusion": "success",
+                "event": "workflow_dispatch",
+                "path": ".github/workflows/checks.yaml",
+                "head_repository": {"full_name": self.repository},
+                "head_sha": self.sha,
+                "html_url": "https://example.invalid/run",
+            }
+        if path.startswith("actions/runs/42/jobs?"):
+            names = ["Core lint", "HA suite (2026.1.0)", "HA suite (2026.10.2)"]
+            return {
+                "jobs": [
+                    {
+                        "id": i,
+                        "name": name,
+                        "head_sha": self.sha,
+                        "status": "completed",
+                        "conclusion": "success",
+                        "steps": [
+                            {"name": step, "conclusion": "success"}
+                            for step in (
+                                ["Run node --test tests/frontend/*.mjs"]
+                                if name == "Core lint"
+                                else [
+                                    "Install and verify selected boundary",
+                                    "Run mypy custom_components/ninebot --follow-imports=silent",
+                                    "Run the complete offline suite",
+                                ]
+                            )
+                        ],
+                    }
+                    for i, name in enumerate(names)
+                ]
+            }
         if path.startswith("git/ref/heads/"):
             return {"object": {"sha": self.sha}}
         if path.startswith("git/ref/tags/"):
@@ -101,6 +138,12 @@ class PackageAndPublication(unittest.TestCase):
             path.write_text(content)
         (self.repo / "hacs.json").write_text(
             json.dumps({"zip_release": True, "filename": "ninebot.zip"})
+        )
+        (self.repo / ".github").mkdir()
+        (self.repo / ".github/ci.json").write_text(
+            json.dumps(
+                {"boundaries": {"minimum": {"ha": "2026.1.0"}, "current": {"ha": "2026.10.2"}}}
+            )
         )
         self.git("add", ".")
         self.commit()
@@ -204,6 +247,7 @@ class PackageAndPublication(unittest.TestCase):
                     "- Package release.",
                     "- 安装包发布。",
                     apply=True,
+                    validation_run=42,
                 )
                 self.assertEqual(report["status"], "published_verified")
                 self.assertEqual(self.api.latest["id"], report["release_id"])
@@ -307,6 +351,130 @@ class PackageAndPublication(unittest.TestCase):
         ):
             with self.assertRaises(ValueError):
                 release_body("o/r", "v2.0.0b95", "preview", [], en, zh, upgrade)
+
+    def test_full_validation_reuses_docs_but_rejects_changed_runtime(self):
+        evidence = verify_full_run(self.api, self.repo, self.sha, 42)
+        before = self.sha
+        (self.repo / "README.md").write_text("Documentation only")
+        self.git("add", ".")
+        self.commit()
+        self.assertEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+        self.assertEqual(
+            verify_full_run(self.api, self.repo, self.sha, 42)["input_sha256"],
+            evidence["input_sha256"],
+        )
+        (self.repo / "custom_components/ninebot/new.py").write_text("# Different runtime")
+        self.git("add", ".")
+        self.commit()
+        with self.assertRaisesRegex(ValueError, "inputs differ"):
+            verify_full_run(self.api, self.repo, self.sha, 42)
+
+    def test_full_validation_rejects_selected_suite_forks_skips_and_cancelled_runs(self):
+        original = self.api.request
+        for variant in (
+            "selected",
+            "fork",
+            "cancelled",
+            "skipped",
+            "wrong_workflow",
+            "wrong_event",
+            "wrong_commit",
+        ):
+
+            def changed(path, variant=variant, **kwargs):
+                result = original(path, **kwargs)
+                if path == "actions/runs/42":
+                    if variant == "fork":
+                        result["head_repository"] = {"full_name": "other/fork"}
+                    elif variant == "cancelled":
+                        result["conclusion"] = "cancelled"
+                    elif variant == "wrong_workflow":
+                        result["path"] = ".github/workflows/runtime.yaml"
+                    elif variant == "wrong_event":
+                        result["event"] = "pull_request"
+                elif path.startswith("actions/runs/42/jobs?"):
+                    if variant == "selected":
+                        result["jobs"].pop()
+                    elif variant == "skipped":
+                        result["jobs"][0]["steps"][0]["conclusion"] = "skipped"
+                    elif variant == "wrong_commit":
+                        result["jobs"][0]["head_sha"] = "f" * 40
+                return result
+
+            self.api.request = changed
+            with self.subTest(variant=variant), self.assertRaises(ValueError):
+                verify_full_run(self.api, self.repo, self.sha, 42)
+        self.api.request = original
+
+    def test_partial_api_responses_retry_reads_but_not_mutations(self):
+        import io
+        from http.client import IncompleteRead
+        from unittest.mock import patch
+
+        from scripts.publish_release import GitHub
+
+        for method, expected_calls in (("GET", 2), ("POST", 1)):
+            with (
+                patch("scripts.publish_release.time.sleep"),
+                patch(
+                    "scripts.publish_release.urlopen",
+                    side_effect=[IncompleteRead(b"synthetic"), io.BytesIO(b'{"ok":true}')],
+                ) as request,
+            ):
+                api = GitHub("synthetic/repository", "synthetic-token")
+                if method == "GET":
+                    self.assertEqual(api.request("actions/runs/42"), {"ok": True})
+                else:
+                    with self.assertRaises(RuntimeError):
+                        api.request("releases", method=method, payload={"name": "synthetic"})
+                self.assertEqual(request.call_count, expected_calls)
+
+    def test_validation_scope_distinguishes_runtime_ci_from_release_tools(self):
+        before = self.sha
+        (self.repo / "scripts").mkdir()
+        (self.repo / "scripts/publish_release.py").write_text("# publication transport correction")
+        self.git("add", ".")
+        self.commit()
+        self.assertEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+        (self.repo / "scripts/ci.py").write_text("# different HA installation or test command")
+        self.git("add", ".")
+        self.commit()
+        self.assertNotEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+
+    def test_validation_fetches_tested_commit_missing_from_a_shallow_checkout(self):
+        tested = self.sha
+        self.git("branch", "-M", "main")
+        (self.repo / "README.md").write_text("Later documentation commit")
+        self.git("add", ".")
+        self.commit()
+        clone = self.root / "shallow"
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--quiet",
+                "--no-local",
+                "--depth=1",
+                "--single-branch",
+                "--branch",
+                "main",
+                self.repo.as_uri(),
+                str(clone),
+            ],
+            check=True,
+        )
+        missing = subprocess.run(
+            ["git", "-C", str(clone), "cat-file", "-e", tested], capture_output=True
+        )
+        self.assertNotEqual(missing.returncode, 0)
+        proof = verify_full_run(self.api, clone, self.sha, 42)
+        self.assertEqual(proof["head_sha"], tested)
+        self.assertEqual(
+            subprocess.check_output(
+                ["git", "-C", str(clone), "rev-parse", "HEAD"], text=True
+            ).strip(),
+            self.sha,
+        )
 
 
 if __name__ == "__main__":

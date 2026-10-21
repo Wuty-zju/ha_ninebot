@@ -168,3 +168,55 @@ async def test_actionable_storage_repairs_are_distinct_from_lifecycle(hass, entr
             assert not ir.async_get(hass).async_get_issue("ninebot", store._archive_issue)
     finally:
         await store.async_close()
+
+
+@pytest.mark.parametrize("failure", [OSError("synthetic"), asyncio.CancelledError()])
+async def test_backup_removals_isolate_failures_and_retain_retry(hass, failure):
+    from unittest.mock import AsyncMock, Mock
+
+    from custom_components.ninebot.backup import BACKUP_KEY, REMOVALS_KEY, BackupState
+
+    first = AsyncMock(side_effect=[failure, None])
+    second = AsyncMock()
+    actor = Mock()
+    hass.data[BACKUP_KEY] = BackupState([actor], [first, second])
+    if isinstance(failure, asyncio.CancelledError):
+        with pytest.raises(asyncio.CancelledError):
+            await async_post_backup(hass)
+    else:
+        await async_post_backup(hass)
+    assert not backup_active(hass)
+    actor.resume_after_backup.assert_called_once()
+    first.assert_awaited_once()
+    second.assert_awaited_once()
+    assert hass.data[REMOVALS_KEY] == [first]
+    await async_post_backup(hass)
+    assert first.await_count == 2 and second.await_count == 1
+    assert REMOVALS_KEY not in hass.data
+
+
+async def test_cancellation_during_cleanup_drains_all_accounts(hass):
+    from unittest.mock import AsyncMock, Mock
+
+    from custom_components.ninebot.backup import BACKUP_KEY, BackupState
+
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow():
+        started.set()
+        await release.wait()
+
+    actor = Mock()
+    first, second = AsyncMock(side_effect=slow), AsyncMock()
+    hass.data[BACKUP_KEY] = BackupState([actor], [first, second])
+    task = asyncio.create_task(async_post_backup(hass))
+    await started.wait()
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    actor.resume_after_backup.assert_called_once()
+    second.assert_awaited_once()
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task

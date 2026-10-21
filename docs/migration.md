@@ -2,9 +2,16 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
+## rc2 to rc3
+
+Upgrade through HACS or replace the integration directory, then restart Home Assistant. Existing configuration, entity identities and schema 7 archives continue unchanged. No account removal or database rebuild is required.
+
+Daily summaries share an in-memory projection with explicit data, date and freshness invalidation. Imports and legacy consolidation wait for active file work before cleanup. Removing an account clears entry-owned credentials, rated parameters and event cursors; its separate history archive follows the retention option. Credential cleanup checks all session identities and active references before removal; unsafe cleanup retains files and raises a Repair. Interrupted consolidation retains its unmerged original for recovery.
+
 ## rc1 to rc2
 
 Existing custom polling intervals keep their previous targets until a profile is selected in Options. Existing 60-second/default entries use Balanced. Polling-only changes apply to the existing runtime. Archive schema, entity identities, history switches and control confirmation windows are unchanged. An earlier integration version does not interpret the new profile option; select its interval again after a code rollback.
+
 
 ## Before upgrading
 

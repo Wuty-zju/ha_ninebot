@@ -8,7 +8,6 @@ as a user setting. No response/error body is logged.
 
 import asyncio
 import json
-import math
 import os
 import secrets
 import socket
@@ -16,7 +15,6 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -26,6 +24,8 @@ import aiohttp
 from .adapters import profiles
 from .const import CLI_TIMEOUT, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
+from .http_policy import rate_limit_delay
+from .http_policy import retry_after_seconds as retry_after_seconds
 from .vehicle_cache import cache_io, read_cache, reconcile_cache, restore_cache
 
 
@@ -49,25 +49,6 @@ def response_data(status: int, raw: object) -> Any:
     if status == 400:
         raise NinebotError(ErrorKind.PROTOCOL)
     raise NinebotError(ErrorKind.SERVICE, retryable=500 <= status <= 599)
-
-
-def retry_after_seconds(value: str | None, now: datetime) -> float | None:
-    """Only a bounded transport header; no guessing from upstream error prose."""
-    if value is None or len(value) > 128:
-        return None
-    try:
-        seconds = float(value)
-    except ValueError:
-        try:
-            stamp = parsedate_to_datetime(value)
-            if stamp.tzinfo is None:
-                stamp = stamp.replace(tzinfo=UTC)
-            seconds = (stamp - now).total_seconds()
-        except (ValueError, TypeError, OverflowError):
-            return None
-    if not math.isfinite(seconds) or seconds < 0:
-        return None
-    return min(900, seconds)
 
 
 class NinecliClient:
@@ -258,10 +239,9 @@ class NinecliClient:
                         return response_data(response.status, raw)
                     except NinebotError as err:
                         if response.status == 429 and err.kind is ErrorKind.SERVICE:
-                            delay = retry_after_seconds(
+                            err.retry_after = rate_limit_delay(
                                 response.headers.get("Retry-After"), datetime.now(UTC)
                             )
-                            err.retry_after = delay if delay is not None else 60
                             err.retryable = False
                         raise
         except (aiohttp.ClientError, TimeoutError):

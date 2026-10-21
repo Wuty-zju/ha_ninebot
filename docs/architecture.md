@@ -63,6 +63,8 @@ Current sample freshness, per-metric statistical completeness, page enumeration,
 
 ## Storage and integrity
 
+Daily sensors share a bounded immutable projection per vehicle and date. New archive projections, business-day rollover and receipt/freshness boundaries invalidate the cached view; distance, energy, duration, completeness and source metadata use the same calculation. Archive validation restores each month once while retaining all ownership, schema and payload checks.
+
 `RideArchive` is a per-account SQLite actor with serialized off-loop work, parameterized bounded reads and transactional updates. It holds normalized month/ride facts, membership, compressed/redacted business originals, task state, evidence receipts and private quarantine. Full track arrays stay in the archive. An explicit native aggregate import writes selected day/month totals to Recorder statistics. Ordinary scalar entity states follow HA Recorder configuration.
 
 The quota defaults to 100 MiB (options 32–2048 MiB/account); it is a write budget, not an automatic expiry policy. Capacity errors retain data and suspend writes. Unreadable/unsupported structural state is preserved with Repair. Supported reads can tolerate independently damaged detail roles without granting a write or deleting evidence. Backup hooks pause/drain writes and fence new setup writers; account removal retains history by default; explicit opt-out cleans recognized owned files, deferring when backup is active.
@@ -124,7 +126,9 @@ Diagnostics include uncertain-discovery counts, next retry, configured status in
 
 Imports replay reviewed vehicle/month/ride/membership/detail facts in a single account transaction. Newer month receipts win, historical membership is retained, and latest raw detail versus best geometry are selected independently. Imported profiles do not grant live ownership. Distinct page/month/detail originals are content-deduplicated in schema 7 `archive_evidence` inside the canonical account database and included in subset exports; existing account checkpoints survive, and audit receipts, connection sessions and hourly budgets are not copied. If no local discovery baseline exists, verified committed page coverage is restored with in-flight query claims reset; an existing baseline is never replaced. Import receipts make retries idempotent; SQLite transactions provide rollback; a temporary pre-merge recovery image is removed after a checked commit and retained on failure. Multi-account packages commit per account, not as a distributed transaction.
 
-Native options forms use HA file upload, administrator authorization and expiring signed downloads. Account/vehicle selection defines transfer scope. Full archive/transfer content remains outside entity attributes, Recorder and diagnostics. See [usage and limits](guide.md#export-and-import-history-databases).
+Archive imports refresh local profiles and projections through a single coordinator entry point before notifying statistics, calendar and history subscribers. Live ownership remains a discovery decision. Entity platforms delegate concurrency to the account broker, allowing a new control command to replace its previous confirmation observer.
+
+Native options forms use HA file upload, administrator authorization and expiring signed downloads. Temporary workspaces retain ownership through cancellation; file operations finish before staging data is removed. Deleted entries release their credentials and small entry-owned stores independently of the account archive retention option. Unsafe credential cleanup raises a Repair. Account/vehicle selection defines transfer scope. Full archive/transfer content remains outside entity attributes, Recorder and diagnostics. See [usage and limits](guide.md#export-and-import-history-databases).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/archive-en-dark.svg">
@@ -135,3 +139,5 @@ Successful startup consolidation removes verified inactive legacy entry, retired
 
 
 Initial setup waits for required archive validation and legacy consolidation before creating entities. A first upgrade with several databases can take a few minutes. With the current schema and no remaining sources, setup skips consolidation. Migration-stage progress and reduced first-load latency are follow-up priorities.
+
+简体中文：rc3集中导入后的资料／投影／通知入口，保留实时归属边界；导入和旧库临时作业在取消后排空再清理。账号删除分别处理登录凭据、条目设置和保留的行程档案。备份先恢复全部账号，再隔离清理失败。共享日投影在来源、日期和有效期变化时重新计算，保持原数值和来源语义。

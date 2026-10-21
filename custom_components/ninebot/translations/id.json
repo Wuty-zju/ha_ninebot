@@ -990,6 +990,10 @@
     "archive_cleanup": {
       "title": "Older history files need review",
       "description": "Some older history files could not be verified or are still in use. They were kept; the current account database remains available. Back up Home Assistant before resolving these files."
+    },
+    "session_cleanup": {
+      "title": "Deleted account credentials need cleanup",
+      "description": "The removed account's local session could not be safely deleted. Check storage permissions and the Ninebot session directory before removing the orphaned session. Retained trip history is separate."
     }
   },
   "services": {

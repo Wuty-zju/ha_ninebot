@@ -7,13 +7,13 @@ control or user host override. The calling client owns serialization/refresh.
 import base64
 import hashlib
 import json
-import math
 import os
 import secrets
 import stat
 import time
 import zlib
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +22,7 @@ import aiohttp
 from . import history_crypto as crypto
 from .const import MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
+from .http_policy import rate_limit_delay
 from .parsing import previous_month
 from .travel import opaque_id
 
@@ -235,11 +236,13 @@ async def request_page(
             if response.status == 401:
                 raise NinebotAuthError()
             if response.status == 429:
-                value = response.headers.get("Retry-After")
-                delay = float(value) if value and value.isdecimal() else None
-                if delay is not None and (not math.isfinite(delay) or not 0 <= delay <= 900):
-                    delay = None
-                raise NinebotError(ErrorKind.SERVICE, retry_after=delay, retryable=True)
+                raise NinebotError(
+                    ErrorKind.SERVICE,
+                    retry_after=rate_limit_delay(
+                        response.headers.get("Retry-After"), datetime.now(UTC)
+                    ),
+                    retryable=False,
+                )
             if response.status != 200:
                 raise NinebotError(ErrorKind.SERVICE, retryable=response.status >= 500)
         return await asyncio.to_thread(decode, body, keys, encoding)

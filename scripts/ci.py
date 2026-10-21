@@ -9,8 +9,11 @@ import subprocess
 import sys
 from importlib.metadata import version
 from pathlib import Path
+from urllib.error import URLError
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 CONFIG = ROOT / ".github/ci.json"
 
 
@@ -67,7 +70,7 @@ def changed_paths(base: str, head: str) -> list[str]:
     if not all(re.fullmatch(r"[0-9a-fA-F]{40}", sha) for sha in (base, head)):
         raise ValueError("Use full commit SHAs for the selected diff")
     result = subprocess.check_output(
-        ["git", "diff", "--name-only", "--no-renames", "-z", base, head], cwd=ROOT
+        ["git", "diff", "--name-only", "--no-renames", "-z", f"{base}...{head}"], cwd=ROOT
     )
     return [path.decode() for path in result.split(b"\0") if path]
 
@@ -159,6 +162,20 @@ def main() -> None:
         if not args.base or not args.head:
             parser.error("--plan requires --base and --head")
         result = select(changed_paths(args.base, args.head), config, available)
+        if os.environ.get("CI_REUSE_PROMOTION") == "true":
+            from scripts.ci_evidence import find_full_run
+            from scripts.publish_release import GitHub
+
+            try:
+                evidence = find_full_run(
+                    GitHub(os.environ["GITHUB_REPOSITORY"], os.environ["GH_TOKEN"]), ROOT, args.head
+                )
+            except (RuntimeError, ValueError, KeyError, URLError):
+                evidence = None
+            if evidence:
+                result["reused_full_validation"] = evidence
+                result["tests"] = []
+                result["reasons"].append("verified-promotion-reuse")
         output = os.environ.get("GITHUB_OUTPUT")
         if output:
             with open(output, "a") as stream:

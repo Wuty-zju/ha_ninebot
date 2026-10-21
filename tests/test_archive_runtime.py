@@ -400,3 +400,53 @@ async def test_projection_keeps_month_metrics_and_latest_on_one_revision_during_
     finally:
         await store.async_close()
     assert not store._projection_revisions
+
+
+async def test_daily_sensors_share_atomic_projection_and_validation_decode(hass):
+    from custom_components.ninebot.archive_codec import restored_month
+
+    stats = ArchiveStatistics(hass, "shared-day", "synthetic-business")
+    try:
+        await stats.async_load()
+        await stats.async_record_profiles((PROFILE,), NOW, True, lambda: True)
+        await stats.async_record(SN, many_rides(count=2), NOW)
+        day = datetime(2026, 9, 20, tzinfo=UTC).date()
+        with patch(
+            "custom_components.ninebot.period_statistics.day_summary", wraps=day_summary
+        ) as calculate:
+            for _ in range(30):
+                assert stats.day_summary(SN, day, NOW, allow_cached=True) == day_summary(
+                    stats, SN, day, NOW, allow_cached=True
+                )
+            assert calculate.call_count == 1
+            await stats.async_refresh_projection()
+            stats.day_summary(SN, day, NOW, allow_cached=True)
+            assert calculate.call_count == 2
+        with patch(
+            "custom_components.ninebot.ride_archive.restored_month", wraps=restored_month
+        ) as restore:
+            await stats.archive._run(lambda: stats.archive._check(stats.archive._db()))
+            assert restore.call_count == 1
+    finally:
+        await stats.async_close()
+
+
+async def test_import_facade_notifies_after_history_only_profiles_are_projected(hass):
+    stats = ArchiveStatistics(hass, "import-view", "synthetic-business")
+    notified = []
+    try:
+        await stats.async_load()
+        await stats.archive.async_record_profiles((PROFILE,), NOW, complete=False)
+        await stats.archive.async_record_month(SN, many_rides(count=2), NOW)
+        remove = stats.async_add_archive_listener(
+            SN, lambda: notified.append(stats.month(SN, "202609"))
+        )
+        try:
+            await stats.async_refresh_after_import()
+            await hass.async_block_till_done()
+            assert notified and notified[-1].ride_count == 2
+            assert SN in stats._vehicles
+        finally:
+            remove()
+    finally:
+        await stats.async_close()

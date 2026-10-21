@@ -214,3 +214,96 @@ async def test_completed_export_transfers_directory_to_download_cleanup(hass):
     # The normal download expiry/HA-stop owner can now remove the completed file.
     (directory / "synthetic.zip").unlink()
     directory.rmdir()
+
+
+@pytest.mark.parametrize("phase", ["create", "unpack", "open", "confirm"])
+async def test_cancel_import_drains_workers_and_releases_owned_workspace(hass, tmp_path, phase):
+    from contextlib import ExitStack, nullcontext
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.ninebot.config_flow import NinebotOptionsFlow
+
+    flow = NinebotOptionsFlow()
+    flow.hass = hass
+    started = asyncio.Event()
+    release = threading.Event()
+    loop = asyncio.get_running_loop()
+    directories = []
+    mkdtemp = tempfile.mkdtemp
+
+    def block():
+        loop.call_soon_threadsafe(started.set)
+        assert release.wait(5)
+
+    def create(**kwargs):
+        directory = Path(mkdtemp(dir=tmp_path, **kwargs))
+        directories.append(directory)
+        if phase == "create":
+            block()
+        return str(directory)
+
+    def unpack(uploaded, directory):
+        if phase == "unpack":
+            block()
+        directory.mkdir()
+        path = directory / "synthetic.sqlite3"
+        path.write_bytes(b"synthetic")
+        return [("owner", path)]
+
+    async def opened():
+        if phase == "open":
+            started.set()
+            await asyncio.Future()
+
+    async def confirmed():
+        started.set()
+        await asyncio.Future()
+
+    candidate = MagicMock()
+    candidate.async_open = AsyncMock(side_effect=opened)
+    candidate.async_close = AsyncMock()
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(flow, "_archive_admin", AsyncMock(return_value=True)))
+        stack.enter_context(
+            patch.object(flow, "_archive_confirm", AsyncMock(side_effect=confirmed))
+        )
+        stack.enter_context(
+            patch("custom_components.ninebot.archive_resources.tempfile.mkdtemp", create)
+        )
+        stack.enter_context(
+            patch(
+                "custom_components.ninebot.archive_options.process_uploaded_file",
+                return_value=nullcontext(tmp_path),
+            )
+        )
+        stack.enter_context(
+            patch("custom_components.ninebot.archive_options.unpack_upload", unpack)
+        )
+        stack.enter_context(
+            patch(
+                "custom_components.ninebot.archive_options.loaded_accounts",
+                return_value={"owner": object()},
+            )
+        )
+        stack.enter_context(patch("custom_components.ninebot.archive_options.readonly"))
+        stack.enter_context(
+            patch("custom_components.ninebot.archive_options.RideArchive", return_value=candidate)
+        )
+        task = asyncio.create_task(flow.async_step_archive_import({"file": "synthetic"}))
+        try:
+            await asyncio.wait_for(started.wait(), 5)
+            task.cancel()
+            await asyncio.sleep(0)
+            if phase in ("create", "unpack"):
+                task.cancel()  # Repeated cancellation must not cancel the executor future.
+                await asyncio.sleep(0)
+                assert not task.done()
+                assert directories[0].exists()
+        finally:
+            release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert not directories[0].exists()
+    assert flow._archive_workspace is None and flow._archive_sources is None
+    if phase in ("open", "confirm"):
+        candidate.async_close.assert_awaited_once()

@@ -14,6 +14,17 @@ Current scope and next priorities for the 2.0 series. Usage and data contracts a
 
 已具备：多账号、实时实体/锁反馈、日历/统计/查询、可续接的历史行程/详情/精细GPS同步与私有归档、较好轨迹保护及有界校验恢复。
 
+## Added in 2.0.0rc3
+
+- Cancellation-safe import/migration cleanup and explicit removed-entry credential ownership.
+- Consistent rate-limit policy and isolated backup cleanup across accounts.
+- Shared daily statistics projections and single-pass month restoration.
+- Public import projection notifications and explicit broker-owned platform concurrency.
+- Full-validation provenance, matching-input promotion reuse and shared-ancestor CI selection.
+
+rc3完善导入／迁移取消清理、账号凭据回收、限流及跨账号备份收尾；共享日投影、减少重复月解析，并明确导入通知和平台并发边界。发布核验完整检查来源与输入摘要，提升时复用有效结果。外部统计 ID 的兼容迁移保留为独立后续设计。
+
+
 ## Added in 2.0.0rc2
 
 - Independent monotonic status, battery, travel and profile scheduling, with per-group freshness and retry deadlines.

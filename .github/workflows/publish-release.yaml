@@ -20,6 +20,10 @@ on:
         description: Reviewed full source-tip commit SHA
         type: string
         required: true
+      validation_run:
+        description: Successful full Checks run ID (required for RC and stable releases)
+        type: string
+        required: false
       publish:
         description: Publish after package verification (otherwise prepare artifacts only)
         type: boolean
@@ -41,6 +45,7 @@ on:
 permissions:
   contents: read
   checks: read
+  actions: read
 concurrency:
   group: ninebot-packaged-publication
   cancel-in-progress: false
@@ -48,6 +53,7 @@ env:
   PYTHONDONTWRITEBYTECODE: '1'
   CHANNEL: ${{ inputs.channel }}
   VERSION: ${{ inputs.version }}
+  VALIDATION_RUN_ID: ${{ inputs.validation_run }}
   SOURCE: ${{ inputs.source }}
   CANDIDATE_SHA: ${{ inputs.candidate_sha }}
   RELEASE_NOTES_EN: ${{ inputs.notes_en }}
@@ -101,6 +107,7 @@ jobs:
     permissions:
       contents: write
       checks: read
+      actions: read
     steps:
       - name: Require the maintained workflow on main
         run: test "$GITHUB_REF" = refs/heads/main

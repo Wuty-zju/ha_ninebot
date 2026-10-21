@@ -24,6 +24,9 @@ from .ride_models import Ride
 from .ride_presentation import ride_time_range
 from .runtime import NinebotConfigEntry
 
+# The account broker owns wire admission; command observers remain replaceable.
+PARALLEL_UPDATES = 0
+
 
 class NinebotRideCalendar(NinebotEntity, CalendarEntity):
     """Completed observations, not scheduled rides or a complete cloud history."""
