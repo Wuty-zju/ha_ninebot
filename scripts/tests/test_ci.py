@@ -4,7 +4,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from scripts.ci import CONFIG, ROOT, changed_paths, install, select
+from scripts.ci import CONFIG, ROOT, changed_paths, install, pytest_command, select
 
 
 class ScopeTests(unittest.TestCase):
@@ -79,6 +79,19 @@ class ScopeTests(unittest.TestCase):
         self.assertIn(f"ninecli=={self.config['tools']['ninecli']}", manifest["requirements"])
         for row in self.config["boundaries"].values():
             self.assertEqual(set(row), {"python", "ha", "plugin"})
+
+    def test_complete_selected_suite_collects_coverage_without_a_second_run(self):
+        command = pytest_command(sorted(self.available), self.available)
+        self.assertIn("--cov-fail-under=91", command)
+        self.assertIn("--cov-report=xml", command)
+        self.assertEqual(command.count("-m"), 1)
+        partial = pytest_command(["tests/test_coordinator.py"], self.available)
+        self.assertFalse(any(arg.startswith("--cov") for arg in partial))
+
+    def test_test_runner_rejects_empty_or_unavailable_inputs(self):
+        for tests in ([], ["tests/not-present.py"]):
+            with self.assertRaises(ValueError):
+                pytest_command(tests, self.available)
 
     @patch("scripts.ci.subprocess.check_output")
     def test_renames_and_deletions_keep_both_paths(self, output):

@@ -98,6 +98,35 @@ def install(config: dict, boundary: str, profile: bool = False) -> None:
             raise ValueError(f"Installed {name} does not match the selected CI boundary")
 
 
+def pytest_command(tests: list[str], available: set[str]) -> list[str]:
+    """Complete selected suites produce candidate coverage in the same run."""
+    if not tests or not isinstance(tests, list) or not set(tests) <= available:
+        raise ValueError("The CI plan must name existing offline test files")
+    coverage = (
+        [
+            "--cov=custom_components.ninebot",
+            "--cov-branch",
+            "--cov-fail-under=91",
+            "--cov-report=term-missing",
+            "--cov-report=xml",
+        ]
+        if set(tests) == available
+        else []
+    )
+    return [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "--maxfail=3",
+        "--junitxml=test-results.xml",
+        "-o",
+        "faulthandler_timeout=60",
+        *coverage,
+        *tests,
+    ]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     action = parser.add_mutually_exclusive_group(required=True)
@@ -117,23 +146,7 @@ def main() -> None:
         return
     if args.run_tests:
         tests = json.loads(args.run_tests.read_text())["tests"]
-        if not tests or not isinstance(tests, list) or not set(tests) <= available:
-            raise ValueError("The CI plan must name existing offline test files")
-        subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pytest",
-                "-q",
-                "--maxfail=3",
-                "--junitxml=test-results.xml",
-                "-o",
-                "faulthandler_timeout=60",
-                *tests,
-            ],
-            cwd=ROOT,
-            check=True,
-        )
+        subprocess.run(pytest_command(tests, available), cwd=ROOT, check=True)
         return
     if args.matrix:
         result = {
