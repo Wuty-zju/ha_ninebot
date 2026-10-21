@@ -56,6 +56,8 @@ async def test_failed_parameter_write_retains_dirty_state_and_recovers(hass, tmp
     assert restored.model("car").voltage == 72
     store.configure("car", {"voltage": None, "capacity": None})
     assert await store.async_save()
+    # The HA fixture retains a loaded store's _data; reload through a new owner.
+    restored = ModelStorage(hass, "synthetic-write")
     await restored.async_load()
     assert restored.model("car").voltage is None
     assert restored.model("car").capacity is None
@@ -85,7 +87,9 @@ async def test_delayed_parameter_write_reports_failure_without_losing_retry(
     assert await store.async_save()
 
 
-async def test_remove_waits_for_native_delayed_write_and_does_not_recreate_file(hass, tmp_path):
+async def test_remove_waits_for_native_delayed_write_and_does_not_recreate_file(
+    hass, tmp_path, hass_storage
+):
     import asyncio
     from pathlib import Path
     from unittest.mock import patch
@@ -116,4 +120,5 @@ async def test_remove_waits_for_native_delayed_write_and_does_not_recreate_file(
             await write
             await removal
     assert not await hass.async_add_executor_job(Path(store._store.path).exists)
+    assert store._store.key not in hass_storage
     assert not store.writable
