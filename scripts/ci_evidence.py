@@ -8,7 +8,19 @@ from pathlib import Path
 
 # Full HA/mypy/Node inputs. Publication/documentation tools have current-SHA
 # lint/policy gates; changing those does not require reinstalling both HA stacks.
-INPUTS = ("custom_components", "tests", "scripts/ci.py", ".github", "pyproject.toml", "hacs.json")
+INPUTS = (
+    "custom_components",
+    "tests",
+    "scripts/ci.py",
+    ".github/ci.json",
+    ".github/workflows/checks.yaml",
+    ".github/workflows/runtime.yaml",
+    ".github/workflows/history-browser.yaml",
+    ".github/workflows/history-profile.yaml",
+    "pyproject.toml",
+    "hacs.json",
+)
+MANIFEST = b"custom_components/ninebot/manifest.json"
 
 
 def git(repo: Path, *args: str) -> bytes:
@@ -22,7 +34,21 @@ def input_digest(repo: Path, sha: str) -> str:
     rows = git(repo, "ls-tree", "-r", "-z", sha, "--", *INPUTS)
     if not rows:
         raise ValueError("Validation inputs are missing")
-    return hashlib.sha256(rows).hexdigest()
+    normalized = bytearray(b"ninebot-runtime-inputs-v2\0")
+    for row in rows.split(b"\0"):
+        if not row:
+            continue
+        metadata, path = row.split(b"\t", 1)
+        if path == MANIFEST:
+            mode, kind, _ = metadata.split()
+            manifest = json.loads(git(repo, "show", f"{sha}:{path.decode()}"))
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("version"), str):
+                raise ValueError("Validation manifest is invalid")
+            manifest.pop("version")
+            content = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
+            metadata = b" ".join((mode, kind, hashlib.sha256(content).hexdigest().encode()))
+        normalized.extend(metadata + b"\t" + path + b"\0")
+    return hashlib.sha256(normalized).hexdigest()
 
 
 def ensure_commit(repo: Path, sha: str) -> None:
@@ -106,7 +132,7 @@ def verify_full_run(api, repo: Path, sha: str, run_id: int) -> dict:
 
 
 def find_full_run(api, repo: Path, sha: str) -> dict | None:
-    """Promotion-only lookup; lack of evidence keeps the normal regression plan."""
+    """Trusted same-repository reuse; missing proof retains normal regression."""
     result = api.request(
         "actions/workflows/checks.yaml/runs?event=workflow_dispatch&status=success&per_page=20"
     )

@@ -8,6 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from .async_utils import async_drain
 from .const import MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotError
 
@@ -16,15 +17,7 @@ async def cache_io[T](operation: Callable[..., T], *args: Any) -> T:
     """Finish filesystem work before releasing the client's serialization lock."""
     task = asyncio.create_task(asyncio.to_thread(operation, *args))
     try:
-        return await asyncio.shield(task)
-    except asyncio.CancelledError as cancelled:
-        try:
-            await task
-        except (OSError, NinebotError):
-            # Do not replace cancellation with a filesystem error containing
-            # a private path. The worker has finished; no late write remains.
-            pass
-        raise cancelled from None
+        return await async_drain(task)
     except OSError:
         raise NinebotError(ErrorKind.SERVICE) from None
 

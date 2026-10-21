@@ -1,69 +1,57 @@
 """Synthetic calendar/freshness replay; no new vehicle or daily-chart evidence."""
 
 import json
-from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.ninebot import adapters
 from custom_components.ninebot.demand import Need, entity_context
-from custom_components.ninebot.models import Freshness, VehicleProfile, VehicleSnapshot
-from custom_components.ninebot.sensor import today_mileage
+from custom_components.ninebot.period_statistics import day_summary
+from custom_components.ninebot.statistics_store import TravelStatisticsStore
 
 NOW = datetime(2026, 9, 25, 15, 59, 59, tzinfo=UTC)
 
 
-def sample():
-    return VehicleSnapshot(
-        VehicleProfile("test", "Vehicle", "Model"),
-        travel=adapters.travel({"detail": [2] * 30, "total_mileages": 60, "times": 0}, "202609"),
-        travel_freshness=Freshness(NOW, NOW),
-    )
+def chart_value(hass, raw, received=NOW, when=NOW, month="202609"):
+    store = TravelStatisticsStore(hass, "chart-contract")
+    if raw is not None:
+        store.update("test", adapters.travel(raw, month), received)
+    return day_summary(
+        store, "test", when.astimezone(ZoneInfo("Asia/Shanghai")).date(), when
+    ).distance_km
 
 
-def test_business_day_midnight_and_zero_are_not_old_sample_carryover():
-    snapshot = sample()
-    assert today_mileage(snapshot, NOW) == 2
-    assert today_mileage(snapshot, NOW + timedelta(seconds=1)) is None
-    assert today_mileage(snapshot, NOW + timedelta(days=6)) is None
-    assert today_mileage(snapshot, NOW - timedelta(seconds=1)) is None
-    zero = replace(
-        snapshot, travel=adapters.travel({"detail": [0] * 30, "total_mileages": 0}, "202609")
-    )
-    assert today_mileage(zero, NOW) == 0
-    assert entity_context("test", "sensor", "today_mileage", "travel").need is Need.MONTH
+def test_business_day_midnight_and_zero_are_not_old_sample_carryover(hass):
+    raw = {"detail": [2] * 30, "total_mileages": 60}
+    assert chart_value(hass, raw) == 2
+    assert chart_value(hass, raw, when=NOW + timedelta(seconds=1)) is None
+    assert chart_value(hass, raw, when=NOW + timedelta(days=6)) is None
+    assert chart_value(hass, raw, when=NOW - timedelta(seconds=1)) is None
+    assert chart_value(hass, {"detail": [0] * 30, "total_mileages": 0}) == 0
+    assert entity_context("test", "sensor", "today_mileage", "travel").need is Need.DAY
 
 
-@pytest.mark.parametrize(
-    "change", ["absent", "missing", "summary", "invalid", "old", "missing_day", "no_success"]
-)
-def test_today_invalid_or_missing_data_is_unknown(change):
-    snapshot = sample()
-    if change == "absent":
-        snapshot = replace(snapshot, present=False)
-    elif change == "missing":
-        snapshot = replace(snapshot, travel=None)
-    elif change == "summary":
-        snapshot = replace(snapshot, travel=replace(snapshot.travel, summary=None))
+@pytest.mark.parametrize("change", ["missing", "chart", "invalid", "old", "missing_day", "future"])
+def test_today_invalid_or_missing_data_is_unknown(hass, change):
+    raw = {"detail": [2] * 30, "total_mileages": 60}
+    received = NOW
+    if change == "missing":
+        raw = None
+    elif change == "chart":
+        raw = {}
     elif change == "invalid":
-        snapshot = replace(
-            snapshot, travel=adapters.travel({"detail": [2] * 30, "total_mileages": 0}, "202609")
-        )
+        raw["total_mileages"] = 0
     elif change == "old":
-        snapshot = replace(snapshot, travel_freshness=Freshness(NOW, NOW - timedelta(hours=1)))
+        received = NOW - timedelta(hours=1)
     elif change == "missing_day":
-        snapshot = replace(
-            snapshot,
-            travel=replace(
-                snapshot.travel, summary=replace(snapshot.travel.summary, daily_mileage=())
-            ),
-        )
+        raw["detail"] = []
     else:
-        snapshot = replace(snapshot, travel_freshness=Freshness(attempted_at=NOW))
-    assert today_mileage(snapshot, NOW) is None
+        received = NOW + timedelta(seconds=1)
+    assert chart_value(hass, raw, received=received) is None
 
 
 async def test_visible_daily_sensor_native_metadata_small_state_and_no_detail_queries(

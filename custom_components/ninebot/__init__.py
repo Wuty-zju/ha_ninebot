@@ -1,5 +1,7 @@
 """Ninebot App integration with typed runtime and conservative migration."""
 
+import asyncio
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
@@ -14,6 +16,7 @@ from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, AccountDisplay, account_
 from .account_archive import CONF_RETAIN_ARCHIVE, async_prepare_account, async_remove_account
 from .archive_lifecycle import async_remove_archive
 from .archive_options import register_download
+from .async_utils import async_drain
 from .backup import backup_active, defer_removal
 from .client import NinecliClient
 from .const import (
@@ -249,33 +252,59 @@ async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
         ir.async_delete_issue(hass, DOMAIN, f"ride_archive_{entry.entry_id}")
         ir.async_delete_issue(hass, DOMAIN, f"ride_archive_objects_{entry.entry_id}")
 
-    if not defer_removal(hass, remove):
-        await remove()
-    await TravelStatisticsStore(hass, entry.entry_id).async_remove()
-    await IdentityStore(hass, entry).async_remove()
+    async def cleanup() -> None:
+        failed = False
 
-    key = entry.data.get(CONF_SESSION_KEY)
-    if isinstance(key, str):
-        try:
-            await manager_for(hass).async_remove(
-                key,
-                str(entry.data[CONF_BUSINESS_UID]),
-                lambda: any(
-                    other.entry_id != entry.entry_id and other.data.get(CONF_SESSION_KEY) == key
-                    for other in hass.config_entries.async_entries(DOMAIN)
-                ),
-            )
-        except (NinebotError, OSError, ValueError):
+        async def remove_store(operation: Callable[[], Awaitable[None]]) -> None:
+            nonlocal failed
+            try:
+                await operation()
+            except (OSError, ValueError):
+                failed = True
+
+        if not defer_removal(hass, remove):
+            await remove()
+        await remove_store(TravelStatisticsStore(hass, entry.entry_id).async_remove)
+        await remove_store(IdentityStore(hass, entry).async_remove)
+
+        key = entry.data.get(CONF_SESSION_KEY)
+        if isinstance(key, str):
+            try:
+                await manager_for(hass).async_remove(
+                    key,
+                    str(entry.data[CONF_BUSINESS_UID]),
+                    lambda: any(
+                        other.entry_id != entry.entry_id and other.data.get(CONF_SESSION_KEY) == key
+                        for other in hass.config_entries.async_entries(DOMAIN)
+                    ),
+                )
+            except (NinebotError, OSError, ValueError):
+                ir.async_create_issue(
+                    hass,
+                    DOMAIN,
+                    f"session_cleanup_{entry.entry_id}",
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key="session_cleanup",
+                )
+        models = (
+            runtime.models
+            if isinstance(runtime, RuntimeData)
+            else ModelStorage(hass, entry.entry_id)
+        )
+        await remove_store(models.async_remove)
+        await remove_store(lambda: RideEventPipeline.async_remove_store(hass, entry.entry_id))
+        issue = f"entry_cleanup_{entry.entry_id}"
+        if failed:
             ir.async_create_issue(
                 hass,
                 DOMAIN,
-                f"session_cleanup_{entry.entry_id}",
+                issue,
                 is_fixable=False,
                 severity=ir.IssueSeverity.WARNING,
-                translation_key="session_cleanup",
+                translation_key="entry_cleanup",
             )
-    models = (
-        runtime.models if isinstance(runtime, RuntimeData) else ModelStorage(hass, entry.entry_id)
-    )
-    await models.async_remove()
-    await RideEventPipeline.async_remove_store(hass, entry.entry_id)
+        else:
+            ir.async_delete_issue(hass, DOMAIN, issue)
+
+    await async_drain(asyncio.create_task(cleanup()))

@@ -18,6 +18,7 @@ import aiohttp
 
 from .account import AccountDisplay
 from .adapters import profiles, text
+from .async_utils import async_drain
 from .client import NinecliClient
 from .exceptions import ErrorKind, NinebotError
 
@@ -27,13 +28,7 @@ type ClientFactory = Callable[[Path, aiohttp.ClientSession], NinecliClient]
 async def finish_io[T](operation: Callable[[], T]) -> T:
     """A cancelled coroutine must not leave an executor write racing cleanup."""
     task = asyncio.create_task(asyncio.to_thread(operation))
-    try:
-        return await asyncio.shield(task)
-    except asyncio.CancelledError:
-        try:
-            await task
-        finally:
-            raise
+    return await async_drain(task)
 
 
 def private_directory(path: Path) -> None:
@@ -145,10 +140,11 @@ class SessionManager:
 
             task = asyncio.create_task(asyncio.to_thread(create))
             try:
-                directory = await asyncio.shield(task)
+                directory = await async_drain(task)
             except asyncio.CancelledError:
-                directory = await task
-                await finish_io(lambda: shutil.rmtree(directory, True))
+                if not task.cancelled() and task.exception() is None:
+                    directory = task.result()
+                    await finish_io(lambda: shutil.rmtree(directory, True))
                 raise
             challenge = SmsChallenge(directory, account, stamp + SMS_LIFETIME)
             self._sms[directory] = challenge
@@ -281,10 +277,11 @@ class SessionManager:
     async def async_prepare(self, account: str, password: str) -> Candidate:
         task = asyncio.create_task(asyncio.to_thread(self._candidate_dir))
         try:
-            directory = await asyncio.shield(task)
+            directory = await async_drain(task)
         except asyncio.CancelledError:
-            directory = await task
-            await asyncio.to_thread(shutil.rmtree, directory, True)
+            if not task.cancelled() and task.exception() is None:
+                directory = task.result()
+                await finish_io(lambda: shutil.rmtree(directory, True))
             raise
         client = None
         try:
@@ -377,10 +374,9 @@ class SessionManager:
             # the flow is cancelled; then roll it back before propagating.
             task = asyncio.create_task(asyncio.to_thread(self._commit, candidate, key))
             try:
-                await asyncio.shield(task)
+                await async_drain(task)
             except asyncio.CancelledError:
-                await task
-                await asyncio.to_thread(self._rollback, key)
+                await finish_io(lambda: self._rollback(key))
                 raise
 
     def _rollback(self, key: str) -> bool:
@@ -423,12 +419,7 @@ class SessionManager:
                 (self.root / f".transaction-{key}.json").unlink(missing_ok=True)
                 shutil.rmtree(self.root / f".backup-{key}", ignore_errors=True)
 
-            task = asyncio.create_task(asyncio.to_thread(finalize))
-            try:
-                await asyncio.shield(task)
-            except asyncio.CancelledError:
-                await task
-                raise
+            await finish_io(finalize)
 
     async def async_import(self, source: Path, expected_uid: str) -> tuple[str, Candidate]:
         """Copy known CLI files only; never mutate a v1 session."""
@@ -452,9 +443,9 @@ class SessionManager:
 
         task = asyncio.create_task(asyncio.to_thread(copy))
         try:
-            candidate = await asyncio.shield(task)
+            candidate = await async_drain(task)
         except asyncio.CancelledError:
-            candidate = await task
-            await self.async_discard(candidate)
+            if not task.cancelled() and task.exception() is None:
+                await self.async_discard(task.result())
             raise
         return uuid.uuid4().hex, candidate

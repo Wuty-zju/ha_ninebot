@@ -453,6 +453,8 @@ async def test_cancel_close_reaps_child_before_clearing_bearer(tmp_path):
     await started.wait()
     task.cancel()
     await asyncio.sleep(0)
+    task.cancel()
+    await asyncio.sleep(0)
     assert not task.done()
     release.set()
     with pytest.raises(asyncio.CancelledError):

@@ -2838,53 +2838,62 @@ class RideArchive:
 
         await self._run(save, guard=guard)
 
-    async def async_history_evidence(
-        self, sn: str, *, guard: Callable[[], bool]
-    ) -> HistoryEvidence:
-        """Read metadata/counts together on the actor; never decompress payloads."""
+    def _history_evidence(self, sn: str) -> HistoryEvidence:
         from .detail_health import summary
         from .gap_recovery import coverage as gap_coverage
         from .history_store import root
         from .incremental_runs import active
 
-        def read() -> HistoryEvidence:
-            db = self._db()
-            vehicle = vehicle_key(sn)
-            plan = root(db, vehicle)
-            rows = dict(
-                db.execute(
-                    "SELECT key,value FROM meta WHERE key IN (?,?,?,?,?)",
-                    (
-                        f"history_last_success:{vehicle}",
-                        f"history_last_commit:{vehicle}",
-                        "preservation_budget",
-                        f"history_paused:{vehicle}",
-                        f"history_requested:{vehicle}",
-                    ),
-                )
+        db = self._db()
+        vehicle = vehicle_key(sn)
+        plan = root(db, vehicle)
+        rows = dict(
+            db.execute(
+                "SELECT key,value FROM meta WHERE key IN (?,?,?,?,?)",
+                (
+                    f"history_last_success:{vehicle}",
+                    f"history_last_commit:{vehicle}",
+                    "preservation_budget",
+                    f"history_paused:{vehicle}",
+                    f"history_requested:{vehicle}",
+                ),
             )
-            success = rows.get(f"history_last_success:{vehicle}")
-            committed = rows.get(f"history_last_commit:{vehicle}")
-            successes = [stamp(value) for value in (success, committed) if value]
-            budget = rows.get("preservation_budget")
-            return HistoryEvidence(
-                plan,
-                summary(db, vehicle, plan.plan_id) if plan else None,
-                active(db, vehicle),
-                max(successes) if successes else None,
-                datetime.fromtimestamp(float(budget), UTC) if budget else None,
-                rows.get(f"history_paused:{vehicle}") == "1",
-                rows.get(f"history_requested:{vehicle}") == "1",
-                stamp(success) if success else None,
-                db.execute(
-                    "SELECT count(DISTINCT month) FROM history_months WHERE vehicle=?"
-                    " AND verified=1 AND pages>1 AND total=known",
-                    (vehicle,),
-                ).fetchone()[0],
-                gap_coverage(db, vehicle, plan.plan_id)[0] if plan else None,
-            )
+        )
+        success = rows.get(f"history_last_success:{vehicle}")
+        committed = rows.get(f"history_last_commit:{vehicle}")
+        successes = [stamp(value) for value in (success, committed) if value]
+        budget = rows.get("preservation_budget")
+        return HistoryEvidence(
+            plan,
+            summary(db, vehicle, plan.plan_id) if plan else None,
+            active(db, vehicle),
+            max(successes) if successes else None,
+            datetime.fromtimestamp(float(budget), UTC) if budget else None,
+            rows.get(f"history_paused:{vehicle}") == "1",
+            rows.get(f"history_requested:{vehicle}") == "1",
+            stamp(success) if success else None,
+            db.execute(
+                "SELECT count(DISTINCT month) FROM history_months WHERE vehicle=?"
+                " AND verified=1 AND pages>1 AND total=known",
+                (vehicle,),
+            ).fetchone()[0],
+            gap_coverage(db, vehicle, plan.plan_id)[0] if plan else None,
+        )
 
-        return await self._run(read, guard=guard)
+    async def async_history_evidence(
+        self, sn: str, *, guard: Callable[[], bool]
+    ) -> HistoryEvidence:
+        return await self._run(lambda: self._history_evidence(sn), guard=guard)
+
+    async def async_history_progress(
+        self, sn: str, *, guard: Callable[[], bool]
+    ) -> tuple[AuditPlan | None, HistoryEvidence]:
+        """One actor snapshot for the progress consumers; no payload decoding."""
+        from .archive_audit import get
+
+        return await self._run(
+            lambda: (get(self._db(), vehicle_key(sn)), self._history_evidence(sn)), guard=guard
+        )
 
     async def async_history_health(self, sn: str, plan_id: str) -> HistoryHealth:
         from .detail_health import summary

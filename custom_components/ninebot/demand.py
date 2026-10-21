@@ -58,13 +58,11 @@ def entity_context(vehicle: str, platform: str, key: str, group: str) -> Consume
         if (
             key.startswith("yesterday_")
             or key.startswith("today_ride_")
-            or key == "today_energy_intensity"
+            or key in {"today_mileage", "today_energy_intensity"}
         ):
             need = Need.DAY
         else:
-            need = (
-                Need.MONTH if key.startswith("month_") or key == "today_mileage" else Need.LAST_RIDE
-            )
+            need = Need.MONTH if key.startswith("month_") else Need.LAST_RIDE
     elif group == "status":
         need = Need.STATUS
     elif group == "battery":

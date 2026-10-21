@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0rc4
+
+- Include the polling-profile migration and seat-unlock confirmation message fixes from PR #152.
+- Drain owned resource work through repeated cancellation before releasing sessions, files or processes.
+- Continue independent account-setting cleanup after a store failure and report actionable storage Repairs.
+- Confirm rated-parameter writes, retain failed edits for retry and preserve newer changes during an in-flight save.
+- Repair today-mileage demand when other daily sensors are disabled; remove its unused duplicate calculation path.
+- Read historical progress in one actor snapshot and reuse unaffected vehicles’ summary views and caches.
+- Refresh field evidence, translated options, installation guides and candidate-validation reuse.
+
 ## v2.0.0rc3
 
 - Drain cancelled import and migration file work before releasing temporary directories, including repeated cancellation.

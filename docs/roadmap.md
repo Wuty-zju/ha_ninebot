@@ -4,6 +4,16 @@
 
 Current scope and next priorities for the 2.0 series. Usage and data contracts are maintained in the guides.
 
+## Added in 2.0.0rc4
+
+- Shared repeated-cancellation draining and independent account-store cleanup.
+- Acknowledged battery-parameter writes with retryable failure and Repairs.
+- Today-mileage DAY demand and removal of its unused duplicate path.
+- One progress snapshot per vehicle and reuse of unaffected vehicle projections.
+- Current field evidence, translated polling help and bounded validation reuse.
+
+rc4收紧资源生命周期与保存确认，补齐今日里程依赖，减少进度和逐车投影的重复读取；PR152的档位与座桶提示修正一并交付。
+
 ## Available in 2.0.0rc1
 
 - Account-isolated login/reauth, demand-aware realtime data, native vehicle/seat locks with bounded readback.
