@@ -108,7 +108,11 @@ Versions use `2.0.0a1`, `2.0.0b1`, `2.0.0rc1` and `2.0.0`; tags and release titl
 
 ### Packaged publication workflow
 
-Run **Publish packaged release** from `main`, providing channel (`preview`, `candidate` or `stable`), version, source branch, full candidate SHA and bilingual notes. `publish=false` prepares artifacts for inspection; `publish=true` creates a draft, verifies its assets, then publishes it. The candidate must pass Core lint, Release policy, Documentation, HACS and Hassfest. The maintained workflow reads candidate Git objects and checks the source tip again before publication.
+Run **Publish packaged release** from `main`, providing channel (`preview`, `candidate` or `stable`), version, source branch, full candidate SHA and bilingual notes. RC and stable publication also requires the ID of a successful full **Checks** dispatch. `publish=false` prepares artifacts for inspection; `publish=true` creates a draft, verifies its assets, then publishes it. The candidate must pass Core lint, Release policy, Documentation, HACS and Hassfest. The maintained workflow reads candidate Git objects and checks the source tip again before publication.
+
+The publisher verifies the selected run belongs to this repository, ran the maintained Checks workflow, completed both pinned HA suites and the frontend tests, and used identical runtime/test/CI/dependency Git inputs. Its run ID, source SHA and input digest are included in the publication report. Selected Runtime regressions cannot stand in for this evidence.
+
+Normal `dev` → `main` and `main` → `dev` promotions can reuse a successful full dispatch with matching Git inputs. If no matching evidence is available, the existing regression plan runs. Lint, documentation, HACS, Hassfest and source-tip gates still run for the promoted SHA. History browser/profile workflows also support explicit manual dispatch for changes to their own commands or dependencies.
 
 The archive contains the contents of `custom_components/ninebot` at its root. Verify the downloaded ZIP/checksum against the tagged tree. GitHub downloads count this asset, including updates and repeat downloads. Published tags and package assets remain fixed. Editing a release description does not require a new version: preserve its opening format, title/tag, distribution flags and assets, and keep the substantive release overview in [the version history](releases/2.0.md).
 
@@ -124,11 +128,11 @@ Promote long-lived branches with normal merges, then merge `main` back into `dev
 Run the read-only preflight after fetching branches/tags:
 
 ```sh
-python scripts/check_release.py --channel preview --version 2.0.0rc2 \
+python scripts/check_release.py --channel preview --version 2.0.0rcN \
   --source dev --sha REPLACE_WITH_REVIEWED_FULL_SHA
 ```
 
-Preview publication accepts `dev` or the matching release branch and sets `prerelease=true`. Stable publication uses an unsuffixed version from `main`. The explicit `candidate` channel accepts only an `rc` version from `main` and publishes it as a regular Release with **Latest**, as selected for v2.0.0rc1. The RC suffix identifies the candidate stage; the GitHub flag controls distribution. See [GitHub release API](https://docs.github.com/en/rest/releases/releases#create-a-release).
+Preview publication accepts `dev` or the matching release branch and sets `prerelease=true`. Stable publication uses an unsuffixed version from `main`. The explicit `candidate` channel accepts only an `rc` version from `main` and publishes it as a regular Release with **Latest**, as selected for v2.0.0rc1 and later explicitly promoted for v2.0.0rc2. The RC suffix identifies the candidate stage; the GitHub flag controls distribution. See [GitHub release API](https://docs.github.com/en/rest/releases/releases#create-a-release).
 
 Code rollback and persisted-schema recovery are separate operations. Follow the [migration guide](migration.md#archive-schema-and-rollback) with a matching backup.
 
