@@ -1796,3 +1796,15 @@ async def test_boost_failure_backoff_uses_the_base_group_policy(coordinator):
         assert co._next_attempt[("synthetic-one", "battery")] == 130
         co._attempt_finished("synthetic-one", "battery", 130, 15, False)
         assert co._next_attempt[("synthetic-one", "battery")] == 190
+
+
+async def test_normal_refresh_observes_its_admitted_status_result(coordinator):
+    co = coordinator
+    clock = independent_clock(co)
+    await co._async_update_data()
+    co.realtime.running = True
+    clock[0] += 60
+    co.client.async_get_status.return_value = {"dump_energy": 47}
+    data = await co._async_update_data()
+    assert data["synthetic-one"].status.battery == 47
+    assert data["synthetic-two"].status.battery == 47

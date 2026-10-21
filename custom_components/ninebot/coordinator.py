@@ -1421,6 +1421,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 # Periodic rounds share the dispatcher and its admission budget.
                 # Bootstrap and explicit manual/control reads keep their own paths.
                 self.realtime.dispatch()
+                # Native refresh waits for admitted work while the independent
+                # timer remains free to dispatch other due groups.
+                if jobs := tuple(self.realtime.jobs.values()):
+                    await asyncio.gather(*(asyncio.shield(job) for job in jobs))
                 try:
                     if self.background_ready():
                         await self.daily_sync.async_step(dt_util.utcnow())
