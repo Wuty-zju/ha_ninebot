@@ -2,16 +2,16 @@
 
 [English overview](../README.md) · [中文首页](../README_zh.md)
 
-Documentation for **2.0.0rc1**. Start with setup, then enable the history features you need. Select a release tag to read documentation matching an older installation. Version-by-version changes are in [CHANGELOG](../CHANGELOG.md).
+Documentation for the **2.0 integration**. Start with setup, then enable the history features you need. Select a release tag to read documentation matching an older installation. Version-by-version changes are in [CHANGELOG](../CHANGELOG.md).
 
 | Task | English | 简体中文 |
 |---|---|---|
 | Install, add accounts, entities/options and troubleshoot | [Everyday guide](guide.md) | [安装与日常使用](guide_zh.md) |
 | Synchronize, browse maps/trips, calendar, statistics and recovery | [History and maps](history.md) | [历史行程与地图](history_zh.md) |
-| Upgrade, entity IDs and rollback | [Migration and rc3 upgrade](migration.md) | [升级与迁移](migration_zh.md) |
+| Upgrade, entity IDs and rollback | [Migration guide](migration.md) | [升级与迁移](migration_zh.md) |
 | Architecture, data lifecycle, security and dependencies | [Architecture](architecture.md) | 英文正文含简中摘要 |
 | Source/test routing and efficient development | [Development](development.md) | 英文正文含简中摘要 |
-| 2.0 beta-to-RC milestones and design decisions | [Development overview](releases/2.0.md) | 同页折叠简中 |
+| 2.0 beta, RC and stable milestones and design decisions | [Development overview](releases/2.0.md) | 同页折叠简中 |
 | Delivered capabilities and future directions | [Roadmap](roadmap.md) | 同页双语 |
 
 New coding agents start with [AGENTS](../AGENTS.md), the relevant guide and the task table in [Development](development.md). The task table links directly to the relevant modules and offline tests.

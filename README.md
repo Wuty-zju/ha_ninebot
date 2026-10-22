@@ -14,7 +14,7 @@ English · [简体中文](README_zh.md)
 
 Monitor your Ninebot's battery, charging and vehicle status. Keep ride records and detailed GPS tracks in your own Home Assistant storage, query them from automations, and use native calendars and statistics alongside everyday vehicle entities.
 
-> **Current release candidate: [v2.0.0rc4](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0rc4).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
+> **Stable release: [v2.0.0](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0).** Live updates need internet access; saved rides are available locally. Map visualization and custom cards are early alpha.
 
 ## What you can do
 
@@ -31,7 +31,7 @@ Monitor your Ninebot's battery, charging and vehicle status. Keep ride records a
 
 Available fields vary by vehicle and cloud reports. Battery health score is a score, not SOH; configured rated energy is a specification, not measured capacity. [Entities, units and availability →](docs/guide.md#entities-and-data)
 
-The fourth release candidate strengthens resource cleanup, account removal and battery-setting persistence. Daily statistics declare their repair dependencies, while history progress and per-vehicle caches avoid duplicate work. Polling profiles and seat-unlock feedback include the latest corrections. Entity identities, control timing and schema 7 archives carry forward.
+Version 2.0 brings together 107 betas and four release candidates: isolated accounts, adaptive live updates, native controls and a portable account-owned ride archive. Incremental acquisition, source verification and quality-aware track retention support long-term local history. The stable release carries forward the entity identities, control timing and schema 7 archive validated in rc4. [Development history →](docs/releases/2.0.md)
 
 ## Installation
 
@@ -48,7 +48,7 @@ ARMv7/32-bit platforms are unsupported. [Requirements and platform details →](
 
 1. Open **HACS → ⋮ → Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with category **Integration**.
-3. Open **Ninebot**, select **v2.0.0rc4**, enable pre-releases if needed, and download it.
+3. Open **Ninebot**, select **v2.0.0**, and download it.
 4. Restart Home Assistant when prompted.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -64,6 +64,8 @@ Download `ninebot.zip` from the chosen [packaged release](https://github.com/Wut
 Runtime code, translations and bundled resources live in that directory. HA installs the declared dependencies; no separate daemon or dashboard repository is required.
 
 The Downloads badge counts `ninebot.zip` downloads across releases, including updates and repeat downloads. It does not represent unique installations or historical source-archive downloads.
+
+HACS may display the download count for its selected release asset; that figure differs from the badge's cumulative package count.
 
 ### Upgrading from 1.x
 

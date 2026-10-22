@@ -11,7 +11,7 @@
 
 The current connection has been verified against the Chinese App service; additional service regions require validation.
 
-The current 2.0 release candidate is **v2.0.0rc4**. Back up your Home Assistant configuration and private storage before upgrading.
+The current stable release is **v2.0.0**. Back up your Home Assistant configuration and private storage before upgrading.
 
 ### Update speed
 
@@ -31,7 +31,7 @@ Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject 
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with type **Integration**.
-3. Open **Ninebot**, choose **v2.0.0rc4**, enable pre-releases if needed, and download it.
+3. Open **Ninebot**, choose **v2.0.0**, and download it.
 4. Restart Home Assistant when prompted. A downloaded file version alone does not mean the running integration has loaded it.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 

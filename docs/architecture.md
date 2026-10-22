@@ -140,10 +140,12 @@ Successful startup consolidation removes verified inactive legacy entry, retired
 
 Initial setup waits for required archive validation and legacy consolidation before creating entities. A first upgrade with several databases can take a few minutes. With the current schema and no remaining sources, setup skips consolidation. Migration-stage progress and reduced first-load latency are follow-up priorities.
 
-简体中文：rc3集中导入后的资料／投影／通知入口，保留实时归属边界；导入和旧库临时作业在取消后排空再清理。账号删除分别处理登录凭据、条目设置和保留的行程档案。备份先恢复全部账号，再隔离清理失败。共享日投影在来源、日期和有效期变化时重新计算，保持原数值和来源语义。
+简体中文：集成集中导入后的资料／投影／通知入口，保留实时归属边界；导入和旧库临时作业在取消后排空再清理。账号删除分别处理登录凭据、条目设置和保留的行程档案。备份先恢复全部账号，再隔离清理失败。共享日投影在来源、日期和有效期变化时重新计算，保持原数值和来源语义。
 
 
-## rc4 reliability boundaries
+<a id="rc4-reliability-boundaries"></a>
+
+## Resource ownership and persistence
 
 Owned file work, session commits, process shutdown and archive closure use a shared cancellation drain. Repeated caller cancellation waits for the owner to finish before resources are released. Account removal attempts independent entry stores even when another store cannot be removed; credential ownership and retained-history rules remain separate.
 
@@ -151,4 +153,4 @@ Rated battery settings acknowledge actual native Store writes, including delayed
 
 Today mileage declares the DAY dependency used by daily-index repair. History progress reads audit and evidence counters in one SQL-actor snapshot per vehicle. Single-vehicle archive updates reuse other vehicles’ immutable month/ride views and day-summary caches. Archive schema 7, entity identities and source/freshness semantics remain stable.
 
-简体中文：rc4统一资源取消排空，账号独立设置清理互不阻断；额定参数以真实落盘结果确认保存，失败保留重试状态。今日里程声明日索引依赖；历史进度合并为一次数据库快照，单车更新复用其他车辆投影及日统计缓存。
+简体中文：统一资源取消排空，账号独立设置清理互不阻断；额定参数以真实落盘结果确认保存，失败保留重试状态。今日里程声明日索引依赖；历史进度合并为一次数据库快照，单车更新复用其他车辆投影及日统计缓存。
