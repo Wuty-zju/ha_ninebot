@@ -2,6 +2,12 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
+## Moving to 2.0.0
+
+The stable release retains rc4 entity identities, archive schema 7, polling profiles and control timing. Upgrade the installed files and restart Home Assistant; keep the existing account entry. Moving from rc4 requires no account recreation or history import.
+
+For 1.x and earlier betas, back up the complete configuration and private storage first, then follow the relevant migration sections below. Recognized legacy archives are consolidated after validation. Review any automation or dashboard that names retired entities.
+
 ## rc3 to rc4
 
 rc4 includes the polling-profile and seat-unlock message corrections from PR #152. New accounts and legacy numeric polling settings use Balanced once; an existing valid profile is retained. Seat-unlock confirmation uses a concise seat-specific message.

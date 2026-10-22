@@ -104,7 +104,7 @@ Follow [CONTRIBUTING](../CONTRIBUTING.md#parallel-coding-agents). Give each auth
 
 ## Publication
 
-Versions use `2.0.0a1`, `2.0.0b1`, `2.0.0rc1` and `2.0.0`; tags and release titles add `v`. Every published version has a complete `ninebot.zip` and SHA256 checksum. Release notes use English with an equivalent collapsed Simplified Chinese section.
+Versions use `2.0.0a1`, `2.0.0b1`, `2.0.0rc1` and `2.0.0`; tags and release titles add `v`. Each new release includes a complete `ninebot.zip` and SHA256 checksum. Release notes use English with an equivalent collapsed Simplified Chinese section.
 
 A stable release summarizes the full version cycle and compares against the previous final version. An RC marked as a regular GitHub Release or Latest retains its RC version identity and is excluded from that stable baseline. Preview and candidate notes compare against the preceding published version. Link installation and usage details to the matching README language; keep the development timeline in [the version history](releases/2.0.md).
 
@@ -134,7 +134,7 @@ python scripts/check_release.py --channel preview --version 2.0.0rcN \
   --source dev --sha REPLACE_WITH_REVIEWED_FULL_SHA
 ```
 
-Preview publication accepts `dev` or the matching release branch and sets `prerelease=true`. Stable publication uses an unsuffixed version from `main`. The explicit `candidate` channel accepts only an `rc` version from `main` and publishes it as a regular Release with **Latest**, as selected for v2.0.0rc1 and later explicitly promoted for v2.0.0rc2. The RC suffix identifies the candidate stage; the GitHub flag controls distribution. See [GitHub release API](https://docs.github.com/en/rest/releases/releases#create-a-release).
+Preview publication accepts `dev` or the matching release branch and sets `prerelease=true`. Stable publication uses an unsuffixed version from `main`. The explicit `candidate` channel accepts only an `rc` version from `main` and publishes it as a regular Release with **Latest**, as selected for the 2.0 release candidates. The RC suffix identifies the candidate stage; the GitHub flag controls distribution. See [GitHub release API](https://docs.github.com/en/rest/releases/releases#create-a-release).
 
 Code rollback and persisted-schema recovery are separate operations. Follow the [migration guide](migration.md#archive-schema-and-rollback) with a matching backup.
 

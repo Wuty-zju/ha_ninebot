@@ -11,7 +11,7 @@ Documentation for the **2.0 integration**. Start with setup, then enable the his
 | Upgrade, entity IDs and rollback | [Migration guide](migration.md) | [升级与迁移](migration_zh.md) |
 | Architecture, data lifecycle, security and dependencies | [Architecture](architecture.md) | 英文正文含简中摘要 |
 | Source/test routing and efficient development | [Development](development.md) | 英文正文含简中摘要 |
-| 2.0 beta-to-RC milestones and design decisions | [Development overview](releases/2.0.md) | 同页折叠简中 |
+| 2.0 beta, RC and stable milestones and design decisions | [Development overview](releases/2.0.md) | 同页折叠简中 |
 | Delivered capabilities and future directions | [Roadmap](roadmap.md) | 同页双语 |
 
 New coding agents start with [AGENTS](../AGENTS.md), the relevant guide and the task table in [Development](development.md). The task table links directly to the relevant modules and offline tests.
