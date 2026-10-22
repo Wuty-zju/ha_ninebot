@@ -352,6 +352,30 @@ class PackageAndPublication(unittest.TestCase):
             with self.assertRaises(ValueError):
                 release_body("o/r", "v2.0.0b95", "preview", [], en, zh, upgrade)
 
+    def test_stable_changelog_excludes_promoted_preview_versions(self):
+        catalog = [
+            {"tag_name": tag, "draft": False, "prerelease": False}
+            for tag in ("v1.2.0", "v2.0.0a1", "v2.0.0b106", "v2.0.0rc4", "v2.1.0")
+        ]
+        catalog.append({"tag_name": "v1.9.0", "draft": True, "prerelease": False})
+        stable = release_body("o/r", "v2.0.0", "stable", catalog, "- Change", "- 更新")
+        self.assertIn("v1.2.0...v2.0.0", stable)
+        for channel, tag, previous in (
+            ("candidate", "v2.0.0rc5", "v2.0.0rc4"),
+            ("preview", "v2.0.0b107", "v2.0.0b106"),
+        ):
+            with self.subTest(channel=channel):
+                body = release_body("o/r", tag, channel, catalog, "- Change", "- 更新")
+                self.assertIn(f"{previous}...{tag}", body)
+        catalog.append({"tag_name": "v2.0.0", "draft": False, "prerelease": False})
+        patch = release_body("o/r", "v2.0.1", "stable", catalog, "- Change", "- 更新")
+        self.assertIn("v2.0.0...v2.0.1", patch)
+
+    def test_first_stable_changelog_does_not_use_an_rc(self):
+        catalog = [{"tag_name": "v2.0.0rc4", "draft": False, "prerelease": False}]
+        body = release_body("o/r", "v2.0.0", "stable", catalog, "- Change", "- 更新")
+        self.assertNotIn("Full Changelog", body)
+
     def test_full_validation_reuses_docs_but_rejects_changed_runtime(self):
         evidence = verify_full_run(self.api, self.repo, self.sha, 42)
         before = self.sha

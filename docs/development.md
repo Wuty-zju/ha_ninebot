@@ -106,6 +106,8 @@ Follow [CONTRIBUTING](../CONTRIBUTING.md#parallel-coding-agents). Give each auth
 
 Versions use `2.0.0a1`, `2.0.0b1`, `2.0.0rc1` and `2.0.0`; tags and release titles add `v`. Every published version has a complete `ninebot.zip` and SHA256 checksum. Release notes use English with an equivalent collapsed Simplified Chinese section.
 
+A stable release summarizes the full version cycle and compares against the previous final version. An RC marked as a regular GitHub Release or Latest retains its RC version identity and is excluded from that stable baseline. Preview and candidate notes compare against the preceding published version. Link installation and usage details to the matching README language; keep the development timeline in [the version history](releases/2.0.md).
+
 ### Packaged publication workflow
 
 Run **Publish packaged release** from `main`, providing channel (`preview`, `candidate` or `stable`), version, source branch, full candidate SHA and bilingual notes. RC and stable publication also requires the ID of a successful full **Checks** dispatch. `publish=false` prepares artifacts for inspection; `publish=true` creates a draft, verifies its assets, then publishes it. The candidate must pass Core lint, Release policy, Documentation, HACS and Hassfest. The maintained workflow reads candidate Git objects and checks the source tip again before publication.

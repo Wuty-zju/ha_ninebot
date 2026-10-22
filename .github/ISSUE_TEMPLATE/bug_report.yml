@@ -9,7 +9,7 @@ body:
     id: versions
     attributes:
       label: Integration and Home Assistant versions / 版本
-      placeholder: "2.0.0rc1; HA 2026.10.2"
+      placeholder: "Integration version; Home Assistant version"
     validations:
       required: true
   - type: dropdown

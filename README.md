@@ -65,6 +65,8 @@ Runtime code, translations and bundled resources live in that directory. HA inst
 
 The Downloads badge counts `ninebot.zip` downloads across releases, including updates and repeat downloads. It does not represent unique installations or historical source-archive downloads.
 
+HACS may display the download count for its selected release asset; that figure differs from the badge's cumulative package count.
+
 ### Upgrading from 1.x
 
 2.0 rebuilds authentication, entity management and history storage. Back up your HA configuration, storage and database, then follow the [migration guide](docs/migration.md). Entity-ID and Lock-platform migrations can require automation/dashboard updates. Storage rollback requires the matching pre-upgrade backup.

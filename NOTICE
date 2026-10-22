@@ -1,9 +1,14 @@
 Ninebot / Segway trademarks and vehicle images belong to their respective owners.
 This integration is not affiliated with or supported by Ninebot / Segway.
 
-The v2 Python implementation is independently written in this repository.
+The Home Assistant integration is developed in this repository.
 Wuty-zju/ninebot informed protocol/field behavior and migration compatibility;
 its Python implementation has not been copied into the v2 integration.
+
+The runtime historical-query cryptography is adapted from kxn/ninebot-recon
+a46124d (MIT, copyright 2026 kxn). Source provenance and changes are recorded in
+custom_components/ninebot/licenses/SOURCES.json; the complete MIT notice is in
+custom_components/ninebot/licenses/ninebot-recon-MIT.txt.
 
 Runtime dependency: ninecli 0.1.7, an unofficial App protocol client.
 Its PyPI metadata declares MIT. The audited wheel has no standalone license
