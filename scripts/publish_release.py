@@ -123,11 +123,15 @@ def release_body(
     ):
         raise ValueError("Release notes contain private paths or unsupported sections")
     current = version_key(tag)
-    older = [
-        (version_key(r["tag_name"]), r["tag_name"])
-        for r in catalog
-        if not r["draft"] and (channel in {"preview", "candidate"} or not r["prerelease"])
-    ]
+    older = []
+    for release in catalog:
+        key = version_key(release["tag_name"])
+        if release["draft"] or key is None:
+            continue
+        # An RC promoted to GitHub Latest still has a prerelease version suffix.
+        if channel == "stable" and (release["prerelease"] or key[3] != 3):
+            continue
+        older.append((key, release["tag_name"]))
     previous = max(
         (pair for pair in older if pair[0] is not None and pair[0] < current), default=None
     )

@@ -1,49 +1,26 @@
 # Roadmap / 开发方向
 
-[Documentation](README.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases)
+[Documentation](README.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [2.0 development history](releases/2.0.md)
 
-Current scope and next priorities for the 2.0 series. Usage and data contracts are maintained in the guides.
+Current scope and next priorities for the 2.0 series. Usage and data contracts are maintained in the guides; beta and RC milestones belong in the development history.
 
-## Added in 2.0.0rc4
+<a id="added-in-200rc4"></a>
+<a id="available-in-200rc1"></a>
+<a id="added-in-200rc3"></a>
+<a id="added-in-200rc2"></a>
 
-- Shared repeated-cancellation draining and independent account-store cleanup.
-- Acknowledged battery-parameter writes with retryable failure and Repairs.
-- Today-mileage DAY demand and removal of its unused duplicate path.
-- One progress snapshot per vehicle and reuse of unaffected vehicle projections.
-- Current field evidence, translated polling help and bounded validation reuse.
+## Available in 2.0.0
 
-rc4收紧资源生命周期与保存确认，补齐今日里程依赖，减少进度和逐车投影的重复读取；PR152的档位与座桶提示修正一并交付。
+| Area | Delivered capability |
+|---|---|
+| Accounts and entities | Isolated login/reauth, stable account/vehicle identity, translated native entities and configurable battery specifications. |
+| Live updates and controls | Five adaptive profiles, shared reads, bounded activity boosts, discovery recovery, native vehicle/seat locks and replaceable confirmation observers. |
+| Ride summaries | Month/today/yesterday/latest periods, daily-index repair, semantic events, optional calendars and historical query/statistics Actions. |
+| Historical acquisition | Resumable month/page discovery, missing-detail updates, fair budgets, checkpoints and independent coverage scopes. |
+| Archive and recovery | Account-owned schema 7 SQLite, source evidence, better-track protection, same-account reconnection, scoped export/import, backup hooks and bounded integrity repair. |
+| Runtime reliability | Cancellation-safe resource ownership, acknowledged parameter writes, independent cleanup and reused local projections. |
 
-## Available in 2.0.0rc1
-
-- Account-isolated login/reauth, demand-aware realtime data, native vehicle/seat locks with bounded readback.
-- Vehicle/battery/range/location entities, calendars, trip/vehicle events and historical query/statistics Actions.
-- Resumable first discovery and incremental history, private SQLite evidence, quality-preserving tracks, quotas, verification and supported local recovery.
-- Account-owned archives, same-account reconnection, validated multi-account/vehicle export and import, schema 7 source consolidation.
-- Scoped local continuation versions, in-flight read sharing, discovery recovery and day-boundary statistics retention.
-
-已具备：多账号、实时实体/锁反馈、日历/统计/查询、可续接的历史行程/详情/精细GPS同步与私有归档、较好轨迹保护及有界校验恢复。
-
-## Added in 2.0.0rc3
-
-- Cancellation-safe import/migration cleanup and explicit removed-entry credential ownership.
-- Consistent rate-limit policy and isolated backup cleanup across accounts.
-- Shared daily statistics projections and single-pass month restoration.
-- Public import projection notifications and explicit broker-owned platform concurrency.
-- Full-validation provenance, matching-input promotion reuse and shared-ancestor CI selection.
-
-rc3完善导入／迁移取消清理、账号凭据回收、限流及跨账号备份收尾；共享日投影、减少重复月解析，并明确导入通知和平台并发边界。发布核验完整检查来源与输入摘要，提升时复用有效结果。外部统计 ID 的兼容迁移保留为独立后续设计。
-
-
-## Added in 2.0.0rc2
-
-- Independent monotonic status, battery, travel and profile scheduling, with per-group freshness and retry deadlines.
-- Five native update-speed profiles, bounded charging/activity/stop boosts and shared periodic admission. Custom intervals stay until explicitly changed.
-- Polling-only configuration updates keep the running session and archive; unchanged saves avoid a reload.
-- Cancellation-safe export resources, completed archive-worker shutdown, immediate discovery publication and synchronous explicit refresh completion.
-- Centralized CI selection/pins and one candidate documentation gate, with focused checks during development.
-
-rc2新增：逐车逐组单调时钟调度、五档原生配置、有界场景加速、旧值保留及配置差异热更新；完善导出／线程清理和发现／手动刷新边界，统一选测和发布门槛。
+2.0 已交付独立账号与原生实体、五档自适应更新、控制确认、日／月／最近行程统计、事件与可选日历、可续接的历史同步、账号数据库、导入导出及有界校验恢复。正式版延续 rc4 的业务行为；完整 beta／RC 演进见[开发回顾](releases/2.0.md#简体中文)。
 
 ## Early alpha: visualization and cards
 
@@ -55,15 +32,16 @@ Map visualization, UI interactions and custom cards are **early alpha**. Next wo
 
 | Direction | Value | Gate |
 |---|---|---|
-| More intuitive history workspace | Clearer coverage/sync feedback; optional linked map/list/summary/chart cards | Shared selection/permissions without duplicate cloud reads or private-cache leaks. |
+| More intuitive history workspace | Clearer coverage/sync feedback; optional linked map/list/summary/chart cards | Shared selection and permissions without duplicate cloud reads or private-cache leaks. |
 | More vehicle and battery fields | Useful native HA representation across models/packs | Reviewed fixtures, units/enums, stable identity and meaningful state semantics. |
 | Archive/read efficiency | Migration progress, faster startup, clearer whole-archive/baseline coverage and bounded reads | Reproducible measurements; preserve integrity, better geometry and rollback. |
-| Documentation and distribution | English/Chinese onboarding, documented data contracts, HACS readiness | Accurate support matrix, attribution, valid packaging and explicit submission approval. |
+| Statistics continuity | Account-owned external statistic identity across removal/re-addition | Explicit metadata migration, duplicate-series checks and historical continuity. |
+| Documentation and distribution | English/Chinese onboarding, HACS readiness and complete package-count aggregation | Accurate support statements, attribution, paginated asset counts and explicit submission approval. |
 
-下一步候选：更直观的历史/同步反馈、按需拆分联动卡片、更多已取证实体/车型/电池能力、基于实测的存储读取优化，以及双语说明/HACS 准备。避免重复请求和实体身份变化。
+后续按收益和证据推进历史交互、已取证字段、启动／存储效率、外部统计身份连续性与分发维护；每项独立评估，保持实体身份和历史完整性，避免重复请求。
 
 ## Research, not committed features
 
 Spatial indexing/geometry levels of detail, richer verified point metrics and an independently auditable replacement protocol backend may be evaluated when evidence justifies maintenance cost. Energy recovery, unknown sample units/CRS, cloud retention boundaries and model-specific telemetry require evidence. Synthetic estimates will not be presented as confirmed official measurements.
 
-研究项：空间索引/分级几何、可验证的逐点指标和可替换协议实现；先证据后模型，不把未知单位/坐标、回收里程或经验估计包装成官方事实。
+研究项：空间索引／分级几何、可验证的逐点指标和可替换协议实现；先证据后模型，保留未知单位／坐标、回收里程和经验估计的来源与不确定性。

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0
+
+- Complete the 2.0 refactor across 107 betas and four release candidates, with independent accounts, coordinated live data and native Home Assistant representations.
+- Provide five adaptive polling profiles, bounded control confirmation and recovery from incomplete vehicle discovery.
+- Combine period summaries, semantic events, optional calendars, response Actions and verified long-term statistics imports.
+- Preserve ride details and better GPS geometry through incremental acquisition, restart checkpoints, coverage checks and local recovery.
+- Store account-owned schema 7 archives with retained history, same-account reconnection and validated scoped export/import.
+- Carry forward rc4 runtime behavior, entity identities, archive schema and dependency pins.
+- Consolidate bilingual guides and the [2.0 development history](docs/releases/2.0.md); clarify package download counts and third-party attribution.
+- Compare stable changes against the previous final version even when an RC was promoted to GitHub Latest.
+
 ## 2.0.0rc4
 
 - Include the polling-profile migration and seat-unlock confirmation message fixes from PR #152.
