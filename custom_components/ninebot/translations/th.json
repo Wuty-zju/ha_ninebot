@@ -50,7 +50,7 @@
           "enable_estimation": "ตั้งค่าพิกัดแบตเตอรี่",
           "enable_coordinates": "แสดงตำแหน่งรถ",
           "enable_calendar": "ประวัติการเดินทาง (Beta)",
-          "debug_mode": "โหมดดีบัก"
+          "debug_mode": "แสดงเอนทิตีการวินิจฉัย"
         },
         "data_description": {
           "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
@@ -107,7 +107,7 @@
           "history_storage_mib": "ขีดจำกัดพื้นที่เก็บประวัติ (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "debug_mode": "โหมดดีบัก"
+          "debug_mode": "แสดงเอนทิตีการวินิจฉัย"
         },
         "data_description": {
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",

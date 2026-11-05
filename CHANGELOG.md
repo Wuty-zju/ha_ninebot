@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1b1
+
+- Add native sign-in failure logs with a per-attempt support identifier and reviewed local stage, endpoint and proxy error metadata.
+- Keep authentication errors distinct from unclassified service failures, without logging credentials or upstream response text.
+- Export basic diagnostics when account setup has failed or its runtime is unloaded, including when the backend package is unavailable.
+- Clarify the diagnostic-entity display option and document native debug logging before an account exists.
+
 ## 2.0.0
 
 - Complete the 2.0 refactor across 107 betas and four release candidates, with independent accounts, coordinated live data and native Home Assistant representations.

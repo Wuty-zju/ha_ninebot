@@ -50,7 +50,7 @@
           "enable_estimation": "निर्धारित मान सेट करें",
           "enable_coordinates": "वाहन का स्थान दिखाएँ",
           "enable_calendar": "यात्राएँ (Beta)",
-          "debug_mode": "डिबग मोड"
+          "debug_mode": "निदान एंटिटी दिखाएँ"
         },
         "data_description": {
           "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
@@ -107,7 +107,7 @@
           "history_storage_mib": "इतिहास भंडारण सीमा (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "debug_mode": "डिबग मोड"
+          "debug_mode": "निदान एंटिटी दिखाएँ"
         },
         "data_description": {
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",

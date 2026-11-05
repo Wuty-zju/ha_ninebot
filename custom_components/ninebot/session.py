@@ -20,7 +20,7 @@ from .account import AccountDisplay
 from .adapters import profiles, text
 from .async_utils import async_drain
 from .client import NinecliClient
-from .exceptions import ErrorKind, NinebotError
+from .exceptions import ErrorKind, FailurePhase, NinebotError
 
 type ClientFactory = Callable[[Path, aiohttp.ClientSession], NinecliClient]
 
@@ -283,17 +283,26 @@ class SessionManager:
                 directory = task.result()
                 await finish_io(lambda: shutil.rmtree(directory, True))
             raise
+        except NinebotError as err:
+            err.at_phase(FailurePhase.SESSION_PREPARE)
+            raise
         client = None
+        phase = FailurePhase.AUTH_LOGIN
         try:
             client = self._factory(directory, self._session)
             await client.async_login(account, password)
+            phase = FailurePhase.ACCOUNT_IDENTITY
             display = await self._account_display(client)
+            phase = FailurePhase.VEHICLES
             vehicles = profiles(await client.async_list_vehicles())
+            phase = FailurePhase.ACCOUNT_IDENTITY
             uid = await finish_io(lambda: session_uid(directory))
             await client.async_close()
             await finish_io(lambda: secure_files(directory))
             return Candidate(directory, uid, display, tuple(vehicle.sn for vehicle in vehicles))
-        except BaseException:
+        except BaseException as err:
+            if isinstance(err, NinebotError):
+                err.at_phase(phase)
             try:
                 if client is not None:
                     await client.async_close()

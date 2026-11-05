@@ -50,7 +50,7 @@
           "enable_estimation": "Atur parameter nominal",
           "enable_coordinates": "Tampilkan lokasi kendaraan",
           "enable_calendar": "Perjalanan (Beta)",
-          "debug_mode": "Mode debug"
+          "debug_mode": "Tampilkan entitas diagnostik"
         },
         "data_description": {
           "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
@@ -107,7 +107,7 @@
           "history_storage_mib": "Batas penyimpanan riwayat (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "debug_mode": "Mode debug"
+          "debug_mode": "Tampilkan entitas diagnostik"
         },
         "data_description": {
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",

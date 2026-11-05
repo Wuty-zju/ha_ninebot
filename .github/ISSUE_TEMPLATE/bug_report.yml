@@ -17,6 +17,7 @@ body:
     attributes:
       label: Installation / 安装方式
       options:
+        - Home Assistant Marketplace
         - HACS custom repository
         - Manual
     validations:
@@ -32,7 +33,7 @@ body:
     id: evidence
     attributes:
       label: Reviewed logs or diagnostics / 已检查的日志或诊断
-      description: Optional small relevant excerpt. Remove credentials, identities, addresses and coordinates; never attach the raw archive.
+      description: For sign-in failures, include the support identifier, form error, App service region if known and input type (phone/email/username), without the actual account. See the guide for logging before an account exists. Optional small relevant excerpt. Remove credentials, identities, addresses and coordinates; never attach the raw archive.
       render: text
   - type: checkboxes
     id: privacy

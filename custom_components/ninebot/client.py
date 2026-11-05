@@ -24,13 +24,13 @@ import aiohttp
 from .adapters import profiles
 from .async_utils import async_drain
 from .const import CLI_TIMEOUT, MAX_RESPONSE_BYTES
-from .exceptions import ErrorKind, NinebotAuthError, NinebotError
+from .exceptions import Endpoint, ErrorKind, FailurePhase, NinebotAuthError, NinebotError
 from .http_policy import rate_limit_delay
 from .http_policy import retry_after_seconds as retry_after_seconds
 from .vehicle_cache import cache_io, read_cache, reconcile_cache, restore_cache
 
 
-def response_data(status: int, raw: object) -> Any:
+def _response_data(status: int, raw: object) -> Any:
     """Interpret the proxy envelope without exporting raw upstream errors."""
     if not isinstance(raw, dict) or not isinstance(raw.get("ok"), bool):
         raise NinebotError(ErrorKind.PROTOCOL)
@@ -50,6 +50,42 @@ def response_data(status: int, raw: object) -> Any:
     if status == 400:
         raise NinebotError(ErrorKind.PROTOCOL)
     raise NinebotError(ErrorKind.SERVICE, retryable=500 <= status <= 599)
+
+
+def response_data(status: int, raw: object) -> Any:
+    """Keep only reviewed proxy metadata when the response is rejected."""
+    try:
+        return _response_data(status, raw)
+    except NinebotError as err:
+        err.observe_response(status, raw)
+        raise
+
+
+def request_endpoint(path: str) -> Endpoint:
+    """Classify internal routes without exporting any part of their identifiers."""
+    fixed = {
+        "/auth/login": Endpoint.AUTH_LOGIN,
+        "/auth/refresh": Endpoint.REFRESH,
+        "/whoami": Endpoint.ACCOUNT,
+        "/vehicles": Endpoint.VEHICLES,
+    }
+    route = path.split("?", 1)[0]
+    if route in fixed:
+        return fixed[route]
+    parts = route.split("/")
+    if len(parts) >= 4 and parts[1] == "vehicles":
+        match parts[3:]:
+            case ["status"]:
+                return Endpoint.STATUS
+            case ["battery"]:
+                return Endpoint.BATTERY
+            case ["travel"]:
+                return Endpoint.TRAVEL
+            case ["travel", _]:
+                return Endpoint.DETAIL
+            case ["bell"] | ["buck"] | ["engine", "start" | "stop"]:
+                return Endpoint.CONTROL
+    return Endpoint.UNKNOWN
 
 
 class NinecliClient:
@@ -92,6 +128,7 @@ class NinecliClient:
         env = self._environment()
         env["NINEBOT_SERVE_TOKEN"] = self._bearer
         env["NINEBOT_SERVE_BIND"] = f"127.0.0.1:{port}"
+        phase = FailurePhase.BACKEND_START
         try:
             self._process = await asyncio.create_subprocess_exec(
                 sys.executable,
@@ -113,6 +150,7 @@ class NinecliClient:
                     if self._process.returncode is not None:
                         raise NinebotError(ErrorKind.PLATFORM)
                     try:
+                        phase = FailurePhase.LOOPBACK_AUTH
                         # Check auth is actually enabled before sending credentials.
                         async with self._session.get(
                             f"{self._base}/vehicles",
@@ -142,8 +180,11 @@ class NinecliClient:
             raise
         except (OSError, TimeoutError):
             await self._stop()
-            raise NinebotError(ErrorKind.PLATFORM) from None
-        except NinebotError:
+            err = NinebotError(ErrorKind.PLATFORM)
+            err.at_phase(phase)
+            raise err from None
+        except NinebotError as err:
+            err.at_phase(phase)
             await self._stop()
             raise
 
@@ -209,6 +250,7 @@ class NinecliClient:
         self, method: str, path: str, body: dict[str, str] | None = None
     ) -> Any:
         """Caller owns the session operation; raw errors never leave this layer."""
+        status = None
         try:
             self._request_ready = False
             await self._start()
@@ -223,6 +265,7 @@ class NinecliClient:
                     timeout=aiohttp.ClientTimeout(total=self._timeout),
                     allow_redirects=False,
                 ) as response:
+                    status = response.status
                     data = bytearray()
                     async for chunk in response.content.iter_chunked(16384):
                         data.extend(chunk)
@@ -243,8 +286,13 @@ class NinecliClient:
                         raise
         except (aiohttp.ClientError, TimeoutError):
             await self._stop()
-            raise NinebotError(ErrorKind.CONNECTION, retryable=True) from None
+            err = NinebotError(ErrorKind.CONNECTION, retryable=True)
+            err.at_endpoint(request_endpoint(path))
+            raise err from None
         except NinebotError as err:
+            err.at_endpoint(request_endpoint(path))
+            if err.context.proxy_http_status is None:
+                err.observe_response(status)
             if err.kind == ErrorKind.PROTOCOL:
                 await self._stop()
             raise
@@ -273,7 +321,11 @@ class NinecliClient:
             except TimeoutError:
                 kind = ErrorKind.CONNECTION if self._request_ready else ErrorKind.PLATFORM
                 await self._stop()
-                raise NinebotError(kind) from None
+                err = NinebotError(kind)
+                err.at_endpoint(request_endpoint(path))
+                if not self._request_ready:
+                    err.at_phase(FailurePhase.BACKEND_START)
+                raise err from None
             raise AssertionError("unreachable request retry")
 
     async def async_login(self, account: str, password: str) -> None:

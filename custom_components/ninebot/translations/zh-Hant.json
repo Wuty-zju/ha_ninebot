@@ -50,7 +50,7 @@
           "enable_estimation": "設定電池額定參數",
           "enable_coordinates": "顯示車輛位置",
           "enable_calendar": "啟用行程日曆（Beta）",
-          "debug_mode": "調試模式"
+          "debug_mode": "顯示診斷實體"
         },
         "data_description": {
           "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
@@ -107,7 +107,7 @@
           "history_storage_mib": "歷史儲存額度（MiB）（Beta）",
           "retain_history_database": "保留本地历史行程信息数据库（Beta）",
           "manage_archive": "导出或导入历史数据库（Beta）",
-          "debug_mode": "調試模式"
+          "debug_mode": "顯示診斷實體"
         },
         "data_description": {
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
