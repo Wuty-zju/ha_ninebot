@@ -513,3 +513,37 @@ async def test_startup_deadline_or_cancellation_reaps_child(tmp_path, cancelled)
     assert client._process is None
     process.wait.assert_awaited()
     assert not client._lock.locked() and client._pending == 0
+
+
+@pytest.mark.parametrize("code", ["PRIVATE-secret", ["PRIVATE-secret"], {"PRIVATE": 1}, 90002])
+def test_failure_context_whitelists_proxy_codes(code):
+    from dataclasses import asdict
+
+    from custom_components.ninebot.exceptions import EnvelopeCode
+
+    with pytest.raises(NinebotError) as caught:
+        response_data(502, {"ok": False, "error": {"code": code, "message": "PRIVATE"}})
+    err = caught.value
+    assert err.kind is ErrorKind.SERVICE
+    assert err.context.proxy_http_status == 502
+    assert err.context.envelope_code is EnvelopeCode.OTHER
+    assert "PRIVATE" not in json.dumps(asdict(err.context))
+
+
+async def test_malformed_response_retains_only_template_and_proxy_status(tmp_path, proxy):
+    from dataclasses import asdict
+
+    from custom_components.ninebot.exceptions import Endpoint
+
+    url, requests, _, _ = proxy
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        client._base = url
+        client._start = AsyncMock()
+        with pytest.raises(NinebotError) as caught:
+            await client.async_get_status("bad")
+        assert caught.value.context.endpoint is Endpoint.STATUS
+        assert caught.value.context.proxy_http_status == 200
+        assert "bad" not in json.dumps(asdict(caught.value.context))
+        assert len(requests) == 1
+        await client.async_close()

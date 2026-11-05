@@ -50,7 +50,7 @@
           "enable_estimation": "设置电池额定参数",
           "enable_coordinates": "显示车辆位置",
           "enable_calendar": "启用行程日历（Beta）",
-          "debug_mode": "调试模式"
+          "debug_mode": "显示诊断实体"
         },
         "data_description": {
           "enable_estimation": "设置电池额定参数，包括电压和容量",
@@ -107,7 +107,7 @@
           "history_storage_mib": "历史存储额度（MiB）（Beta）",
           "retain_history_database": "保留本地历史行程信息数据库（Beta）",
           "manage_archive": "导出或导入历史数据库（Beta）",
-          "debug_mode": "调试模式"
+          "debug_mode": "显示诊断实体"
         },
         "data_description": {
           "debug_mode": "显示有界的当前数据解析视图。可从集成菜单启用调试日志、下载日志和诊断信息。",

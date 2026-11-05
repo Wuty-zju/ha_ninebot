@@ -431,7 +431,8 @@ async def test_daily_sensors_share_atomic_projection_and_validation_decode(hass)
         await stats.async_close()
 
 
-async def test_import_facade_notifies_after_history_only_profiles_are_projected(hass):
+async def test_import_facade_notifies_after_history_only_profiles_are_projected(hass, freezer):
+    freezer.move_to(NOW)
     stats = ArchiveStatistics(hass, "import-view", "synthetic-business")
     notified = []
     try:
@@ -452,9 +453,10 @@ async def test_import_facade_notifies_after_history_only_profiles_are_projected(
         await stats.async_close()
 
 
-async def test_one_vehicle_projection_keeps_other_vehicle_views_and_daily_cache(hass):
+async def test_one_vehicle_projection_keeps_other_vehicle_views_and_daily_cache(hass, freezer):
     from dataclasses import replace
 
+    freezer.move_to(NOW)
     store = ArchiveStatistics(hass, "partitioned-day", "synthetic-owner")
     other = "synthetic-second"
     try:

@@ -1,7 +1,10 @@
 """Explicit credential entry, isolated validation and account-safe reauth."""
 
 import asyncio
+import logging
 import re
+import secrets
+import time
 import uuid
 from typing import Any
 
@@ -49,7 +52,7 @@ from .const import (
     DEFAULT_COORDINATES,
     DOMAIN,
 )
-from .exceptions import ErrorKind, NinebotError
+from .exceptions import ErrorKind, FailurePhase, NinebotError
 from .history_budget import CONF_BUDGET, MAX_BUDGET, MIN_BUDGET, configured_budget
 from .history_capacity import (
     CONF_HISTORY_CAPACITY,
@@ -63,6 +66,8 @@ from .polling_policy import CONF_POLLING_PROFILE, PRESETS, PollingPolicy
 from .preservation import CONF_PRESERVE
 from .services import resolve_vehicle
 from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
+
+_LOGGER = logging.getLogger(__name__)
 
 ERRORS = {
     ErrorKind.AUTH: "invalid_auth",
@@ -120,6 +125,9 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 user_input = None
         if user_input is not None:
             account = str(user_input[CONF_ACCOUNT]).strip()
+            support_id = secrets.token_hex(4)
+            started = time.monotonic()
+            phase = FailurePhase.AUTH_LOGIN
             manager = self._manager()
             key = self._entry.data[CONF_SESSION_KEY] if self._entry else uuid.uuid4().hex
             async with manager.transaction(key):
@@ -140,6 +148,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     candidate = prepared or await manager.async_prepare(
                         account, str(user_input[CONF_PASSWORD])
                     )
+                    phase = FailurePhase.SESSION_COMMIT
                     if self._entry:
                         expected = self._entry.data.get(CONF_BUSINESS_UID)
                         if (expected and candidate.uid != expected) or (
@@ -243,8 +252,29 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     finished = True
                     return result
                 except NinebotError as err:
+                    err.at_phase(phase)
+                    context = err.context
+                    _LOGGER.log(
+                        logging.DEBUG if err.kind is ErrorKind.AUTH else logging.WARNING,
+                        "Account setup failed (support=%s, phase=%s, endpoint=%s, "
+                        "kind=%s, retryable=%s, proxy_http_status=%s, envelope_code=%s, "
+                        "elapsed_ms=%s)",
+                        support_id,
+                        context.phase.value,
+                        context.endpoint.value,
+                        err.kind.value,
+                        err.retryable,
+                        context.proxy_http_status,
+                        context.envelope_code.value if context.envelope_code else None,
+                        min(3_600_000, max(0, int((time.monotonic() - started) * 1000))),
+                    )
                     errors["base"] = ERRORS[err.kind]
                 except OSError:
+                    _LOGGER.warning(
+                        "Account setup could not save the local session (support=%s, phase=%s)",
+                        support_id,
+                        phase.value,
+                    )
                     errors["base"] = "storage_error"
                 finally:
                     if committed and await manager.async_is_pending(key):

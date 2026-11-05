@@ -854,3 +854,16 @@ async def test_polling_only_and_noop_updates_reuse_runtime_and_archive(hass, ent
         hass.config_entries.async_update_entry(entry, data={**entry.data, "display_revision": 2})
         await hass.async_block_till_done()
         reload.assert_awaited_once_with(entry.entry_id)
+
+
+async def test_diagnostics_without_runtime_or_installed_package(hass, entry):
+    from importlib.metadata import PackageNotFoundError
+
+    with patch("custom_components.ninebot.diagnostics.version", side_effect=PackageNotFoundError):
+        result = await async_get_config_entry_diagnostics(hass, entry)
+    assert result["runtime_available"] is False
+    assert result["ninecli_version"] is None
+    assert result["entry_state"] == entry.state.value
+    assert "vehicles" not in result  # Unknown, not an observed empty vehicle list.
+    text = json.dumps(result)
+    assert "fake-account" not in text and "synthetic-business" not in text

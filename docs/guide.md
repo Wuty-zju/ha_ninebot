@@ -57,7 +57,7 @@ Expired credentials use **Reauthenticate**. Reconfigure updates the same account
 
 ## Entities and data
 
-Available fields depend on the vehicle model, permissions and cloud reports. Standard entities are enabled and visible when their feature is active. Debug-only diagnostics follow the debug option; events and calendars have separate switches. Existing user-disabled or hidden choices are retained.
+Available fields depend on the vehicle model, permissions and cloud reports. Standard entities are enabled and visible when their feature is active. Additional diagnostic entities follow their display option; events and calendars have separate switches. Existing user-disabled or hidden choices are retained.
 
 | Group | Available information | Meaning and limits |
 |---|---|---|
@@ -93,7 +93,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
 | Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. A failed save keeps the edit pending and reports a storage Repair; save again after resolving it. Retired low-confidence SOC estimators remain removed. |
-| Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
+| Show diagnostic entities | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
 With the default policy, charging targets status/battery at 15/30 seconds; ACC activity targets status/battery/travel at 10/30/120 seconds. New charge transitions, external unlocks and stops open finite observation windows. ACC indicates activity; power alone does not prove movement.
 
@@ -115,7 +115,7 @@ After a verified seat unlock, its Lock display remains unlocked for at least fiv
 
 The reported latch can reset while the compartment lid remains open. Existing data does not provide an independently verified lid-open/closed field, so the integration does not infer lid position or create a lid-state entity. The five-second display window does not prove the lid is open. New commands, unloading, authentication loss, rate limits and read errors stop the follow-up.
 
-History sync and pause appear in device diagnostics. Sync also resumes a paused task; icons and the synchronization-state attribute distinguish running, paused and budget-wait states. History status, last successful sync and parsed raw views appear only with debug mode enabled; the calendar has its own switch. Diagnostic classification does not exclude Recorder; configure Recorder filters if needed.
+History sync and pause appear in device diagnostics. Sync also resumes a paused task; icons and the synchronization-state attribute distinguish running, paused and budget-wait states. History status, last successful sync and parsed raw views appear only with diagnostic entities enabled; the calendar has its own switch. Diagnostic classification does not exclude Recorder; configure Recorder filters if needed.
 
 ## Troubleshooting
 
@@ -133,6 +133,22 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 | Track missing or a single point | Check saved-detail state, coordinate option/permissions and cloud track quality. Old simplified data cannot recreate a lost trail. |
 | Storage Repair | Preserve the files and read [verification and recovery](history.md#verification-and-recovery). Do not delete the database/registry to silence it. |
 | “Custom integration has not been tested by Home Assistant” | Standard third-party loader notice; it is not suppressed. |
+
+### Login fails before the account is added
+
+Enable logging for this integration in **Developer tools → Actions**:
+
+```yaml
+action: logger.set_level
+data:
+  custom_components.ninebot: debug
+```
+
+Submit the sign-in form once, note the time and form error, then download the **Home Assistant Core** log from Settings → System → Logs. Look for `Account setup failed` and its `support` identifier. The entry reports the observed local stage, error kind and proxy response status. A proxy status does not identify a cloud region or an internal authentication stage. Restore the previous log level afterward, usually `warning`.
+
+For an existing account, use the integration menu's **Enable debug logging**, reproduce the problem, then disable it and download the log. Download **Diagnostics** separately. **Show diagnostic entities** exposes the parsed current-data view and progress entities; DEBUG logging uses the integration menu. A failed or unloaded account can still export basic version/platform diagnostics.
+
+When reporting sign-in failures, include the support identifier, form error, software versions, your App's account/service region if known, and whether you entered a phone number, email or username. Omit the actual account, password, tokens and vehicle/location data. Keep history exports private. Enabling logging sends no authentication request.
 
 ## Privacy, backup and removal
 

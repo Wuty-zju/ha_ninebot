@@ -50,7 +50,7 @@
           "enable_estimation": "定格パラメーターを設定",
           "enable_coordinates": "車両の位置を表示",
           "enable_calendar": "走行履歴 (Beta)",
-          "debug_mode": "デバッグモード"
+          "debug_mode": "診断エンティティを表示"
         },
         "data_description": {
           "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
@@ -107,7 +107,7 @@
           "history_storage_mib": "履歴保存上限（MiB） (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "debug_mode": "デバッグモード"
+          "debug_mode": "診断エンティティを表示"
         },
         "data_description": {
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",

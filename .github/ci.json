@@ -58,7 +58,8 @@
         "custom_components/ninebot/archive_resources.py",
         "custom_components/ninebot/button.py",
         "custom_components/ninebot/async_utils.py",
-        "tests/test_async_utils.py"
+        "tests/test_async_utils.py",
+        "custom_components/ninebot/exceptions.py"
       ],
       "tests": [
         "tests/test_account_archive.py",

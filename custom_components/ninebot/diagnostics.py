@@ -1,7 +1,7 @@
 """A strict diagnostic whitelist. No raw payload, identity or position."""
 
 import platform
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
 from homeassistant.const import __version__ as HA_VERSION
@@ -18,7 +18,23 @@ from .runtime import NinebotConfigEntry
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: NinebotConfigEntry
 ) -> dict[str, Any]:
-    runtime = entry.runtime_data
+    try:
+        package_version = version("ninecli")
+    except PackageNotFoundError:
+        package_version = None
+    result: dict[str, Any] = {
+        "integration_version": str((await async_get_integration(hass, entry.domain)).version),
+        "ninecli_version": package_version,
+        "ha_version": HA_VERSION,
+        "python_version": platform.python_version(),
+        "platform": {"system": platform.system(), "architecture": platform.machine()},
+        "entry_state": entry.state.value,
+        "runtime_available": False,
+    }
+    runtime = getattr(entry, "runtime_data", None)
+    if runtime is None:
+        return result
+    result["runtime_available"] = True
     vehicles = []
     for snapshot in runtime.coordinator.data.values():
         groups = {}
@@ -77,11 +93,7 @@ async def async_get_config_entry_diagnostics(
             }
         )
     return {
-        "integration_version": str((await async_get_integration(hass, entry.domain)).version),
-        "ninecli_version": version("ninecli"),
-        "ha_version": HA_VERSION,
-        "python_version": platform.python_version(),
-        "platform": {"system": platform.system(), "architecture": platform.machine()},
+        **result,
         "compatibility": {"child_registry_api": child_registry_api_available()},
         "backend_support": {
             "query_endpoints": sorted(
