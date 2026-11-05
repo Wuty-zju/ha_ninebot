@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from importlib import import_module
 from types import ModuleType
+from typing import Any
 
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import Entity
@@ -94,3 +95,15 @@ def device_identifiers(info: object) -> frozenset[tuple[str, str]]:
         for domain, identifier in [item]
         if isinstance(domain, str) and isinstance(identifier, str)
     )
+
+
+def conditional_field(key: str, default: object, *, when: str, required: bool = False) -> Any:
+    """Use native boolean visibility when its schema markers are compatible."""
+    from homeassistant import data_entry_flow
+
+    name = "Required" if required else "Optional"
+    legacy = getattr(validation, name)
+    marker = getattr(data_entry_flow, name, None)
+    if isinstance(marker, type) and issubclass(marker, legacy):
+        return marker(key, default=default, visible={"field": when, "value": True})
+    return legacy(key, default=default)
