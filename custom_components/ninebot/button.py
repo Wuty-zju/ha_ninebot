@@ -8,7 +8,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .capabilities import CONTROL_BUTTONS
-from .compat import device_by_identifier
+from .compat import device_by_identifier, device_identifiers
 from .const import DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .runtime import NinebotConfigEntry
@@ -86,7 +86,7 @@ class HistorySyncButton(NinebotEntity, ButtonEntity):
         )
 
     async def async_press(self) -> None:
-        identifiers = self.device_info.get("identifiers") or set()
+        identifiers = device_identifiers(self.device_info)
         identifier = next(value for domain, value in identifiers if domain == DOMAIN)
         device = device_by_identifier(dr.async_get(self.hass), self.entry.entry_id, identifier)
         device_id = getattr(device, "id", None)

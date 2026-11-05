@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.2b1
+
+- Add the native vehicle category and Marketplace installation instructions while retaining HACS installation for earlier Home Assistant versions.
+- Read device identifiers through the supported DeviceInfo representation on new and older Core versions.
+- Use Home Assistant's contextual entity-name formatter in the history browser and editor, retaining legacy display names on older frontends.
+- Add an independent published-Core API check alongside the compatible runtime test boundaries and document default-catalog preparation.
+
 ## 2.0.1b1
 
 - Add native sign-in failure logs with a per-attempt support identifier and reviewed local stage, endpoint and proxy error metadata.

@@ -236,3 +236,22 @@ async def test_rated_parameters_allow_unfilled_partial_and_explicit_clear(hass, 
         model = entry.runtime_data.models.model("SyntheticSN")
         assert (model.voltage, model.capacity) == expected
         assert model.nominal is None
+
+
+@pytest.mark.parametrize(
+    "info,expected",
+    [
+        (
+            SimpleNamespace(identifiers={("ninebot", "vehicle")}),
+            frozenset({("ninebot", "vehicle")}),
+        ),
+        ({"identifiers": {("ninebot", "vehicle")}}, frozenset({("ninebot", "vehicle")})),
+        (
+            SimpleNamespace(identifiers={("ninebot", 123), ("ninebot", "vehicle")}),
+            frozenset({("ninebot", "vehicle")}),
+        ),
+        ({"identifiers": None}, frozenset()),
+    ],
+)
+def test_device_info_identifiers_support_native_and_legacy_shapes(info, expected):
+    assert compat.device_identifiers(info) == expected

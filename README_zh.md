@@ -40,9 +40,17 @@
 - **Home Assistant 2026.1.0+**，以及兼容运行依赖的 **64 位**主机或容器。
 - 在官方 App 中可以看到车辆的九号账号。
 - 登录、实时更新及云端历史采集所需的互联网访问。
-- 推荐使用 HACS，也支持手动安装。
+- HA 2026.11+ 使用 Marketplace，旧版使用 HACS，也支持手动安装。
 
 不支持 ARMv7/32 位平台。[平台和地区详情 →](docs/guide_zh.md#环境要求)
+
+### Marketplace（Home Assistant 2026.11+）
+
+1. 打开**设置 → Marketplace → 自定义仓库**，按提示连接 GitHub。
+2. 添加 `https://github.com/Wuty-zju/ha_ninebot`，类型选择**集成**。
+3. 打开 **Ninebot**，选择所需版本并安装，然后添加账号。
+
+Marketplace 随 HA 2026.11 内置，沿用 HACS 的仓库与版本。首次安装可直接配置；更新已加载的集成时按提示重启。本项目目前通过自定义仓库安装，尚未进入默认目录。
 
 ### HACS — 推荐
 
@@ -55,7 +63,7 @@
 [![打开 HACS 仓库](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
 [![添加集成](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ninebot)
 
-目前通过 **HACS 自定义仓库**安装，需要预先安装 HACS。
+旧版 HA 使用自定义仓库链接前，需要先安装 HACS。
 
 ### 手动安装
 

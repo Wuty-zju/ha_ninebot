@@ -27,6 +27,12 @@ Choose **Very fast**, **Faster**, **Balanced** (default), **Slower** or **Very s
 
 Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject to shared admission, queueing and server backoff. Status and battery are separate requests; querying SOC or location uses the shared status response. Changing only update speed keeps the session, local archive and entity identities in place. Feature, privacy and authentication changes retain their reload behavior.
 
+## Install through Marketplace — HA 2026.11+
+
+Open **Settings → Marketplace → Custom repositories**, connect GitHub when prompted, and add `https://github.com/Wuty-zju/ha_ninebot` as an **Integration**. Install your chosen release and add a Ninebot account. First installs can open setup directly; updates to loaded integrations require the prompted restart.
+
+A custom repository is currently required. Default-catalog inclusion has a separate review; Marketplace and older HACS use the same catalog and release packages. Brand images are bundled with the integration.
+
 ## Install with HACS
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.
