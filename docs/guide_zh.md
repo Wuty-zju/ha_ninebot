@@ -76,6 +76,40 @@
 
 历史详情同步关闭时，已启用的今日／昨日统计仍可按需补齐被截断的当月行程列表，每账号每轮最多一页，共享历史请求额度、暂停和退避；月初必要时包括相邻月份。完整本地索引直接复用，不下载详情／轨迹，也不自动开启全历史扫描。
 
+## 仪表盘分组
+
+在仪表盘创建 **Sections（区块）** 视图，按用途分组；数值实体保留其传感器类型和统计能力。HA 2026.11+ 的**自动区块 → Device／Entities** 可按车辆或所选实体生成区块；旧版可使用手动区块和原生卡片。
+
+| 区块 | 建议内容 | 原生展示 |
+|---|---|---|
+| 车辆当前状态 | 主电量、续航、充电、车辆锁、座桶锁 | Tile／Entities；按需打开更多信息。 |
+| 本月／今日／昨日／最近 | 里程、次数、时长、能耗、平均能耗、最近速度 | 每个周期一个 Entities 卡片或子区块；保留单位与历史图。 |
+| 本地历史 | 行程日历、已导入的日／月统计 | Calendar／Statistics graph；完整列表和轨迹按需查询。 |
+| 位置 | 当前设备位置 | Map；已记录的位置历史受 Recorder 保留时间约束。 |
+
+实体 ID 请从本机实体选择器复制，显示名称由 HA 结合设备上下文生成。下例为合成占位 ID，不要求重命名现有实体：
+
+```yaml
+type: sections
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: 车辆
+      - type: tile
+        entity: sensor.my_vehicle_battery
+  - type: grid
+    cards:
+      - type: entities
+        title: 今日行程
+        entities:
+          - sensor.my_vehicle_today_mileage
+          - sensor.my_vehicle_today_ride_count
+          - sensor.my_vehicle_today_duration
+```
+
+设备详情页的标准实体区域由 HA 管理；仪表盘区块提供独立分组，不改变 unique_id、Recorder 历史或事件语义。原生 Map 不会直接读取私有归档中的任意历史折线；长程历史查询和可选 alpha 地图参见[本地历史指南](history_zh.md)。上述卡片读取已有实体和本地历史，不额外发起车辆查询。
+
 ## 配置选项
 
 **设置 → 设备与服务 → Ninebot → 配置**。

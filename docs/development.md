@@ -166,3 +166,14 @@ Before applying for default inclusion, review the [HACS integration requirements
 The bundled `brand/icon.png` is a 256×256 transparent PNG. Its source/rights and a dark variant remain maintainer follow-ups. HA supports local custom-integration branding from 2026.3; older supported HA may use an upstream image or placeholder. HACS download/icon presentation also depends on the installed HACS version.
 
 简体中文：RC／正式发版须提供完整Checks运行ID，发布器核对仓库、工作流、两HA和Node步骤及输入摘要；主线提升只复用相同输入的成功结果，轻量同SHA门禁照常。按任务定位源码与测试，普通改动做相关检查，RC 在固定候选上完成一次最低／当前 HA 综合验证。英文与中文同步维护默认值、单位和迁移说明。短分支回 dev，验收后正常合 main 并回灌；预发布保留对应标志。历史库与身份迁移按专门指南操作，图表、资源和运行文件各有明确目录。
+
+
+## Package download audit
+
+Run **Actions → Package download audit → Run workflow** on the maintained branch. The read-only workflow paginates the full release catalog (100 per page), excludes drafts and checksums, deduplicates asset IDs and counts only uploaded `ninebot.zip` assets. It includes previews, updates and repeat downloads. Its job summary and `package-download-counts` JSON artifact provide totals, per-release counts, asset IDs and the capture interval. Failed reads fail the job and do not publish a zero count.
+
+The integration sends no installation telemetry. Marketplace/HACS may show its selected release's count, while the README badge is supplied by Shields and its cache. GitHub source archives, clones, mirrors and offline copies cannot be reconstructed as a single installation total. Keep published release assets fixed; the audit does not rewrite README or create a metadata branch.
+
+The counter is a standard-library maintenance tool: `python -m scripts.download_counts --repository OWNER/REPOSITORY --output downloads.json`, using `GH_TOKEN` with read access. Keep the output outside the runtime directory. Unit checks use synthetic metadata and no network.
+
+简体中文：下载审计通过现有 GitHub Actions 手动运行，完整分页统计规范 ZIP，排除草稿与校验文件；输出逐版本报告，不新增遥测、不改发布资产、不自动提交计数日志。原生商店所选版本计数与跨版本审计是不同口径。

@@ -40,9 +40,17 @@
 - **Home Assistant 2026.1.0+**，以及兼容运行依赖的 **64 位**主机或容器。
 - 在官方 App 中可以看到车辆的九号账号。
 - 登录、实时更新及云端历史采集所需的互联网访问。
-- 推荐使用 HACS，也支持手动安装。
+- HA 2026.11+ 使用 Marketplace，旧版使用 HACS，也支持手动安装。
 
 不支持 ARMv7/32 位平台。[平台和地区详情 →](docs/guide_zh.md#环境要求)
+
+### Marketplace（Home Assistant 2026.11+）
+
+1. 打开**设置 → Marketplace → 自定义仓库**，按提示连接 GitHub。
+2. 添加 `https://github.com/Wuty-zju/ha_ninebot`，类型选择**集成**。
+3. 打开 **Ninebot**，选择所需版本并安装，然后添加账号。
+
+Marketplace 随 HA 2026.11 内置，沿用 HACS 的仓库与版本。首次安装可直接配置；更新已加载的集成时按提示重启。本项目目前通过自定义仓库安装，尚未进入默认目录。
 
 ### HACS — 推荐
 
@@ -55,7 +63,7 @@
 [![打开 HACS 仓库](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
 [![添加集成](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ninebot)
 
-目前通过 **HACS 自定义仓库**安装，需要预先安装 HACS。
+旧版 HA 使用自定义仓库链接前，需要先安装 HACS。
 
 ### 手动安装
 
@@ -63,7 +71,7 @@
 
 运行代码、翻译和随附资源均位于该目录。HA 会安装声明的依赖，无需另行部署守护服务或仪表盘仓库。
 
-Downloads 徽章累计各版本 `ninebot.zip` 的下载次数，包括升级和重复下载，不代表独立安装用户数，也不包含过去的源码包下载。
+Downloads 徽章使用 GitHub 的 `ninebot.zip` 附件下载计数，包含更新和重复下载。完整分页的逐版本报告可通过 **Actions → Package download audit** 获取，摘要和 JSON 附件包含统计范围与采集时间。源码压缩包、克隆和离线复制属于其它渠道。
 
 HACS 可能显示所选版本安装包的下载次数，与徽章的跨版本累计值口径不同。
 
