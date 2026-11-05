@@ -82,6 +82,40 @@ Cycle counts display not supported only when the cycle-support flag explicitly s
 
 Daily statistics can repair a capped current-month ride index even with historical detail synchronization off. Only enabled daily consumers request this list-only repair: at most one page per 60-second repair opportunity, sharing the hourly history budget and pause/backoff. At month rollover it may also repair the adjacent month. Saved complete indexes are reused; this does not fetch details or tracks or enable full-history scanning.
 
+## Dashboard organization
+
+Create a **Sections** dashboard view and group entities by purpose. Numeric entities retain their sensor type and statistics. On HA 2026.11+, **Automatic section → Device / Entities** can generate a section for a vehicle or a selected set of entities; earlier versions can use manual sections and native cards.
+
+| Section | Suggested content | Native presentation |
+|---|---|---|
+| Vehicle now | Main SOC, range, charging, vehicle/seat locks | Tile / Entities; open more-info when needed. |
+| Month / Today / Yesterday / Last Ride | Distance, count, duration, energy, average consumption and recent speeds | One Entities card or subsection per period; retain units and history. |
+| Local history | Ride calendar and imported day/month statistics | Calendar / Statistics graph; query full lists and tracks on demand. |
+| Location | Current device location | Map; recorded position history follows Recorder retention. |
+
+Copy IDs from your own entity picker. HA computes display names from registry context. These are synthetic placeholder IDs; existing entities do not need renaming:
+
+```yaml
+type: sections
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Vehicle
+      - type: tile
+        entity: sensor.my_vehicle_battery
+  - type: grid
+    cards:
+      - type: entities
+        title: Today
+        entities:
+          - sensor.my_vehicle_today_mileage
+          - sensor.my_vehicle_today_ride_count
+          - sensor.my_vehicle_today_duration
+```
+
+HA manages the standard regions on a device page. Dashboard sections provide independent grouping while preserving unique IDs, Recorder history and event semantics. The native Map does not read arbitrary archived polylines directly; see the [local history guide](history.md) for historical queries and the optional alpha map. These cards use existing states and local history without extra vehicle queries.
+
 ## Options
 
 Open **Settings → Devices & services → Ninebot → Configure**.

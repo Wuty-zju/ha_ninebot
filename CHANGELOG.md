@@ -2,6 +2,9 @@
 
 ## 2.0.3b1
 
+- Document native dashboard sections for vehicle and period summaries, preserving numeric sensors and their statistics.
+- Add a read-only Actions download audit with full release pagination and per-package counts.
+
 - Show control-vehicle selection and historical-sync settings only when their parent feature is enabled on Home Assistant 2026.11+.
 - Preserve saved values when conditional fields are omitted, including unlimited request budgets and previously selected vehicles.
 - Keep the existing direct form on earlier Home Assistant versions, with unchanged defaults and archive-management access.
