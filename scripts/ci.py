@@ -27,7 +27,16 @@ def select(paths: list[str], config: dict, available: set[str]) -> dict:
     reasons: set[str] = set()
     boundaries = ["minimum"]
     frontend = False
+    native_api = False
     for path in paths:
+        if path in {
+            "custom_components/ninebot/compat.py",
+            "custom_components/ninebot/entity.py",
+            "custom_components/ninebot/config_flow.py",
+            "scripts/check_ha_api.py",
+            ".github/ci.json",
+        }:
+            native_api = True
         if matches(path, config["critical_paths"]):
             boundaries = ["minimum", "current"]
         if matches(
@@ -58,6 +67,8 @@ def select(paths: list[str], config: dict, available: set[str]) -> dict:
     tests = sorted(selected & available)
     return {
         "tests": tests,
+        "native_api": native_api,
+        "native_boundary": config["native_boundary"],
         "reasons": sorted(reasons),
         "frontend": frontend,
         "matrix": {
@@ -136,6 +147,7 @@ def main() -> None:
     action.add_argument("--plan", action="store_true")
     action.add_argument("--matrix", action="store_true")
     action.add_argument("--install", choices=("minimum", "current"))
+    action.add_argument("--install-native", action="store_true")
     action.add_argument("--run-tests", type=Path)
     parser.add_argument("--profile", action="store_true")
     parser.add_argument("--base")
@@ -144,6 +156,14 @@ def main() -> None:
     args = parser.parse_args()
     config = json.loads(CONFIG.read_text())
     available = {str(path.relative_to(ROOT)) for path in (ROOT / "tests").rglob("test_*.py")}
+    if args.install_native:
+        native = config["native_boundary"]
+        expected = f"homeassistant=={native['ha']}"
+        subprocess.run([sys.executable, "-m", "pip", "install", expected], check=True)
+        subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
+        if version("homeassistant") != native["ha"]:
+            raise ValueError("Installed native API boundary differs from the configured version")
+        return
     if args.install:
         install(config, args.install, args.profile)
         return

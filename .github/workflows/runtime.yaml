@@ -16,6 +16,7 @@ jobs:
       runtime: ${{ steps.scope.outputs.runtime }}
       matrix: ${{ steps.scope.outputs.matrix }}
       plan: ${{ steps.scope.outputs.plan }}
+      native_api: ${{ fromJSON(steps.scope.outputs.plan).native_api }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -72,3 +73,21 @@ jobs:
             coverage.xml
           if-no-files-found: warn
           retention-days: 14
+
+  native-api:
+    needs: scope
+    if: needs.scope.outputs.native_api == 'true'
+    name: Native API (${{ fromJSON(needs.scope.outputs.plan).native_boundary.ha }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ fromJSON(needs.scope.outputs.plan).native_boundary.python }}
+          cache: pip
+          cache-dependency-path: .github/ci.json
+      - name: Install the published Core without a mismatched test plugin
+        run: python scripts/ci.py --install-native
+      - name: Check installed native API contracts without cloud requests
+        run: python -m scripts.check_ha_api

@@ -4,6 +4,9 @@
   "after_dependencies": [
     "recorder"
   ],
+  "categories": [
+    "vehicles_transport.bikes_scooters"
+  ],
   "codeowners": [
     "@Wuty-zju"
   ],
@@ -22,5 +25,5 @@
   "requirements": [
     "ninecli==0.1.7"
   ],
-  "version": "2.0.1b1"
+  "version": "2.0.2b1"
 }

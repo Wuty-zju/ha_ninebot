@@ -166,3 +166,20 @@ Before applying for default inclusion, review the [HACS integration requirements
 The bundled `brand/icon.png` is a 256×256 transparent PNG. Its source/rights and a dark variant remain maintainer follow-ups. HA supports local custom-integration branding from 2026.3; older supported HA may use an upstream image or placeholder. HACS download/icon presentation also depends on the installed HACS version.
 
 简体中文：RC／正式发版须提供完整Checks运行ID，发布器核对仓库、工作流、两HA和Node步骤及输入摘要；主线提升只复用相同输入的成功结果，轻量同SHA门禁照常。按任务定位源码与测试，普通改动做相关检查，RC 在固定候选上完成一次最低／当前 HA 综合验证。英文与中文同步维护默认值、单位和迁移说明。短分支回 dev，验收后正常合 main 并回灌；预发布保留对应标志。历史库与身份迁移按专门指南操作，图表、资源和运行文件各有明确目录。
+
+
+## Marketplace catalog preparation
+
+Ninebot is currently installed as a custom repository. Before submitting it to the shared [Marketplace/HACS catalog](https://contributors.home-assistant.io/marketplace/guides/catalog/), record the reviewed release and successful HACS/Hassfest runs, confirm repository description/topics and issue handling, and verify these items:
+
+- One integration at `custom_components/ninebot`, with all runtime resources in that directory.
+- A matching manifest/tag/release, `ninebot.zip` and `SHA256SUMS`; a clean install from the selected package.
+- Local `brand` assets, suitable in light and dark themes, and the `vehicles_transport.bikes_scooters` category.
+- Accurate authentication, platform and verified service-region information in the guide; no inferred global server support.
+- Existing naming, unique IDs and Recorder history preserved. Custom views use HA's display-name helper where available.
+
+The catalog is maintained in `hacs/default`. Prepare a sorted integration-list change and the current submission checklist; inclusion is complete only after upstream review/merge and catalog processing. Catalog inclusion and Core inclusion are separate processes.
+
+The generated HA test plugin currently pins an older Core release. `.github/ci.json` therefore separates its compatible full/scoped test boundaries from the exact published Core used by `scripts/check_ha_api.py`. The latter checks installed native API contracts without the plugin or network requests; it does not replace the runtime regression suites. Update the paired runtime boundary when a matching plugin is available. Do not bypass dependency constraints to claim a new-version pass.
+
+简体中文：默认目录申请需附真实发布与官方校验记录，核对包、品牌、分类、区域说明和用户文档；审核合入后才可声明默认可搜。最新 Core 的独立 API 检查与配套测试插件的运行回归分开记录，保留最低版本兼容和实体身份。

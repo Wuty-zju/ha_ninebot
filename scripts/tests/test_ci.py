@@ -45,6 +45,15 @@ class ScopeTests(unittest.TestCase):
             with self.subTest(path=path.name):
                 self.assertTrue(self.plan(str(path.relative_to(ROOT)))["tests"])
 
+    def test_native_api_only_for_relevant_contract_changes(self):
+        self.assertFalse(self.plan("docs/guide.md")["native_api"])
+        self.assertFalse(self.plan("custom_components/ninebot/adapters.py")["native_api"])
+        self.assertTrue(self.plan("custom_components/ninebot/compat.py")["native_api"])
+        self.assertTrue(self.plan("custom_components/ninebot/config_flow.py")["native_api"])
+        self.assertEqual(
+            self.plan("scripts/check_ha_api.py")["native_boundary"], self.config["native_boundary"]
+        )
+
     def test_new_unmapped_runtime_is_conservative(self):
         plan = self.plan("custom_components/ninebot/future_protocol.py")
         self.assertEqual(set(plan["tests"]), self.available)

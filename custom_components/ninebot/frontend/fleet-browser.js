@@ -1,6 +1,7 @@
 /** Compose existing scoped queries without cross-account data or cloud fanout. */
 import { TripBrowser, safeRide } from './trip-browser.js';
 import { trackKey } from './local-tracks.js';
+import { formatEntityLabel } from './trip-format.js';
 
 export function vehicleTargets(config) {
   if (!config?.vehicles) return [{ entity: config?.entity, device_id: config?.device_id }];
@@ -82,7 +83,7 @@ export class FleetBrowser extends TripBrowser {
           if (!this.current(epoch)) return;
           if (!device || resolved.has(device)) throw new Error('invalid_device');
           this.resolved.set(index, device); resolved.add(device);
-          const name = target.name ?? this.hass.states?.[target.entity]?.attributes?.friendly_name ?? device;
+          const name = target.name ?? formatEntityLabel(this.hass, this.hass.states?.[target.entity], device);
           streams.push({ device, name: String(name).slice(0, 128), rows: [], cursor: null,
             loaded: false, coverage: null, revision: null });
         }

@@ -40,9 +40,17 @@ Version 2.0 brings together 107 betas and four release candidates: isolated acco
 - **Home Assistant 2026.1.0+** and a compatible **64-bit** host/container for the runtime dependency.
 - A Ninebot account with vehicles visible in the official app.
 - Internet access for login, live updates and cloud history acquisition.
-- HACS for the recommended installation; manual installation is also supported.
+- Marketplace on HA 2026.11+, HACS on earlier HA, or manual installation.
 
 ARMv7/32-bit platforms are unsupported. [Requirements and platform details →](docs/guide.md#requirements)
+
+### Marketplace — Home Assistant 2026.11+
+
+1. Open **Settings → Marketplace → Custom repositories** and connect GitHub when prompted.
+2. Add `https://github.com/Wuty-zju/ha_ninebot` with category **Integration**.
+3. Open **Ninebot**, install the chosen release and add your account.
+
+Marketplace is built into HA 2026.11 and uses the same repositories and releases as HACS. First installs can proceed directly to setup; updates to an already loaded integration require the prompted restart. Ninebot currently uses custom-repository installation and is not in the default catalog.
 
 ### HACS — recommended
 
@@ -55,7 +63,7 @@ ARMv7/32-bit platforms are unsupported. [Requirements and platform details →](
 [![Open HACS repository](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
 [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ninebot)
 
-This repository currently uses **HACS custom-repository installation**. HACS must already be installed.
+On earlier HA versions, HACS must already be installed to use the custom-repository link.
 
 ### Manual installation
 

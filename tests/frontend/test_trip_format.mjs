@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { formatRideDuration, formatRideInterval } from '../../custom_components/ninebot/frontend/trip-format.js';
+import { formatRideDuration, formatRideInterval, formatEntityLabel } from '../../custom_components/ninebot/frontend/trip-format.js';
 
 const unit = (value, name, locale = 'en') => new Intl.NumberFormat(locale, {
   style: 'unit', unit: name, unitDisplay: 'short', maximumFractionDigits: 0,
@@ -33,4 +33,17 @@ test('one time range respects business timezone and midnight boundaries', () => 
   assert.equal(formatRideInterval(null, null), '—');
   assert.equal(formatRideInterval('bad', 'bad'), '—');
   assert.equal(formatRideInterval('2026-10-09T10:00:00Z', '2026-10-08T10:00:00Z'), '—');
+});
+
+
+test('entity labels use native registry context and retain old frontend names', () => {
+  const state = { entity_id: 'calendar.vehicle_trips', attributes: { friendly_name: 'Legacy trips' } };
+  const hass = { formatEntityName(value, context) {
+    assert.equal(value, state);
+    assert.deepEqual(context, [{ type: 'device' }, { type: 'entity' }]);
+    return 'Scooter · Trips';
+  } };
+  assert.equal(formatEntityLabel(hass, state), 'Scooter · Trips');
+  assert.equal(formatEntityLabel({}, state), 'Legacy trips');
+  assert.equal(formatEntityLabel(hass, null, 'Device'), 'Device');
 });

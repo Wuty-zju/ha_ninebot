@@ -7,8 +7,8 @@
     },
     "current": {
       "python": "3.14",
-      "ha": "2026.10.2",
-      "plugin": "0.13.373"
+      "ha": "2026.10.4",
+      "plugin": "0.13.375"
     }
   },
   "tools": {
@@ -355,5 +355,9 @@
     "tests/conftest.py",
     "tests/fixtures/**",
     "pyproject.toml"
-  ]
+  ],
+  "native_boundary": {
+    "python": "3.14",
+    "ha": "2026.11.0"
+  }
 }
