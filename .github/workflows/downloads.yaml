@@ -1,0 +1,41 @@
+name: Package download audit
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: package-download-audit
+  cancel-in-progress: false
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Verify the counter
+        run: python -m unittest discover -s scripts/tests -p test_download_counts.py
+      - name: Audit all release pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python -m scripts.download_counts --repository "$REPOSITORY" --output "$RUNNER_TEMP/downloads.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          report = json.loads((Path(os.environ["RUNNER_TEMP"]) / "downloads.json").read_text())
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as stream:
+              stream.write(f"## Package downloads\n\n{report['downloads']} requests across {report['package_release_count']} packaged releases.\n\n")
+              stream.write("Counts include updates and repeat downloads. Source archives, clones and offline copies are outside this metric.\n")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: package-download-counts
+          path: ${{ runner.temp }}/downloads.json
+          if-no-files-found: error
+          retention-days: 30
