@@ -71,7 +71,7 @@ Download `ninebot.zip` from the chosen [packaged release](https://github.com/Wut
 
 Runtime code, translations and bundled resources live in that directory. HA installs the declared dependencies; no separate daemon or dashboard repository is required.
 
-The Downloads badge counts `ninebot.zip` downloads across releases, including updates and repeat downloads. It does not represent unique installations or historical source-archive downloads.
+The Downloads badge uses GitHub release-asset counts for `ninebot.zip`, including updates and repeat downloads. For a complete paginated per-version report, run **Actions → Package download audit**; its summary and JSON artifact record the scope and capture time. Source archives, clones and offline copies are separate channels.
 
 HACS may display the download count for its selected release asset; that figure differs from the badge's cumulative package count.
 

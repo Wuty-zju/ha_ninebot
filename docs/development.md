@@ -183,3 +183,14 @@ The catalog is maintained in `hacs/default`. Prepare a sorted integration-list c
 The generated HA test plugin currently pins an older Core release. `.github/ci.json` therefore separates its compatible full/scoped test boundaries from the exact published Core used by `scripts/check_ha_api.py`. The latter checks installed native API contracts without the plugin or network requests; it does not replace the runtime regression suites. Update the paired runtime boundary when a matching plugin is available. Do not bypass dependency constraints to claim a new-version pass.
 
 简体中文：默认目录申请需附真实发布与官方校验记录，核对包、品牌、分类、区域说明和用户文档；审核合入后才可声明默认可搜。最新 Core 的独立 API 检查与配套测试插件的运行回归分开记录，保留最低版本兼容和实体身份。
+
+
+## Package download audit
+
+Run **Actions → Package download audit → Run workflow** on the maintained branch. The read-only workflow paginates the full release catalog (100 per page), excludes drafts and checksums, deduplicates asset IDs and counts only uploaded `ninebot.zip` assets. It includes previews, updates and repeat downloads. Its job summary and `package-download-counts` JSON artifact provide totals, per-release counts, asset IDs and the capture interval. Failed reads fail the job and do not publish a zero count.
+
+The integration sends no installation telemetry. Marketplace/HACS may show its selected release's count, while the README badge is supplied by Shields and its cache. GitHub source archives, clones, mirrors and offline copies cannot be reconstructed as a single installation total. Keep published release assets fixed; the audit does not rewrite README or create a metadata branch.
+
+The counter is a standard-library maintenance tool: `python -m scripts.download_counts --repository OWNER/REPOSITORY --output downloads.json`, using `GH_TOKEN` with read access. Keep the output outside the runtime directory. Unit checks use synthetic metadata and no network.
+
+简体中文：下载审计通过现有 GitHub Actions 手动运行，完整分页统计规范 ZIP，排除草稿与校验文件；输出逐版本报告，不新增遥测、不改发布资产、不自动提交计数日志。原生商店所选版本计数与跨版本审计是不同口径。
