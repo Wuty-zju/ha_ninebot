@@ -14,7 +14,7 @@ def main() -> None:
     from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
     from custom_components.ninebot.client import response_data
-    from custom_components.ninebot.compat import device_identifiers
+    from custom_components.ninebot.compat import conditional_field, device_identifiers, validation
     from custom_components.ninebot.const import PLATFORMS
     from custom_components.ninebot.entity import NinebotEntity
     from custom_components.ninebot.exceptions import ErrorKind, NinebotError
@@ -36,6 +36,19 @@ def main() -> None:
     assert device_identifiers({"identifiers": {("ninebot", "synthetic-vehicle")}}) == (
         device_identifiers(info)
     )
+    marker = conditional_field("selection", [], when="enabled")
+    assert marker.visible == {"field": "enabled", "value": True}
+    schema = validation.Schema({validation.Optional("enabled", default=False): bool, marker: [str]})
+    serialized = [{"name": "enabled"}, {"name": "selection"}]
+    data_entry_flow.add_visible_conditions_to_serialized_schema(schema, serialized)
+    assert serialized[1]["visible"] == marker.visible
+    # Verify the pinned Core's omission contract, without adding production
+    # dependencies on this internal validation helper.
+    stripped, submitted = data_entry_flow._strip_hidden_fields(
+        schema, {"enabled": False, "selection": ["not-submitted"]}
+    )
+    assert stripped(submitted) == {"enabled": False}
+    assert schema({"enabled": True, "selection": ["saved"]})["selection"] == ["saved"]
     assert callable(DataUpdateCoordinator.async_contexts)
     assert callable(getattr(data_entry_flow, "Optional", None))
     try:

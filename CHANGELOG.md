@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.3b1
+
+- Show control-vehicle selection and historical-sync settings only when their parent feature is enabled on Home Assistant 2026.11+.
+- Preserve saved values when conditional fields are omitted, including unlimited request budgets and previously selected vehicles.
+- Keep the existing direct form on earlier Home Assistant versions, with unchanged defaults and archive-management access.
+
 ## 2.0.2b1
 
 - Add the native vehicle category and Marketplace installation instructions while retaining HACS installation for earlier Home Assistant versions.

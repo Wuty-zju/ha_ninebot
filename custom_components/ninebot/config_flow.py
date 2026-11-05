@@ -34,7 +34,7 @@ from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, account_update
 from .account_archive import CONF_RETAIN_ARCHIVE
 from .archive_options import ArchiveOptionsMixin
 from .bootstrap import CONF_AUTO_HISTORY
-from .compat import post_create_options_supported
+from .compat import conditional_field, post_create_options_supported
 from .compat import validation as vol
 from .const import (
     CONF_ACCOUNT,
@@ -632,8 +632,10 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
             data_schema=vol.Schema(
                 {
                     vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
-                    vol.Optional(
-                        CONF_CONTROL_VEHICLES, default=options.get(CONF_CONTROL_VEHICLES, [])
+                    conditional_field(
+                        CONF_CONTROL_VEHICLES,
+                        options.get(CONF_CONTROL_VEHICLES, []),
+                        when=CONF_CONTROLS,
                     ): SelectSelector(
                         SelectSelectorConfig(
                             options=choices, multiple=True, mode=SelectSelectorMode.DROPDOWN
@@ -652,17 +654,18 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                     vol.Optional(CONF_EVENTS, default=options.get(CONF_EVENTS, True)): bool,
                     vol.Optional(CONF_CALENDAR, default=options.get(CONF_CALENDAR, True)): bool,
                     vol.Optional(CONF_PRESERVE, default=options.get(CONF_PRESERVE, False)): bool,
-                    vol.Optional(
+                    conditional_field(
                         CONF_AUTO_HISTORY,
-                        default=options.get(CONF_AUTO_HISTORY, options.get(CONF_PRESERVE, False)),
+                        options.get(CONF_AUTO_HISTORY, options.get(CONF_PRESERVE, False)),
+                        when=CONF_PRESERVE,
                     ): bool,
-                    vol.Optional(
-                        CONF_HISTORY_CAPACITY, default=history_capacity_mib(options)
+                    conditional_field(
+                        CONF_HISTORY_CAPACITY, history_capacity_mib(options), when=CONF_PRESERVE
                     ): vol.All(
                         vol.Coerce(int), vol.Range(min=MIN_HISTORY_MIB, max=MAX_HISTORY_MIB)
                     ),
-                    vol.Required(
-                        CONF_BUDGET, default=configured_budget(options)
+                    conditional_field(
+                        CONF_BUDGET, configured_budget(options), when=CONF_PRESERVE, required=True
                     ): HistoryBudgetSelector(),
                     vol.Optional(
                         CONF_RETAIN_ARCHIVE, default=options.get(CONF_RETAIN_ARCHIVE, True)

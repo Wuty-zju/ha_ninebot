@@ -673,3 +673,29 @@ async def test_pre_entry_failure_logs_one_safe_support_record(hass, flow_manager
     assert private not in caplog.text
     flow_manager.async_prepare.assert_awaited_once_with(private, private)
     assert not hass.config_entries.async_entries("ninebot")
+
+
+async def test_hidden_option_omission_keeps_saved_choices_and_explicit_disable(hass, entry):
+    previous = {
+        "enable_controls": True,
+        "control_vehicles": ["SyntheticSN"],
+        "preserve_history": True,
+        "auto_history_sync": True,
+        "history_storage_mib": 256,
+        "history_requests_per_hour": 0,
+        "enable_calendar": False,
+        "debug_mode": False,
+    }
+    hass.config_entries.async_update_entry(entry, options=previous)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    # New Core omits hidden fields. Preserve their saved values on old Core too,
+    # using the same accepted input shape; no network or runtime is needed.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"enable_controls": False, "preserve_history": False, "polling_profile": "slower"},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["enable_controls"] is False
+    assert entry.options["preserve_history"] is False
+    for key in previous.keys() - {"enable_controls", "preserve_history"}:
+        assert entry.options[key] == previous[key]

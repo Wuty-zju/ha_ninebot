@@ -255,3 +255,13 @@ async def test_rated_parameters_allow_unfilled_partial_and_explicit_clear(hass, 
 )
 def test_device_info_identifiers_support_native_and_legacy_shapes(info, expected):
     assert compat.device_identifiers(info) == expected
+
+
+@pytest.mark.parametrize("required", [False, True])
+def test_conditional_field_keeps_plain_schema_on_older_core(required):
+    from homeassistant import data_entry_flow
+
+    with patch.object(data_entry_flow, "Required" if required else "Optional", None, create=True):
+        field = compat.conditional_field("budget", 60, when="enabled", required=required)
+    assert not hasattr(field, "visible")
+    assert compat.validation.Schema({field: int})({}) == {"budget": 60}
