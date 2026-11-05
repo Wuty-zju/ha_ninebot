@@ -180,9 +180,9 @@ class NinecliClient:
             raise
         except (OSError, TimeoutError):
             await self._stop()
-            err = NinebotError(ErrorKind.PLATFORM)
-            err.at_phase(phase)
-            raise err from None
+            failure = NinebotError(ErrorKind.PLATFORM)
+            failure.at_phase(phase)
+            raise failure from None
         except NinebotError as err:
             err.at_phase(phase)
             await self._stop()
@@ -286,9 +286,10 @@ class NinecliClient:
                         raise
         except (aiohttp.ClientError, TimeoutError):
             await self._stop()
-            err = NinebotError(ErrorKind.CONNECTION, retryable=True)
-            err.at_endpoint(request_endpoint(path))
-            raise err from None
+            failure = NinebotError(ErrorKind.CONNECTION, retryable=True)
+            failure.at_endpoint(request_endpoint(path))
+            failure.observe_response(status)
+            raise failure from None
         except NinebotError as err:
             err.at_endpoint(request_endpoint(path))
             if err.context.proxy_http_status is None:
@@ -321,11 +322,11 @@ class NinecliClient:
             except TimeoutError:
                 kind = ErrorKind.CONNECTION if self._request_ready else ErrorKind.PLATFORM
                 await self._stop()
-                err = NinebotError(kind)
-                err.at_endpoint(request_endpoint(path))
+                failure = NinebotError(kind)
+                failure.at_endpoint(request_endpoint(path))
                 if not self._request_ready:
-                    err.at_phase(FailurePhase.BACKEND_START)
-                raise err from None
+                    failure.at_phase(FailurePhase.BACKEND_START)
+                raise failure from None
             raise AssertionError("unreachable request retry")
 
     async def async_login(self, account: str, password: str) -> None:
