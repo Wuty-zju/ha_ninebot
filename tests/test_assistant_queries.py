@@ -270,7 +270,9 @@ async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(ha
     assert next(spec for spec in SPECS if spec.key == "get_recorded_trips").idempotent is False
 
 
-async def test_detail_missing_never_falls_back_to_cloud_then_saved_detail_is_small(hass, assistant):
+async def test_detail_missing_never_falls_back_to_cloud_then_saved_detail_is_small(
+    hass, assistant, freezer
+):
     missing, error = await query(
         hass, assistant, "get_trip_detail", ride_id="ride-0", query_month="202610"
     )
@@ -284,9 +286,13 @@ async def test_detail_missing_never_falls_back_to_cloud_then_saved_detail_is_sma
         "trail": "120,30,1,1;120.001,30.001,2,2",
         "is_show_simple_point": False,
     }
-    evidence = build_record(Endpoint.TRIP_DETAIL, raw, NOW, "202610", backend_version="0.1.7")
+    received = NOW + timedelta(seconds=1)
+    freezer.move_to(received)
+    evidence = build_record(Endpoint.TRIP_DETAIL, raw, received, "202610", backend_version="0.1.7")
     ride = merge_detail(summary, parse_ride(raw, "202610", source=Endpoint.TRIP_DETAIL))
-    await assistant.co.statistics.archive.async_record_detail(SN, ride, NOW, raw=evidence)
+    assert await assistant.co.statistics.archive.async_record_detail(
+        SN, ride, received, raw=evidence
+    )
     result, error = await query(
         hass, assistant, "get_trip_detail", ride_id="ride-0", query_month="202610"
     )
