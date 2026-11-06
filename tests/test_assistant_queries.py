@@ -392,7 +392,9 @@ async def test_concurrent_calls_and_cancellation_do_not_cancel_another_reader(ha
 async def test_timeout_releases_admission_and_returns_a_typed_error(hass, assistant):
     def short_timeout(seconds):
         assert seconds == 10
-        return asyncio.timeout(0.01)
+        # The fixture freezes monotonic time. Expire on the next loop turn
+        # instead of waiting for a clock that deliberately does not advance.
+        return asyncio.timeout(-1)
 
     async def blocked(*args, **kwargs):
         await asyncio.Event().wait()
