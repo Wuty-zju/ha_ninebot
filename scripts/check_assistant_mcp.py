@@ -9,7 +9,8 @@ not exercise production HA, OAuth, a model provider or the Ninebot cloud.
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
+from datetime import datetime, timedelta
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -20,7 +21,12 @@ async def main() -> None:
         await check(directory)
 
 
-async def check(config_dir: str, scenario: Callable[..., Awaitable[None]] | None = None) -> None:
+async def check(
+    config_dir: str,
+    scenario: Callable[..., Awaitable[None]] | None = None,
+    *,
+    reference_time: datetime | None = None,
+) -> None:
     from aiohttp import web
     from aiohttp.test_utils import TestClient, TestServer
     from homeassistant.components.http import KEY_HASS
@@ -56,8 +62,9 @@ async def check(config_dir: str, scenario: Callable[..., Awaitable[None]] | None
         )
     )
     sn, vehicle_ref, entry_id = "synthetic-vehicle", "synthetic-device", "synthetic-account"
-    now = dt_util.utcnow()
-    stamp = Freshness(attempted_at=now, succeeded_at=now)
+    now = reference_time or dt_util.utcnow()
+    observed_at = now - timedelta(seconds=20) if reference_time is not None else now
+    stamp = Freshness(attempted_at=observed_at, succeeded_at=observed_at)
     snapshot = VehicleSnapshot(
         VehicleProfile(sn, "Vehicle A", "Fixture"),
         status=VehicleStatus(
@@ -173,6 +180,9 @@ async def check(config_dir: str, scenario: Callable[..., Awaitable[None]] | None
 
     with (
         ExitStack() as cleanup,
+        patch.object(dt_util, "utcnow", return_value=now)
+        if reference_time is not None
+        else nullcontext(),
         patch.object(native_http, "create_mcp_server", side_effect=capture_context),
         patch.object(assistant_queries, "async_authorize", side_effect=verify_context),
         patch.object(NinebotReadAPI, "async_get_api_instance", new=add_write_probe),
@@ -236,7 +246,12 @@ async def check(config_dir: str, scenario: Callable[..., Awaitable[None]] | None
                 try:
                     await scenario(
                         SimpleNamespace(
-                            hass=hass, entry=entry, coordinator=co, rpc=rpc, vehicle_ref=vehicle_ref
+                            hass=hass,
+                            entry=entry,
+                            coordinator=co,
+                            rpc=rpc,
+                            vehicle_ref=vehicle_ref,
+                            request_count=lambda: sequence,
                         )
                     )
                 finally:

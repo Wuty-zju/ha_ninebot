@@ -52,6 +52,8 @@ Results include a business date range, observation times, units, metric quality,
 
 The native MCP response carries the JSON result as text content. Failures use a fixed code such as `not_authorized`, `invalid_arguments`, `local_data_missing`, `retry_later` or `timeout`. A failed query does not mean zero trips. Where provided, follow `retry_after_seconds`; do not loop repeatedly.
 
+Errors include a fixed explanation. `not_authorized` reports an access failure; it cannot establish whether a trip exists. A vehicle's query capabilities describe which local reads are available, independently of its current measurements or the number of saved rides.
+
 ## Privacy and limits
 
 Enabling the option allows the chosen host to receive selected vehicle labels, scalar values, times, ride identifiers and quality information. Review names that you have assigned to vehicles. Ninebot excludes account credentials, account identifiers, serial numbers, precise coordinates, raw responses, logs, full tracks and sample arrays from these tools. An external model host may retain conversation and tool results under its own policy. Turning the option off revokes future calls; it cannot remove information already sent to the host. The saved vehicle selection is retained for later use.
