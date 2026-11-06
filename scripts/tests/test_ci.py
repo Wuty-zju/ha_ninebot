@@ -2,12 +2,39 @@
 
 import json
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from scripts.ci import CONFIG, ROOT, changed_paths, install, pytest_command, select
+from scripts.ci import (
+    CONFIG,
+    ROOT,
+    changed_paths,
+    install,
+    native_requirements,
+    pytest_command,
+    select,
+)
 
 
 class ScopeTests(unittest.TestCase):
+    def test_native_manifest_dependencies_are_deduplicated_and_cycles_terminate(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for domain, manifest in {
+                "mcp_server": {"dependencies": ["conversation"], "requirements": ["mcp==2.3.0"]},
+                "conversation": {
+                    "dependencies": ["mcp_server"],
+                    "requirements": ["hassil==3.12.1"],
+                },
+            }.items():
+                (root / domain).mkdir()
+                (root / domain / "manifest.json").write_text(json.dumps(manifest))
+            self.assertEqual(
+                native_requirements(root, ["mcp_server", "conversation"]),
+                ["hassil==3.12.1", "mcp==2.3.0"],
+            )
+
     def setUp(self):
         self.config = json.loads(CONFIG.read_text())
         self.available = {

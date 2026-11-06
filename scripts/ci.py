@@ -7,7 +7,7 @@ import os
 import re
 import subprocess
 import sys
-from importlib.metadata import version
+from importlib.metadata import distribution, version
 from pathlib import Path
 from urllib.error import URLError
 
@@ -19,6 +19,20 @@ CONFIG = ROOT / ".github/ci.json"
 
 def matches(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+
+
+def native_requirements(components: Path, domains: list[str]) -> list[str]:
+    """Use the pinned installed Core's manifests, including declared dependencies."""
+    pending, seen, requirements = list(domains), set(), set()
+    while pending:
+        domain = pending.pop()
+        if domain in seen:
+            continue
+        seen.add(domain)
+        manifest = json.loads((components / domain / "manifest.json").read_text())
+        requirements.update(manifest.get("requirements", []))
+        pending.extend(manifest.get("dependencies", []))
+    return sorted(requirements)
 
 
 def select(paths: list[str], config: dict, available: set[str]) -> dict:
@@ -162,12 +176,15 @@ def main() -> None:
     if args.install_native:
         native = config["native_boundary"]
         expected = f"homeassistant=={native['ha']}"
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", expected, *native["requirements"]], check=True
-        )
-        subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
+        subprocess.run([sys.executable, "-m", "pip", "install", expected], check=True)
         if version("homeassistant") != native["ha"]:
             raise ValueError("Installed native API boundary differs from the configured version")
+        components = Path(
+            str(distribution("homeassistant").locate_file("homeassistant/components"))
+        )
+        requirements = native_requirements(components, native["integrations"])
+        subprocess.run([sys.executable, "-m", "pip", "install", *requirements], check=True)
+        subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
         return
     if args.install:
         install(config, args.install, args.profile)

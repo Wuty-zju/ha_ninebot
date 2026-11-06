@@ -27,9 +27,7 @@ async def main() -> None:
     )
     hass = SimpleNamespace(
         data={},
-        auth=SimpleNamespace(
-            async_get_user=AsyncMock(return_value=SimpleNamespace(is_admin=True))
-        ),
+        auth=SimpleNamespace(async_get_user=AsyncMock(return_value=SimpleNamespace(is_admin=True))),
     )
     unregister = async_register(hass)
     assert [api.id for api in llm.async_get_apis(hass)] == ["ninebot"]
