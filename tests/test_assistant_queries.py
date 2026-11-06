@@ -224,6 +224,11 @@ async def test_period_statistics_reuse_actions_with_original_context_and_no_refr
     assert action.await_args.args[2]["refresh"] is False
     if count is None:
         assert result["quality"]["metrics"]["ride_count"]["status"] == "missing"
+    if period in {"today", "yesterday"}:
+        assert result["evidence"]["ride_date_assignment"] == "whole_ride_end_business_date"
+        assert "server_daily_distance_and_ride_end_date_can_differ" in result["warnings"]
+    else:
+        assert result["evidence"]["ride_date_assignment"] == "server_month"
 
 
 async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(hass, assistant):

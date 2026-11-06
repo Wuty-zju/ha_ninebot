@@ -36,15 +36,8 @@ REASONS = {
     "day_not_observed",
     "missing_daily_chart",
     "incomplete_month_list",
-    "missing_adjacent_month",
     "missing_metric",
-    "invalid_duration",
-    "incomplete_ride_metrics",
-    "missing_ride_metrics",
-    "missing_distance",
-    "missing_energy",
     "zero_distance",
-    "invalid_value",
 }
 
 
@@ -210,6 +203,13 @@ def statistics_view(row: dict[str, Any], *, daily: bool, now: datetime) -> Assis
             "ride_window_complete": flag(row.get("ride_window_complete")) if daily else None,
             "observed_after_period_end": flag(row.get("observed_after_period_end")),
             "adjacent_received_at": timestamp(row.get("adjacent_received_at")) if daily else None,
+            "completeness_basis": choice(
+                row.get("completeness_basis"),
+                {"upstream_complete", "local_reconciled", "incomplete"},
+                "unknown",
+            )
+            if daily
+            else "server_month_summary",
         },
         evidence={
             "source_kind": "account_archive" if daily else "server_month_summary",
@@ -220,9 +220,11 @@ def statistics_view(row: dict[str, Any], *, daily: bool, now: datetime) -> Assis
                 {"server_daily_chart", "returned_unique_rides"},
                 "server_month_summary" if not daily else "unknown",
             ),
-            "date_assignment": "whole_ride_end_business_date",
+            "ride_date_assignment": "whole_ride_end_business_date" if daily else "server_month",
+            "energy_intensity_basis": "returned_unique_rides" if daily else "server_month_summary",
         },
-        warnings=["local_observation_only"],
+        warnings=["local_observation_only"]
+        + (["server_daily_distance_and_ride_end_date_can_differ"] if daily else []),
     )
 
 

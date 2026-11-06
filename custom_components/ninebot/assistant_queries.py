@@ -14,6 +14,7 @@ from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
+from .assistant import CONF_ASSISTANT
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .assistant_views import (
     AssistantView,
@@ -143,8 +144,10 @@ def period_dates(period: str, now: datetime) -> tuple[date, date]:
         return today - timedelta(days=1), today - timedelta(days=1)
     if period == "this_month":
         return today.replace(day=1), today
-    last = today.replace(day=1) - timedelta(days=1)
-    return last.replace(day=1), last
+    if period == "last_month":
+        last = today.replace(day=1) - timedelta(days=1)
+        return last.replace(day=1), last
+    raise AssistantError("invalid_arguments")
 
 
 async def _action(
@@ -166,8 +169,16 @@ async def _action(
 async def _vehicles(
     hass: HomeAssistant, context: Context | None
 ) -> tuple[AssistantView, list[AssistantScope]]:
-    scopes, rows = [], []
-    for device in sorted(dr.async_get(hass).devices.values(), key=lambda row: row.id):
+    scopes: list[AssistantScope] = []
+    rows: list[dict[str, Any]] = []
+    registry = dr.async_get(hass)
+    candidates = {
+        device.id: device
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if entry.options.get(CONF_ASSISTANT) is True
+        for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
+    }
+    for device in sorted(candidates.values(), key=lambda row: row.id):
         if not any(domain == DOMAIN for domain, _ in device.identifiers):
             continue
         try:
@@ -248,7 +259,7 @@ async def _vehicle_query(
             <= 31
         ):
             raise AssistantError("invalid_arguments")
-        data = {
+        data: dict[str, Any] = {
             name: args[name]
             for name in ("start_date", "end_date", "limit", "cursor")
             if name in args
@@ -306,6 +317,7 @@ async def async_query(
             if key not in TOOL_SPECS:
                 raise AssistantError("invalid_arguments")
             args = TOOL_SPECS[key].parameters(arguments)
+            query: dict[str, Any]
             if key == "get_vehicles":
                 view, scopes = await _vehicles(hass, context)
                 query = {}
