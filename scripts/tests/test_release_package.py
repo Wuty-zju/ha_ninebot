@@ -227,6 +227,30 @@ class PackageAndPublication(unittest.TestCase):
         self.run_publish(apply=True)
         self.assertEqual(len(self.api.writes), count)
 
+    def test_numeric_preview_keeps_prerelease_flag_and_latest(self):
+        manifest = self.repo / "custom_components/ninebot/manifest.json"
+        manifest.write_text(json.dumps({"domain": "ninebot", "version": "2.0.4"}))
+        self.git("add", ".")
+        self.commit()
+        self.api = FakeGitHub(self.sha)
+        report = publish(
+            self.api,
+            self.repo,
+            self.output,
+            "preview",
+            "2.0.4",
+            "dev",
+            self.sha,
+            "- Improve sign-in diagnostics.",
+            "- 完善登录诊断。",
+            apply=True,
+        )
+        self.assertEqual(report["status"], "published_verified")
+        self.assertEqual(self.api.current["tag_name"], "v2.0.4")
+        self.assertEqual(self.api.current["name"], "v2.0.4")
+        self.assertTrue(self.api.current["prerelease"])
+        self.assertEqual(self.api.latest, {"id": 1})
+
     def test_stable_and_promoted_rc_set_latest_after_assets_are_verified(self):
         for channel, version in (("stable", "2.0.0"), ("candidate", "2.0.0rc1")):
             with self.subTest(channel=channel):
