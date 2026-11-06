@@ -5,7 +5,7 @@ boundary: minimum Core does not define ToolResult or ToolAnnotations.
 """
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -42,7 +42,7 @@ class NinebotReadAPI(llm.API):
 
 def native_result(data: dict[str, Any], *, error: bool = False) -> Any:
     """Return the current native result without deprecated dictionary fallback."""
-    return getattr(llm, "ToolResult")(data=data, error=error)
+    return cast(Any, llm).ToolResult(data=data, error=error)
 
 
 def async_register(hass: HomeAssistant) -> Callable[[], None]:

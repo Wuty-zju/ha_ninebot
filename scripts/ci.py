@@ -162,7 +162,9 @@ def main() -> None:
     if args.install_native:
         native = config["native_boundary"]
         expected = f"homeassistant=={native['ha']}"
-        subprocess.run([sys.executable, "-m", "pip", "install", expected], check=True)
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", expected, *native["requirements"]], check=True
+        )
         subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
         if version("homeassistant") != native["ha"]:
             raise ValueError("Installed native API boundary differs from the configured version")
