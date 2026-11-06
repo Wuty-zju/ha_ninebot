@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.0 — Pre-release
+## 2.1.0
 
 - Add an optional native Ninebot LLM API with six local read tools for authorized vehicles, current readings, period statistics, saved trips, local details and history health.
 - Require an active administrator and separate account/vehicle consent on every call; preserve user Context and verify ownership again before returning data.

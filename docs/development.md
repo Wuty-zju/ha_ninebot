@@ -17,7 +17,7 @@ Start with [AGENTS](../AGENTS.md), inspect the checkout, then read the relevant 
 | Archive and transfer | `ride_archive`, `account_archive`, `archive_transfer`, `archive_evidence`, `archive_options` | Schema, ownership, merge, retention, upload/download and backup tests |
 | Integrity and repair | `object_checks`, `archive_audit`, `local_reconstruction`, `startup_recovery` | Corruption, raw replay, reference and recovery tests |
 | Local history and maps | `recorded_actions`, `history_websocket`, `archive_browse`, `frontend/` | Service/authorization tests, Node tests and synthetic browser fixtures |
-| Optional Assistant API | `assistant`, `assistant_api`, `assistant_policy`, `assistant_queries`, `assistant_views`, `assistant_limits` | Account consent, active-user/ownership guards, local Action queries, safe projections read admission/cancellation and the installed native API/MCP HTTP canaries |
+| Optional Assistant API | `assistant`, `assistant_api`, `assistant_policy`, `assistant_queries`, `assistant_views`, `assistant_limits` | Account consent, active-user/ownership guards, local Action queries, safe projections, read admission/cancellation and the installed native API/MCP HTTP canaries |
 | Documentation and releases | `docs/`, `scripts/`, `.github/workflows/` | Link/diagram checks, release-policy and package tests |
 
 Use `rg --files` to locate test families and [fixture metadata](../tests/fixtures/ninecli/0.1.7/metadata.json) to establish provenance. Each source file stays responsible for its own layer; shared contracts belong in the relevant model or protocol.
