@@ -22,6 +22,7 @@ async def check(config_dir: str) -> None:
     from homeassistant.helpers import llm
 
     from custom_components.ninebot.assistant_api import async_register, native_result
+    from custom_components.ninebot.assistant_queries import SPECS
     from custom_components.ninebot.compat import validation
 
     context = llm.LLMContext(
@@ -38,7 +39,18 @@ async def check(config_dir: str) -> None:
     unregister = async_register(hass)
     assert [api.id for api in llm.async_get_apis(hass)] == ["ninebot"]
     api = await llm.async_get_api(hass, "ninebot", context)
-    assert api.api.requires_admin and api.llm_context is context and api.tools == []
+    assert api.api.requires_admin and api.llm_context is context
+    assert [tool.name for tool in api.tools] == [f"ninebot__{spec.key}" for spec in SPECS]
+    for tool in api.tools:
+        formatted = _format_tool(tool, api.custom_serializer)
+        assert formatted.annotations.read_only_hint and not formatted.annotations.open_world_hint
+    invalid = await api.async_call_tool(
+        llm.ToolInput(
+            tool_name="ninebot__get_vehicle_status",
+            tool_args={"vehicle_ref": "synthetic", "refresh": True},
+        )
+    )
+    assert invalid.error and invalid.data["error"]["code"] == "invalid_arguments"
     hass.auth.async_get_user.return_value = SimpleNamespace(is_admin=False, is_active=True)
     try:
         await llm.async_get_api(hass, "ninebot", context)
@@ -69,7 +81,7 @@ async def check(config_dir: str) -> None:
     assert formatted.name == probe.name and formatted.annotations.read_only_hint
     with patch.object(llm, "async_get_api", AsyncMock(return_value=api)):
         readonly = await async_get_api_instance(hass, "ninebot", context, True)
-    assert readonly.tools == [probe]
+    assert readonly.tools == api.tools
     unregister()
     assert llm.async_get_apis(hass) == []
     print("Native Assistant: registry, admin gate, original Context, ToolResult and MCP schema OK")
