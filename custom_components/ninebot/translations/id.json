@@ -107,8 +107,8 @@
           "history_storage_mib": "Batas penyimpanan riwayat (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Enable Ninebot Assistant (Beta)",
-          "assistant_vehicles": "Vehicles available to the Assistant",
+          "enable_assistant": "Aktifkan Ninebot Assistant (Beta)",
+          "assistant_vehicles": "Kendaraan yang tersedia untuk Assistant",
           "debug_mode": "Tampilkan entitas diagnostik"
         },
         "data_description": {
@@ -124,8 +124,8 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Interval status/baterai/perjalanan: {polling_setting}. Menyesuaikan pengisian dan aktivitas.",
-          "enable_assistant": "Allow the selected AI host to read selected vehicle labels, local values, times and data quality. Accounts, credentials, precise locations and raw responses are excluded. No cloud refresh or vehicle controls.",
-          "assistant_vehicles": "Choose vehicles separately from remote controls. Disabling the Assistant keeps this selection.",
+          "enable_assistant": "Izinkan host AI yang dipilih membaca nama kendaraan terpilih, nilai lokal, waktu, dan kualitas data. Akun, kredensial, lokasi presisi, dan respons mentah tidak disertakan. Tanpa penyegaran cloud atau kontrol kendaraan.",
+          "assistant_vehicles": "Pilih kendaraan secara terpisah dari kontrol jarak jauh. Menonaktifkan Assistant tetap menyimpan pilihan.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
@@ -192,7 +192,7 @@
       "control_vehicles_required": "Pilih setidaknya satu kendaraan untuk kendali jarak jauh.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Select at least one vehicle from this account for the Assistant."
+      "assistant_vehicles_required": "Pilih setidaknya satu kendaraan dari akun ini untuk Assistant."
     }
   },
   "entity": {

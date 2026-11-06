@@ -107,8 +107,8 @@
           "history_storage_mib": "Verlaufsspeicherlimit (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Enable Ninebot Assistant (Beta)",
-          "assistant_vehicles": "Vehicles available to the Assistant",
+          "enable_assistant": "Ninebot Assistant aktivieren (Beta)",
+          "assistant_vehicles": "Für den Assistant freigegebene Fahrzeuge",
           "debug_mode": "Diagnoseentitäten anzeigen"
         },
         "data_description": {
@@ -124,8 +124,8 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Aktuelle Intervalle für Status/Batterie/Fahrten: {polling_setting}. Laden und Aktivität passen sie an.",
-          "enable_assistant": "Allow the selected AI host to read selected vehicle labels, local values, times and data quality. Accounts, credentials, precise locations and raw responses are excluded. No cloud refresh or vehicle controls.",
-          "assistant_vehicles": "Choose vehicles separately from remote controls. Disabling the Assistant keeps this selection.",
+          "enable_assistant": "Erlaubt dem gewählten KI-Host, Namen ausgewählter Fahrzeuge, lokale Werte, Zeiten und Datenqualität zu lesen. Konten, Zugangsdaten, genaue Standorte und Rohantworten sind ausgeschlossen. Keine Cloud-Aktualisierung oder Fahrzeugsteuerung.",
+          "assistant_vehicles": "Fahrzeuge unabhängig von der Fernsteuerung auswählen. Die Auswahl bleibt beim Deaktivieren des Assistants erhalten.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
@@ -192,7 +192,7 @@
       "control_vehicles_required": "Wähle mindestens ein Fahrzeug für die Fernsteuerung.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Select at least one vehicle from this account for the Assistant."
+      "assistant_vehicles_required": "Mindestens ein Fahrzeug dieses Kontos für den Assistant auswählen."
     }
   },
   "entity": {

@@ -630,10 +630,13 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
         ]
         # Keep previously saved choices selectable when validation redisplays
         # an empty selection and vehicle discovery is temporarily unavailable.
-        saved_choices = set(self.config_entry.options.get(CONF_CONTROL_VEHICLES, [])) | set(
-            self.config_entry.options.get(CONF_ASSISTANT_VEHICLES, [])
+        saved_choices = dict.fromkeys(
+            [
+                *self.config_entry.options.get(CONF_CONTROL_VEHICLES, []),
+                *self.config_entry.options.get(CONF_ASSISTANT_VEHICLES, []),
+            ]
         )
-        for sn in sorted(saved_choices):
+        for sn in saved_choices:
             if sn not in {choice["value"] for choice in choices}:
                 snapshot = vehicles.get(sn)
                 choices.append(

@@ -1,6 +1,20 @@
 # Changelog
 
-## 2.0.3b1
+## 2.1.0
+
+- Add an optional native Ninebot LLM API with six local read tools for authorized vehicles, current readings, period statistics, saved trips, local details and history health.
+- Require an active administrator and separate account/vehicle consent on every call; preserve user Context and verify ownership again before returning data.
+- Return bounded values with units, observation times, coverage and source evidence. Keep precise locations, raw responses and cloud refresh outside the read API.
+- Bound per-user call rates, concurrent reads, response size and execution time; release admission on cancellation.
+- Document native MCP setup, privacy and troubleshooting in English and Chinese; localize Assistant settings in all shipped languages and provide synthetic evaluation specifications.
+
+## 2.0.4
+
+- Preserve the observed local endpoint and HTTP status in service startup failure logs.
+- Identify vehicle-discovery failures while retaining more specific authentication context.
+- Clarify native debug logging and diagnostic entity settings in the English and Chinese guides.
+
+## 2.0.3
 
 - Document native dashboard sections for vehicle and period summaries, preserving numeric sensors and their statistics.
 - Add a read-only Actions download audit with full release pagination and per-package counts.
@@ -9,14 +23,14 @@
 - Preserve saved values when conditional fields are omitted, including unlimited request budgets and previously selected vehicles.
 - Keep the existing direct form on earlier Home Assistant versions, with unchanged defaults and archive-management access.
 
-## 2.0.2b1
+## 2.0.2
 
 - Add the native vehicle category and Marketplace installation instructions while retaining HACS installation for earlier Home Assistant versions.
 - Read device identifiers through the supported DeviceInfo representation on new and older Core versions.
 - Use Home Assistant's contextual entity-name formatter in the history browser and editor, retaining legacy display names on older frontends.
 - Add an independent published-Core API check alongside the compatible runtime test boundaries and document default-catalog preparation.
 
-## 2.0.1b1
+## 2.0.1
 
 - Add native sign-in failure logs with a per-attempt support identifier and reviewed local stage, endpoint and proxy error metadata.
 - Keep authentication errors distinct from unclassified service failures, without logging credentials or upstream response text.

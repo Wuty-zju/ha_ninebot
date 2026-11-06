@@ -107,8 +107,8 @@
           "history_storage_mib": "履歴保存上限（MiB） (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Enable Ninebot Assistant (Beta)",
-          "assistant_vehicles": "Vehicles available to the Assistant",
+          "enable_assistant": "Ninebot Assistantを有効にする（ベータ）",
+          "assistant_vehicles": "Assistantに公開する車両",
           "debug_mode": "診断エンティティを表示"
         },
         "data_description": {
@@ -124,8 +124,8 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "現在の状態／バッテリー／走行の間隔：{polling_setting}。充電と車両の活動に応じて調整します。",
-          "enable_assistant": "Allow the selected AI host to read selected vehicle labels, local values, times and data quality. Accounts, credentials, precise locations and raw responses are excluded. No cloud refresh or vehicle controls.",
-          "assistant_vehicles": "Choose vehicles separately from remote controls. Disabling the Assistant keeps this selection.",
+          "enable_assistant": "選択したAIホストに、対象車両の名前、ローカルの値、時刻、データ品質の読み取りを許可します。アカウント、認証情報、正確な位置、未加工の応答は含みません。クラウドの更新や車両操作は行いません。",
+          "assistant_vehicles": "遠隔操作の対象とは別に車両を選択します。Assistantを無効にしても選択は保持されます。",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
@@ -192,7 +192,7 @@
       "control_vehicles_required": "遠隔操作を許可する車両を1台以上選択してください。",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Select at least one vehicle from this account for the Assistant."
+      "assistant_vehicles_required": "このアカウントからAssistantに公開する車両を1台以上選択してください。"
     }
   },
   "entity": {

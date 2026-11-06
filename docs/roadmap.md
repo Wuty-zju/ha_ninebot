@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [2.0 development history](releases/2.0.md)
 
-Current scope and next priorities for the 2.0 series. Usage and data contracts are maintained in the guides; beta and RC milestones belong in the development history.
+Current scope for the stable 2.0 series and optional 2.1 preview. Usage and data contracts are maintained in the guides; beta and RC milestones belong in the development history.
 
 <a id="added-in-200rc4"></a>
 <a id="available-in-200rc1"></a>
@@ -21,6 +21,14 @@ Current scope and next priorities for the 2.0 series. Usage and data contracts a
 | Runtime reliability | Cancellation-safe resource ownership, acknowledged parameter writes, independent cleanup and reused local projections. |
 
 2.0 已交付独立账号与原生实体、五档自适应更新、控制确认、日／月／最近行程统计、事件与可选日历、可续接的历史同步、账号数据库、导入导出及有界校验恢复。正式版延续 rc4 的业务行为；完整 beta／RC 演进见[开发回顾](releases/2.0.md#简体中文)。
+
+## Optional Assistant — 2.1 preview
+
+Six dedicated local tools expose authorized vehicle status, statistics, saved trips and synchronization health through the native LLM API/MCP Server. The feature is off by default, uses separate account/vehicle consent and keeps coordinates and raw responses outside tool results. [Setup and tool reference](assistant.md).
+
+Next steps are a measured single-agent query/diagnostic baseline, versioned help retrieval and reusable task procedures. Approved synchronization needs a trusted human approval path and an exact request budget before it can become an execution tool. Multi-agent work remains an experiment subject to a measured benefit over the single-agent baseline.
+
+2.1预览提供六个专属本地只读工具，默认关闭，按账号和车辆单独授权。[使用说明](assistant_zh.md)。后续按实测结果完善单Agent查询／诊断、版本化帮助检索和任务流程；同步执行先落实可信人工审批及精确请求预算，多Agent实验有实测收益才保留。
 
 ## Early alpha: visualization and cards
 

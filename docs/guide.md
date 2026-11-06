@@ -133,6 +133,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
 | Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. A failed save keeps the edit pending and reports a storage Repair; save again after resolving it. Retired low-confidence SOC estimators remain removed. |
+| Ninebot Assistant (2.1 preview, Beta) | Off; no vehicles selected | Optional native read API for selected vehicles; requires a compatible host and modern Core. [Setup and privacy](assistant.md). |
 | Show diagnostic entities | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
 On HA 2026.11+, allowed vehicles appear when controls are enabled; automatic history scan, capacity and request-budget fields appear when automatic detail synchronization is enabled. Hidden settings retain their previously saved values. Earlier HA versions show the same fields directly. Archive management and retention remain available independently.

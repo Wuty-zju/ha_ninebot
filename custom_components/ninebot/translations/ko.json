@@ -107,8 +107,8 @@
           "history_storage_mib": "기록 저장 한도 (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Enable Ninebot Assistant (Beta)",
-          "assistant_vehicles": "Vehicles available to the Assistant",
+          "enable_assistant": "Ninebot Assistant 사용 (베타)",
+          "assistant_vehicles": "Assistant에 공개할 차량",
           "debug_mode": "진단 엔티티 표시"
         },
         "data_description": {
@@ -124,8 +124,8 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "현재 상태/배터리/주행 간격: {polling_setting}. 충전 및 차량 활동에 따라 조정합니다.",
-          "enable_assistant": "Allow the selected AI host to read selected vehicle labels, local values, times and data quality. Accounts, credentials, precise locations and raw responses are excluded. No cloud refresh or vehicle controls.",
-          "assistant_vehicles": "Choose vehicles separately from remote controls. Disabling the Assistant keeps this selection.",
+          "enable_assistant": "선택한 AI 호스트가 선택된 차량의 이름, 로컬 값, 시간 및 데이터 품질을 읽도록 허용합니다. 계정, 인증 정보, 정확한 위치 및 원본 응답은 제외됩니다. 클라우드 새로 고침이나 차량 제어는 수행하지 않습니다.",
+          "assistant_vehicles": "원격 제어와 별도로 차량을 선택하세요. Assistant를 비활성화해도 선택은 유지됩니다.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
@@ -192,7 +192,7 @@
       "control_vehicles_required": "원격 제어할 차량을 하나 이상 선택하세요.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Select at least one vehicle from this account for the Assistant."
+      "assistant_vehicles_required": "이 계정에서 Assistant에 공개할 차량을 하나 이상 선택하세요."
     }
   },
   "entity": {
