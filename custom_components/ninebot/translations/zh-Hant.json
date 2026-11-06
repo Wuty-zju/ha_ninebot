@@ -107,10 +107,11 @@
           "history_storage_mib": "歷史儲存額度（MiB）（Beta）",
           "retain_history_database": "保留本地历史行程信息数据库（Beta）",
           "manage_archive": "导出或导入历史数据库（Beta）",
+          "enable_assistant": "啟用 Ninebot Assistant（Beta）",
+          "assistant_vehicles": "Assistant 可存取的車輛",
           "debug_mode": "顯示診斷實體"
         },
         "data_description": {
-          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "按日期瀏覽本地歷史行程。日曆顯示“無目前行程”并不代表停用；關閉此選項才会停用日曆，歷史記錄保留。",
@@ -122,7 +123,10 @@
           "enable_vehicle_events": "同時開關車輛行程事件与車輛狀態事件；預設開啟。重新開啟不会重放旧記錄。",
           "retain_history_database": "删除账号时保留历史及轨迹；重新添加同一账号后自动恢复。取消后，下次删除账号会删除受管归档及恢复副本。",
           "manage_archive": "选择账号和车辆导出，或上传归档包校验并合并。文件包含私密位置与轨迹，请妥善保管。",
-          "polling_profile": "目前狀態／電池／行程目標週期：{polling_setting}。依充電和車輛活動自動調整。"
+          "polling_profile": "目前狀態／電池／行程目標週期：{polling_setting}。依充電和車輛活動自動調整。",
+          "enable_assistant": "允許所選 AI 服務讀取選中車輛的名稱、本機數值、時間與資料品質。不提供帳號、憑證、精確位置或原始回應，不重新整理雲端或控制車輛。",
+          "assistant_vehicles": "此選擇獨立於車輛控制。關閉 Assistant 會保留所選車輛。",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
       "model_vehicle": {
@@ -187,7 +191,8 @@
       "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
       "control_vehicles_required": "請至少選擇一輛允許控制的車輛。",
       "archive_invalid": "无法完成归档操作。请核对账号、文件格式、完整性、容量与车辆身份。已完成的账号会保留，可安全重试；原始文件不被替换。",
-      "archive_busy": "正在备份，请稍后重试。"
+      "archive_busy": "正在备份，请稍后重试。",
+      "assistant_vehicles_required": "請為 Assistant 選擇此帳號的至少一輛車。"
     }
   },
   "entity": {

@@ -12,6 +12,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import llm
 
 from .assistant import API_ID
+from .assistant_policy import async_require_admin
 
 PROMPT = (
     "Use the Ninebot tools for the vehicles and local data the user has allowed. "
@@ -32,6 +33,7 @@ class NinebotReadAPI(llm.API):
         self.requires_admin = True
 
     async def async_get_api_instance(self, llm_context: llm.LLMContext) -> llm.APIInstance:
+        await async_require_admin(self.hass, llm_context.context)
         return llm.APIInstance(
             api=self,
             api_prompt=PROMPT,

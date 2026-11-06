@@ -33,6 +33,7 @@ from homeassistant.helpers.selector import (
 from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, account_update
 from .account_archive import CONF_RETAIN_ARCHIVE
 from .archive_options import ArchiveOptionsMixin
+from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_VEHICLES, native_api_supported
 from .bootstrap import CONF_AUTO_HISTORY
 from .compat import conditional_field, post_create_options_supported
 from .compat import validation as vol
@@ -589,6 +590,8 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        vehicles = runtime.coordinator.data if runtime else {}
         if user_input is not None:
             self._pending_options = {**self.config_entry.options, **user_input}
             self._pending_options[CONF_POLLING_PROFILE] = PollingPolicy.from_options(
@@ -599,6 +602,19 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                 CONF_CONTROL_VEHICLES
             ):
                 errors[CONF_CONTROL_VEHICLES] = "control_vehicles_required"
+            elif self._pending_options.get(CONF_ASSISTANT) is True and (
+                not isinstance(selected := self._pending_options.get(CONF_ASSISTANT_VEHICLES), list)
+                or not selected
+                or any(
+                    not isinstance(sn, str)
+                    or (
+                        sn not in vehicles
+                        and sn not in self.config_entry.options.get(CONF_ASSISTANT_VEHICLES, [])
+                    )
+                    for sn in selected
+                )
+            ):
+                errors[CONF_ASSISTANT_VEHICLES] = "assistant_vehicles_required"
             else:
                 if self._pending_options.pop("manage_archive", False):
                     return await self.async_step_archive()
@@ -607,8 +623,6 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                     return await self.async_step_model_vehicle()
                 return self.async_create_entry(title="", data=self._pending_options)
         options = {**self.config_entry.options, **(user_input or {})}
-        runtime = getattr(self.config_entry, "runtime_data", None)
-        vehicles = runtime.coordinator.data if runtime else {}
         choices = [
             SelectOptionDict(value=sn, label=f"{snapshot.profile.name} · {sn[-6:]}")
             for sn, snapshot in vehicles.items()
@@ -616,7 +630,10 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
         ]
         # Keep previously saved choices selectable when validation redisplays
         # an empty selection and vehicle discovery is temporarily unavailable.
-        for sn in self.config_entry.options.get(CONF_CONTROL_VEHICLES, []):
+        saved_choices = set(self.config_entry.options.get(CONF_CONTROL_VEHICLES, [])) | set(
+            self.config_entry.options.get(CONF_ASSISTANT_VEHICLES, [])
+        )
+        for sn in sorted(saved_choices):
             if sn not in {choice["value"] for choice in choices}:
                 snapshot = vehicles.get(sn)
                 choices.append(
@@ -672,6 +689,24 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                     ): bool,
                     vol.Optional("manage_archive", default=False): bool,
                     vol.Optional("configure_model", default=False): bool,
+                    **(
+                        {
+                            vol.Optional(
+                                CONF_ASSISTANT, default=options.get(CONF_ASSISTANT, False)
+                            ): bool,
+                            conditional_field(
+                                CONF_ASSISTANT_VEHICLES,
+                                options.get(CONF_ASSISTANT_VEHICLES, []),
+                                when=CONF_ASSISTANT,
+                            ): SelectSelector(
+                                SelectSelectorConfig(
+                                    options=choices, multiple=True, mode=SelectSelectorMode.DROPDOWN
+                                )
+                            ),
+                        }
+                        if native_api_supported()
+                        else {}
+                    ),
                     vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
                 }
             ),

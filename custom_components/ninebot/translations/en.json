@@ -107,10 +107,11 @@
           "history_storage_mib": "History storage limit (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
+          "enable_assistant": "Enable Ninebot Assistant (Beta)",
+          "assistant_vehicles": "Vehicles available to the Assistant",
           "debug_mode": "Show diagnostic entities"
         },
         "data_description": {
-          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
@@ -122,7 +123,10 @@
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
-          "polling_profile": "Current status/battery/travel targets: {polling_setting}. Vehicles adjust to charging and activity."
+          "polling_profile": "Current status/battery/travel targets: {polling_setting}. Vehicles adjust to charging and activity.",
+          "enable_assistant": "Allow the selected AI host to read selected vehicle labels, local values, times and data quality. Accounts, credentials, precise locations and raw responses are excluded. No cloud refresh or vehicle controls.",
+          "assistant_vehicles": "Choose vehicles separately from remote controls. Disabling the Assistant keeps this selection.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
       "model_vehicle": {
@@ -187,7 +191,8 @@
       "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
       "control_vehicles_required": "Select at least one vehicle for remote control.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
-      "archive_busy": "A backup is in progress. Try again later."
+      "archive_busy": "A backup is in progress. Try again later.",
+      "assistant_vehicles_required": "Select at least one vehicle from this account for the Assistant."
     }
   },
   "entity": {
