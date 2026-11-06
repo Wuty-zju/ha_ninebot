@@ -16,6 +16,8 @@ class ReleasePolicy(unittest.TestCase):
         for channel, version, source in (
             ("preview", "2.0.0b95", "dev"),
             ("preview", "2.0.0a1", "dev"),
+            ("preview", "2.0.4", "dev"),
+            ("preview", "2.0.9", "release/2.0.9"),
             ("preview", "2.0.0rc1", "release/2.0.0"),
             ("stable", "2.0.0", "main"),
             ("candidate", "2.0.0rc1", "main"),
@@ -27,7 +29,7 @@ class ReleasePolicy(unittest.TestCase):
         for channel, version, source, sha in (
             ("preview", "2.0.0b95", "main", COMMIT),
             ("stable", "2.0.0b95", "main", COMMIT),
-            ("preview", "2.0.0", "dev", COMMIT),
+            ("preview", "2.0.4", "main", COMMIT),
             ("stable", "2.0.0", "dev", COMMIT),
             ("preview", "2.0.0rc1", "release/2.1.0", COMMIT),
             ("preview", "v2.0.0b95", "dev", COMMIT),

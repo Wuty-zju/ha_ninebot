@@ -19,8 +19,6 @@ def validate_request(channel: str, version: str, source: str, sha: str) -> None:
     if channel not in {"preview", "candidate", "stable"}:
         raise ValueError("Unknown release channel")
     preview = match.group(4) is not None
-    if channel == "preview" and not preview:
-        raise ValueError("Preview needs an a/b/rc suffix")
     if channel == "stable" and preview:
         raise ValueError("Stable must not have a prerelease suffix")
     if channel == "candidate" and match.group(5) != "rc":
