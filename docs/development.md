@@ -97,6 +97,18 @@ The native API canary runs on the published Core 2026.11.0 without a mismatched 
 
 [Synthetic evaluation tasks](../tests/fixtures/assistant/evaluation-tasks.json) define 52 scenarios for staged host/model evaluation. Their values are invented, all measurements start as null, and the task count is not a pass rate. Use the companion fixture and actual tool results; do not turn permission-injection test content into instructions. Record model, host, source revision, tool trace summary and measured results separately. Tests against HA Actions and SQLite establish tool contracts, not model accuracy.
 
+### Small model baseline
+
+The optional **Checks → assistant_evaluation** dispatch runs Q03, Q04, P06 and S02 through a fixed CPU model and the installed native MCP HTTP handler. It compares a single prompt without tools against a bounded tool loop. Authorization, registry, snapshots and Action returns are synthetic; this run does not connect to a production HA instance or exercise a real archive. Q03 supplies two vehicles; P06 supplies a selected ride and revokes consent inside its detail read.
+
+The model is `Qwen/Qwen3-0.6B` at revision `c1899de289a04d12100db370d81485cdf75e47ca` (Apache-2.0), with CPU PyTorch 2.10.0 and Transformers 4.57.1. These packages are development-only and are installed only for an explicit dispatch. Each arm has at most three model turns, four tool calls and 256 generated tokens per turn. Temporary model data stays in the runner directory and is removed after the job.
+
+The `assistant-model-<attempt>` artifact contains source/dependency versions, visible replies, real tool requests/results, token counts and timing. Reasoning blocks are omitted. Task completion and fact accuracy remain unset until the answers and evidence are reviewed; a successful job means the comparison ran. Small-model results describe these samples, not the quality of every compatible AI host. Protocol and artifact-boundary unit tests need only the standard library.
+
+```sh
+gh workflow run checks.yaml --ref YOUR_BRANCH -f assistant_evaluation=true
+```
+
 ## Fixtures and privacy
 
 Record fixture source/version and distinguish recorded, synthetic and maintainer-confirmed values. Field semantics are indexed in [source-map.json](../tests/fixtures/field_inventory/source-map.json). Units, aliases and coordinate transformations need evidence before entering a production parser.
