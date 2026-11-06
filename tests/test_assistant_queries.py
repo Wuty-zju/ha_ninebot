@@ -275,7 +275,7 @@ async def test_detail_missing_never_falls_back_to_cloud_then_saved_detail_is_sma
         hass, assistant, "get_trip_detail", ride_id="ride-0", query_month="202610"
     )
     assert error and missing["error"]["code"] == "local_data_missing"
-    summary = assistant.co.data[SN].travel.rides[0]
+    summary = next(ride for ride in assistant.co.data[SN].travel.rides if ride.ride_id == "ride-0")
     raw = {
         "mileages": 1.2,
         "duration": 600,
@@ -290,7 +290,8 @@ async def test_detail_missing_never_falls_back_to_cloud_then_saved_detail_is_sma
     result, error = await query(
         hass, assistant, "get_trip_detail", ride_id="ride-0", query_month="202610"
     )
-    assert not error and result["data"]["detail_saved"] is True
+    assert not error, result
+    assert result["data"]["detail_saved"] is True
     assert result["data"]["distance_m"] == 1200 and result["data"]["energy_wh"] == 120
     assert result["quality"]["valid_points"] == 2
     encoded = json.dumps(result)
