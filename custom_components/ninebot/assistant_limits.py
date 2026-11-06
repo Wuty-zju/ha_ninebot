@@ -31,10 +31,10 @@ class ReadLimits:
     def acquire(self, user_id: str, now: float) -> None:
         cutoff = now - WINDOW_SECONDS
         for key in tuple(self.calls):
-            queue = self.calls[key]
-            while queue and queue[0] <= cutoff:
-                queue.popleft()
-            if not queue:
+            window = self.calls[key]
+            while window and window[0] <= cutoff:
+                window.popleft()
+            if not window:
                 del self.calls[key]
         if self.active >= MAX_IN_FLIGHT:
             raise ReadLimitExceeded(1)
@@ -56,7 +56,9 @@ class ReadLimits:
 
 @contextmanager
 def read_slot(hass: HomeAssistant, user_id: str) -> Iterator[None]:
-    limits: ReadLimits = hass.data.setdefault(DATA_KEY, ReadLimits())
+    if DATA_KEY not in hass.data:
+        hass.data[DATA_KEY] = ReadLimits()
+    limits: ReadLimits = hass.data[DATA_KEY]
     limits.acquire(user_id, asyncio.get_running_loop().time())
     try:
         yield
