@@ -11,7 +11,7 @@ import pytest
 
 from custom_components.ninebot.client import NinecliClient
 from custom_components.ninebot.const import MAX_RESPONSE_BYTES
-from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
+from custom_components.ninebot.exceptions import Endpoint, ErrorKind, NinebotAuthError, NinebotError
 
 
 @pytest.fixture
@@ -135,13 +135,20 @@ async def test_cli_failure_uses_explicit_rest_auth_evidence(tmp_path, native, au
     install("import sys;sys.stderr.write('synthetic-private-secret');sys.exit(1)")
     async with aiohttp.ClientSession() as session:
         client = NinecliClient(tmp_path, session)
+        auth_error = NinebotAuthError()
+        auth_error.at_endpoint(Endpoint.ACCOUNT)
+        auth_error.observe_response(401)
         client._request_locked = AsyncMock(
-            side_effect=NinebotAuthError() if auth_failure else None,
+            side_effect=auth_error if auth_failure else None,
             return_value={"synthetic": True},
         )
         with pytest.raises(NinebotError) as error:
             await client.async_list_vehicles()
         assert error.value.kind is (ErrorKind.AUTH if auth_failure else ErrorKind.SERVICE)
+        assert error.value.context.endpoint is (
+            Endpoint.ACCOUNT if auth_failure else Endpoint.VEHICLES
+        )
+        assert error.value.context.proxy_http_status == (401 if auth_failure else None)
         client._request_locked.assert_awaited_once_with("GET", "/whoami")
         assert "synthetic-private-secret" not in "".join(traceback.format_exception(error.value))
         assert children[0].returncode == 1 and client._process is None
@@ -258,6 +265,7 @@ async def test_failed_discovery_restores_cache_not_tokens(tmp_path, native, mode
                 ErrorKind.SERVICE if mode == "empty_warning" else ErrorKind.PROTOCOL
             )
             assert "synthetic-private" not in "".join(traceback.format_exception(error.value))
+            assert error.value.context.endpoint is Endpoint.VEHICLES
         assert (tmp_path / "vehicles.json").read_bytes() == old
         assert (tmp_path / "tokens.json").read_text() == "synthetic-refreshed"
         assert client.vehicle_discovery_complete is False

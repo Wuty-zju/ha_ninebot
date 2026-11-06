@@ -186,7 +186,7 @@ data:
   custom_components.ninebot: debug
 ```
 
-Submit the sign-in form once, note the time and form error, then download the **Home Assistant Core** log from Settings → System → Logs. Look for `Account setup failed` and its `support` identifier. The entry reports the observed local stage, error kind and proxy response status. A proxy status does not identify a cloud region or an internal authentication stage. Restore the previous log level afterward, usually `warning`.
+Submit the sign-in form once, note the time and form error, then download the **Home Assistant Core** log from Settings → System → Logs. Look for `Account setup failed` and its `support` identifier. The entry reports the observed local stage, error kind and proxy response status. A proxy status does not identify a cloud region or an internal authentication stage. `loopback_auth` with `loopback_auth_probe` identifies a local service handshake failure; `vehicles` identifies vehicle discovery. Expected handshake responses (401 without authorization and 404 for the authorized probe) are silent. On Home Assistant 2026.11+, the integration’s live log view is also useful when reproducing a failure. Restore the previous log level afterward, usually `warning`.
 
 For an existing account, use the integration menu's **Enable debug logging**, reproduce the problem, then disable it and download the log. Download **Diagnostics** separately. **Show diagnostic entities** exposes the parsed current-data view and progress entities; DEBUG logging uses the integration menu. A failed or unloaded account can still export basic version/platform diagnostics.
 

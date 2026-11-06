@@ -97,7 +97,7 @@ Each account owns its session, credentials directory and archive. Entry titles u
 | Controls and vehicle allowlist | New accounts: on / sign-in-verified vehicles | Adjust command access for selected vehicles; existing choices are retained. |
 | Keep local history database (Beta) | On | Retain history after account removal and reconnect it on same-account sign-in. |
 | Vehicle events (Beta) | On | Trip reports, revisions, completions and concrete vehicle transitions. |
-| Debug mode | Off | Bounded parsed current information for investigation. |
+| Show diagnostic entities | Off | Bounded parsed current information for investigation. |
 
 Existing explicit choices are retained on upgrade. Further options include adaptive update profiles, nominal battery parameters, request budget and archive quota. [Defaults and ranges →](docs/guide.md#options)
 
@@ -128,7 +128,7 @@ Enable **Automatically sync trip details (Beta)** and **Automatically scan trip 
 | **Incremental updates** | Revisit recent activity, reconcile changed lists and retry gaps without repeatedly downloading settled history. |
 | **Local verification** | Check retained objects and page relationships in bounded work; surface actionable storage problems through Repairs. |
 
-History scan and saved-detail progress are device diagnostics. The sync button starts or resumes work; pause stops background acquisition. Debug mode adds synchronization state and last-success diagnostics. Saved-detail percentage covers **discovered records**; month coverage reports list gaps separately.
+History scan and saved-detail progress are device diagnostics. The sync button starts or resumes work; pause stops background acquisition. Showing diagnostic entities adds synchronization state and last-success diagnostics. Saved-detail percentage covers **discovered records**; month coverage reports list gaps separately.
 
 The default history budget is **60 logical requests per account/hour**, configurable from **1–120** in a numeric input. **0** removes the hourly quota (not recommended); request serialization, retries and upstream backoff still apply. Archive quota defaults to **100 MiB per account**, configurable from **32–2048 MiB**. Reaching the quota pauses writes and retains existing data. Local records have no age-based expiry; capacity and backups govern long-term retention. Save details while the cloud still returns them: removed or simplified upstream tracks cannot be recreated locally.
 
