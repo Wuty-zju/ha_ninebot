@@ -325,6 +325,15 @@
         "tests/test_statistics_continuity.py",
         "tests/test_identity_migration.py"
       ]
+    },
+    "assistant": {
+      "paths": [
+        "custom_components/ninebot/assistant*.py",
+        "scripts/check_assistant_api.py"
+      ],
+      "tests": [
+        "tests/test_assistant_lifecycle.py"
+      ]
     }
   },
   "critical_paths": [
@@ -341,7 +350,8 @@
     "custom_components/ninebot/migration.py",
     "custom_components/ninebot/event.py",
     "custom_components/ninebot/history_websocket.py",
-    "custom_components/ninebot/manifest.json"
+    "custom_components/ninebot/manifest.json",
+    "custom_components/ninebot/assistant*.py"
   ],
   "pipeline_tests": [
     "tests/test_config_flow.py",

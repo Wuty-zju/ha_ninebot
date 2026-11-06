@@ -54,6 +54,13 @@ class ScopeTests(unittest.TestCase):
             self.plan("scripts/check_ha_api.py")["native_boundary"], self.config["native_boundary"]
         )
 
+    def test_assistant_scope_includes_native_boundary_and_related_lifecycle(self):
+        plan = self.plan("custom_components/ninebot/assistant_api.py")
+        self.assertTrue(plan["native_api"])
+        self.assertIn("tests/test_assistant_lifecycle.py", plan["tests"])
+        self.assertNotIn("unmapped-runtime", plan["reasons"])
+        self.assertEqual(len(plan["matrix"]["include"]), 2)
+
     def test_new_unmapped_runtime_is_conservative(self):
         plan = self.plan("custom_components/ninebot/future_protocol.py")
         self.assertEqual(set(plan["tests"]), self.available)

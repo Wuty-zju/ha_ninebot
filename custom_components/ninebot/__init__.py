@@ -16,6 +16,7 @@ from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, AccountDisplay, account_
 from .account_archive import CONF_RETAIN_ARCHIVE, async_prepare_account, async_remove_account
 from .archive_lifecycle import async_remove_archive
 from .archive_options import register_download
+from .assistant import ASSISTANT_OPTIONS, async_update_assistant_api
 from .async_utils import async_drain
 from .backup import backup_active, defer_removal
 from .client import NinecliClient
@@ -176,10 +177,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         coordinator.realtime.start()
         coordinator.preservation.start()
         coordinator.async_schedule_statistics_refresh()
+        await async_update_assistant_api(hass)
     except BaseException:
         if entry.runtime_data.events:
             await entry.runtime_data.events.async_close()
         await coordinator.async_close()
+        await async_update_assistant_api(hass)
         raise
     entry.runtime_data.applied_options = dict(entry.options)
     entry.runtime_data.applied_data = dict(entry.data)
@@ -195,6 +198,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
         if entry.runtime_data.events:
             await entry.runtime_data.events.async_close()
         await entry.runtime_data.coordinator.async_close()
+        await async_update_assistant_api(hass)
         await entry.runtime_data.models.async_save()
         return True
     return False
@@ -214,8 +218,11 @@ async def async_update_options(hass: HomeAssistant, entry: NinebotConfigEntry) -
         }
         if data == runtime.applied_data and not changed:
             return
-        if data == runtime.applied_data and changed <= POLLING_OPTIONS:
-            await runtime.coordinator.async_reconfigure_polling(options)
+        if data == runtime.applied_data and changed <= POLLING_OPTIONS | ASSISTANT_OPTIONS:
+            if changed & POLLING_OPTIONS:
+                await runtime.coordinator.async_reconfigure_polling(options)
+            if changed & ASSISTANT_OPTIONS:
+                await async_update_assistant_api(hass)
             runtime.applied_options = options
             return
     await hass.config_entries.async_reload(entry.entry_id)
@@ -232,6 +239,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
         if runtime.events:
             await runtime.events.async_close()
         await runtime.coordinator.async_close()
+        await async_update_assistant_api(hass)
 
     async def remove() -> None:
         try:

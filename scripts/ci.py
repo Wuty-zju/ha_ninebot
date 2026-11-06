@@ -34,8 +34,11 @@ def select(paths: list[str], config: dict, available: set[str]) -> dict:
             "custom_components/ninebot/entity.py",
             "custom_components/ninebot/config_flow.py",
             "scripts/check_ha_api.py",
+            "scripts/check_assistant_api.py",
             ".github/ci.json",
         }:
+            native_api = True
+        if matches(path, ["custom_components/ninebot/assistant*.py"]):
             native_api = True
         if matches(path, config["critical_paths"]):
             boundaries = ["minimum", "current"]

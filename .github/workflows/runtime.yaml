@@ -90,4 +90,6 @@ jobs:
       - name: Install the published Core without a mismatched test plugin
         run: python scripts/ci.py --install-native
       - name: Check installed native API contracts without cloud requests
-        run: python -m scripts.check_ha_api
+        run: |
+          python -m scripts.check_ha_api
+          python -m scripts.check_assistant_api
