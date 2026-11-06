@@ -8,6 +8,8 @@ not exercise production HA, OAuth, a model provider or the Ninebot cloud.
 
 import asyncio
 import json
+from collections.abc import Awaitable, Callable
+from contextlib import ExitStack
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -18,7 +20,7 @@ async def main() -> None:
         await check(directory)
 
 
-async def check(config_dir: str) -> None:
+async def check(config_dir: str, scenario: Callable[..., Awaitable[None]] | None = None) -> None:
     from aiohttp import web
     from aiohttp.test_utils import TestClient, TestServer
     from homeassistant.components.http import KEY_HASS
@@ -57,7 +59,7 @@ async def check(config_dir: str) -> None:
     now = dt_util.utcnow()
     stamp = Freshness(attempted_at=now, succeeded_at=now)
     snapshot = VehicleSnapshot(
-        VehicleProfile(sn, "Fixture scooter", "Fixture"),
+        VehicleProfile(sn, "Vehicle A", "Fixture"),
         status=VehicleStatus(
             battery=42, charging=False, locked=True, latitude=30.12345, longitude=120.12345
         ),
@@ -70,8 +72,9 @@ async def check(config_dir: str) -> None:
         _ownership={sn: 0},
         _stopping=False,
         data={sn: snapshot},
-        local_vehicle_available=lambda target: target == sn,
-        fresh=lambda target, group: target == sn and group in {"status", "battery", "profile"},
+        statistics=SimpleNamespace(archive_ready=True),
+        local_vehicle_available=lambda target: target in co.data,
+        fresh=lambda target, group: target in co.data and group in {"status", "battery", "profile"},
     )
     entry = SimpleNamespace(
         domain="ninebot",
@@ -87,8 +90,23 @@ async def check(config_dir: str) -> None:
         identifiers={("ninebot", sn)},
         disabled_by=None,
         parent_device_id=None,
+        name_by_user=None,
     )
-    registry = SimpleNamespace(async_get=lambda target: device if target == vehicle_ref else None)
+    devices = {vehicle_ref: device}
+    if scenario is not None:
+        other_sn, other_ref = "synthetic-vehicle-b", "synthetic-device-b"
+        co.data[other_sn] = VehicleSnapshot(VehicleProfile(other_sn, "Vehicle B", "Fixture"))
+        co._ownership[other_sn] = 0
+        entry.options["assistant_vehicles"].append(other_sn)
+        devices[other_ref] = SimpleNamespace(
+            id=other_ref,
+            config_entry_id=entry_id,
+            identifiers={("ninebot", other_sn)},
+            disabled_by=None,
+            parent_device_id=None,
+            name_by_user=None,
+        )
+    registry = SimpleNamespace(async_get=devices.get)
     mcp_entry = SimpleNamespace(
         data={
             "all_llm_apis": False,
@@ -99,6 +117,7 @@ async def check(config_dir: str) -> None:
     )
     hass.config_entries = SimpleNamespace(
         async_loaded_entries=lambda domain: [mcp_entry] if domain == "mcp_server" else [],
+        async_entries=lambda domain: [entry] if domain == "ninebot" else [],
         async_get_entry=lambda target: entry if target == entry_id else None,
     )
 
@@ -144,13 +163,28 @@ async def check(config_dir: str) -> None:
         assert context.user_id == "synthetic-admin"
         return await original_authorize(actual_hass, context, target)
 
-    unregister = async_register(hass)
+    remove = async_register(hass)
+
+    def unregister():
+        nonlocal remove
+        if remove is not None:
+            callback, remove = remove, None
+            callback()
+
     with (
+        ExitStack() as cleanup,
         patch.object(native_http, "create_mcp_server", side_effect=capture_context),
         patch.object(assistant_queries, "async_authorize", side_effect=verify_context),
         patch.object(NinebotReadAPI, "async_get_api_instance", new=add_write_probe),
         patch("custom_components.ninebot.services.dr.async_get", return_value=registry),
+        patch(
+            "custom_components.ninebot.assistant_queries.dr.async_entries_for_config_entry",
+            side_effect=lambda _registry, owner: (
+                list(devices.values()) if owner == entry_id else []
+            ),
+        ),
     ):
+        cleanup.callback(unregister)
         async with TestClient(TestServer(app)) as client:
             sequence = 0
 
@@ -198,6 +232,15 @@ async def check(config_dir: str) -> None:
                     "120.12345",
                 )
             )
+            if scenario is not None:
+                try:
+                    await scenario(
+                        SimpleNamespace(
+                            hass=hass, entry=entry, coordinator=co, rpc=rpc, vehicle_ref=vehicle_ref
+                        )
+                    )
+                finally:
+                    entry.options["enable_assistant"] = True
             _, filtered = await rpc(
                 "tools/call", {"name": "ninebot__synthetic_write", "arguments": {}}
             )

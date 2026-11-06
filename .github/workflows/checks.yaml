@@ -9,6 +9,10 @@ on:
         description: Run the full HA and frontend compatibility suites
         type: boolean
         default: false
+      assistant_evaluation:
+        description: Run the four-case synthetic CPU model comparison
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -27,6 +31,7 @@ jobs:
       - run: python -m pip install ruff==0.16.10
       - run: ruff check custom_components tests scripts
       - run: ruff format --check custom_components tests scripts
+      - run: python -m unittest scripts.tests.test_assistant_evaluation -q
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: github.event_name == 'workflow_dispatch' && inputs.full_validation
         with:
@@ -95,3 +100,42 @@ jobs:
             coverage.xml
           if-no-files-found: warn
           retention-days: 14
+  assistant-model:
+    name: Synthetic CPU model and native MCP
+    if: github.event_name == 'workflow_dispatch' && inputs.assistant_evaluation
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      LITELLM_LOCAL_MODEL_COST_MAP: 'True'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      HF_HUB_DISABLE_XET: '1'
+      HF_HOME: ${{ runner.temp }}/ninebot-model
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+      - name: Install the fixed native HA boundary
+        run: python scripts/ci.py --install-native
+      - name: Install CPU-only evaluation dependencies
+        run: |
+          python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install transformers==4.57.1
+          python -m pip check
+      - name: Measure the synthetic four-case comparison
+        run: python -m scripts.evaluate_assistant --output model-results.json
+      - name: Preserve completed measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: assistant-model-${{ github.run_attempt }}
+          path: model-results.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Remove temporary model data
+        if: always()
+        run: rm -rf -- "$HF_HOME"
