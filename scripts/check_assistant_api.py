@@ -5,13 +5,19 @@ listener or use the generated HA test plugin. HTTP transport is tested separatel
 """
 
 import asyncio
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 
 async def main() -> None:
+    with TemporaryDirectory(prefix="ninebot-native-") as directory:
+        await check(directory)
+
+
+async def check(config_dir: str) -> None:
     from homeassistant.components.mcp_server.server import _format_tool, async_get_api_instance
-    from homeassistant.core import Context
+    from homeassistant.core import Context, HomeAssistant
     from homeassistant.exceptions import Unauthorized
     from homeassistant.helpers import llm
 
@@ -25,22 +31,22 @@ async def main() -> None:
         assistant="conversation",
         device_id=None,
     )
-    hass = SimpleNamespace(
-        data={},
-        auth=SimpleNamespace(async_get_user=AsyncMock(return_value=SimpleNamespace(is_admin=True))),
+    hass = HomeAssistant(config_dir)
+    hass.auth = SimpleNamespace(
+        async_get_user=AsyncMock(return_value=SimpleNamespace(is_admin=True, is_active=True))
     )
     unregister = async_register(hass)
     assert [api.id for api in llm.async_get_apis(hass)] == ["ninebot"]
     api = await llm.async_get_api(hass, "ninebot", context)
     assert api.api.requires_admin and api.llm_context is context and api.tools == []
-    hass.auth.async_get_user.return_value = SimpleNamespace(is_admin=False)
+    hass.auth.async_get_user.return_value = SimpleNamespace(is_admin=False, is_active=True)
     try:
         await llm.async_get_api(hass, "ninebot", context)
     except Unauthorized:
         pass
     else:
         raise AssertionError("Native collection must require an administrator")
-    hass.auth.async_get_user.return_value = SimpleNamespace(is_admin=True)
+    hass.auth.async_get_user.return_value = SimpleNamespace(is_admin=True, is_active=True)
 
     class ProbeTool(llm.Tool):
         name = "ninebot__synthetic_probe"
