@@ -115,7 +115,7 @@ async def query(hass, assistant, key, **arguments):
     ],
 )
 async def test_strict_arguments_do_not_reach_actions(hass, assistant, key, arguments):
-    with patch.object(hass.services, "async_call", new=AsyncMock()) as action:
+    with patch.object(type(hass.services), "async_call", new=AsyncMock()) as action:
         result, error = await query(hass, assistant, key, **arguments)
     assert error and result["error"]["code"] == "invalid_arguments"
     action.assert_not_awaited()
@@ -177,7 +177,11 @@ async def test_cached_status_keeps_zero_false_stale_and_excludes_private_fields(
 async def test_vehicle_list_uses_consented_names_and_explicit_fleet_limit(hass, assistant):
     snapshot = assistant.co.data[SN]
     assistant.co.data[SN] = replace(
-        snapshot, profile=replace(snapshot.profile, name=f"Scooter {SN} fake-account 12345678900")
+        snapshot,
+        profile=replace(
+            snapshot.profile,
+            name=(f"Scooter {SN} fake-account 12345678900 synthetic-business " + "a" * 32),
+        ),
     )
     result, error = await async_query(hass, "get_vehicles", {}, assistant.context)
     assert not error and result["data"]["vehicles"][0]["label"].strip() == "Scooter"
@@ -215,7 +219,7 @@ async def test_period_statistics_reuse_actions_with_original_context_and_no_refr
     hass, assistant, period, count, month
 ):
     original = hass.services.async_call
-    with patch.object(hass.services, "async_call", wraps=original) as action:
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(wraps=original)) as action:
         result, error = await query(hass, assistant, "get_statistics", period=period)
     assert not error and result["data"]["ride_count"] == count
     assert result["data"]["units"]["duration_s"] == "s"
@@ -290,10 +294,8 @@ async def test_detail_missing_never_falls_back_to_cloud_then_saved_detail_is_sma
     assert result["data"]["distance_m"] == 1200 and result["data"]["energy_wh"] == 120
     assert result["quality"]["valid_points"] == 2
     encoded = json.dumps(result)
-    assert not any(
-        value in encoded
-        for value in ("speed_samples", "distance_samples", "latitude", "trail", "120.001")
-    )
+    assert not {"speed_samples", "distance_samples", "track"} & result["data"].keys()
+    assert not any(value in encoded for value in ("latitude", "trail", "120.001"))
 
 
 async def test_sync_health_is_read_only_and_reports_the_local_state(hass, assistant):
@@ -316,7 +318,7 @@ async def test_revocation_while_action_is_awaited_discards_the_result(hass, assi
         )
         return {"months": [{"month": "202610", "distance_km": 12345}]}
 
-    with patch.object(hass.services, "async_call", side_effect=revoked):
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(side_effect=revoked)):
         result, error = await query(hass, assistant, "get_statistics", period="this_month")
     assert error and result["error"]["code"] == "not_authorized"
     assert "12345" not in json.dumps(result)

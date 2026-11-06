@@ -28,7 +28,7 @@ from .assistant_views import (
     trips_view,
 )
 from .compat import validation as vol
-from .const import BUSINESS_TIMEZONE, DOMAIN
+from .const import BUSINESS_TIMEZONE, CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN
 from .history_actions import cursor_value
 from .recorded_actions import business_date
 from .services import bounded_integer, query_month, ride_identifier
@@ -187,13 +187,18 @@ async def _vehicles(
             continue
         scopes.append(scope)
         snapshot = scope.runtime.coordinator.data[scope.sn]
+        private_ids = [scope.sn]
+        private_ids.extend(
+            value
+            for key in (CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY)
+            if isinstance(value := scope.entry.data.get(key), str)
+        )
         rows.append(
             {
                 "vehicle_ref": device.id,
                 "label": safe_label(
                     device.name_by_user or snapshot.profile.name,
-                    scope.sn,
-                    str(scope.entry.data.get("account", "")),
+                    *private_ids,
                 ),
                 "capabilities": {
                     "cached_status": snapshot.status_freshness.succeeded_at is not None,

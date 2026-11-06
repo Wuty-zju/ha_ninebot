@@ -44,6 +44,13 @@ async def check(config_dir: str) -> None:
     for tool in api.tools:
         formatted = _format_tool(tool, api.custom_serializer)
         assert formatted.annotations.read_only_hint and not formatted.annotations.open_world_hint
+        assert set(formatted.input_schema["properties"]) == {
+            marker.schema for marker in tool.parameters.schema
+        }
+        if tool.name == "ninebot__get_recorded_trips":
+            properties = formatted.input_schema["properties"]
+            assert properties["limit"]["minimum"] == 1 and properties["limit"]["maximum"] == 20
+            assert properties["start_date"]["format"] == "date"
     invalid = await api.async_call_tool(
         llm.ToolInput(
             tool_name="ninebot__get_vehicle_status",
