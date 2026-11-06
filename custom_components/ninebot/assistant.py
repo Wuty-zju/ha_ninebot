@@ -27,7 +27,10 @@ def native_api_supported() -> bool:
     This check does not import helpers.llm or load a model/provider. The lazy
     adapter additionally checks the exact public classes it needs.
     """
-    return find_spec("homeassistant.components.llm") is not None
+    try:
+        return find_spec("homeassistant.components.llm") is not None
+    except (ImportError, ValueError):
+        return False
 
 
 @dataclass

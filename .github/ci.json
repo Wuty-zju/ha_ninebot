@@ -332,7 +332,8 @@
         "scripts/check_assistant_api.py"
       ],
       "tests": [
-        "tests/test_assistant_lifecycle.py"
+        "tests/test_assistant_lifecycle.py",
+        "tests/test_assistant_policy.py"
       ]
     }
   },
