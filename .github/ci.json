@@ -329,7 +329,7 @@
     "assistant": {
       "paths": [
         "custom_components/ninebot/assistant*.py",
-        "scripts/check_assistant_api.py"
+        "scripts/check_assistant*.py"
       ],
       "tests": [
         "tests/test_assistant_lifecycle.py",

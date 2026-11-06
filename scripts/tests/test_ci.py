@@ -87,6 +87,9 @@ class ScopeTests(unittest.TestCase):
         self.assertIn("tests/test_assistant_lifecycle.py", plan["tests"])
         self.assertNotIn("unmapped-runtime", plan["reasons"])
         self.assertEqual(len(plan["matrix"]["include"]), 2)
+        canary = self.plan("scripts/check_assistant_mcp.py")
+        self.assertTrue(canary["native_api"])
+        self.assertIn("tests/test_assistant_limits.py", canary["tests"])
 
     def test_new_unmapped_runtime_is_conservative(self):
         plan = self.plan("custom_components/ninebot/future_protocol.py")

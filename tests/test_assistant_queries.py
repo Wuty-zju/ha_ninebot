@@ -1,5 +1,6 @@
 """Synthetic native-tool query contracts against real HA Actions and local SQLite."""
 
+import asyncio
 import json
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -10,6 +11,7 @@ import pytest
 from homeassistant.core import Context
 from homeassistant.helpers import device_registry as dr
 
+from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
 from custom_components.ninebot.assistant_queries import SPECS, async_query, period_dates
 from custom_components.ninebot.assistant_views import AssistantView, numeric, statistics_view
 from custom_components.ninebot.raw import Endpoint, build_record
@@ -339,6 +341,72 @@ async def test_response_limit_counts_utf8_bytes_and_never_returns_a_fragment(has
         result, error = await query(hass, assistant, "get_vehicle_status")
     assert error and result["error"]["code"] == "response_too_large"
     assert "data" not in result
+
+
+async def test_invalid_calls_consume_only_the_authenticated_user_read_budget(hass, assistant):
+    for _ in range(20):
+        result, error = await query(hass, assistant, "get_statistics", period="invalid")
+        assert error and result["error"]["code"] == "invalid_arguments"
+    result, error = await query(hass, assistant, "get_vehicle_status")
+    assert error and result["error"]["code"] == "retry_later"
+    assert result["error"]["retry_after_seconds"] > 0
+    assert hass.data[LIMITS_KEY].active == 0
+
+
+async def test_concurrent_calls_and_cancellation_do_not_cancel_another_reader(hass, assistant):
+    ready, release = asyncio.Event(), asyncio.Event()
+    entered = 0
+
+    async def blocked(*args, **kwargs):
+        nonlocal entered
+        entered += 1
+        if entered == 2:
+            ready.set()
+        await release.wait()
+        return {"months": [{"month": "202610", "ride_count": 2}]}
+
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(side_effect=blocked)):
+        calls = [
+            asyncio.create_task(query(hass, assistant, "get_statistics", period="this_month"))
+            for _ in range(2)
+        ]
+        try:
+            await asyncio.wait_for(ready.wait(), 5)
+            result, error = await query(hass, assistant, "get_vehicle_status")
+            assert error and result["error"]["code"] == "retry_later"
+            calls[0].cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await calls[0]
+            assert hass.data[LIMITS_KEY].active == 1 and not calls[1].done()
+            result, error = await query(hass, assistant, "get_vehicle_status")
+            assert not error
+            release.set()
+            _, error = await calls[1]
+            assert not error
+        finally:
+            release.set()
+            await asyncio.gather(*calls, return_exceptions=True)
+    assert hass.data[LIMITS_KEY].active == 0
+
+
+async def test_timeout_releases_admission_and_returns_a_typed_error(hass, assistant):
+    def short_timeout(seconds):
+        assert seconds == 10
+        return asyncio.timeout(0.01)
+
+    async def blocked(*args, **kwargs):
+        await asyncio.Event().wait()
+
+    with (
+        patch.object(type(hass.services), "async_call", new=AsyncMock(side_effect=blocked)),
+        patch(
+            "custom_components.ninebot.assistant_queries.asyncio",
+            SimpleNamespace(timeout=short_timeout),
+        ),
+    ):
+        result, error = await query(hass, assistant, "get_statistics", period="today")
+    assert error and result["error"]["code"] == "timeout"
+    assert hass.data[LIMITS_KEY].active == 0
 
 
 def test_projection_quality_closed_periods_and_invalid_values():
