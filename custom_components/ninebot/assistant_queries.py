@@ -15,6 +15,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
 from .assistant import CONF_ASSISTANT
+from .assistant_limits import ReadLimitExceeded, read_slot
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .assistant_views import (
     AssistantView,
@@ -316,50 +317,54 @@ async def async_query(
 ) -> tuple[dict[str, Any], bool]:
     """Authenticate, validate, read, reauthorize and bound every native tool call."""
     request_id, now = uuid4().hex, dt_util.utcnow()
+    retry_after: int | None = None
     try:
         async with asyncio.timeout(10):
-            await async_require_admin(hass, context)
-            if key not in TOOL_SPECS:
-                raise AssistantError("invalid_arguments")
-            args = TOOL_SPECS[key].parameters(arguments)
-            query: dict[str, Any]
-            if key == "get_vehicles":
-                view, scopes = await _vehicles(hass, context)
-                query = {}
-            else:
-                scope = await async_authorize(hass, context, args["vehicle_ref"])
-                scopes = [scope]
-                view, query = await _vehicle_query(hass, scope, key, args, now)
-            for scope in scopes:
-                await scope.async_validate(hass)
-            # A later vehicle's await may revoke an earlier one. No further
-            # await occurs between the final complete scope check and return.
-            for scope in scopes:
-                scope.assert_current(hass)
-            response = {
-                "schema_version": 1,
-                "request_id": request_id,
-                **({"vehicle_ref": args["vehicle_ref"]} if key != "get_vehicles" else {}),
-                "query": {
-                    "as_of": now.isoformat(),
-                    "business_timezone": BUSINESS_TIMEZONE,
-                    **query,
-                },
-                "data": view.data,
-                "quality": view.quality,
-                "evidence": {
-                    "adapter_contract": "ninebot-assistant-v1",
-                    "access_mode": "local_only",
-                    **view.evidence,
-                },
-                "warnings": view.warnings,
-            }
-            if (
-                len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
-                > MAX_RESPONSE_BYTES
-            ):
-                raise AssistantError("response_too_large")
-            return response, False
+            user_id = await async_require_admin(hass, context)
+            with read_slot(hass, user_id):
+                if key not in TOOL_SPECS:
+                    raise AssistantError("invalid_arguments")
+                args = TOOL_SPECS[key].parameters(arguments)
+                query: dict[str, Any]
+                if key == "get_vehicles":
+                    view, scopes = await _vehicles(hass, context)
+                    query = {}
+                else:
+                    scope = await async_authorize(hass, context, args["vehicle_ref"])
+                    scopes = [scope]
+                    view, query = await _vehicle_query(hass, scope, key, args, now)
+                for scope in scopes:
+                    await scope.async_validate(hass)
+                # A later vehicle's await may revoke an earlier one. No further
+                # await occurs between the final complete scope check and return.
+                for scope in scopes:
+                    scope.assert_current(hass)
+                response = {
+                    "schema_version": 1,
+                    "request_id": request_id,
+                    **({"vehicle_ref": args["vehicle_ref"]} if key != "get_vehicles" else {}),
+                    "query": {
+                        "as_of": now.isoformat(),
+                        "business_timezone": BUSINESS_TIMEZONE,
+                        **query,
+                    },
+                    "data": view.data,
+                    "quality": view.quality,
+                    "evidence": {
+                        "adapter_contract": "ninebot-assistant-v1",
+                        "access_mode": "local_only",
+                        **view.evidence,
+                    },
+                    "warnings": view.warnings,
+                }
+                if (
+                    len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
+                    > MAX_RESPONSE_BYTES
+                ):
+                    raise AssistantError("response_too_large")
+                return response, False
+    except ReadLimitExceeded as err:
+        code, retry_after = "retry_later", err.retry_after
     except Unauthorized:
         code = "not_authorized"
     except vol.Invalid:
@@ -381,4 +386,11 @@ async def async_query(
             "statistics_unavailable": "local_data_missing",
             "calendar_unavailable": "local_data_missing",
         }.get(err.translation_key or "", "unsupported_capability")
-    return {"schema_version": 1, "request_id": request_id, "error": {"code": code}}, True
+    return {
+        "schema_version": 1,
+        "request_id": request_id,
+        "error": {
+            "code": code,
+            **({"retry_after_seconds": retry_after} if retry_after is not None else {}),
+        },
+    }, True

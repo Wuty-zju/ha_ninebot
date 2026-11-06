@@ -19,7 +19,7 @@ class AssistantError(Exception):
         super().__init__(code)
 
 
-async def async_require_admin(hass: HomeAssistant, context: Context | None) -> None:
+async def async_require_admin(hass: HomeAssistant, context: Context | None) -> str:
     """Native API selection alone does not check active users or cached calls."""
     if (
         context is None
@@ -29,6 +29,7 @@ async def async_require_admin(hass: HomeAssistant, context: Context | None) -> N
         or not user.is_admin
     ):
         raise Unauthorized(context=context)
+    return context.user_id
 
 
 def _consented(entry: NinebotConfigEntry, sn: str) -> bool:
