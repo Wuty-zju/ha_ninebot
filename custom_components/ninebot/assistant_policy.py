@@ -73,6 +73,7 @@ class AssistantScope:
             await async_check_history_access(
                 hass,
                 ServiceCall(
+                    hass,
                     DOMAIN,
                     "get_recorded_trips",
                     {"device_id": self.vehicle_ref},
