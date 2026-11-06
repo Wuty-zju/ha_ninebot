@@ -10,7 +10,7 @@ from aiohttp import web
 
 from custom_components.ninebot.client import NinecliClient, response_data, retry_after_seconds
 from custom_components.ninebot.const import MAX_RESPONSE_BYTES
-from custom_components.ninebot.exceptions import ErrorKind, NinebotError
+from custom_components.ninebot.exceptions import Endpoint, ErrorKind, FailurePhase, NinebotError
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
@@ -326,15 +326,15 @@ def test_explicit_auth_or_malformed_error_envelope(raw):
 
 
 @pytest.mark.parametrize(
-    "anonymous,authenticated,exit_code,expected",
+    "anonymous,authenticated,exit_code,expected,endpoint,status",
     [
-        (200, 404, None, ErrorKind.PROTOCOL),
-        (401, 401, None, ErrorKind.PROTOCOL),
-        (401, 404, 7, ErrorKind.PLATFORM),
+        (200, 404, None, ErrorKind.PROTOCOL, Endpoint.VEHICLES, 200),
+        (401, 401, None, ErrorKind.PROTOCOL, Endpoint.AUTH_PROBE, 401),
+        (401, 404, 7, ErrorKind.PLATFORM, Endpoint.UNKNOWN, None),
     ],
 )
 async def test_startup_rejects_unprotected_wrong_or_exited_server(
-    tmp_path, anonymous, authenticated, exit_code, expected
+    tmp_path, anonymous, authenticated, exit_code, expected, endpoint, status
 ):
     from contextlib import asynccontextmanager
     from types import SimpleNamespace
@@ -365,6 +365,12 @@ async def test_startup_rejects_unprotected_wrong_or_exited_server(
         with pytest.raises(NinebotError) as error:
             await client._start()
     assert error.value.kind == expected
+    context = error.value.context
+    assert context.phase is (
+        FailurePhase.BACKEND_START if exit_code is not None else FailurePhase.LOOPBACK_AUTH
+    )
+    assert context.endpoint is endpoint
+    assert context.proxy_http_status == status
     assert client._process is None
     process.wait.assert_awaited()
     assert "NINEBOT_SERVE_TOKEN" in spawn.call_args.kwargs["env"]

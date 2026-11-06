@@ -129,6 +129,8 @@ class NinecliClient:
         env["NINEBOT_SERVE_TOKEN"] = self._bearer
         env["NINEBOT_SERVE_BIND"] = f"127.0.0.1:{port}"
         phase = FailurePhase.BACKEND_START
+        endpoint = Endpoint.UNKNOWN
+        status = None
         try:
             self._process = await asyncio.create_subprocess_exec(
                 sys.executable,
@@ -151,6 +153,8 @@ class NinecliClient:
                         raise NinebotError(ErrorKind.PLATFORM)
                     try:
                         phase = FailurePhase.LOOPBACK_AUTH
+                        endpoint = Endpoint.VEHICLES
+                        status = None
                         # Check auth is actually enabled before sending credentials.
                         async with self._session.get(
                             f"{self._base}/vehicles",
@@ -158,8 +162,11 @@ class NinecliClient:
                             timeout=aiohttp.ClientTimeout(total=1),
                         ) as response:
                             await response.content.read(MAX_RESPONSE_BYTES + 1)
-                            if response.status != 401:
+                            status = response.status
+                            if status != 401:
                                 raise NinebotError(ErrorKind.PROTOCOL)
+                        endpoint = Endpoint.AUTH_PROBE
+                        status = None
                         # Authenticated nonexistent route must NOT return 401.
                         async with self._session.get(
                             f"{self._base}/__ninebot_auth_probe__",
@@ -168,7 +175,8 @@ class NinecliClient:
                             timeout=aiohttp.ClientTimeout(total=1),
                         ) as response:
                             await response.content.read(MAX_RESPONSE_BYTES + 1)
-                            if response.status != 404:
+                            status = response.status
+                            if status != 404:
                                 raise NinebotError(ErrorKind.PROTOCOL)
                         if self._process.returncode is not None:
                             raise NinebotError(ErrorKind.PLATFORM)
@@ -182,9 +190,13 @@ class NinecliClient:
             await self._stop()
             failure = NinebotError(ErrorKind.PLATFORM)
             failure.at_phase(phase)
+            failure.at_endpoint(endpoint)
+            failure.observe_response(status)
             raise failure from None
         except NinebotError as err:
             err.at_phase(phase)
+            err.at_endpoint(endpoint)
+            err.observe_response(status)
             await self._stop()
             raise
 
@@ -409,10 +421,17 @@ class NinecliClient:
                     self.vehicle_discovery_complete = complete
                     accepted = True
                     return raw
-            except TimeoutError:
-                raise NinebotError(ErrorKind.CONNECTION) from None
-            except OSError:
-                raise NinebotError(ErrorKind.PLATFORM) from None
+            except (TimeoutError, OSError) as transport_error:
+                failure = NinebotError(
+                    ErrorKind.CONNECTION
+                    if isinstance(transport_error, TimeoutError)
+                    else ErrorKind.PLATFORM
+                )
+                failure.at_endpoint(Endpoint.VEHICLES)
+                raise failure from None
+            except NinebotError as err:
+                err.at_endpoint(Endpoint.VEHICLES)
+                raise
             finally:
                 try:
                     await self._stop()

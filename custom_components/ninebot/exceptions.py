@@ -34,6 +34,7 @@ class Endpoint(StrEnum):
 
     UNKNOWN = "unknown"
     AUTH_LOGIN = "auth_login"
+    AUTH_PROBE = "loopback_auth_probe"
     ACCOUNT = "account"
     VEHICLES = "vehicles"
     STATUS = "vehicle_status"
