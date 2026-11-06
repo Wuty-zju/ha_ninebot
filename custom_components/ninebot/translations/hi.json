@@ -107,8 +107,8 @@
           "history_storage_mib": "इतिहास भंडारण सीमा (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Enable Ninebot Assistant (Beta)",
-          "assistant_vehicles": "Vehicles available to the Assistant",
+          "enable_assistant": "Ninebot Assistant सक्षम करें (बीटा)",
+          "assistant_vehicles": "Assistant के लिए उपलब्ध वाहन",
           "debug_mode": "निदान एंटिटी दिखाएँ"
         },
         "data_description": {
@@ -124,8 +124,8 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "स्थिति/बैटरी/यात्रा अंतराल: {polling_setting}। चार्जिंग और गतिविधि के अनुसार बदलते हैं।",
-          "enable_assistant": "Allow the selected AI host to read selected vehicle labels, local values, times and data quality. Accounts, credentials, precise locations and raw responses are excluded. No cloud refresh or vehicle controls.",
-          "assistant_vehicles": "Choose vehicles separately from remote controls. Disabling the Assistant keeps this selection.",
+          "enable_assistant": "चुने गए AI होस्ट को चयनित वाहनों के नाम, स्थानीय मान, समय और डेटा की गुणवत्ता पढ़ने दें। खाते, लॉगिन जानकारी, सटीक स्थान और मूल प्रतिक्रियाएँ शामिल नहीं हैं। क्लाउड रीफ़्रेश या वाहन नियंत्रण नहीं।",
+          "assistant_vehicles": "रिमोट नियंत्रण से अलग वाहन चुनें। Assistant बंद करने पर चयन सुरक्षित रहता है।",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
@@ -192,7 +192,7 @@
       "control_vehicles_required": "रिमोट नियंत्रण के लिए कम से कम एक वाहन चुनें।",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Select at least one vehicle from this account for the Assistant."
+      "assistant_vehicles_required": "Assistant के लिए इस खाते का कम से कम एक वाहन चुनें।"
     }
   },
   "entity": {

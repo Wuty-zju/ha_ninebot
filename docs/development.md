@@ -17,7 +17,7 @@ Start with [AGENTS](../AGENTS.md), inspect the checkout, then read the relevant 
 | Archive and transfer | `ride_archive`, `account_archive`, `archive_transfer`, `archive_evidence`, `archive_options` | Schema, ownership, merge, retention, upload/download and backup tests |
 | Integrity and repair | `object_checks`, `archive_audit`, `local_reconstruction`, `startup_recovery` | Corruption, raw replay, reference and recovery tests |
 | Local history and maps | `recorded_actions`, `history_websocket`, `archive_browse`, `frontend/` | Service/authorization tests, Node tests and synthetic browser fixtures |
-| Optional Assistant API | `assistant`, `assistant_api`, `assistant_policy`, `assistant_queries`, `assistant_views` | Account consent, active-user/ownership guards, local Action queries, safe projections and the installed native API canary |
+| Optional Assistant API | `assistant`, `assistant_api`, `assistant_policy`, `assistant_queries`, `assistant_views`, `assistant_limits` | Account consent, active-user/ownership guards, local Action queries, safe projections read admission/cancellation and the installed native API/MCP HTTP canaries |
 | Documentation and releases | `docs/`, `scripts/`, `.github/workflows/` | Link/diagram checks, release-policy and package tests |
 
 Use `rg --files` to locate test families and [fixture metadata](../tests/fixtures/ninecli/0.1.7/metadata.json) to establish provenance. Each source file stays responsible for its own layer; shared contracts belong in the relevant model or protocol.
@@ -66,7 +66,7 @@ For an RC or major compatibility change without that complete result, dispatch *
 | Home Assistant | Python | Test plugin |
 |---|---|---|
 | 2026.1.0 | 3.13 | 0.13.305 |
-| 2026.10.2 | 3.14 | 0.13.373 |
+| 2026.10.4 | 3.14 | 0.13.375 |
 
 The job verifies installed versions and dependency consistency, runs mypy and the full offline pytest suite, and uploads JUnit/coverage reports. Node tests run in the same dispatch. The combined line/branch threshold is 91%, based on the full RC audit; 95% remains the improvement target. Documentation-only topics run the lightweight jobs. Same-repository PRs may reuse a successful full result only when runtime, tests and relevant execution inputs are unchanged; record the source SHA/run in the PR instead of launching another matrix. Both focused and complete HA jobs use the exact boundary/plugin pairs in `.github/ci.json`; update a boundary and its plugin together. Dependency consistency is checked after installation. Reuse unchanged successful evidence between candidates; repeat only affected checks after a fix.
 
@@ -88,6 +88,14 @@ python scripts/ci.py --plan --base FULL_BASE_SHA --head FULL_HEAD_SHA --output c
 
 Update the owning scope in `.github/ci.json` when adding a source/test boundary. CI selection has standard-library regression tests for new files, shared fixtures, overlapping scopes and renames. Documentation validation runs for every candidate so the release gate can always find its result. Workflow-only changes run a small pipeline canary; they do not automatically render the map or repeat archive profiling.
 
+
+## Assistant development
+
+The optional [Assistant preview](assistant.md) uses the existing native API registry. `assistant_api` adapts protocol objects; `assistant_policy` checks active administrators and separate account/vehicle consent; `assistant_queries` calls existing local Actions; `assistant_views` constructs a small reviewed output; `assistant_limits` bounds read admission. Disabled accounts do not load the native adapter or create additional polling.
+
+The native API canary runs on the published Core 2026.11.0 without a mismatched test plugin. `scripts/check_assistant_mcp.py` uses the real native HTTP view and MCP dispatcher with synthetic authorization, registry and snapshots. It checks user Context, read-only filtering, consent revocation and API removal. OAuth and model-provider behavior need their own evidence.
+
+[Synthetic evaluation tasks](../tests/fixtures/assistant/evaluation-tasks.json) define 52 scenarios for staged host/model evaluation. Their values are invented, all measurements start as null, and the task count is not a pass rate. Use the companion fixture and actual tool results; do not turn permission-injection test content into instructions. Record model, host, source revision, tool trace summary and measured results separately. Tests against HA Actions and SQLite establish tool contracts, not model accuracy.
 
 ## Fixtures and privacy
 
