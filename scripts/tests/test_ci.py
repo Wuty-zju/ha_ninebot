@@ -2,12 +2,39 @@
 
 import json
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from scripts.ci import CONFIG, ROOT, changed_paths, install, pytest_command, select
+from scripts.ci import (
+    CONFIG,
+    ROOT,
+    changed_paths,
+    install,
+    native_requirements,
+    pytest_command,
+    select,
+)
 
 
 class ScopeTests(unittest.TestCase):
+    def test_native_manifest_dependencies_are_deduplicated_and_cycles_terminate(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for domain, manifest in {
+                "mcp_server": {"dependencies": ["conversation"], "requirements": ["mcp==2.3.0"]},
+                "conversation": {
+                    "dependencies": ["mcp_server"],
+                    "requirements": ["hassil==3.12.1"],
+                },
+            }.items():
+                (root / domain).mkdir()
+                (root / domain / "manifest.json").write_text(json.dumps(manifest))
+            self.assertEqual(
+                native_requirements(root, ["mcp_server", "conversation"]),
+                ["hassil==3.12.1", "mcp==2.3.0"],
+            )
+
     def setUp(self):
         self.config = json.loads(CONFIG.read_text())
         self.available = {
@@ -53,6 +80,13 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(
             self.plan("scripts/check_ha_api.py")["native_boundary"], self.config["native_boundary"]
         )
+
+    def test_assistant_scope_includes_native_boundary_and_related_lifecycle(self):
+        plan = self.plan("custom_components/ninebot/assistant_api.py")
+        self.assertTrue(plan["native_api"])
+        self.assertIn("tests/test_assistant_lifecycle.py", plan["tests"])
+        self.assertNotIn("unmapped-runtime", plan["reasons"])
+        self.assertEqual(len(plan["matrix"]["include"]), 2)
 
     def test_new_unmapped_runtime_is_conservative(self):
         plan = self.plan("custom_components/ninebot/future_protocol.py")
