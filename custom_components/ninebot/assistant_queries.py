@@ -15,7 +15,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from .assistant import CONF_ASSISTANT
+from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_TASKS
 from .assistant_errors import error_data
 from .assistant_knowledge import KnowledgeUnavailable, search_help
 from .assistant_limits import ReadLimitExceeded, read_slot
@@ -208,7 +208,7 @@ async def _action(
 
 
 async def _vehicles(
-    hass: HomeAssistant, context: Context | None
+    hass: HomeAssistant, context: Context | None, *, tasks: bool = False
 ) -> tuple[AssistantView, list[AssistantScope]]:
     scopes: list[AssistantScope] = []
     rows: list[dict[str, Any]] = []
@@ -217,6 +217,7 @@ async def _vehicles(
         device.id: device
         for entry in hass.config_entries.async_entries(DOMAIN)
         if entry.options.get(CONF_ASSISTANT) is True
+        and (not tasks or entry.options.get(CONF_ASSISTANT_TASKS) is True)
         for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
     }
     for device in sorted(candidates.values(), key=lambda row: row.id):
@@ -224,6 +225,8 @@ async def _vehicles(
             continue
         try:
             scope = await async_authorize(hass, context, device.id)
+            if tasks:
+                scope.assert_task_current(hass)
         except AssistantError:
             continue
         scopes.append(scope)

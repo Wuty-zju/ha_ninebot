@@ -140,3 +140,60 @@ async def test_loaded_account_hot_enable_disable_and_unload(hass, entry, app_cli
         assert await hass.config_entries.async_unload(entry.entry_id)
         assert remove.call_count == 2
         assert hass.data[DATA_KEY].unregister is None
+
+
+async def test_task_collection_is_separate_shared_and_revoked_without_read(hass):
+    entries = [enabled_entry(), enabled_entry()]
+    entries[0].options["enable_assistant_tasks"] = True
+    remove_read, remove_tasks = Mock(), Mock()
+    read, tasks, review = Mock(return_value=remove_read), Mock(return_value=remove_tasks), Mock()
+
+    async def adapter(_hass, module):
+        return SimpleNamespace(
+            async_register=(
+                tasks
+                if module.endswith("assistant_task_api")
+                else review
+                if module.endswith("assistant_review")
+                else read
+            )
+        )
+
+    with (
+        patch.object(hass.config_entries, "async_entries", side_effect=lambda *a: entries),
+        patch("custom_components.ninebot.assistant.native_api_supported", return_value=True),
+        patch("custom_components.ninebot.assistant.async_import_module", side_effect=adapter),
+    ):
+        await asyncio.gather(async_update_assistant_api(hass), async_update_assistant_api(hass))
+        assert read.call_count == tasks.call_count == 1
+        entries[0].options["enable_assistant_tasks"] = False
+        await async_update_assistant_api(hass)
+        remove_tasks.assert_called_once()
+        remove_read.assert_not_called()
+        entries.clear()
+        await async_update_assistant_api(hass)
+        remove_read.assert_called_once()
+        remove_tasks.assert_called_once()
+
+
+async def test_review_failure_never_registers_tasks_or_breaks_read(hass, caplog):
+    entry = enabled_entry()
+    entry.options["enable_assistant_tasks"] = True
+    read = Mock(return_value=Mock())
+
+    async def adapter(_hass, module):
+        if module.endswith("assistant_review"):
+            raise HomeAssistantError("PRIVATE_PAYLOAD")
+        assert not module.endswith("assistant_task_api")
+        return SimpleNamespace(async_register=read)
+
+    with (
+        patch.object(hass.config_entries, "async_entries", return_value=[entry]),
+        patch("custom_components.ninebot.assistant.native_api_supported", return_value=True),
+        patch("custom_components.ninebot.assistant.async_import_module", side_effect=adapter),
+    ):
+        await async_update_assistant_api(hass)
+        assert hass.data[DATA_KEY].unregister_tasks is None
+        assert hass.data[DATA_KEY].unregister is not None
+        read.assert_called_once()
+    assert "PRIVATE_PAYLOAD" not in caplog.text

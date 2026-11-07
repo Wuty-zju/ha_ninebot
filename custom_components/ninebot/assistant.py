@@ -42,8 +42,10 @@ def native_api_supported() -> bool:
 class AssistantRegistration:
     lock: Lock = field(default_factory=Lock)
     unregister: Callable[[], None] | None = None
+    unregister_tasks: Callable[[], None] | None = None
     error: str | None = None
     review_error: str | None = None
+    task_error: str | None = None
 
 
 def _enabled(hass: HomeAssistant, *, tasks: bool = False) -> bool:
@@ -66,20 +68,16 @@ async def async_update_assistant_api(hass: HomeAssistant) -> None:
     state: AssistantRegistration = hass.data.setdefault(DATA_KEY, AssistantRegistration())
     async with state.lock:
         if not _enabled(hass):
+            if state.unregister_tasks is not None:
+                state.unregister_tasks()
+                state.unregister_tasks = None
+            state.task_error = state.review_error = None
             if state.unregister is not None:
                 state.unregister()
                 state.unregister = None
             state.error = None
             return
-        if _enabled(hass, tasks=True):
-            try:
-                review = await async_import_module(hass, f"{__package__}.assistant_review")
-                review.async_register(hass)
-                state.review_error = None
-            except (ImportError, AttributeError, HomeAssistantError):
-                if state.review_error is None:
-                    _LOGGER.warning("Ninebot task review is unavailable")
-                state.review_error = "review_unavailable"
+        await _async_update_tasks(hass, state)
         if state.unregister is not None:
             return
         if not native_api_supported():
@@ -97,6 +95,36 @@ async def async_update_assistant_api(hass: HomeAssistant) -> None:
         if state.error != error:
             _LOGGER.warning("Ninebot Assistant is unavailable: %s", error)
         state.error = error
+
+
+async def _async_update_tasks(hass: HomeAssistant, state: AssistantRegistration) -> None:
+    enabled = _enabled(hass, tasks=True)
+    if enabled:
+        try:
+            review = await async_import_module(hass, f"{__package__}.assistant_review")
+            review.async_register(hass)
+            state.review_error = None
+        except (ImportError, AttributeError, HomeAssistantError):
+            if state.review_error is None:
+                _LOGGER.warning("Ninebot task review is unavailable")
+            state.review_error = "review_unavailable"
+    if not enabled or state.review_error is not None or not native_api_supported():
+        if state.unregister_tasks is not None:
+            state.unregister_tasks()
+            state.unregister_tasks = None
+        if not enabled:
+            state.task_error = state.review_error = None
+        return
+    if state.unregister_tasks is not None:
+        return
+    try:
+        adapter = await async_import_module(hass, f"{__package__}.assistant_task_api")
+        state.unregister_tasks = adapter.async_register(hass)
+        state.task_error = None
+    except (ImportError, AttributeError, HomeAssistantError):
+        if state.task_error is None:
+            _LOGGER.warning("Ninebot task tools are unavailable")
+        state.task_error = "task_api_unavailable"
 
 
 async def async_close_task_owner(

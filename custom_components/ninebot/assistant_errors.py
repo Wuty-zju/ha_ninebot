@@ -3,6 +3,9 @@
 from typing import Any
 
 ERROR_MESSAGES = {
+    "task_capacity": "Too many task applications are waiting. Review them or wait for expiry.",
+    "task_not_found": "Task unavailable. List tasks again; missing does not mean completed.",
+    "approval_expired": "The plan expired. Preview the range and request a new plan.",
     "not_authorized": (
         "Access denied for this user or vehicle. No data was returned. "
         "This does not mean the trip is missing. Review permissions in Home Assistant."

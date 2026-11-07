@@ -93,6 +93,7 @@ async def check(config_dir: str) -> None:
     assert llm.async_get_apis(hass) == []
     await check_confirmation_boundary(hass, context)
     check_review_schema(hass, api)
+    await check_task_collection(hass, context)
     print("Native Assistant: registry, admin gate, original Context, ToolResult and MCP schema OK")
 
 
@@ -176,6 +177,57 @@ def check_review_schema(hass, api) -> None:
     assert redacted["token"] != "synthetic-confirmation"
     print(
         "Private review: native WS registry/schema, secret redaction and no LLM/service exposure OK"
+    )
+
+
+async def check_task_collection(hass, context) -> None:
+    """Actual native API and MCP read-only filtering; no cloud or private data."""
+    from homeassistant.components.mcp_server.server import _format_tool, async_get_api_instance
+    from homeassistant.helpers import llm
+
+    from custom_components.ninebot.assistant_task_api import API_ID, async_register
+
+    remove = async_register(hass)
+    try:
+        with patch("custom_components.ninebot.assistant_task_queries._enabled", return_value=True):
+            instance = await llm.async_get_api(hass, API_ID, context)
+            assert instance.api.requires_admin
+            names = {tool.name for tool in instance.tools}
+            assert names == {
+                "ninebot__task_vehicles",
+                "ninebot__preview_detail_sync",
+                "ninebot__request_detail_sync_approval",
+                "ninebot__get_tasks",
+                "ninebot__get_task",
+            }
+            formatted = {
+                tool.name: _format_tool(tool, instance.custom_serializer) for tool in instance.tools
+            }
+            request = formatted["ninebot__request_detail_sync_approval"]
+            assert request.annotations.read_only_hint is False
+            assert request.annotations.idempotent_hint is False
+            readonly = await async_get_api_instance(hass, API_ID, context, True)
+            assert {tool.name for tool in readonly.tools} == names - {request.name}
+            fields = formatted["ninebot__get_task"].input_schema["properties"]
+            assert fields["task_id"]["pattern"] == "^[a-f0-9]{32}$"
+            assert not {"nonce", "token", "user_id", "account", "confirmed"} & set(fields)
+            invalid = await instance.async_call_tool(
+                llm.ToolInput(
+                    tool_name="ninebot__request_detail_sync_approval",
+                    tool_args={
+                        "vehicle_ref": "synthetic",
+                        "start_date": "2026-11-06",
+                        "end_date": "2026-11-06",
+                        "confirmed": True,
+                    },
+                )
+            )
+            assert invalid.error and invalid.data["error"]["code"] == "invalid_arguments"
+    finally:
+        remove()
+    assert llm.async_get_apis(hass) == []
+    print(
+        "Task API: separate registry, nonce-free schema, Context and native MCP read-only filter OK"
     )
 
 
