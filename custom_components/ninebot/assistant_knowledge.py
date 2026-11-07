@@ -52,7 +52,12 @@ def _valid_source(source: Any) -> bool:
         and bool(re.fullmatch(r"[0-9a-f]{64}", source["sha256"]))
         and bool(re.fullmatch(r"docs/[a-z_]+\.md", source["path"]))
         and source["url"].startswith(f"{SOURCE_PREFIX}{source['commit']}/{source['path']}#")
-        and bool(re.fullmatch(r"[a-z0-9-]+", source["url"].split("#")[-1]))
+        and bool(
+            re.fullmatch(
+                r"[a-z0-9-]+",
+                source["url"].removeprefix(f"{SOURCE_PREFIX}{source['commit']}/{source['path']}#"),
+            )
+        )
     )
 
 
@@ -282,6 +287,7 @@ def search_help(query: str, language: str, installed_version: str) -> dict[str, 
                 {
                     **{key: value for key, value in procedure.items() if key != "translations"},
                     **procedure["translations"][language],
+                    "allowed_tools": [f"ninebot__{key}" for key in procedure["allowed_tools"]],
                     "advisory_only": True,
                 }
             )
