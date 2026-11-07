@@ -90,7 +90,8 @@ def test_equivalent_scope_order_and_time_zone_have_one_digest():
     p = plan()
     p = replace(p, scope=DetailScope((("one", "1" * 64), ("two", "2" * 64))))
     assert p.digest == replace(p, scope=DetailScope(tuple(reversed(p.scope.rides)))).digest
-    assert p.digest == replace(
-        p, created_at=p.created_at.astimezone(timezone(timedelta(hours=8)))
-    ).digest
+    assert (
+        p.digest
+        == replace(p, created_at=p.created_at.astimezone(timezone(timedelta(hours=8)))).digest
+    )
     assert p.digest != replace(p, end_date=date(2026, 11, 7)).digest
