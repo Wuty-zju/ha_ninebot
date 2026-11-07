@@ -15,8 +15,8 @@ from importlib.metadata import version
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-MODEL = "Qwen/Qwen3-0.6B"
-REVISION = "c1899de289a04d12100db370d81485cdf75e47ca"
+MODEL = "Qwen/Qwen3-1.7B"
+REVISION = "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
 CASE_IDS = ("Q03", "Q04", "P06", "S02")
 MAX_TURNS = 3
 MAX_CALLS = 4
