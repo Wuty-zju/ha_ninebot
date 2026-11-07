@@ -63,9 +63,10 @@ async def test_unobserved_empty_is_distinct_from_recorded_complete_empty(archive
 async def test_saved_details_do_not_hide_later_candidates_and_preview_never_writes(archive):
     month = sample(45)
     await archive.async_record_month(SN, month, NOW)
+    receipt = NOW + timedelta(seconds=1)
     for ride in month.rides[:20]:
         await archive.async_record_detail(
-            SN, ride, NOW, raw=build_record(Endpoint.TRIP_DETAIL, {}, NOW, "202610")
+            SN, ride, receipt, raw=build_record(Endpoint.TRIP_DETAIL, {}, receipt, "202610")
         )
     before = archive.path.read_bytes()
     result = await preview(archive)
