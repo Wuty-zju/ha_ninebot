@@ -181,3 +181,89 @@ async def test_options_require_scope_then_preserve_it_when_disabled(hass, entry,
             assert result["type"].value == "create_entry"
             assert result["data"]["assistant_vehicles"] == ["SyntheticSN"]
             assert result["data"]["enable_assistant"] is False
+
+
+@pytest.mark.parametrize("actor", ["synthetic", "another-admin", None])
+async def test_approval_uses_original_authenticated_requester(
+    hass, entry, assistant_device, actor, freezer
+):
+    from datetime import UTC, date, datetime
+
+    from custom_components.ninebot.assistant_approval import (
+        ApprovalTicket,
+        DetailPlan,
+        async_approve_ticket,
+    )
+    from custom_components.ninebot.preservation import DetailScope
+
+    now = datetime(2026, 11, 7, tzinfo=UTC)
+    freezer.move_to(now)
+    plan = DetailPlan(
+        "synthetic",
+        entry.runtime_data.coordinator.statistics.archive.owner,
+        assistant_device,
+        "SyntheticSN",
+        date(2026, 11, 5),
+        date(2026, 11, 6),
+        DetailScope((("fixture-ride", "b" * 64),)),
+        2,
+        now,
+    )
+    ticket, nonce = ApprovalTicket.issue(plan, now)
+    context = Context(user_id=actor)
+    with patch.object(hass.auth, "async_get_user", return_value=user()):
+        if actor != plan.user_id:
+            with pytest.raises(AssistantError, match="^not_authorized$"):
+                await async_approve_ticket(hass, ticket, context, nonce, plan.digest)
+        else:
+            approved = await async_approve_ticket(hass, ticket, context, nonce, plan.digest)
+            assert approved.approved_at == now and approved.nonce_hash == ""
+
+
+@pytest.mark.parametrize(
+    "change,code", [("consent", "not_authorized"), ("expiry", "approval_expired")]
+)
+async def test_approval_rechecks_consent_after_awaited_permissions(
+    hass, entry, assistant_device, freezer, change, code
+):
+    from datetime import UTC, date, datetime
+
+    from custom_components.ninebot.assistant_approval import (
+        ApprovalTicket,
+        DetailPlan,
+        async_approve_ticket,
+    )
+    from custom_components.ninebot.assistant_policy import AssistantScope
+    from custom_components.ninebot.preservation import DetailScope
+
+    now = datetime(2026, 11, 7, tzinfo=UTC)
+    freezer.move_to(now)
+    plan = DetailPlan(
+        "synthetic",
+        entry.runtime_data.coordinator.statistics.archive.owner,
+        assistant_device,
+        "SyntheticSN",
+        date(2026, 11, 5),
+        date(2026, 11, 6),
+        DetailScope((("fixture-ride", "b" * 64),)),
+        2,
+        now,
+    )
+    ticket, nonce = ApprovalTicket.issue(plan, now)
+    original = AssistantScope.async_validate
+
+    async def revoke(scope, actual_hass):
+        await original(scope, actual_hass)
+        if change == "consent":
+            actual_hass.config_entries.async_update_entry(
+                entry, options={**entry.options, "enable_assistant": False}
+            )
+        else:
+            freezer.tick(600)
+
+    with (
+        patch.object(hass.auth, "async_get_user", return_value=user()),
+        patch.object(AssistantScope, "async_validate", new=revoke),
+        pytest.raises(AssistantError, match=f"^{code}$"),
+    ):
+        await async_approve_ticket(hass, ticket, Context(user_id="synthetic"), nonce, plan.digest)
