@@ -99,6 +99,12 @@ The native API canary runs on the published Core 2026.11.0 without a mismatched 
 
 [Synthetic evaluation tasks](../tests/fixtures/assistant/evaluation-tasks.json) define 52 scenarios for staged host/model evaluation. Their values are invented, all measurements start as null, and the task count is not a pass rate. Use the companion fixture and actual tool results; do not turn permission-injection test content into instructions. Record model, host, source revision, tool trace summary and measured results separately. Tests against HA Actions and SQLite establish tool contracts, not model accuracy.
 
+### Local task preview
+
+`RideArchive.async_detail_preview` scans the existing recorded-history selection on the account actor, under an ownership guard. Its window is at most 31 days; selection uses interval overlap and excludes unfinished/future rides, matching the local timeline rather than the end-date statistics contract. The shared scan caps work at 5,000 normalized rows and 8 MiB, failing with a budget error instead of silently truncating. It reads no detail payloads and performs no writes or cloud requests.
+
+`assistant_preview` counts indexed details, missing mappings and unmapped identities, then freezes at most 20 missing identities with scope fingerprints. Saved rows are excluded before this candidate limit. The result retains month coverage, revision and skipped-time evidence, without retaining all scanned records. A saved index is not a payload-integrity audit; no observed month is distinct from an observed complete empty month. Counts describe known local records, not all upstream history. Public tools and server-created plans remain a separate integration step.
+
 ### Task confirmation contract
 
 The developing `assistant_approval` contract freezes the requester, account, vehicle, date window, ride fingerprints and attempt limit into a plan digest. Confirmation binds a UI-only nonce to that digest and task ID, expires after ten minutes and produces an immutable approved transition. The task-store owner must serialize and persist that transition before execution; the module registers no execution endpoint. Approval validates the original authenticated Context, current ownership/consent and the server time after permission checks. Execution eligibility expires after 24 hours and still requires fresh authorization.
