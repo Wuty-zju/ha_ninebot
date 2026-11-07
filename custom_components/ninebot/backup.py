@@ -4,12 +4,16 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
 from .ride_archive import ArchiveError, RideArchive
+
+if TYPE_CHECKING:
+    from .assistant_task_backup import TaskBackup
 
 BACKUP_KEY = f"{DOMAIN}_archive_backup"
 REMOVALS_KEY = f"{DOMAIN}_archive_pending_removals"
@@ -21,6 +25,7 @@ ACTORS_KEY = f"{DOMAIN}_archive_actors"
 class BackupState:
     archives: list[RideArchive]
     removals: list[Callable[[], Awaitable[None]]] = field(default_factory=list)
+    task_copies: list["TaskBackup"] = field(default_factory=list)
 
 
 def backup_active(hass: HomeAssistant) -> bool:
@@ -51,9 +56,21 @@ def defer_removal(hass: HomeAssistant, remove: Callable[[], Awaitable[None]]) ->
 
 async def _finish_backup(hass: HomeAssistant, state: BackupState) -> None:
     """Thaw every account first; drain cleanup despite failure or cancellation."""
+    task_error: BaseException | None = None
+    if state.task_copies:
+        from .assistant_task_backup import async_restore_tasks
+
+        try:
+            await async_restore_tasks(hass, state.task_copies)
+        except BaseException as err:
+            task_error = err
     for archive in state.archives:
         archive.resume_after_backup()
     if not state.removals:
+        if isinstance(task_error, asyncio.CancelledError):
+            raise task_error
+        if task_error:
+            raise HomeAssistantError("Ninebot task backup could not be finalized") from task_error
         return
     work = asyncio.gather(*(remove() for remove in state.removals), return_exceptions=True)
     cancelled = False
@@ -72,8 +89,14 @@ async def _finish_backup(hass: HomeAssistant, state: BackupState) -> None:
         _LOGGER.warning(
             "Deferred archive cleanup failed for %d account(s); retained for retry", len(failed)
         )
-    if cancelled or any(isinstance(result, asyncio.CancelledError) for result in work.result()):
+    if (
+        cancelled
+        or isinstance(task_error, asyncio.CancelledError)
+        or any(isinstance(result, asyncio.CancelledError) for result in work.result())
+    ):
         raise asyncio.CancelledError
+    if task_error:
+        raise HomeAssistantError("Ninebot task backup could not be finalized") from task_error
 
 
 async def async_pre_backup(hass: HomeAssistant) -> None:
@@ -84,6 +107,9 @@ async def async_pre_backup(hass: HomeAssistant) -> None:
     )
     hass.data[BACKUP_KEY] = state
     try:
+        from .assistant_task_backup import async_prepare_tasks
+
+        await async_prepare_tasks(hass, state.task_copies)
         for archive in state.archives:
             await archive.async_prepare_backup()
     except BaseException as err:
