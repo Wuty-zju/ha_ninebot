@@ -12,6 +12,7 @@ from homeassistant.core import Context
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.ninebot.assistant_errors import error_data
+from custom_components.ninebot.assistant_knowledge import KnowledgeUnavailable
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
 from custom_components.ninebot.assistant_queries import SPECS, async_query, period_dates
 from custom_components.ninebot.assistant_views import AssistantView, numeric, statistics_view
@@ -314,6 +315,72 @@ async def test_sync_health_is_read_only_and_reports_the_local_state(hass, assist
     assert result["data"]["background_enabled"] is False
     assert result["evidence"]["operation"] == "sync_status"
     assert result["quality"]["upstream_history_complete"] == "unverified"
+
+
+async def test_help_reads_only_bundled_sources_and_never_calls_actions(hass, assistant):
+    with patch.object(type(hass.services), "async_call", new=AsyncMock()) as action:
+        result, error = await async_query(
+            hass, "search_help", {"query": "等待请求额度", "language": "zh-Hans"}, assistant.context
+        )
+    assert not error
+    assert "vehicle_ref" not in result
+    assert result["data"]["matches"][0]["source_id"] == "sync_budget"
+    assert result["evidence"]["source_kind"] == "bundled_public_help"
+    assert len(json.dumps(result["data"], ensure_ascii=False).encode()) <= 4096
+    action.assert_not_awaited()
+
+
+@pytest.mark.parametrize("query", ["", "  ", "x" * 241, "line\nbreak", 123])
+async def test_help_has_bounded_strict_parameters(hass, assistant, query):
+    with patch("custom_components.ninebot.assistant_queries.search_help") as search:
+        result, error = await async_query(hass, "search_help", {"query": query}, assistant.context)
+    assert error and result["error"]["code"] == "invalid_arguments"
+    search.assert_not_called()
+
+
+async def test_help_corruption_does_not_break_vehicle_queries(hass, assistant):
+    with patch(
+        "custom_components.ninebot.assistant_queries.search_help",
+        side_effect=KnowledgeUnavailable("private catalog detail must not escape"),
+    ):
+        result, error = await async_query(
+            hass, "search_help", {"query": "statistics"}, assistant.context
+        )
+    assert error and result["error"]["code"] == "unsupported_capability"
+    assert "private catalog" not in json.dumps(result)
+    _, error = await query(hass, assistant, "get_vehicle_status")
+    assert not error
+
+
+async def test_help_rechecks_consent_after_executor_read(hass, assistant):
+    original_executor = hass.async_add_executor_job
+
+    async def revoke_after_read(*args):
+        result = await original_executor(*args)
+        hass.config_entries.async_update_entry(
+            assistant.entry,
+            options={**assistant.entry.options, "enable_assistant": False},
+        )
+        return result
+
+    with patch.object(hass, "async_add_executor_job", side_effect=revoke_after_read):
+        result, error = await async_query(
+            hass, "search_help", {"query": "statistics"}, assistant.context
+        )
+    assert error and result["error"]["code"] == "not_authorized"
+    assert "data" not in result
+
+
+async def test_stale_help_tool_is_denied_when_consent_is_disabled(hass, assistant):
+    hass.config_entries.async_update_entry(
+        assistant.entry, options={**assistant.entry.options, "enable_assistant": False}
+    )
+    with patch("custom_components.ninebot.assistant_queries.search_help") as search:
+        result, error = await async_query(
+            hass, "search_help", {"query": "statistics"}, assistant.context
+        )
+    assert error and result["error"]["code"] == "not_authorized"
+    search.assert_not_called()
 
 
 async def test_revocation_while_action_is_awaited_discards_the_result(hass, assistant):

@@ -2,7 +2,7 @@
 
 [简体中文](assistant_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
-Ninebot Assistant makes selected local vehicle information available to a compatible AI host through Home Assistant's native LLM API and MCP Server. The first preview provides six read-only tools. Your existing entities, controls and history synchronization continue to work independently.
+Ninebot Assistant makes selected local vehicle information available to a compatible AI host through Home Assistant's native LLM API and MCP Server. The preview provides six local vehicle tools and a versioned public-help search. Your existing entities, controls and history synchronization continue to work independently.
 
 ## Enable it
 
@@ -30,6 +30,7 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 
 | Tool | Parameters | Result |
 |---|---|---|
+| `ninebot__search_help` | `query`; optional `language` (`en` or `zh-Hans`) | Up to three cited public help topics for the installed version; no vehicle facts. |
 | `ninebot__get_vehicles` | None | AI-authorized vehicle references, display labels and local-data capabilities. |
 | `ninebot__get_vehicle_status` | `vehicle_ref` | Cached status/BMS values and per-group observation quality; no refresh or coordinates. |
 | `ninebot__get_statistics` | `vehicle_ref`, `period` | Local `today`, `yesterday`, `this_month` or `last_month` statistics with per-metric coverage. |
@@ -37,7 +38,7 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 | `ninebot__get_trip_detail` | `vehicle_ref`, `ride_id`, `query_month` | Saved scalar detail for a verified trip from that vehicle/month. Use the list's ID and `YYYYMM` month. |
 | `ninebot__get_sync_health` | `vehicle_ref` | Local coverage, progress, budget and scheduling state. Does not start or resume work. |
 
-All six tools read local information. Missing details remain missing until acquired through the normal [history features](history.md); an AI read never starts a cloud fetch. List cursors can be consumed: follow the returned next cursor rather than replaying the previous one. A page count is not the period's total.
+All tools read local information. Missing details remain missing until acquired through the normal [history features](history.md); an AI read never starts a cloud fetch. List cursors can be consumed: follow the returned next cursor rather than replaying the previous one. A page count is not the period's total.
 
 ## Read the evidence
 
@@ -53,6 +54,12 @@ Results include a business date range, observation times, units, metric quality,
 The native MCP response carries the JSON result as text content. Failures use a fixed code such as `not_authorized`, `invalid_arguments`, `local_data_missing`, `retry_later` or `timeout`. A failed query does not mean zero trips. Where provided, follow `retry_after_seconds`; do not loop repeatedly.
 
 Errors include a fixed explanation. `not_authorized` reports an access failure; it cannot establish whether a trip exists. A vehicle's query capabilities describe which local reads are available, independently of its current measurements or the number of saved rides.
+
+## Versioned help
+
+Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches ten bundled bilingual topics without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
+
+Search returns at most three topics in 4 KiB. It reports no match or no applicable knowledge rather than using another release’s rules. Other languages use English. A damaged help catalog leaves the six vehicle tools available. Published source links stay pinned even when the main documentation changes.
 
 ## Privacy and limits
 

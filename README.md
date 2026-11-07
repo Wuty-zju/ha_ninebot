@@ -97,14 +97,14 @@ Each account owns its session, credentials directory and archive. Entry titles u
 | Controls and vehicle allowlist | New accounts: on / sign-in-verified vehicles | Adjust command access for selected vehicles; existing choices are retained. |
 | Keep local history database (Beta) | On | Retain history after account removal and reconnect it on same-account sign-in. |
 | Vehicle events (Beta) | On | Trip reports, revisions, completions and concrete vehicle transitions. |
-| Ninebot Assistant (2.1 preview, Beta) | Off; no vehicles selected | Six local read tools for a compatible native LLM/MCP host. |
+| Ninebot Assistant (2.1 preview, Beta) | Off; no vehicles selected | Local read tools and versioned help for a compatible native LLM/MCP host. |
 | Show diagnostic entities | Off | Bounded parsed current information for investigation. |
 
 Existing explicit choices are retained on upgrade. Further options include adaptive update profiles, nominal battery parameters, request budget and archive quota. [Defaults and ranges →](docs/guide.md#options)
 
 ## Optional Assistant — 2.1 preview
 
-The 2.1 preview adds six dedicated local read tools through Home Assistant’s native LLM API and MCP Server. Select vehicles per account, then ask a compatible host about current readings, period statistics, saved trips or synchronization health. It uses the existing archive and query layer; AI is off by default and does not refresh the cloud or expose routes.
+The 2.1 preview adds dedicated local read tools and versioned help through Home Assistant’s native LLM API and MCP Server. Select vehicles per account, then ask a compatible host about current readings, period statistics, saved trips or synchronization health. It uses the existing archive and query layer; AI is off by default and does not refresh the cloud or expose routes.
 
 [Enable and use Ninebot Assistant →](docs/assistant.md)
 

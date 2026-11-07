@@ -2,7 +2,7 @@
 
 [English](assistant.md) · [文档](README.md) · [历史行程与地图](history_zh.md)
 
-Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼容的 AI 宿主提供用户选定车辆的本地信息。首个预览提供六个只读工具，现有实体、控制及历史同步继续独立运行。
+Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼容的 AI 宿主提供用户选定车辆的本地信息。预览提供六个本地车辆工具和版本化公开帮助检索，现有实体、控制及历史同步继续独立运行。
 
 ## 开启方式
 
@@ -30,6 +30,7 @@ Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼�
 
 | 工具 | 参数 | 返回内容 |
 |---|---|---|
+| `ninebot__search_help` | `query`；可选 `language`（`en` 或 `zh-Hans`） | 最多三条适用于安装版本、附引用的公开帮助，不返回车辆事实。 |
 | `ninebot__get_vehicles` | 无 | 已向 AI 授权的车辆引用、显示名称及本地数据能力。 |
 | `ninebot__get_vehicle_status` | `vehicle_ref` | 缓存状态/BMS 数值及分组观测质量，不刷新、不返回坐标。 |
 | `ninebot__get_statistics` | `vehicle_ref`、`period` | 本地 `today`、`yesterday`、`this_month`、`last_month` 统计及逐指标覆盖情况。 |
@@ -37,7 +38,7 @@ Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼�
 | `ninebot__get_trip_detail` | `vehicle_ref`、`ride_id`、`query_month` | 对应车辆及月份中已验证行程的本地标量详情。使用列表返回的行程 ID 和 `YYYYMM` 月份。 |
 | `ninebot__get_sync_health` | `vehicle_ref` | 本地覆盖、进度、额度和调度状态，不启动或恢复同步。 |
 
-六个工具全部读取本地信息。缺失详情需要通过正常的[历史功能](history_zh.md)采集；AI 只读调用不会触发云请求。列表游标可能被消费，应继续使用返回的下一页游标，不反复重放上一游标。一页记录数量不代表整个时间段的行程总数。
+全部工具均读取本地信息。缺失详情需要通过正常的[历史功能](history_zh.md)采集；AI 只读调用不会触发云请求。列表游标可能被消费，应继续使用返回的下一页游标，不反复重放上一游标。一页记录数量不代表整个时间段的行程总数。
 
 ## 理解数据依据
 
@@ -53,6 +54,12 @@ Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼�
 原生 MCP 将 JSON 结果作为文本内容返回。失败使用固定代码，如 `not_authorized`、`invalid_arguments`、`local_data_missing`、`retry_later`、`timeout`。查询失败不表示没有骑车；若返回 `retry_after_seconds`，应遵循等待时间，避免连续重试。
 
 错误附带固定说明。`not_authorized` 表示访问未获授权，不能据此判断行程是否存在。车辆的查询能力描述可用的本地读取，与当前实测状态和已保存行程数量分别表达。
+
+## 版本化帮助
+
+可以询问统计未知、请求额度、覆盖率、缺失详情、过期数值、单位、认证、保留规则或Assistant权限。`ninebot__search_help`搜索随包提供的10个双语主题，不访问网站、不索引私有档案。问题最多240字符；结果包含固定来源提交、来源及内容摘要、语言、适用版本和语料版本。帮助解释文档契约，当前车辆事实仍须通过相应数据工具查询。
+
+每次最多三条、4 KiB。不匹配时说明没有结果或没有适用版本的知识，不套用其他版本的规则；其他语言使用英文。语料损坏只影响帮助，六个车辆工具仍可用。引用始终指向固定提交，不随主分支文档变化。
 
 ## 隐私与限额
 

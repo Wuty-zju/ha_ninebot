@@ -185,6 +185,11 @@ async def check(
         else nullcontext(),
         patch.object(native_http, "create_mcp_server", side_effect=capture_context),
         patch.object(assistant_queries, "async_authorize", side_effect=verify_context),
+        patch.object(
+            assistant_queries,
+            "async_get_integration",
+            new=AsyncMock(return_value=SimpleNamespace(version="2.1.0")),
+        ),
         patch.object(NinebotReadAPI, "async_get_api_instance", new=add_write_probe),
         patch("custom_components.ninebot.services.dr.async_get", return_value=registry),
         patch(
@@ -220,8 +225,21 @@ async def check(
             status, _ = await rpc("tools/list", token="fixture-member")
             assert status == 403
             status, body = await rpc("tools/list")
-            assert status == 200 and len(body["result"]["tools"]) == 6
+            assert status == 200 and {tool["name"] for tool in body["result"]["tools"]} == {
+                f"ninebot__{spec.key}" for spec in assistant_queries.SPECS
+            }
             assert all(tool["annotations"]["readOnlyHint"] for tool in body["result"]["tools"])
+            status, help_body = await rpc(
+                "tools/call",
+                {
+                    "name": "ninebot__search_help",
+                    "arguments": {"query": "not_authorized", "language": "en"},
+                },
+            )
+            assert status == 200 and not help_body["result"].get("isError", False)
+            help_data = json.loads(help_body["result"]["content"][0]["text"])
+            assert help_data["data"]["matches"][0]["source_id"] == "assistant_access"
+            assert "vehicle_ref" not in help_data
             call = {
                 "name": "ninebot__get_vehicle_status",
                 "arguments": {"vehicle_ref": vehicle_ref},
@@ -279,7 +297,7 @@ async def check(
             unregister()
             _, removed = await rpc("tools/list")
             assert "error" in removed
-    print("Native MCP HTTP: six read tools, original Context, consent revocation and removal OK")
+    print("Native MCP HTTP: local read tools, original Context, consent revocation and removal OK")
 
 
 if __name__ == "__main__":
