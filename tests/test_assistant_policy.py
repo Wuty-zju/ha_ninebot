@@ -14,6 +14,17 @@ pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 @pytest.fixture
 async def assistant_device(hass, entry, app_client):
+    return await setup_assistant_device(hass, entry)
+
+
+@pytest.fixture
+async def proposal_device(hass, entry, app_client, freezer):
+    # Establish the clock before setup; later receipts must supersede setup's month.
+    freezer.move_to("2026-11-05T00:00:00+00:00")
+    return await setup_assistant_device(hass, entry)
+
+
+async def setup_assistant_device(hass, entry):
     # Registration is isolated from this authorization test on every Core.
     with patch("custom_components.ninebot.async_update_assistant_api", new=AsyncMock()):
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -294,7 +305,7 @@ def proposal_month(count=2):
 
 
 async def test_local_proposal_binds_original_caller_and_projects_no_private_plan(
-    hass, entry, assistant_device, app_client, freezer
+    hass, entry, proposal_device, app_client, freezer
 ):
     import json
     from datetime import UTC, date, datetime
@@ -310,13 +321,13 @@ async def test_local_proposal_binds_original_caller_and_projects_no_private_plan
     before = archive.path.read_bytes()
     with patch.object(hass.auth, "async_get_user", return_value=user()) as lookup:
         result = await async_detail_proposal(
-            hass, context, assistant_device, "2026-11-06", "2026-11-06"
+            hass, context, proposal_device, "2026-11-06", "2026-11-06"
         )
         assert all(call.args == ("synthetic",) for call in lookup.call_args_list)
     plan = result.plan
     assert plan is not None
     assert plan.user_id == context.user_id and plan.account_key == archive.owner
-    assert plan.sn == "SyntheticSN" and plan.vehicle_ref == assistant_device
+    assert plan.sn == "SyntheticSN" and plan.vehicle_ref == proposal_device
     assert plan.start_date == plan.end_date == date(2026, 11, 6)
     assert plan.created_at == now and plan.attempts == 2
     output = result.model_data()
@@ -341,7 +352,7 @@ async def test_local_proposal_binds_original_caller_and_projects_no_private_plan
 
 @pytest.mark.parametrize("count", [None, 0])
 async def test_proposal_no_local_scope_does_not_create_an_executable_plan(
-    hass, entry, assistant_device, freezer, count
+    hass, entry, proposal_device, freezer, count
 ):
     from datetime import UTC, datetime
 
@@ -355,13 +366,13 @@ async def test_proposal_no_local_scope_does_not_create_an_executable_plan(
         )
     with patch.object(hass.auth, "async_get_user", return_value=user()):
         result = await async_detail_proposal(
-            hass, Context(user_id="synthetic"), assistant_device, "2026-11-06", "2026-11-06"
+            hass, Context(user_id="synthetic"), proposal_device, "2026-11-06", "2026-11-06"
         )
     assert result.plan is None
     output = result.model_data()
     assert output["plan"] is None and output["requests"]["maximum_after_approval"] == 0
     assert output["coverage"]["upstream_history_complete"] == "unverified"
-    # Setup may already have recorded the current month; use an unobserved prior range.
+    # Setup may have observed this month without a complete list.
     if count == 0:
         assert output["coverage"]["known_local_rides"] == 0
         assert output["coverage"]["months"][0]["observed_list_complete"] is True
@@ -369,7 +380,7 @@ async def test_proposal_no_local_scope_does_not_create_an_executable_plan(
 
 @pytest.mark.parametrize("change", ["consent", "generation", "archive"])
 async def test_proposal_rejects_changes_during_the_archive_read(
-    hass, entry, assistant_device, freezer, change
+    hass, entry, proposal_device, freezer, change
 ):
     from datetime import UTC, datetime
 
@@ -399,7 +410,7 @@ async def test_proposal_rejects_changes_during_the_archive_read(
         pytest.raises(AssistantError, match="^not_authorized$"),
     ):
         await async_detail_proposal(
-            hass, Context(user_id="synthetic"), assistant_device, "2026-11-06", "2026-11-06"
+            hass, Context(user_id="synthetic"), proposal_device, "2026-11-06", "2026-11-06"
         )
 
 
@@ -407,9 +418,7 @@ async def test_proposal_rejects_changes_during_the_archive_read(
     "first,last",
     [("2026/11/06", "2026-11-06"), ("2026-11-06", "2026-11-05"), ("2026-10-01", "2026-11-01")],
 )
-async def test_proposal_invalid_dates_never_read_archive(
-    hass, entry, assistant_device, first, last
-):
+async def test_proposal_invalid_dates_never_read_archive(hass, entry, proposal_device, first, last):
     from custom_components.ninebot.assistant_plans import async_detail_proposal
 
     with (
@@ -420,6 +429,6 @@ async def test_proposal_invalid_dates_never_read_archive(
         pytest.raises(AssistantError, match="^invalid_arguments$"),
     ):
         await async_detail_proposal(
-            hass, Context(user_id="synthetic"), assistant_device, first, last
+            hass, Context(user_id="synthetic"), proposal_device, first, last
         )
     query.assert_not_awaited()
