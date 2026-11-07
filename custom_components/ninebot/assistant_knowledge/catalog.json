@@ -1,0 +1,430 @@
+{
+  "schema_version": 1,
+  "corpus_version": "1.0.0",
+  "source_version": "2.1.0",
+  "entries": [
+    {
+      "id": "statistics_missing",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#coverage-and-statistics"
+      },
+      "translations": {
+        "en": {
+          "title": "Unknown is not zero",
+          "text": "Missing or conflicting metrics remain unknown. A proven empty window can return zero. Daily count, duration and energy require verified selection; duration and energy reconcile independently. Zero-distance average consumption is undefined. Inspect per-metric quality before drawing a conclusion.",
+          "keywords": [
+            "unknown",
+            "missing",
+            "null",
+            "zero",
+            "today",
+            "yesterday"
+          ]
+        },
+        "zh-Hans": {
+          "title": "未知不等于零",
+          "text": "缺失或冲突指标保持未知；已验证的空周期才可返回零。每日次数、时长和能耗需要已校验的记录范围，时长和能耗分别核对。零里程的平均能耗无定义。先检查逐指标质量。",
+          "keywords": [
+            "未知",
+            "缺失",
+            "今日",
+            "昨日",
+            "零值",
+            "统计"
+          ]
+        }
+      },
+      "content_sha256": "eb737bc7e9beadd04b067bdf30a4c1332745209a943b09e120cd5dba9f92d647"
+    },
+    {
+      "id": "business_dates",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#coverage-and-statistics"
+      },
+      "translations": {
+        "en": {
+          "title": "Business dates and period boundaries",
+          "text": "Rides belong wholly to their Asia/Shanghai end date, without invented midnight allocation. Adjacent-month evidence may be needed. New days and months never inherit previous-period totals. Cached same-period entity values do not establish completeness for strict historical statistics.",
+          "keywords": [
+            "date",
+            "midnight",
+            "period",
+            "timezone",
+            "end date"
+          ]
+        },
+        "zh-Hans": {
+          "title": "业务日期与周期边界",
+          "text": "行程整体归入上海时区的结束日期，不按午夜虚构拆分；月边界可能需要相邻月份证据。新日或新月不会继承旧周期总量。实体保留同周期缓存值并不代表严格历史统计已经完整。",
+          "keywords": [
+            "日期",
+            "跨日",
+            "时区",
+            "周期",
+            "结束时间"
+          ]
+        }
+      },
+      "content_sha256": "9a483fe6ccd2545a733cb645edb8385d8fdbe7c43d5f96e0ed9868e3401e5311"
+    },
+    {
+      "id": "sync_budget",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#enable-preservation-and-synchronization"
+      },
+      "translations": {
+        "en": {
+          "title": "Waiting for the local request budget",
+          "text": "Month pages and detail requests share the durable account budget, normally 60 logical calls/hour. Waiting for budget is local scheduling, not an application for cloud permission. Inspect next_request_at, retry_at, phase and errors; repeated full scans do not replenish it. Zero disables only the hourly quota, not serialization or upstream backoff.",
+          "keywords": [
+            "budget",
+            "quota",
+            "waiting",
+            "retry",
+            "request",
+            "retry_later"
+          ]
+        },
+        "zh-Hans": {
+          "title": "等待本地请求额度",
+          "text": "月份页与详情共享账号耐久预算，通常每小时60次逻辑请求。等待额度是本地调度，不是申请云端权限。检查next_request_at、retry_at、阶段和错误；反复全量扫描不会补充额度。零仅取消小时配额，不取消串行和上游退避。",
+          "keywords": [
+            "额度",
+            "限额",
+            "等待",
+            "重试",
+            "同步"
+          ]
+        }
+      },
+      "content_sha256": "1f9f71f502aa7a7ae43d1c171352ab91cca0877937915c2423eb3b9454aaf2be"
+    },
+    {
+      "id": "history_coverage",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#read-progress-correctly"
+      },
+      "translations": {
+        "en": {
+          "title": "Different history coverage denominators",
+          "text": "Month scan, returned list coverage and saved details describe different sets. Saved-detail 100% covers discovered ride IDs, not undiscovered cloud rides or full geometry. Visited months are not automatically verified. A successful request is distinct from completion; inspect last_success and last_completed separately.",
+          "keywords": [
+            "coverage",
+            "saved",
+            "discovered",
+            "verified",
+            "gap",
+            "complete"
+          ]
+        },
+        "zh-Hans": {
+          "title": "历史覆盖率的分母不同",
+          "text": "月份扫描、返回列表覆盖率和详情保存率对应不同集合。详情100%只覆盖已发现行程，不证明未发现的云端行程或完整轨迹。访问过月份不等于已校验。一次请求成功与任务完成不同，分别检查last_success与last_completed。",
+          "keywords": [
+            "覆盖",
+            "保存",
+            "发现",
+            "校验",
+            "缺口",
+            "完整"
+          ]
+        }
+      },
+      "content_sha256": "7ace90806400b4b6dc15d4c06da11a624ee80de2a2d914504dae7ebf2084852f"
+    },
+    {
+      "id": "saved_detail",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#ask-about-local-data"
+      },
+      "translations": {
+        "en": {
+          "title": "Select a verified saved detail",
+          "text": "Use ride_id and query_month from the selected vehicle’s recorded-trip list. Assistant detail reads use the local archive only; missing details are not fetched from the cloud. Read one bounded date page, follow its next cursor and distinguish page size from period totals. Normal history synchronization acquires missing details separately.",
+          "keywords": [
+            "local_data_missing",
+            "detail",
+            "ride_id",
+            "query_month",
+            "track"
+          ]
+        },
+        "zh-Hans": {
+          "title": "选择已校验的本地详情",
+          "text": "从所选车辆的已保存行程列表取得ride_id和query_month。Assistant详情仅查本地档案，不会为缺失详情请求云端。按有界日期分页并跟随next cursor，页内条数不等于周期总数。缺失详情由正常历史同步另行获取。",
+          "keywords": [
+            "详情",
+            "未保存",
+            "行程编号",
+            "月份",
+            "轨迹"
+          ]
+        }
+      },
+      "content_sha256": "75dca1c4d73db145471d1409761f1d7b2bd04e4ed5c7ab962dd8d55ffb2ebf15"
+    },
+    {
+      "id": "status_freshness",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "translations": {
+        "en": {
+          "title": "Query time and observation time",
+          "text": "Query as_of is when the local projection was requested, not a new cloud measurement. Use group observation timestamps and freshness for cached current state, and per-metric quality for missing values. Closed-month age alone does not make historical facts stale. ACC does not prove movement; a seat-latch state does not prove the lid is open.",
+          "keywords": [
+            "stale",
+            "freshness",
+            "as_of",
+            "received_at",
+            "status",
+            "cached"
+          ]
+        },
+        "zh-Hans": {
+          "title": "查询时间与观测时间",
+          "text": "query as_of表示请求本地投影的时间，不是新的云端观测。当前缓存值应连同分组观测时间、新鲜度及逐指标质量解释。已结束月份仅因时间久不会使历史事实过期。ACC不证明移动，座桶锁舌状态不证明盖子打开。",
+          "keywords": [
+            "过期",
+            "新鲜度",
+            "观测",
+            "缓存",
+            "状态"
+          ]
+        }
+      },
+      "content_sha256": "6eca4a376e7725115c89f623236b8ad508859463e8beea13ce14e6d9fddfe6be"
+    },
+    {
+      "id": "measurement_units",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "translations": {
+        "en": {
+          "title": "Preserve measurement semantics",
+          "text": "Server maximum speed is different from overall average speed calculated from distance and duration. Unknown sample units stay unverified. Use returned units rather than guessing. Battery score is not SOH or a health diagnosis. Do not infer movement, maintenance advice or charging energy from incomplete samples.",
+          "keywords": [
+            "speed",
+            "average",
+            "maximum",
+            "energy",
+            "score",
+            "units"
+          ]
+        },
+        "zh-Hans": {
+          "title": "保留指标语义与单位",
+          "text": "服务端最高速度不同于距离除以时长的总平均速度；未知采样单位仍待验证，应使用工具返回单位。电池评分不是SOH或健康诊断。不从不完整采样推断移动、维修建议或充电能量。",
+          "keywords": [
+            "速度",
+            "平均",
+            "最高",
+            "能量",
+            "评分",
+            "单位"
+          ]
+        }
+      },
+      "content_sha256": "85d615f1f6c10d7d1304689f5e2a19f0d277a922ae9c91d9333f3569d77f2522"
+    },
+    {
+      "id": "authentication_support",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "54eea5ea99da125cbc855dc1302dfab57c0b4137c4e78cfc7b5fc18b37bab893",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/guide.md#login-fails-before-the-account-is-added"
+      },
+      "translations": {
+        "en": {
+          "title": "Collect a safe sign-in failure report",
+          "text": "For an existing account, use the integration menu’s Enable debug logging, reproduce once, then disable and download the log. Before setup, use the guide’s native logger steps and note the support identifier, form error and versions. A local proxy status does not prove a cloud region or internal authentication cause. Share no credentials, account value or vehicle/location data.",
+          "keywords": [
+            "auth_required",
+            "reauth",
+            "login",
+            "debug",
+            "support",
+            "network"
+          ]
+        },
+        "zh-Hans": {
+          "title": "收集安全的登录故障信息",
+          "text": "已有账号使用集成菜单的启用调试日志，复现一次后关闭并下载。添加前失败按指南使用原生日志步骤，记录support编号、表单错误和版本。本地代理状态不证明云端地区或内部认证原因。反馈不包含凭据、账号值或车辆位置。",
+          "keywords": [
+            "认证",
+            "重新认证",
+            "登录",
+            "调试",
+            "日志",
+            "网络"
+          ]
+        }
+      },
+      "content_sha256": "26922130193a5152b164b33a9f879587e08dc49b8808bc90ace7efbbf701ac57"
+    },
+    {
+      "id": "archive_retention",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#verification-and-recovery"
+      },
+      "translations": {
+        "en": {
+          "title": "Protect saved history and geometry",
+          "text": "The account SQLite archive keeps normalized facts and redacted compressed business evidence without an automatic TTL, subject to quota, disk and backup settings. Better saved geometry survives a newer simplified or empty response. Observations around 180 days are not a server guarantee. Quota exhaustion pauses writes instead of silently evicting rides. Keep exports private.",
+          "keywords": [
+            "retention",
+            "archive",
+            "backup",
+            "geometry",
+            "180",
+            "simplified"
+          ]
+        },
+        "zh-Hans": {
+          "title": "保护已保存的历史和轨迹",
+          "text": "账号SQLite保留标准化事实及已去身份的压缩业务证据，无自动TTL，仍受配额、磁盘和备份设置限制。新简化或空响应不能覆盖更好的已保存轨迹。180天附近的观察不是云端保证。超额暂停写入，不静默驱逐行程；导出文件需私密保管。",
+          "keywords": [
+            "保留",
+            "档案",
+            "备份",
+            "轨迹",
+            "180天",
+            "简化"
+          ]
+        }
+      },
+      "content_sha256": "11be77c5ab258458f5fedcb300a38089c68b9d2939b32c5afb5ccd59a9c87455"
+    },
+    {
+      "id": "assistant_access",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#privacy-and-limits"
+      },
+      "translations": {
+        "en": {
+          "title": "Assistant access is separate consent",
+          "text": "Assistant defaults off. An active administrator, account consent and selected vehicle are checked on every read and before return. not_authorized means access denied, not that a ride is missing; stop that read and review Home Assistant permissions. Tools do not return credentials, account identifiers, raw logs or precise GPS. Turning consent off cannot retract data already sent to a chosen model host.",
+          "keywords": [
+            "not_authorized",
+            "permission",
+            "privacy",
+            "access",
+            "consent",
+            "GPS"
+          ]
+        },
+        "zh-Hans": {
+          "title": "Assistant使用独立授权",
+          "text": "Assistant默认关闭，每次读取及返回前检查有效管理员、账号同意和车辆选择。not_authorized表示权限拒绝，不能据此判断行程不存在；停止该读取并检查HA权限。工具不返回凭据、账号标识、原始日志或精确GPS。关闭授权无法撤回已发送给模型宿主的数据。",
+          "keywords": [
+            "权限",
+            "隐私",
+            "授权",
+            "拒绝",
+            "精确位置"
+          ]
+        }
+      },
+      "content_sha256": "659573dfe17e2aff02a17ee9aca1062ea5ba4c3d0efa12346c8b22dc845597fe"
+    }
+  ]
+}

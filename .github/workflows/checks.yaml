@@ -32,6 +32,7 @@ jobs:
       - run: ruff check custom_components tests scripts
       - run: ruff format --check custom_components tests scripts
       - run: python -m unittest scripts.tests.test_assistant_evaluation -q
+      - run: python -m unittest scripts.tests.test_assistant_knowledge -q
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: github.event_name == 'workflow_dispatch' && inputs.full_validation
         with:

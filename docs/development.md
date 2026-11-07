@@ -97,6 +97,12 @@ The native API canary runs on the published Core 2026.11.0 without a mismatched 
 
 [Synthetic evaluation tasks](../tests/fixtures/assistant/evaluation-tasks.json) define 52 scenarios for staged host/model evaluation. Their values are invented, all measurements start as null, and the task count is not a pass rate. Use the companion fixture and actual tool results; do not turn permission-injection test content into instructions. Record model, host, source revision, tool trace summary and measured results separately. Tests against HA Actions and SQLite establish tool contracts, not model accuracy.
 
+### Versioned public help
+
+`assistant_knowledge.py` lazily reads the bundled JSON catalog in an executor on an authorized help query. Ten bilingual topics carry immutable first-party source commits/hashes, content hashes, evidence status and a numeric version range. No private history or external source is indexed. Lexical English/code tokens and Han bigrams rank at most three chunks in a 4 KiB body. Unsupported versions do not borrow newer knowledge. Runtime corruption fails only help.
+
+Run `python -m unittest scripts.tests.test_assistant_knowledge -q` without HA. Before changing source citations, use `python -m scripts.check_assistant_knowledge --verify-sources` with the cited Git objects present; this verifies source blobs and anchors offline. Catalog hash validation detects changed content, not whether a claim is true: review every summary against its cited contract. Corpus versions and supersedes entries track intentional replacements.
+
 ### Small model baseline
 
 The optional **Checks → assistant_evaluation** dispatch runs Q03, Q04, P06 and S02 through a fixed CPU model and the installed native MCP HTTP handler. It compares a single prompt without tools against a bounded tool loop. Authorization, registry, snapshots and Action returns are synthetic; this run does not connect to a production HA instance or exercise a real archive. Q03 supplies two vehicles; P06 supplies a selected ride and revokes consent inside its detail read.
