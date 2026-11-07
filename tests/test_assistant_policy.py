@@ -266,6 +266,4 @@ async def test_approval_rechecks_consent_after_awaited_permissions(
         patch.object(AssistantScope, "async_validate", new=revoke),
         pytest.raises(AssistantError, match=f"^{code}$"),
     ):
-        await async_approve_ticket(
-            hass, ticket, Context(user_id="synthetic"), nonce, plan.digest
-        )
+        await async_approve_ticket(hass, ticket, Context(user_id="synthetic"), nonce, plan.digest)
