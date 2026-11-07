@@ -391,9 +391,11 @@ async def review(client, vehicle, identity, operation, **args):
 
 
 async def test_real_websocket_review_uses_caller_and_never_registers_approval_services(
-    hass, entry, task_store, review_client, hass_user
+    hass, entry, task_store, review_client, hass_admin_user
 ):
-    request = await seeded_request(hass, entry, task_store, context=Context(user_id=hass_user.id))
+    request = await seeded_request(
+        hass, entry, task_store, context=Context(user_id=hass_admin_user.id)
+    )
     device, client = task_store.plan.vehicle_ref, review_client
     task_id = request["task"]["task_id"]
     listed = await review(client, device, 1, "list")
@@ -446,9 +448,11 @@ async def test_real_websocket_rejects_other_requester_and_mismatched_fields(
 
 
 async def test_websocket_nonce_rotation_expiry_and_task_disable(
-    hass, entry, task_store, review_client, hass_user
+    hass, entry, task_store, review_client, hass_admin_user
 ):
-    request = await seeded_request(hass, entry, task_store, context=Context(user_id=hass_user.id))
+    request = await seeded_request(
+        hass, entry, task_store, context=Context(user_id=hass_admin_user.id)
+    )
     device, client, task_id = task_store.plan.vehicle_ref, review_client, request["task"]["task_id"]
     first = (await review(client, device, 1, "prepare", task_id=task_id))["result"]
     second = (await review(client, device, 2, "prepare", task_id=task_id))["result"]
