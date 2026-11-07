@@ -9,6 +9,7 @@ import pytest
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.preservation import (
     DetailBudget,
+    DetailBudgetUnavailable,
     DetailScope,
     fingerprint,
     task_state,
@@ -43,7 +44,7 @@ async def test_task_cap_survives_reopen_and_idempotent_initialization(tmp_path):
     try:
         await archive.async_record_month(SN, sample(), NOW)
         scope = await archive_scope(archive)
-        with pytest.raises(ArchiveError):
+        with pytest.raises(DetailBudgetUnavailable):
             await archive.async_preservation_claim(
                 SN, NOW, 0, scope=scope, task_budget=task_budget, guard=lambda: True
             )
@@ -68,11 +69,11 @@ async def test_task_cap_survives_reopen_and_idempotent_initialization(tmp_path):
             )
             is None
         )
-        with pytest.raises(ArchiveError):
+        with pytest.raises(DetailBudgetUnavailable):
             await archive.async_initialize_detail_budget(
                 SN, scope, DetailBudget(task_budget.task_id, 2), guard=lambda: True
             )
-        with pytest.raises(ArchiveError):
+        with pytest.raises(DetailBudgetUnavailable):
             await archive.async_preservation_claim(
                 "another-vehicle", NOW, 0, scope=scope, task_budget=task_budget, guard=lambda: True
             )
@@ -107,6 +108,41 @@ async def test_task_and_account_reservations_roll_back_together(tmp_path):
             await archive.async_preservation_claim(
                 SN, NOW, 60, task_budget=task_budget, guard=lambda: True
             )
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("payload", ["{", "[]", " " * 513, '{"used":true}', None, b"{}"])
+def test_bad_task_record_requires_reapproval_not_archive_repair(payload):
+    with pytest.raises(DetailBudgetUnavailable):
+        DetailBudget("c" * 32, 1).read(payload, "0" * 64)
+
+
+async def test_task_initialization_checks_guard_and_paused_claim_preserves_budget(tmp_path):
+    archive = RideArchive(tmp_path / "task-guard.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        scope = await archive_scope(archive)
+        budget = DetailBudget("d" * 32, 1)
+        with pytest.raises(ArchiveError):
+            await archive.async_initialize_detail_budget(SN, scope, budget, guard=lambda: False)
+        with pytest.raises(DetailBudgetUnavailable):
+            await archive.async_preservation_claim(
+                SN, NOW, 60, scope=scope, task_budget=budget, guard=lambda: True
+            )
+        await archive.async_initialize_detail_budget(SN, scope, budget, guard=lambda: True)
+        await archive.async_set_history_paused(SN, True, guard=lambda: True)
+        assert (
+            await archive.async_preservation_claim(
+                SN, NOW, 60, scope=scope, task_budget=budget, guard=lambda: True
+            )
+            is None
+        )
+        await archive.async_set_history_paused(SN, False, guard=lambda: True)
+        assert await archive.async_preservation_claim(
+            SN, NOW, 60, scope=scope, task_budget=budget, guard=lambda: True
+        )
     finally:
         await archive.async_close()
 

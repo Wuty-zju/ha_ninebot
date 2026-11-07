@@ -1864,7 +1864,7 @@ class RideArchive:
                     "SELECT value FROM meta WHERE key=?", (task_budget.key,)
                 ).fetchone()
                 if row is not None:
-                    task_budget.validate(decoded(row[0]), scope_hash)
+                    task_budget.read(row[0], scope_hash)
                     return
                 db.execute(
                     "INSERT INTO meta VALUES (?,?)",
@@ -1905,7 +1905,13 @@ class RideArchive:
         task_budget: "DetailBudget | None" = None,
     ) -> "PreservationTask | None":
         from .detail_followup import put as put_followup
-        from .preservation import PreservationTask, fingerprint, mutable_detail, task_state
+        from .preservation import (
+            DetailBudgetUnavailable,
+            PreservationTask,
+            fingerprint,
+            mutable_detail,
+            task_state,
+        )
 
         epoch = now.timestamp()
         scoped = dict(scope.rides) if scope is not None else None
@@ -1924,8 +1930,8 @@ class RideArchive:
                     "SELECT value FROM meta WHERE key=?", (task_budget.key,)
                 ).fetchone()
                 if row is None:
-                    raise ValueError("Missing approved task counter")
-                task_counter = task_budget.validate(decoded(row[0]), scope.digest(vehicle))
+                    raise DetailBudgetUnavailable("Missing approved task counter")
+                task_counter = task_budget.read(row[0], scope.digest(vehicle))
                 if task_counter["used"] >= task_budget.limit:
                     return None
             if self._history_paused(vehicle):

@@ -73,6 +73,10 @@ class DetailScope:
         ).hexdigest()
 
 
+class DetailBudgetUnavailable(Exception):
+    """Reapproval is required; this does not establish corruption of the archive."""
+
+
 @dataclass(frozen=True)
 class DetailBudget:
     """Internal task counter identity; human approval belongs outside the archive."""
@@ -94,6 +98,14 @@ class DetailBudget:
     def key(self) -> str:
         return f"assistant_attempts:{self.task_id}"
 
+    def read(self, value: object, scope_hash: str) -> dict[str, Any]:
+        try:
+            if not isinstance(value, str) or len(value.encode()) > 512:
+                raise ValueError("Invalid task counter")
+            return self.validate(json.loads(value), scope_hash)
+        except (ValueError, RecursionError) as err:
+            raise DetailBudgetUnavailable("Invalid task counter") from err
+
     def validate(self, value: Any, scope_hash: str) -> dict[str, Any]:
         if (
             not isinstance(value, dict)
@@ -104,7 +116,7 @@ class DetailBudget:
             or type(value["used"]) is not int
             or not 0 <= value["used"] <= self.limit
         ):
-            raise ValueError("Detail task counter does not match its frozen plan")
+            raise DetailBudgetUnavailable("Detail task counter does not match its frozen plan")
         return value
 
 
