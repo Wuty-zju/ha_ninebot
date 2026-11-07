@@ -44,6 +44,31 @@ def fingerprint(ride: Ride) -> str:
 
 
 @dataclass(frozen=True)
+class DetailScope:
+    """Frozen internal archive identities and fingerprints, never an authorization grant."""
+
+    rides: tuple[tuple[str, str], ...]
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.rides, tuple)
+            or not 1 <= len(self.rides) <= 20
+            or any(
+                not isinstance(row, tuple)
+                or len(row) != 2
+                or not isinstance(row[0], str)
+                or not 1 <= len(row[0]) <= 512
+                or not isinstance(row[1], str)
+                or len(row[1]) != 64
+                or set(row[1]) - set("0123456789abcdef")
+                for row in self.rides
+            )
+            or len({row[0] for row in self.rides}) != len(self.rides)
+        ):
+            raise ValueError("Invalid frozen detail scope")
+
+
+@dataclass(frozen=True)
 class PreservationTask:
     ride: Ride
     fingerprint: str

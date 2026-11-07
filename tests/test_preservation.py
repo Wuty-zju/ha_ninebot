@@ -7,12 +7,57 @@ from unittest.mock import patch
 import pytest
 
 from custom_components.ninebot.adapters import travel
-from custom_components.ninebot.preservation import task_state
+from custom_components.ninebot.preservation import DetailScope, fingerprint, task_state
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OWNER = hashlib.sha256(b"synthetic-account").hexdigest()
 SN = "synthetic-vehicle"
+
+
+@pytest.mark.parametrize("rides", [(), (("a", "invalid"),), (("a", "0" * 64),) * 2])
+def test_detail_scope_rejects_empty_unbounded_or_ambiguous_ranges(rides):
+    with pytest.raises(ValueError):
+        DetailScope(rides)
+
+
+async def test_scoped_claim_filters_before_limit_and_rejects_changed_fingerprint(tmp_path):
+    from custom_components.ninebot.archive_codec import decoded, restored_ride
+
+    archive = RideArchive(tmp_path / "scoped.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        raw = {
+            "times": 150,
+            "list": [
+                {
+                    "travel_id": f"scope-{i}",
+                    "mileages": 1,
+                    "duration": 600,
+                    "start_time": int(NOW.timestamp()) + i * 1000,
+                    "end_time": int(NOW.timestamp()) + i * 1000 + 600,
+                }
+                for i in range(150)
+            ],
+        }
+        await archive.async_record_month(SN, travel(raw, "202609"), NOW)
+        identity, data = await archive._run(
+            lambda: (
+                archive._db()
+                .execute("SELECT id,data FROM rides ORDER BY started ASC LIMIT 1")
+                .fetchone()
+            )
+        )
+        wrong = DetailScope(((identity, "0" * 64),))
+        assert (
+            await archive.async_preservation_claim(SN, NOW, 60, scope=wrong, guard=lambda: True)
+            is None
+        )
+        scope = DetailScope(((identity, fingerprint(restored_ride(decoded(data)))),))
+        task = await archive.async_preservation_claim(SN, NOW, 60, scope=scope, guard=lambda: True)
+        assert task is not None and task.ride.ride_id == "scope-0"
+    finally:
+        await archive.async_close()
 
 
 def sample():
