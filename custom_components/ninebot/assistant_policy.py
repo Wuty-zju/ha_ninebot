@@ -6,6 +6,7 @@ from homeassistant.core import Context, HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
 
 from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_TASKS, CONF_ASSISTANT_VEHICLES
+from .backup import backup_active
 from .const import DOMAIN
 from .runtime import NinebotConfigEntry, RuntimeData
 from .services import async_check_history_access, resolve_vehicle
@@ -73,6 +74,7 @@ class AssistantScope:
             self.entry.options.get(CONF_ASSISTANT_TASKS) is not True
             or self.runtime.assistant_task_blocks
             or self.runtime.coordinator._stopping
+            or backup_active(hass)
         ):
             raise AssistantError("not_authorized")
 

@@ -2,6 +2,7 @@
 
 import asyncio
 import copy
+import json
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -583,3 +584,119 @@ async def test_task_collection_does_not_inherit_read_only_consent(hass, entry, t
     await hass.async_block_till_done()
     result, error = await async_task_query(hass, "task_vehicles", {}, task_store.context)
     assert error and result["error"]["code"] == "not_authorized"
+
+
+async def test_backup_copy_has_plans_but_no_approval_or_nonce(hass, task_store):
+    from custom_components.ninebot.backup import async_post_backup, async_pre_backup
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    task_store.co.config_entry.runtime_data.assistant_tasks = s
+    pending = await s.async_request(p, c)
+    _, nonce = await s.async_prepare(pending.task_id, c)
+    approved = await s.async_approve(pending.task_id, c, nonce, p.digest)
+    before = await hass.async_add_executor_job(Path(s._store.path).read_bytes)
+    await async_pre_backup(hass)
+    copied = await hass.async_add_executor_job(Path(s._store.path).read_bytes)
+    restored = restore_ticket(json.loads(copied)["data"]["tickets"][pending.task_id])
+    assert restored.plan == p and restored.approved_at is None and restored.nonce_hash is None
+    assert not restored.execution_valid(dt_util.utcnow())
+    with pytest.raises(AssistantError, match="^not_authorized$"):
+        restored.approve(p.user_id, nonce, p.digest, dt_util.utcnow())
+    with pytest.raises(AssistantError, match="^not_authorized$"):
+        await s.async_prepare(pending.task_id, c)
+    await async_post_backup(hass)
+    assert await hass.async_add_executor_job(Path(s._store.path).read_bytes) == before
+    assert await s.async_get(pending.task_id, c) == approved
+    # A normal reopen can use its durable ticket; an actual backup copy cannot.
+    reopened = ApprovalStore(hass, s.entry_id, s.account_key)
+    assert (await reopened.async_get(pending.task_id, c)).execution_valid(dt_util.utcnow())
+    await hass.async_add_executor_job(Path(s._store.path).write_bytes, copied)
+    assert not (await reopened.async_get(pending.task_id, c)).execution_valid(dt_util.utcnow())
+
+
+async def test_backup_also_removes_prepared_nonce_from_dormant_owner(hass, task_store):
+    from custom_components.ninebot.backup import async_post_backup, async_pre_backup
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    pending = await s.async_request(p, c)
+    prepared, nonce = await s.async_prepare(pending.task_id, c)
+    assert task_store.co.config_entry.runtime_data.assistant_tasks is None
+    await async_pre_backup(hass)
+    raw = await hass.async_add_executor_job(Path(s._store.path).read_text)
+    assert prepared.nonce_hash not in raw and nonce not in raw
+    await async_post_backup(hass)
+    assert await s.async_get(pending.task_id, c) == prepared
+
+
+async def test_backup_never_resurrects_removed_or_closed_task_owner(hass, task_store):
+    from custom_components.ninebot.backup import async_post_backup, async_pre_backup
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    task_store.co.config_entry.runtime_data.assistant_tasks = s
+    pending = await s.async_request(p, c)
+    await s.async_prepare(pending.task_id, c)
+    await async_pre_backup(hass)
+    await s.async_close(remove=True)
+    await async_post_backup(hass)
+    assert not await store_exists(s)
+
+
+async def test_cancelled_backup_preparation_restores_after_durable_write(hass, task_store):
+    from custom_components.ninebot.assistant_task_backup import _write
+    from custom_components.ninebot.backup import async_pre_backup, backup_active
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    task_store.co.config_entry.runtime_data.assistant_tasks = s
+    pending = await s.async_request(p, c)
+    prepared, _ = await s.async_prepare(pending.task_id, c)
+    written, release = asyncio.Event(), asyncio.Event()
+
+    async def write(hass, store, data):
+        await _write(hass, store, data)
+        written.set()
+        await release.wait()
+
+    with patch("custom_components.ninebot.assistant_task_backup._write", new=write):
+        work = asyncio.create_task(async_pre_backup(hass))
+        await written.wait()
+        work.cancel()
+        # Unwind uses the same durable helper; let the final restoration finish.
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await work
+    assert not backup_active(hass) and not task_store.co.statistics.archive.backup_paused
+    assert await s.async_get(pending.task_id, c) == prepared
+
+
+async def test_backup_restore_failure_still_thaws_archives(hass, task_store):
+    from homeassistant.exceptions import HomeAssistantError
+
+    from custom_components.ninebot.backup import async_post_backup, async_pre_backup, backup_active
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    pending = await s.async_request(p, c)
+    await s.async_prepare(pending.task_id, c)
+    await async_pre_backup(hass)
+    assert task_store.co.statistics.archive.backup_paused
+    with patch(
+        "custom_components.ninebot.assistant_task_backup._write",
+        new=AsyncMock(side_effect=TaskStoreUnavailable("synthetic failure")),
+    ):
+        with pytest.raises(HomeAssistantError, match="could not be finalized"):
+            await async_post_backup(hass)
+    assert not backup_active(hass) and not task_store.co.statistics.archive.backup_paused
+
+
+async def test_backup_preparation_does_not_replace_malformed_store(hass, task_store):
+    from custom_components.ninebot.backup import async_pre_backup, backup_active
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    await s.async_request(p, c)
+    await hass.async_add_executor_job(Path(s._store.path).write_bytes, b"malformed synthetic store")
+    with pytest.raises(TaskStoreUnavailable):
+        await async_pre_backup(hass)
+    assert not backup_active(hass) and not task_store.co.statistics.archive.backup_paused
+    assert (
+        await hass.async_add_executor_job(Path(s._store.path).read_bytes)
+        == b"malformed synthetic store"
+    )
