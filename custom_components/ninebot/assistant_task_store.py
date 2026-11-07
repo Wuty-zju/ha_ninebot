@@ -134,13 +134,21 @@ def store_key(entry_id: str) -> str:
 async def async_remove_task_data(hass: HomeAssistant, entry_id: str) -> None:
     """Trusted entry lifecycle only, independent of retained portable history."""
     store = Store[dict[str, Any]](hass, 1, store_key(entry_id), private=True, atomic_writes=True)
-    await _async_remove_ack(hass, store)
+    await async_drain(asyncio.create_task(_async_remove_ack(hass, store)))
+
+
+def _task_path_exists(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    return True  # Permission and other OS failures must propagate, never acknowledge absence.
 
 
 async def _async_remove_ack(hass: HomeAssistant, store: Store[dict[str, Any]]) -> None:
     try:
         await store.async_remove()
-        if await hass.async_add_executor_job(Path(store.path).exists):
+        if await hass.async_add_executor_job(_task_path_exists, Path(store.path)):
             raise TaskStoreUnavailable("Task removal was not acknowledged")
     except OSError as err:
         raise TaskStoreUnavailable("Task store cannot be removed") from err
