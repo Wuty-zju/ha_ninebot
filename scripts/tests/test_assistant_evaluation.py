@@ -10,12 +10,44 @@ from scripts.evaluate_assistant import (
     InvalidReply,
     parse_calls,
     safe_result,
+    tool_message,
     visible_text,
     write_report,
 )
 
 
 class ModelProtocolTests(unittest.TestCase):
+    def test_mcp_payload_is_delivered_without_the_transport_envelope(self):
+        for error in (False, True):
+            payload = {"error": {"code": "not_authorized"}} if error else {"data": {"soc": 0}}
+            response = {
+                "jsonrpc": "2.0",
+                "id": 7,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps(payload)}],
+                    "isError": error,
+                },
+            }
+            message = tool_message("ninebot__get_vehicle_status", "call_1", response)
+            self.assertEqual(message["role"], "tool")
+            self.assertEqual(message["name"], "ninebot__get_vehicle_status")
+            self.assertEqual(message["tool_call_id"], "call_1")
+            self.assertEqual(json.loads(message["content"]), payload)
+            self.assertNotIn("jsonrpc", message["content"])
+
+    def test_malformed_or_ambiguous_tool_results_stop_the_case(self):
+        for result in (
+            {},
+            {"content": []},
+            {"content": [{"type": "text", "text": "{}"}], "isError": True},
+            {"content": [{"type": "text", "text": "[]"}]},
+            {"content": [{"type": "image", "text": "{}"}]},
+            {"content": [{"type": "text", "text": "x" * 16385}]},
+            {"content": [{"type": "text", "text": "{}"}] * 2},
+        ):
+            with self.subTest(result=str(result)[:100]), self.assertRaises(InvalidReply):
+                tool_message("tool", "call_1", {"result": result})
+
     def test_only_the_visible_final_channel_is_retained(self):
         self.assertEqual(visible_text("<think>private</think>answer"), "answer")
         self.assertEqual(visible_text("<think>unfinished"), "")
