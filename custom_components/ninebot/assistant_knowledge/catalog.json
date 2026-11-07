@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "corpus_version": "1.0.0",
+  "schema_version": 2,
+  "corpus_version": "1.1.0",
   "source_version": "2.1.0",
   "entries": [
     {
@@ -44,7 +44,8 @@
           ]
         }
       },
-      "content_sha256": "eb737bc7e9beadd04b067bdf30a4c1332745209a943b09e120cd5dba9f92d647"
+      "content_sha256": "01858bdc82e6a2b2a9594919554e46708349645abbc7ff882651f44a0c62b991",
+      "procedure_id": "SK05"
     },
     {
       "id": "business_dates",
@@ -85,7 +86,8 @@
           ]
         }
       },
-      "content_sha256": "9a483fe6ccd2545a733cb645edb8385d8fdbe7c43d5f96e0ed9868e3401e5311"
+      "content_sha256": "771ba66b0e88473b406df691fa2a2e03bce9a74fbd77a8f246f97637d76927c1",
+      "procedure_id": "SK03"
     },
     {
       "id": "sync_budget",
@@ -127,7 +129,8 @@
           ]
         }
       },
-      "content_sha256": "1f9f71f502aa7a7ae43d1c171352ab91cca0877937915c2423eb3b9454aaf2be"
+      "content_sha256": "00567a0c209c652ae95f6885937d24c2cad7a2be2a278cff89cc21fbfbec2eb7",
+      "procedure_id": "SK06"
     },
     {
       "id": "history_coverage",
@@ -170,7 +173,8 @@
           ]
         }
       },
-      "content_sha256": "7ace90806400b4b6dc15d4c06da11a624ee80de2a2d914504dae7ebf2084852f"
+      "content_sha256": "a2ec36f025c4e24324ba85a2a838ffeffa421a59ffe3124ad1874d9d1ca79a23",
+      "procedure_id": "SK06"
     },
     {
       "id": "saved_detail",
@@ -211,7 +215,8 @@
           ]
         }
       },
-      "content_sha256": "75dca1c4d73db145471d1409761f1d7b2bd04e4ed5c7ab962dd8d55ffb2ebf15"
+      "content_sha256": "5bb0f6581a949b672b1469fcb411581f9ba8c6d00ffa17086e834c735e4002f8",
+      "procedure_id": "SK04"
     },
     {
       "id": "status_freshness",
@@ -253,7 +258,8 @@
           ]
         }
       },
-      "content_sha256": "6eca4a376e7725115c89f623236b8ad508859463e8beea13ce14e6d9fddfe6be"
+      "content_sha256": "12d24a1bf5eb241a21f75e63ae6787237042a7ad4e017a4bcacc9bbe4dccb38f",
+      "procedure_id": "SK02"
     },
     {
       "id": "measurement_units",
@@ -296,7 +302,8 @@
           ]
         }
       },
-      "content_sha256": "85d615f1f6c10d7d1304689f5e2a19f0d277a922ae9c91d9333f3569d77f2522"
+      "content_sha256": "ab6b6a41e24897151076b0ba80eb865c44083ec3ddbd4fd430f49055b913b9e0",
+      "procedure_id": "SK08"
     },
     {
       "id": "authentication_support",
@@ -339,7 +346,8 @@
           ]
         }
       },
-      "content_sha256": "26922130193a5152b164b33a9f879587e08dc49b8808bc90ace7efbbf701ac57"
+      "content_sha256": "0298d8b1cb41d1e06f3a8f8b5aa330e21f1ce8cd787d342079642a0f5d0140b4",
+      "procedure_id": "SK07"
     },
     {
       "id": "archive_retention",
@@ -382,7 +390,8 @@
           ]
         }
       },
-      "content_sha256": "11be77c5ab258458f5fedcb300a38089c68b9d2939b32c5afb5ccd59a9c87455"
+      "content_sha256": "1856755422ba6acad5acdd4fbed894b007510d2805c6cd88cb52eb6b5f78cab2",
+      "procedure_id": null
     },
     {
       "id": "assistant_access",
@@ -424,7 +433,459 @@
           ]
         }
       },
-      "content_sha256": "659573dfe17e2aff02a17ee9aca1062ea5ba4c3d0efa12346c8b22dc845597fe"
+      "content_sha256": "29361555f4908f26a4e0d9c53e8887c4868aaf01c1f47b13e8352f7bbd1cfdc3",
+      "procedure_id": null
+    },
+    {
+      "id": "vehicle_selection",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-07",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#ask-about-local-data"
+      },
+      "procedure_id": "SK01",
+      "translations": {
+        "en": {
+          "title": "Choose a vehicle before reading measurements",
+          "text": "With several vehicles, select one explicitly before asking for measurements. Obtain its opaque vehicle_ref from get_vehicles. Account numbers, serial numbers and the MCP client-origin device_id are not substitute references. Query capability does not identify the intended vehicle.",
+          "keywords": [
+            "vehicle",
+            "select",
+            "choose",
+            "ambiguous",
+            "vehicle_ref"
+          ]
+        },
+        "zh-Hans": {
+          "title": "查询数值前选择车辆",
+          "text": "多辆车时，先明确选择一辆，再询问实测值。用get_vehicles取得不透明vehicle_ref；账号、序列号和MCP客户端来源device_id不能替代。查询能力也不能确定用户要查哪辆。",
+          "keywords": [
+            "车辆",
+            "选车",
+            "选择",
+            "歧义",
+            "多车"
+          ]
+        }
+      },
+      "content_sha256": "f393958401bea916fcff8980cea6a5914178791ef307b557fc30f00411671e87"
+    }
+  ],
+  "procedures": [
+    {
+      "id": "SK01",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#ask-about-local-data"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-07",
+      "allowed_tools": [
+        "get_vehicles"
+      ],
+      "max_calls": 1,
+      "translations": {
+        "en": {
+          "title": "Select a vehicle",
+          "trigger": "No unique explicit vehicle.",
+          "required_inputs": [
+            "User vehicle selection"
+          ],
+          "steps": [
+            "Read the permitted roster once.",
+            "Ask which vehicle; wait for the answer."
+          ],
+          "stop": "Do not pick the first vehicle or infer selection from cached_status.",
+          "verify": "One explicit eligible vehicle before any measurement."
+        },
+        "zh-Hans": {
+          "title": "选择车辆",
+          "trigger": "没有唯一的明确车辆。",
+          "required_inputs": [
+            "用户选定车辆"
+          ],
+          "steps": [
+            "读取一次已授权车辆列表。",
+            "询问具体车辆，等待用户回答。"
+          ],
+          "stop": "不能默认第一辆，不能凭cached_status推断选择。",
+          "verify": "查询实测值前得到唯一的已授权车辆。"
+        }
+      },
+      "content_sha256": "f464d05d66c6a46df9af4dd6ee241916cfde3991907647fe15a1f3eaf3bfc16a"
+    },
+    {
+      "id": "SK02",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-07",
+      "allowed_tools": [
+        "get_vehicle_status",
+        "search_help"
+      ],
+      "max_calls": 2,
+      "translations": {
+        "en": {
+          "title": "Read current state",
+          "trigger": "User asks for current state.",
+          "required_inputs": [
+            "Selected vehicle"
+          ],
+          "steps": [
+            "Read cached status once.",
+            "Report known values, units and group observation time/freshness."
+          ],
+          "stop": "Do not refresh cloud or infer lid position or motion.",
+          "verify": "Null remains unknown; query as_of is not the measurement time."
+        },
+        "zh-Hans": {
+          "title": "读取当前状态",
+          "trigger": "询问当前车辆状态。",
+          "required_inputs": [
+            "已选车辆"
+          ],
+          "steps": [
+            "读取一次缓存状态。",
+            "按已知值、单位和分组观测时间/新鲜度回答。"
+          ],
+          "stop": "不刷新云端，不推断盖子状态或车辆移动。",
+          "verify": "null保留未知，query as_of不是实测时间。"
+        }
+      },
+      "content_sha256": "8c665d425b2aa2d75f00494eb19d5b99c194d0068f6e1db6cffcbad500124816"
+    },
+    {
+      "id": "SK03",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-07",
+      "allowed_tools": [
+        "get_statistics",
+        "search_help"
+      ],
+      "max_calls": 2,
+      "translations": {
+        "en": {
+          "title": "Read period statistics",
+          "trigger": "User asks for period totals.",
+          "required_inputs": [
+            "Selected vehicle",
+            "Explicit business period"
+          ],
+          "steps": [
+            "Ask for a missing period; use Asia/Shanghai business dates.",
+            "Read statistics and preserve per-metric quality and units."
+          ],
+          "stop": "Do not turn missing values into zero or partial values into complete totals.",
+          "verify": "State vehicle, date range, source and coverage."
+        },
+        "zh-Hans": {
+          "title": "查询周期统计",
+          "trigger": "询问周期汇总。",
+          "required_inputs": [
+            "已选车辆",
+            "明确业务周期"
+          ],
+          "steps": [
+            "缺少周期时先追问，使用上海业务日期。",
+            "读取统计，保留逐指标质量和单位。"
+          ],
+          "stop": "不把缺失当零，不把部分值当完整总量。",
+          "verify": "说明车辆、日期范围、来源和覆盖情况。"
+        }
+      },
+      "content_sha256": "27133e966f9a47cf8d1cd6d68cc3700027ecd8e68158bfee0b1fc6ec99fcf949"
+    },
+    {
+      "id": "SK04",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#ask-about-local-data"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-07",
+      "allowed_tools": [
+        "get_recorded_trips",
+        "get_trip_detail"
+      ],
+      "max_calls": 4,
+      "translations": {
+        "en": {
+          "title": "Find a saved trip",
+          "trigger": "User asks for saved trips or detail.",
+          "required_inputs": [
+            "Selected vehicle",
+            "Explicit dates or selected ride/month"
+          ],
+          "steps": [
+            "Read one bounded local page; follow a returned cursor only when needed.",
+            "Use that vehicle’s ride_id/query_month for a saved scalar detail."
+          ],
+          "stop": "Stop on access denial; missing detail never triggers a cloud fetch.",
+          "verify": "A page is not a period total; preserve missing versus saved detail."
+        },
+        "zh-Hans": {
+          "title": "查找已保存行程",
+          "trigger": "查询已保存行程或详情。",
+          "required_inputs": [
+            "已选车辆",
+            "明确日期或所选行程/月"
+          ],
+          "steps": [
+            "读取一页有界本地记录，仅在需要时跟随返回游标。",
+            "用该车辆的ride_id/query_month读取本地标量详情。"
+          ],
+          "stop": "权限拒绝立即停止，缺失详情不触发云查询。",
+          "verify": "一页不是周期总量，区分未保存和已有详情。"
+        }
+      },
+      "content_sha256": "f777ca337cd97a47b3c2cf98069a1b30b0536f71a0f75211b74c08b2f1fdf280"
+    },
+    {
+      "id": "SK05",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#troubleshooting"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-07",
+      "allowed_tools": [
+        "get_statistics",
+        "get_sync_health",
+        "search_help"
+      ],
+      "max_calls": 3,
+      "translations": {
+        "en": {
+          "title": "Explain unknown statistics",
+          "trigger": "A specific statistic is unknown.",
+          "required_inputs": [
+            "Selected vehicle",
+            "Explicit period and metric"
+          ],
+          "steps": [
+            "Read statistics and its metric reason/coverage.",
+            "Read sync health if needed; retrieve matching public help."
+          ],
+          "stop": "Explain observed conditions only; do not guess a root cause or fill zero.",
+          "verify": "Cite period, reason, source and a bounded next step."
+        },
+        "zh-Hans": {
+          "title": "解释统计未知",
+          "trigger": "某个统计值未知。",
+          "required_inputs": [
+            "已选车辆",
+            "明确周期及指标"
+          ],
+          "steps": [
+            "读取统计及逐指标原因/覆盖。",
+            "必要时读取同步健康，检索对应公开帮助。"
+          ],
+          "stop": "只解释已观察条件，不猜根因，不补零。",
+          "verify": "引用周期、原因、来源和有界下一步。"
+        }
+      },
+      "content_sha256": "8d0d27b75127143f144daf56a0635901fd562df12afa4370cfc73101557af698"
+    },
+    {
+      "id": "SK06",
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#read-progress-correctly"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-07",
+      "allowed_tools": [
+        "get_sync_health",
+        "get_recorded_trips",
+        "search_help"
+      ],
+      "max_calls": 3,
+      "translations": {
+        "en": {
+          "title": "Inspect synchronization coverage",
+          "trigger": "User asks about waiting or missing details.",
+          "required_inputs": [
+            "Selected vehicle",
+            "Dates when listing gaps"
+          ],
+          "steps": [
+            "Read sync health and scheduling/coverage denominators.",
+            "Use one local page or matching help when needed."
+          ],
+          "stop": "Do not start sync or change budget; saved 100% is not full cloud history.",
+          "verify": "Separate discovered, saved, unmapped and verified; include next/retry time."
+        },
+        "zh-Hans": {
+          "title": "检查同步和缺口",
+          "trigger": "询问同步等待或缺失详情。",
+          "required_inputs": [
+            "已选车辆",
+            "列缺口时提供日期"
+          ],
+          "steps": [
+            "读取同步健康，核对调度及覆盖率分母。",
+            "按需读取一页本地记录或对应帮助。"
+          ],
+          "stop": "不启动同步或修改额度，保存100%不是全云历史。",
+          "verify": "区分发现、保存、映射与校验，说明下次/重试时间。"
+        }
+      },
+      "content_sha256": "9fa0ba45f74412a4b6de11ed04765f6d6abc727c7b23cd3ee996a8a49188b0f0"
+    },
+    {
+      "id": "SK07",
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "54eea5ea99da125cbc855dc1302dfab57c0b4137c4e78cfc7b5fc18b37bab893",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/guide.md#login-fails-before-the-account-is-added"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-07",
+      "allowed_tools": [
+        "get_sync_health",
+        "search_help"
+      ],
+      "max_calls": 2,
+      "translations": {
+        "en": {
+          "title": "Guide authentication support",
+          "trigger": "Authentication or connection failure is reported.",
+          "required_inputs": [
+            "Selected vehicle if reading health",
+            "Observed error or installed version"
+          ],
+          "steps": [
+            "Read a reported local health state when available.",
+            "Retrieve the versioned debug/support procedure."
+          ],
+          "stop": "Do not request credentials, sign in or infer region/cause from a proxy status.",
+          "verify": "Separate needs_login from retry; request only reviewed support metadata."
+        },
+        "zh-Hans": {
+          "title": "指导认证排障",
+          "trigger": "报告认证或连接故障。",
+          "required_inputs": [
+            "读取健康时选车辆",
+            "已观察错误或安装版本"
+          ],
+          "steps": [
+            "有证据时读取本地健康状态。",
+            "检索对应版本的调试/支持步骤。"
+          ],
+          "stop": "不索要凭据，不登录，不凭代理状态猜地区或根因。",
+          "verify": "区分需登录与等待重试，仅索取已审阅的支持信息。"
+        }
+      },
+      "content_sha256": "8e7b404778ec3f48c3d19fe7704d684782e365385eb398ae47f6b99503373842"
+    },
+    {
+      "id": "SK08",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-07",
+      "allowed_tools": [
+        "get_vehicle_status",
+        "get_recorded_trips",
+        "get_trip_detail",
+        "search_help"
+      ],
+      "max_calls": 3,
+      "translations": {
+        "en": {
+          "title": "Explain measurement semantics",
+          "trigger": "User asks about a unit or interpretation.",
+          "required_inputs": [
+            "Selected field",
+            "Selected vehicle/ride for private facts"
+          ],
+          "steps": [
+            "Use the relevant local result if a value is needed.",
+            "Retrieve documented semantics and cite the matching source."
+          ],
+          "stop": "Unknown sample units/CRS stay unverified; no health diagnosis.",
+          "verify": "Separate server maximum, distance/duration average and sample values."
+        },
+        "zh-Hans": {
+          "title": "解释指标语义",
+          "trigger": "询问单位或字段含义。",
+          "required_inputs": [
+            "指定字段",
+            "私有事实需选择车辆/行程"
+          ],
+          "steps": [
+            "需要具体值时读取对应本地结果。",
+            "检索文档语义并引用对应来源。"
+          ],
+          "stop": "未知采样单位/坐标系保持待验证，不做健康诊断。",
+          "verify": "区分服务端最高速度、距离/时长平均和采样值。"
+        }
+      },
+      "content_sha256": "54367bb5acba9fd9562fb4c3db4811fac7c1e761fdb4d4dcc7cc5ec1cebd2d39"
     }
   ]
 }

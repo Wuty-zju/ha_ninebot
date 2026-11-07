@@ -19,16 +19,18 @@ def verify_sources() -> int:
     """Compare immutable first-party source blobs; no network or live checkout trust."""
     from scripts.check_docs import anchors
 
+    catalog = knowledge.load_catalog()
+    records = [*catalog["entries"], *catalog["procedures"]]
     sources = {
         (entry["source"]["commit"], entry["source"]["path"], entry["source"]["sha256"])
-        for entry in knowledge.load_catalog()["entries"]
+        for entry in records
     }
     for commit, path, expected_hash in sources:
         data = subprocess.check_output(["git", "show", f"{commit}:{path}"], cwd=ROOT)
         if hashlib.sha256(data).hexdigest() != expected_hash:
             raise ValueError("Public source hash mismatch")
         fragments = anchors(data.decode())
-        for entry in knowledge.load_catalog()["entries"]:
+        for entry in records:
             source = entry["source"]
             if source["commit"] == commit and source["path"] == path:
                 if source["url"].split("#")[-1] not in fragments:

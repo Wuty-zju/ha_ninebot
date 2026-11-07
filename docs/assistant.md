@@ -57,9 +57,15 @@ Errors include a fixed explanation. `not_authorized` reports an access failure; 
 
 ## Versioned help
 
-Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches ten bundled bilingual topics without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
+Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches eleven bundled bilingual topics without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
 
 Search returns at most three topics in 4 KiB. It reports no match or no applicable knowledge rather than using another release’s rules. Other languages use English. A damaged help catalog leaves the six vehicle tools available. Published source links stay pinned even when the main documentation changes.
+
+## Task checklists
+
+Help results can include a versioned checklist: when it applies, information to ask for, permitted read tools, a call budget, stopping conditions and a result check. These cover vehicle selection, current state, period statistics, saved trips, unknown statistics, synchronization gaps, authentication support and measurement semantics. For example, an unknown-statistic check reads the selected period’s quality, then synchronization health and matching help when needed; it does not fill a missing value with zero or start synchronization.
+
+The host follows the checklist within its existing tool loop. There is no separate Skill installer or execution framework. Checklists are advisory data and cannot grant permission; every call still uses the same program authorization. Missing inputs require clarification. Access denial stops the read, and unresolved cases end with the observed evidence and a specific next step. Sync requests and task approval remain outside this read-only preview.
 
 ## Privacy and limits
 

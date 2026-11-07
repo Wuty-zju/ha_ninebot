@@ -12,7 +12,7 @@ from homeassistant.core import Context
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.ninebot.assistant_errors import error_data
-from custom_components.ninebot.assistant_knowledge import KnowledgeUnavailable
+from custom_components.ninebot.assistant_knowledge import READ_TOOLS, KnowledgeUnavailable
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
 from custom_components.ninebot.assistant_queries import SPECS, async_query, period_dates
 from custom_components.ninebot.assistant_views import AssistantView, numeric, statistics_view
@@ -326,6 +326,8 @@ async def test_help_reads_only_bundled_sources_and_never_calls_actions(hass, ass
     assert "vehicle_ref" not in result
     assert result["data"]["matches"][0]["source_id"] == "sync_budget"
     assert result["evidence"]["source_kind"] == "bundled_public_help"
+    assert result["data"]["procedures"][0]["id"] == "SK06"
+    assert all(name in {spec.key for spec in SPECS} for name in READ_TOOLS)
     assert len(json.dumps(result["data"], ensure_ascii=False).encode()) <= 4096
     action.assert_not_awaited()
 
