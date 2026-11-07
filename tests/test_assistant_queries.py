@@ -25,8 +25,12 @@ SN = "SyntheticSN"
 
 
 @pytest.fixture
-async def assistant(hass, entry, app_client, freezer):
+async def assistant(hass, entry, app_client, freezer, request):
     freezer.move_to(NOW)
+    if (budget := getattr(request, "param", None)) is not None:
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, "history_requests_per_hour": budget}
+        )
     start = NOW - timedelta(days=1)
     app_client.async_get_travel.return_value = {
         "total_mileages": 2.4,
@@ -318,16 +322,14 @@ async def test_sync_health_is_read_only_and_reports_the_local_state(hass, assist
     assert result["quality"]["upstream_history_complete"] == "unverified"
 
 
-@pytest.mark.parametrize("budget,interval", [(0, 0), (30, 120), (60, 60)])
+@pytest.mark.parametrize(
+    "assistant,budget,interval", [(0, 0, 0), (30, 30, 120), (60, 60, 60)], indirect=["assistant"]
+)
 async def test_sync_health_reports_configured_pacing_not_invented_remaining_calls(
     hass, assistant, budget, interval
 ):
-    hass.config_entries.async_update_entry(
-        assistant.entry,
-        options={**assistant.entry.options, "history_requests_per_hour": budget},
-    )
     result, error = await query(hass, assistant, "get_sync_health")
-    assert not error
+    assert not error, result
     assert result["data"]["request_policy"] == {
         "configured_requests_per_hour": budget,
         "minimum_interval_s": interval,

@@ -118,8 +118,8 @@ def complete(binary: Path, weights: Path, prompt: str, deadline: float) -> dict:
             raise RuntimeError("Evaluation completion process failed") from None
     if len(result.stdout.encode()) > 16 * 1024:
         raise ValueError("Evaluation completion exceeds its output bound")
-    # completion.cpp emits this fixed suffix on EOG; it is not model output.
-    marker = " [end of text]\n"
+    # completion.cpp emits the EOG line, then two final newlines (lines929/949).
+    marker = " [end of text]\n\n\n"
     terminal_marker = result.stdout.endswith(marker)
     text = result.stdout.removesuffix(marker)
     counts = {}

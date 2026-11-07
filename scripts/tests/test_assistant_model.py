@@ -84,7 +84,8 @@ class CpuHostTests(unittest.TestCase):
 
     def test_only_the_exact_engine_terminal_suffix_is_removed(self):
         for raw, expected, removed in (
-            ("answer [end of text]\n", "answer", True),
+            ("answer [end of text]\n\n\n", "answer", True),
+            ("answer [end of text]\n", "answer [end of text]\n", False),
             (
                 "[end of text] is quoted in this answer",
                 "[end of text] is quoted in this answer",
