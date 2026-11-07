@@ -20,7 +20,7 @@ async def assistant_device(hass, entry, app_client):
 @pytest.fixture
 async def proposal_device(hass, entry, app_client, freezer):
     # Establish the clock before setup; later receipts must supersede setup's month.
-    freezer.move_to("2026-11-05T00:00:00+00:00")
+    freezer.move_to("2026-11-06T23:59:59+00:00")
     return await setup_assistant_device(hass, entry)
 
 
@@ -307,6 +307,7 @@ def proposal_month(count=2):
 async def test_local_proposal_binds_original_caller_and_projects_no_private_plan(
     hass, entry, proposal_device, app_client, freezer
 ):
+    import hashlib
     import json
     from datetime import UTC, date, datetime
 
@@ -316,9 +317,10 @@ async def test_local_proposal_binds_original_caller_and_projects_no_private_plan
     freezer.move_to(now)
     archive = entry.runtime_data.coordinator.statistics.archive
     await archive.async_record_month("SyntheticSN", proposal_month(), now)
+    await hass.async_block_till_done()
     context = Context(user_id="synthetic")
     app_client.reset_mock()
-    before = archive.path.read_bytes()
+    before = hashlib.sha256(archive.path.read_bytes()).digest()
     with patch.object(hass.auth, "async_get_user", return_value=user()) as lookup:
         result = await async_detail_proposal(
             hass, context, proposal_device, "2026-11-06", "2026-11-06"
@@ -340,7 +342,7 @@ async def test_local_proposal_binds_original_caller_and_projects_no_private_plan
     encoded = json.dumps(output)
     for private in ("SyntheticSN", archive.owner, "private-ride-0", "nonce", "password", "token"):
         assert private not in encoded
-    assert archive.path.read_bytes() == before
+    assert hashlib.sha256(archive.path.read_bytes()).digest() == before
     for method in (
         app_client.async_list_vehicles,
         app_client.async_get_status,
