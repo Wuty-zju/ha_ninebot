@@ -338,7 +338,8 @@
         "tests/test_assistant_queries.py",
         "tests/test_assistant_limits.py",
         "tests/test_assistant_approval.py",
-        "tests/test_assistant_task_store.py"
+        "tests/test_assistant_task_store.py",
+        "tests/test_assistant_preview.py"
       ]
     }
   },

@@ -70,6 +70,7 @@ from .sync_job import SyncJob, SyncState, job_data, restored_job
 from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
 
 if TYPE_CHECKING:
+    from .assistant_preview import DetailPreview
     from .month_source import MonthSourceCheck
     from .month_tasks import MonthTask
     from .preservation import DetailBudget, DetailScope, PreservationTask
@@ -2404,6 +2405,49 @@ class RideArchive:
                 raise ArchiveError(ArchiveFailure.CURSOR) from None
 
         return await self._run(query)
+
+    async def async_detail_preview(
+        self,
+        sn: str,
+        start: datetime,
+        end: datetime,
+        now: datetime,
+        *,
+        guard: Callable[[], bool],
+    ) -> "DetailPreview":
+        """One guarded local scan, with the recorded-history date/selection contract."""
+        from .assistant_preview import detail_preview
+
+        vehicle, start_key, end_key = vehicle_key(sn), utc_string(start), utc_string(end)
+        as_of = utc_string(now)
+        if start_key >= end_key or (end.astimezone(UTC) - start.astimezone(UTC)) > timedelta(
+            days=31
+        ):
+            raise ValueError("Invalid detail preview range")
+        zone = ZoneInfo(BUSINESS_TIMEZONE)
+        first_month = start.astimezone(zone).strftime("%Y%m")
+        last_month = (end - timedelta(microseconds=1)).astimezone(zone).strftime("%Y%m")
+
+        def query() -> "DetailPreview":
+            try:
+                return detail_preview(
+                    recorded_page(
+                        self._db(),
+                        self.owner,
+                        vehicle,
+                        start_key,
+                        end_key,
+                        as_of,
+                        MAX_TIMELINE_RIDES,
+                        first_month,
+                        last_month,
+                        None,
+                    )
+                )
+            except TimelineLimitError:
+                raise ArchiveError(ArchiveFailure.BUDGET) from None
+
+        return await self._run(query, guard=guard)
 
     def _page(
         self,
