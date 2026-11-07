@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.1
+
+- Add versioned public-help search with eleven bilingual topics, immutable source references and bounded local retrieval.
+- Include eight read-only task checklists for vehicle selection, statistics, saved trips, synchronization and troubleshooting.
+- Clarify cached-data readiness, observation times, access failures and account request pacing in Assistant results.
+- Prepare scope-bound detail claims, durable attempt budgets and verified confirmation storage for subsequent task support.
+
 ## 2.1.0
 
 - Add an optional native Ninebot LLM API with six local read tools for authorized vehicles, current readings, period statistics, saved trips, local details and history health.
