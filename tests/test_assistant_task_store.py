@@ -2,7 +2,7 @@
 
 import asyncio
 import copy
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -237,7 +237,7 @@ async def test_silent_remove_failure_leaves_the_old_owner_closed(task_store):
         await s.async_prepare(pending.task_id, c)
 
 
-async def seeded_request(hass, entry, task_store):
+async def seeded_request(hass, entry, task_store, *, context=None):
     from datetime import UTC, datetime
 
     from custom_components.ninebot.adapters import travel
@@ -263,7 +263,7 @@ async def seeded_request(hass, entry, task_store):
         "SyntheticSN", month, dt_util.utcnow()
     )
     return await async_request_details(
-        hass, task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+        hass, context or task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
     )
 
 
@@ -339,3 +339,141 @@ async def test_removing_account_keeps_history_but_not_task_authority(hass, entry
     assert history.exists() and await store_exists(store)
     assert await hass.config_entries.async_remove(entry.entry_id)
     assert history.exists() and not await store_exists(store)
+
+
+async def test_request_does_not_acknowledge_a_replaced_owner(hass, entry, task_store):
+    from custom_components.ninebot.assistant_tasks import async_request_details
+
+    await seeded_request(hass, entry, task_store)
+    old = entry.runtime_data.assistant_tasks
+    original = old.async_request
+
+    async def replaced(*args, **kwargs):
+        result = await original(*args, **kwargs)
+        entry.runtime_data.assistant_tasks = None
+        return result
+
+    try:
+        with (
+            patch.object(old, "async_request", new=replaced),
+            pytest.raises(AssistantError, match="^not_authorized$"),
+        ):
+            await async_request_details(
+                hass, task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+            )
+    finally:
+        entry.runtime_data.assistant_tasks = old
+
+
+@pytest.fixture
+async def review_client(hass, task_store, hass_ws_client):
+    from custom_components.ninebot.assistant_review import async_register
+
+    async_register(hass)
+    try:
+        client = await hass_ws_client(hass)
+    except TypeError:
+        client = await hass_ws_client()
+    return client
+
+
+async def review(client, vehicle, identity, operation, **args):
+    await client.send_json(
+        {
+            "id": identity,
+            "type": "ninebot/assistant/review",
+            "vehicle_ref": vehicle,
+            "operation": operation,
+            **args,
+        }
+    )
+    return await asyncio.wait_for(client.receive_json(), 10)
+
+
+async def test_real_websocket_review_uses_caller_and_never_registers_approval_services(
+    hass, entry, task_store, review_client, hass_user
+):
+    request = await seeded_request(hass, entry, task_store, context=Context(user_id=hass_user.id))
+    device, client = task_store.plan.vehicle_ref, review_client
+    task_id = request["task"]["task_id"]
+    listed = await review(client, device, 1, "list")
+    assert listed["success"] and listed["result"]["tasks"][0]["task_id"] == task_id
+    assert "token" not in str(listed)
+    prepared = await review(client, device, 2, "prepare", task_id=task_id)
+    assert prepared["success"]
+    response = prepared["result"]
+    assert response["token"] and response["task"]["ride_ids"] == ["private-task-ride"]
+    assert response["task"]["maximum_detail_attempts"] == 1
+    approved = await review(
+        client,
+        device,
+        3,
+        "approve",
+        task_id=task_id,
+        token=response["token"],
+        plan_hash=response["task"]["plan_hash"],
+    )
+    assert approved["success"] and approved["result"]["task"]["state"] == "approved"
+    assert "token" not in str(approved)
+    replay = await review(
+        client,
+        device,
+        4,
+        "approve",
+        task_id=task_id,
+        token=response["token"],
+        plan_hash=response["task"]["plan_hash"],
+    )
+    assert replay["error"]["code"] == "approval_used"
+    assert not hass.services.has_service("ninebot", "prepare_task_confirmation")
+    assert not hass.services.has_service("ninebot", "approve_task")
+
+
+async def test_real_websocket_rejects_other_requester_and_mismatched_fields(
+    hass, entry, task_store, review_client
+):
+    request = await seeded_request(hass, entry, task_store)
+    device, client = task_store.plan.vehicle_ref, review_client
+    hidden = await review(client, device, 1, "list")
+    assert hidden["success"] and hidden["result"]["tasks"] == []
+    denied = await review(client, device, 2, "prepare", task_id=request["task"]["task_id"])
+    assert denied["error"]["code"] == "not_authorized"
+    malformed = await review(client, device, 3, "list", task_id=request["task"]["task_id"])
+    assert malformed["error"]["code"] == "invalid_arguments"
+    with patch.object(hass.auth, "async_get_user", new=AsyncMock(return_value=None)):
+        removed = await review(client, device, 4, "list")
+    assert removed["error"]["code"] == "not_authorized"
+
+
+async def test_websocket_nonce_rotation_expiry_and_task_disable(
+    hass, entry, task_store, review_client, hass_user
+):
+    request = await seeded_request(hass, entry, task_store, context=Context(user_id=hass_user.id))
+    device, client, task_id = task_store.plan.vehicle_ref, review_client, request["task"]["task_id"]
+    first = (await review(client, device, 1, "prepare", task_id=task_id))["result"]
+    second = (await review(client, device, 2, "prepare", task_id=task_id))["result"]
+    assert first["token"] != second["token"]
+    stale = await review(
+        client,
+        device,
+        3,
+        "approve",
+        task_id=task_id,
+        token=first["token"],
+        plan_hash=first["task"]["plan_hash"],
+    )
+    assert stale["error"]["code"] == "not_authorized"
+    # Advance only this ticket's deadline without running unrelated HA timers.
+    original = dt_util.utcnow()
+    with patch(
+        "custom_components.ninebot.assistant_task_store.dt_util.utcnow",
+        return_value=original + timedelta(minutes=11),
+    ):
+        expired = await review(client, device, 4, "prepare", task_id=task_id)
+    assert expired["error"]["code"] == "approval_expired"
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "enable_assistant_tasks": False}
+    )
+    await hass.async_block_till_done()
+    disabled = await review(client, device, 5, "list")
+    assert disabled["error"]["code"] == "not_authorized"

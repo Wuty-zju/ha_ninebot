@@ -119,6 +119,10 @@ Closing an owner revokes it immediately and drains its write lock. Normal unload
 
 Approval credentials must not be returned by a registered Action. Core's administrator `homeassistant__call_action` tool forwards the authenticated Context and returns Action responses, so excluding a prepare/approve pair from the Ninebot tool list would still let that bridge obtain and consume a nonce. The native canary exercises this counterexample with two synthetic services. The planned human review channel uses the existing authenticated WebSocket connection and a small review UI; neither is exposed as a model tool. The task store remains an internal primitive until that channel and execution lifecycle are verified.
 
+`assistant_review` provides a private `ninebot/assistant/review` WebSocket command with `list`, `prepare` and `approve` operations. It uses `connection.context(message)`, current active-administrator permissions, the original requester and selected vehicle, plus the separate task opt-in. Registration is lazy and idempotent; disabled accounts are refused even if a handler was previously registered. It shares bounded Assistant admission, a ten-second deadline and a 32 KiB reply limit.
+
+Only `prepare` returns a confirmation secret, under Core's redacted `token` transport key. List/approval replies omit it. Approval consumes the frozen digest and one-use nonce; it reports approved authority, never queued/completed execution. No approval services or LLM tools are registered. A final owner check rejects replies from a replaced/closed Store, including after an archive import. The review UI and execution runner remain separate work.
+
 ### Versioned public help
 
 `assistant_knowledge.py` lazily reads the bundled JSON catalog in an executor on an authorized help query. Eleven bilingual topics carry immutable first-party source commits/hashes, content hashes, evidence status and a numeric version range. No private history or external source is indexed. Lexical English/code tokens and Han bigrams rank at most three chunks in a 4 KiB body. Unsupported versions do not borrow newer knowledge. Runtime corruption fails only help.
