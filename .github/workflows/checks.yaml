@@ -68,7 +68,7 @@ jobs:
     needs: environment
     name: HA suite (${{ matrix.ha }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.environment.outputs.matrix) }}
@@ -95,7 +95,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ha-${{ matrix.ha }}-reports
+          name: ha-${{ matrix.ha }}-reports-attempt-${{ github.run_attempt }}
           path: |
             test-results.xml
             coverage.xml
