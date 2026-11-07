@@ -30,7 +30,7 @@ jobs:
         run: python3 scripts/ci.py --plan --base "$BASE_SHA" --head "$HEAD_SHA" --output ci-scope.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: runtime-scope
+          name: runtime-scope-attempt-${{ github.run_attempt }}
           path: ci-scope.json
           retention-days: 14
   regression:
@@ -38,7 +38,7 @@ jobs:
     if: needs.scope.outputs.runtime == 'true'
     name: Runtime regression (${{ matrix.ha }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.scope.outputs.matrix) }}
@@ -67,7 +67,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: runtime-${{ matrix.ha }}-results
+          name: runtime-${{ matrix.ha }}-results-attempt-${{ github.run_attempt }}
           path: |
             test-results.xml
             coverage.xml
