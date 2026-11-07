@@ -118,6 +118,10 @@ def complete(binary: Path, weights: Path, prompt: str, deadline: float) -> dict:
             raise RuntimeError("Evaluation completion process failed") from None
     if len(result.stdout.encode()) > 16 * 1024:
         raise ValueError("Evaluation completion exceeds its output bound")
+    # completion.cpp emits this fixed suffix on EOG; it is not model output.
+    marker = " [end of text]\n"
+    terminal_marker = result.stdout.endswith(marker)
+    text = result.stdout.removesuffix(marker)
     counts = {}
     for key, pattern in (
         ("engine_prompt_tokens", r"prompt eval time\s*=\s*[\d.]+ ms\s*/\s*(\d+) tokens"),
@@ -126,7 +130,8 @@ def complete(binary: Path, weights: Path, prompt: str, deadline: float) -> dict:
         match = re.search(pattern, result.stderr)
         counts[key] = int(match[1]) if match else None
     return {
-        "text": result.stdout,
+        "text": text,
+        "engine_terminal_marker": terminal_marker,
         "seconds": time.perf_counter() - started,
         "length_limited": None,
         "deadline_limited": False,

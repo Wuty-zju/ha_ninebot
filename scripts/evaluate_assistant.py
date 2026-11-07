@@ -15,12 +15,11 @@ from importlib.metadata import version
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-from scripts.assistant_model import MODEL, REVISION, CpuModel
+from scripts.assistant_model import MAX_TOKENS, MODEL, REVISION, CpuModel
 
 CASE_IDS = ("Q03", "Q04", "P06", "S02")
 MAX_TURNS = 3
 MAX_CALLS = 4
-MAX_TOKENS = 256
 MAX_CASE_SECONDS = 180
 MAX_REPORT_BYTES = 1024 * 1024
 ROOT = Path(__file__).resolve().parents[1]

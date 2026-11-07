@@ -81,3 +81,25 @@ class CpuHostTests(unittest.TestCase):
             self.assertRaisesRegex(RuntimeError, "^Evaluation completion process failed$"),
         ):
             complete(Path("binary"), Path("weights"), "prompt", time.perf_counter() + 2)
+
+    def test_only_the_exact_engine_terminal_suffix_is_removed(self):
+        for raw, expected, removed in (
+            ("answer [end of text]\n", "answer", True),
+            (
+                "[end of text] is quoted in this answer",
+                "[end of text] is quoted in this answer",
+                False,
+            ),
+            ("answer [end of text]", "answer [end of text]", False),
+            ("answer", "answer", False),
+        ):
+            with (
+                self.subTest(raw=raw),
+                patch(
+                    "scripts.assistant_model.subprocess.run",
+                    return_value=subprocess.CompletedProcess([], 0, stdout=raw, stderr=""),
+                ),
+            ):
+                data = complete(Path("binary"), Path("weights"), "prompt", time.perf_counter() + 2)
+            self.assertEqual(data["text"], expected)
+            self.assertEqual(data["engine_terminal_marker"], removed)
