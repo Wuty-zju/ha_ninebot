@@ -11,7 +11,7 @@ from uuid import uuid4
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .assistant_policy import AssistantError, async_authorize
+from .assistant_policy import AssistantError, AssistantScope, async_authorize
 from .const import BUSINESS_TIMEZONE
 from .preservation import DetailScope
 
@@ -81,7 +81,7 @@ class ApprovalTicket:
 
     task_id: str
     plan: DetailPlan = field(repr=False)
-    nonce_hash: str = field(repr=False)
+    nonce_hash: str | None = field(repr=False)
     approved_at: datetime | None = None
 
     def __post_init__(self) -> None:
@@ -90,10 +90,14 @@ class ApprovalTicket:
             or len(self.task_id) != 32
             or set(self.task_id) - set("0123456789abcdef")
             or not isinstance(self.plan, DetailPlan)
-            or not isinstance(self.nonce_hash, str)
             or (
                 self.approved_at is None
-                and (len(self.nonce_hash) != 64 or set(self.nonce_hash) - set("0123456789abcdef"))
+                and self.nonce_hash is not None
+                and (
+                    not isinstance(self.nonce_hash, str)
+                    or len(self.nonce_hash) != 64
+                    or set(self.nonce_hash) - set("0123456789abcdef")
+                )
             )
             or (
                 self.approved_at is not None
@@ -110,11 +114,18 @@ class ApprovalTicket:
 
     @classmethod
     def issue(cls, plan: DetailPlan, now: datetime) -> tuple["ApprovalTicket", str]:
+        return cls(uuid4().hex, plan, None).prepare(now)
+
+    def prepare(self, now: datetime) -> tuple["ApprovalTicket", str]:
+        """Rotate a human-only nonce without extending the original approval deadline."""
+        if self.approved_at is not None:
+            raise AssistantError("approval_used")
+        plan = self.plan
         if not aware(now) or not plan.created_at <= now < plan.created_at + APPROVAL_TTL:
             raise AssistantError("approval_expired")
-        task_id, nonce = uuid4().hex, secrets.token_urlsafe(32)
-        digest = cls._nonce_digest(task_id, plan.digest, nonce)
-        return cls(task_id, plan, digest), nonce
+        nonce = secrets.token_urlsafe(32)
+        digest = self._nonce_digest(self.task_id, plan.digest, nonce)
+        return replace(self, nonce_hash=digest), nonce
 
     @staticmethod
     def _nonce_digest(task_id: str, plan_hash: str, nonce: str) -> str:
@@ -127,6 +138,7 @@ class ApprovalTicket:
             raise AssistantError("approval_expired")
         if (
             user_id != self.plan.user_id
+            or self.nonce_hash is None
             or plan_hash != self.plan.digest
             or not isinstance(nonce, str)
             or not nonce.isascii()
@@ -147,6 +159,22 @@ class ApprovalTicket:
         )
 
 
+async def async_plan_scope(
+    hass: HomeAssistant, plan: DetailPlan, context: Context | None
+) -> AssistantScope:
+    """Reauthorize a private plan against the current account and original requester."""
+    scope = await async_authorize(hass, context, plan.vehicle_ref)
+    if (
+        scope.context.user_id != plan.user_id
+        or scope.runtime.coordinator.statistics.archive.owner != plan.account_key
+        or scope.sn != plan.sn
+    ):
+        raise AssistantError("not_authorized")
+    await scope.async_validate(hass)
+    scope.assert_current(hass)
+    return scope
+
+
 async def async_approve_ticket(
     hass: HomeAssistant,
     ticket: ApprovalTicket,
@@ -155,12 +183,7 @@ async def async_approve_ticket(
     plan_hash: str,
 ) -> ApprovalTicket:
     """Validate a proposed transition; caller must persist it under its task-store lock."""
-    scope = await async_authorize(hass, context, ticket.plan.vehicle_ref)
-    archive = scope.runtime.coordinator.statistics.archive
-    if archive.owner != ticket.plan.account_key or scope.sn != ticket.plan.sn:
-        raise AssistantError("not_authorized")
-    await scope.async_validate(hass)
-    scope.assert_current(hass)
+    scope = await async_plan_scope(hass, ticket.plan, context)
     user_id = scope.context.user_id
     if user_id is None:
         raise AssistantError("not_authorized")
