@@ -99,9 +99,11 @@ The native API canary runs on the published Core 2026.11.0 without a mismatched 
 
 [Synthetic evaluation tasks](../tests/fixtures/assistant/evaluation-tasks.json) define 52 scenarios for staged host/model evaluation. Their values are invented, all measurements start as null, and the task count is not a pass rate. Use the companion fixture and actual tool results; do not turn permission-injection test content into instructions. Record model, host, source revision, tool trace summary and measured results separately. Tests against HA Actions and SQLite establish tool contracts, not model accuracy.
 
-### Versioned public help
+### Task confirmation contract
 
-The developing `assistant_approval` contract freezes the requester, account, vehicle, date window, ride fingerprints and attempt limit into a plan digest. Confirmation binds a UI-only nonce to that digest and task ID, expires after ten minutes and produces an immutable approved transition. The task-store owner must serialize and persist that transition before execution; the module registers no execution endpoint. Approval validates the original authenticated Context, current ownership/consent and the server time after permission checks. Execution eligibility expires after24 hours and still requires fresh authorization.
+The developing `assistant_approval` contract freezes the requester, account, vehicle, date window, ride fingerprints and attempt limit into a plan digest. Confirmation binds a UI-only nonce to that digest and task ID, expires after ten minutes and produces an immutable approved transition. The task-store owner must serialize and persist that transition before execution; the module registers no execution endpoint. Approval validates the original authenticated Context, current ownership/consent and the server time after permission checks. Execution eligibility expires after 24 hours and still requires fresh authorization.
+
+### Versioned public help
 
 `assistant_knowledge.py` lazily reads the bundled JSON catalog in an executor on an authorized help query. Eleven bilingual topics carry immutable first-party source commits/hashes, content hashes, evidence status and a numeric version range. No private history or external source is indexed. Lexical English/code tokens and Han bigrams rank at most three chunks in a 4 KiB body. Unsupported versions do not borrow newer knowledge. Runtime corruption fails only help.
 

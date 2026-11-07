@@ -12,6 +12,7 @@ from homeassistant.core import Context, HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .assistant_policy import AssistantError, async_authorize
+from .const import BUSINESS_TIMEZONE
 from .preservation import DetailScope
 
 APPROVAL_TTL = timedelta(minutes=10)
@@ -69,6 +70,7 @@ class DetailPlan:
             "attempts": self.attempts,
             "created": self.created_at.astimezone(UTC).isoformat(),
             "operation": "detail_only",
+            "business_timezone": BUSINESS_TIMEZONE,
         }
         return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
 
