@@ -15,12 +15,11 @@ from importlib.metadata import version
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-MODEL = "Qwen/Qwen3-1.7B"
-REVISION = "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
+from scripts.assistant_model import MAX_TOKENS, MODEL, REVISION, CpuModel
+
 CASE_IDS = ("Q03", "Q04", "P06", "S02")
 MAX_TURNS = 3
 MAX_CALLS = 4
-MAX_TOKENS = 256
 MAX_CASE_SECONDS = 180
 MAX_REPORT_BYTES = 1024 * 1024
 ROOT = Path(__file__).resolve().parents[1]
@@ -132,68 +131,6 @@ def write_report(output: Path, report: dict) -> None:
             pending.unlink(missing_ok=True)
 
 
-class CpuModel:
-    def __init__(self) -> None:
-        import torch
-        from huggingface_hub import snapshot_download
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-
-        torch.set_num_threads(2)
-        torch.manual_seed(0)
-        model_path = snapshot_download(
-            MODEL,
-            revision=REVISION,
-            token=False,
-            allow_patterns=["*.json", "*.safetensors", "merges.txt", "vocab.json", "LICENSE"],
-        )
-        self.torch = torch
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_path, local_files_only=True, trust_remote_code=False
-        )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            local_files_only=True,
-            trust_remote_code=False,
-            use_safetensors=True,
-            torch_dtype=torch.float32,
-        ).eval()
-
-    def reply(self, messages: list[dict], tools: list[dict], deadline: float) -> dict:
-        from transformers import StoppingCriteria, StoppingCriteriaList
-
-        class Deadline(StoppingCriteria):
-            def __call__(self, *args, **kwargs):
-                return time.perf_counter() >= deadline
-
-        inputs = self.tokenizer.apply_chat_template(
-            messages,
-            tools=tools or None,
-            enable_thinking=False,
-            add_generation_prompt=True,
-            tokenize=True,
-            return_tensors="pt",
-            return_dict=True,
-        )
-        started = time.perf_counter()
-        with self.torch.inference_mode():
-            output = self.model.generate(
-                **inputs,
-                max_new_tokens=MAX_TOKENS,
-                do_sample=False,
-                pad_token_id=self.tokenizer.eos_token_id,
-                stopping_criteria=StoppingCriteriaList([Deadline()]),
-            )
-        tokens = output[0, inputs["input_ids"].shape[-1] :]
-        return {
-            "text": visible_text(self.tokenizer.decode(tokens, skip_special_tokens=True)),
-            "input_tokens": inputs["input_ids"].shape[-1],
-            "output_tokens": len(tokens),
-            "seconds": time.perf_counter() - started,
-            "length_limited": len(tokens) == MAX_TOKENS,
-            "deadline_limited": time.perf_counter() >= deadline,
-        }
-
-
 async def conversation(model: CpuModel, fixture, case: dict, *, tools_enabled: bool) -> dict:
     from homeassistant.core import SupportsResponse
     from homeassistant.exceptions import ServiceValidationError
@@ -265,10 +202,17 @@ async def conversation(model: CpuModel, fixture, case: dict, *, tools_enabled: b
     started = time.perf_counter()
     deadline = started + MAX_CASE_SECONDS
     for _ in range(MAX_TURNS if tools_enabled else 1):
+        if time.perf_counter() >= deadline:
+            if trace:
+                trace[-1]["stop_reason"] = "case_deadline"
+            break
         generated = await asyncio.to_thread(model.reply, messages, functions, deadline)
-        text = generated.pop("text")
+        text = visible_text(generated.pop("text"))
         step = {"generation": generated, "visible_reply": text, "tools": []}
         trace.append(step)
+        if generated.get("context_limited"):
+            step["stop_reason"] = "model_context_limit"
+            break
         if generated["deadline_limited"]:
             step["stop_reason"] = "case_deadline"
             break
@@ -305,7 +249,12 @@ async def conversation(model: CpuModel, fixture, case: dict, *, tools_enabled: b
         )
         for call_id, request in zip(call_ids, requests, strict=True):
             calls += 1
-            status, response = await fixture.rpc("tools/call", request)
+            try:
+                async with asyncio.timeout(max(0.001, deadline - time.perf_counter())):
+                    status, response = await fixture.rpc("tools/call", request)
+            except TimeoutError:
+                step["stop_reason"] = "case_deadline"
+                break
             assert status == 200
             safe_result(response)
             step["tools"].append({"request": request, "response": response})
@@ -314,7 +263,7 @@ async def conversation(model: CpuModel, fixture, case: dict, *, tools_enabled: b
             except InvalidReply as err:
                 step["protocol_error"] = str(err)
                 break
-        if "protocol_error" in step:
+        if "protocol_error" in step or "stop_reason" in step:
             break
     names = [tool["request"]["name"] for step in trace for tool in step["tools"]]
     return {
@@ -367,7 +316,7 @@ async def evaluate(output: Path) -> None:
         "model": MODEL,
         "model_revision": REVISION,
         "host_contract": "mcp-text-content-v2",
-        "versions": {key: version(key) for key in ("homeassistant", "torch", "transformers")},
+        "versions": {key: version(key) for key in ("homeassistant", "transformers")},
         "synthetic": True,
         "fixture_clock": reference_time.isoformat(),
         "fixture_status_age_seconds": 20,
@@ -381,10 +330,12 @@ async def evaluate(output: Path) -> None:
             "tokens_per_turn": MAX_TOKENS,
             "case_seconds": MAX_CASE_SECONDS,
         },
+        "deadline_contract": "single_process_deadline_v1",
         "provider_cost_usd": None,
         "cases": [],
     }
     model = await asyncio.to_thread(CpuModel)
+    report["model_host"] = model.metadata
     for case in selected:
         for enabled in (False, True):
 
