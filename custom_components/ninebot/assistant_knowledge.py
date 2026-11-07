@@ -282,6 +282,7 @@ def search_help(query: str, language: str, installed_version: str) -> dict[str, 
                 {
                     **{key: value for key, value in procedure.items() if key != "translations"},
                     **procedure["translations"][language],
+                    "allowed_tools": [f"ninebot__{key}" for key in procedure["allowed_tools"]],
                     "advisory_only": True,
                 }
             )

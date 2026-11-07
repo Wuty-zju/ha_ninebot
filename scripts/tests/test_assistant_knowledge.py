@@ -110,7 +110,9 @@ class KnowledgeTests(unittest.TestCase):
             for procedure in result["procedures"]:
                 self.assertTrue(procedure["advisory_only"])
                 self.assertLessEqual(procedure["max_calls"], 4)
-                self.assertTrue(set(procedure["allowed_tools"]) <= k.READ_TOOLS)
+                self.assertTrue(
+                    set(procedure["allowed_tools"]) <= {f"ninebot__{key}" for key in k.READ_TOOLS}
+                )
             for match in result["matches"]:
                 if match["procedure_id"] is not None:
                     self.assertIn(

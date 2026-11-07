@@ -328,6 +328,9 @@ async def test_help_reads_only_bundled_sources_and_never_calls_actions(hass, ass
     assert result["evidence"]["source_kind"] == "bundled_public_help"
     assert result["data"]["procedures"][0]["id"] == "SK06"
     assert all(name in {spec.key for spec in SPECS} for name in READ_TOOLS)
+    assert set(result["data"]["procedures"][0]["allowed_tools"]) <= {
+        f"ninebot__{spec.key}" for spec in SPECS
+    }
     assert len(json.dumps(result["data"], ensure_ascii=False).encode()) <= 4096
     action.assert_not_awaited()
 
