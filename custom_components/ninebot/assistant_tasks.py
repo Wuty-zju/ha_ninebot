@@ -34,6 +34,12 @@ def task_owner(hass: HomeAssistant, scope: AssistantScope) -> ApprovalStore:
     return store
 
 
+def assert_task_owner(hass: HomeAssistant, scope: AssistantScope, store: ApprovalStore) -> None:
+    scope.assert_task_current(hass)
+    if scope.runtime.assistant_tasks is not store or store.closed:
+        raise AssistantError("not_authorized")
+
+
 async def async_request_details(
     hass: HomeAssistant,
     context: Context | None,
@@ -51,9 +57,11 @@ async def async_request_details(
     response.pop("task_created")
     if proposal.plan is None:
         return {**response, "task_recorded": False, "task": None}
-    ticket = await task_owner(hass, scope).async_request(proposal.plan, context)
+    store = task_owner(hass, scope)
+    ticket = await store.async_request(proposal.plan, context)
     await scope.async_validate(hass)
     scope.assert_task_current(hass)
+    assert_task_owner(hass, scope, store)
     # Dedup can return an earlier plan timestamp; use its actual persisted digest.
     response["plan"] = {
         "digest": ticket.plan.digest,

@@ -43,11 +43,13 @@ class AssistantRegistration:
     lock: Lock = field(default_factory=Lock)
     unregister: Callable[[], None] | None = None
     error: str | None = None
+    review_error: str | None = None
 
 
-def _enabled(hass: HomeAssistant) -> bool:
+def _enabled(hass: HomeAssistant, *, tasks: bool = False) -> bool:
     return any(
         entry.options.get(CONF_ASSISTANT) is True
+        and (not tasks or entry.options.get(CONF_ASSISTANT_TASKS) is True)
         and isinstance(vehicles := entry.options.get(CONF_ASSISTANT_VEHICLES), list)
         and any(isinstance(vehicle, str) and vehicle for vehicle in vehicles)
         and entry.state in {ConfigEntryState.LOADED, ConfigEntryState.SETUP_IN_PROGRESS}
@@ -69,6 +71,15 @@ async def async_update_assistant_api(hass: HomeAssistant) -> None:
                 state.unregister = None
             state.error = None
             return
+        if _enabled(hass, tasks=True):
+            try:
+                review = await async_import_module(hass, f"{__package__}.assistant_review")
+                review.async_register(hass)
+                state.review_error = None
+            except (ImportError, AttributeError, HomeAssistantError):
+                if state.review_error is None:
+                    _LOGGER.warning("Ninebot task review is unavailable")
+                state.review_error = "review_unavailable"
         if state.unregister is not None:
             return
         if not native_api_supported():

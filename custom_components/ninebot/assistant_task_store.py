@@ -164,6 +164,10 @@ class ApprovalStore:
         self._lock = asyncio.Lock()
         self._closed = False
 
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
     async def _read(self) -> dict[str, ApprovalTicket]:
         if self._closed:
             raise TaskStoreUnavailable("Task store is closed")
@@ -250,6 +254,33 @@ class ApprovalStore:
             await self._commit(records)
             await self._validate(scope)
             return pending
+
+    async def async_get(self, task_id: str, context: Context | None) -> ApprovalTicket:
+        await async_require_admin(self.hass, context)
+        async with self._lock:
+            ticket = self._find(await self._read(), task_id)
+            scope = await self._scope(ticket.plan, context)
+            await self._validate(scope)
+            return ticket
+
+    async def async_list(
+        self, context: Context | None, vehicle_ref: str
+    ) -> tuple[ApprovalTicket, ...]:
+        user_id = await async_require_admin(self.hass, context)
+        async with self._lock:
+            records = await self._read()
+            tickets = tuple(
+                row
+                for row in records.values()
+                if row.plan.user_id == user_id and row.plan.vehicle_ref == vehicle_ref
+            )
+            scopes = [await self._scope(row.plan, context) for row in tickets]
+            for scope in scopes:
+                await self._validate(scope)
+            for scope in scopes:
+                if not self._current(scope):
+                    raise AssistantError("not_authorized")
+            return tickets
 
     async def async_prepare(
         self, task_id: str, context: Context | None

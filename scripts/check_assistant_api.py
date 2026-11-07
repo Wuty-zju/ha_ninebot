@@ -92,6 +92,7 @@ async def check(config_dir: str) -> None:
     unregister()
     assert llm.async_get_apis(hass) == []
     await check_confirmation_boundary(hass, context)
+    check_review_schema(hass, api)
     print("Native Assistant: registry, admin gate, original Context, ToolResult and MCP schema OK")
 
 
@@ -151,6 +152,30 @@ async def check_confirmation_boundary(hass, context) -> None:
         hass.services.async_remove(domain, "approve")
     print(
         "Confirmation boundary: generic Action responses enable self-approval; no approval services"
+    )
+
+
+def check_review_schema(hass, api) -> None:
+    """Use current Core's WS registry/schema; private commands are not LLM tools."""
+    from homeassistant.components import websocket_api
+    from homeassistant.components.websocket_api.connection import REDACT_KEYS
+    from homeassistant.helpers.redact import async_redact_data
+
+    from custom_components.ninebot.assistant_review import COMMAND, async_register, async_review
+
+    hass.data.setdefault(websocket_api.DOMAIN, {})
+    async_register(hass)
+    async_register(hass)
+    assert COMMAND in hass.data[websocket_api.DOMAIN]
+    assert COMMAND not in {tool.name for tool in api.tools}
+    assert not hass.services.has_service("ninebot", "assistant_review")
+    schema = async_review._ws_schema
+    message = {"id": 1, "type": COMMAND, "vehicle_ref": "synthetic-device", "operation": "list"}
+    assert schema(message)["operation"] == "list"
+    redacted = async_redact_data({"token": "synthetic-confirmation"}, REDACT_KEYS)
+    assert redacted["token"] != "synthetic-confirmation"
+    print(
+        "Private review: native WS registry/schema, secret redaction and no LLM/service exposure OK"
     )
 
 
