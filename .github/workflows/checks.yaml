@@ -10,9 +10,14 @@ on:
         type: boolean
         default: false
       assistant_evaluation:
-        description: Run the four-case synthetic CPU model comparison
+        description: Run a synthetic CPU model comparison
         type: boolean
         default: false
+      assistant_profile:
+        description: Fixed evaluation case group
+        type: choice
+        options: [baseline, retrieval]
+        default: baseline
 permissions:
   contents: read
 concurrency:
@@ -129,8 +134,10 @@ jobs:
           python -m pip check
       - name: Prepare the fixed CPU completion engine
         run: python -m scripts.assistant_model --prepare "$RUNNER_TEMP/ninebot-model-bin"
-      - name: Measure the synthetic four-case comparison
-        run: python -m scripts.evaluate_assistant --output model-results.json
+      - name: Measure the selected synthetic comparison
+        env:
+          NINEBOT_EVAL_PROFILE: ${{ inputs.assistant_profile || 'baseline' }}
+        run: python -m scripts.evaluate_assistant --profile "$NINEBOT_EVAL_PROFILE" --output model-results.json
       - name: Preserve completed measurements
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
