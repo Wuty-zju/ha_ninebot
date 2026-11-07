@@ -1,6 +1,7 @@
 """Durable preservation claims and budgets, entirely synthetic/offline."""
 
 import hashlib
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from custom_components.ninebot.preservation import (
     DetailBudgetUnavailable,
     DetailScope,
     fingerprint,
+    scope_fingerprint,
     task_state,
 )
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
@@ -26,7 +28,7 @@ async def archive_scope(archive):
 
     rows = await archive._run(lambda: archive._db().execute("SELECT id,data FROM rides").fetchall())
     return DetailScope(
-        tuple((key, fingerprint(restored_ride(decoded(data)))) for key, data in rows)
+        tuple((key, scope_fingerprint(restored_ride(decoded(data)))) for key, data in rows)
     )
 
 
@@ -185,7 +187,22 @@ async def test_scoped_claim_filters_before_limit_and_rejects_changed_fingerprint
             await archive.async_preservation_claim(SN, NOW, 60, scope=wrong, guard=lambda: True)
             is None
         )
-        scope = DetailScope(((identity, fingerprint(restored_ride(decoded(data)))),))
+        ride = restored_ride(decoded(data))
+        before = await archive._run(lambda: archive._db().total_changes)
+        for changed in (
+            replace(ride, query_month="202610"),
+            replace(ride, issues=(*ride.issues, "conflicting_detail_ids")),
+        ):
+            # Ordinary preservation can reuse the same values; approved work cannot
+            # silently switch request months or identity evidence.
+            assert fingerprint(changed) == fingerprint(ride)
+            stale = DetailScope(((identity, scope_fingerprint(changed)),))
+            assert (
+                await archive.async_preservation_claim(SN, NOW, 60, scope=stale, guard=lambda: True)
+                is None
+            )
+            assert await archive._run(lambda: archive._db().total_changes) == before
+        scope = DetailScope(((identity, scope_fingerprint(ride)),))
         task = await archive.async_preservation_claim(SN, NOW, 60, scope=scope, guard=lambda: True)
         assert task is not None and task.ride.ride_id == "scope-0"
     finally:

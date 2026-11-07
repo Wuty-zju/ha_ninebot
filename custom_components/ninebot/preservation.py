@@ -43,6 +43,25 @@ def fingerprint(ride: Ride) -> str:
     return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
 
 
+def scope_fingerprint(ride: Ride) -> str:
+    """Freeze the request month and identity evidence without changing background reuse."""
+    content = {
+        "contract": "detail-scope-v1",
+        "query_month": ride.query_month,
+        "values": fingerprint(ride),
+        "identity_issues": sorted(
+            set(ride.issues)
+            & {
+                "conflicting_ride_ids",
+                "conflicting_detail_ids",
+                "reversed_timestamps",
+                "conflicting_time_representations",
+            }
+        ),
+    }
+    return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
+
+
 @dataclass(frozen=True)
 class DetailScope:
     """Frozen internal archive identities and fingerprints, never an authorization grant."""
