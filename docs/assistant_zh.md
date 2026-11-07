@@ -53,7 +53,9 @@ Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼�
 
 原生 MCP 将 JSON 结果作为文本内容返回。失败使用固定代码，如 `not_authorized`、`invalid_arguments`、`local_data_missing`、`retry_later`、`timeout`。查询失败不表示没有骑车；若返回 `retry_after_seconds`，应遵循等待时间，避免连续重试。
 
-错误附带固定说明。`not_authorized` 表示访问未获授权，不能据此判断行程是否存在。车辆的查询能力描述可用的本地读取，与当前实测状态和已保存行程数量分别表达。
+错误附带固定说明。`not_authorized` 表示访问未获授权，不能据此判断行程是否存在。车辆列表的`capabilities`描述本地就绪状态：`cached_status`表示曾成功收到状态，`local_history`表示账号档案已就绪。false不能推断车辆硬件不支持；实测值与新鲜度应读取状态工具。
+
+同步健康返回配置的请求速率与最小间隔。账号预算用于控制历史请求间隔，不能据此推算自然小时内还剩多少次。应依据`next_request_at`与`retry_at`解释当前调度；配置为0仅取消配额节流，仍保留串行与上游退避。
 
 ## 版本化帮助
 

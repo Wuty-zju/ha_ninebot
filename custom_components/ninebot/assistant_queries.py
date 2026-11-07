@@ -34,6 +34,7 @@ from .assistant_views import (
 from .compat import validation as vol
 from .const import BUSINESS_TIMEZONE, CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN
 from .history_actions import cursor_value
+from .history_budget import configured_budget, request_interval
 from .recorded_actions import business_date
 from .services import bounded_integer, query_month, ride_identifier
 
@@ -87,7 +88,9 @@ SPECS = (
         "List Ninebot vehicles",
         "List vehicles explicitly allowed for AI. If the user has not selected one of several "
         "vehicles, ask which vehicle before reading measurements; never choose the first. "
-        "Capabilities describe query availability, not current measurements or trip counts.",
+        "Capabilities report local readiness: cached_status means a successful local status "
+        "receipt exists; local_history means the account archive is ready. False does not "
+        "mean unsupported hardware. These flags are not measurements or trip counts.",
         vol.Schema({}),
     ),
     ToolSpec(
@@ -147,6 +150,7 @@ SPECS = (
         "Read history synchronization health",
         "Read local history coverage and scheduling for the selected vehicle. "
         "Explain reported states and evidence without inventing a failure cause. "
+        "The account budget paces requests; do not infer an exact hourly remaining count. "
         "Does not start or resume work or change request budgets.",
         vol.Schema(VEHICLE),
     ),
@@ -249,7 +253,10 @@ async def _vehicles(
         raise AssistantError("not_authorized")
     return AssistantView(
         data={"vehicles": rows[:MAX_VEHICLES], "more_available": len(rows) > MAX_VEHICLES},
-        evidence={"source_kind": "runtime_snapshot"},
+        evidence={
+            "source_kind": "runtime_snapshot",
+            "capabilities_basis": "local_cache_and_archive_readiness",
+        },
         warnings=["narrow_the_account_ai_selection"] if len(rows) > MAX_VEHICLES else [],
     ), scopes
 
@@ -344,7 +351,14 @@ async def _vehicle_query(
         }
     if key == "get_sync_health":
         response = await _action(hass, scope, "sync_history", {"operation": "sync_status"})
-        return sync_view(response), query
+        view = sync_view(response)
+        budget = configured_budget(scope.entry.options)
+        view.data["request_policy"] = {
+            "configured_requests_per_hour": budget,
+            "minimum_interval_s": request_interval(budget),
+            "basis": "paced_account_requests",
+        }
+        return view, query
     raise AssistantError("unsupported_capability")
 
 

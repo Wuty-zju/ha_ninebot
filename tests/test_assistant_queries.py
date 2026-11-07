@@ -190,6 +190,7 @@ async def test_vehicle_list_uses_consented_names_and_explicit_fleet_limit(hass, 
     result, error = await async_query(hass, "get_vehicles", {}, assistant.context)
     assert not error and result["data"]["vehicles"][0]["label"].strip() == "Scooter"
     assert result["data"]["more_available"] is False
+    assert result["evidence"]["capabilities_basis"] == "local_cache_and_archive_readiness"
     names = [SN]
     for index in range(20):
         name = f"fleet-{index:02}"
@@ -315,6 +316,24 @@ async def test_sync_health_is_read_only_and_reports_the_local_state(hass, assist
     assert result["data"]["background_enabled"] is False
     assert result["evidence"]["operation"] == "sync_status"
     assert result["quality"]["upstream_history_complete"] == "unverified"
+
+
+@pytest.mark.parametrize("budget,interval", [(0, 0), (30, 120), (60, 60)])
+async def test_sync_health_reports_configured_pacing_not_invented_remaining_calls(
+    hass, assistant, budget, interval
+):
+    hass.config_entries.async_update_entry(
+        assistant.entry,
+        options={**assistant.entry.options, "history_requests_per_hour": budget},
+    )
+    result, error = await query(hass, assistant, "get_sync_health")
+    assert not error
+    assert result["data"]["request_policy"] == {
+        "configured_requests_per_hour": budget,
+        "minimum_interval_s": interval,
+        "basis": "paced_account_requests",
+    }
+    assert "remaining" not in result["data"]
 
 
 async def test_help_reads_only_bundled_sources_and_never_calls_actions(hass, assistant):
