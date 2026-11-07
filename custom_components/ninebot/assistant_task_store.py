@@ -127,16 +127,38 @@ def read_envelope(path: Path, key: str) -> dict[str, Any] | None:
         raise TaskStoreUnavailable("Invalid task store envelope") from err
 
 
+def store_key(entry_id: str) -> str:
+    return f"ninebot.{entry_id}.assistant_tasks_v1"
+
+
+async def async_remove_task_data(hass: HomeAssistant, entry_id: str) -> None:
+    """Trusted entry lifecycle only, independent of retained portable history."""
+    store = Store[dict[str, Any]](hass, 1, store_key(entry_id), private=True, atomic_writes=True)
+    await _async_remove_ack(hass, store)
+
+
+async def _async_remove_ack(hass: HomeAssistant, store: Store[dict[str, Any]]) -> None:
+    try:
+        await store.async_remove()
+        if await hass.async_add_executor_job(Path(store.path).exists):
+            raise TaskStoreUnavailable("Task removal was not acknowledged")
+    except OSError as err:
+        raise TaskStoreUnavailable("Task store cannot be removed") from err
+
+
 class ApprovalStore:
     """One runtime owner per entry. Every transition reloads actual persisted authority."""
 
     def __init__(self, hass: HomeAssistant, entry_id: str, account_key: str) -> None:
         self.hass, self.entry_id, self.account_key = hass, entry_id, account_key
-        self.key = f"ninebot.{entry_id}.assistant_tasks_v1"
+        self.key = store_key(entry_id)
         self._store = Store[dict[str, Any]](hass, 1, self.key, private=True, atomic_writes=True)
         self._lock = asyncio.Lock()
+        self._closed = False
 
     async def _read(self) -> dict[str, ApprovalTicket]:
+        if self._closed:
+            raise TaskStoreUnavailable("Task store is closed")
         try:
             data = await self.hass.async_add_executor_job(
                 partial(read_envelope, Path(self._store.path), self.key)
@@ -158,6 +180,8 @@ class ApprovalStore:
             raise TaskStoreUnavailable("Task store cannot be read") from err
 
     async def _commit(self, records: dict[str, ApprovalTicket]) -> None:
+        if self._closed:
+            raise AssistantError("not_authorized")
         data = {"tickets": {key: ticket_data(row) for key, row in records.items()}}
         # Leave room for the native envelope and pretty-printing before replacing a valid file.
         if len(records) > MAX_TASKS or len(json.dumps(data).encode()) > MAX_BYTES // 2:
@@ -179,7 +203,11 @@ class ApprovalStore:
 
     async def _scope(self, plan: DetailPlan, context: Context | None) -> AssistantScope:
         scope = await async_plan_scope(self.hass, plan, context)
-        if scope.entry.entry_id != self.entry_id or plan.account_key != self.account_key:
+        if (
+            self._closed
+            or scope.entry.entry_id != self.entry_id
+            or plan.account_key != self.account_key
+        ):
             raise AssistantError("not_authorized")
         return scope
 
@@ -212,7 +240,7 @@ class ApprovalStore:
             pending = ApprovalTicket(uuid4().hex, plan, None)
             records[pending.task_id] = pending
             await self._commit(records)
-            await scope.async_validate(self.hass)
+            await self._validate(scope)
             return pending
 
     async def async_prepare(
@@ -226,8 +254,8 @@ class ApprovalStore:
             prepared, nonce = ticket.prepare(dt_util.utcnow())
             records[task_id] = prepared
             await self._commit(records)
-            await scope.async_validate(self.hass)
-            return prepared, nonce  # Human Action only; never an AI request response.
+            await self._validate(scope)
+            return prepared, nonce  # Private human review only; never an Action or AI response.
 
     async def async_approve(
         self, task_id: str, context: Context | None, nonce: str, plan_hash: str
@@ -247,12 +275,28 @@ class ApprovalStore:
             await scope.async_validate(self.hass)
             records[task_id] = approved
             await self._commit(records)
-            await scope.async_validate(self.hass)
+            await self._validate(scope)
             return approved
 
     def _current(self, scope: AssistantScope) -> bool:
-        scope.assert_current(self.hass)
-        return True
+        scope.assert_task_current(self.hass)
+        return not self._closed
+
+    async def _validate(self, scope: AssistantScope) -> None:
+        await scope.async_validate(self.hass)
+        if not self._current(scope):
+            raise AssistantError("not_authorized")
+
+    async def async_close(self, *, remove: bool = False) -> None:
+        """Revoke this owner immediately, then drain its writer before optional removal."""
+        self._closed = True
+
+        async def finish() -> None:
+            async with self._lock:
+                if remove:
+                    await _async_remove_ack(self.hass, self._store)
+
+        await async_drain(asyncio.create_task(finish()))
 
     @staticmethod
     def _find(records: dict[str, ApprovalTicket], task_id: str) -> ApprovalTicket:

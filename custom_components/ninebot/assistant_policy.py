@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from homeassistant.core import Context, HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
 
-from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_VEHICLES
+from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_TASKS, CONF_ASSISTANT_VEHICLES
 from .const import DOMAIN
 from .runtime import NinebotConfigEntry, RuntimeData
 from .services import async_check_history_access, resolve_vehicle
@@ -64,6 +64,15 @@ class AssistantScope:
             or not _consented(entry, sn)
             or co._generation != self.generation
             or co._ownership.get(sn, 0) != self.ownership
+        ):
+            raise AssistantError("not_authorized")
+
+    def assert_task_current(self, hass: HomeAssistant) -> None:
+        self.assert_current(hass)
+        if (
+            self.entry.options.get(CONF_ASSISTANT_TASKS) is not True
+            or self.runtime.assistant_task_blocks
+            or self.runtime.coordinator._stopping
         ):
             raise AssistantError("not_authorized")
 

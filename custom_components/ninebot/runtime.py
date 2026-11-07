@@ -1,8 +1,9 @@
 """Typed per-entry runtime, separate from durable configuration."""
 
 from asyncio import Lock
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
 
@@ -12,6 +13,9 @@ from .event_store import RideEventPipeline
 from .identity import IdentityStore
 from .session import SessionManager
 from .storage import ModelStorage
+
+if TYPE_CHECKING:
+    from .assistant_task_store import ApprovalStore
 
 
 @dataclass
@@ -29,6 +33,9 @@ class RuntimeData:
     statistics_import_pending: int = 0
     identities: IdentityStore | None = None
     options_update_lock: Lock = field(default_factory=Lock)
+    assistant_tasks: "ApprovalStore | None" = None
+    assistant_task_blocks: int = 0
+    assistant_task_stop: Callable[[], None] | None = None
     applied_options: dict[str, Any] | None = None
     applied_data: dict[str, Any] | None = None
 

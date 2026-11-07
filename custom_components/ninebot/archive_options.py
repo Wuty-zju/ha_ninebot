@@ -428,10 +428,13 @@ class ArchiveOptionsMixin(config_entries.OptionsFlow):
                         sources = tuple(
                             p for o, p in self._archive_sources if o == owner and p != path
                         )
-                        result = await stats.archive.async_merge_archive(
-                            path, None if "*" in selected else selected, sources
-                        )
-                        await entry.runtime_data.coordinator.async_archive_imported()
+                        from .assistant_tasks import async_task_barrier
+
+                        async with async_task_barrier(self.hass, entry):
+                            result = await stats.archive.async_merge_archive(
+                                path, None if "*" in selected else selected, sources
+                            )
+                            await entry.runtime_data.coordinator.async_archive_imported()
                     results.append(f"{entry.title}: +{result['rides']} / +{result['details']}")
                 await self._archive_cleanup()
                 return self.async_show_form(

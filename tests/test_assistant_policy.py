@@ -207,6 +207,10 @@ async def test_approval_uses_original_authenticated_requester(
     )
     from custom_components.ninebot.preservation import DetailScope
 
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "enable_assistant_tasks": True}
+    )
+    await hass.async_block_till_done()
     now = datetime(2026, 11, 7, tzinfo=UTC)
     freezer.move_to(now)
     plan = DetailPlan(
@@ -247,6 +251,10 @@ async def test_approval_rechecks_consent_after_awaited_permissions(
     from custom_components.ninebot.assistant_policy import AssistantScope
     from custom_components.ninebot.preservation import DetailScope
 
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "enable_assistant_tasks": True}
+    )
+    await hass.async_block_till_done()
     now = datetime(2026, 11, 7, tzinfo=UTC)
     freezer.move_to(now)
     plan = DetailPlan(
