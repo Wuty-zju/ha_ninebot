@@ -481,3 +481,104 @@ async def test_websocket_nonce_rotation_expiry_and_task_disable(
     await hass.async_block_till_done()
     disabled = await review(client, device, 5, "list")
     assert disabled["error"]["code"] == "not_authorized"
+
+
+async def test_native_task_query_application_and_metadata_remain_local(hass, entry, task_store):
+    import json
+
+    from custom_components.ninebot.assistant_review import async_register
+    from custom_components.ninebot.assistant_task_queries import async_task_query
+
+    async_register(hass)
+    await seeded_request(hass, entry, task_store)
+    args = {
+        "vehicle_ref": task_store.plan.vehicle_ref,
+        "start_date": "2026-11-06",
+        "end_date": "2026-11-06",
+    }
+    preview, error = await async_task_query(hass, "preview_detail_sync", args, task_store.context)
+    assert not error and preview["data"]["task_created"] is False
+    request, error = await async_task_query(
+        hass, "request_detail_sync_approval", args, task_store.context
+    )
+    assert not error and request["data"]["task_recorded"] is True
+    task_id = request["data"]["task"]["task_id"]
+    for key, query in (
+        ("get_tasks", {"vehicle_ref": args["vehicle_ref"]}),
+        ("get_task", {"vehicle_ref": args["vehicle_ref"], "task_id": task_id}),
+        ("task_vehicles", {}),
+    ):
+        result, error = await async_task_query(hass, key, query, task_store.context)
+        assert not error and result["evidence"]["cloud_calls"] == 0
+        output = json.dumps(result)
+        for secret in (
+            "nonce",
+            "token",
+            "private-task-ride",
+            "SyntheticSN",
+            task_store.plan.account_key,
+        ):
+            assert secret not in output
+    for key, query in (
+        ("approve_task", {}),
+        ("request_detail_sync_approval", {**args, "confirmed": True}),
+        ("get_task", {"vehicle_ref": args["vehicle_ref"], "task_id": "bad"}),
+    ):
+        result, error = await async_task_query(hass, key, query, task_store.context)
+        assert error and result["error"]["code"] == "invalid_arguments"
+
+
+async def test_task_vehicle_enumeration_filters_before_registry_and_scope(hass, entry, task_store):
+    from custom_components.ninebot.assistant_review import async_register
+    from custom_components.ninebot.assistant_task_queries import async_task_query
+
+    async_register(hass)
+    other = SimpleNamespace(options={"enable_assistant": True, "enable_assistant_tasks": False})
+    lookup = dr.async_entries_for_config_entry
+    with (
+        patch.object(hass.config_entries, "async_entries", return_value=[entry, other]),
+        patch(
+            "custom_components.ninebot.assistant_queries.dr.async_entries_for_config_entry",
+            wraps=lookup,
+        ) as read,
+    ):
+        result, error = await async_task_query(hass, "task_vehicles", {}, task_store.context)
+    assert not error and len(result["data"]["vehicles"]) == 1
+    assert all(call.args[1] == entry.entry_id for call in read.call_args_list)
+
+
+async def test_task_read_rechecks_owner_after_awaits(hass, entry, task_store):
+    from custom_components.ninebot.assistant_review import async_register
+    from custom_components.ninebot.assistant_task_queries import async_task_query
+
+    async_register(hass)
+    await seeded_request(hass, entry, task_store)
+    old = entry.runtime_data.assistant_tasks
+    original = old.async_list
+
+    async def replaced(*args):
+        result = await original(*args)
+        entry.runtime_data.assistant_tasks = None
+        return result
+
+    try:
+        with patch.object(old, "async_list", new=replaced):
+            result, error = await async_task_query(
+                hass, "get_tasks", {"vehicle_ref": task_store.plan.vehicle_ref}, task_store.context
+            )
+        assert error and result["error"]["code"] == "not_authorized"
+    finally:
+        entry.runtime_data.assistant_tasks = old
+
+
+async def test_task_collection_does_not_inherit_read_only_consent(hass, entry, task_store):
+    from custom_components.ninebot.assistant_review import async_register
+    from custom_components.ninebot.assistant_task_queries import async_task_query
+
+    async_register(hass)
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "enable_assistant_tasks": False}
+    )
+    await hass.async_block_till_done()
+    result, error = await async_task_query(hass, "task_vehicles", {}, task_store.context)
+    assert error and result["error"]["code"] == "not_authorized"
