@@ -67,6 +67,58 @@ class DetailScope:
         ):
             raise ValueError("Invalid frozen detail scope")
 
+    def digest(self, vehicle: str) -> str:
+        return hashlib.sha256(
+            json.dumps([vehicle, sorted(self.rides)], separators=(",", ":")).encode()
+        ).hexdigest()
+
+
+class DetailBudgetUnavailable(Exception):
+    """Reapproval is required; this does not establish corruption of the archive."""
+
+
+@dataclass(frozen=True)
+class DetailBudget:
+    """Internal task counter identity; human approval belongs outside the archive."""
+
+    task_id: str
+    limit: int
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.task_id, str)
+            or len(self.task_id) != 32
+            or set(self.task_id) - set("0123456789abcdef")
+            or type(self.limit) is not int
+            or not 1 <= self.limit <= 20
+        ):
+            raise ValueError("Invalid detail task budget")
+
+    @property
+    def key(self) -> str:
+        return f"assistant_attempts:{self.task_id}"
+
+    def read(self, value: object, scope_hash: str) -> dict[str, Any]:
+        try:
+            if not isinstance(value, str) or len(value.encode()) > 512:
+                raise ValueError("Invalid task counter")
+            return self.validate(json.loads(value), scope_hash)
+        except (ValueError, RecursionError) as err:
+            raise DetailBudgetUnavailable("Invalid task counter") from err
+
+    def validate(self, value: Any, scope_hash: str) -> dict[str, Any]:
+        if (
+            not isinstance(value, dict)
+            or set(value) != {"scope_hash", "limit", "used"}
+            or value["scope_hash"] != scope_hash
+            or type(value["limit"]) is not int
+            or value["limit"] != self.limit
+            or type(value["used"]) is not int
+            or not 0 <= value["used"] <= self.limit
+        ):
+            raise DetailBudgetUnavailable("Detail task counter does not match its frozen plan")
+        return value
+
 
 @dataclass(frozen=True)
 class PreservationTask:

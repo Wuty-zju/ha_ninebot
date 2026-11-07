@@ -91,6 +91,8 @@ Update the owning scope in `.github/ci.json` when adding a source/test boundary.
 
 ## Assistant development
 
+The archive's internal `DetailScope` restricts claim identities before the candidate limit and checks frozen fingerprints before changing state. Optional `DetailBudget` counters bind a random task ID to that scope, vehicle and fixed attempt limit. Initialization is idempotent; a missing counter cannot be recreated by a claim. Task consumption, ride attempts and account pacing commit in the same actor transaction. These primitives confer no permission and are not exposed as AI execution tools; human approval and task lifecycle remain separate work.
+
 The optional [Assistant preview](assistant.md) uses the existing native API registry. `assistant_api` adapts protocol objects; `assistant_policy` checks active administrators and separate account/vehicle consent; `assistant_queries` calls existing local Actions; `assistant_views` constructs a small reviewed output; `assistant_limits` bounds read admission. Disabled accounts do not load the native adapter or create additional polling.
 
 The native API canary runs on the published Core 2026.11.0 without a mismatched test plugin. `scripts/check_assistant_mcp.py` uses the real native HTTP view and MCP dispatcher with synthetic authorization, registry and snapshots. It checks user Context, read-only filtering, consent revocation and API removal. OAuth and model-provider behavior need their own evidence.
