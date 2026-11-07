@@ -170,8 +170,9 @@ async def async_plan_scope(
         or scope.sn != plan.sn
     ):
         raise AssistantError("not_authorized")
+    scope.assert_task_current(hass)
     await scope.async_validate(hass)
-    scope.assert_current(hass)
+    scope.assert_task_current(hass)
     return scope
 
 

@@ -25,7 +25,7 @@ from custom_components.ninebot.assistant_task_store import (
 from custom_components.ninebot.preservation import DetailScope
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
-REAL_WRITE, REAL_LOAD = Store._async_write_data, Store._async_load
+REAL_WRITE, REAL_LOAD, REAL_REMOVE = Store._async_write_data, Store._async_load, Store.async_remove
 
 
 @pytest.fixture
@@ -39,6 +39,7 @@ async def task_store(hass, entry, app_client, tmp_path):
     with (
         patch.object(Store, "_async_write_data", REAL_WRITE),
         patch.object(Store, "_async_load", REAL_LOAD),
+        patch.object(Store, "async_remove", REAL_REMOVE),
         patch("custom_components.ninebot.async_update_assistant_api", new=AsyncMock()),
         patch("custom_components.ninebot.coordinator.NinebotCoordinator._schedule_refresh"),
         patch.object(hass.auth, "async_get_user", new=AsyncMock(return_value=principal)),
@@ -52,6 +53,7 @@ async def task_store(hass, entry, app_client, tmp_path):
             options={
                 **entry.options,
                 "enable_assistant": True,
+                "enable_assistant_tasks": True,
                 "assistant_vehicles": ["SyntheticSN"],
             },
         )
@@ -178,3 +180,162 @@ async def test_changed_contract_or_unknown_fields_fail_closed(task_store):
     ):
         with pytest.raises(TaskStoreUnavailable):
             restore_ticket(copy.deepcopy(changed))
+
+
+async def store_exists(store):
+    return await store.hass.async_add_executor_job(Path(store._store.path).exists)
+
+
+async def test_closed_owner_preserves_pending_for_a_new_owner(task_store):
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    pending = await s.async_request(p, c)
+    await s.async_close()
+    with pytest.raises(TaskStoreUnavailable, match="closed"):
+        await s.async_prepare(pending.task_id, c)
+    reopened = ApprovalStore(s.hass, s.entry_id, s.account_key)
+    prepared, nonce = await reopened.async_prepare(pending.task_id, c)
+    assert prepared.plan == p and nonce
+    await reopened.async_close(remove=True)
+    assert not await store_exists(s)
+
+
+async def test_removal_drains_cancelled_close_and_revokes_the_inflight_writer(task_store):
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    original = s._store.async_save
+    written, release = asyncio.Event(), asyncio.Event()
+
+    async def save(data):
+        await original(data)
+        written.set()
+        await release.wait()
+
+    with patch.object(s._store, "async_save", new=save):
+        writer = asyncio.create_task(s.async_request(p, c))
+        await asyncio.wait_for(written.wait(), 10)
+        closing = asyncio.create_task(s.async_close(remove=True))
+        try:
+            await asyncio.sleep(0)
+            closing.cancel()
+            await asyncio.sleep(0)
+            assert not closing.done()
+        finally:
+            release.set()
+        with pytest.raises(AssistantError, match="^not_authorized$"):
+            await writer
+        with pytest.raises(asyncio.CancelledError):
+            await closing
+    assert not await store_exists(s)
+
+
+async def test_silent_remove_failure_leaves_the_old_owner_closed(task_store):
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    pending = await s.async_request(p, c)
+    with patch.object(s._store, "async_remove", new=AsyncMock()):
+        with pytest.raises(TaskStoreUnavailable, match="acknowledged"):
+            await s.async_close(remove=True)
+    with pytest.raises(TaskStoreUnavailable, match="closed"):
+        await s.async_prepare(pending.task_id, c)
+
+
+async def seeded_request(hass, entry, task_store):
+    from datetime import UTC, datetime
+
+    from custom_components.ninebot.adapters import travel
+    from custom_components.ninebot.assistant_tasks import async_request_details
+
+    start = int(datetime(2026, 11, 6, 2, tzinfo=UTC).timestamp())
+    month = travel(
+        {
+            "times": 1,
+            "list": [
+                {
+                    "travel_id": "private-task-ride",
+                    "start_time": start,
+                    "end_time": start + 600,
+                    "duration": 600,
+                    "mileages": 1.2,
+                }
+            ],
+        },
+        "202611",
+    )
+    await task_store.co.statistics.archive.async_record_month(
+        "SyntheticSN", month, dt_util.utcnow()
+    )
+    return await async_request_details(
+        hass, task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+    )
+
+
+async def test_request_owns_one_private_store_and_deduplicates_actual_digest(
+    hass, entry, task_store
+):
+    import hashlib
+    import json
+
+    from custom_components.ninebot.assistant_tasks import async_request_details
+
+    first = await seeded_request(hass, entry, task_store)
+    store = entry.runtime_data.assistant_tasks
+    assert store is not None and first["task_recorded"] is True
+    assert first["task"]["state"] == "awaiting_approval"
+    path = task_store.co.statistics.archive.path
+    before = hashlib.sha256(path.read_bytes()).digest()
+    second = await async_request_details(
+        hass, task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+    )
+    assert entry.runtime_data.assistant_tasks is store
+    assert first["task"] == second["task"] and first["plan"] == second["plan"]
+    assert hashlib.sha256(path.read_bytes()).digest() == before
+    raw = json.dumps(first)
+    for secret in ("nonce", "SyntheticSN", "private-task-ride", store.account_key):
+        assert secret not in raw
+    pending = (await store._read())[first["task"]["task_id"]]
+    assert pending.nonce_hash is None and pending.approved_at is None
+    _, nonce = await store.async_prepare(pending.task_id, task_store.context)
+    await store.async_approve(pending.task_id, task_store.context, nonce, pending.plan.digest)
+    repeated = await async_request_details(
+        hass, task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+    )
+    assert repeated["task"]["state"] == "approved" and repeated["approval_required"] is False
+
+
+async def test_task_consent_is_separate_and_archive_import_barrier_revokes_pending(
+    hass, entry, task_store
+):
+    from custom_components.ninebot.assistant_tasks import async_request_details, async_task_barrier
+
+    first = await seeded_request(hass, entry, task_store)
+    old = entry.runtime_data.assistant_tasks
+    pending, nonce = await old.async_prepare(first["task"]["task_id"], task_store.context)
+    async with async_task_barrier(hass, entry):
+        assert not await store_exists(old)
+        with pytest.raises(AssistantError, match="^not_authorized$"):
+            await async_request_details(
+                hass, task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+            )
+    second = await async_request_details(
+        hass, task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+    )
+    new = entry.runtime_data.assistant_tasks
+    assert new is not old and first["task"]["task_id"] != second["task"]["task_id"]
+    with pytest.raises(AssistantError, match="^task_not_found$"):
+        await new.async_approve(pending.task_id, task_store.context, nonce, pending.plan.digest)
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "enable_assistant_tasks": False}
+    )
+    await hass.async_block_till_done()
+    assert not await store_exists(new)
+    with pytest.raises(AssistantError, match="^not_authorized$"):
+        await async_request_details(
+            hass, task_store.context, task_store.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+        )
+
+
+async def test_removing_account_keeps_history_but_not_task_authority(hass, entry, task_store):
+    await seeded_request(hass, entry, task_store)
+    store = entry.runtime_data.assistant_tasks
+    history = task_store.co.statistics.archive.path
+    assert history.exists() and await store_exists(store)
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    assert history.exists() and not await store_exists(store)

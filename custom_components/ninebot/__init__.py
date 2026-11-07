@@ -16,7 +16,7 @@ from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, AccountDisplay, account_
 from .account_archive import CONF_RETAIN_ARCHIVE, async_prepare_account, async_remove_account
 from .archive_lifecycle import async_remove_archive
 from .archive_options import register_download
-from .assistant import ASSISTANT_OPTIONS, async_update_assistant_api
+from .assistant import ASSISTANT_OPTIONS, async_close_task_owner, async_update_assistant_api
 from .async_utils import async_drain
 from .backup import backup_active, defer_removal
 from .client import NinecliClient
@@ -179,6 +179,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         coordinator.async_schedule_statistics_refresh()
         await async_update_assistant_api(hass)
     except BaseException:
+        await async_close_task_owner(hass, entry, permanent=True)
         if entry.runtime_data.events:
             await entry.runtime_data.events.async_close()
         await coordinator.async_close()
@@ -195,6 +196,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> bool:
     if await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        await async_close_task_owner(hass, entry, permanent=True)
         if entry.runtime_data.events:
             await entry.runtime_data.events.async_close()
         await entry.runtime_data.coordinator.async_close()
@@ -222,6 +224,7 @@ async def async_update_options(hass: HomeAssistant, entry: NinebotConfigEntry) -
             if changed & POLLING_OPTIONS:
                 await runtime.coordinator.async_reconfigure_polling(options)
             if changed & ASSISTANT_OPTIONS:
+                await async_close_task_owner(hass, entry, remove=True)
                 await async_update_assistant_api(hass)
             runtime.applied_options = options
             return
@@ -233,6 +236,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: NinebotConfigEntry) ->
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    await async_close_task_owner(hass, entry, remove=True, permanent=True)
     if isinstance(runtime := getattr(entry, "runtime_data", None), RuntimeData):
         # HA still calls remove when platform unload failed. No SQL actor may
         # remain open over a file that is about to be removed.
