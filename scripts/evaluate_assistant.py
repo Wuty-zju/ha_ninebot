@@ -10,6 +10,7 @@ import json
 import re
 import subprocess
 import time
+from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -178,6 +179,7 @@ async def conversation(model: CpuModel, fixture, case: dict, *, tools_enabled: b
 
     from custom_components.ninebot.assistant_api import PROMPT
 
+    initial_requests = fixture.request_count()
     status, discovered = await fixture.rpc("tools/list")
     assert status == 200
     _, roster = await fixture.rpc("tools/call", {"name": "ninebot__get_vehicles", "arguments": {}})
@@ -293,6 +295,9 @@ async def conversation(model: CpuModel, fixture, case: dict, *, tools_enabled: b
         "trace": trace,
         "final_answer": final,
         "tool_calls": calls,
+        "host_context_tool_calls": 1,
+        "http_requests_during_conversation": fixture.request_count() - initial_requests,
+        "fixture_preflight_excluded": True,
         "seconds": time.perf_counter() - started,
         "checks": {
             "tool_budget": calls <= MAX_CALLS,
@@ -315,6 +320,11 @@ async def evaluate(output: Path) -> None:
     cases = json.loads(await asyncio.to_thread(cases_path.read_text))["cases"]
     selected = [case for case in cases if case["id"] in CASE_IDS]
     assert len(selected) == len(CASE_IDS)
+    fixture_path = ROOT / "tests/fixtures/assistant/evaluation-fixtures.json"
+    fixture_data = json.loads(await asyncio.to_thread(fixture_path.read_text))
+    assert fixture_data["synthetic"] is True
+    reference_time = datetime.fromisoformat(fixture_data["now"])
+    assert reference_time.tzinfo is not None
     report = {
         "schema_version": 1,
         "source_sha": (
@@ -326,6 +336,8 @@ async def evaluate(output: Path) -> None:
         "model_revision": REVISION,
         "versions": {key: version(key) for key in ("homeassistant", "torch", "transformers")},
         "synthetic": True,
+        "fixture_clock": reference_time.isoformat(),
+        "fixture_status_age_seconds": 20,
         "scope": (
             "Real CPU model and native MCP HTTP/policy; synthetic auth, registry, snapshots, "
             "empty statistics and revoking detail Action. No production OAuth, SQLite or cloud."
@@ -345,10 +357,11 @@ async def evaluate(output: Path) -> None:
 
             async def scenario(fixture, case=case, enabled=enabled):
                 result = await conversation(model, fixture, case, tools_enabled=enabled)
+                assert result["context"]["now"] == reference_time.isoformat()
                 report["cases"].append(result)
 
             with TemporaryDirectory(prefix="ninebot-eval-") as directory:
-                await check(directory, scenario=scenario)
+                await check(directory, scenario=scenario, reference_time=reference_time)
             await asyncio.to_thread(write_report, output, report)
             print(
                 f"Measured {case['id']} {'tool_agent' if enabled else 'single_prompt'}", flush=True

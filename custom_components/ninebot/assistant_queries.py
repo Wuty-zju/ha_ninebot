@@ -15,6 +15,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
 from .assistant import CONF_ASSISTANT
+from .assistant_errors import error_data
 from .assistant_limits import ReadLimitExceeded, read_slot
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .assistant_views import (
@@ -61,19 +62,25 @@ SPECS = (
     ToolSpec(
         "get_vehicles",
         "List Ninebot vehicles",
-        "List vehicles explicitly allowed for AI. Ask the user to select when ambiguous.",
+        "List vehicles explicitly allowed for AI. If the user has not selected one of several "
+        "vehicles, ask which vehicle before reading measurements; never choose the first. "
+        "Capabilities describe query availability, not current measurements or trip counts.",
         vol.Schema({}),
     ),
     ToolSpec(
         "get_vehicle_status",
         "Read cached vehicle status",
-        "Read local status with observation times. Does not refresh the cloud or return GPS.",
+        "Read cached status for the user's selected vehicle. Include group observation times "
+        "and freshness in the answer. Null means unknown. vehicle_locked=true means locked. "
+        "Does not refresh the cloud or return GPS.",
         vol.Schema(VEHICLE),
     ),
     ToolSpec(
         "get_statistics",
         "Read local trip statistics",
-        "Read an explicit business period. Missing or partial metrics are not zero.",
+        "Read the user's selected vehicle and explicit business period. Ask for a period if "
+        "none is specified. Null/missing metrics are unknown, never zero; partial coverage "
+        "does not prove a total. Use returned values, units and per-metric quality, not SQL.",
         vol.Schema(
             {
                 **VEHICLE,
@@ -101,7 +108,9 @@ SPECS = (
         "get_trip_detail",
         "Read a saved trip detail",
         "Read locally saved scalar detail using one ride_id/query_month from the trip list. "
-        "Never fetches missing cloud details or returns tracks or sample arrays.",
+        "Never fetches missing cloud details or returns tracks or sample arrays. "
+        "not_authorized means access denied, not that a trip is missing. "
+        "Do not retry denied reads.",
         vol.Schema(
             {
                 **VEHICLE,
@@ -113,7 +122,9 @@ SPECS = (
     ToolSpec(
         "get_sync_health",
         "Read history synchronization health",
-        "Read current local history coverage and scheduling. Does not start or resume work.",
+        "Read local history coverage and scheduling for the selected vehicle. "
+        "Explain reported states and evidence without inventing a failure cause. "
+        "Does not start or resume work or change request budgets.",
         vol.Schema(VEHICLE),
     ),
 )
@@ -389,8 +400,5 @@ async def async_query(
     return {
         "schema_version": 1,
         "request_id": request_id,
-        "error": {
-            "code": code,
-            **({"retry_after_seconds": retry_after} if retry_after is not None else {}),
-        },
+        "error": error_data(code, retry_after),
     }, True

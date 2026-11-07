@@ -105,6 +105,8 @@ The model is `Qwen/Qwen3-0.6B` at revision `c1899de289a04d12100db370d81485cdf75e
 
 The `assistant-model-<attempt>` artifact contains source/dependency versions, visible replies, real tool requests/results, token counts and timing. Reasoning blocks are omitted. Task completion and fact accuracy remain unset until the answers and evidence are reviewed; a successful job means the comparison ran. Small-model results describe these samples, not the quality of every compatible AI host. Protocol and artifact-boundary unit tests need only the standard library.
 
+Controlled comparisons use the fixture's fixed UTC clock for snapshots, query periods and view context; latency still uses the real monotonic clock. `tool_calls` counts model-selected reads; host-context calls and conversation HTTP requests have separate counters. Fixture preflight and cleanup are outside those measurements.
+
 ```sh
 gh workflow run checks.yaml --ref YOUR_BRANCH -f assistant_evaluation=true
 ```

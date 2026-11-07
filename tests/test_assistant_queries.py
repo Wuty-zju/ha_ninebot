@@ -11,6 +11,7 @@ import pytest
 from homeassistant.core import Context
 from homeassistant.helpers import device_registry as dr
 
+from custom_components.ninebot.assistant_errors import error_data
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
 from custom_components.ninebot.assistant_queries import SPECS, async_query, period_dates
 from custom_components.ninebot.assistant_views import AssistantView, numeric, statistics_view
@@ -341,6 +342,14 @@ async def test_response_limit_counts_utf8_bytes_and_never_returns_a_fragment(has
         result, error = await query(hass, assistant, "get_vehicle_status")
     assert error and result["error"]["code"] == "response_too_large"
     assert "data" not in result
+
+
+def test_unknown_error_codes_cannot_carry_exception_text_to_the_model():
+    secret = "untrusted exception with /private/account and token=synthetic-secret"
+    result = error_data(secret)
+    assert result["code"] == "unsupported_capability"
+    assert secret not in json.dumps(result)
+    assert "message" in result
 
 
 async def test_invalid_calls_consume_only_the_authenticated_user_read_budget(hass, assistant):
