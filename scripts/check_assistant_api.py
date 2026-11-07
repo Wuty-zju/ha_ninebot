@@ -91,7 +91,67 @@ async def check(config_dir: str) -> None:
     assert readonly.tools == api.tools
     unregister()
     assert llm.async_get_apis(hass) == []
+    await check_confirmation_boundary(hass, context)
     print("Native Assistant: registry, admin gate, original Context, ToolResult and MCP schema OK")
+
+
+async def check_confirmation_boundary(hass, context) -> None:
+    """A generic admin Action bridge cannot serve as a human-only nonce channel."""
+    from homeassistant.components.homeassistant.llm import CallActionTool
+    from homeassistant.core import SupportsResponse
+    from homeassistant.helpers import llm
+
+    domain = "ninebot_confirmation_probe"
+    calls = []
+
+    async def prepare(call):
+        calls.append(call)
+        assert call.context is context.context
+        assert call.data == {"task_id": "synthetic-task"}
+        return {"nonce": "synthetic-only-nonce", "plan_hash": "synthetic-plan"}
+
+    async def approve(call):
+        calls.append(call)
+        assert call.context is context.context
+        assert call.data == {"nonce": "synthetic-only-nonce", "plan_hash": "synthetic-plan"}
+        return {"approved": True}
+
+    tool = CallActionTool()
+    hass.services.async_register(
+        domain, "prepare", prepare, supports_response=SupportsResponse.ONLY
+    )
+    hass.services.async_register(
+        domain, "approve", approve, supports_response=SupportsResponse.ONLY
+    )
+    try:
+        prepared = await tool.async_call(
+            hass,
+            llm.ToolInput(
+                tool_name=tool.name,
+                tool_args={"action": f"{domain}.prepare", "data": {"task_id": "synthetic-task"}},
+            ),
+            context,
+        )
+        assert not prepared.error
+        result = await tool.async_call(
+            hass,
+            llm.ToolInput(
+                tool_name=tool.name,
+                tool_args={"action": f"{domain}.approve", "data": prepared.data["response"]},
+            ),
+            context,
+        )
+        assert not result.error and result.data == {"response": {"approved": True}}
+        assert len(calls) == 2
+        # The integration has no approval services exposed through this bridge.
+        assert not hass.services.has_service("ninebot", "prepare_task_confirmation")
+        assert not hass.services.has_service("ninebot", "approve_task")
+    finally:
+        hass.services.async_remove(domain, "prepare")
+        hass.services.async_remove(domain, "approve")
+    print(
+        "Confirmation boundary: generic Action responses enable self-approval; no approval services"
+    )
 
 
 if __name__ == "__main__":
