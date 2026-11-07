@@ -8,8 +8,10 @@ from pathlib import Path
 from scripts.evaluate_assistant import (
     MAX_REPORT_BYTES,
     InvalidReply,
+    available_tools,
     parse_calls,
     safe_result,
+    select_cases,
     tool_message,
     visible_text,
     write_report,
@@ -17,6 +19,29 @@ from scripts.evaluate_assistant import (
 
 
 class ModelProtocolTests(unittest.TestCase):
+    def test_profile_selects_original_unique_cases_without_changing_expectations(self):
+        path = (
+            Path(__file__).resolve().parents[2] / "tests/fixtures/assistant/evaluation-tasks.json"
+        )
+        catalog = json.loads(path.read_text())["cases"]
+        cases = select_cases(catalog, "retrieval")
+        self.assertEqual({case["id"] for case in cases}, {"R02", "R04"})
+        self.assertTrue(all(any(case is original for original in catalog) for case in cases))
+        for incomplete in (cases[:1], [cases[0], cases[0]]):
+            with self.assertRaises(ValueError):
+                select_cases(incomplete, "retrieval")
+
+    def test_retrieval_off_keeps_other_tools_and_rejects_hidden_help_before_rpc(self):
+        tools = [{"name": name} for name in ("ninebot__search_help", "ninebot__get_statistics")]
+        self.assertEqual(available_tools(tools, True), tools)
+        exposed = available_tools(tools, False)
+        self.assertEqual(exposed, [tools[1]])
+        allowed = {tool["name"] for tool in exposed}
+        body = '<tool_call>{"name":"ninebot__search_help","arguments":{}}</tool_call>'
+        with self.assertRaisesRegex(InvalidReply, "tool_not_exposed"):
+            parse_calls(body, 4, allowed_names=allowed)
+        self.assertEqual(parse_calls("no call", 4, allowed_names=allowed), [])
+
     def test_mcp_payload_is_delivered_without_the_transport_envelope(self):
         for error in (False, True):
             payload = {"error": {"code": "not_authorized"}} if error else {"data": {"soc": 0}}
