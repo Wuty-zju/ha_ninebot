@@ -15,8 +15,8 @@ from importlib.metadata import version
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-MODEL = "Qwen/Qwen3-0.6B"
-REVISION = "c1899de289a04d12100db370d81485cdf75e47ca"
+MODEL = "Qwen/Qwen3-1.7B"
+REVISION = "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
 CASE_IDS = ("Q03", "Q04", "P06", "S02")
 MAX_TURNS = 3
 MAX_CALLS = 4
@@ -94,6 +94,28 @@ def tool_functions(tools: list[dict]) -> list[dict]:
         }
         for tool in tools
     ]
+
+
+def tool_message(name: str, call_id: str, response: dict) -> dict:
+    """Map native MCP text content to the model's tool message, not JSON-RPC."""
+    try:
+        result = response["result"]
+        content = result["content"]
+        if (
+            type(result.get("isError", False)) is not bool
+            or not isinstance(content, list)
+            or len(content) != 1
+            or content[0]["type"] != "text"
+            or not isinstance(text := content[0]["text"], str)
+            or len(text.encode()) > 16 * 1024
+        ):
+            raise ValueError
+        payload = json.loads(text)
+        if not isinstance(payload, dict) or ("error" in payload) != result.get("isError", False):
+            raise ValueError
+    except (KeyError, TypeError, ValueError, RecursionError) as err:
+        raise InvalidReply("unexpected_tool_response") from err
+    return {"role": "tool", "name": name, "tool_call_id": call_id, "content": text}
 
 
 def write_report(output: Path, report: dict) -> None:
@@ -270,20 +292,30 @@ async def conversation(model: CpuModel, fixture, case: dict, *, tools_enabled: b
         if not requests:
             final = text
             break
+        call_ids = [f"call_{calls + index + 1}" for index in range(len(requests))]
         messages.append(
             {
                 "role": "assistant",
                 "content": "",
-                "tool_calls": [{"type": "function", "function": request} for request in requests],
+                "tool_calls": [
+                    {"id": call_id, "type": "function", "function": request}
+                    for call_id, request in zip(call_ids, requests, strict=True)
+                ],
             }
         )
-        for request in requests:
+        for call_id, request in zip(call_ids, requests, strict=True):
             calls += 1
             status, response = await fixture.rpc("tools/call", request)
             assert status == 200
             safe_result(response)
             step["tools"].append({"request": request, "response": response})
-            messages.append({"role": "tool", "content": json.dumps(response, ensure_ascii=False)})
+            try:
+                messages.append(tool_message(request["name"], call_id, response))
+            except InvalidReply as err:
+                step["protocol_error"] = str(err)
+                break
+        if "protocol_error" in step:
+            break
     names = [tool["request"]["name"] for step in trace for tool in step["tools"]]
     return {
         "id": case["id"],
@@ -334,6 +366,7 @@ async def evaluate(output: Path) -> None:
         ).strip(),
         "model": MODEL,
         "model_revision": REVISION,
+        "host_contract": "mcp-text-content-v2",
         "versions": {key: version(key) for key in ("homeassistant", "torch", "transformers")},
         "synthetic": True,
         "fixture_clock": reference_time.isoformat(),
