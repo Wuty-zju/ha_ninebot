@@ -104,9 +104,11 @@ async def async_task_query(
             args = SPEC_BY_KEY[key].parameters(arguments)
             with read_slot(hass, user_id):
                 owners: list[tuple[AssistantScope, ApprovalStore]] = []
+                evidence: dict[str, Any] = {}
+                warnings: list[str] = []
                 if key == "task_vehicles":
                     view, scopes = await _vehicles(hass, context, tasks=True)
-                    data = view.data
+                    data, evidence, warnings = view.data, view.evidence, view.warnings
                 else:
                     scope = await async_authorize(hass, context, args["vehicle_ref"])
                     scope.assert_task_current(hass)
@@ -160,8 +162,10 @@ async def async_task_query(
                         "contract": "ninebot-tasks-v1",
                         "access_mode": "local_only",
                         "cloud_calls": 0,
+                        **evidence,
                     },
                 }
+                response["warnings"] = warnings
                 if (
                     len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
                     > MAX_RESPONSE_BYTES

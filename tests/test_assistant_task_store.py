@@ -544,6 +544,7 @@ async def test_task_vehicle_enumeration_filters_before_registry_and_scope(hass, 
     ):
         result, error = await async_task_query(hass, "task_vehicles", {}, task_store.context)
     assert not error and len(result["data"]["vehicles"]) == 1
+    assert result["evidence"]["capabilities_basis"] == "local_cache_and_archive_readiness"
     assert all(call.args[1] == entry.entry_id for call in read.call_args_list)
 
 

@@ -16,6 +16,7 @@ API_ID = "ninebot_tasks"
 PROMPT = (
     "Use only task-enabled vehicles and the user's explicit business date range. "
     "Business time is Asia/Shanghai; query.as_of is the tool clock, not a cloud measurement. "
+    "Cache/archive flags mean local readiness, never hardware support or trip counts. "
     "Ask which vehicle when ambiguous. Preview reads local gaps; an application only records "
     "a request for human review in Home Assistant. Never claim approval, execution or completion "
     "from an accepted request. Do not request or invent confirmation tokens. "
