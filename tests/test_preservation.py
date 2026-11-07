@@ -7,12 +7,108 @@ from unittest.mock import patch
 import pytest
 
 from custom_components.ninebot.adapters import travel
-from custom_components.ninebot.preservation import DetailScope, fingerprint, task_state
+from custom_components.ninebot.preservation import (
+    DetailBudget,
+    DetailScope,
+    fingerprint,
+    task_state,
+)
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OWNER = hashlib.sha256(b"synthetic-account").hexdigest()
 SN = "synthetic-vehicle"
+
+
+async def archive_scope(archive):
+    from custom_components.ninebot.archive_codec import decoded, restored_ride
+
+    rows = await archive._run(lambda: archive._db().execute("SELECT id,data FROM rides").fetchall())
+    return DetailScope(
+        tuple((key, fingerprint(restored_ride(decoded(data)))) for key, data in rows)
+    )
+
+
+@pytest.mark.parametrize("identity,limit", [("bad", 1), ("a" * 32, True), ("a" * 32, 21)])
+def test_task_budget_rejects_invalid_identity_and_limits(identity, limit):
+    with pytest.raises(ValueError):
+        DetailBudget(identity, limit)
+
+
+async def test_task_cap_survives_reopen_and_idempotent_initialization(tmp_path):
+    path = tmp_path / "task-budget.sqlite3"
+    archive = RideArchive(path, OWNER)
+    task_budget = DetailBudget("a" * 32, 1)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        scope = await archive_scope(archive)
+        with pytest.raises(ArchiveError):
+            await archive.async_preservation_claim(
+                SN, NOW, 0, scope=scope, task_budget=task_budget, guard=lambda: True
+            )
+        await archive.async_initialize_detail_budget(SN, scope, task_budget, guard=lambda: True)
+        assert await archive.async_preservation_claim(
+            SN, NOW, 0, scope=scope, task_budget=task_budget, guard=lambda: True
+        )
+    finally:
+        await archive.async_close()
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_initialize_detail_budget(SN, scope, task_budget, guard=lambda: True)
+        assert (
+            await archive.async_preservation_claim(
+                SN,
+                NOW + timedelta(seconds=61),
+                0,
+                scope=scope,
+                task_budget=task_budget,
+                guard=lambda: True,
+            )
+            is None
+        )
+        with pytest.raises(ArchiveError):
+            await archive.async_initialize_detail_budget(
+                SN, scope, DetailBudget(task_budget.task_id, 2), guard=lambda: True
+            )
+        with pytest.raises(ArchiveError):
+            await archive.async_preservation_claim(
+                "another-vehicle", NOW, 0, scope=scope, task_budget=task_budget, guard=lambda: True
+            )
+    finally:
+        await archive.async_close()
+
+
+async def test_task_and_account_reservations_roll_back_together(tmp_path):
+    archive = RideArchive(tmp_path / "rollback.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        scope = await archive_scope(archive)
+        task_budget = DetailBudget("b" * 32, 1)
+        await archive.async_initialize_detail_budget(SN, scope, task_budget, guard=lambda: True)
+        reserve = archive._reserve_background
+
+        def crash(*args):
+            assert reserve(*args)
+            raise RuntimeError("synthetic failure after account reservation")
+
+        with patch.object(archive, "_reserve_background", side_effect=crash):
+            with pytest.raises(RuntimeError):
+                await archive.async_preservation_claim(
+                    SN, NOW, 60, scope=scope, task_budget=task_budget, guard=lambda: True
+                )
+        # Same instant and one-attempt task still available: all three writes rolled back.
+        assert await archive.async_preservation_claim(
+            SN, NOW, 60, scope=scope, task_budget=task_budget, guard=lambda: True
+        )
+        with pytest.raises(ValueError):
+            await archive.async_preservation_claim(
+                SN, NOW, 60, task_budget=task_budget, guard=lambda: True
+            )
+    finally:
+        await archive.async_close()
 
 
 @pytest.mark.parametrize("rides", [(), (("a", "invalid"),), (("a", "0" * 64),) * 2])

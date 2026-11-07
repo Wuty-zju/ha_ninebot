@@ -72,7 +72,7 @@ from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
 if TYPE_CHECKING:
     from .month_source import MonthSourceCheck
     from .month_tasks import MonthTask
-    from .preservation import DetailScope, PreservationTask
+    from .preservation import DetailBudget, DetailScope, PreservationTask
 
 SCHEMA_VERSION = 7
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
@@ -1846,6 +1846,36 @@ class RideArchive:
             previous_month(month)
         await self._run(lambda: cancel(self._db(write=True), vehicle_key(sn), months), guard=guard)
 
+    async def async_initialize_detail_budget(
+        self,
+        sn: str,
+        scope: "DetailScope",
+        task_budget: "DetailBudget",
+        *,
+        guard: Callable[[], bool],
+    ) -> None:
+        """Initialize after human approval; never reset existing durable consumption."""
+        scope_hash = scope.digest(vehicle_key(sn))
+
+        def initialize() -> None:
+            db = self._db(write=True)
+            with db:
+                row = db.execute(
+                    "SELECT value FROM meta WHERE key=?", (task_budget.key,)
+                ).fetchone()
+                if row is not None:
+                    task_budget.validate(decoded(row[0]), scope_hash)
+                    return
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?)",
+                    (
+                        task_budget.key,
+                        encoded({"scope_hash": scope_hash, "limit": task_budget.limit, "used": 0}),
+                    ),
+                )
+
+        await self._run(initialize, guard=guard)
+
     async def async_preservation_claim(
         self,
         sn: str,
@@ -1854,16 +1884,25 @@ class RideArchive:
         *,
         guard: Callable[[], bool],
         scope: "DetailScope | None" = None,
+        task_budget: "DetailBudget | None" = None,
     ) -> "PreservationTask | None":
         utc_string(now)
         if not valid_budget(budget):
             raise ValueError("Invalid preservation budget")
+        if task_budget is not None and scope is None:
+            raise ValueError("A task budget requires its frozen scope")
         return await self._run(
-            partial(self._preservation_claim, vehicle_key(sn), now, budget, scope), guard=guard
+            partial(self._preservation_claim, vehicle_key(sn), now, budget, scope, task_budget),
+            guard=guard,
         )
 
     def _preservation_claim(
-        self, vehicle: str, now: datetime, budget: int, scope: "DetailScope | None" = None
+        self,
+        vehicle: str,
+        now: datetime,
+        budget: int,
+        scope: "DetailScope | None" = None,
+        task_budget: "DetailBudget | None" = None,
     ) -> "PreservationTask | None":
         from .detail_followup import put as put_followup
         from .preservation import PreservationTask, fingerprint, mutable_detail, task_state
@@ -1877,6 +1916,18 @@ class RideArchive:
         )
         db = self._db(write=True)
         with db:
+            task_counter = None
+            if task_budget is not None:
+                if scope is None:
+                    raise ValueError("Missing task scope")
+                row = db.execute(
+                    "SELECT value FROM meta WHERE key=?", (task_budget.key,)
+                ).fetchone()
+                if row is None:
+                    raise ValueError("Missing approved task counter")
+                task_counter = task_budget.validate(decoded(row[0]), scope.digest(vehicle))
+                if task_counter["used"] >= task_budget.limit:
+                    return None
             if self._history_paused(vehicle):
                 return None
             limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
@@ -1978,7 +2029,14 @@ class RideArchive:
                     "DO UPDATE SET value=excluded.value",
                     (key, encoded(state)),
                 )
-                self._reserve_background(db, vehicle, epoch, budget, "detail")
+                if not self._reserve_background(db, vehicle, epoch, budget, "detail"):
+                    raise ValueError("Account reservation changed during detail claim")
+                if task_budget is not None and task_counter is not None:
+                    task_counter["used"] += 1
+                    db.execute(
+                        "UPDATE meta SET value=? WHERE key=?",
+                        (encoded(task_counter), task_budget.key),
+                    )
                 return PreservationTask(ride, signature, state["attempts"], state["observations"])
         return None
 
