@@ -1910,6 +1910,7 @@ class RideArchive:
             PreservationTask,
             fingerprint,
             mutable_detail,
+            scope_fingerprint,
             task_state,
         )
 
@@ -1966,7 +1967,7 @@ class RideArchive:
             ).fetchall()
             for identity, data, revision, value, content_marker in rows:
                 ride = restored_ride(decoded(data))
-                if scoped is not None and scoped[identity] != fingerprint(ride):
+                if scoped is not None and scoped[identity] != scope_fingerprint(ride):
                     continue  # A changed mapping must not consume budget or amend task state.
                 if ride.detail_id is None:
                     put_followup(db, vehicle, identity, None)
