@@ -99,9 +99,11 @@ The native API canary runs on the published Core 2026.11.0 without a mismatched 
 
 ### Versioned public help
 
-`assistant_knowledge.py` lazily reads the bundled JSON catalog in an executor on an authorized help query. Ten bilingual topics carry immutable first-party source commits/hashes, content hashes, evidence status and a numeric version range. No private history or external source is indexed. Lexical English/code tokens and Han bigrams rank at most three chunks in a 4 KiB body. Unsupported versions do not borrow newer knowledge. Runtime corruption fails only help.
+`assistant_knowledge.py` lazily reads the bundled JSON catalog in an executor on an authorized help query. Eleven bilingual topics carry immutable first-party source commits/hashes, content hashes, evidence status and a numeric version range. No private history or external source is indexed. Lexical English/code tokens and Han bigrams rank at most three chunks in a 4 KiB body. Unsupported versions do not borrow newer knowledge. Runtime corruption fails only help.
 
 Run `python -m unittest scripts.tests.test_assistant_knowledge -q` without HA. Before changing source citations, use `python -m scripts.check_assistant_knowledge --verify-sources` with the cited Git objects present; this verifies source blobs and anchors offline. Catalog hash validation detects changed content, not whether a claim is true: review every summary against its cited contract. Corpus versions and supersedes entries track intentional replacements.
+
+The same catalog owns eight bounded read procedures (SK01–SK08) with bilingual triggers, inputs, steps, stop/verification rules, permitted tool keys and call budgets. They have independent content hashes and fixed public sources. A topic references one procedure; retrieval includes it once within the same 4 KiB limit. The validator rejects execution tools, invalid budgets and inconsistent applicability. They are task guidance for an existing host, not a runtime planner or a new authorization source. Synchronization procedures SK09/SK10 belong to the future approved-task API and are not exposed here.
 
 ### Small model baseline
 

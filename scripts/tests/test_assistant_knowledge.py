@@ -19,8 +19,11 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 10)
-        for entry in catalog["entries"]:
+        self.assertEqual(len(catalog["entries"]), 11)
+        self.assertEqual(
+            {row["id"] for row in catalog["procedures"]}, {f"SK0{i}" for i in range(1, 9)}
+        )
+        for entry in [*catalog["entries"], *catalog["procedures"]]:
             self.assertEqual(set(entry["translations"]), {"en", "zh-Hans"})
             self.assertEqual(k.content_hash(entry), entry["content_sha256"])
             self.assertIn(entry["source"]["commit"], entry["source"]["url"])
@@ -91,6 +94,50 @@ class KnowledgeTests(unittest.TestCase):
         for match in result["matches"]:
             self.assertTrue(match["source"]["url"].startswith(k.SOURCE_PREFIX))
             self.assertNotIn("invalid.example", match["text"])
+
+    def test_procedures_are_advisory_bounded_and_do_not_expose_future_tasks(self):
+        for entry, language in (
+            (entry, language)
+            for entry in k.load_catalog()["entries"]
+            for language in ("en", "zh-Hans")
+        ):
+            query = entry["translations"][language]["title"]
+            result = k.search_help(query, language, "2.1.1")
+            self.assertTrue(result["matches"], entry["id"])
+            self.assertLessEqual(
+                len(json.dumps(result, ensure_ascii=False).encode()), k.MAX_HELP_BYTES
+            )
+            for procedure in result["procedures"]:
+                self.assertTrue(procedure["advisory_only"])
+                self.assertLessEqual(procedure["max_calls"], 4)
+                self.assertTrue(set(procedure["allowed_tools"]) <= k.READ_TOOLS)
+            for match in result["matches"]:
+                if match["procedure_id"] is not None:
+                    self.assertIn(
+                        match["procedure_id"], {row["id"] for row in result["procedures"]}
+                    )
+
+    def test_modified_procedure_cannot_add_tools_budget_or_unsupported_versions(self):
+        for field, value in (
+            ("allowed_tools", ["engine_start"]),
+            ("max_calls", True),
+            ("max_calls", 100),
+            ("applicable_versions", {"min_inclusive": "2.2.0", "max_exclusive": "2.3.0"}),
+        ):
+            catalog = copy.deepcopy(k.load_catalog())
+            procedure = catalog["procedures"][0]
+            procedure[field] = value
+            procedure["content_sha256"] = k.content_hash(procedure)
+            with self.subTest(field=field), self.assertRaises(k.KnowledgeUnavailable):
+                k.validate_catalog(catalog)
+
+    def test_no_result_claims_a_match_when_the_bound_cannot_fit_it(self):
+        with patch.object(k, "MAX_HELP_BYTES", 512):
+            result = k.search_help("统计未知", "zh-Hans", "2.1.1")
+        self.assertEqual(result["matches"], [])
+        self.assertEqual(result["procedures"], [])
+        self.assertEqual(result["match_status"], "no_match_within_limit")
+        self.assertTrue(result["more_available"])
 
     def test_superseded_applicable_topic_is_not_returned(self):
         catalog = copy.deepcopy(k.load_catalog())

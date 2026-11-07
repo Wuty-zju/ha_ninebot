@@ -12,6 +12,15 @@ MAX_CATALOG_BYTES = 128 * 1024
 MAX_HELP_BYTES = 4 * 1024
 SOURCE_PREFIX = "https://github.com/Wuty-zju/ha_ninebot/blob/"
 STOP_WORDS = {"a", "an", "the", "is", "are", "why", "how", "my", "of", "to", "for", "and"}
+READ_TOOLS = {
+    "get_vehicles",
+    "get_vehicle_status",
+    "get_statistics",
+    "get_recorded_trips",
+    "get_trip_detail",
+    "get_sync_health",
+    "search_help",
+}
 
 
 class KnowledgeUnavailable(ValueError):
@@ -36,20 +45,97 @@ def _text(value: object, maximum: int) -> bool:
     return isinstance(value, str) and 0 < len(value.encode()) <= maximum
 
 
+def _valid_source(source: Any) -> bool:
+    return (
+        set(source) == {"path", "commit", "sha256", "url"}
+        and bool(re.fullmatch(r"[0-9a-f]{40}", source["commit"]))
+        and bool(re.fullmatch(r"[0-9a-f]{64}", source["sha256"]))
+        and bool(re.fullmatch(r"docs/[a-z_]+\.md", source["path"]))
+        and source["url"].startswith(f"{SOURCE_PREFIX}{source['commit']}/{source['path']}#")
+        and bool(re.fullmatch(r"[a-z0-9-]+", source["url"].split("#")[-1]))
+    )
+
+
+def _bounds(versions: Any) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    if set(versions) != {"min_inclusive", "max_exclusive"}:
+        raise ValueError
+    low, high = (release_tuple(versions[key]) for key in ("min_inclusive", "max_exclusive"))
+    if low >= high:
+        raise ValueError
+    return low, high
+
+
 def validate_catalog(catalog: Any) -> dict[str, Any]:
     """Reject corrupted, unreviewed or ambiguous catalog metadata atomically."""
     try:
         if (
             not isinstance(catalog, dict)
-            or set(catalog) != {"schema_version", "corpus_version", "source_version", "entries"}
+            or set(catalog)
+            != {
+                "schema_version",
+                "corpus_version",
+                "source_version",
+                "entries",
+                "procedures",
+            }
             or type(catalog["schema_version"]) is not int
-            or catalog["schema_version"] != 1
+            or catalog["schema_version"] != 2
             or not isinstance(catalog["entries"], list)
             or not 1 <= len(catalog["entries"]) <= 32
         ):
             raise ValueError
         release_tuple(catalog["corpus_version"])
         release_tuple(catalog["source_version"])
+        if not isinstance(catalog["procedures"], list) or len(catalog["procedures"]) > 16:
+            raise ValueError
+        procedures = {}
+        for procedure in catalog["procedures"]:
+            if (
+                set(procedure)
+                != {
+                    "id",
+                    "source",
+                    "applicable_versions",
+                    "evidence_status",
+                    "reviewed_at",
+                    "allowed_tools",
+                    "max_calls",
+                    "translations",
+                    "content_sha256",
+                }
+                or not re.fullmatch(r"SK0[1-8]", procedure["id"])
+                or procedure["id"] in procedures
+                or procedure["evidence_status"] != "reviewed_procedure"
+                or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", procedure["reviewed_at"])
+                or not _valid_source(procedure["source"])
+                or content_hash(procedure) != procedure["content_sha256"]
+                or type(procedure["max_calls"]) is not int
+                or not 1 <= procedure["max_calls"] <= 4
+                or not isinstance(procedure["allowed_tools"], list)
+                or not procedure["allowed_tools"]
+                or not set(procedure["allowed_tools"]) <= READ_TOOLS
+                or len(set(procedure["allowed_tools"])) != len(procedure["allowed_tools"])
+                or set(procedure["translations"]) != {"en", "zh-Hans"}
+            ):
+                raise ValueError
+            _bounds(procedure["applicable_versions"])
+            for translation in procedure["translations"].values():
+                if (
+                    set(translation)
+                    != {"title", "trigger", "required_inputs", "steps", "stop", "verify"}
+                    or any(
+                        not _text(translation[key], 300)
+                        for key in ("title", "trigger", "stop", "verify")
+                    )
+                    or any(
+                        not isinstance(translation[key], list)
+                        or not 1 <= len(translation[key]) <= 4
+                        or any(not _text(text, 300) for text in translation[key])
+                        for key in ("required_inputs", "steps")
+                    )
+                ):
+                    raise ValueError
+            procedures[procedure["id"]] = procedure
         identifiers = set()
         for entry in catalog["entries"]:
             if not isinstance(entry, dict) or set(entry) != {
@@ -61,6 +147,7 @@ def validate_catalog(catalog: Any) -> dict[str, Any]:
                 "source",
                 "translations",
                 "content_sha256",
+                "procedure_id",
             }:
                 raise ValueError
             identifier = entry["id"]
@@ -77,22 +164,15 @@ def validate_catalog(catalog: Any) -> dict[str, Any]:
             ):
                 raise ValueError
             identifiers.add(identifier)
-            versions = entry["applicable_versions"]
-            if set(versions) != {"min_inclusive", "max_exclusive"} or not (
-                release_tuple(versions["min_inclusive"]) < release_tuple(versions["max_exclusive"])
-            ):
-                raise ValueError
-            source = entry["source"]
-            if (
-                set(source) != {"path", "commit", "sha256", "url"}
-                or not re.fullmatch(r"[0-9a-f]{40}", source["commit"])
-                or not re.fullmatch(r"[0-9a-f]{64}", source["sha256"])
-                or not re.fullmatch(r"docs/[a-z_]+\.md", source["path"])
-                or not source["url"].startswith(
-                    f"{SOURCE_PREFIX}{source['commit']}/{source['path']}#"
-                )
-                or not re.fullmatch(r"[a-z0-9-]+", source["url"].split("#")[-1])
-            ):
+            low, high = _bounds(entry["applicable_versions"])
+            procedure_id = entry["procedure_id"]
+            if procedure_id is not None:
+                if procedure_id not in procedures:
+                    raise ValueError
+                start, end = _bounds(procedures[procedure_id]["applicable_versions"])
+                if not start <= low < high <= end:
+                    raise ValueError
+            if not _valid_source(entry["source"]):
                 raise ValueError
             if set(entry["translations"]) != {"en", "zh-Hans"}:
                 raise ValueError
@@ -167,9 +247,11 @@ def search_help(query: str, language: str, installed_version: str) -> dict[str, 
             json.dumps(catalog, ensure_ascii=False, sort_keys=True).encode()
         ).hexdigest(),
         "retrieval_contract": "lexical-v1",
+        "procedure_contract": "read-workflows-v1",
         "installed_version": installed_version,
         "language": language,
         "matches": [],
+        "procedures": [],
         "match_status": "matched"
         if ranked
         else ("no_match" if applicable else "no_applicable_knowledge"),
@@ -186,10 +268,29 @@ def search_help(query: str, language: str, installed_version: str) -> dict[str, 
             "applicable_versions": entry["applicable_versions"],
             "evidence_status": entry["evidence_status"],
             "reviewed_at": entry["reviewed_at"],
+            "procedure_id": entry["procedure_id"],
         }
         result["matches"].append(match)
+        new_procedure = entry["procedure_id"] is not None and all(
+            row["id"] != entry["procedure_id"] for row in result["procedures"]
+        )
+        if new_procedure:
+            procedure = next(
+                row for row in catalog["procedures"] if row["id"] == entry["procedure_id"]
+            )
+            result["procedures"].append(
+                {
+                    **{key: value for key, value in procedure.items() if key != "translations"},
+                    **procedure["translations"][language],
+                    "advisory_only": True,
+                }
+            )
         if len(json.dumps(result, ensure_ascii=False).encode()) > MAX_HELP_BYTES:
             result["matches"].pop()
+            if new_procedure:
+                result["procedures"].pop()
             break
     result["more_available"] = len(ranked) > len(result["matches"])
+    if ranked and not result["matches"]:
+        result["match_status"] = "no_match_within_limit"
     return result
