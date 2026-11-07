@@ -72,7 +72,7 @@ from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
 if TYPE_CHECKING:
     from .month_source import MonthSourceCheck
     from .month_tasks import MonthTask
-    from .preservation import PreservationTask
+    from .preservation import DetailScope, PreservationTask
 
 SCHEMA_VERSION = 7
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
@@ -1847,22 +1847,34 @@ class RideArchive:
         await self._run(lambda: cancel(self._db(write=True), vehicle_key(sn), months), guard=guard)
 
     async def async_preservation_claim(
-        self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
+        self,
+        sn: str,
+        now: datetime,
+        budget: int,
+        *,
+        guard: Callable[[], bool],
+        scope: "DetailScope | None" = None,
     ) -> "PreservationTask | None":
         utc_string(now)
         if not valid_budget(budget):
             raise ValueError("Invalid preservation budget")
         return await self._run(
-            partial(self._preservation_claim, vehicle_key(sn), now, budget), guard=guard
+            partial(self._preservation_claim, vehicle_key(sn), now, budget, scope), guard=guard
         )
 
     def _preservation_claim(
-        self, vehicle: str, now: datetime, budget: int
+        self, vehicle: str, now: datetime, budget: int, scope: "DetailScope | None" = None
     ) -> "PreservationTask | None":
         from .detail_followup import put as put_followup
         from .preservation import PreservationTask, fingerprint, mutable_detail, task_state
 
         epoch = now.timestamp()
+        scoped = dict(scope.rides) if scope is not None else None
+        scope_sql = (
+            "AND r.id IN (" + ",".join(f":approved_{i}" for i in range(len(scoped))) + ") "
+            if scoped is not None
+            else ""
+        )
         db = self._db(write=True)
         with db:
             if self._history_paused(vehicle):
@@ -1879,9 +1891,10 @@ class RideArchive:
                 "json_extract(m.value,'$.next_attempt')<=:epoch OR "
                 "(h.value IS NULL AND "
                 "(r.ended>=:recent OR (r.ended IS NULL AND r.started>=:recent)))) "
+                + scope_sql
                 # Oldest confirmed end first within the existing local risk band;
                 # do not infer a deadline for missing ends or change other ordering.
-                "ORDER BY CASE WHEN r.ended>=:risk_start AND r.ended<=:risk_end "
+                + "ORDER BY CASE WHEN r.ended>=:risk_start AND r.ended<=:risk_end "
                 "THEN 0 ELSE 1 END, "
                 "CASE WHEN r.ended>=:risk_start AND r.ended<=:risk_end THEN r.ended END, "
                 "r.started DESC,r.id LIMIT 128",
@@ -1891,10 +1904,13 @@ class RideArchive:
                     "recent": utc_string(now - timedelta(days=1)),
                     "risk_start": utc_string(now - timedelta(days=180)),
                     "risk_end": utc_string(now - timedelta(days=150)),
+                    **{f"approved_{i}": key for i, key in enumerate(scoped or {})},
                 },
             ).fetchall()
             for identity, data, revision, value, content_marker in rows:
                 ride = restored_ride(decoded(data))
+                if scoped is not None and scoped[identity] != fingerprint(ride):
+                    continue  # A changed mapping must not consume budget or amend task state.
                 if ride.detail_id is None:
                     put_followup(db, vehicle, identity, None)
                     ignored = {
