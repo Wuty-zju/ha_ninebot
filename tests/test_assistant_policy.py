@@ -14,6 +14,17 @@ pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 @pytest.fixture
 async def assistant_device(hass, entry, app_client):
+    return await setup_assistant_device(hass, entry)
+
+
+@pytest.fixture
+async def proposal_device(hass, entry, app_client, freezer):
+    # Establish the clock before setup; later receipts must supersede setup's month.
+    freezer.move_to("2026-11-06T23:59:59+00:00")
+    return await setup_assistant_device(hass, entry)
+
+
+async def setup_assistant_device(hass, entry):
     # Registration is isolated from this authorization test on every Core.
     with patch("custom_components.ninebot.async_update_assistant_api", new=AsyncMock()):
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -267,3 +278,159 @@ async def test_approval_rechecks_consent_after_awaited_permissions(
         pytest.raises(AssistantError, match=f"^{code}$"),
     ):
         await async_approve_ticket(hass, ticket, Context(user_id="synthetic"), nonce, plan.digest)
+
+
+def proposal_month(count=2):
+    from datetime import UTC, datetime
+
+    from custom_components.ninebot.adapters import travel
+
+    start = int(datetime(2026, 11, 6, 2, tzinfo=UTC).timestamp())
+    return travel(
+        {
+            "times": count,
+            "list": [
+                {
+                    "travel_id": f"private-ride-{i}",
+                    "start_time": start + i * 1000,
+                    "end_time": start + i * 1000 + 600,
+                    "duration": 600,
+                    "mileages": 1.2,
+                }
+                for i in range(count)
+            ],
+        },
+        "202611",
+    )
+
+
+async def test_local_proposal_binds_original_caller_and_projects_no_private_plan(
+    hass, entry, proposal_device, app_client, freezer
+):
+    import hashlib
+    import json
+    from datetime import UTC, date, datetime
+
+    from custom_components.ninebot.assistant_plans import async_detail_proposal
+
+    now = datetime(2026, 11, 7, tzinfo=UTC)
+    freezer.move_to(now)
+    archive = entry.runtime_data.coordinator.statistics.archive
+    await archive.async_record_month("SyntheticSN", proposal_month(), now)
+    await hass.async_block_till_done()
+    context = Context(user_id="synthetic")
+    app_client.reset_mock()
+    before = hashlib.sha256(archive.path.read_bytes()).digest()
+    with patch.object(hass.auth, "async_get_user", return_value=user()) as lookup:
+        result = await async_detail_proposal(
+            hass, context, proposal_device, "2026-11-06", "2026-11-06"
+        )
+        assert all(call.args == ("synthetic",) for call in lookup.call_args_list)
+    plan = result.plan
+    assert plan is not None
+    assert plan.user_id == context.user_id and plan.account_key == archive.owner
+    assert plan.sn == "SyntheticSN" and plan.vehicle_ref == proposal_device
+    assert plan.start_date == plan.end_date == date(2026, 11, 6)
+    assert plan.created_at == now and plan.attempts == 2
+    output = result.model_data()
+    assert output["coverage"]["known_local_rides"] == 2
+    assert output["coverage"]["missing_months"] == []
+    assert output["requests"]["maximum_after_approval"] == 2
+    assert output["requests"]["account_minimum_interval_seconds"] == 60
+    assert output["task_created"] is False and output["approval_required"] is True
+    assert output["plan"]["digest"] == plan.digest
+    encoded = json.dumps(output)
+    for private in ("SyntheticSN", archive.owner, "private-ride-0", "nonce", "password", "token"):
+        assert private not in encoded
+    assert hashlib.sha256(archive.path.read_bytes()).digest() == before
+    for method in (
+        app_client.async_list_vehicles,
+        app_client.async_get_status,
+        app_client.async_get_battery,
+        app_client.async_get_travel,
+    ):
+        method.assert_not_awaited()
+
+
+@pytest.mark.parametrize("count", [None, 0])
+async def test_proposal_no_local_scope_does_not_create_an_executable_plan(
+    hass, entry, proposal_device, freezer, count
+):
+    from datetime import UTC, datetime
+
+    from custom_components.ninebot.assistant_plans import async_detail_proposal
+
+    now = datetime(2026, 11, 7, tzinfo=UTC)
+    freezer.move_to(now)
+    if count is not None:
+        await entry.runtime_data.coordinator.statistics.archive.async_record_month(
+            "SyntheticSN", proposal_month(count), now
+        )
+    with patch.object(hass.auth, "async_get_user", return_value=user()):
+        result = await async_detail_proposal(
+            hass, Context(user_id="synthetic"), proposal_device, "2026-11-06", "2026-11-06"
+        )
+    assert result.plan is None
+    output = result.model_data()
+    assert output["plan"] is None and output["requests"]["maximum_after_approval"] == 0
+    assert output["coverage"]["upstream_history_complete"] == "unverified"
+    # Setup may have observed this month without a complete list.
+    if count == 0:
+        assert output["coverage"]["known_local_rides"] == 0
+        assert output["coverage"]["months"][0]["observed_list_complete"] is True
+
+
+@pytest.mark.parametrize("change", ["consent", "generation", "archive"])
+async def test_proposal_rejects_changes_during_the_archive_read(
+    hass, entry, proposal_device, freezer, change
+):
+    from datetime import UTC, datetime
+
+    from custom_components.ninebot.assistant_plans import async_detail_proposal
+
+    now = datetime(2026, 11, 7, tzinfo=UTC)
+    freezer.move_to(now)
+    co = entry.runtime_data.coordinator
+    archive = co.statistics.archive
+    original = archive.async_detail_preview
+
+    async def changed(*args, **kwargs):
+        result = await original(*args, **kwargs)
+        if change == "consent":
+            hass.config_entries.async_update_entry(
+                entry, options={**entry.options, "enable_assistant": False}
+            )
+        elif change == "generation":
+            co._generation += 1
+        else:
+            co.statistics.archive_ready = False
+        return result
+
+    with (
+        patch.object(hass.auth, "async_get_user", return_value=user()),
+        patch.object(archive, "async_detail_preview", side_effect=changed),
+        pytest.raises(AssistantError, match="^not_authorized$"),
+    ):
+        await async_detail_proposal(
+            hass, Context(user_id="synthetic"), proposal_device, "2026-11-06", "2026-11-06"
+        )
+
+
+@pytest.mark.parametrize(
+    "first,last",
+    [("2026/11/06", "2026-11-06"), ("2026-11-06", "2026-11-05"), ("2026-10-01", "2026-11-01")],
+)
+async def test_proposal_invalid_dates_never_read_archive(hass, entry, proposal_device, first, last):
+    from custom_components.ninebot.assistant_plans import async_detail_proposal
+
+    with (
+        patch.object(hass.auth, "async_get_user", return_value=user()),
+        patch.object(
+            entry.runtime_data.coordinator.statistics.archive, "async_detail_preview"
+        ) as query,
+        pytest.raises(AssistantError, match="^invalid_arguments$"),
+    ):
+        await async_detail_proposal(
+            hass, Context(user_id="synthetic"), proposal_device, first, last
+        )
+    query.assert_not_awaited()

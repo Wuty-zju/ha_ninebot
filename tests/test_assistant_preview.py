@@ -166,3 +166,22 @@ async def test_scan_budget_fails_instead_of_approving_a_silent_subset(archive):
         with pytest.raises(ArchiveError) as error:
             await preview(archive)
     assert error.value.kind is ArchiveFailure.BUDGET
+
+
+async def test_stored_request_month_must_still_have_a_current_mapping(archive):
+    await archive.async_record_month(SN, sample(1, month="202609"), NOW)
+    await archive.async_record_month(SN, sample(1), NOW + timedelta(seconds=1))
+    before = await preview(archive)
+    assert before.scope is not None
+    await archive.async_record_month(SN, sample(0), NOW + timedelta(seconds=2))
+    # September still keeps the ride visible; its stored October mapping is now omitted.
+    after = await preview(archive)
+    assert after.known_count == after.unmapped_count == 1 and after.scope is None
+    changes = await archive._run(lambda: archive._db().total_changes)
+    assert (
+        await archive.async_preservation_claim(
+            SN, NOW + timedelta(days=1), 60, scope=before.scope, guard=lambda: True
+        )
+        is None
+    )
+    assert await archive._run(lambda: archive._db().total_changes) == changes

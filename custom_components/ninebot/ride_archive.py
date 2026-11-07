@@ -26,7 +26,14 @@ from typing import TYPE_CHECKING, TypeVar
 from zoneinfo import ZoneInfo
 
 from .archive_audit import AuditPlan
-from .archive_browse import RecordedCursor, RecordedCursorMismatch, RecordedPage, recorded_page
+from .archive_browse import (
+    CURRENT_DETAIL_MAPPING,
+    RecordedCursor,
+    RecordedCursorMismatch,
+    RecordedPage,
+    current_detail_mappings,
+    recorded_page,
+)
 from .archive_codec import (
     decoded,
     encoded,
@@ -1918,7 +1925,10 @@ class RideArchive:
         epoch = now.timestamp()
         scoped = dict(scope.rides) if scope is not None else None
         scope_sql = (
-            "AND r.id IN (" + ",".join(f":approved_{i}" for i in range(len(scoped))) + ") "
+            "AND r.id IN ("
+            + ",".join(f":approved_{i}" for i in range(len(scoped)))
+            + ") "
+            + f"AND {CURRENT_DETAIL_MAPPING} "
             if scoped is not None
             else ""
         )
@@ -2430,20 +2440,23 @@ class RideArchive:
 
         def query() -> "DetailPreview":
             try:
-                return detail_preview(
-                    recorded_page(
-                        self._db(),
-                        self.owner,
-                        vehicle,
-                        start_key,
-                        end_key,
-                        as_of,
-                        MAX_TIMELINE_RIDES,
-                        first_month,
-                        last_month,
-                        None,
-                    )
+                db = self._db()
+                page = recorded_page(
+                    db,
+                    self.owner,
+                    vehicle,
+                    start_key,
+                    end_key,
+                    as_of,
+                    MAX_TIMELINE_RIDES,
+                    first_month,
+                    last_month,
+                    None,
                 )
+                ids = tuple(
+                    row.ride.ride_id for row in page.records if row.ride.ride_id is not None
+                )
+                return detail_preview(page, current_detail_mappings(db, vehicle, ids))
             except TimelineLimitError:
                 raise ArchiveError(ArchiveFailure.BUDGET) from None
 
