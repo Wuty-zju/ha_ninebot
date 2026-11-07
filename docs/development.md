@@ -99,6 +99,8 @@ The native API canary runs on the published Core 2026.11.0 without a mismatched 
 
 ### Versioned public help
 
+The developing `assistant_approval` contract freezes the requester, account, vehicle, date window, ride fingerprints and attempt limit into a plan digest. Confirmation binds a UI-only nonce to that digest and task ID, expires after ten minutes and produces an immutable approved transition. The task-store owner must serialize and persist that transition before execution; the module registers no execution endpoint. Approval validates the original authenticated Context, current ownership/consent and the server time after permission checks. Execution eligibility expires after24 hours and still requires fresh authorization.
+
 `assistant_knowledge.py` lazily reads the bundled JSON catalog in an executor on an authorized help query. Eleven bilingual topics carry immutable first-party source commits/hashes, content hashes, evidence status and a numeric version range. No private history or external source is indexed. Lexical English/code tokens and Han bigrams rank at most three chunks in a 4 KiB body. Unsupported versions do not borrow newer knowledge. Runtime corruption fails only help.
 
 Run `python -m unittest scripts.tests.test_assistant_knowledge -q` without HA. Before changing source citations, use `python -m scripts.check_assistant_knowledge --verify-sources` with the cited Git objects present; this verifies source blobs and anchors offline. Catalog hash validation detects changed content, not whether a claim is true: review every summary against its cited contract. Corpus versions and supersedes entries track intentional replacements.

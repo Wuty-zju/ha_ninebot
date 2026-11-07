@@ -336,7 +336,8 @@
         "tests/test_assistant_lifecycle.py",
         "tests/test_assistant_policy.py",
         "tests/test_assistant_queries.py",
-        "tests/test_assistant_limits.py"
+        "tests/test_assistant_limits.py",
+        "tests/test_assistant_approval.py"
       ]
     }
   },
