@@ -53,7 +53,9 @@ Results include a business date range, observation times, units, metric quality,
 
 The native MCP response carries the JSON result as text content. Failures use a fixed code such as `not_authorized`, `invalid_arguments`, `local_data_missing`, `retry_later` or `timeout`. A failed query does not mean zero trips. Where provided, follow `retry_after_seconds`; do not loop repeatedly.
 
-Errors include a fixed explanation. `not_authorized` reports an access failure; it cannot establish whether a trip exists. A vehicle's query capabilities describe which local reads are available, independently of its current measurements or the number of saved rides.
+Errors include a fixed explanation. `not_authorized` reports an access failure; it cannot establish whether a trip exists. The vehicle list's `capabilities` describe local readiness: `cached_status` means a successful status receipt exists, and `local_history` means the account archive is ready. A false flag does not establish unsupported hardware. Read the state tool for actual measurements and their freshness.
+
+Synchronization health includes the configured request rate and minimum interval. This account-wide budget paces history requests; it does not report an exact number remaining in a wall-clock hour. Follow `next_request_at` and `retry_at` for the observed scheduling state. A configured rate of zero removes quota pacing; ordinary serialization and upstream backoff still apply.
 
 ## Versioned help
 

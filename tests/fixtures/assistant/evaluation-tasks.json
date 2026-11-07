@@ -318,8 +318,8 @@
       },
       "expected": {
         "assertions": [
-          "partial: known=2 reported=3",
-          "do not claim complete count"
+          "known subset=2; source-month reported count=3 is not a daily total",
+          "do not claim a complete yesterday count from partial records"
         ],
         "allowed_tools": [
           "ninebot__get_statistics"
@@ -752,8 +752,8 @@
       "context_overrides": {},
       "expected": {
         "assertions": [
-          "remaining=0, next_request_at preserved",
-          "explain local request budget, not cloud approval"
+          "state=waiting_budget; next_request_at preserved",
+          "explain paced local account budget, not cloud approval; do not invent hourly remaining count"
         ],
         "allowed_tools": [
           "ninebot__get_sync_health"
