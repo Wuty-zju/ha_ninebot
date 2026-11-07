@@ -31,7 +31,7 @@ class DetailPreview:
         return self.missing_count > self.selected_count
 
 
-def detail_preview(page: RecordedPage) -> DetailPreview:
+def detail_preview(page: RecordedPage, mapped: frozenset[str]) -> DetailPreview:
     """Freeze at most twenty missing mappings, after excluding indexed details."""
     saved = missing = unmapped = 0
     candidates: list[tuple[str, str]] = []
@@ -41,6 +41,7 @@ def detail_preview(page: RecordedPage) -> DetailPreview:
             saved += 1
         elif (
             not ride.ride_id
+            or ride.ride_id not in mapped
             or not ride.detail_id
             or {"conflicting_ride_ids", "conflicting_detail_ids"} & set(ride.issues)
         ):
