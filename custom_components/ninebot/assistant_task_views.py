@@ -36,6 +36,9 @@ def ticket_view(ticket: ApprovalTicket) -> dict[str, Any]:
         "attempts_used": ticket.progress.attempts if ticket.progress else None,
         "progress_updated_at": ticket.progress.updated_at.isoformat() if ticket.progress else None,
         "reason": ticket.progress.reason if ticket.progress else None,
+        "retry_at": ticket.progress.retry_at.isoformat()
+        if ticket.progress and ticket.progress.retry_at
+        else None,
         "approval_expires_at": (plan.created_at + APPROVAL_TTL).isoformat(),
         "execution_expires_at": (ticket.approved_at + EXECUTION_TTL).isoformat()
         if ticket.approved_at

@@ -434,3 +434,62 @@ async def test_many_vehicle_bounded_dispatch_finishes_without_starvation(vehicle
     finally:
         await broker.async_close()
     assert not broker._jobs and not broker._flights
+
+
+async def test_guarded_read_rechecks_at_wire_gate_before_operation():
+    gate = asyncio.Semaphore(0)
+    value = QueryBroker(gate, lambda: NOW)
+    allowed = True
+    calls = []
+
+    async def admission():
+        if not allowed:
+            raise NinebotError(ErrorKind.CLOSED)
+
+    async def query():
+        calls.append(True)
+        return 1
+
+    try:
+        task = asyncio.create_task(
+            value.async_read(key(), query, lambda: True, before_request=admission)
+        )
+        await until(lambda: value.diagnostics()["waiters"] == 1)
+        allowed = False
+        gate.release()
+        with pytest.raises(NinebotError) as error:
+            await task
+        assert error.value.kind is ErrorKind.CLOSED and not calls
+    finally:
+        await value.async_close()
+
+
+async def test_denied_consumer_does_not_revoke_an_ordinary_shared_read():
+    gate = asyncio.Semaphore(0)
+    value = QueryBroker(gate, lambda: NOW)
+    allowed = True
+    calls = []
+
+    async def admission():
+        if not allowed:
+            raise NinebotError(ErrorKind.CLOSED)
+
+    async def query():
+        calls.append(True)
+        return 7
+
+    try:
+        guarded = asyncio.create_task(
+            value.async_read(key(), query, lambda: True, before_request=admission)
+        )
+        await until(lambda: value.diagnostics()["waiters"] == 1)
+        ordinary = asyncio.create_task(value.async_read(key(), query, lambda: True))
+        await until(lambda: value.diagnostics()["waiters"] == 2)
+        allowed = False
+        gate.release()
+        assert (await ordinary).value == 7
+        with pytest.raises(NinebotError):
+            await guarded
+        assert calls == [True]
+    finally:
+        await value.async_close()

@@ -5,7 +5,7 @@ import hashlib
 import json
 import math
 import random
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -26,6 +26,7 @@ from .ride_archive import ArchiveError
 from .ride_models import Ride
 
 if TYPE_CHECKING:
+    from .assistant_execution import AssistantExecution
     from .coordinator import NinebotCoordinator
 
 CONF_PRESERVE = "preserve_history"
@@ -128,12 +129,24 @@ class DetailBudget:
     def validate(self, value: Any, scope_hash: str) -> dict[str, Any]:
         if (
             not isinstance(value, dict)
-            or set(value) != {"scope_hash", "limit", "used"}
+            or set(value)
+            not in (
+                {"scope_hash", "limit", "used"},
+                {"scope_hash", "limit", "used", "expires_at"},
+            )
             or value["scope_hash"] != scope_hash
             or type(value["limit"]) is not int
             or value["limit"] != self.limit
             or type(value["used"]) is not int
             or not 0 <= value["used"] <= self.limit
+            or (
+                "expires_at" in value
+                and (
+                    type(value["expires_at"]) not in (int, float)
+                    or not math.isfinite(value["expires_at"])
+                    or not 0 <= value["expires_at"] <= 4102444800
+                )
+            )
         ):
             raise DetailBudgetUnavailable("Detail task counter does not match its frozen plan")
         return value
@@ -145,6 +158,18 @@ class PreservationTask:
     fingerprint: str
     attempts: int
     observations: int
+
+
+@dataclass(frozen=True)
+class DetailScopeState:
+    """Bounded local index evidence; saved identities still need payload verification."""
+
+    saved: frozenset[str]
+    changed: frozenset[str]
+    candidates: tuple[Ride, ...]
+    paused: bool
+    account_at: float | None
+    retry_at: float | None = None
 
 
 class HistoryPreservation:
@@ -169,24 +194,61 @@ class HistoryPreservation:
         self.progress: dict[str, HistoryProgress] = {}
         self._progress_lock = asyncio.Lock()
         self._active_query: tuple[str, str] | None = None
+        self._assistant: AssistantExecution | None = None
+        self._kick_pending = False
+
+    def _auto_enabled(self) -> bool:
+        entry = self.co.config_entry
+        return bool(entry is not None and entry.options.get(CONF_PRESERVE, False) is True)
 
     def start(self) -> None:
-        entry = self.co.config_entry
-        if entry is None or entry.options.get(CONF_PRESERVE, False) is not True:
+        enabled = self._auto_enabled() or bool(self._assistant and self._assistant.has_work)
+        if not enabled:
+            if self._remove is not None:
+                self._remove()
+                self._remove = None
+            return
+        if self._remove is not None:
             return
         self.status = "idle"
+        entry = self.co.config_entry
+        assert entry is not None
         self._remove = async_track_time_interval(
             self.co.hass,
-            self.async_tick,
+            self._async_dispatch_tick,
             timedelta(seconds=max(1, request_interval(configured_budget(entry.options)))),
         )
 
-    async def async_tick(self, now: datetime) -> None:
+    async def _async_dispatch_tick(self, now: datetime) -> None:
+        await self.async_tick(now, assistant_only=not self._auto_enabled())
+
+    def attach_assistant(self, driver: "AssistantExecution") -> None:
+        self._assistant = driver
+        self.start()
+        if self._task is None and not self._kick_pending and driver.has_work:
+            self._kick_pending = True
+
+            async def kick() -> None:
+                self._kick_pending = False
+                await self._async_dispatch_tick(dt_util.utcnow())
+
+            entry = self.co.config_entry
+            assert entry is not None
+            entry.async_create_background_task(self.co.hass, kick(), "Ninebot approved detail tick")
+
+    def detach_assistant(self, *, reconcile: bool = True) -> None:
+        if self._assistant is not None:
+            self._assistant.close()
+            self._assistant = None
+        if reconcile:
+            self.start()
+
+    async def async_tick(self, now: datetime, *, assistant_only: bool = False) -> None:
         if self._task is not None or self.co._stopping:
             return
         self._task = asyncio.current_task()
         try:
-            await self._step(now)
+            await self._step(now, assistant_only=assistant_only)
         except ArchiveError as err:
             self.co.statistics.record_error(err)
             self.status = "waiting"
@@ -194,15 +256,24 @@ class HistoryPreservation:
             self.status = "waiting"  # Ordinary failures do not generate repeated logs.
         finally:
             try:
-                await self.async_refresh_progress(tuple(self.co.data), max(now, dt_util.utcnow()))
+                if not assistant_only:
+                    await self.async_refresh_progress(
+                        tuple(self.co.data), max(now, dt_util.utcnow())
+                    )
                 task = asyncio.current_task()
-                if not self.co._stopping and (task is None or not task.cancelling()):
+                if (
+                    not assistant_only
+                    and not self.co._stopping
+                    and (task is None or not task.cancelling())
+                ):
                     await self.reconstruction.async_step(now)
                     await self.audit.async_step(now)
             except ArchiveError as err:
                 self.co.statistics.record_error(err)
             finally:
                 self._task = None
+                if self._assistant is not None:
+                    self.start()
 
     async def _async_query_phase(self, sn: str, phase: str | None) -> None:
         if phase is not None:
@@ -253,7 +324,11 @@ class HistoryPreservation:
                 self.progress[sn] = value
                 co.statistics._notify_change(sn, owns)
 
-    async def _step(self, now: datetime) -> None:
+    async def _step(self, now: datetime, *, assistant_only: bool = False) -> None:
+        if self._assistant is not None and await self._assistant.async_step(now):
+            return
+        if assistant_only:
+            return
         co, archive = self.co, self.co.statistics.archive
         if not co.background_ready():
             self.status = "waiting"
@@ -299,85 +374,99 @@ class HistoryPreservation:
             task = await archive.async_preservation_claim(sn, now, budget, guard=owns)
             if task is None:
                 continue
-            self.status = "querying"
-            try:
+            await self.async_execute_detail(sn, task, owns, now)
+            return  # At most one logical endpoint operation per tick/account budget.
+        if not await self._resume_months(vehicles, budget):
+            self.status = "idle"
+
+    async def async_execute_detail(
+        self,
+        sn: str,
+        task: PreservationTask,
+        owns: Callable[[], bool],
+        now: datetime,
+        *,
+        before_request: Callable[[], Awaitable[None]] | None = None,
+    ) -> None:
+        """One shared persistence/query implementation for ordinary and approved work."""
+        co, archive = self.co, self.co.statistics.archive
+        self.status = "querying"
+        try:
+            if before_request is None or self._auto_enabled():
                 await self._async_query_phase(sn, "preserving")
-                # Missing detail can reuse an unpersisted response after a storage interruption.
-                cached = co.raw.get(
-                    Endpoint.TRIP_DETAIL,
+            # Missing detail can reuse an unpersisted response after a storage interruption.
+            cached = co.raw.get(
+                Endpoint.TRIP_DETAIL,
+                sn,
+                task.ride.detail_id or "",
+                now=now,
+                query_month=task.ride.query_month,
+            )
+            existing = await archive.async_private_detail(sn, task.ride.ride_id or "", guard=owns)
+            record = (
+                cached
+                if cached is not None and existing is None
+                else await co.async_query_detail(
                     sn,
                     task.ride.detail_id or "",
-                    now=now,
-                    query_month=task.ride.query_month,
+                    task.ride.query_month,
+                    refresh=True,
+                    priority=Priority.BACKGROUND,
+                    **({"before_request": before_request} if before_request is not None else {}),
                 )
-                existing = await archive.async_private_detail(
-                    sn, task.ride.ride_id or "", guard=owns
-                )
-                record = (
-                    cached
-                    if cached is not None and existing is None
-                    else await co.async_query_detail(
-                        sn,
-                        task.ride.detail_id or "",
-                        task.ride.query_month,
-                        refresh=True,
-                        priority=Priority.BACKGROUND,
-                    )
-                )
-                from .services import detail_data
+            )
+            from .services import detail_data
 
-                ride = await co.hass.async_add_executor_job(detail_data, record, task.ride, 500)
-                if not owns():
-                    return
-                await co.statistics.async_record_detail(
-                    sn, ride, record.received_at, owns, raw=record
-                )
-                if not co.statistics.writable:
-                    raise HomeAssistantError("Archive write paused")
-                stored = await archive.async_private_detail(sn, task.ride.ride_id or "", guard=owns)
-                if stored is None or stored.latest is None:
-                    raise HomeAssistantError("Detail not retained")
-                again = (
-                    mutable_detail(ride, now)
-                    and stored.latest.payload().get("is_show_simple_point") is not True
-                )
+            ride = await co.hass.async_add_executor_job(detail_data, record, task.ride, 500)
+            if not owns():
+                return
+            if before_request is not None:
+                await before_request()
+            await co.statistics.async_record_detail(sn, ride, record.received_at, owns, raw=record)
+            if not co.statistics.writable:
+                raise HomeAssistantError("Archive write paused")
+            stored = await archive.async_private_detail(sn, task.ride.ride_id or "", guard=owns)
+            if stored is None or stored.latest is None:
+                raise HomeAssistantError("Detail not retained")
+            again = (
+                mutable_detail(ride, now)
+                and stored.latest.payload().get("is_show_simple_point") is not True
+            )
+            await archive.async_preservation_finish(
+                sn,
+                task,
+                dt_util.utcnow(),
+                success=True,
+                revisit=again,
+                guard=owns,
+            )
+            self.status = "idle"
+        except (NinebotError, HomeAssistantError, ArchiveError) as err:
+            if owns():
+                retry = err.retry_after if isinstance(err, NinebotError) else None
+                reason = err.kind.value if isinstance(err, NinebotError) else "unavailable"
+                if reason not in {
+                    "connection",
+                    "service",
+                    "protocol",
+                    "busy",
+                    "auth",
+                    "closed",
+                }:
+                    reason = "unavailable"
                 await archive.async_preservation_finish(
                     sn,
                     task,
                     dt_util.utcnow(),
-                    success=True,
-                    revisit=again,
+                    success=False,
+                    retry_after=retry,
+                    reason=reason,
                     guard=owns,
                 )
-                self.status = "idle"
-            except (NinebotError, HomeAssistantError, ArchiveError) as err:
-                if owns():
-                    retry = err.retry_after if isinstance(err, NinebotError) else None
-                    reason = err.kind.value if isinstance(err, NinebotError) else "unavailable"
-                    if reason not in {
-                        "connection",
-                        "service",
-                        "protocol",
-                        "busy",
-                        "auth",
-                        "closed",
-                    }:
-                        reason = "unavailable"
-                    await archive.async_preservation_finish(
-                        sn,
-                        task,
-                        dt_util.utcnow(),
-                        success=False,
-                        retry_after=retry,
-                        reason=reason,
-                        guard=owns,
-                    )
-                self.status = "waiting"
-            finally:
+            self.status = "waiting"
+        finally:
+            if before_request is None or self._auto_enabled():
                 await self._async_query_phase(sn, None)
-            return  # At most one logical endpoint operation per tick/account budget.
-        if not await self._resume_months(vehicles, budget):
-            self.status = "idle"
 
     async def _resume_months(self, vehicles: tuple[str, ...], budget: int) -> bool:
         """Alternate bootstrap discovery, sparse repairs and explicit range jobs."""
@@ -437,6 +526,7 @@ class HistoryPreservation:
         return False
 
     async def async_close(self) -> None:
+        self.detach_assistant(reconcile=False)
         if self._remove is not None:
             self._remove()
             self._remove = None

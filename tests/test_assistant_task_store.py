@@ -16,6 +16,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from custom_components.ninebot.assistant_approval import DetailPlan
+from custom_components.ninebot.assistant_execution import AssistantExecution
 from custom_components.ninebot.assistant_policy import AssistantError
 from custom_components.ninebot.assistant_task_store import (
     ApprovalStore,
@@ -27,10 +28,11 @@ from custom_components.ninebot.preservation import DetailScope
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 REAL_WRITE, REAL_LOAD, REAL_REMOVE = Store._async_write_data, Store._async_load, Store.async_remove
+REAL_EXECUTION_STEP = AssistantExecution.async_step
 
 
 @pytest.fixture
-async def task_store(hass, entry, app_client, tmp_path):
+async def task_store(hass, entry, app_client, tmp_path, request):
     hass.config.config_dir = str(tmp_path)
     principal = SimpleNamespace(
         is_active=True,
@@ -41,6 +43,7 @@ async def task_store(hass, entry, app_client, tmp_path):
         patch.object(Store, "_async_write_data", REAL_WRITE),
         patch.object(Store, "_async_load", REAL_LOAD),
         patch.object(Store, "async_remove", REAL_REMOVE),
+        patch.object(AssistantExecution, "async_step", new=AsyncMock(return_value=False)),
         patch("custom_components.ninebot.async_update_assistant_api", new=AsyncMock()),
         patch("custom_components.ninebot.coordinator.NinebotCoordinator._schedule_refresh"),
         patch.object(hass.auth, "async_get_user", new=AsyncMock(return_value=principal)),
@@ -77,7 +80,9 @@ async def task_store(hass, entry, app_client, tmp_path):
         )
         store = ApprovalStore(hass, entry.entry_id, plan.account_key)
         app_client.reset_mock()
-        yield SimpleNamespace(store=store, plan=plan, context=Context(user_id=plan.user_id), co=co)
+        yield SimpleNamespace(
+            store=store, plan=plan, context=Context(user_id=plan.user_id), co=co, client=app_client
+        )
         for method in (
             app_client.async_list_vehicles,
             app_client.async_get_status,
@@ -86,6 +91,8 @@ async def task_store(hass, entry, app_client, tmp_path):
             app_client.async_get_trip_detail,
             app_client.async_control,
         ):
+            if method is app_client.async_get_trip_detail and getattr(request, "param", False):
+                continue
             method.assert_not_awaited()
 
 
@@ -406,7 +413,7 @@ async def test_real_websocket_review_uses_caller_and_never_registers_approval_se
     assert prepared["success"]
     response = prepared["result"]
     assert response["token"] and response["task"]["ride_ids"] == ["private-task-ride"]
-    assert response["task"]["maximum_detail_attempts"] == 1
+    assert response["task"]["maximum_detail_attempts"] == 2
     approved = await review(
         client,
         device,
@@ -416,7 +423,7 @@ async def test_real_websocket_review_uses_caller_and_never_registers_approval_se
         token=response["token"],
         plan_hash=response["task"]["plan_hash"],
     )
-    assert approved["success"] and approved["result"]["task"]["state"] == "approved"
+    assert approved["success"] and approved["result"]["task"]["state"] == "queued"
     assert "token" not in str(approved)
     replay = await review(
         client,
@@ -835,7 +842,10 @@ async def test_legacy_minor_one_record_reads_without_granting_new_authority(task
     ticket = await s.async_request(p, c)
     old = ticket_data(ticket)
     old.pop("progress")
-    assert restore_ticket(old) == ticket
+    old.pop("context_id")
+    from dataclasses import replace
+
+    assert restore_ticket(old) == replace(ticket, context_id=None)
     envelope = {
         "version": 1,
         "minor_version": 1,
@@ -844,7 +854,7 @@ async def test_legacy_minor_one_record_reads_without_granting_new_authority(task
     }
     await s.hass.async_add_executor_job(Path(s._store.path).write_text, json.dumps(envelope))
     reopened = ApprovalStore(s.hass, s.entry_id, s.account_key)
-    assert await reopened.async_get(ticket.task_id, c) == ticket
+    assert await reopened.async_get(ticket.task_id, c) == replace(ticket, context_id=None)
     assert ticket.progress is None and not ticket.execution_valid(dt_util.utcnow())
 
 
@@ -1010,3 +1020,229 @@ async def test_ordinary_reload_keeps_epoch_and_approved_ticket(hass, entry, task
     assert entry.data[TASK_POLICY_EPOCH] == epoch
     reopened = ApprovalStore(hass, s.entry_id, s.account_key)
     assert await reopened.async_get(approved.task_id, c) == approved
+
+
+async def execution_tick(hass, co):
+    await hass.async_block_till_done()
+    with patch.object(AssistantExecution, "async_step", new=REAL_EXECUTION_STEP):
+        await co.preservation.async_tick(dt_util.utcnow(), assistant_only=True)
+    await hass.async_block_till_done()
+
+
+async def queued_execution(hass, entry, case):
+    from custom_components.ninebot.assistant_execution import driver_for
+
+    result = await seeded_request(hass, entry, case)
+    store = entry.runtime_data.assistant_tasks
+    pending = await store.async_get(result["task"]["task_id"], case.context)
+    approved = await approve_task(store, pending, case.context)
+    driver = driver_for(hass, entry)
+    ticket = await driver.async_accept(approved, case.context)
+    await hass.async_block_till_done()
+    return driver, ticket
+
+
+def execution_payload():
+    return {
+        "travel_id": "private-task-ride",
+        "duration": 600,
+        "mileages": 1.2,
+        "ec": 15,
+        "trail": "10,20,12,0;10.001,20.001,15,1",
+    }
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_approved_scope_executes_persists_and_stops_without_auto_history(
+    hass, entry, task_store
+):
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    task_store.client.async_get_trip_detail.return_value = execution_payload()
+    co = task_store.co
+    with (
+        patch.object(co.preservation.bootstrap, "async_seed", new=AsyncMock()) as bootstrap,
+        patch.object(co.preservation.incremental, "async_seed", new=AsyncMock()) as incremental,
+        patch.object(co.preservation.months, "async_seed_recent", new=AsyncMock()) as months,
+        patch.object(co.preservation.audit, "async_step", new=AsyncMock()) as audit,
+        patch.object(co.preservation.reconstruction, "async_step", new=AsyncMock()) as reconstruct,
+    ):
+        await execution_tick(hass, co)
+        for unrelated in (bootstrap, incremental, months, audit, reconstruct):
+            unrelated.assert_not_awaited()
+    finished = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert finished.progress.state == "completed" and finished.progress.saved == 1
+    assert finished.progress.attempts == 1 and ticket.plan.attempts == 2
+    assert task_store.client.async_get_trip_detail.await_count == 1
+    assert not driver.has_work and co.preservation._remove is None
+    detail = await co.statistics.archive.async_private_detail("SyntheticSN", "private-task-ride")
+    assert detail.latest is not None and detail.ride.total_track_points == 2
+    assert entry.options.get("preserve_history", False) is False
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_approved_job_reuses_a_detail_saved_by_another_consumer(hass, entry, task_store):
+    from custom_components.ninebot.raw import Endpoint, build_record
+
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    archive = task_store.co.statistics.archive
+    month = await archive.async_month("SyntheticSN", "202611")
+    ride = next(r for r in month.travel.rides if r.ride_id == "private-task-ride")
+    receipt = dt_util.utcnow()
+    await archive.async_record_detail(
+        "SyntheticSN",
+        ride,
+        receipt,
+        raw=build_record(Endpoint.TRIP_DETAIL, execution_payload(), receipt, "202611"),
+    )
+    await execution_tick(hass, task_store.co)
+    actual = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert actual.progress.state == "completed" and actual.progress.attempts == 0
+    task_store.client.async_get_trip_detail.assert_not_awaited()
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_task_waits_for_account_budget_then_finishes(hass, entry, task_store):
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    archive = task_store.co.statistics.archive
+    assert await archive.async_background_budget(
+        "SyntheticSN", dt_util.utcnow(), 60, guard=lambda: True
+    )
+    await execution_tick(hass, task_store.co)
+    waiting = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert waiting.progress.state == "waiting_budget" and waiting.progress.retry_at is not None
+    assert waiting.progress.attempts == 0
+    task_store.client.async_get_trip_detail.assert_not_awaited()
+
+    # Elapse just the stored account deadline, not unrelated HA entity timers.
+    def elapse():
+        db = archive._db(write=True)
+        with db:
+            db.execute(
+                "UPDATE meta SET value=? WHERE key='preservation_budget'",
+                (str(dt_util.utcnow().timestamp() - 1),),
+            )
+
+    await archive._run(elapse)
+    task_store.client.async_get_trip_detail.return_value = execution_payload()
+    await execution_tick(hass, task_store.co)
+    assert (
+        await driver.store.async_get(ticket.task_id, task_store.context)
+    ).progress.state == "completed"
+    assert task_store.client.async_get_trip_detail.await_count == 1
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_task_failure_retries_within_approved_cap(hass, entry, task_store):
+    from custom_components.ninebot.exceptions import ErrorKind, NinebotError
+    from custom_components.ninebot.ride_archive import vehicle_key
+
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    task_store.client.async_get_trip_detail.side_effect = [
+        NinebotError(ErrorKind.CONNECTION),
+        execution_payload(),
+    ]
+    await execution_tick(hass, task_store.co)
+    failed = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert failed.progress.state == "retry_wait" and failed.progress.attempts == 1
+    assert failed.progress.retry_at is not None
+    archive = task_store.co.statistics.archive
+
+    def elapse():
+        db = archive._db(write=True)
+        with db:
+            db.execute("UPDATE meta SET value=? WHERE key='preservation_budget'", ("0",))
+            key = f"preservation:{vehicle_key('SyntheticSN')}:private-task-ride"
+            row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+            value = json.loads(row[0])
+            value["next_attempt"] = 0
+            db.execute("UPDATE meta SET value=? WHERE key=?", (json.dumps(value), key))
+
+    await archive._run(elapse)
+    await execution_tick(hass, task_store.co)
+    done = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert done.progress.state == "completed" and done.progress.attempts == 2
+    assert task_store.client.async_get_trip_detail.await_count == 2
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_cancel_inflight_task_does_not_commit_late_detail(hass, entry, task_store):
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    async def query(*args, **kwargs):
+        entered.set()
+        await release.wait()
+        return execution_payload()
+
+    task_store.client.async_get_trip_detail.side_effect = query
+    with patch.object(AssistantExecution, "async_step", new=REAL_EXECUTION_STEP):
+        tick = asyncio.create_task(
+            task_store.co.preservation.async_tick(dt_util.utcnow(), assistant_only=True)
+        )
+        await asyncio.wait_for(entered.wait(), 10)
+        cancelled = await driver.store.async_cancel(ticket.task_id, task_store.context)
+        release.set()
+        await tick
+    assert cancelled.progress.state == "cancelled"
+    assert (
+        await driver.store.async_get(ticket.task_id, task_store.context)
+    ).progress.state == "cancelled"
+    assert (
+        await task_store.co.statistics.archive.async_private_detail(
+            "SyntheticSN", "private-task-ride"
+        )
+        is None
+    )
+    assert task_store.client.async_get_trip_detail.await_count == 1
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_requester_access_revoked_before_tick_prevents_cloud(hass, entry, task_store):
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    with patch.object(hass.auth, "async_get_user", new=AsyncMock(return_value=None)):
+        await execution_tick(hass, task_store.co)
+    failed = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert failed.progress.state == "failed" and failed.progress.reason == "not_authorized"
+    task_store.client.async_get_trip_detail.assert_not_awaited()
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_execution_resumes_persisted_principal_and_cap_after_owner_reopen(
+    hass, entry, task_store
+):
+    from custom_components.ninebot.assistant_execution import driver_for
+    from custom_components.ninebot.assistant_tasks import async_reset_tasks
+
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    context_id = ticket.context_id
+    await async_reset_tasks(hass, entry, remove=False)
+    resumed = driver_for(hass, entry)
+    await resumed.async_restore()
+    await hass.async_block_till_done()
+    assert resumed.contexts[ticket.task_id].user_id == task_store.plan.user_id
+    assert resumed.contexts[ticket.task_id].parent_id == context_id
+    task_store.client.async_get_trip_detail.return_value = execution_payload()
+    await execution_tick(hass, task_store.co)
+    actual = await resumed.store.async_get(ticket.task_id, task_store.context)
+    assert actual.progress.state == "completed" and actual.progress.attempts == 1
+    assert task_store.client.async_get_trip_detail.await_count == 1
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_execution_never_reinitializes_missing_approved_counter(hass, entry, task_store):
+    from custom_components.ninebot.preservation import DetailBudget
+
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    archive = task_store.co.statistics.archive
+
+    def remove():
+        db = archive._db(write=True)
+        with db:
+            db.execute("DELETE FROM meta WHERE key=?", (DetailBudget(ticket.task_id, 2).key,))
+
+    await archive._run(remove)
+    await execution_tick(hass, task_store.co)
+    actual = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert actual.progress.state == "failed" and actual.progress.reason == "budget_unavailable"
+    assert actual.progress.attempts is None
+    task_store.client.async_get_trip_detail.assert_not_awaited()

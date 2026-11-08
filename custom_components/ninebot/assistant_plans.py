@@ -149,7 +149,7 @@ async def async_detail_proposal(
             first,
             last,
             preview.scope,
-            preview.selected_count,
+            min(20, preview.selected_count * 2),
             created,
         )
         if preview.scope
