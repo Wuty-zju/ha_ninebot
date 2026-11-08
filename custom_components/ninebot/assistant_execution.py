@@ -109,6 +109,14 @@ class AssistantExecution:
             if not self.closed and scope.runtime.assistant_tasks is self.store:
                 self.co.preservation.attach_assistant(self)
 
+    async def async_cancel(self, task_id: str, context: Context) -> ApprovalTicket:
+        """Stop only this requester's work; leave in-flight shared transport alone."""
+        ticket = await self.store.async_cancel(task_id, context)
+        self._drop(task_id)
+        if self.co.preservation._assistant is self:
+            self.co.preservation.start()
+        return ticket
+
     async def _checkpoint(
         self,
         ticket: ApprovalTicket,

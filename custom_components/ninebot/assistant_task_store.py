@@ -497,6 +497,11 @@ class ApprovalStore:
                     if detail is None or detail.latest is None:
                         raise AssistantError("local_data_missing")
                 await self._validate(scope)
+            if old is not None and replace(progress, updated_at=old.updated_at) == old:
+                # Keep the last durable observation time; a polling heartbeat is not
+                # a new checkpoint. Current permissions/counter were still checked.
+                await self._validate(scope)
+                return current
             updated = replace(current, progress=progress)
             records[current.task_id] = updated
             await self._commit(records)
