@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from dataclasses import replace
 from datetime import date, datetime
 from functools import partial
@@ -10,10 +11,17 @@ from typing import Any
 from uuid import uuid4
 
 from homeassistant.core import Context, HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.importlib import async_import_module
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
-from .assistant import TASK_POLICY_EPOCH, valid_policy_epoch
+from .assistant import (
+    CONF_ASSISTANT,
+    CONF_ASSISTANT_TASKS,
+    TASK_POLICY_EPOCH,
+    valid_policy_epoch,
+)
 from .assistant_approval import (
     APPROVAL_TTL,
     EXECUTION_TTL,
@@ -32,6 +40,7 @@ MAX_TASKS = 24
 MAX_PENDING_PER_USER = 5
 MAX_BYTES = 256 * 1024
 TASK_MINOR = 4
+_LOGGER = logging.getLogger(__name__)
 
 
 class TaskStoreUnavailable(Exception):
@@ -272,6 +281,8 @@ class ApprovalStore:
         if len(records) > MAX_TASKS or len(json.dumps(data).encode()) > MAX_BYTES // 2:
             raise AssistantError("task_capacity")
 
+        previous = self._cache
+
         async def persist() -> None:
             try:
                 await self._store.async_save(data)
@@ -283,9 +294,43 @@ class ApprovalStore:
                 self._cache = dict(records)
             except OSError as err:
                 raise TaskStoreUnavailable("Task store cannot be saved") from err
+            await self._async_notify(previous, records)
 
         # Keep the caller's lock until a cancelled write has actually completed.
         await async_drain(asyncio.create_task(persist()))
+
+    def _notice_current(self) -> bool:
+        try:
+            self._assert_policy()
+        except AssistantError:
+            return False
+        entry = self.hass.config_entries.async_get_entry(self.entry_id)
+        runtime = getattr(entry, "runtime_data", None)
+        return bool(
+            not self._closed
+            and entry is not None
+            and runtime is not None
+            and runtime.assistant_tasks is self
+            and not runtime.assistant_task_blocks
+            and not runtime.coordinator._stopping
+            and entry.options.get(CONF_ASSISTANT) is True
+            and entry.options.get(CONF_ASSISTANT_TASKS) is True
+        )
+
+    async def _async_notify(
+        self, previous: dict[str, ApprovalTicket], records: dict[str, ApprovalTicket]
+    ) -> None:
+        if not self._notice_current():
+            return
+        try:
+            notices = await async_import_module(self.hass, f"{__package__}.assistant_notifications")
+            if self._notice_current():
+                kind = notices.notice_kind(previous, records, dt_util.utcnow())
+                if kind is not None:
+                    notices.async_publish(self.hass, self.entry_id, kind)
+        except (ImportError, AttributeError, HomeAssistantError, OSError):
+            # Notices are a convenience; a saved task must not become a failed request.
+            _LOGGER.debug("Ninebot task notice could not be shown")
 
     async def _scope(self, plan: DetailPlan, context: Context | None) -> AssistantScope:
         self._assert_policy()
