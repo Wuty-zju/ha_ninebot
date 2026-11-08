@@ -3,6 +3,7 @@
 import asyncio
 import copy
 import json
+import os
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -1651,3 +1652,78 @@ async def test_repeated_application_reports_existing_queued_state_not_new_approv
     assert response["approval_required"] is False
     assert response["task"] == {"task_id": ticket.task_id, "state": "queued"}
     assert set(driver.tickets) == {ticket.task_id}
+
+
+@pytest.mark.skipif(
+    os.environ.get("NINEBOT_NATIVE_BROWSER") != "1", reason="milestone native browser acceptance"
+)
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_native_browser_approves_executes_and_reads_saved_result(
+    hass, entry, task_store, hass_client, hass_admin_user, hass_access_token, tmp_path
+):
+    """One real HA WS/browser/SQLite chain, with only the upstream client synthetic."""
+    from aiohttp import web
+    from homeassistant.setup import async_setup_component
+
+    from custom_components.ninebot.assistant_review import async_register
+    from custom_components.ninebot.frontend import async_register_frontend
+
+    assert await async_setup_component(hass, "websocket_api", {})
+    async_register(hass)
+    await async_register_frontend(hass)
+
+    async def page(_request):
+        return web.Response(
+            text='<!doctype html><html><meta charset="utf-8"><body>'
+            '<script type="module" src="/ninebot-static/assistant-panel.js"></script>'
+            "</body></html>",
+            content_type="text/html",
+        )
+
+    hass.http.app.router.add_get("/assistant-browser-test", page)
+    client = await hass_client()
+    context = Context(user_id=hass_admin_user.id)
+    application = await seeded_request(hass, entry, task_store, context=context)
+    task_store.client.async_get_trip_detail.return_value = execution_payload()
+    process = await asyncio.create_subprocess_exec(
+        "node",
+        "tests/browser/assistant-native.mjs",
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    assert process.stdin is not None and process.stdout is not None
+    # Synthetic short-lived HA token travels only through the test child's stdin.
+    process.stdin.write(
+        json.dumps(
+            {
+                "url": str(client.make_url("/assistant-browser-test")),
+                "token": hass_access_token,
+                "user": hass_admin_user.id,
+            }
+        ).encode()
+        + b"\n"
+    )
+    await process.stdin.drain()
+    try:
+        assert await asyncio.wait_for(process.stdout.readline(), 40) == b"approved\n"
+        await execution_tick(hass, task_store.co)
+        ticket = await entry.runtime_data.assistant_tasks.async_get(
+            application["task"]["task_id"], context
+        )
+        assert ticket.progress.state == "completed" and ticket.progress.saved == 1
+        assert ticket.progress.attempts == 1
+        detail = await task_store.co.statistics.archive.async_private_detail(
+            "SyntheticSN", "private-task-ride"
+        )
+        assert detail.latest is not None and detail.ride.total_track_points == 2
+        task_store.client.async_get_trip_detail.assert_awaited_once()
+        process.stdin.write(b"continue\n")
+        await process.stdin.drain()
+        stdout, stderr = await asyncio.wait_for(process.communicate(), 40)
+        assert process.returncode == 0, stderr.decode()
+        assert stdout == b"completed\n"
+    finally:
+        if process.returncode is None:
+            process.kill()
+            await process.wait()

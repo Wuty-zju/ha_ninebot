@@ -1,0 +1,53 @@
+name: Assistant milestone acceptance
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/assistant-acceptance.yaml'
+      - 'tests/browser/assistant-native.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: assistant-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      LITELLM_LOCAL_MODEL_COST_MAP: 'True'
+      NINEBOT_NATIVE_BROWSER: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: .github/ci.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Install the existing current HA boundary
+        run: python scripts/ci.py --install current
+      - name: Install isolated browser tooling
+        env:
+          BROWSER_TEST_DEPS: ${{ runner.temp }}/ninebot-browser
+        run: |
+          npm install --prefix "$BROWSER_TEST_DEPS" --no-save --package-lock=false playwright@1.55.1
+          "$BROWSER_TEST_DEPS/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Approve, execute and verify a synthetic saved detail through native HA
+        env:
+          BROWSER_TEST_DEPS: ${{ runner.temp }}/ninebot-browser
+          BROWSER_TEST_OUTPUT: ${{ runner.temp }}/ninebot-assistant-native
+        run: python -m pytest -q tests/test_assistant_task_store.py::test_native_browser_approves_executes_and_reads_saved_result --junitxml=native-browser.xml
+      - name: Keep synthetic acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: assistant-native-browser
+          path: |
+            native-browser.xml
+            ${{ runner.temp }}/ninebot-assistant-native
+          if-no-files-found: warn
+          retention-days: 14
