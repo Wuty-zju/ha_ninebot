@@ -59,7 +59,8 @@ SPECS = (
         "Request human review of missing details",
         "Use only when the user asks to apply for detail synchronization. Writes a bounded "
         "local application from the selected vehicle/dates. Human review is separate. "
-        "Never approves, queues, completes or queries the cloud. Do not ask for a token.",
+        "Never approves, queues, completes or queries the cloud. Ask the original requester to "
+        "review in HA's Ninebot Assistant sidebar using the same HA user. Do not ask for a token.",
         vol.Schema(DATES),
         idempotent=False,
     ),

@@ -6,6 +6,8 @@ from typing import Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Context, HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.importlib import async_import_module
 
 from .assistant import (
     CONF_ASSISTANT,
@@ -99,6 +101,22 @@ async def async_request_details(
     }
 
 
+async def _async_dismiss_notice(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    runtime = getattr(entry, "runtime_data", None)
+    applied = getattr(runtime, "applied_options", None) or {}
+    if not (
+        entry.options.get(CONF_ASSISTANT_TASKS) is True
+        or applied.get(CONF_ASSISTANT_TASKS) is True
+        or getattr(runtime, "assistant_tasks", None) is not None
+    ):
+        return
+    try:
+        notices = await async_import_module(hass, f"{__package__}.assistant_notifications")
+        notices.async_dismiss(hass, entry.entry_id)
+    except (ImportError, AttributeError, HomeAssistantError, OSError):
+        pass  # Cleanup of authority must not depend on an optional notice.
+
+
 async def async_reset_tasks(
     hass: HomeAssistant,
     entry: NinebotConfigEntry,
@@ -113,6 +131,7 @@ async def async_reset_tasks(
         if remove:
             if revoke_policy:
                 async_revoke_task_policy(hass, entry, cleanup_owned=True)
+            await _async_dismiss_notice(hass, entry)
             await async_remove_task_data(hass, entry.entry_id)
         return
     runtime.assistant_task_blocks += 1
@@ -123,6 +142,8 @@ async def async_reset_tasks(
             runtime.assistant_task_stop()
             runtime.assistant_task_stop = None
         store = runtime.assistant_tasks
+        if remove:
+            await _async_dismiss_notice(hass, entry)
         runtime.coordinator.preservation.detach_assistant()
         if store is not None:
             await store.async_close(remove=remove)

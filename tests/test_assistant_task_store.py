@@ -1452,3 +1452,188 @@ async def test_human_review_vehicle_discovery_is_local_scoped_and_revocable(
     await review_client.send_json({"id": 151, "type": "ninebot/assistant/vehicles"})
     denied = await asyncio.wait_for(review_client.receive_json(), 10)
     assert denied["error"]["code"] == "not_authorized"
+
+
+async def native_notice(client, entry_id, identity):
+    from custom_components.ninebot.assistant_notifications import notification_id
+
+    await client.send_json({"id": identity, "type": "persistent_notification/get"})
+    response = await asyncio.wait_for(client.receive_json(), 10)
+    assert response["success"]
+    return next(
+        (row for row in response["result"] if row["notification_id"] == notification_id(entry_id)),
+        None,
+    )
+
+
+@pytest.mark.parametrize(
+    "language,ready,identity,attention",
+    [
+        ("en", "ready for review", "same Home Assistant user", "needs attention"),
+        ("zh-Hans", "等待审核", "同一个 Home Assistant 用户", "需要处理"),
+    ],
+)
+async def test_native_notices_follow_saved_request_approval_and_failure_without_private_fields(
+    hass, entry, task_store, review_client, language, ready, identity, attention
+):
+    from homeassistant.components import persistent_notification
+    from homeassistant.setup import async_setup_component
+
+    assert await async_setup_component(hass, "persistent_notification", {})
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    entry.runtime_data.assistant_tasks = s
+    hass.config.language = language
+    with patch.object(
+        persistent_notification, "async_create", wraps=persistent_notification.async_create
+    ) as create:
+        pending = await s.async_request(p, c)
+        notice = await native_notice(review_client, entry.entry_id, 201)
+        assert notice is not None and notice["title"] == "Ninebot Assistant"
+        assert ready in notice["message"] and identity in notice["message"]
+        for private in (
+            entry.entry_id,
+            p.sn,
+            p.account_key,
+            p.user_id,
+            p.vehicle_ref,
+            pending.task_id,
+            p.start_date.isoformat(),
+        ):
+            assert private not in json.dumps(notice)
+        _, nonce = await s.async_prepare(pending.task_id, c)
+        assert nonce not in json.dumps(notice)
+        await s.async_request(p, c)
+        assert create.call_count == 1  # Neither nonce rotation nor application dedup notifies.
+        approved = await s.async_approve(pending.task_id, c, nonce, p.digest)
+        assert await native_notice(review_client, entry.entry_id, 202) is None
+        from custom_components.ninebot.assistant_approval import TaskProgress
+
+        waiting = await s.async_checkpoint(
+            approved, TaskProgress("waiting_budget", 0, 0, dt_util.utcnow()), c
+        )
+        assert create.call_count == 1
+        await s.async_fail_execution(waiting, "budget_unavailable")
+        failed = await native_notice(review_client, entry.entry_id, 203)
+        assert attention in failed["message"] and create.call_count == 2
+
+
+async def test_other_pending_request_keeps_one_generic_notice_without_progress_spam(
+    hass, entry, task_store, review_client
+):
+    from dataclasses import replace
+
+    from homeassistant.components import persistent_notification
+    from homeassistant.setup import async_setup_component
+
+    from custom_components.ninebot.assistant_approval import TaskProgress
+
+    assert await async_setup_component(hass, "persistent_notification", {})
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    entry.runtime_data.assistant_tasks = s
+    first = await s.async_request(p, c)
+    second = await s.async_request(replace(p, start_date=p.start_date - timedelta(days=1)), c)
+    approved = await approve_task(s, first, c)
+    with patch.object(
+        persistent_notification, "async_create", wraps=persistent_notification.async_create
+    ) as create:
+        running = await s.async_checkpoint(
+            approved, TaskProgress("running", 0, 0, dt_util.utcnow()), c
+        )
+        await s.async_checkpoint(running, TaskProgress("retry_wait", 0, 0, dt_util.utcnow()), c)
+        create.assert_not_called()
+    assert (
+        "ready for review" in (await native_notice(review_client, entry.entry_id, 211))["message"]
+    )
+    await s.async_cancel(first.task_id, c)
+    assert (
+        "ready for review" in (await native_notice(review_client, entry.entry_id, 212))["message"]
+    )
+    await s.async_cancel(second.task_id, c)
+    assert await native_notice(review_client, entry.entry_id, 213) is None
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_completion_notice_requires_actual_saved_detail(
+    hass, entry, task_store, review_client
+):
+    from homeassistant.setup import async_setup_component
+
+    assert await async_setup_component(hass, "persistent_notification", {})
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    assert await native_notice(review_client, entry.entry_id, 221) is None
+    task_store.client.async_get_trip_detail.return_value = execution_payload()
+    await execution_tick(hass, task_store.co)
+    actual = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert actual.progress.state == "completed" and actual.progress.saved == 1
+    assert "has finished" in (await native_notice(review_client, entry.entry_id, 222))["message"]
+    assert task_store.client.async_get_trip_detail.await_count == 1
+
+
+async def test_failed_task_write_does_not_publish_a_notice(hass, entry, task_store, review_client):
+    from homeassistant.setup import async_setup_component
+
+    assert await async_setup_component(hass, "persistent_notification", {})
+    entry.runtime_data.assistant_tasks = task_store.store
+    with patch.object(task_store.store._store, "async_save", new=AsyncMock()):
+        with pytest.raises(TaskStoreUnavailable):
+            await task_store.store.async_request(task_store.plan, task_store.context)
+    assert await native_notice(review_client, entry.entry_id, 231) is None
+
+
+async def test_revoke_dismisses_notice_even_if_task_file_removal_fails(
+    hass, entry, task_store, review_client
+):
+    from homeassistant.setup import async_setup_component
+
+    from custom_components.ninebot.assistant_tasks import async_reset_tasks
+
+    assert await async_setup_component(hass, "persistent_notification", {})
+    s = entry.runtime_data.assistant_tasks = task_store.store
+    await s.async_request(task_store.plan, task_store.context)
+    assert await native_notice(review_client, entry.entry_id, 241)
+    with patch.object(s._store, "async_remove", new=AsyncMock()):
+        with pytest.raises(TaskStoreUnavailable):
+            await async_reset_tasks(hass, entry, remove=True)
+    assert s.closed and await native_notice(review_client, entry.entry_id, 242) is None
+
+
+async def test_notice_failure_does_not_turn_a_saved_application_into_an_error(
+    hass, entry, task_store
+):
+    entry.runtime_data.assistant_tasks = task_store.store
+    with patch(
+        "custom_components.ninebot.assistant_task_store.async_import_module",
+        new=AsyncMock(side_effect=ImportError("synthetic unavailable notification")),
+    ):
+        pending = await task_store.store.async_request(task_store.plan, task_store.context)
+    assert await task_store.store.async_get(pending.task_id, task_store.context) == pending
+
+
+async def test_policy_revocation_during_notice_import_cannot_resurrect_a_notice(
+    hass, entry, task_store, review_client
+):
+    from homeassistant.helpers.importlib import async_import_module
+    from homeassistant.setup import async_setup_component
+
+    assert await async_setup_component(hass, "persistent_notification", {})
+    s = entry.runtime_data.assistant_tasks = task_store.store
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    async def delayed(*args):
+        entered.set()
+        await release.wait()
+        return await async_import_module(*args)
+
+    with patch(
+        "custom_components.ninebot.assistant_task_store.async_import_module", side_effect=delayed
+    ):
+        pending = asyncio.create_task(s.async_request(task_store.plan, task_store.context))
+        await asyncio.wait_for(entered.wait(), 10)
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, "enable_assistant_tasks": False}
+        )
+        release.set()
+        with pytest.raises(AssistantError):
+            await pending
+        await hass.async_block_till_done()
+    assert await native_notice(review_client, entry.entry_id, 251) is None
