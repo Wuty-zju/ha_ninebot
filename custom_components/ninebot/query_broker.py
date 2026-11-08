@@ -130,6 +130,11 @@ class QueryBroker:
             raise NinebotError(ErrorKind.BUSY)
         if before_request is not None:
             await before_request()
+            # Authorization yields; recheck admission before reserving bounded slots.
+            if self._closed:
+                raise NinebotError(ErrorKind.CLOSED)
+            if self._waiters >= 64:
+                raise NinebotError(ErrorKind.BUSY)
         job = self._flights.get(key) if key else None
         if job is not None and not job.future.done():
             if job.waiters >= 32:

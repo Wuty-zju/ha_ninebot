@@ -493,3 +493,41 @@ async def test_denied_consumer_does_not_revoke_an_ordinary_shared_read():
         assert calls == [True]
     finally:
         await value.async_close()
+
+
+async def test_async_consumer_checks_cannot_overbook_global_waiter_limit():
+    gate = asyncio.Semaphore(0)
+    broker = QueryBroker(gate, lambda: NOW)
+    release = asyncio.Event()
+    entered = 0
+
+    async def check():
+        nonlocal entered
+        entered += 1
+        await release.wait()
+
+    async def operation():
+        return 9
+
+    tasks = [
+        asyncio.create_task(
+            broker.async_read(key(str(i // 22)), operation, lambda: True, before_request=check)
+        )
+        for i in range(66)
+    ]
+    try:
+        await until(lambda: entered == 66)
+        release.set()
+        await until(lambda: sum(task.done() for task in tasks) == 2)
+        assert broker.diagnostics()["waiters"] == 64
+        rejected = [task.exception() for task in tasks if task.done()]
+        assert all(isinstance(err, NinebotError) and err.kind is ErrorKind.BUSY for err in rejected)
+        gate.release()
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        assert sum(not isinstance(result, BaseException) for result in results) == 64
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        await broker.async_close()
