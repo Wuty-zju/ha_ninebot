@@ -13,6 +13,7 @@ from homeassistant.core import Context, HomeAssistant
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
+from .assistant import TASK_POLICY_EPOCH, valid_policy_epoch
 from .assistant_approval import (
     APPROVAL_TTL,
     EXECUTION_TTL,
@@ -30,7 +31,7 @@ from .ride_archive import ArchiveError
 MAX_TASKS = 24
 MAX_PENDING_PER_USER = 5
 MAX_BYTES = 256 * 1024
-TASK_MINOR = 2
+TASK_MINOR = 3
 
 
 class TaskStoreUnavailable(Exception):
@@ -148,7 +149,7 @@ def read_envelope(path: Path, key: str) -> dict[str, Any] | None:
             or type(raw.get("version")) is not int
             or raw["version"] != 1
             or type(raw.get("minor_version")) is not int
-            or raw["minor_version"] not in (1, TASK_MINOR)
+            or raw["minor_version"] not in (1, 2, TASK_MINOR)
             or raw.get("key") != key
             or not isinstance(raw.get("data"), dict)
         ):
@@ -191,6 +192,8 @@ class ApprovalStore:
     def __init__(self, hass: HomeAssistant, entry_id: str, account_key: str) -> None:
         self.hass, self.entry_id, self.account_key = hass, entry_id, account_key
         self.key = store_key(entry_id)
+        entry = hass.config_entries.async_get_entry(entry_id)
+        self.policy_epoch = entry.data.get(TASK_POLICY_EPOCH) if entry is not None else None
         self._store = Store[dict[str, Any]](
             hass, 1, self.key, minor_version=TASK_MINOR, private=True, atomic_writes=True
         )
@@ -204,17 +207,30 @@ class ApprovalStore:
     async def _read(self) -> dict[str, ApprovalTicket]:
         if self._closed:
             raise TaskStoreUnavailable("Task store is closed")
+        self._assert_policy()
         try:
             data = await self.hass.async_add_executor_job(
                 partial(read_envelope, Path(self._store.path), self.key)
             )
             if data is None:
                 return {}
-            if set(data) != {"tickets"} or not isinstance(data["tickets"], dict):
+            if set(data) not in ({"tickets"}, {"tickets", "policy_epoch"}) or not isinstance(
+                data["tickets"], dict
+            ):
                 raise TaskStoreUnavailable("Invalid task collection")
+            epoch = data.get("policy_epoch")
+            if epoch is not None and not valid_policy_epoch(epoch):
+                raise TaskStoreUnavailable("Invalid task policy")
+            if epoch is not None and epoch != self.policy_epoch:
+                return {}  # A previous consent epoch cannot authorize or deduplicate a new task.
             if len(data["tickets"]) > MAX_TASKS:
                 raise TaskStoreUnavailable("Too many task records")
             records = {key: restore_ticket(row) for key, row in data["tickets"].items()}
+            if epoch is None:
+                records = {
+                    key: replace(row, approved_at=None, nonce_hash=None)
+                    for key, row in records.items()
+                }  # Legacy plans remain reviewable, never grandfathered authority.
             if any(
                 key != row.task_id or row.plan.account_key != self.account_key
                 for key, row in records.items()
@@ -227,7 +243,11 @@ class ApprovalStore:
     async def _commit(self, records: dict[str, ApprovalTicket]) -> None:
         if self._closed:
             raise AssistantError("not_authorized")
-        data = {"tickets": {key: ticket_data(row) for key, row in records.items()}}
+        self._assert_policy()
+        data = {
+            "policy_epoch": self.policy_epoch,
+            "tickets": {key: ticket_data(row) for key, row in records.items()},
+        }
         # Leave room for the native envelope and pretty-printing before replacing a valid file.
         if len(records) > MAX_TASKS or len(json.dumps(data).encode()) > MAX_BYTES // 2:
             raise AssistantError("task_capacity")
@@ -247,6 +267,7 @@ class ApprovalStore:
         await async_drain(asyncio.create_task(persist()))
 
     async def _scope(self, plan: DetailPlan, context: Context | None) -> AssistantScope:
+        self._assert_policy()
         scope = await async_plan_scope(self.hass, plan, context)
         if (
             self._closed
@@ -452,8 +473,18 @@ class ApprovalStore:
             return updated
 
     def _current(self, scope: AssistantScope) -> bool:
+        self._assert_policy()
         scope.assert_task_current(self.hass)
         return not self._closed
+
+    def _assert_policy(self) -> None:
+        entry = self.hass.config_entries.async_get_entry(self.entry_id)
+        if (
+            not valid_policy_epoch(self.policy_epoch)
+            or entry is None
+            or entry.data.get(TASK_POLICY_EPOCH) != self.policy_epoch
+        ):
+            raise AssistantError("not_authorized")
 
     async def _validate(self, scope: AssistantScope) -> None:
         await scope.async_validate(self.hass)

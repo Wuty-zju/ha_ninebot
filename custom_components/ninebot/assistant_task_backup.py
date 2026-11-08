@@ -10,6 +10,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
+from .assistant import TASK_POLICY_EPOCH, valid_policy_epoch
 from .assistant_task_store import (
     MAX_TASKS,
     TASK_MINOR,
@@ -27,6 +28,7 @@ from .const import DOMAIN
 class TaskBackup:
     """Original authority exists only in this process while HA takes its copy."""
 
+    entry_id: str
     store: Store[dict[str, Any]]
     original: dict[str, Any]
     sanitized: dict[str, Any]
@@ -64,9 +66,10 @@ async def async_prepare_tasks(hass: HomeAssistant, copies: list[TaskBackup]) -> 
             if data is None:
                 continue
             if (
-                set(data) != {"tickets"}
+                set(data) not in ({"tickets"}, {"tickets", "policy_epoch"})
                 or not isinstance(data["tickets"], dict)
                 or len(data["tickets"]) > MAX_TASKS
+                or ("policy_epoch" in data and not valid_policy_epoch(data["policy_epoch"]))
             ):
                 raise TaskStoreUnavailable("Invalid task backup collection")
             # Use the same strict codec before touching a valid authority file.
@@ -74,14 +77,15 @@ async def async_prepare_tasks(hass: HomeAssistant, copies: list[TaskBackup]) -> 
                 if restore_ticket(raw).task_id != task_id:
                     raise TaskStoreUnavailable("Invalid task backup identity")
             sanitized = {
+                **data,
                 "tickets": {
                     key: {**row, "nonce_hash": None, "approved_at": None}
                     for key, row in data["tickets"].items()
-                }
+                },
             }
             if sanitized != data:
                 # Register first so preparation failure/cancellation can unwind a completed write.
-                copies.append(TaskBackup(store, data, sanitized, owner))
+                copies.append(TaskBackup(entry.entry_id, store, data, sanitized, owner))
                 await _write(hass, store, sanitized)
 
 
@@ -92,6 +96,14 @@ async def async_restore_tasks(hass: HomeAssistant, copies: list[TaskBackup]) -> 
         owner = copy.owner
         async with owner._lock if owner is not None else nullcontext():
             if owner is not None and owner.closed:
+                return
+            entry = hass.config_entries.async_get_entry(copy.entry_id)
+            epoch = copy.original.get("policy_epoch")
+            if (
+                entry is None
+                or not valid_policy_epoch(epoch)
+                or entry.data.get(TASK_POLICY_EPOCH) != epoch
+            ):
                 return
             if await _read(hass, copy.store) == copy.sanitized:
                 await _write(hass, copy.store, copy.original)
