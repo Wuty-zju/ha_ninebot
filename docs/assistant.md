@@ -61,7 +61,7 @@ Synchronization health includes the configured request rate and minimum interval
 
 Public help and task checklists are available from **2.1.1**.
 
-Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches eleven bundled bilingual topics without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
+Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches bundled bilingual topics (thirteen in 2.1.2) without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
 
 Search returns at most three topics in 4 KiB. It reports no match or no applicable knowledge rather than using another release’s rules. Other languages use English. A damaged help catalog leaves the six vehicle tools available. Published source links stay pinned even when the main documentation changes.
 
@@ -71,9 +71,9 @@ Help results can include a versioned checklist: when it applies, information to 
 
 The host follows the checklist within its existing tool loop. There is no separate Skill installer or execution framework. Checklists are advisory data and cannot grant permission; every call still uses the same program authorization. Missing inputs require clarification. Access denial stops the read, and unresolved cases end with the observed evidence and a specific next step. Sync requests and task approval remain outside this read-only preview.
 
-## Reviewable history tasks (development)
+## Reviewable history tasks (Beta)
 
-The development branch also includes a separate **Allow reviewable history tasks (Beta)** option. Enable Assistant and select its vehicles first, then enable this option and save. **Ninebot Assistant** appears in the administrator sidebar. Tasks remain off by default.
+From **2.1.2**, a separate **Allow reviewable history tasks (Beta)** option is available. Enable Assistant and select its vehicles first, then enable this option and save. **Ninebot Assistant** appears in the administrator sidebar. Tasks remain off by default.
 
 For an AI client to propose work, select the separate **Ninebot tasks** native API. Applications are local writes, so a native MCP Server restricted to read-only tools will hide that application tool. Keep the ordinary **Ninebot** collection selected for local data and help. The task tools list permitted vehicles, preview missing details over up to 31 business days, request human review, and read task progress. They cannot approve a request.
 
