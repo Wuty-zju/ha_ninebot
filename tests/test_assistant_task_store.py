@@ -875,3 +875,138 @@ async def test_terminal_retention_does_not_block_new_requests_and_lists_are_boun
         assert data["has_more"] is (page < 3)
         ids.update(row["task_id"] for row in data["tasks"])
     assert len(ids) == 24
+
+
+async def test_policy_revoke_survives_delete_failure_and_reopened_owner(hass, entry, task_store):
+    from custom_components.ninebot.assistant import TASK_POLICY_EPOCH
+    from custom_components.ninebot.assistant_tasks import async_reset_tasks
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    approved = await approve_task(s, await s.async_request(p, c), c)
+    entry.runtime_data.assistant_tasks = s
+    old_epoch = entry.data[TASK_POLICY_EPOCH]
+    original_file = await hass.async_add_executor_job(Path(s._store.path).read_bytes)
+    with patch.object(s._store, "async_remove", new=AsyncMock()):
+        with pytest.raises(TaskStoreUnavailable):
+            await async_reset_tasks(hass, entry, remove=True)
+    assert entry.data[TASK_POLICY_EPOCH] != old_epoch
+    assert await hass.async_add_executor_job(Path(s._store.path).read_bytes) == original_file
+    # Reopening from the now-current config cannot give the surviving old file authority.
+    reopened = ApprovalStore(hass, s.entry_id, s.account_key)
+    with pytest.raises(AssistantError, match="^task_not_found$"):
+        await reopened.async_get(approved.task_id, c)
+    fresh = await reopened.async_request(p, c)
+    assert fresh.task_id != approved.task_id and fresh.approved_at is None
+
+
+async def test_rapid_consent_off_on_is_observed_before_async_listener_lock(hass, entry, task_store):
+    from custom_components.ninebot.assistant import TASK_POLICY_EPOCH
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    approved = await approve_task(s, await s.async_request(p, c), c)
+    runtime = entry.runtime_data
+    runtime.assistant_tasks = s
+    options = dict(entry.options)
+    first = entry.data[TASK_POLICY_EPOCH]
+    async with runtime.options_update_lock:
+        hass.config_entries.async_update_entry(
+            entry, options={**options, "enable_assistant_tasks": False}
+        )
+        disabled = entry.data[TASK_POLICY_EPOCH]
+        hass.config_entries.async_update_entry(entry, options=options)
+        enabled = entry.data[TASK_POLICY_EPOCH]
+        assert len({first, disabled, enabled}) == 3
+        with pytest.raises(AssistantError, match="^not_authorized$"):
+            await s.async_get(approved.task_id, c)
+    await hass.async_block_till_done()
+    assert runtime is entry.runtime_data and runtime.assistant_tasks is None
+    assert runtime.applied_data[TASK_POLICY_EPOCH] == enabled
+    assert runtime.applied_options == options
+    assert runtime.assistant_task_blocks == 0
+
+
+async def test_policy_epoch_stays_stable_for_noop_and_unrelated_hot_update(hass, entry, task_store):
+    from custom_components.ninebot import async_update_options
+    from custom_components.ninebot.assistant import TASK_POLICY_EPOCH
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    approved = await approve_task(s, await s.async_request(p, c), c)
+    entry.runtime_data.assistant_tasks = s
+    epoch = entry.data[TASK_POLICY_EPOCH]
+    runtime = entry.runtime_data
+    await async_update_options(hass, entry)
+    assert epoch == entry.data[TASK_POLICY_EPOCH]
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "polling_profile": "balanced"}
+    )
+    await hass.async_block_till_done()
+    assert runtime is entry.runtime_data and epoch == entry.data[TASK_POLICY_EPOCH]
+    assert await s.async_get(approved.task_id, c) == approved
+
+
+async def test_legacy_approval_is_not_grandfathered_into_current_policy(hass, task_store):
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    approved = await approve_task(s, await s.async_request(p, c), c)
+    old = ticket_data(approved)
+    envelope = {
+        "version": 1,
+        "minor_version": 2,
+        "key": s.key,
+        "data": {"tickets": {approved.task_id: old}},
+    }
+    await hass.async_add_executor_job(Path(s._store.path).write_text, json.dumps(envelope))
+    reopened = ApprovalStore(hass, s.entry_id, s.account_key)
+    recovered = await reopened.async_get(approved.task_id, c)
+    assert recovered.plan == approved.plan and recovered.approved_at is None
+    assert recovered.nonce_hash is None and not recovered.execution_valid(dt_util.utcnow())
+
+
+async def test_epoch_revoke_and_surviving_old_file_are_durable_native_storage(
+    hass, entry, task_store
+):
+    from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
+
+    from custom_components.ninebot.assistant import TASK_POLICY_EPOCH
+    from custom_components.ninebot.assistant_tasks import async_reset_tasks
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    approved = await approve_task(s, await s.async_request(p, c), c)
+    entry.runtime_data.assistant_tasks = s
+    old_epoch = entry.data[TASK_POLICY_EPOCH]
+    with patch.object(s._store, "async_remove", new=AsyncMock()):
+        with pytest.raises(TaskStoreUnavailable):
+            await async_reset_tasks(hass, entry, remove=True)
+        await hass.async_block_till_done()
+    # Flush HA's real pending writer without advancing unrelated vehicle schedules.
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+    await hass.async_block_till_done()
+    config_path = Path(hass.config.path(".storage", "core.config_entries"))
+    saved = json.loads(await hass.async_add_executor_job(config_path.read_text))
+    row = next(r for r in saved["data"]["entries"] if r["entry_id"] == entry.entry_id)
+    assert row["data"][TASK_POLICY_EPOCH] == entry.data[TASK_POLICY_EPOCH] != old_epoch
+    assert row["options"]["enable_assistant_tasks"] is True
+    surviving = json.loads(await hass.async_add_executor_job(Path(s._store.path).read_text))
+    assert surviving["data"]["policy_epoch"] == old_epoch
+    assert surviving["data"]["tickets"][approved.task_id]["approved_at"] is not None
+    reopened = ApprovalStore(hass, s.entry_id, s.account_key)
+    assert await reopened.async_list(c, p.vehicle_ref) == ()
+
+
+async def test_ordinary_reload_keeps_epoch_and_approved_ticket(hass, entry, task_store):
+    from custom_components.ninebot.assistant import TASK_POLICY_EPOCH
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    approved = await approve_task(s, await s.async_request(p, c), c)
+    entry.runtime_data.assistant_tasks = s
+    epoch = entry.data[TASK_POLICY_EPOCH]
+    with patch(
+        "custom_components.ninebot.coordinator.NinebotCoordinator.async_config_entry_first_refresh",
+        new=AsyncMock(),
+    ):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+    entry.runtime_data.coordinator.realtime.stop()
+    assert entry.runtime_data.coordinator is not task_store.co
+    assert entry.data[TASK_POLICY_EPOCH] == epoch
+    reopened = ApprovalStore(hass, s.entry_id, s.account_key)
+    assert await reopened.async_get(approved.task_id, c) == approved

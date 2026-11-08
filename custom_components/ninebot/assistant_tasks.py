@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Context, HomeAssistant
 
+from .assistant import async_revoke_task_policy
 from .assistant_approval import APPROVAL_TTL
 from .assistant_plans import async_detail_proposal
 from .assistant_policy import AssistantError, AssistantScope, async_authorize
@@ -85,15 +86,20 @@ async def async_reset_tasks(
     *,
     remove: bool,
     permanent: bool = False,
+    revoke_policy: bool = True,
 ) -> None:
     """Revoke/drain an owner; only successful removal permits its replacement."""
     runtime = getattr(entry, "runtime_data", None)
     if not isinstance(runtime, RuntimeData):
         if remove:
+            if revoke_policy:
+                async_revoke_task_policy(hass, entry, cleanup_owned=True)
             await async_remove_task_data(hass, entry.entry_id)
         return
     runtime.assistant_task_blocks += 1
     try:
+        if remove and revoke_policy:
+            async_revoke_task_policy(hass, entry, cleanup_owned=True)
         if runtime.assistant_task_stop is not None:
             runtime.assistant_task_stop()
             runtime.assistant_task_stop = None

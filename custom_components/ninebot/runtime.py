@@ -36,6 +36,7 @@ class RuntimeData:
     assistant_tasks: "ApprovalStore | None" = None
     assistant_task_blocks: int = 0
     assistant_task_stop: Callable[[], None] | None = None
+    assistant_policy_options: dict[str, Any] | None = None
     applied_options: dict[str, Any] | None = None
     applied_data: dict[str, Any] | None = None
 

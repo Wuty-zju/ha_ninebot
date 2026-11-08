@@ -1,8 +1,9 @@
 """Ninebot App integration with typed runtime and conservative migration."""
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from pathlib import Path
+from typing import Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
@@ -16,7 +17,13 @@ from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, AccountDisplay, account_
 from .account_archive import CONF_RETAIN_ARCHIVE, async_prepare_account, async_remove_account
 from .archive_lifecycle import async_remove_archive
 from .archive_options import register_download
-from .assistant import ASSISTANT_OPTIONS, async_close_task_owner, async_update_assistant_api
+from .assistant import (
+    ASSISTANT_OPTIONS,
+    TASK_POLICY_EPOCH,
+    async_close_task_owner,
+    async_sync_task_policy,
+    async_update_assistant_api,
+)
 from .async_utils import async_drain
 from .backup import backup_active, defer_removal
 from .client import NinecliClient
@@ -177,6 +184,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         coordinator.realtime.start()
         coordinator.preservation.start()
         coordinator.async_schedule_statistics_refresh()
+        async_sync_task_policy(hass, entry)
         await async_update_assistant_api(hass)
     except BaseException:
         await async_close_task_owner(hass, entry, permanent=True)
@@ -187,7 +195,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         raise
     entry.runtime_data.applied_options = dict(entry.options)
     entry.runtime_data.applied_data = dict(entry.data)
-    entry.async_on_unload(entry.add_update_listener(async_update_options))
+    entry.async_on_unload(entry.add_update_listener(_async_options_listener))
     entry.async_on_unload(
         coordinator.async_add_listener(lambda: async_audit_device_identities(hass, entry))
     )
@@ -206,9 +214,22 @@ async def async_unload_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> 
     return False
 
 
+def _async_options_listener(
+    hass: HomeAssistant, entry: NinebotConfigEntry
+) -> Coroutine[Any, Any, None]:
+    # ConfigEntries evaluates this callback before scheduling its returned coroutine/save.
+    async_sync_task_policy(hass, entry)
+    return async_update_options(hass, entry)
+
+
 async def async_update_options(hass: HomeAssistant, entry: NinebotConfigEntry) -> None:
+    async_sync_task_policy(hass, entry)
     runtime = getattr(entry, "runtime_data", None)
-    if not isinstance(runtime, RuntimeData) or runtime.applied_options is None:
+    if (
+        not isinstance(runtime, RuntimeData)
+        or runtime.applied_options is None
+        or runtime.applied_data is None
+    ):
         await hass.config_entries.async_reload(entry.entry_id)
         return
     async with runtime.options_update_lock:
@@ -218,15 +239,31 @@ async def async_update_options(hass: HomeAssistant, entry: NinebotConfigEntry) -
             for key in runtime.applied_options.keys() | options.keys()
             if runtime.applied_options.get(key) != options.get(key)
         }
-        if data == runtime.applied_data and not changed:
+        same_data = {k: v for k, v in data.items() if k != TASK_POLICY_EPOCH} == {
+            k: v for k, v in (runtime.applied_data or {}).items() if k != TASK_POLICY_EPOCH
+        }
+        policy_changed = data.get(TASK_POLICY_EPOCH) != (runtime.applied_data or {}).get(
+            TASK_POLICY_EPOCH
+        )
+        if same_data and not changed and not policy_changed:
+            runtime.applied_data = data
             return
-        if data == runtime.applied_data and changed <= POLLING_OPTIONS | ASSISTANT_OPTIONS:
+        if same_data and changed <= POLLING_OPTIONS | ASSISTANT_OPTIONS:
             if changed & POLLING_OPTIONS:
                 await runtime.coordinator.async_reconfigure_polling(options)
-            if changed & ASSISTANT_OPTIONS:
-                await async_close_task_owner(hass, entry, remove=True)
+            if changed & ASSISTANT_OPTIONS or policy_changed:
+                await async_close_task_owner(hass, entry, remove=True, revoke_policy=False)
                 await async_update_assistant_api(hass)
             runtime.applied_options = options
+            # Only the internal epoch may change during this awaited hot update.
+            runtime.applied_data = {
+                **data,
+                **(
+                    {TASK_POLICY_EPOCH: entry.data[TASK_POLICY_EPOCH]}
+                    if TASK_POLICY_EPOCH in entry.data
+                    else {}
+                ),
+            }
             return
     await hass.config_entries.async_reload(entry.entry_id)
 

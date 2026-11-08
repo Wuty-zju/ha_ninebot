@@ -6,9 +6,10 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib.util import find_spec
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.importlib import async_import_module
 
@@ -20,10 +21,56 @@ if TYPE_CHECKING:
 CONF_ASSISTANT = "enable_assistant"
 CONF_ASSISTANT_VEHICLES = "assistant_vehicles"
 CONF_ASSISTANT_TASKS = "enable_assistant_tasks"
+TASK_POLICY_EPOCH = "assistant_policy_epoch"
 ASSISTANT_OPTIONS = frozenset({CONF_ASSISTANT, CONF_ASSISTANT_VEHICLES, CONF_ASSISTANT_TASKS})
 API_ID = "ninebot"
 DATA_KEY = f"{DOMAIN}_assistant"
 _LOGGER = logging.getLogger(__name__)
+
+
+def valid_policy_epoch(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 32 and not set(value) - set("0123456789abcdef")
+
+
+@callback
+def async_revoke_task_policy(
+    hass: HomeAssistant, entry: "NinebotConfigEntry", *, cleanup_owned: bool = False
+) -> None:
+    """Rotate before cleanup awaits, even when removing the authority file later fails."""
+    if hass.config_entries.async_get_entry(entry.entry_id) is entry:
+        epoch = uuid4().hex
+        runtime = getattr(entry, "runtime_data", None)
+        if cleanup_owned and runtime is not None and runtime.applied_data is not None:
+            # This caller already owns cleanup; its data-only notification must not repeat it.
+            runtime.applied_data = {**runtime.applied_data, TASK_POLICY_EPOCH: epoch}
+        hass.config_entries.async_update_entry(entry, data={**entry.data, TASK_POLICY_EPOCH: epoch})
+
+
+@callback
+def async_sync_task_policy(hass: HomeAssistant, entry: "NinebotConfigEntry") -> None:
+    """Observe every consent change before listener scheduling can coalesce transitions."""
+    runtime = getattr(entry, "runtime_data", None)
+    if runtime is None:
+        return
+    snapshot = {
+        key: list(value) if isinstance(value := entry.options.get(key), list) else value
+        for key in ASSISTANT_OPTIONS
+    }
+    previous = runtime.assistant_policy_options
+    runtime.assistant_policy_options = snapshot  # Before updating data and reentering the listener.
+    epoch = entry.data.get(TASK_POLICY_EPOCH)
+    if (
+        previous is not None
+        and previous != snapshot
+        and (
+            valid_policy_epoch(epoch)
+            or previous.get(CONF_ASSISTANT_TASKS) is True
+            or snapshot[CONF_ASSISTANT_TASKS] is True
+        )
+    ):
+        async_revoke_task_policy(hass, entry)
+    elif snapshot[CONF_ASSISTANT_TASKS] is True and not valid_policy_epoch(epoch):
+        async_revoke_task_policy(hass, entry)
 
 
 def native_api_supported() -> bool:
@@ -133,6 +180,7 @@ async def async_close_task_owner(
     *,
     remove: bool = False,
     permanent: bool = False,
+    revoke_policy: bool = True,
 ) -> None:
     """Keep unused task implementation cold on ordinary unloads."""
     runtime = getattr(entry, "runtime_data", None)
@@ -142,4 +190,6 @@ async def async_close_task_owner(
         return
     from .assistant_tasks import async_reset_tasks
 
-    await async_reset_tasks(hass, entry, remove=remove, permanent=permanent)
+    await async_reset_tasks(
+        hass, entry, remove=remove, permanent=permanent, revoke_policy=revoke_policy
+    )
