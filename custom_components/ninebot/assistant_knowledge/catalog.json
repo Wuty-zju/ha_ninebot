@@ -1001,11 +1001,11 @@
           "steps": [
             "If task tools are absent, explain enabling them and stop. Use task_vehicles; ask when several vehicles are ambiguous.",
             "Preview the selected dates. Report local coverage, missing selection, total attempt cap and expiry; missing history is not zero.",
-            "Only on explicit application intent, request human review of that vehicle/date range. This saves a local application and makes no cloud request.",
-            "Ask the original requester to open HA’s Ninebot Assistant panel with the same HA user. Human review and approval are separate; never ask for a token."
+            "Only on explicit intent, apply for human review. A matching existing task can be returned; preserve its actual state. The application makes no cloud request.",
+            "If approval_required is true, ask the original requester to review in HA’s Ninebot Assistant panel with the same HA user. Never ask for a token; do not seek new approval for already approved work."
           ],
           "stop": "Stop for missing inputs, denied access, no executable local selection or scope/budget uncertainty; do not expand the range or poll.",
-          "verify": "Return the persisted task ID and awaiting-review state, range, selection and cap. Application acceptance is not approval, execution or saved detail."
+          "verify": "Report the persisted task ID, returned state, range, selection and cap. Dedup returns existing work; acceptance alone proves neither approval nor saved detail."
         },
         "zh-Hans": {
           "title": "申请有界详情同步任务",
@@ -1017,11 +1017,11 @@
           "steps": [
             "缺少任务工具时说明开启方式并停止。用 task_vehicles 选车，多车歧义先询问。",
             "预览指定日期，说明本地覆盖、待取条数、总尝试上限和有效期；缺历史不等于零。",
-            "仅在用户明确要求申请时提交该车该日期的人工审核请求；只保存本地申请，不查询云端。",
-            "请原申请人使用同一个 HA 用户打开 Ninebot Assistant 面板另行审核批准，不能索要确认凭据。"
+            "仅在用户明确要求时申请人工审核；可能返回匹配的已有任务，应保留其真实状态，申请不查询云端。",
+            "仅 approval_required 为 true 时，请原申请人用同一个 HA 用户去 Ninebot Assistant 面板审核；不能索要凭据或要求重复批准已获准工作。"
           ],
           "stop": "输入缺失、拒绝访问、没有可执行的本地选择或范围/额度不明时停止；不扩大范围或循环查询。",
-          "verify": "返回持久任务 ID、等待审核状态、范围、条数与上限；受理不代表批准、执行或详情已保存。"
+          "verify": "返回持久任务 ID、实际返回状态、范围、条数和上限；去重返回已有工作，受理本身不能证明批准或详情已保存。"
         }
       },
       "source": {
@@ -1036,7 +1036,7 @@
       },
       "evidence_status": "reviewed_procedure",
       "reviewed_at": "2026-11-09",
-      "content_sha256": "339f6eb99411f4998ce37bbe6751747ab54bfe66e160c9353a526f81f140f7a2"
+      "content_sha256": "6b5d207b1ec7e613e4223a1f3218da704aec67fa6c417957a59f0a948845c4f3"
     },
     {
       "id": "SK10",

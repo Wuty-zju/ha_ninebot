@@ -1637,3 +1637,17 @@ async def test_policy_revocation_during_notice_import_cannot_resurrect_a_notice(
             await pending
         await hass.async_block_till_done()
     assert await native_notice(review_client, entry.entry_id, 251) is None
+
+
+async def test_repeated_application_reports_existing_queued_state_not_new_approval(
+    hass, entry, task_store
+):
+    from custom_components.ninebot.assistant_tasks import async_request_details
+
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    response = await async_request_details(
+        hass, task_store.context, ticket.plan.vehicle_ref, "2026-11-06", "2026-11-06"
+    )
+    assert response["approval_required"] is False
+    assert response["task"] == {"task_id": ticket.task_id, "state": "queued"}
+    assert set(driver.tickets) == {ticket.task_id}
