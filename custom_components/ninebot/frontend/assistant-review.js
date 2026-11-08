@@ -123,7 +123,7 @@ export class ReviewSession {
 
 export const TEXT = {
   en: {
-    title: 'Ninebot Assistant', subtitle: 'History task review · Beta', vehicle: 'Vehicle', choose: 'Select a vehicle',
+    title: 'Ninebot Assistant', menu: 'Open navigation', subtitle: 'History task review · Beta', vehicle: 'Vehicle', choose: 'Select a vehicle',
     refresh: 'Refresh', device: 'Open device', empty: 'No tasks for this vehicle.', select: 'Select a vehicle to review your tasks.',
     review: 'Review', approve: 'Approve and synchronize', cancel: 'Cancel task', dismiss: 'Back',
     confirm: 'Review the scope', notice: 'Approval allows cloud requests for these saved trip identities. Retries count toward the request limit. Existing saved details are reused.',
@@ -136,7 +136,7 @@ export const TEXT = {
     reasons: { budget_exhausted: 'The approved request limit was reached.', deadline_expired: 'The task execution window expired.', scope_changed: 'The saved trip mapping changed. Request a new plan.', not_authorized: 'Task access was revoked.', auth_required: 'The account needs to sign in again.', unavailable: 'The detail could not be verified.', budget_unavailable: 'The approved request budget could not be verified.' },
   },
   zh: {
-    title: 'Ninebot Assistant', subtitle: '历史任务审核 · Beta', vehicle: '车辆', choose: '请选择车辆',
+    title: 'Ninebot Assistant', menu: '打开导航', subtitle: '历史任务审核 · Beta', vehicle: '车辆', choose: '请选择车辆',
     refresh: '刷新', device: '查看设备', empty: '这辆车暂无任务。', select: '请选择车辆，查看你申请的任务。',
     review: '审核', approve: '批准并同步', cancel: '取消任务', dismiss: '返回',
     confirm: '确认任务范围', notice: '批准后将为这些已保存的行程标识请求云端详情。重试计入请求上限，已保存的详情会复用。',

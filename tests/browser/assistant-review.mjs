@@ -44,7 +44,8 @@ try {
         : { '--primary-background-color':'#f8fafc', '--card-background-color':'#ffffff', '--primary-text-color':'#111827', '--secondary-text-color':'#475569', '--divider-color':'#94a3b8' };
       for (const [name, value] of Object.entries({ ...colors, '--primary-color':'#0284c7', '--error-color':theme === 'dark' ? '#fca5a5' : '#b91c1c' })) document.documentElement.style.setProperty(name, value);
       document.body.style.background = 'var(--primary-background-color)';
-      window.reviewCalls = [];
+      window.reviewCalls = []; window.menuRequests = 0;
+      document.body.addEventListener('hass-toggle-menu', () => { window.menuRequests += 1; });
       const task = { task_id:'a'.repeat(32), vehicle_ref:'vehicle-a', state:'awaiting_approval', plan_hash:'b'.repeat(64), start_date:'2026-11-05', end_date:'2026-11-06', time_zone:'Asia/Shanghai', selected_count:1, maximum_detail_attempts:2, saved_count:null, attempts_used:null, approval_expires_at:'2099-01-01T00:00:00Z' };
       const hass = { language, user:{id:'synthetic-user'}, connection:{}, callWS:async (message) => {
         window.reviewCalls.push(message.operation || 'vehicles');
@@ -58,6 +59,8 @@ try {
       document.body.append(panel); window.fixturePanel = panel;
     }, { language, theme });
     const zh = language.startsWith('zh');
+    await page.getByRole('button', {name:zh?'打开导航':'Open navigation', exact:true}).click();
+    assert.equal(await page.evaluate(() => window.menuRequests), 1);
     await page.locator('select option').nth(2).waitFor({state:'attached'});
     assert.equal(await page.locator('select').inputValue(), '');
     await page.locator('select').selectOption('vehicle-a');

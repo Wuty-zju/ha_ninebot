@@ -96,7 +96,13 @@ export class NinebotAssistantPanel extends HTMLElement {
     const t = this._text = TEXT[this._language?.startsWith('zh') ? 'zh' : 'en'];
     const style = element('style', css);
     const header = element('header');
-    const menu = element('ha-menu-button'); menu.hass = this._hass;
+    // Use HA's drawer event even on a direct first load, before any other panel
+    // has defined optional header components.
+    const menu = this._button('☰', () => this.dispatchEvent(new CustomEvent('hass-toggle-menu', {
+      bubbles: true, composed: true,
+    })));
+    menu.setAttribute('aria-label', t.menu);
+    menu.disabled = false;
     const heading = element('div'); heading.append(element('h1', t.title), element('p', t.subtitle));
     header.append(menu, heading);
     const main = element('main'); main.setAttribute('aria-busy', String(session.busy));
