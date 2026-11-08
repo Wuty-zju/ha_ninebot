@@ -88,6 +88,9 @@ async def async_review(
                         ticket = await store.async_approve(
                             ticket.task_id, context, message["token"], message["plan_hash"]
                         )
+                        from .assistant_execution import driver_for
+
+                        ticket = await driver_for(hass, scope.entry).async_accept(ticket, context)
                         response = {"task": ticket_view(ticket)}
                 await scope.async_validate(hass)
                 assert_task_owner(hass, scope, store)

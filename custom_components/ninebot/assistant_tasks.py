@@ -7,7 +7,12 @@ from typing import Any
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Context, HomeAssistant
 
-from .assistant import async_revoke_task_policy
+from .assistant import (
+    CONF_ASSISTANT,
+    CONF_ASSISTANT_TASKS,
+    CONF_ASSISTANT_VEHICLES,
+    async_revoke_task_policy,
+)
 from .assistant_approval import APPROVAL_TTL
 from .assistant_plans import async_detail_proposal
 from .assistant_policy import AssistantError, AssistantScope, async_authorize
@@ -20,18 +25,32 @@ from .runtime import NinebotConfigEntry, RuntimeData
 def task_owner(hass: HomeAssistant, scope: AssistantScope) -> ApprovalStore:
     """No await between checking the scope and selecting its one owner."""
     scope.assert_task_current(hass)
-    runtime = scope.runtime
+    return entry_task_owner(hass, scope.entry)
+
+
+def entry_task_owner(hass: HomeAssistant, entry: NinebotConfigEntry) -> ApprovalStore:
+    """Trusted startup/scheduler entry; tool callers must authorize their scope first."""
+    runtime = entry.runtime_data
+    if (
+        entry.options.get(CONF_ASSISTANT) is not True
+        or entry.options.get(CONF_ASSISTANT_TASKS) is not True
+        or not isinstance(entry.options.get(CONF_ASSISTANT_VEHICLES), list)
+        or not entry.options.get(CONF_ASSISTANT_VEHICLES)
+        or runtime.assistant_task_blocks
+        or runtime.coordinator._stopping
+    ):
+        raise AssistantError("not_authorized")
     owner = runtime.coordinator.statistics.archive.owner
     if runtime.assistant_tasks is None:
-        runtime.assistant_tasks = ApprovalStore(hass, scope.entry.entry_id, owner)
+        runtime.assistant_tasks = ApprovalStore(hass, entry.entry_id, owner)
 
         async def shutdown(_: object) -> None:
             runtime.assistant_task_stop = None
-            await async_reset_tasks(hass, scope.entry, remove=False, permanent=True)
+            await async_reset_tasks(hass, entry, remove=False, permanent=True)
 
         runtime.assistant_task_stop = hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown)
     store = runtime.assistant_tasks
-    if store.entry_id != scope.entry.entry_id or store.account_key != owner:
+    if store.entry_id != entry.entry_id or store.account_key != owner:
         raise AssistantError("not_authorized")
     return store
 
@@ -104,6 +123,7 @@ async def async_reset_tasks(
             runtime.assistant_task_stop()
             runtime.assistant_task_stop = None
         store = runtime.assistant_tasks
+        runtime.coordinator.preservation.detach_assistant()
         if store is not None:
             await store.async_close(remove=remove)
         elif remove:

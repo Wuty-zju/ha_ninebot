@@ -3,7 +3,7 @@
 import asyncio
 from collections import Counter
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
 from typing import Any, cast
@@ -50,6 +50,8 @@ class _Job:
     waiters: int = 0
     task: asyncio.Task[QueryReceipt[Any]] | None = None
     submitted_monotonic: float = 0
+    admissions: dict[object, Callable[[], Awaitable[None]] | None] = field(default_factory=dict)
+    denied: set[object] = field(default_factory=set)
 
 
 class _Cooldown(NinebotError):
@@ -103,8 +105,10 @@ class QueryBroker:
         operation: Callable[[], Awaitable[T]],
         guard: Callable[[], bool],
         priority: Priority = Priority.INTERACTIVE,
+        *,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> QueryReceipt[T]:
-        return await self._submit(key, key.vehicle, operation, guard, priority)
+        return await self._submit(key, key.vehicle, operation, guard, priority, before_request)
 
     async def async_command(
         self, vehicle: str, operation: Callable[[], Awaitable[None]], guard: Callable[[], bool]
@@ -118,11 +122,19 @@ class QueryBroker:
         operation: Callable[[], Awaitable[T]],
         guard: Callable[[], bool],
         priority: Priority,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> QueryReceipt[T]:
         if self._closed:
             raise NinebotError(ErrorKind.CLOSED)
         if self._waiters >= 64:
             raise NinebotError(ErrorKind.BUSY)
+        if before_request is not None:
+            await before_request()
+            # Authorization yields; recheck admission before reserving bounded slots.
+            if self._closed:
+                raise NinebotError(ErrorKind.CLOSED)
+            if self._waiters >= 64:
+                raise NinebotError(ErrorKind.BUSY)
         job = self._flights.get(key) if key else None
         if job is not None and not job.future.done():
             if job.waiters >= 32:
@@ -150,9 +162,18 @@ class QueryBroker:
                 self._worker = asyncio.create_task(self._run())
         job.waiters += 1
         self._waiters += 1
+        consumer = object()
+        job.admissions[consumer] = before_request
         try:
-            return cast(QueryReceipt[T], await asyncio.shield(job.future))
+            receipt = await asyncio.shield(job.future)
+            if consumer in job.denied:
+                raise NinebotError(ErrorKind.CLOSED)
+            if before_request is not None:
+                await before_request()
+            return cast(QueryReceipt[T], receipt)
         finally:
+            job.admissions.pop(consumer, None)
+            job.denied.discard(consumer)
             job.waiters -= 1
             self._waiters -= 1
             if job.waiters == 0 and not job.future.done():
@@ -194,6 +215,9 @@ class QueryBroker:
             delay = self._cooldown_until - self.monotonic()
             if delay > 0:
                 raise _Cooldown(self._cooldown_kind, retry_after=delay)
+            await self._admit(job)
+            if self._closed or not job.guard():
+                raise NinebotError(ErrorKind.CLOSED)
             self._revision += 1
             revision = self._revision
             started = self._clock()
@@ -216,6 +240,31 @@ class QueryBroker:
                 self.monotonic(),
                 max(0, started_monotonic - job.submitted_monotonic),
             )
+
+    async def _admit(self, job: _Job) -> None:
+        """Authorize a current consumer at the wire gate without binding others to it."""
+        checked: set[object] = set()
+        try:
+            async with asyncio.timeout(5):
+                while True:
+                    candidates = [item for item in job.admissions.items() if item[0] not in checked]
+                    if not candidates:
+                        raise NinebotError(ErrorKind.CLOSED)
+                    for consumer, check in candidates:
+                        checked.add(consumer)
+                        if consumer not in job.admissions:
+                            continue
+                        if check is None:
+                            return  # An ordinary, still-owned request remains independent.
+                        try:
+                            await check()
+                        except Exception:
+                            job.denied.add(consumer)
+                            continue
+                        if consumer in job.admissions:
+                            return
+        except TimeoutError:
+            raise NinebotError(ErrorKind.BUSY) from None
 
     async def _run(self) -> None:
         try:

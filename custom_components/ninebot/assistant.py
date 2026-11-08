@@ -193,3 +193,22 @@ async def async_close_task_owner(
     await async_reset_tasks(
         hass, entry, remove=remove, permanent=permanent, revoke_policy=revoke_policy
     )
+
+
+async def async_resume_task_execution(hass: HomeAssistant, entry: "NinebotConfigEntry") -> None:
+    """No task implementation or scheduler for accounts which have not opted in."""
+    if (
+        entry.options.get(CONF_ASSISTANT) is not True
+        or entry.options.get(CONF_ASSISTANT_TASKS) is not True
+        or not entry.options.get(CONF_ASSISTANT_VEHICLES)
+    ):
+        return
+    from .assistant_execution import async_resume
+    from .assistant_policy import AssistantError
+    from .assistant_task_store import TaskStoreUnavailable
+    from .ride_archive import ArchiveError
+
+    try:
+        await async_resume(hass, entry)
+    except (AssistantError, TaskStoreUnavailable, ArchiveError):
+        _LOGGER.warning("Ninebot approved tasks could not resume")

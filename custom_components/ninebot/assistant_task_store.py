@@ -31,7 +31,7 @@ from .ride_archive import ArchiveError
 MAX_TASKS = 24
 MAX_PENDING_PER_USER = 5
 MAX_BYTES = 256 * 1024
-TASK_MINOR = 3
+TASK_MINOR = 4
 
 
 class TaskStoreUnavailable(Exception):
@@ -45,12 +45,14 @@ def ticket_data(ticket: ApprovalTicket) -> dict[str, Any]:
         "nonce_hash": ticket.nonce_hash,
         "plan_hash": p.digest,
         "approved_at": ticket.approved_at.isoformat() if ticket.approved_at else None,
+        "context_id": ticket.context_id,
         "progress": {
             "state": ticket.progress.state,
             "saved": ticket.progress.saved,
             "attempts": ticket.progress.attempts,
             "updated_at": ticket.progress.updated_at.isoformat(),
             "reason": ticket.progress.reason,
+            "retry_at": ticket.progress.retry_at.isoformat() if ticket.progress.retry_at else None,
         }
         if ticket.progress is not None
         else None,
@@ -77,7 +79,11 @@ def restore_ticket(raw: Any) -> ApprovalTicket:
             "nonce_hash",
             "approved_at",
         }
-        if not isinstance(raw, dict) or set(raw) not in (keys, keys | {"progress"}):
+        if not isinstance(raw, dict) or set(raw) not in (
+            keys,
+            keys | {"progress"},
+            keys | {"progress", "context_id"},
+        ):
             raise ValueError
         p = raw["plan"]
         if not isinstance(p, dict) or set(p) != {
@@ -114,13 +120,17 @@ def restore_ticket(raw: Any) -> ApprovalTicket:
         )
         progress = raw.get("progress")
         if progress is not None:
-            if not isinstance(progress, dict) or set(progress) != {
+            progress_keys = {
                 "state",
                 "saved",
                 "attempts",
                 "updated_at",
                 "reason",
-            }:
+            }
+            if not isinstance(progress, dict) or set(progress) not in (
+                progress_keys,
+                progress_keys | {"retry_at"},
+            ):
                 raise ValueError
             progress = TaskProgress(
                 progress["state"],
@@ -128,8 +138,13 @@ def restore_ticket(raw: Any) -> ApprovalTicket:
                 progress["attempts"],
                 datetime.fromisoformat(progress["updated_at"]),
                 progress["reason"],
+                datetime.fromisoformat(progress["retry_at"])
+                if progress.get("retry_at") is not None
+                else None,
             )
-        return ApprovalTicket(raw["task_id"], plan, raw["nonce_hash"], approved, progress)
+        return ApprovalTicket(
+            raw["task_id"], plan, raw["nonce_hash"], approved, progress, raw.get("context_id")
+        )
     except (KeyError, TypeError, ValueError, OverflowError) as err:
         raise TaskStoreUnavailable("Invalid task record") from err
 
@@ -149,7 +164,7 @@ def read_envelope(path: Path, key: str) -> dict[str, Any] | None:
             or type(raw.get("version")) is not int
             or raw["version"] != 1
             or type(raw.get("minor_version")) is not int
-            or raw["minor_version"] not in (1, 2, TASK_MINOR)
+            or raw["minor_version"] not in (1, 2, 3, TASK_MINOR)
             or raw.get("key") != key
             or not isinstance(raw.get("data"), dict)
         ):
@@ -199,6 +214,7 @@ class ApprovalStore:
         )
         self._lock = asyncio.Lock()
         self._closed = False
+        self._cache: dict[str, ApprovalTicket] = {}
 
     @property
     def closed(self) -> bool:
@@ -213,6 +229,7 @@ class ApprovalStore:
                 partial(read_envelope, Path(self._store.path), self.key)
             )
             if data is None:
+                self._cache = {}
                 return {}
             if set(data) not in ({"tickets"}, {"tickets", "policy_epoch"}) or not isinstance(
                 data["tickets"], dict
@@ -222,6 +239,7 @@ class ApprovalStore:
             if epoch is not None and not valid_policy_epoch(epoch):
                 raise TaskStoreUnavailable("Invalid task policy")
             if epoch is not None and epoch != self.policy_epoch:
+                self._cache = {}
                 return {}  # A previous consent epoch cannot authorize or deduplicate a new task.
             if len(data["tickets"]) > MAX_TASKS:
                 raise TaskStoreUnavailable("Too many task records")
@@ -236,6 +254,8 @@ class ApprovalStore:
                 for key, row in records.items()
             ):
                 raise TaskStoreUnavailable("Task account binding mismatch")
+            self._assert_policy()
+            self._cache = dict(records)
             return records
         except (OSError, UnicodeError) as err:
             raise TaskStoreUnavailable("Task store cannot be read") from err
@@ -260,6 +280,7 @@ class ApprovalStore:
                 )
                 if actual != data:
                     raise TaskStoreUnavailable("Task write was not acknowledged")
+                self._cache = dict(records)
             except OSError as err:
                 raise TaskStoreUnavailable("Task store cannot be saved") from err
 
@@ -323,9 +344,19 @@ class ApprovalStore:
             )
             while len(records) >= MAX_TASKS and terminals:
                 records.pop(terminals.pop(0).task_id)
-            pending = ApprovalTicket(uuid4().hex, plan, None)
+            pending = ApprovalTicket(uuid4().hex, plan, None, context_id=scope.context.id)
             records[pending.task_id] = pending
             await self._commit(records)
+            await self._validate(scope)
+            if scope.runtime.coordinator.statistics.writable:
+                try:
+                    await scope.runtime.coordinator.statistics.archive.async_prune_detail_budgets(
+                        now, guard=lambda: self._current(scope)
+                    )
+                except ArchiveError:
+                    # Maintenance pressure cannot undo a saved application. Revocation
+                    # still uses the original public authorization error contract.
+                    await self._validate(scope)
             await self._validate(scope)
             return pending
 
@@ -336,6 +367,40 @@ class ApprovalStore:
             scope = await self._scope(ticket.plan, context)
             await self._validate(scope)
             return ticket
+
+    def is_current(self, expected: ApprovalTicket) -> bool:
+        """Synchronous commit guard after a validated read; not a substitute for live auth."""
+        try:
+            self._assert_policy()
+        except AssistantError:
+            return False
+        return not self._closed and self._cache.get(expected.task_id) == expected
+
+    async def async_execution_tickets(self) -> tuple[ApprovalTicket, ...]:
+        """Trusted scheduler only; each candidate must authenticate its original user."""
+        async with self._lock:
+            return tuple(
+                row
+                for row in (await self._read()).values()
+                if row.approved_at is not None and not row.terminal
+            )
+
+    async def async_fail_execution(self, expected: ApprovalTicket, reason: str) -> None:
+        """System-owned revocation can only terminate, never approve or enlarge a plan."""
+        async with self._lock:
+            records = await self._read()
+            current = records.get(expected.task_id)
+            if current != expected or current is None or current.terminal:
+                return
+            previous = current.progress
+            saved = previous.saved if previous else 0
+            records[current.task_id] = replace(
+                current,
+                progress=TaskProgress(
+                    "partial" if saved else "failed", saved, None, dt_util.utcnow(), reason
+                ),
+            )
+            await self._commit(records)
 
     async def async_list(
         self, context: Context | None, vehicle_ref: str
@@ -379,11 +444,13 @@ class ApprovalStore:
             ticket = self._find(records, task_id)
             scope = await self._scope(ticket.plan, context)
             approved = await async_approve_ticket(self.hass, ticket, context, nonce, plan_hash)
+            assert approved.approved_at is not None
             await scope.runtime.coordinator.statistics.archive.async_initialize_detail_budget(
                 scope.sn,
                 ticket.plan.scope,
                 DetailBudget(task_id, ticket.plan.attempts),
                 guard=lambda: self._current(scope),
+                expires_at=approved.approved_at + EXECUTION_TTL,
             )
             await scope.async_validate(self.hass)
             records[task_id] = approved

@@ -234,9 +234,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         return not revision or not stored or stored.request_revision <= revision
 
     async def _read(
-        self, key: QueryKey, operation: Callable[[], Awaitable[BackendResult]], priority: Priority
+        self,
+        key: QueryKey,
+        operation: Callable[[], Awaitable[BackendResult]],
+        priority: Priority,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> BackendResult:
-        receipt = await self.broker.async_read(key, operation, lambda: self._owns(key), priority)
+        receipt = await self.broker.async_read(
+            key, operation, lambda: self._owns(key), priority, before_request=before_request
+        )
         return replace(
             receipt.value,
             started_at=receipt.started_at,
@@ -1089,13 +1095,20 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         *,
         refresh: bool = False,
         priority: Priority = Priority.INTERACTIVE,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> RawRecord:
         """The action layer must resolve this ID from this vehicle's month index."""
         adapters.previous_month(month)
         if not detail_id or len(detail_id) > 256:
             raise NinebotError(ErrorKind.PROTOCOL)
         return await self._query_record(
-            sn, Endpoint.TRIP_DETAIL, detail_id, month, refresh=refresh, priority=priority
+            sn,
+            Endpoint.TRIP_DETAIL,
+            detail_id,
+            month,
+            refresh=refresh,
+            priority=priority,
+            before_request=before_request,
         )
 
     async def async_query_history_page(self, sn: str, month: str, page: int) -> RawRecord:
@@ -1166,6 +1179,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         *,
         priority: Priority = Priority.INTERACTIVE,
         refresh: bool = False,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> RawRecord:
         if self._query_pending >= 4:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
@@ -1175,6 +1189,14 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self._active.add(task)
         key = self._key(sn, endpoint, f"{month}:{scope}")
         try:
+            if before_request is not None:
+                await before_request()
+                # Preserve this consumer's authorization until the broker wire gate.
+                # Shared transport remains coalesced; the ordinary parse future must not
+                # erase an additional consumer's admission callback.
+                return await self._query_record_update(
+                    sn, endpoint, scope, month, key, priority, refresh, before_request
+                )
             return await self._shared(
                 self._queries,
                 key,
@@ -1196,6 +1218,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         request_key: QueryKey,
         priority: Priority = Priority.INTERACTIVE,
         refresh: bool = False,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> RawRecord:
         key = self._key(sn, endpoint, month if endpoint is Endpoint.TRAVEL else f"{month}:{scope}")
         if not self._owns(request_key) or not self._owns(key) or not self.fresh(sn, "profile"):
@@ -1219,7 +1242,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     raise NinebotError(ErrorKind.CLOSED)
                 return await operation()
 
-            result = replace(await self._read(key, query, priority), query_month=month)
+            result = replace(
+                await self._read(key, query, priority, before_request), query_month=month
+            )
             if not self.fresh(sn, "profile"):
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="query_unavailable"

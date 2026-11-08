@@ -21,6 +21,7 @@ from .assistant import (
     ASSISTANT_OPTIONS,
     TASK_POLICY_EPOCH,
     async_close_task_owner,
+    async_resume_task_execution,
     async_sync_task_policy,
     async_update_assistant_api,
 )
@@ -186,6 +187,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         coordinator.async_schedule_statistics_refresh()
         async_sync_task_policy(hass, entry)
         await async_update_assistant_api(hass)
+        await async_resume_task_execution(hass, entry)
     except BaseException:
         await async_close_task_owner(hass, entry, permanent=True)
         if entry.runtime_data.events:
@@ -254,6 +256,7 @@ async def async_update_options(hass: HomeAssistant, entry: NinebotConfigEntry) -
             if changed & ASSISTANT_OPTIONS or policy_changed:
                 await async_close_task_owner(hass, entry, remove=True, revoke_policy=False)
                 await async_update_assistant_api(hass)
+                await async_resume_task_execution(hass, entry)
             runtime.applied_options = options
             # Only the internal epoch may change during this awaited hot update.
             runtime.applied_data = {

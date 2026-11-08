@@ -34,6 +34,7 @@ JOB_REASONS = frozenset(
         "not_authorized",
         "auth_required",
         "unavailable",
+        "budget_unavailable",
     }
 )
 
@@ -51,6 +52,7 @@ class TaskProgress:
     attempts: int | None
     updated_at: datetime
     reason: str | None = None
+    retry_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -62,6 +64,7 @@ class TaskProgress:
                 self.attempts is not None
                 and (type(self.attempts) is not int or not 0 <= self.attempts <= 20)
             )
+            or (self.retry_at is not None and (not aware(self.retry_at) or self.terminal))
             or not aware(self.updated_at)
             or (
                 self.reason is not None
@@ -136,6 +139,7 @@ class ApprovalTicket:
     nonce_hash: str | None = field(repr=False)
     approved_at: datetime | None = None
     progress: TaskProgress | None = None
+    context_id: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if (
@@ -178,6 +182,10 @@ class ApprovalTicket:
                     )
                 )
             )
+            or (
+                self.context_id is not None
+                and (not isinstance(self.context_id, str) or not 1 <= len(self.context_id) <= 128)
+            )
         ):
             raise ValueError("Invalid approval ticket")
 
@@ -218,7 +226,7 @@ class ApprovalTicket:
         ):
             raise AssistantError("not_authorized")
         progress = (
-            replace(self.progress, state="approved", reason=None, updated_at=now)
+            replace(self.progress, state="approved", reason=None, retry_at=None, updated_at=now)
             if self.progress is not None
             else None
         )
@@ -268,4 +276,6 @@ async def async_approve_ticket(
     if user_id is None:
         raise AssistantError("not_authorized")
     # No await between final authorization and the immutable state transition.
-    return ticket.approve(user_id, nonce, plan_hash, dt_util.utcnow())
+    return replace(
+        ticket.approve(user_id, nonce, plan_hash, dt_util.utcnow()), context_id=scope.context.id
+    )

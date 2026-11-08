@@ -148,7 +148,8 @@
         "tests/test_history_store.py",
         "tests/test_bootstrap.py",
         "tests/test_history_lifecycle.py",
-        "custom_components/ninebot/http_policy.py"
+        "custom_components/ninebot/http_policy.py",
+        "custom_components/ninebot/detail_budget_gc.py"
       ],
       "tests": [
         "tests/test_account_archive.py",
