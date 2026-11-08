@@ -1095,6 +1095,7 @@ async def test_task_expiry_extends_retention_without_reset_and_missing_counter_s
             SN, scope, budget, guard=lambda: True, expires_at=expiry + timedelta(hours=1)
         )
         assert await archive.async_detail_budget_used(SN, scope, budget, guard=lambda: True) == 1
+        assert await archive.async_prune_detail_budgets(NOW, guard=lambda: True) == 0
         assert await archive.async_prune_detail_budgets(expiry, guard=lambda: True) == 0
         assert (
             await archive.async_prune_detail_budgets(

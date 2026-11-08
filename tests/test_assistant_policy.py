@@ -339,11 +339,11 @@ async def test_local_proposal_binds_original_caller_and_projects_no_private_plan
     assert plan.user_id == context.user_id and plan.account_key == archive.owner
     assert plan.sn == "SyntheticSN" and plan.vehicle_ref == proposal_device
     assert plan.start_date == plan.end_date == date(2026, 11, 6)
-    assert plan.created_at == now and plan.attempts == 2
+    assert plan.created_at == now and plan.attempts == 4
     output = result.model_data()
     assert output["coverage"]["known_local_rides"] == 2
     assert output["coverage"]["missing_months"] == []
-    assert output["requests"]["maximum_after_approval"] == 2
+    assert output["requests"]["maximum_after_approval"] == 4
     assert output["requests"]["account_minimum_interval_seconds"] == 60
     assert output["task_created"] is False and output["approval_required"] is True
     assert output["plan"]["digest"] == plan.digest

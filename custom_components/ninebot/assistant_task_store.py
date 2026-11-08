@@ -138,7 +138,9 @@ def restore_ticket(raw: Any) -> ApprovalTicket:
                 progress["attempts"],
                 datetime.fromisoformat(progress["updated_at"]),
                 progress["reason"],
-                datetime.fromisoformat(progress["retry_at"]) if progress.get("retry_at") else None,
+                datetime.fromisoformat(progress["retry_at"])
+                if progress.get("retry_at") is not None
+                else None,
             )
         return ApprovalTicket(
             raw["task_id"], plan, raw["nonce_hash"], approved, progress, raw.get("context_id")
@@ -345,10 +347,16 @@ class ApprovalStore:
             pending = ApprovalTicket(uuid4().hex, plan, None, context_id=scope.context.id)
             records[pending.task_id] = pending
             await self._commit(records)
+            await self._validate(scope)
             if scope.runtime.coordinator.statistics.writable:
-                await scope.runtime.coordinator.statistics.archive.async_prune_detail_budgets(
-                    now, guard=lambda: self._current(scope)
-                )
+                try:
+                    await scope.runtime.coordinator.statistics.archive.async_prune_detail_budgets(
+                        now, guard=lambda: self._current(scope)
+                    )
+                except ArchiveError:
+                    # Maintenance pressure cannot undo a saved application. Revocation
+                    # still uses the original public authorization error contract.
+                    await self._validate(scope)
             await self._validate(scope)
             return pending
 

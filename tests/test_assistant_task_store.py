@@ -1246,3 +1246,89 @@ async def test_execution_never_reinitializes_missing_approved_counter(hass, entr
     assert actual.progress.state == "failed" and actual.progress.reason == "budget_unavailable"
     assert actual.progress.attempts is None
     task_store.client.async_get_trip_detail.assert_not_awaited()
+
+
+@pytest.mark.parametrize("invalid", [False, 0, "", [], {}])
+async def test_retry_deadline_codec_rejects_false_empty_and_non_timestamps(task_store, invalid):
+    from custom_components.ninebot.assistant_approval import TaskProgress
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    ticket = await approve_task(s, await s.async_request(p, c), c)
+    raw = ticket_data(ticket)
+    raw["progress"] = {
+        "state": "waiting_budget",
+        "saved": 0,
+        "attempts": 0,
+        "updated_at": dt_util.utcnow().isoformat(),
+        "reason": None,
+        "retry_at": invalid,
+    }
+    with pytest.raises(TaskStoreUnavailable):
+        restore_ticket(raw)
+    # A true omitted deadline is still a valid old progress record.
+    raw["progress"].pop("retry_at")
+    assert restore_ticket(raw).progress == TaskProgress(
+        "waiting_budget", 0, 0, dt_util.parse_datetime(raw["progress"]["updated_at"])
+    )
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_task_exhaustion_stops_requests_and_terminal_state_survives_reload(
+    hass, entry, task_store
+):
+    from custom_components.ninebot.exceptions import ErrorKind, NinebotError
+    from custom_components.ninebot.ride_archive import vehicle_key
+
+    driver, ticket = await queued_execution(hass, entry, task_store)
+    task_store.client.async_get_trip_detail.side_effect = NinebotError(ErrorKind.CONNECTION)
+    await execution_tick(hass, task_store.co)
+    archive = task_store.co.statistics.archive
+
+    def elapse():
+        db = archive._db(write=True)
+        with db:
+            db.execute("UPDATE meta SET value='0' WHERE key='preservation_budget'")
+            key = f"preservation:{vehicle_key('SyntheticSN')}:private-task-ride"
+            row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+            raw = json.loads(row[0])
+            raw["next_attempt"] = 0
+            db.execute("UPDATE meta SET value=? WHERE key=?", (json.dumps(raw), key))
+
+    await archive._run(elapse)
+    await execution_tick(hass, task_store.co)
+    finished = await driver.store.async_get(ticket.task_id, task_store.context)
+    assert finished.progress.state == "failed" and finished.progress.reason == "budget_exhausted"
+    assert finished.progress.attempts == 2 and not driver.has_work
+    await driver.async_restore()
+    await execution_tick(hass, task_store.co)
+    assert not driver.has_work and task_store.co.preservation._remove is None
+    assert task_store.client.async_get_trip_detail.await_count == 2
+
+
+@pytest.mark.parametrize("task_store", [True], indirect=True)
+async def test_durable_approval_survives_temporary_queue_checkpoint_pressure(
+    hass, entry, task_store
+):
+    from custom_components.ninebot.assistant_execution import driver_for
+    from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure
+
+    result = await seeded_request(hass, entry, task_store)
+    store = entry.runtime_data.assistant_tasks
+    pending = await store.async_get(result["task"]["task_id"], task_store.context)
+    approved = await approve_task(store, pending, task_store.context)
+    driver = driver_for(hass, entry)
+    with patch.object(
+        task_store.co.statistics.archive,
+        "async_detail_budget_used",
+        new=AsyncMock(side_effect=ArchiveError(ArchiveFailure.BUSY)),
+    ):
+        with pytest.raises(ArchiveError):
+            await driver.async_accept(approved, task_store.context)
+        await hass.async_block_till_done()
+    assert driver.has_work
+    task_store.client.async_get_trip_detail.return_value = execution_payload()
+    await execution_tick(hass, task_store.co)
+    assert (
+        await store.async_get(approved.task_id, task_store.context)
+    ).progress.state == "completed"
+    assert task_store.client.async_get_trip_detail.await_count == 1

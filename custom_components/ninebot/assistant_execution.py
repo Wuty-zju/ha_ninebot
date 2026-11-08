@@ -80,25 +80,34 @@ class AssistantExecution:
 
     async def async_accept(self, ticket: ApprovalTicket, context: Context) -> ApprovalTicket:
         scope = await self._authorize(ticket, context)
-        archive = self.co.statistics.archive
-        used = await archive.async_detail_budget_used(
-            scope.sn,
-            ticket.plan.scope,
-            DetailBudget(ticket.task_id, ticket.plan.attempts),
-            guard=lambda: self._owns(scope, ticket),
-        )
-        queued = await self.store.async_checkpoint(
-            ticket,
-            TaskProgress(
-                "queued", ticket.progress.saved if ticket.progress else 0, used, dt_util.utcnow()
-            ),
-            context,
-        )
-        assert_task_owner(self.hass, scope, self.store)
-        self.tickets[queued.task_id] = queued
-        self.contexts[queued.task_id] = context  # Retain the original live HA Context.
-        self.co.preservation.attach_assistant(self)
-        return queued
+        # Approval is already durable. Keep it reachable even if the queue checkpoint
+        # meets temporary actor/Store pressure; the next existing tick revalidates it.
+        self.tickets[ticket.task_id] = ticket
+        self.contexts[ticket.task_id] = context
+        try:
+            archive = self.co.statistics.archive
+            used = await archive.async_detail_budget_used(
+                scope.sn,
+                ticket.plan.scope,
+                DetailBudget(ticket.task_id, ticket.plan.attempts),
+                guard=lambda: self._owns(scope, ticket),
+            )
+            queued = await self.store.async_checkpoint(
+                ticket,
+                TaskProgress(
+                    "queued",
+                    ticket.progress.saved if ticket.progress else 0,
+                    used,
+                    dt_util.utcnow(),
+                ),
+                context,
+            )
+            assert_task_owner(self.hass, scope, self.store)
+            self.tickets[queued.task_id] = queued
+            return queued
+        finally:
+            if not self.closed and scope.runtime.assistant_tasks is self.store:
+                self.co.preservation.attach_assistant(self)
 
     async def _checkpoint(
         self,
