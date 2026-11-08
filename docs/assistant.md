@@ -91,7 +91,7 @@ Enabling the option allows the chosen host to receive selected vehicle labels, s
 
 The dedicated API admits **20 calls per authenticated user per rolling minute**, with **two calls in flight across the API**, a **10-second** call deadline, a **16 KiB** result limit and a **2 KiB** limit per listed ride. Vehicle discovery returns at most 20 allowed vehicles and explicitly reports when more are available; narrow the account selections in that case. These local limits are separate from the cloud history-request budget. Cancellation releases the caller's admission slot.
 
-Selecting broader administrator APIs alongside Ninebot can give a host capabilities outside this dedicated read contract. Use the dedicated collection and native read-only setting when you only want these queries. The first preview exposes no vehicle commands, archive import/deletion or AI-started synchronization tasks.
+Selecting broader administrator APIs alongside Ninebot can give a host capabilities outside this dedicated read contract. Use the dedicated collection and native read-only setting when you only want these queries. The read-only collection exposes no vehicle commands, archive import/deletion or synchronization requests. The separate task collection can request review; cloud work requires human approval in the panel.
 
 ## Troubleshooting
 
