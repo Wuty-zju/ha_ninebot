@@ -104,7 +104,9 @@ Existing explicit choices are retained on upgrade. Further options include adapt
 
 ## Optional Assistant — 2.1 preview
 
-The 2.1 preview adds dedicated local read tools and versioned help through Home Assistant’s native LLM API and MCP Server. Select vehicles per account, then ask a compatible host about current readings, period statistics, saved trips or synchronization health. It uses the existing archive and query layer; AI is off by default and does not refresh the cloud or expose routes.
+The 2.1 preview adds dedicated local read tools and versioned help through Home Assistant’s native LLM API and MCP Server. Select vehicles per account, then ask a compatible host about current readings, period statistics, saved trips or synchronization health. It uses the existing archive and query layer; AI is off by default; read tools do not refresh the cloud or expose routes.
+
+A separate opt-in task API can propose missing-detail work for human review. The administrator panel confirms the exact scope and request limit before the existing history scheduler runs it. [Task setup →](docs/assistant.md#reviewable-history-tasks-beta)
 
 [Enable and use Ninebot Assistant →](docs/assistant.md)
 

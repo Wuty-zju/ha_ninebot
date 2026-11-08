@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.2
+
+- Add an optional, separate native task API for previewing missing trip details, requesting review and reading progress.
+- Review exact vehicles, dates, selected identities, request limits and expiry in a native administrator panel before approving cloud work.
+- Run approved scopes through the existing history scheduler with durable checkpoints, bounded retries, shared account pacing and verified saved results.
+- Preserve caller identity and account/vehicle consent through execution; support cancellation, restart recovery and approval-safe backups.
+- Add native review/result notices and two versioned task checklists alongside the local read tools.
+- Verify the packaged panel, native HA WebSocket, task runner and SQLite result together with synthetic data.
+
 ## 2.1.1
 
 - Add versioned public-help search with eleven bilingual topics, immutable source references and bounded local retrieval.
