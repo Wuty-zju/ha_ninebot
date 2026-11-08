@@ -12,6 +12,7 @@ from homeassistant.helpers.storage import Store
 
 from .assistant_task_store import (
     MAX_TASKS,
+    TASK_MINOR,
     ApprovalStore,
     TaskStoreUnavailable,
     read_envelope,
@@ -51,7 +52,12 @@ async def async_prepare_tasks(hass: HomeAssistant, copies: list[TaskBackup]) -> 
         runtime = getattr(entry, "runtime_data", None)
         owner = getattr(runtime, "assistant_tasks", None)
         store = Store[dict[str, Any]](
-            hass, 1, store_key(entry.entry_id), private=True, atomic_writes=True
+            hass,
+            1,
+            store_key(entry.entry_id),
+            minor_version=TASK_MINOR,
+            private=True,
+            atomic_writes=True,
         )
         async with owner._lock if owner is not None else nullcontext():
             data = await _read(hass, store)

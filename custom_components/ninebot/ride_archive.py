@@ -1884,6 +1884,29 @@ class RideArchive:
 
         await self._run(initialize, guard=guard)
 
+    async def async_detail_budget_used(
+        self,
+        sn: str,
+        scope: "DetailScope",
+        task_budget: "DetailBudget",
+        *,
+        guard: Callable[[], bool],
+    ) -> int:
+        """Read durable consumption without reserving requests or resetting a missing counter."""
+        from .preservation import DetailBudgetUnavailable
+
+        def read() -> int:
+            row = (
+                self._db()
+                .execute("SELECT value FROM meta WHERE key=?", (task_budget.key,))
+                .fetchone()
+            )
+            if row is None:
+                raise DetailBudgetUnavailable("Missing approved task counter")
+            return int(task_budget.read(row[0], scope.digest(vehicle_key(sn)))["used"])
+
+        return await self._run(read, guard=guard)
+
     async def async_preservation_claim(
         self,
         sn: str,

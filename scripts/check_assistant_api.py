@@ -211,6 +211,9 @@ async def check_task_collection(hass, context) -> None:
             fields = formatted["ninebot__get_task"].input_schema["properties"]
             assert fields["task_id"]["pattern"] == "^[a-f0-9]{32}$"
             assert not {"nonce", "token", "user_id", "account", "confirmed"} & set(fields)
+            pages = formatted["ninebot__get_tasks"].input_schema["properties"]
+            assert pages["page"]["minimum"] == 1 and pages["page"]["maximum"] == 24
+            assert pages["limit"]["minimum"] == 1 and pages["limit"]["maximum"] == 10
             invalid = await instance.async_call_tool(
                 llm.ToolInput(
                     tool_name="ninebot__request_detail_sync_approval",

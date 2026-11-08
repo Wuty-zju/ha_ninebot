@@ -17,10 +17,62 @@ from .preservation import DetailScope
 
 APPROVAL_TTL = timedelta(minutes=10)
 EXECUTION_TTL = timedelta(hours=24)
+TERMINAL_STATES = frozenset({"completed", "partial", "cancelled", "failed"})
+JOB_STATES = TERMINAL_STATES | {
+    "approved",
+    "queued",
+    "running",
+    "waiting_budget",
+    "retry_wait",
+    "paused",
+}
+JOB_REASONS = frozenset(
+    {
+        "budget_exhausted",
+        "deadline_expired",
+        "scope_changed",
+        "not_authorized",
+        "auth_required",
+        "unavailable",
+    }
+)
 
 
 def aware(value: datetime) -> bool:
     return isinstance(value, datetime) and value.utcoffset() is not None
+
+
+@dataclass(frozen=True)
+class TaskProgress:
+    """Bounded execution evidence; attempts here are a view, never budget authority."""
+
+    state: str
+    saved: int
+    attempts: int | None
+    updated_at: datetime
+    reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.state, str)
+            or self.state not in JOB_STATES
+            or type(self.saved) is not int
+            or not 0 <= self.saved <= 20
+            or (
+                self.attempts is not None
+                and (type(self.attempts) is not int or not 0 <= self.attempts <= 20)
+            )
+            or not aware(self.updated_at)
+            or (
+                self.reason is not None
+                and (not isinstance(self.reason, str) or self.reason not in JOB_REASONS)
+            )
+        ):
+            raise ValueError("Invalid task progress")
+
+    @property
+    def terminal(self) -> bool:
+        return self.state in TERMINAL_STATES
 
 
 @dataclass(frozen=True)
@@ -83,6 +135,7 @@ class ApprovalTicket:
     plan: DetailPlan = field(repr=False)
     nonce_hash: str | None = field(repr=False)
     approved_at: datetime | None = None
+    progress: TaskProgress | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -109,6 +162,22 @@ class ApprovalTicket:
                     < self.plan.created_at + APPROVAL_TTL
                 )
             )
+            or (
+                self.progress is not None
+                and (
+                    not isinstance(self.progress, TaskProgress)
+                    or self.progress.saved > len(self.plan.scope.rides)
+                    or (
+                        self.progress.attempts is not None
+                        and self.progress.attempts > self.plan.attempts
+                    )
+                    or self.progress.updated_at < self.plan.created_at
+                    or (
+                        self.progress.state == "completed"
+                        and self.progress.saved != len(self.plan.scope.rides)
+                    )
+                )
+            )
         ):
             raise ValueError("Invalid approval ticket")
 
@@ -118,7 +187,7 @@ class ApprovalTicket:
 
     def prepare(self, now: datetime) -> tuple["ApprovalTicket", str]:
         """Rotate a human-only nonce without extending the original approval deadline."""
-        if self.approved_at is not None:
+        if self.approved_at is not None or self.terminal:
             raise AssistantError("approval_used")
         plan = self.plan
         if not aware(now) or not plan.created_at <= now < plan.created_at + APPROVAL_TTL:
@@ -132,7 +201,7 @@ class ApprovalTicket:
         return hashlib.sha256(f"{task_id}:{plan_hash}:{nonce}".encode()).hexdigest()
 
     def approve(self, user_id: str, nonce: str, plan_hash: str, now: datetime) -> "ApprovalTicket":
-        if self.approved_at is not None:
+        if self.approved_at is not None or self.terminal:
             raise AssistantError("approval_used")
         if not aware(now) or not self.plan.created_at <= now < self.plan.created_at + APPROVAL_TTL:
             raise AssistantError("approval_expired")
@@ -148,15 +217,25 @@ class ApprovalTicket:
             )
         ):
             raise AssistantError("not_authorized")
-        return replace(self, nonce_hash="", approved_at=now)
+        progress = (
+            replace(self.progress, state="approved", reason=None, updated_at=now)
+            if self.progress is not None
+            else None
+        )
+        return replace(self, nonce_hash="", approved_at=now, progress=progress)
 
     def execution_valid(self, now: datetime) -> bool:
         """Temporal eligibility only; callers must reauthorize current ownership and consent."""
         return bool(
-            self.approved_at is not None
+            not self.terminal
+            and self.approved_at is not None
             and aware(now)
             and self.approved_at <= now < self.approved_at + EXECUTION_TTL
         )
+
+    @property
+    def terminal(self) -> bool:
+        return self.progress is not None and self.progress.terminal
 
 
 async def async_plan_scope(
