@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.1.0",
-  "source_version": "2.1.0",
+  "corpus_version": "1.2.0",
+  "source_version": "2.1.2",
   "entries": [
     {
       "id": "statistics_missing",
@@ -477,6 +477,100 @@
         }
       },
       "content_sha256": "f393958401bea916fcff8980cea6a5914178791ef307b557fc30f00411671e87"
+    },
+    {
+      "id": "task_application",
+      "procedure_id": "SK09",
+      "translations": {
+        "en": {
+          "title": "Request review of missing trip details",
+          "text": "From 2.1.2, the separate Ninebot tasks API offers local gap preview and an explicit application for human review. Enable account task consent and select allowed vehicles first. Preview at most 31 business days; freeze at most 20 mapped missing details. The total logical attempt allowance is twice the selected count, capped at 20, with shared account pacing. Applications do not query the cloud. The original requester must open Ninebot Assistant in HA with the same user, review the exact scope and approve separately. A read-only MCP server hides the application tool.",
+          "keywords": [
+            "task",
+            "application",
+            "request",
+            "review",
+            "approval",
+            "confirm",
+            "missing details",
+            "sync"
+          ]
+        },
+        "zh-Hans": {
+          "title": "申请审核缺失行程详情",
+          "text": "从 2.1.2 起，独立 Ninebot tasks API 提供本地预览和明确的人工审核申请。先开启账号任务功能并选择车辆；最多预览 31 个业务日，冻结最多 20 条已映射的缺失详情。总逻辑尝试上限为选中条数两倍、最多 20 次，共享账号请求间隔。申请不查询云端。原申请人须使用同一个 HA 用户去 Ninebot Assistant 面板核对范围后另行批准；MCP 只读模式隐藏申请工具。",
+          "keywords": [
+            "申请同步",
+            "人工审核",
+            "批准",
+            "确认",
+            "任务申请",
+            "缺失详情",
+            "任务工具"
+          ]
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
+        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.2",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-09",
+      "supersedes": [],
+      "content_sha256": "8914464a6162dc6454e4f96d71e97a5fe9f33d9bad8bb99f701af140a3fdf58a"
+    },
+    {
+      "id": "task_progress",
+      "procedure_id": "SK10",
+      "translations": {
+        "en": {
+          "title": "Understand a history task checkpoint",
+          "text": "Task reads return only the original requester’s local task state for an authorized vehicle. Approval and queueing do not prove saved detail. Completion verifies each selected private payload; progress values describe the last durable checkpoint, with null meaning unobserved rather than zero. Attempts are conservative logical endpoint attempts, not all transport HTTP exchanges. Respect account pacing, retry_at and the 24-hour execution window. Normal restarts revalidate approved work; official HA backup restores require fresh human approval. Notifications only link to the panel; use task metadata for the result. Cancellation is performed by the requester in the panel and does not stop other tasks.",
+          "keywords": [
+            "task",
+            "progress",
+            "checkpoint",
+            "result",
+            "cancel",
+            "retry_at",
+            "waiting",
+            "completed"
+          ]
+        },
+        "zh-Hans": {
+          "title": "理解历史任务进度记录",
+          "text": "任务查询只读原申请人获准车辆的本地状态；批准和排队不代表详情已保存。完成须逐条核验私有详情，数值代表最近持久记录，null 是尚未观察而非零。尝试计数是保守的逻辑端点尝试，不是全部底层 HTTP 交换数。遵守账号间隔、retry_at 和 24 小时执行期限。普通重启重验后恢复批准工作；官方 HA 备份恢复须重新人工批准。通知仅提供面板入口，结果以任务元数据为准；取消由原申请人在面板操作，不停止其他任务。",
+          "keywords": [
+            "任务进度",
+            "任务结果",
+            "取消任务",
+            "等待重试",
+            "同步结果",
+            "最近记录",
+            "原申请人"
+          ]
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
+        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.2",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-09",
+      "supersedes": [],
+      "content_sha256": "15c03b817b4b9b4258236501da07016cd38242618d6aa032ade4255d9dd8fabf"
     }
   ],
   "procedures": [
@@ -886,6 +980,122 @@
         }
       },
       "content_sha256": "54367bb5acba9fd9562fb4c3db4811fac7c1e761fdb4d4dcc7cc5ec1cebd2d39"
+    },
+    {
+      "id": "SK09",
+      "allowed_tools": [
+        "task_vehicles",
+        "preview_detail_sync",
+        "request_detail_sync_approval",
+        "search_help"
+      ],
+      "max_calls": 4,
+      "translations": {
+        "en": {
+          "title": "Apply for a bounded detail task",
+          "trigger": "User explicitly asks to apply for synchronization of missing trip details.",
+          "required_inputs": [
+            "Ninebot tasks API exposed and account task consent enabled",
+            "Selected authorized vehicle and explicit business dates"
+          ],
+          "steps": [
+            "If task tools are absent, explain enabling them and stop. Use task_vehicles; ask when several vehicles are ambiguous.",
+            "Preview the selected dates. Report local coverage, missing selection, total attempt cap and expiry; missing history is not zero.",
+            "Only on explicit application intent, request human review of that vehicle/date range. This saves a local application and makes no cloud request.",
+            "Ask the original requester to open HA’s Ninebot Assistant panel with the same HA user. Human review and approval are separate; never ask for a token."
+          ],
+          "stop": "Stop for missing inputs, denied access, no executable local selection or scope/budget uncertainty; do not expand the range or poll.",
+          "verify": "Return the persisted task ID and awaiting-review state, range, selection and cap. Application acceptance is not approval, execution or saved detail."
+        },
+        "zh-Hans": {
+          "title": "申请有界详情同步任务",
+          "trigger": "用户明确要求申请同步缺失的行程详情。",
+          "required_inputs": [
+            "已暴露 Ninebot tasks API，且账号已开启任务功能",
+            "明确的获准车辆与业务日期范围"
+          ],
+          "steps": [
+            "缺少任务工具时说明开启方式并停止。用 task_vehicles 选车，多车歧义先询问。",
+            "预览指定日期，说明本地覆盖、待取条数、总尝试上限和有效期；缺历史不等于零。",
+            "仅在用户明确要求申请时提交该车该日期的人工审核请求；只保存本地申请，不查询云端。",
+            "请原申请人使用同一个 HA 用户打开 Ninebot Assistant 面板另行审核批准，不能索要确认凭据。"
+          ],
+          "stop": "输入缺失、拒绝访问、没有可执行的本地选择或范围/额度不明时停止；不扩大范围或循环查询。",
+          "verify": "返回持久任务 ID、等待审核状态、范围、条数与上限；受理不代表批准、执行或详情已保存。"
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
+        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.2",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-09",
+      "content_sha256": "339f6eb99411f4998ce37bbe6751747ab54bfe66e160c9353a526f81f140f7a2"
+    },
+    {
+      "id": "SK10",
+      "allowed_tools": [
+        "task_vehicles",
+        "get_tasks",
+        "get_task",
+        "search_help"
+      ],
+      "max_calls": 4,
+      "translations": {
+        "en": {
+          "title": "Check a saved task result",
+          "trigger": "User asks about an applied history task, its wait, result or cancellation.",
+          "required_inputs": [
+            "Ninebot tasks API exposed",
+            "Original requester’s HA identity and selected authorized vehicle",
+            "Task ID from a matching task list, or permission to list local tasks"
+          ],
+          "steps": [
+            "Use the selected task reference; if absent, list the requester’s tasks for the selected vehicle and ask which one when ambiguous.",
+            "Read the matching task once. Report state, last checkpoint, saved/selected count, actual attempt consumption, reason and next eligible time.",
+            "For waiting/retry states, respect retry_at and expiry; do not repeatedly poll or infer remaining hourly tokens. Unknown observations stay unknown.",
+            "For approval or cancellation, direct the same requester to the HA panel. New work requires a new explicit application and human approval."
+          ],
+          "stop": "Stop on denied access or missing task. Missing is not completed; a task read cannot resume, approve, cancel or refresh cloud data.",
+          "verify": "Only completed is verified completion. Distinguish partial/failed/cancelled/expired, null versus zero, conservative task attempts and saved checkpoint time."
+        },
+        "zh-Hans": {
+          "title": "核对已保存的任务结果",
+          "trigger": "用户询问已申请任务的等待原因、结果或取消方式。",
+          "required_inputs": [
+            "已暴露 Ninebot tasks API",
+            "原申请人的 HA 身份与选定的获准车辆",
+            "匹配任务列表中的任务 ID，或允许读取本地列表"
+          ],
+          "steps": [
+            "优先使用已选任务；缺少时列出该用户该车的本地任务，多条有歧义先询问。",
+            "只读一次匹配任务，说明状态、最近记录、已保存/选中条数、实际尝试消耗、原因和下次允许时间。",
+            "等待或重试时遵守 retry_at 和期限，不循环查询或推断整小时剩余额度；未观察不补零。",
+            "需要批准或取消时指引原申请人去 HA 面板；新工作须另行明确申请并人工批准。"
+          ],
+          "stop": "拒绝访问或任务缺失时停止；缺失不是完成，读取不能恢复、批准、取消或刷新云端。",
+          "verify": "仅 completed 代表核验完成；区分部分/失败/取消/过期、null 与零、保守尝试计数及最近持久记录时间。"
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
+        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.2",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-09",
+      "content_sha256": "6707818ea75a1e088586efbe629b9e2cc3c16cc436c14765c652cdf9cd4932a7"
     }
   ]
 }

@@ -83,6 +83,8 @@ The task view reports the last saved checkpoint, actual request consumption, ret
 
 Native notifications provide a review or result link, coalesced into one generic notice per account. They contain no account, vehicle, trip identity, location or confirmation credential. Waiting, retry counters and nonce rotation do not produce repeated notices. Notifications confer no approval and do not prove completion; use the saved task state in the panel. After a restart, open the panel directly to inspect retained tasks.
 
+From 2.1.2, public help adds two task checklists—bounded detail applications and saved-task results—for thirteen bilingual topics in total. Each requires the separate task API and allows at most four tool calls. Read checklists retain their original read tool sets. The application checklist confirms intent, vehicle and dates before preview and local application; the result checklist reads matching metadata, preserves unknown/zero/partial distinctions and respects retry timing. Neither provides an approval or cancellation tool.
+
 ## Privacy and limits
 
 Enabling the option allows the chosen host to receive selected vehicle labels, scalar values, times, ride identifiers and quality information. Review names that you have assigned to vehicles. Ninebot excludes account credentials, account identifiers, serial numbers, precise coordinates, raw responses, logs, full tracks and sample arrays from these tools. An external model host may retain conversation and tool results under its own policy. Turning the option off revokes future calls; it cannot remove information already sent to the host. The saved vehicle selection is retained for later use.
