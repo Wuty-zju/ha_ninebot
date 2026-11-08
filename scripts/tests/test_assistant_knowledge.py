@@ -19,9 +19,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 11)
+        self.assertEqual(len(catalog["entries"]), 13)
         self.assertEqual(
-            {row["id"] for row in catalog["procedures"]}, {f"SK0{i}" for i in range(1, 9)}
+            {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
         for entry in [*catalog["entries"], *catalog["procedures"]]:
             self.assertEqual(set(entry["translations"]), {"en", "zh-Hans"})
@@ -103,11 +103,12 @@ class KnowledgeTests(unittest.TestCase):
             self.assertTrue(match["source"]["url"].startswith(k.SOURCE_PREFIX))
             self.assertNotIn("invalid.example", match["text"])
 
-    def test_procedures_are_advisory_bounded_and_do_not_expose_future_tasks(self):
+    def test_older_releases_keep_their_advisory_read_procedure_contract(self):
         for entry, language in (
             (entry, language)
             for entry in k.load_catalog()["entries"]
             for language in ("en", "zh-Hans")
+            if k.release_tuple(entry["applicable_versions"]["min_inclusive"]) <= (2, 1, 1)
         ):
             query = entry["translations"][language]["title"]
             result = k.search_help(query, language, "2.1.1")
@@ -126,6 +127,64 @@ class KnowledgeTests(unittest.TestCase):
                     self.assertIn(
                         match["procedure_id"], {row["id"] for row in result["procedures"]}
                     )
+
+    def test_task_guides_are_versioned_complete_bounded_and_do_not_grant_tools(self):
+        for query, language, expected in (
+            ("Request review of missing trip details", "en", "SK09"),
+            ("Understand a history task checkpoint", "en", "SK10"),
+            ("申请审核缺失行程详情", "zh-Hans", "SK09"),
+            ("理解历史任务进度记录", "zh-Hans", "SK10"),
+        ):
+            with self.subTest(query=query):
+                result = k.search_help(query, language, "2.1.2")
+                procedure = next(row for row in result["procedures"] if row["id"] == expected)
+                self.assertTrue(procedure["advisory_only"])
+                self.assertEqual(procedure["max_calls"], 4)
+                self.assertEqual(
+                    set(procedure["allowed_tools"]),
+                    {f"ninebot__{tool}" for tool in k.PROCEDURE_TOOLS[expected]},
+                )
+                self.assertTrue(procedure["stop"] and procedure["verify"])
+                self.assertLessEqual(
+                    len(json.dumps(result, ensure_ascii=False).encode()), k.MAX_HELP_BYTES
+                )
+                old = k.search_help(query, language, "2.1.1")
+                self.assertFalse({p["id"] for p in old["procedures"]} & {"SK09", "SK10"})
+
+    def test_natural_task_questions_retrieve_the_intended_contract(self):
+        for query, language, expected in (
+            ("申请同步缺少的详情", "zh-Hans", "task_application"),
+            ("任务在哪里批准", "zh-Hans", "task_application"),
+            ("怎么查看同步任务结果", "zh-Hans", "task_progress"),
+            ("任务进度为什么等待重试", "zh-Hans", "task_progress"),
+            ("How do I request trip detail sync approval?", "en", "task_application"),
+            ("Where do I approve this task?", "en", "task_application"),
+            ("What is the result of my history task?", "en", "task_progress"),
+        ):
+            with self.subTest(query=query):
+                result = k.search_help(query, language, "2.1.2")
+                self.assertEqual(result["matches"][0]["source_id"], expected)
+
+    def test_task_application_cannot_be_added_to_read_or_result_procedures(self):
+        for identity in ("SK01", "SK08", "SK10"):
+            catalog = copy.deepcopy(k.load_catalog())
+            row = next(p for p in catalog["procedures"] if p["id"] == identity)
+            row["allowed_tools"] = ["request_detail_sync_approval"]
+            row["content_sha256"] = k.content_hash(row)
+            with self.subTest(procedure=identity), self.assertRaises(k.KnowledgeUnavailable):
+                k.validate_catalog(catalog)
+        catalog = copy.deepcopy(k.load_catalog())
+        row = next(p for p in catalog["procedures"] if p["id"] == "SK09")
+        for forbidden in (
+            "approve_task",
+            "prepare_task_confirmation",
+            "engine_start",
+            "sync_history",
+        ):
+            row["allowed_tools"] = [forbidden]
+            row["content_sha256"] = k.content_hash(row)
+            with self.subTest(tool=forbidden), self.assertRaises(k.KnowledgeUnavailable):
+                k.validate_catalog(catalog)
 
     def test_modified_procedure_cannot_add_tools_budget_or_unsupported_versions(self):
         for field, value in (

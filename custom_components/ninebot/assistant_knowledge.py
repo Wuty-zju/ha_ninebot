@@ -23,6 +23,13 @@ READ_TOOLS = {
 }
 
 
+PROCEDURE_TOOLS = {
+    **{f"SK{i:02}": READ_TOOLS for i in range(1, 9)},
+    "SK09": {"task_vehicles", "preview_detail_sync", "request_detail_sync_approval", "search_help"},
+    "SK10": {"task_vehicles", "get_tasks", "get_task", "search_help"},
+}
+
+
 class KnowledgeUnavailable(ValueError):
     """Public help is unavailable; other Assistant reads remain independent."""
 
@@ -108,7 +115,7 @@ def validate_catalog(catalog: Any) -> dict[str, Any]:
                     "translations",
                     "content_sha256",
                 }
-                or not re.fullmatch(r"SK0[1-8]", procedure["id"])
+                or procedure["id"] not in PROCEDURE_TOOLS
                 or procedure["id"] in procedures
                 or procedure["evidence_status"] != "reviewed_procedure"
                 or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", procedure["reviewed_at"])
@@ -118,7 +125,7 @@ def validate_catalog(catalog: Any) -> dict[str, Any]:
                 or not 1 <= procedure["max_calls"] <= 4
                 or not isinstance(procedure["allowed_tools"], list)
                 or not procedure["allowed_tools"]
-                or not set(procedure["allowed_tools"]) <= READ_TOOLS
+                or not set(procedure["allowed_tools"]) <= PROCEDURE_TOOLS[procedure["id"]]
                 or len(set(procedure["allowed_tools"])) != len(procedure["allowed_tools"])
                 or set(procedure["translations"]) != {"en", "zh-Hans"}
             ):
