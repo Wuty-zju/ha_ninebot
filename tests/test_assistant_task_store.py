@@ -964,7 +964,7 @@ async def test_legacy_approval_is_not_grandfathered_into_current_policy(hass, ta
 async def test_epoch_revoke_and_surviving_old_file_are_durable_native_storage(
     hass, entry, task_store
 ):
-    from pytest_homeassistant_custom_component.common import async_fire_time_changed
+    from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
 
     from custom_components.ninebot.assistant import TASK_POLICY_EPOCH
     from custom_components.ninebot.assistant_tasks import async_reset_tasks
@@ -977,7 +977,8 @@ async def test_epoch_revoke_and_surviving_old_file_are_durable_native_storage(
         with pytest.raises(TaskStoreUnavailable):
             await async_reset_tasks(hass, entry, remove=True)
         await hass.async_block_till_done()
-    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=10))
+    # Flush HA's real pending writer without advancing unrelated vehicle schedules.
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
     await hass.async_block_till_done()
     config_path = Path(hass.config.path(".storage", "core.config_entries"))
     saved = json.loads(await hass.async_add_executor_job(config_path.read_text))
