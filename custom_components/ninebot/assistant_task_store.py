@@ -15,18 +15,22 @@ from homeassistant.util import dt as dt_util
 
 from .assistant_approval import (
     APPROVAL_TTL,
+    EXECUTION_TTL,
     ApprovalTicket,
     DetailPlan,
+    TaskProgress,
     async_approve_ticket,
     async_plan_scope,
 )
 from .assistant_policy import AssistantError, AssistantScope, async_require_admin
 from .async_utils import async_drain
-from .preservation import DetailBudget, DetailScope
+from .preservation import DetailBudget, DetailBudgetUnavailable, DetailScope
+from .ride_archive import ArchiveError
 
 MAX_TASKS = 24
 MAX_PENDING_PER_USER = 5
 MAX_BYTES = 256 * 1024
+TASK_MINOR = 2
 
 
 class TaskStoreUnavailable(Exception):
@@ -40,6 +44,15 @@ def ticket_data(ticket: ApprovalTicket) -> dict[str, Any]:
         "nonce_hash": ticket.nonce_hash,
         "plan_hash": p.digest,
         "approved_at": ticket.approved_at.isoformat() if ticket.approved_at else None,
+        "progress": {
+            "state": ticket.progress.state,
+            "saved": ticket.progress.saved,
+            "attempts": ticket.progress.attempts,
+            "updated_at": ticket.progress.updated_at.isoformat(),
+            "reason": ticket.progress.reason,
+        }
+        if ticket.progress is not None
+        else None,
         "plan": {
             "user_id": p.user_id,
             "account_key": p.account_key,
@@ -56,13 +69,14 @@ def ticket_data(ticket: ApprovalTicket) -> dict[str, Any]:
 
 def restore_ticket(raw: Any) -> ApprovalTicket:
     try:
-        if not isinstance(raw, dict) or set(raw) != {
+        keys = {
             "task_id",
             "plan",
             "plan_hash",
             "nonce_hash",
             "approved_at",
-        }:
+        }
+        if not isinstance(raw, dict) or set(raw) not in (keys, keys | {"progress"}):
             raise ValueError
         p = raw["plan"]
         if not isinstance(p, dict) or set(p) != {
@@ -97,7 +111,24 @@ def restore_ticket(raw: Any) -> ApprovalTicket:
         approved = (
             datetime.fromisoformat(raw["approved_at"]) if raw["approved_at"] is not None else None
         )
-        return ApprovalTicket(raw["task_id"], plan, raw["nonce_hash"], approved)
+        progress = raw.get("progress")
+        if progress is not None:
+            if not isinstance(progress, dict) or set(progress) != {
+                "state",
+                "saved",
+                "attempts",
+                "updated_at",
+                "reason",
+            }:
+                raise ValueError
+            progress = TaskProgress(
+                progress["state"],
+                progress["saved"],
+                progress["attempts"],
+                datetime.fromisoformat(progress["updated_at"]),
+                progress["reason"],
+            )
+        return ApprovalTicket(raw["task_id"], plan, raw["nonce_hash"], approved, progress)
     except (KeyError, TypeError, ValueError, OverflowError) as err:
         raise TaskStoreUnavailable("Invalid task record") from err
 
@@ -117,7 +148,7 @@ def read_envelope(path: Path, key: str) -> dict[str, Any] | None:
             or type(raw.get("version")) is not int
             or raw["version"] != 1
             or type(raw.get("minor_version")) is not int
-            or raw["minor_version"] != 1
+            or raw["minor_version"] not in (1, TASK_MINOR)
             or raw.get("key") != key
             or not isinstance(raw.get("data"), dict)
         ):
@@ -160,7 +191,9 @@ class ApprovalStore:
     def __init__(self, hass: HomeAssistant, entry_id: str, account_key: str) -> None:
         self.hass, self.entry_id, self.account_key = hass, entry_id, account_key
         self.key = store_key(entry_id)
-        self._store = Store[dict[str, Any]](hass, 1, self.key, private=True, atomic_writes=True)
+        self._store = Store[dict[str, Any]](
+            hass, 1, self.key, minor_version=TASK_MINOR, private=True, atomic_writes=True
+        )
         self._lock = asyncio.Lock()
         self._closed = False
 
@@ -234,21 +267,41 @@ class ApprovalStore:
             records = {
                 key: row
                 for key, row in records.items()
-                if row.execution_valid(now)
+                if (
+                    row.terminal
+                    and row.progress is not None
+                    and now < row.progress.updated_at + EXECUTION_TTL
+                )
+                or row.execution_valid(now)
                 or (row.approved_at is None and now < row.plan.created_at + APPROVAL_TTL)
             }
             for row in records.values():
                 # Only the request timestamp can differ for an identical active plan.
-                if replace(plan, created_at=row.plan.created_at).digest == row.plan.digest:
+                if (
+                    not row.terminal
+                    and replace(plan, created_at=row.plan.created_at).digest == row.plan.digest
+                ):
                     return row
             if (
                 sum(
-                    row.plan.user_id == plan.user_id and row.approved_at is None
+                    row.plan.user_id == plan.user_id
+                    and row.approved_at is None
+                    and not row.terminal
                     for row in records.values()
                 )
                 >= MAX_PENDING_PER_USER
             ):
                 raise AssistantError("task_capacity")
+            # Keep terminal history only while space permits another useful application.
+            terminals = sorted(
+                (row for row in records.values() if row.terminal and row.progress is not None),
+                key=lambda row: (
+                    row.progress.updated_at if row.progress else row.plan.created_at,
+                    row.task_id,
+                ),
+            )
+            while len(records) >= MAX_TASKS and terminals:
+                records.pop(terminals.pop(0).task_id)
             pending = ApprovalTicket(uuid4().hex, plan, None)
             records[pending.task_id] = pending
             await self._commit(records)
@@ -316,6 +369,87 @@ class ApprovalStore:
             await self._commit(records)
             await self._validate(scope)
             return approved
+
+    async def async_checkpoint(
+        self, expected: ApprovalTicket, progress: TaskProgress, context: Context | None
+    ) -> ApprovalTicket:
+        """Runner-only compare-and-set; cancellation wins over a late completion receipt."""
+        await async_require_admin(self.hass, context)
+        async with self._lock:
+            records = await self._read()
+            current = self._find(records, expected.task_id)
+            scope = await self._scope(current.plan, context)
+            if current != expected or not current.execution_valid(dt_util.utcnow()):
+                raise AssistantError("retry_later")
+            old = current.progress
+            if old is not None and (
+                progress.saved < old.saved
+                or (
+                    old.attempts is not None
+                    and (progress.attempts is None or progress.attempts < old.attempts)
+                )
+                or progress.updated_at < old.updated_at
+            ):
+                raise ValueError("Task progress cannot move backwards")
+            archive = scope.runtime.coordinator.statistics.archive
+            used = await archive.async_detail_budget_used(
+                scope.sn,
+                current.plan.scope,
+                DetailBudget(current.task_id, current.plan.attempts),
+                guard=lambda: self._current(scope),
+            )
+            if progress.attempts != used:
+                raise ValueError("Task progress must use durable attempt consumption")
+            if progress.state == "completed":
+                # A runner receipt alone is not durable completion evidence.
+                for ride_id, _ in current.plan.scope.rides:
+                    detail = await archive.async_private_detail(
+                        scope.sn, ride_id, max_points=1, guard=lambda: self._current(scope)
+                    )
+                    if detail is None or detail.latest is None:
+                        raise AssistantError("local_data_missing")
+                await self._validate(scope)
+            updated = replace(current, progress=progress)
+            records[current.task_id] = updated
+            await self._commit(records)
+            await self._validate(scope)
+            return updated
+
+    async def async_cancel(self, task_id: str, context: Context | None) -> ApprovalTicket:
+        """Cancel only this requester's task; no account pause or shared-call cancellation."""
+        await async_require_admin(self.hass, context)
+        async with self._lock:
+            records = await self._read()
+            current = self._find(records, task_id)
+            scope = await self._scope(current.plan, context)
+            if current.terminal:
+                await self._validate(scope)
+                return current
+            old = current.progress
+            attempts: int | None = 0
+            if current.approved_at:
+                try:
+                    attempts = (
+                        await scope.runtime.coordinator.statistics.archive.async_detail_budget_used(
+                            scope.sn,
+                            current.plan.scope,
+                            DetailBudget(task_id, current.plan.attempts),
+                            guard=lambda: self._current(scope),
+                        )
+                    )
+                except (DetailBudgetUnavailable, ArchiveError):
+                    attempts = None  # Cancelling must not require a readable archive.
+            updated = replace(
+                current,
+                nonce_hash="" if current.approved_at else None,
+                progress=TaskProgress(
+                    "cancelled", old.saved if old else 0, attempts, dt_util.utcnow()
+                ),
+            )
+            records[task_id] = updated
+            await self._commit(records)
+            await self._validate(scope)
+            return updated
 
     def _current(self, scope: AssistantScope) -> bool:
         scope.assert_task_current(self.hass)

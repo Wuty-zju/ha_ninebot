@@ -3,6 +3,7 @@
 import asyncio
 import json
 import re
+from functools import partial
 from typing import Any
 from uuid import uuid4
 
@@ -24,6 +25,7 @@ from .compat import validation as vol
 from .const import BUSINESS_TIMEZONE
 from .recorded_actions import business_date
 from .ride_archive import ArchiveError
+from .services import bounded_integer
 
 
 def task_reference(value: object) -> str:
@@ -64,9 +66,15 @@ SPECS = (
     ToolSpec(
         "get_tasks",
         "List your vehicle tasks",
-        "Read the original user's local task metadata. Approved does not mean queued "
+        "Read a page of the original user's local task metadata. Approved does not mean queued "
         "or completed. No confirmation secrets, ride identities or cloud requests.",
-        vol.Schema(VEHICLE),
+        vol.Schema(
+            {
+                **VEHICLE,
+                vol.Optional("page", default=1): partial(bounded_integer, maximum=24),
+                vol.Optional("limit", default=10): partial(bounded_integer, maximum=10),
+            }
+        ),
     ),
     ToolSpec(
         "get_task",
@@ -136,11 +144,19 @@ async def async_task_query(
                         store = task_owner(hass, scope)
                         owners.append((scope, store))
                         if key == "get_tasks":
+                            rows = sorted(
+                                await store.async_list(context, scope.vehicle_ref),
+                                key=lambda row: (row.plan.created_at, row.task_id),
+                                reverse=True,
+                            )
+                            start = (args["page"] - 1) * args["limit"]
                             data = {
                                 "tasks": [
-                                    ticket_view(row)
-                                    for row in await store.async_list(context, scope.vehicle_ref)
-                                ]
+                                    ticket_view(row) for row in rows[start : start + args["limit"]]
+                                ],
+                                "page": args["page"],
+                                "total": len(rows),
+                                "has_more": start + args["limit"] < len(rows),
                             }
                         else:
                             ticket = await store.async_get(args["task_id"], context)

@@ -95,3 +95,41 @@ def test_equivalent_scope_order_and_time_zone_have_one_digest():
         == replace(p, created_at=p.created_at.astimezone(timezone(timedelta(hours=8)))).digest
     )
     assert p.digest != replace(p, end_date=date(2026, 11, 7)).digest
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("state", "invented"),
+        ("saved", True),
+        ("saved", 21),
+        ("attempts", 0.5),
+        ("reason", "private error text"),
+        ("updated_at", NOW.replace(tzinfo=None)),
+    ],
+)
+def test_invalid_progress_is_not_persistable(field, value):
+    from custom_components.ninebot.assistant_approval import TaskProgress
+
+    progress = TaskProgress("queued", 0, 0, NOW)
+    with pytest.raises(ValueError):
+        replace(progress, **{field: value})
+
+
+def test_progress_cannot_claim_completion_without_the_whole_selected_scope():
+    from custom_components.ninebot.assistant_approval import TaskProgress
+
+    pending = ApprovalTicket("a" * 32, plan(), None)
+    with pytest.raises(ValueError):
+        replace(pending, progress=TaskProgress("completed", 0, 0, NOW))
+    with pytest.raises(ValueError):
+        replace(pending, progress=TaskProgress("running", 0, 3, NOW))
+
+
+def test_reapproval_of_a_backup_checkpoint_does_not_claim_it_is_running():
+    from custom_components.ninebot.assistant_approval import TaskProgress
+
+    pending = ApprovalTicket("a" * 32, plan(), None, progress=TaskProgress("running", 0, 1, NOW))
+    prepared, nonce = pending.prepare(NOW)
+    approved = prepared.approve(plan().user_id, nonce, plan().digest, NOW)
+    assert approved.progress.state == "approved" and approved.progress.attempts == 1

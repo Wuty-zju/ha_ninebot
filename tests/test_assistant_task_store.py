@@ -700,3 +700,178 @@ async def test_backup_preparation_does_not_replace_malformed_store(hass, task_st
         await hass.async_add_executor_job(Path(s._store.path).read_bytes)
         == b"malformed synthetic store"
     )
+
+
+async def approve_task(store, ticket, context):
+    _, nonce = await store.async_prepare(ticket.task_id, context)
+    return await store.async_approve(ticket.task_id, context, nonce, ticket.plan.digest)
+
+
+async def test_cancel_is_durable_idempotent_and_does_not_dedup_a_new_request(task_store):
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    first = await s.async_request(p, c)
+    _, nonce = await s.async_prepare(first.task_id, c)
+    cancelled = await s.async_cancel(first.task_id, c)
+    assert cancelled.progress.state == "cancelled" and cancelled.nonce_hash is None
+    reopened = ApprovalStore(s.hass, s.entry_id, s.account_key)
+    assert await reopened.async_cancel(first.task_id, c) == cancelled
+    with pytest.raises(AssistantError, match="^approval_used$"):
+        await reopened.async_approve(first.task_id, c, nonce, p.digest)
+    assert (await reopened.async_request(p, c)).task_id != first.task_id
+
+
+async def test_checkpoint_reopen_and_cancel_rejects_late_runner_receipt(task_store):
+    from custom_components.ninebot.assistant_approval import TaskProgress
+    from custom_components.ninebot.assistant_task_views import ticket_view
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    approved = await approve_task(s, await s.async_request(p, c), c)
+    running = await s.async_checkpoint(approved, TaskProgress("running", 0, 0, dt_util.utcnow()), c)
+    reopened = ApprovalStore(s.hass, s.entry_id, s.account_key)
+    assert await reopened.async_get(running.task_id, c) == running
+    assert ticket_view(running)["state"] == "running"
+    cancelled = await reopened.async_cancel(running.task_id, c)
+    with pytest.raises(AssistantError, match="^retry_later$"):
+        await s.async_checkpoint(running, TaskProgress("queued", 0, 0, dt_util.utcnow()), c)
+    assert not cancelled.execution_valid(dt_util.utcnow())
+    assert await s.async_get(running.task_id, c) == cancelled
+
+
+async def test_checkpoint_uses_durable_attempts_and_cancel_keeps_actual_consumption(
+    hass, entry, task_store
+):
+    from custom_components.ninebot.assistant_approval import TaskProgress
+    from custom_components.ninebot.preservation import DetailBudget
+
+    result = await seeded_request(hass, entry, task_store)
+    s, c = entry.runtime_data.assistant_tasks, task_store.context
+    ticket = await s.async_get(result["task"]["task_id"], c)
+    approved = await approve_task(s, ticket, c)
+    with pytest.raises(ValueError, match="durable attempt"):
+        await s.async_checkpoint(approved, TaskProgress("running", 0, 1, dt_util.utcnow()), c)
+    archive = task_store.co.statistics.archive
+    claimed = await archive.async_preservation_claim(
+        "SyntheticSN",
+        dt_util.utcnow(),
+        0,
+        scope=ticket.plan.scope,
+        task_budget=DetailBudget(ticket.task_id, ticket.plan.attempts),
+        guard=lambda: True,
+    )
+    assert claimed is not None
+    assert (
+        await archive.async_detail_budget_used(
+            "SyntheticSN",
+            ticket.plan.scope,
+            DetailBudget(ticket.task_id, ticket.plan.attempts),
+            guard=lambda: True,
+        )
+        == 1
+    )
+    cancelled = await s.async_cancel(ticket.task_id, c)
+    assert cancelled.progress.attempts == 1
+
+
+async def test_completed_checkpoint_requires_actual_saved_payload(hass, entry, task_store):
+    from custom_components.ninebot.assistant_approval import TaskProgress
+    from custom_components.ninebot.raw import Endpoint, build_record
+
+    result = await seeded_request(hass, entry, task_store)
+    s, c = entry.runtime_data.assistant_tasks, task_store.context
+    ticket = await s.async_get(result["task"]["task_id"], c)
+    approved = await approve_task(s, ticket, c)
+    completed = TaskProgress("completed", 1, 0, dt_util.utcnow())
+    with pytest.raises(AssistantError, match="^local_data_missing$"):
+        await s.async_checkpoint(approved, completed, c)
+    assert (await s.async_get(ticket.task_id, c)).progress is None
+    archive = task_store.co.statistics.archive
+    month = await archive.async_month("SyntheticSN", "202611")
+    ride = next(r for r in month.travel.rides if r.ride_id == ticket.plan.scope.rides[0][0])
+    receipt = dt_util.utcnow() + timedelta(seconds=1)
+    await archive.async_record_detail(
+        "SyntheticSN", ride, receipt, raw=build_record(Endpoint.TRIP_DETAIL, {}, receipt, "202611")
+    )
+    saved = await s.async_checkpoint(approved, completed, c)
+    assert saved.terminal and not saved.execution_valid(dt_util.utcnow())
+    assert (await s.async_request(ticket.plan, c)).task_id != saved.task_id
+
+
+async def test_cancel_can_revoke_when_budget_evidence_is_unreadable(task_store):
+    from custom_components.ninebot.preservation import DetailBudgetUnavailable
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    ticket = await approve_task(s, await s.async_request(p, c), c)
+    with patch.object(
+        task_store.co.statistics.archive,
+        "async_detail_budget_used",
+        new=AsyncMock(side_effect=DetailBudgetUnavailable()),
+    ):
+        cancelled = await s.async_cancel(ticket.task_id, c)
+    assert cancelled.progress.attempts is None and not cancelled.execution_valid(dt_util.utcnow())
+
+
+async def test_backup_retains_progress_without_restoring_execution_authority(hass, task_store):
+    from custom_components.ninebot.assistant_approval import TaskProgress
+    from custom_components.ninebot.assistant_task_views import ticket_view
+    from custom_components.ninebot.backup import async_post_backup, async_pre_backup
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    ticket = await approve_task(s, await s.async_request(p, c), c)
+    waiting = await s.async_checkpoint(
+        ticket, TaskProgress("waiting_budget", 0, 0, dt_util.utcnow()), c
+    )
+    await async_pre_backup(hass)
+    raw = await hass.async_add_executor_job(Path(s._store.path).read_text)
+    copy = restore_ticket(json.loads(raw)["data"]["tickets"][ticket.task_id])
+    assert copy.progress == waiting.progress and copy.approved_at is None
+    assert not copy.execution_valid(dt_util.utcnow())
+    assert ticket_view(copy)["state"] == "awaiting_approval"
+    await async_post_backup(hass)
+    assert await s.async_get(ticket.task_id, c) == waiting
+
+
+async def test_legacy_minor_one_record_reads_without_granting_new_authority(task_store):
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    ticket = await s.async_request(p, c)
+    old = ticket_data(ticket)
+    old.pop("progress")
+    assert restore_ticket(old) == ticket
+    envelope = {
+        "version": 1,
+        "minor_version": 1,
+        "key": s.key,
+        "data": {"tickets": {ticket.task_id: old}},
+    }
+    await s.hass.async_add_executor_job(Path(s._store.path).write_text, json.dumps(envelope))
+    reopened = ApprovalStore(s.hass, s.entry_id, s.account_key)
+    assert await reopened.async_get(ticket.task_id, c) == ticket
+    assert ticket.progress is None and not ticket.execution_valid(dt_util.utcnow())
+
+
+async def test_terminal_retention_does_not_block_new_requests_and_lists_are_bounded(
+    hass, entry, task_store
+):
+    from custom_components.ninebot.assistant_review import async_register
+    from custom_components.ninebot.assistant_task_queries import async_task_query
+
+    async_register(hass)
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    entry.runtime_data.assistant_tasks = s
+    oldest = None
+    for _ in range(25):
+        ticket = await s.async_request(p, c)
+        oldest = oldest or ticket.task_id
+        await s.async_cancel(ticket.task_id, c)
+    with pytest.raises(AssistantError, match="^task_not_found$"):
+        await s.async_get(oldest, c)
+    ids = set()
+    for page, count in ((1, 10), (2, 10), (3, 4)):
+        response, error = await async_task_query(
+            hass, "get_tasks", {"vehicle_ref": p.vehicle_ref, "page": page}, c
+        )
+        assert not error
+        data = response["data"]
+        assert data["total"] == 24 and len(data["tasks"]) == count
+        assert data["has_more"] is (page < 3)
+        ids.update(row["task_id"] for row in data["tasks"])
+    assert len(ids) == 24

@@ -11,6 +11,7 @@ from .assistant_approval import APPROVAL_TTL
 from .assistant_plans import async_detail_proposal
 from .assistant_policy import AssistantError, AssistantScope, async_authorize
 from .assistant_task_store import ApprovalStore, TaskStoreUnavailable, async_remove_task_data
+from .assistant_task_views import ticket_view
 from .ride_archive import ArchiveError, ArchiveFailure
 from .runtime import NinebotConfigEntry, RuntimeData
 
@@ -73,7 +74,7 @@ async def async_request_details(
         "approval_required": ticket.approved_at is None,
         "task": {
             "task_id": ticket.task_id,
-            "state": "awaiting_approval" if ticket.approved_at is None else "approved",
+            "state": ticket_view(ticket)["state"],
         },
     }
 
