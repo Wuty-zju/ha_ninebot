@@ -1332,3 +1332,104 @@ async def test_durable_approval_survives_temporary_queue_checkpoint_pressure(
         await store.async_get(approved.task_id, task_store.context)
     ).progress.state == "completed"
     assert task_store.client.async_get_trip_detail.await_count == 1
+
+
+@pytest.mark.parametrize("state", ["paused", "waiting_budget", "retry_wait"])
+async def test_unchanged_checkpoint_revalidates_but_does_not_rewrite_store(
+    hass, task_store, freezer, state
+):
+    from dataclasses import replace
+
+    from custom_components.ninebot.assistant_approval import TaskProgress
+
+    s, p, c = task_store.store, task_store.plan, task_store.context
+    approved = await approve_task(s, await s.async_request(p, c), c)
+    checkpoint = await s.async_checkpoint(approved, TaskProgress(state, 0, 0, dt_util.utcnow()), c)
+    before = await hass.async_add_executor_job(Path(s._store.path).read_bytes)
+    freezer.move_to(dt_util.utcnow() + timedelta(seconds=2))
+    progress = replace(checkpoint.progress, updated_at=dt_util.utcnow())
+    with patch.object(s._store, "async_save", new=AsyncMock()) as write:
+        actual = await s.async_checkpoint(checkpoint, progress, c)
+        write.assert_not_awaited()
+    assert actual == checkpoint and actual.progress.updated_at < dt_util.utcnow()
+    assert await hass.async_add_executor_job(Path(s._store.path).read_bytes) == before
+    # Unchanged values must not turn into an authorization shortcut.
+    with patch.object(hass.auth, "async_get_user", new=AsyncMock(return_value=None)):
+        with pytest.raises((AssistantError, Unauthorized)):
+            await s.async_checkpoint(checkpoint, progress, c)
+
+
+@pytest.mark.parametrize("approved", [False, True])
+async def test_human_review_cancel_is_idempotent_and_retires_only_own_work(
+    hass, entry, task_store, review_client, hass_admin_user, approved
+):
+    from custom_components.ninebot.assistant_execution import driver_for
+
+    context = Context(user_id=hass_admin_user.id)
+    application = await seeded_request(hass, entry, task_store, context=context)
+    device, task_id = task_store.plan.vehicle_ref, application["task"]["task_id"]
+    store = entry.runtime_data.assistant_tasks
+    pending = await store.async_get(task_id, context)
+    driver = driver_for(hass, entry)
+    if approved:
+        ticket = await approve_task(store, pending, context)
+        await driver.async_accept(ticket, context)
+        await hass.async_block_till_done()
+        assert driver.has_work and task_store.co.preservation._remove is not None
+    first = await review(review_client, device, 101, "cancel", task_id=task_id)
+    assert first["success"] and first["result"]["task"]["state"] == "cancelled"
+    assert "token" not in str(first) and not driver.has_work
+    assert task_store.co.preservation._remove is None
+    second = await review(review_client, device, 102, "cancel", task_id=task_id)
+    assert second["success"] and second["result"] == first["result"]
+    malformed = await review(review_client, device, 103, "cancel", task_id=task_id, token="x" * 32)
+    assert malformed["error"]["code"] == "invalid_arguments"
+    assert entry.options.get("preserve_history", False) is False
+
+
+async def test_human_review_cancel_rejects_another_requester(
+    hass, entry, task_store, review_client
+):
+    result = await seeded_request(hass, entry, task_store)
+    denied = await review(
+        review_client, task_store.plan.vehicle_ref, 110, "cancel", task_id=result["task"]["task_id"]
+    )
+    assert denied["error"]["code"] == "not_authorized"
+    pending = await entry.runtime_data.assistant_tasks.async_get(
+        result["task"]["task_id"], task_store.context
+    )
+    assert pending.progress is None
+
+
+async def test_human_cancel_keeps_another_approved_task_scheduled(
+    hass, entry, task_store, review_client, hass_admin_user
+):
+    from custom_components.ninebot.assistant_execution import driver_for
+    from custom_components.ninebot.assistant_tasks import async_request_details
+
+    context = Context(user_id=hass_admin_user.id)
+    first = await seeded_request(hass, entry, task_store, context=context)
+    device = task_store.plan.vehicle_ref
+    second = await async_request_details(hass, context, device, "2026-11-05", "2026-11-06")
+    first_id, second_id = first["task"]["task_id"], second["task"]["task_id"]
+    assert first_id != second_id
+    driver = driver_for(hass, entry)
+    for task_id in (first_id, second_id):
+        pending = await driver.store.async_get(task_id, context)
+        approved = await approve_task(driver.store, pending, context)
+        await driver.async_accept(approved, context)
+    await hass.async_block_till_done()
+    cancelled = await review(review_client, device, 120, "cancel", task_id=first_id)
+    assert cancelled["success"] and cancelled["result"]["task"]["state"] == "cancelled"
+    assert set(driver.tickets) == {second_id}
+    assert driver.has_work and task_store.co.preservation._remove is not None
+    remaining = await driver.store.async_get(second_id, context)
+    assert remaining.progress.state == "queued"
+    assert not (
+        await task_store.co.statistics.archive.async_detail_scope_state(
+            "SyntheticSN", remaining.plan.scope, guard=lambda: True
+        )
+    ).paused
+    stopped = await review(review_client, device, 121, "cancel", task_id=second_id)
+    assert stopped["success"] and not driver.has_work
+    assert task_store.co.preservation._remove is None

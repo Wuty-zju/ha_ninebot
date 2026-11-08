@@ -23,7 +23,7 @@ ERRORS = {
     "not_authorized": "Task review access denied.",
     "task_not_found": "This task is no longer available.",
     "approval_expired": "The confirmation expired. Request a new plan.",
-    "approval_used": "This task has already been approved.",
+    "approval_used": "This task is no longer awaiting approval.",
     "invalid_arguments": "The review arguments do not match the operation.",
     "response_too_large": "Narrow the requested task range.",
     "retry_later": "Task review is temporarily unavailable. Check its state before retrying.",
@@ -34,7 +34,7 @@ ERRORS = {
     {
         vol.Required("type"): COMMAND,
         vol.Required("vehicle_ref"): vol.All(str, vol.Length(min=1, max=128)),
-        vol.Required("operation"): vol.In(("list", "prepare", "approve")),
+        vol.Required("operation"): vol.In(("list", "prepare", "approve", "cancel")),
         vol.Optional("task_id"): vol.All(str, vol.Match(r"^[a-f0-9]{32}$")),
         # Use Core's redacted secret key for the short-lived confirmation nonce.
         vol.Optional("token"): vol.All(str, vol.Length(min=16, max=128)),
@@ -58,6 +58,7 @@ async def async_review(
         expected = {
             "list": set(),
             "prepare": {"task_id"},
+            "cancel": {"task_id"},
             "approve": {"task_id", "token", "plan_hash"},
         }
         if fields != expected[operation]:
@@ -84,6 +85,13 @@ async def async_review(
                             },
                             "token": nonce,
                         }
+                    elif operation == "cancel":
+                        from .assistant_execution import driver_for
+
+                        ticket = await driver_for(hass, scope.entry).async_cancel(
+                            ticket.task_id, context
+                        )
+                        response = {"task": ticket_view(ticket)}
                     else:
                         ticket = await store.async_approve(
                             ticket.task_id, context, message["token"], message["plan_hash"]
