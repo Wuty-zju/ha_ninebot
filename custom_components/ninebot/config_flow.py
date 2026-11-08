@@ -33,7 +33,12 @@ from homeassistant.helpers.selector import (
 from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, account_update
 from .account_archive import CONF_RETAIN_ARCHIVE
 from .archive_options import ArchiveOptionsMixin
-from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_VEHICLES, native_api_supported
+from .assistant import (
+    CONF_ASSISTANT,
+    CONF_ASSISTANT_TASKS,
+    CONF_ASSISTANT_VEHICLES,
+    native_api_supported,
+)
 from .bootstrap import CONF_AUTO_HISTORY
 from .compat import conditional_field, post_create_options_supported
 from .compat import validation as vol
@@ -696,6 +701,11 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                         {
                             vol.Optional(
                                 CONF_ASSISTANT, default=options.get(CONF_ASSISTANT, False)
+                            ): bool,
+                            conditional_field(
+                                CONF_ASSISTANT_TASKS,
+                                options.get(CONF_ASSISTANT_TASKS, False),
+                                when=CONF_ASSISTANT,
                             ): bool,
                             conditional_field(
                                 CONF_ASSISTANT_VEHICLES,

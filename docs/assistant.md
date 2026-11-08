@@ -71,6 +71,16 @@ Help results can include a versioned checklist: when it applies, information to 
 
 The host follows the checklist within its existing tool loop. There is no separate Skill installer or execution framework. Checklists are advisory data and cannot grant permission; every call still uses the same program authorization. Missing inputs require clarification. Access denial stops the read, and unresolved cases end with the observed evidence and a specific next step. Sync requests and task approval remain outside this read-only preview.
 
+## Reviewable history tasks (development)
+
+The development branch also includes a separate **Allow reviewable history tasks (Beta)** option. Enable Assistant and select its vehicles first, then enable this option and save. **Ninebot Assistant** appears in the administrator sidebar. Tasks remain off by default.
+
+For an AI client to propose work, select the separate **Ninebot tasks** native API. Applications are local writes, so a native MCP Server restricted to read-only tools will hide that application tool. Keep the ordinary **Ninebot** collection selected for local data and help. The task tools list permitted vehicles, preview missing details over up to 31 business days, request human review, and read task progress. They cannot approve a request.
+
+Open **Ninebot Assistant**, choose the vehicle and review the dates, selected detail count, total request limit and expiry. Only **Approve and synchronize** starts the approved work. The plan includes at most twenty missing details and a total request allowance of twice the selected count, capped at twenty; retries share that allowance and the account's pacing. Existing saved details are reused. **Cancel task** stops that task's remaining work while other synchronization continues.
+
+The task view reports the last saved checkpoint, actual request consumption, retry eligibility and result. Approval is valid for ten minutes; approved work expires after 24 hours. Normal restarts resume permitted work. Restoring an official HA backup requires fresh human approval. The panel reads local metadata; it does not refresh vehicle data or fetch whole months when you review a task.
+
 ## Privacy and limits
 
 Enabling the option allows the chosen host to receive selected vehicle labels, scalar values, times, ride identifiers and quality information. Review names that you have assigned to vehicles. Ninebot excludes account credentials, account identifiers, serial numbers, precise coordinates, raw responses, logs, full tracks and sample arrays from these tools. An external model host may retain conversation and tool results under its own policy. Turning the option off revokes future calls; it cannot remove information already sent to the host. The saved vehicle selection is retained for later use.

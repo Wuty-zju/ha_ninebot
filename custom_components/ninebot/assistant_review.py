@@ -117,10 +117,31 @@ async def async_review(
         connection.send_error(message["id"], "retry_later", ERRORS["retry_later"])
 
 
+@websocket_api.websocket_command({vol.Required("type"): "ninebot/assistant/vehicles"})
+@websocket_api.async_response
+async def async_review_vehicles(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
+) -> None:
+    """Thin local discovery; reuse task consent, current Context, limits and projection."""
+    from .assistant_task_queries import async_task_query
+
+    context = connection.context(message)
+    if context.user_id != connection.user.id:
+        connection.send_error(message["id"], "not_authorized", ERRORS["not_authorized"])
+        return
+    result, failed = await async_task_query(hass, "task_vehicles", {}, context)
+    if failed:
+        error = result["error"]
+        connection.send_error(message["id"], error["code"], error["message"])
+    else:
+        connection.send_result(message["id"], result)
+
+
 @callback
 def async_register(hass: HomeAssistant) -> None:
     """Register once on opt-in; each call rechecks current consent and identity."""
     if hass.data.get(REGISTERED):
         return
     websocket_api.async_register_command(hass, async_review)
+    websocket_api.async_register_command(hass, async_review_vehicles)
     hass.data[REGISTERED] = True

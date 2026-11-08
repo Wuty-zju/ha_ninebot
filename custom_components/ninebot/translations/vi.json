@@ -109,6 +109,7 @@
           "manage_archive": "Export or import history database (Beta)",
           "enable_assistant": "Bật Ninebot Assistant (Beta)",
           "assistant_vehicles": "Xe mà Assistant được phép truy cập",
+          "enable_assistant_tasks": "Allow reviewable history tasks (Beta)",
           "debug_mode": "Hiển thị thực thể chẩn đoán"
         },
         "data_description": {
@@ -126,6 +127,7 @@
           "polling_profile": "Chu kỳ trạng thái/pin/chuyến đi: {polling_setting}. Điều chỉnh theo sạc và hoạt động.",
           "enable_assistant": "Cho phép hệ thống AI đã chọn đọc tên các xe được chọn, giá trị cục bộ, thời gian và chất lượng dữ liệu. Không bao gồm tài khoản, thông tin xác thực, vị trí chính xác và phản hồi thô. Không làm mới đám mây hoặc điều khiển xe.",
           "assistant_vehicles": "Chọn xe độc lập với quyền điều khiển từ xa. Tắt Assistant vẫn giữ lựa chọn.",
+          "enable_assistant_tasks": "After saving, review the scope and approve history-detail proposals in [Ninebot Assistant](/ninebot-assistant) before cloud requests begin. Off by default.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },

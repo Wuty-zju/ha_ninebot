@@ -109,6 +109,7 @@
           "manage_archive": "导出或导入历史数据库（Beta）",
           "enable_assistant": "啟用 Ninebot Assistant（Beta）",
           "assistant_vehicles": "Assistant 可存取的車輛",
+          "enable_assistant_tasks": "允許審核歷史同步任務（Beta）",
           "debug_mode": "顯示診斷實體"
         },
         "data_description": {
@@ -126,6 +127,7 @@
           "polling_profile": "目前狀態／電池／行程目標週期：{polling_setting}。依充電和車輛活動自動調整。",
           "enable_assistant": "允許所選 AI 服務讀取選中車輛的名稱、本機數值、時間與資料品質。不提供帳號、憑證、精確位置或原始回應，不重新整理雲端或控制車輛。",
           "assistant_vehicles": "此選擇獨立於車輛控制。關閉 Assistant 會保留所選車輛。",
+          "enable_assistant_tasks": "儲存後，在 [Ninebot Assistant](/ninebot-assistant) 核對範圍並批准歷史詳情同步，再開始雲端請求。預設關閉。",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },

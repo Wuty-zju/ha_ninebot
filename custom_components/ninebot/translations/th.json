@@ -109,6 +109,7 @@
           "manage_archive": "Export or import history database (Beta)",
           "enable_assistant": "เปิดใช้ Ninebot Assistant (เบต้า)",
           "assistant_vehicles": "ยานพาหนะที่ Assistant เข้าถึงได้",
+          "enable_assistant_tasks": "Allow reviewable history tasks (Beta)",
           "debug_mode": "แสดงเอนทิตีการวินิจฉัย"
         },
         "data_description": {
@@ -126,6 +127,7 @@
           "polling_profile": "ช่วงสถานะ/แบตเตอรี่/การเดินทาง: {polling_setting} ปรับตามการชาร์จและกิจกรรม",
           "enable_assistant": "อนุญาตให้โฮสต์ AI ที่เลือกอ่านชื่อยานพาหนะที่เลือก ค่าในเครื่อง เวลา และคุณภาพข้อมูล ไม่รวมบัญชี ข้อมูลรับรอง ตำแหน่งที่แม่นยำ และการตอบกลับดิบ ไม่มีการรีเฟรชคลาวด์หรือควบคุมยานพาหนะ",
           "assistant_vehicles": "เลือกยานพาหนะแยกจากการควบคุมระยะไกล การปิด Assistant จะคงตัวเลือกไว้",
+          "enable_assistant_tasks": "After saving, review the scope and approve history-detail proposals in [Ninebot Assistant](/ninebot-assistant) before cloud requests begin. Off by default.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },

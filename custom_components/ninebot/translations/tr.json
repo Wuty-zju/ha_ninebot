@@ -109,6 +109,7 @@
           "manage_archive": "Export or import history database (Beta)",
           "enable_assistant": "Ninebot Assistant’ı etkinleştir (Beta)",
           "assistant_vehicles": "Assistant’ın erişebileceği araçlar",
+          "enable_assistant_tasks": "Allow reviewable history tasks (Beta)",
           "debug_mode": "Tanılama varlıklarını göster"
         },
         "data_description": {
@@ -126,6 +127,7 @@
           "polling_profile": "Durum/batarya/yolculuk aralıkları: {polling_setting}. Şarj ve etkinliğe göre ayarlanır.",
           "enable_assistant": "Seçilen yapay zekâ sisteminin seçili araç adlarını, yerel değerleri, zamanları ve veri kalitesini okumasına izin verin. Hesaplar, kimlik bilgileri, kesin konumlar ve ham yanıtlar hariçtir. Bulut yenilemesi veya araç kontrolü yapılmaz.",
           "assistant_vehicles": "Araçları uzaktan kontrolden ayrı seçin. Assistant’ı kapatmak seçimi korur.",
+          "enable_assistant_tasks": "After saving, review the scope and approve history-detail proposals in [Ninebot Assistant](/ninebot-assistant) before cloud requests begin. Off by default.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
