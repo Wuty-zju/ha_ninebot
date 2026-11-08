@@ -4,8 +4,12 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
 from custom_components.ninebot.assistant import DATA_KEY, async_update_assistant_api
 from custom_components.ninebot.assistant_panel import PANEL_PATH, PANEL_URL, async_register
+
+pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
 
 async def test_headless_review_does_not_import_frontend(hass):
@@ -41,7 +45,6 @@ async def test_panel_uses_packaged_assets_admin_access_and_never_overwrites_a_pa
         remove()
         frontend.async_remove_panel.assert_called_once_with(hass, PANEL_PATH, warn_if_unknown=False)
         frontend.async_panel_exists.return_value = True
-        import pytest
 
         with pytest.raises(ValueError):
             await async_register(hass)
