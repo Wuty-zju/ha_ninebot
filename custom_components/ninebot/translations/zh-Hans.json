@@ -109,6 +109,7 @@
           "manage_archive": "导出或导入历史数据库（Beta）",
           "enable_assistant": "启用 Ninebot Assistant（Beta）",
           "assistant_vehicles": "Assistant 可访问的车辆",
+          "enable_assistant_tasks": "允许审核历史同步任务（Beta）",
           "debug_mode": "显示诊断实体"
         },
         "data_description": {
@@ -126,6 +127,7 @@
           "polling_profile": "当前状态／电池／行程目标周期：{polling_setting}。根据充电和车辆活跃状态自动调整。",
           "enable_assistant": "允许所选 AI 服务读取选中车辆的名称、本地数值、时间及数据质量。不提供账号、凭据、精确位置或原始响应，不刷新云端或控制车辆。",
           "assistant_vehicles": "此选择独立于车辆控制。关闭 Assistant 会保留所选车辆。",
+          "enable_assistant_tasks": "保存后，在 [Ninebot Assistant](/ninebot-assistant) 中核对范围并批准历史详情同步，之后才请求云端。默认关闭。",
           "debug_mode": "显示有界的当前数据解析视图。可从集成菜单启用调试日志、下载日志和诊断信息。"
         }
       },

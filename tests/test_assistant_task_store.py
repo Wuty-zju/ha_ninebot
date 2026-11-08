@@ -1433,3 +1433,22 @@ async def test_human_cancel_keeps_another_approved_task_scheduled(
     stopped = await review(review_client, device, 121, "cancel", task_id=second_id)
     assert stopped["success"] and not driver.has_work
     assert task_store.co.preservation._remove is None
+
+
+async def test_human_review_vehicle_discovery_is_local_scoped_and_revocable(
+    hass, entry, task_store, review_client
+):
+    await review_client.send_json({"id": 150, "type": "ninebot/assistant/vehicles"})
+    result = await asyncio.wait_for(review_client.receive_json(), 10)
+    assert result["success"]
+    data = result["result"]
+    assert data["data"]["vehicles"][0]["vehicle_ref"] == task_store.plan.vehicle_ref
+    assert data["evidence"]["cloud_calls"] == 0
+    assert "SyntheticSN" not in json.dumps(data)
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "enable_assistant_tasks": False}
+    )
+    await hass.async_block_till_done()
+    await review_client.send_json({"id": 151, "type": "ninebot/assistant/vehicles"})
+    denied = await asyncio.wait_for(review_client.receive_json(), 10)
+    assert denied["error"]["code"] == "not_authorized"

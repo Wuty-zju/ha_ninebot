@@ -2,7 +2,8 @@
   "domain": "ninebot",
   "name": "Ninebot",
   "after_dependencies": [
-    "recorder"
+    "recorder",
+    "frontend"
   ],
   "categories": [
     "vehicles_transport.bikes_scooters"

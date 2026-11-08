@@ -90,6 +90,8 @@ class AssistantRegistration:
     lock: Lock = field(default_factory=Lock)
     unregister: Callable[[], None] | None = None
     unregister_tasks: Callable[[], None] | None = None
+    unregister_panel: Callable[[], None] | None = None
+    panel_error: str | None = None
     error: str | None = None
     review_error: str | None = None
     task_error: str | None = None
@@ -115,6 +117,10 @@ async def async_update_assistant_api(hass: HomeAssistant) -> None:
     state: AssistantRegistration = hass.data.setdefault(DATA_KEY, AssistantRegistration())
     async with state.lock:
         if not _enabled(hass):
+            if state.unregister_panel is not None:
+                state.unregister_panel()
+                state.unregister_panel = None
+            state.panel_error = None
             if state.unregister_tasks is not None:
                 state.unregister_tasks()
                 state.unregister_tasks = None
@@ -146,6 +152,7 @@ async def async_update_assistant_api(hass: HomeAssistant) -> None:
 
 async def _async_update_tasks(hass: HomeAssistant, state: AssistantRegistration) -> None:
     enabled = _enabled(hass, tasks=True)
+    await _async_update_panel(hass, state, enabled and native_api_supported())
     if enabled:
         try:
             review = await async_import_module(hass, f"{__package__}.assistant_review")
@@ -172,6 +179,27 @@ async def _async_update_tasks(hass: HomeAssistant, state: AssistantRegistration)
         if state.task_error is None:
             _LOGGER.warning("Ninebot task tools are unavailable")
         state.task_error = "task_api_unavailable"
+
+
+async def _async_update_panel(
+    hass: HomeAssistant, state: AssistantRegistration, enabled: bool
+) -> None:
+    if not enabled:
+        if state.unregister_panel is not None:
+            state.unregister_panel()
+            state.unregister_panel = None
+        state.panel_error = None
+        return
+    if state.unregister_panel is not None or "frontend" not in hass.config.components:
+        return
+    try:
+        panel = await async_import_module(hass, f"{__package__}.assistant_panel")
+        state.unregister_panel = await panel.async_register(hass)
+        state.panel_error = None
+    except (ImportError, AttributeError, ValueError, HomeAssistantError):
+        if state.panel_error is None:
+            _LOGGER.warning("Ninebot task review panel is unavailable")
+        state.panel_error = "panel_unavailable"
 
 
 async def async_close_task_owner(

@@ -271,3 +271,12 @@ The integration sends no installation telemetry. Marketplace/HACS may show its s
 The counter is a standard-library maintenance tool: `python -m scripts.download_counts --repository OWNER/REPOSITORY --output downloads.json`, using `GH_TOKEN` with read access. Keep the output outside the runtime directory. Unit checks use synthetic metadata and no network.
 
 简体中文：下载审计通过现有 GitHub Actions 手动运行，完整分页统计规范 ZIP，排除草稿与校验文件；输出逐版本报告，不新增遥测、不改发布资产、不自动提交计数日志。原生商店所选版本计数与跨版本审计是不同口径。
+
+
+### Native task review panel
+
+The developing task workflow adds a separate, off-by-default task option beneath Assistant consent. `assistant_panel` lazily registers a packaged administrator-only HA custom panel at `/ninebot-assistant`; it uses the existing static route and native HA WebSocket connection. Headless installations keep their API without loading a frontend. Panel registration is serialized with the API lifecycle and removed when the last task-enabled account opts out. A path collision is reported without overwriting another panel or breaking vehicle features.
+
+`ninebot/assistant/vehicles` is a narrow local discovery command which reuses the task query layer's original Context, consent, safe projection and admission limits. The review panel lists only that user's tasks for the selected authorized vehicle. Preparation displays the server's exact scope before a separate approval click; the nonce remains in memory and the redacted `token` message, never in DOM, URL or browser storage. Leaving the view or changing identity/vehicle clears it. Approval and cancellation are never automatically retried.
+
+The page refreshes only the selected vehicle's local task metadata: ten seconds for active work, thirty seconds for pending review, and no periodic refresh for a finished or empty list. Hidden/disconnected pages stop polling; at most one page request is in flight. Refreshing the page does not query Ninebot Cloud. Both languages use HA theme variables and safe text nodes. Node state tests and the isolated browser proof cover the approval sequence, cancellation, stale responses, revoked access and light/dark mobile layouts with synthetic data. This is still development work until the complete task milestone is released.

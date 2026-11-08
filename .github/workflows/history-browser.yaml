@@ -37,3 +37,17 @@ jobs:
           path: ${{ runner.temp }}/ninebot-map-smoke
           if-no-files-found: error
           retention-days: 7
+
+      - name: Review and cancel synthetic tasks in both languages and themes
+        env:
+          BROWSER_TEST_DEPS: ${{ runner.temp }}/ninebot-browser
+          BROWSER_TEST_OUTPUT: ${{ runner.temp }}/ninebot-assistant-review
+        run: node tests/browser/assistant-review.mjs
+      - name: Keep synthetic task review evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: synthetic-assistant-review
+          path: ${{ runner.temp }}/ninebot-assistant-review
+          if-no-files-found: warn
+          retention-days: 7

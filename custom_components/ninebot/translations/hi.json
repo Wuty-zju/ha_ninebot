@@ -109,6 +109,7 @@
           "manage_archive": "Export or import history database (Beta)",
           "enable_assistant": "Ninebot Assistant सक्षम करें (बीटा)",
           "assistant_vehicles": "Assistant के लिए उपलब्ध वाहन",
+          "enable_assistant_tasks": "Allow reviewable history tasks (Beta)",
           "debug_mode": "निदान एंटिटी दिखाएँ"
         },
         "data_description": {
@@ -126,6 +127,7 @@
           "polling_profile": "स्थिति/बैटरी/यात्रा अंतराल: {polling_setting}। चार्जिंग और गतिविधि के अनुसार बदलते हैं।",
           "enable_assistant": "चुने गए AI होस्ट को चयनित वाहनों के नाम, स्थानीय मान, समय और डेटा की गुणवत्ता पढ़ने दें। खाते, लॉगिन जानकारी, सटीक स्थान और मूल प्रतिक्रियाएँ शामिल नहीं हैं। क्लाउड रीफ़्रेश या वाहन नियंत्रण नहीं।",
           "assistant_vehicles": "रिमोट नियंत्रण से अलग वाहन चुनें। Assistant बंद करने पर चयन सुरक्षित रहता है।",
+          "enable_assistant_tasks": "After saving, review the scope and approve history-detail proposals in [Ninebot Assistant](/ninebot-assistant) before cloud requests begin. Off by default.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
