@@ -166,10 +166,12 @@ class QueryBroker:
         job.admissions[consumer] = before_request
         try:
             receipt = await asyncio.shield(job.future)
-            if consumer in job.denied:
+            if self._closed or consumer in job.denied:
                 raise NinebotError(ErrorKind.CLOSED)
             if before_request is not None:
                 await before_request()
+                if self._closed:
+                    raise NinebotError(ErrorKind.CLOSED)
             return cast(QueryReceipt[T], receipt)
         finally:
             job.admissions.pop(consumer, None)

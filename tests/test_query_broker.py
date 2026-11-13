@@ -531,3 +531,30 @@ async def test_async_consumer_checks_cannot_overbook_global_waiter_limit():
                 task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         await broker.async_close()
+
+
+async def test_close_rejects_receipt_waiting_for_final_consumer_check(broker):
+    entered, release = asyncio.Event(), asyncio.Event()
+    checks = 0
+
+    async def admission():
+        nonlocal checks
+        checks += 1
+        if checks == 3:  # Submission, wire admission, then consumer delivery.
+            entered.set()
+            await release.wait()
+
+    async def operation():
+        return {"synthetic": 1}
+
+    task = asyncio.create_task(
+        broker.async_read(key(), operation, lambda: True, before_request=admission)
+    )
+    await asyncio.wait_for(entered.wait(), 5)
+    await broker.async_close()
+    release.set()
+    with pytest.raises(NinebotError) as error:
+        await asyncio.wait_for(task, 5)
+    assert error.value.kind is ErrorKind.CLOSED
+    assert broker.diagnostics()["waiters"] == 0
+    assert not broker._jobs and not broker._flights
