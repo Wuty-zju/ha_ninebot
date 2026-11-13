@@ -24,6 +24,7 @@ from custom_components.ninebot.statistics_export import (
     MAX_SERIES_POINTS,
     bucket,
     merge_periods,
+    prepare_import,
     statistic_id,
     valid_value,
 )
@@ -129,13 +130,79 @@ async def test_real_action_imports_days_and_months_without_cloud_or_current_muta
     assert not any("SyntheticSN" in item["statistic_id"] for item in response["series"])
     freezer.tick(timedelta(seconds=1))
     await record_month(entry, corrected=True)
-    await call(hass, export_device)
+    with patch(
+        "custom_components.ninebot.statistics_export.async_add_external_statistics",
+        wraps=async_add_external_statistics,
+    ) as write:
+        changed = await call(hass, export_device)
+    assert write.call_count == 2  # Only daily/monthly distance changed.
+    assert len(changed["dashboard_cards"]) == 8
     corrected = await read(recorder_mock, hass, daily_id)
     assert [row["change"] for row in corrected[:3]] == [0.5, 0, 1.5]
     assert corrected[-1]["sum"] == 2
     assert (await read(recorder_mock, hass, monthly_id, "month"))[0]["change"] == 2
-    await call(hass, export_device)
+    with patch(
+        "custom_components.ninebot.statistics_export.async_add_external_statistics"
+    ) as write:
+        repeated = await call(hass, export_device)
+    write.assert_not_called()
+    assert repeated["status"] == "unchanged"
+    assert sum(item["queued_points"] for item in repeated["series"]) == 0
+    assert sum(item["unchanged_points"] for item in repeated["series"]) == 121
+    assert len(repeated["dashboard_cards"]) == 8
     assert await read(recorder_mock, hass, daily_id) == corrected
+
+
+@pytest.mark.parametrize(
+    ("old_sum", "old_name", "unchanged"),
+    [
+        (1, "Vehicle: day Distance", True),
+        (2, "Vehicle: day Distance", False),
+        (None, "Vehicle: day Distance", False),
+        (True, "Vehicle: day Distance", False),
+        (1, "Old name", False),
+    ],
+)
+def test_skip_requires_matching_cumulative_value_and_metadata(hass, old_sum, old_name, unchanged):
+    metadata = {
+        "source": "ninebot",
+        "name": old_name,
+        "mean_type": StatisticMeanType.NONE,
+        "has_sum": True,
+        "unit_class": "distance",
+        "unit_of_measurement": "km",
+    }
+    sid = statistic_id("entry", "vehicle", "day", "distance_km")
+    response = {
+        "days": [
+            {
+                "date": "2026-09-01",
+                "period_closed": True,
+                "distance_km": 1,
+                "energy_wh": None,
+                "ride_count": None,
+                "duration_s": None,
+            }
+        ],
+        "months": [],
+    }
+    existing = [{"start": START.timestamp(), "state": 1, "sum": old_sum}]
+    with (
+        patch(
+            "custom_components.ninebot.statistics_export.get_metadata",
+            return_value={sid: (1, metadata)},
+        ),
+        patch(
+            "custom_components.ninebot.statistics_export.statistics_during_period",
+            return_value={sid: existing},
+        ) as read_points,
+    ):
+        plans, descriptions = prepare_import(hass, "entry", "vehicle", "Vehicle", response, NOW)
+    assert len(plans) == (0 if unchanged else 1)
+    item = next(item for item in descriptions if item["statistic_id"] == sid)
+    assert item["queued_points"] == (0 if unchanged else 1)
+    assert item["unchanged_points"] == (1 if unchanged else 0)
+    assert read_points.call_args.args[-1] == {"state", "sum"}
 
 
 async def test_real_recorder_sparse_buckets_and_full_suffix_replacement(recorder_mock, hass):
