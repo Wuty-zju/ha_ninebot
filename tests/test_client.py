@@ -471,6 +471,110 @@ async def test_cancel_close_reaps_child_before_clearing_bearer(tmp_path):
     client._reap.assert_awaited_once()
 
 
+@pytest.mark.parametrize("stage", ["spawn", "probe"])
+@pytest.mark.parametrize("cancel_close", [False, True])
+async def test_close_drains_startup_and_shares_cleanup(tmp_path, stage, cancel_close):
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    entered, release, stopping = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    process = MagicMock(returncode=None)
+    process.wait = AsyncMock(return_value=0)
+    process.terminate.side_effect = lambda: setattr(process, "returncode", -15)
+    session = MagicMock()
+
+    async def spawn(*args, **kwargs):
+        if stage == "spawn":
+            entered.set()
+            await release.wait()
+        return process
+
+    @asynccontextmanager
+    async def get(*args, **kwargs):
+        assert stage == "probe"
+        entered.set()
+        await release.wait()
+        yield SimpleNamespace(status=401, content=SimpleNamespace(read=AsyncMock()))
+
+    session.get.side_effect = get
+    client = NinecliClient(tmp_path, session, timeout=5)
+    stop = client._stop
+
+    async def observed_stop():
+        stopping.set()
+        await stop()
+
+    with patch(
+        "custom_components.ninebot.client.asyncio.create_subprocess_exec", side_effect=spawn
+    ):
+        request = asyncio.create_task(client.async_get_status("synthetic"))
+        await asyncio.wait_for(entered.wait(), 5)
+        client._stop = observed_stop
+        closing = asyncio.create_task(client.async_close())
+        await asyncio.wait_for(stopping.wait(), 5)
+        other_closer = asyncio.create_task(client.async_close())
+        await asyncio.sleep(0)
+        if cancel_close:
+            closing.cancel()
+            await asyncio.sleep(0)
+            closing.cancel()
+            await asyncio.sleep(0)
+        assert not closing.done() and not other_closer.done()
+        release.set()
+        with pytest.raises(NinebotError) as error:
+            await asyncio.wait_for(request, 5)
+        assert error.value.kind is ErrorKind.CLOSED
+        if cancel_close:
+            with pytest.raises(asyncio.CancelledError):
+                await asyncio.wait_for(closing, 5)
+        else:
+            await asyncio.wait_for(closing, 5)
+        await asyncio.wait_for(other_closer, 5)
+    assert client._process is None and process.returncode == -15
+    process.terminate.assert_called_once()
+    process.wait.assert_awaited()
+    session.request.assert_not_called()
+    assert session.get.call_count == (1 if stage == "probe" else 0)
+    assert client._bearer == "" and client._pending == 0 and not client._lock.locked()
+
+
+async def test_close_rejects_a_response_waiting_for_json_decode(tmp_path, proxy):
+    from unittest.mock import patch
+
+    url, _, _, _ = proxy
+    entered, release, stopping = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        client._base = url
+        client._start = AsyncMock()
+
+        async def decode(function, *args):
+            entered.set()
+            await release.wait()
+            return function(*args)
+
+        stop = client._stop
+
+        async def observed_stop():
+            stopping.set()
+            await stop()
+
+        with patch("custom_components.ninebot.client.asyncio.to_thread", side_effect=decode):
+            request = asyncio.create_task(client.async_get_status("synthetic"))
+            await asyncio.wait_for(entered.wait(), 5)
+            client._stop = observed_stop
+            closing = asyncio.create_task(client.async_close())
+            await asyncio.wait_for(stopping.wait(), 5)
+            assert not closing.done()
+            release.set()
+            with pytest.raises(NinebotError) as error:
+                await asyncio.wait_for(request, 5)
+            assert error.value.kind is ErrorKind.CLOSED
+            await asyncio.wait_for(closing, 5)
+    assert client._bearer == "" and client._pending == 0
+
+
 async def test_transport_failure_does_not_leak_request_details_in_traceback(tmp_path):
     import traceback
     from unittest.mock import MagicMock
