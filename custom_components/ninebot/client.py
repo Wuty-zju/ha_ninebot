@@ -102,6 +102,7 @@ class NinecliClient:
         self._base = ""
         self._bearer = ""
         self._closed = False
+        self._close_task: asyncio.Task[None] | None = None
         self._pending = 0
         self._request_ready = False
         self.vehicle_discovery_complete = False
@@ -119,6 +120,8 @@ class NinecliClient:
         if self._process is not None and self._process.returncode is None:
             return
         await self._stop()
+        if self._closed:
+            raise NinebotError(ErrorKind.CLOSED)
         self._bearer = secrets.token_urlsafe(32)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind(("127.0.0.1", 0))
@@ -132,7 +135,7 @@ class NinecliClient:
         endpoint = Endpoint.UNKNOWN
         status = None
         try:
-            self._process = await asyncio.create_subprocess_exec(
+            self._process = process = await asyncio.create_subprocess_exec(
                 sys.executable,
                 "-m",
                 "ninecli",
@@ -147,9 +150,13 @@ class NinecliClient:
                 stderr=asyncio.subprocess.DEVNULL,
                 env=env,
             )
+            if self._closed:
+                raise NinebotError(ErrorKind.CLOSED)
             async with asyncio.timeout(self._timeout):
                 while True:
-                    if self._process.returncode is not None:
+                    if self._closed:
+                        raise NinebotError(ErrorKind.CLOSED)
+                    if process.returncode is not None:
                         raise NinebotError(ErrorKind.PLATFORM)
                     try:
                         phase = FailurePhase.LOOPBACK_AUTH
@@ -165,6 +172,8 @@ class NinecliClient:
                             status = response.status
                             if status != 401:
                                 raise NinebotError(ErrorKind.PROTOCOL)
+                        if self._closed:
+                            raise NinebotError(ErrorKind.CLOSED)
                         endpoint = Endpoint.AUTH_PROBE
                         status = None
                         # Authenticated nonexistent route must NOT return 401.
@@ -178,7 +187,9 @@ class NinecliClient:
                             status = response.status
                             if status != 404:
                                 raise NinebotError(ErrorKind.PROTOCOL)
-                        if self._process.returncode is not None:
+                        if self._closed:
+                            raise NinebotError(ErrorKind.CLOSED)
+                        if process.returncode is not None:
                             raise NinebotError(ErrorKind.PLATFORM)
                         return
                     except aiohttp.ClientConnectionError:
@@ -224,12 +235,23 @@ class NinecliClient:
         await process.wait()
 
     async def async_close(self) -> None:
-        """Stop even when another request is waiting on the local HTTP child."""
+        """Interrupt the child, then drain its operation before releasing resources."""
         self._closed = True
+        if self._close_task is None:
+            self._close_task = asyncio.create_task(self._finish_close())
         try:
-            await self._stop()
+            await async_drain(self._close_task)
         finally:
             self._bearer = ""
+
+    async def _finish_close(self) -> None:
+        try:
+            # Interrupt an active HTTP request before waiting for its operation.
+            await self._stop()
+        finally:
+            async with self._lock:
+                # A subprocess creation may have resolved after the first stop.
+                await self._stop()
 
     @asynccontextmanager
     async def _operation(self) -> AsyncIterator[None]:
@@ -287,6 +309,8 @@ class NinecliClient:
                         raw = await asyncio.to_thread(json.loads, data)
                     except (ValueError, UnicodeError):
                         raise NinebotError(ErrorKind.PROTOCOL) from None
+                    if self._closed:
+                        raise NinebotError(ErrorKind.CLOSED)
                     try:
                         return response_data(response.status, raw)
                     except NinebotError as err:
@@ -418,6 +442,8 @@ class NinecliClient:
                     )
                     if not complete and not raw:
                         raise NinebotError(ErrorKind.SERVICE)
+                    if self._closed:
+                        raise NinebotError(ErrorKind.CLOSED)
                     self.vehicle_discovery_complete = complete
                     accepted = True
                     return raw
@@ -504,6 +530,8 @@ class NinecliClient:
                         current = await asyncio.to_thread(
                             read_session, self.config_dir, expected_uid
                         )
+                        if self._closed:
+                            raise NinebotError(ErrorKind.CLOSED)
                         if current.fingerprint != lease.fingerprint:
                             raise NinebotError(ErrorKind.BUSY, retryable=True)
                         return result

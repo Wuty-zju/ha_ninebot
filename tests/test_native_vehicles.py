@@ -3,6 +3,7 @@
 import asyncio
 import json
 import sys
+import threading
 import traceback
 from unittest.mock import AsyncMock
 
@@ -33,6 +34,49 @@ def native(monkeypatch):
         monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
 
     return install, children, calls, started
+
+
+async def test_close_waits_for_cache_reconciliation_and_rollback(tmp_path, native, monkeypatch):
+    from custom_components.ninebot import client as client_module
+
+    install, _, _, _ = native
+    install(
+        "from pathlib import Path; import json; "
+        f"Path({str(tmp_path / 'vehicles.json')!r}).write_text("
+        "json.dumps({'vehicles':[{'wnumber':'synthetic','business_line':'ebike'}]})); "
+        "print(json.dumps([{'wnumber':'synthetic'}]))"
+    )
+    entered, stopping = asyncio.Event(), asyncio.Event()
+    release, loop = threading.Event(), asyncio.get_running_loop()
+    reconcile = client_module.reconcile_cache
+
+    def paused_reconcile(*args):
+        loop.call_soon_threadsafe(entered.set)
+        assert release.wait(5)
+        return reconcile(*args)
+
+    monkeypatch.setattr(client_module, "reconcile_cache", paused_reconcile)
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        stop = client._stop
+
+        async def observed_stop():
+            stopping.set()
+            await stop()
+
+        request = asyncio.create_task(client.async_list_vehicles())
+        await asyncio.wait_for(entered.wait(), 5)
+        client._stop = observed_stop
+        closing = asyncio.create_task(client.async_close())
+        await asyncio.wait_for(stopping.wait(), 5)
+        assert not closing.done()
+        release.set()
+        with pytest.raises(NinebotError) as error:
+            await asyncio.wait_for(request, 5)
+        assert error.value.kind is ErrorKind.CLOSED
+        await asyncio.wait_for(closing, 5)
+    assert not (tmp_path / "vehicles.json").exists()
+    assert client._pending == 0 and not client._lock.locked()
 
 
 async def test_native_discovery_returns_raw_and_discards_old_serve(tmp_path, native, monkeypatch):
