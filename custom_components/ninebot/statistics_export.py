@@ -161,6 +161,7 @@ def prepare_import(
                 "source_points": len(incoming),
                 "skipped_points": len(rows) - len(incoming),
                 "queued_points": 0,
+                "unchanged_points": 0,
             }
             descriptions.append(description)
             if not incoming:
@@ -198,11 +199,25 @@ def prepare_import(
                 {sid},
                 "hour",
                 None,
-                {"state"},
+                {"state", "sum"},
             ).get(sid, [])
             points = merge_periods(existing, incoming, grain, metric, now)
-            description["queued_points"] = len(points)
             description["name"] = metadata["name"]
+            if (
+                old_meta
+                and old_meta[1].get("name") == metadata["name"]
+                and len(existing) == len(points)
+                and all(
+                    old.get("start") == point["start"].timestamp()
+                    and old.get("state") == point["state"]
+                    and valid_value(old.get("sum"), metric)
+                    and old.get("sum") == point["sum"]
+                    for old, point in zip(existing, points, strict=True)
+                )
+            ):
+                description["unchanged_points"] = len(points)
+                continue
+            description["queued_points"] = len(points)
             plans.append((metadata, points))
     return plans, descriptions
 
@@ -256,7 +271,13 @@ async def async_import_statistics(hass: HomeAssistant, call: ServiceCall) -> dic
                 async_add_external_statistics(hass, metadata, points)
             return {
                 "schema_version": 1,
-                "status": "queued" if plans else "no_closed_data",
+                "status": (
+                    "queued"
+                    if plans
+                    else "unchanged"
+                    if any(item["unchanged_points"] for item in series)
+                    else "no_closed_data"
+                ),
                 "business_timezone": BUSINESS_TIMEZONE,
                 "scope": response["scope"],
                 "series": series,
@@ -278,7 +299,7 @@ async def async_import_statistics(hass: HomeAssistant, call: ServiceCall) -> dic
                         "entities": [{"entity": item["statistic_id"], "name": item["name"]}],
                     }
                     for item in series
-                    if item["queued_points"]
+                    if item["queued_points"] or item["unchanged_points"]
                 ],
                 "warnings": [
                     "recorder_queue_is_not_a_durable_commit_acknowledgement",
