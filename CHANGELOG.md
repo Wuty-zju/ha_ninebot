@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.3
+
+- Skip Recorder writes for unchanged statistics while retaining corrections and chart configurations.
+- Drain active client operations and late subprocess creation before releasing session resources, including concurrent close and repeated cancellation.
+- Keep vehicle-discovery completeness bound to its own payload during metadata lookup.
+- Reject pending query receipts when the broker closes during final consumer authorization.
+
 ## 2.1.2
 
 - Add an optional, separate native task API for previewing missing trip details, requesting review and reading progress.
