@@ -1174,7 +1174,7 @@
     },
     "sync_history": {
       "name": "यात्रा संग्रह सिंक करें",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct निजी पुनर्प्राप्ति बिंदु के साथ स्थानीय मानों की मरम्मत शुरू करता है; reconstruct_continue/status/pause/cancel से जारी रखें, देखें, रोकें या रद्द करें। कोई क्लाउड अनुरोध या वाहन आदेश नहीं।",
+      "description": "synchronize queues incremental history work and may query the cloud. Selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Range and repair operations remain supported. No operation sends vehicle commands.\n\nस्थानीय पुनर्निर्माण: reconstruct निजी पुनर्प्राप्ति बिंदु के साथ स्थानीय मानों की मरम्मत शुरू करता है; reconstruct_continue/status/pause/cancel से जारी रखें, देखें, रोकें या रद्द करें। कोई क्लाउड अनुरोध या वाहन आदेश नहीं।",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -1193,7 +1193,7 @@
         },
         "months": {
           "name": "Repair months (YYYYMM list)",
-          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+          "description": "For synchronize, sparse repair or cancellation; at most 12 distinct months. Active scans coalesce."
         },
         "force": {
           "name": "मासिक सूचियाँ फिर जाँचें"

@@ -1174,7 +1174,7 @@
     },
     "sync_history": {
       "name": "Đồng bộ kho chuyến đi",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct bắt đầu sửa dữ liệu cục bộ với điểm khôi phục riêng; reconstruct_continue/status/pause/cancel để tiếp tục, xem, tạm dừng hoặc hủy. Không gọi đám mây hay điều khiển xe.",
+      "description": "synchronize queues incremental history work and may query the cloud. Selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Range and repair operations remain supported. No operation sends vehicle commands.\n\nTái tạo cục bộ: reconstruct bắt đầu sửa dữ liệu cục bộ với điểm khôi phục riêng; reconstruct_continue/status/pause/cancel để tiếp tục, xem, tạm dừng hoặc hủy. Không gọi đám mây hay điều khiển xe.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -1193,7 +1193,7 @@
         },
         "months": {
           "name": "Repair months (YYYYMM list)",
-          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+          "description": "For synchronize, sparse repair or cancellation; at most 12 distinct months. Active scans coalesce."
         },
         "force": {
           "name": "Quét lại danh sách tháng"

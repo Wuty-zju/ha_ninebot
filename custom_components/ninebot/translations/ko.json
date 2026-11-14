@@ -1174,7 +1174,7 @@
     },
     "sync_history": {
       "name": "주행 기록 동기화",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct는 비공개 복구 지점과 함께 로컬 값 복구를 시작합니다. reconstruct_continue/status/pause/cancel로 재개, 조회, 일시 중지 또는 취소합니다. 클라우드 요청이나 차량 명령은 없습니다.",
+      "description": "synchronize queues incremental history work and may query the cloud. Selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Range and repair operations remain supported. No operation sends vehicle commands.\n\n로컬 재구성: reconstruct는 비공개 복구 지점과 함께 로컬 값 복구를 시작합니다. reconstruct_continue/status/pause/cancel로 재개, 조회, 일시 중지 또는 취소합니다. 클라우드 요청이나 차량 명령은 없습니다.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -1193,7 +1193,7 @@
         },
         "months": {
           "name": "Repair months (YYYYMM list)",
-          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+          "description": "For synchronize, sparse repair or cancellation; at most 12 distinct months. Active scans coalesce."
         },
         "force": {
           "name": "월별 목록 다시 조회"

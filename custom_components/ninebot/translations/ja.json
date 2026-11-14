@@ -1174,7 +1174,7 @@
     },
     "sync_history": {
       "name": "走行履歴を同期",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct は専用の復元ポイントを作成し、ローカルの数値を修復します。reconstruct_continue/status/pause/cancel で再開、確認、一時停止、取消ができます。クラウドへの要求や車両操作は行いません。",
+      "description": "synchronize queues incremental history work and may query the cloud. Selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Range and repair operations remain supported. No operation sends vehicle commands.\n\nローカル再構築： reconstruct は専用の復元ポイントを作成し、ローカルの数値を修復します。reconstruct_continue/status/pause/cancel で再開、確認、一時停止、取消ができます。クラウドへの要求や車両操作は行いません。",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -1193,7 +1193,7 @@
         },
         "months": {
           "name": "Repair months (YYYYMM list)",
-          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+          "description": "For synchronize, sparse repair or cancellation; at most 12 distinct months. Active scans coalesce."
         },
         "force": {
           "name": "月別一覧を再取得"
