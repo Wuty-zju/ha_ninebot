@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-browser:
-    runs-on: ubuntu-latest
+    # Playwright 1.55.1 supports Ubuntu 24.04; keep browser/OS versions paired.
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
       PYTHONDONTWRITEBYTECODE: '1'

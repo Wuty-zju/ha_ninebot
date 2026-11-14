@@ -67,7 +67,7 @@ entity: calendar.REPLACE_WITH_VEHICLE_RIDE_CALENDAR
 limit: 20
 ```
 
-The resource and visual editor are bundled; no additional card repository is required. The integration registers a fixed static path, **not** dashboard resources/cards automatically. For `Custom element not found: ninebot-trip-card`, check that the resource loaded as a module, that the integration is loaded, then hard-reload the browser/app frontend. The footer shows the bundled card version.
+The resource and visual editor are bundled; no additional card repository is required. The integration registers a fixed static path, **not** dashboard resources/cards automatically. For `Custom element not found: ninebot-trip-card`, check that the resource loaded as a module, that the integration is loaded, then hard-reload the browser/app frontend. Find the installed integration version on its integration page.
 
 Use `device_id: REPLACE_WITH_VEHICLE_DEVICE_ID` instead of `entity` if the calendar feature is off. For multiple vehicles (up to five, including different loaded accounts):
 

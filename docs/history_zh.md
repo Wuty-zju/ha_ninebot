@@ -67,7 +67,7 @@ entity: calendar.REPLACE_WITH_VEHICLE_RIDE_CALENDAR
 limit: 20
 ```
 
-资源和可视化编辑器随包提供，无需另装卡片仓库。集成注册静态路径，**不会自动修改资源/仪表盘**。若提示 `Custom element not found: ninebot-trip-card`，确认集成已加载、资源类型正确，再强刷浏览器/App 前端；底部显示卡片版本。
+资源和可视化编辑器随包提供，无需另装卡片仓库。集成注册静态路径，**不会自动修改资源/仪表盘**。若提示 `Custom element not found: ninebot-trip-card`，确认集成已加载、资源类型正确，再强刷浏览器/App 前端；已安装版本可在集成页面查看。
 
 关闭日历时可改用 `device_id: REPLACE_WITH_VEHICLE_DEVICE_ID`。多车最多五辆，可来自不同的已加载账号：
 
