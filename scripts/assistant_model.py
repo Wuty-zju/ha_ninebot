@@ -140,11 +140,16 @@ def complete(binary: Path, weights: Path, prompt: str, deadline: float) -> dict:
 
 
 class CpuModel:
-    def __init__(self) -> None:
+    def __init__(self, host: str = "process") -> None:
+        if host not in {"process", "reusable"}:
+            raise ValueError("Unsupported evaluation host")
         from huggingface_hub import hf_hub_download, snapshot_download
         from transformers import AutoTokenizer
 
         self.binary = Path(os.environ["NINEBOT_EVAL_LLAMA"])
+        server = self.binary.with_name("llama-server")
+        if host == "reusable" and not server.is_file():
+            raise ValueError("Fixed engine bundle has no reusable server")
         self.weights = Path(hf_hub_download(MODEL, WEIGHT_FILE, revision=REVISION, token=False))
         verify_file(self.weights, WEIGHT_SHA)
         tokenizer_path = snapshot_download(
@@ -173,11 +178,31 @@ class CpuModel:
             "tokenizer_revision": TOKENIZER_REVISION,
             "context_tokens": CONTEXT_TOKENS,
             "token_count_basis": "official tokenizer: rendered prompt and visible output",
+            "completion_host": host,
+            "host_lifecycle": "cohort" if host == "reusable" else "turn",
+            "first_reply_includes_startup": True,
         }
         with self.binary.open("rb") as stream:
             self.metadata["engine_executable_sha256"] = hashlib.file_digest(
                 stream, "sha256"
             ).hexdigest()
+        self._host = None
+        if host == "reusable":
+            from scripts.assistant_model_host import ReusableCompletion
+
+            self._host = ReusableCompletion(server, self.weights)
+            with server.open("rb") as stream:
+                self.metadata["server_executable_sha256"] = hashlib.file_digest(
+                    stream, "sha256"
+                ).hexdigest()
+
+    def reset(self) -> None:
+        if self._host is not None:
+            self._host.reset()
+
+    def close(self) -> None:
+        if self._host is not None:
+            self._host.close()
 
     def reply(self, messages: list[dict], tools: list[dict], deadline: float) -> dict:
         started = time.perf_counter()
@@ -197,7 +222,11 @@ class CpuModel:
                 "deadline_limited": False,
                 "context_limited": True,
             }
-        result = complete(self.binary, self.weights, prompt, deadline)
+        result = (
+            self._host.complete(prompt, deadline)
+            if self._host is not None
+            else complete(self.binary, self.weights, prompt, deadline)
+        )
         if not result["deadline_limited"]:
             result["input_tokens"] = input_tokens
             result["output_tokens"] = len(

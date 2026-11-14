@@ -16,8 +16,13 @@ on:
       assistant_profile:
         description: Fixed evaluation case group
         type: choice
-        options: [baseline, retrieval]
+        options: [baseline, retrieval, host_probe]
         default: baseline
+      assistant_host:
+        description: CPU completion host (reusable is a CI-only experiment)
+        type: choice
+        options: [process, reusable]
+        default: process
 permissions:
   contents: read
 concurrency:
@@ -36,7 +41,7 @@ jobs:
       - run: python -m pip install ruff==0.16.10
       - run: ruff check custom_components tests scripts
       - run: ruff format --check custom_components tests scripts
-      - run: python -m unittest scripts.tests.test_assistant_evaluation scripts.tests.test_assistant_model -q
+      - run: python -m unittest scripts.tests.test_assistant_evaluation scripts.tests.test_assistant_model scripts.tests.test_assistant_model_host -q
       - run: python -m unittest scripts.tests.test_assistant_knowledge -q
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: github.event_name == 'workflow_dispatch' && inputs.full_validation
@@ -137,7 +142,8 @@ jobs:
       - name: Measure the selected synthetic comparison
         env:
           NINEBOT_EVAL_PROFILE: ${{ inputs.assistant_profile || 'baseline' }}
-        run: python -m scripts.evaluate_assistant --profile "$NINEBOT_EVAL_PROFILE" --output model-results.json
+          NINEBOT_EVAL_HOST: ${{ inputs.assistant_host || 'process' }}
+        run: python -m scripts.evaluate_assistant --profile "$NINEBOT_EVAL_PROFILE" --host "$NINEBOT_EVAL_HOST" --output model-results.json
       - name: Preserve completed measurements
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

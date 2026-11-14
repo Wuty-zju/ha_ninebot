@@ -20,6 +20,7 @@ from scripts.assistant_model import MAX_TOKENS, MODEL, REVISION, CpuModel
 PROFILES = {
     "baseline": ("Q03", "Q04", "P06", "S02"),
     "retrieval": ("R02", "R04"),
+    "host_probe": ("Q04",),
 }
 MAX_TURNS = 3
 MAX_CALLS = 4
@@ -328,7 +329,7 @@ async def conversation(
     }
 
 
-async def evaluate(output: Path, profile: str) -> None:
+async def evaluate(output: Path, profile: str, host: str = "process") -> None:
     from scripts.check_assistant_mcp import check
 
     cases_path = ROOT / "tests/fixtures/assistant/evaluation-tasks.json"
@@ -369,53 +370,61 @@ async def evaluate(output: Path, profile: str) -> None:
             "tokens_per_turn": MAX_TOKENS,
             "case_seconds": MAX_CASE_SECONDS,
         },
-        "deadline_contract": "single_process_deadline_v1",
+        "deadline_contract": "owned_loopback_deadline_v1"
+        if host == "reusable"
+        else "single_process_deadline_v1",
+        "cache_reset_between_arms": host == "reusable",
         "provider_cost_usd": None,
         "cases": [],
     }
-    model = await asyncio.to_thread(CpuModel)
+    model = await asyncio.to_thread(CpuModel, host)
     report["model_host"] = model.metadata
-    for case in selected:
-        for enabled in (False, True):
-            tools_enabled = enabled or profile == "retrieval"
-            help_enabled = enabled or profile != "retrieval"
-            arm = (
-                ("retrieval_on" if enabled else "retrieval_off")
-                if profile == "retrieval"
-                else ("tool_agent" if enabled else "single_prompt")
-            )
+    try:
+        for case in selected:
+            for enabled in (False, True):
+                model.reset()
+                tools_enabled = enabled or profile == "retrieval"
+                help_enabled = enabled or profile != "retrieval"
+                arm = (
+                    ("retrieval_on" if enabled else "retrieval_off")
+                    if profile == "retrieval"
+                    else ("tool_agent" if enabled else "single_prompt")
+                )
 
-            async def scenario(
-                fixture,
-                case=case,
-                tools_enabled=tools_enabled,
-                help_enabled=help_enabled,
-                arm=arm,
-            ):
-                result = await conversation(
-                    model,
+                async def scenario(
                     fixture,
-                    case,
+                    case=case,
                     tools_enabled=tools_enabled,
                     help_enabled=help_enabled,
                     arm=arm,
-                )
-                assert result["context"]["now"] == reference_time.isoformat()
-                report["cases"].append(result)
+                ):
+                    result = await conversation(
+                        model,
+                        fixture,
+                        case,
+                        tools_enabled=tools_enabled,
+                        help_enabled=help_enabled,
+                        arm=arm,
+                    )
+                    assert result["context"]["now"] == reference_time.isoformat()
+                    report["cases"].append(result)
 
-            with TemporaryDirectory(prefix="ninebot-eval-") as directory:
-                await check(directory, scenario=scenario, reference_time=reference_time)
-            await asyncio.to_thread(write_report, output, report)
-            print(f"Measured {case['id']} {arm}", flush=True)
+                with TemporaryDirectory(prefix="ninebot-eval-") as directory:
+                    await check(directory, scenario=scenario, reference_time=reference_time)
+                await asyncio.to_thread(write_report, output, report)
+                print(f"Measured {case['id']} {arm}", flush=True)
+    finally:
+        await asyncio.to_thread(model.close)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--profile", choices=PROFILES, default="baseline")
+    parser.add_argument("--host", choices=("process", "reusable"), default="process")
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    asyncio.run(evaluate(args.output, args.profile))
+    asyncio.run(evaluate(args.output, args.profile, args.host))
 
 
 if __name__ == "__main__":
