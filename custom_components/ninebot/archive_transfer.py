@@ -43,16 +43,19 @@ def readonly(path: Path) -> sqlite3.Connection:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_EXPANDED:
         raise ValueError("Invalid archive file")
     db = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=3)
-    db.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 4 * 1024 * 1024)
-    db.execute("PRAGMA query_only=ON")
-    db.execute("PRAGMA trusted_schema=OFF")
-    deadline = time.monotonic() + 120
-    db.set_progress_handler(lambda: int(time.monotonic() > deadline), 10000)
-    if db.execute(
-        "SELECT 1 FROM sqlite_master WHERE type IN ('trigger','view') LIMIT 1"
-    ).fetchone():
+    try:
+        db.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 4 * 1024 * 1024)
+        db.execute("PRAGMA query_only=ON")
+        db.execute("PRAGMA trusted_schema=OFF")
+        deadline = time.monotonic() + 120
+        db.set_progress_handler(lambda: int(time.monotonic() > deadline), 10000)
+        if db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type IN ('trigger','view') LIMIT 1"
+        ).fetchone():
+            raise ValueError("Executable archive schema is not accepted")
+    except BaseException:
         db.close()
-        raise ValueError("Executable archive schema is not accepted")
+        raise
     return db
 
 
