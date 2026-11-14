@@ -73,6 +73,22 @@ class ModelProtocolTests(unittest.TestCase):
             with self.subTest(result=str(result)[:100]), self.assertRaises(InvalidReply):
                 tool_message("tool", "call_1", {"result": result})
 
+    def test_decoded_mcp_text_cannot_hide_guarded_payload_keys(self):
+        for key, value in (
+            ("latitude", 1.25),
+            ("longitude", 2.5),
+            ("raw_payload", {"unexpected": "synthetic"}),
+            ("access_token", "synthetic-secret"),
+        ):
+            response = {
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps({key: value})}],
+                    "isError": False,
+                }
+            }
+            with self.subTest(key=key), self.assertRaises(AssertionError):
+                tool_message("tool", "call_1", response)
+
     def test_only_the_visible_final_channel_is_retained(self):
         self.assertEqual(visible_text("<think>private</think>answer"), "answer")
         self.assertEqual(visible_text("<think>unfinished"), "")
