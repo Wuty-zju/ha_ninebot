@@ -103,7 +103,7 @@ Each interaction loads at most four 512-source-row chunks before **Read more sav
 
 Leaflet **1.9.4** and its license/assets are bundled locally. Tiles are **off by default**. Enabling the OpenStreetMap basemap sends requests revealing the visible map area and network information to that provider. Attribution remains visible. No external JavaScript CDN is required.
 
-Coordinates are plotted as received: CRS is unverified, with no automatic WGS/GCJ conversion or road matching. Point speed and point-distance units remain unverified. Curves use **source sequence**, not elapsed time; 0.5-second playback steps are display timing, not riding speed/time. Server maximum speed and the calculated overall `distance / duration` average stay distinct; sample means cannot replace them.
+Coordinates are plotted as received: CRS is unverified, with no automatic WGS/GCJ conversion or road matching. Point speed units remain unverified. The fourth trail column is preserved as `distance_delta_raw`; its meaning and unit are unverified, so the card labels it by source column rather than treating it as a point-to-point distance. Curves use **source sequence**, not elapsed time; 0.5-second playback steps are display timing, not riding speed/time. Server maximum speed and the calculated overall `distance / duration` average stay distinct; sample means cannot replace them.
 
 Private projections are cleared on user/connection/date/vehicle scope change, revoked access and card removal. Full trails/raw do not enter HA entity attributes, Recorder, diagnostics or localStorage. Explicit GPS Action responses can still be recorded in automation traces; protect them.
 
