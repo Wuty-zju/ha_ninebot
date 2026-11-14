@@ -1174,7 +1174,7 @@
     },
     "sync_history": {
       "name": "Synchroniser les trajets archivés",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct lance une réparation locale avec un point de restauration privé ; reconstruct_continue/status/pause/cancel permet de reprendre, consulter, suspendre ou annuler. Aucun appel cloud ni commande au véhicule.",
+      "description": "synchronize queues incremental history work and may query the cloud. Selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Range and repair operations remain supported. No operation sends vehicle commands.\n\nReconstruction locale : reconstruct lance une réparation locale avec un point de restauration privé ; reconstruct_continue/status/pause/cancel permet de reprendre, consulter, suspendre ou annuler. Aucun appel cloud ni commande au véhicule.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -1193,7 +1193,7 @@
         },
         "months": {
           "name": "Repair months (YYYYMM list)",
-          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+          "description": "For synchronize, sparse repair or cancellation; at most 12 distinct months. Active scans coalesce."
         },
         "force": {
           "name": "Analyser à nouveau les listes mensuelles"
