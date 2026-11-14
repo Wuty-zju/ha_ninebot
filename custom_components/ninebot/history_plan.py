@@ -22,6 +22,7 @@ REASONS = frozenset(
         "connection",
         "service",
         "protocol",
+        "busy",
         "storage",
         "capacity",
         "budget",
