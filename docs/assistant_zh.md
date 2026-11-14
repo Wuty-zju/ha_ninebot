@@ -14,7 +14,7 @@ Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼�
 
 使用原生 Conversation/Assist 宿主时，若宿主支持自定义 LLM API 并保留已认证用户 Context，可选择 **Ninebot** API。具体选项和工具支持取决于宿主。Ninebot 不配置模型、模型密钥或额外监听服务。通用 Action 工具与暴露实体属于独立能力；注册 Ninebot Action 本身不会自动启用这些专属工具。
 
-原生 MCP 请求处理及工具链使用合成授权和本地记录进行检查。模型表现和认证配置取决于所选宿主；本预览尚无实际测量的模型质量评分。
+原生 MCP 请求处理及工具链使用合成授权和本地记录进行检查。模型回答仍属实验功能，已评测的 CPU 宿主尚未通过对话验收。认证配置和模型表现取决于所选宿主。
 
 ## 查询本地数据
 

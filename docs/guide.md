@@ -123,7 +123,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Option | Default / range | Effect |
 |---|---|---|
 | Update speed | Balanced; five profiles | Per-vehicle/group targets adapt to charging and ACC. Polling-only changes reuse the runtime. |
-| Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
+| Show vehicle location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
 | Automatically sync trip details (Beta) | Off for new accounts; existing choices retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |

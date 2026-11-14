@@ -90,10 +90,10 @@ Each account owns its session, credentials directory and archive. Entry titles u
 | Option | Default | Purpose |
 |---|---|---|
 | Update speed | Balanced | Five adaptive profiles with per-vehicle activity boosts. |
-| Precise location | On | Current position and authorized track responses; no separate precision request. |
+| Show vehicle location | On | Current position and authorized track responses; no separate precision request. |
 | Ride calendar (Beta) | Off for new accounts | Local rides on a native HA calendar. |
-| Background detail preservation (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
-| Automatic history sync (Beta) | Off for new accounts | Initial discovery and subsequent incremental work. |
+| Automatically sync trip details (Beta) | Off for new accounts | Save detailed rides/tracks within the request budget. |
+| Automatically scan trip history (Beta) | Off for new accounts | Initial discovery and subsequent incremental work. |
 | Controls and vehicle allowlist | New accounts: on / sign-in-verified vehicles | Adjust command access for selected vehicles; existing choices are retained. |
 | Keep local history database (Beta) | On | Retain history after account removal and reconnect it on same-account sign-in. |
 | Vehicle events (Beta) | On | Trip reports, revisions, completions and concrete vehicle transitions. |

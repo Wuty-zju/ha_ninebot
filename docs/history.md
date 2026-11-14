@@ -19,7 +19,7 @@ Historical rides and point arrays belong in the archive and bounded responses, n
 
 ## Enable preservation and synchronization
 
-In account options, review **Preserve trip details in background**, **Automatic history synchronization**, storage quota and history request budget. Calendar, preservation and automatic sync are Beta features and default off for new accounts; existing choices are retained. Enable preservation and automatic sync to start background acquisition. Turning preservation off keeps saved data but suspends background work. Location response/display consent is a separate option; protecting archived GPS/backups remains necessary.
+In account options, review **Automatically sync trip details (Beta)**, **Automatically scan trip history (Beta)**, storage quota and history request budget. Calendar, preservation and automatic sync are Beta features and default off for new accounts; existing choices are retained. Enable preservation and automatic sync to start background acquisition. Turning preservation off keeps saved data but suspends background work. Location response/display consent is a separate option; protecting archived GPS/backups remains necessary.
 
 First discovery persists a fixed baseline from the client's `200001` month lower bound through the bootstrap month for each owned vehicle. This is a **client search policy**, not an official earliest-history boundary. Empty months do not prove earlier history is impossible. Work is resumable and budgeted, so a first scan may take a long time. New months, current/previous-month changes and older gaps have separate incremental scheduling; stable saved details are reused instead of continually downloaded.
 
@@ -92,7 +92,7 @@ limit: 40
 - Selecting a ride links its map, summary and curves. Already-saved detail can load locally; a missing detail never triggers a cloud download automatically.
 - Compare up to **five rides**, including different vehicles. Chips switch focus; totals cover selected records, not every ride matching the filter.
 - Route clicks, curve hover, point slider, drag selection and sequence playback share one focus marker/range. They make no API requests. **Show all routes** fits the map; ordinary focus and telemetry updates preserve the manual viewport.
-- **Local records updated · Read latest** is an authenticated metadata-only notification. Reading latest refreshes local lists/focused saved detail while preserving selection/view/playback. Reconnection clears old cursors; it does not start a cloud scan.
+- **Local records updated · Read latest** is an authenticated metadata-only notification. Reading latest refreshes local lists/focused saved detail while preserving the selection and map view. Playback pauses during the refresh. Reconnection clears old cursors; it does not start a cloud scan.
 - The visual editor supports vehicles, title, dates and page size; advanced options remain YAML-editable. Narrow/mobile cards stack the map, list and detail.
 
 **Fetch cloud detail** explicitly requests one selected ride/month and can save its business payload. **Show saved route** uses local-only detail with coordinate permissions. Missing saved detail needs the explicit cloud step, or background acquisition, then a local refresh. The detail response reports whether persistence succeeded; a cloud response alone is not a storage guarantee.
@@ -226,7 +226,7 @@ initial_view: dayGridMonth
 
 The read-only calendar shows valid past ride times/metrics from local storage. It does not fetch missing months/details or write Recorder. Its current state may be `off` when only past rides exist; browse dates rather than attributes. Complete-list withdrawals can remove current selections while preserving evidence; partial omissions retain known rides. Queries are bounded to five years, 5,000 rides and 8 MiB. Newer HA can subscribe to changed calendar ranges; older supported HA can navigate/read normally.
 
-Trip Event state is the timestamp of the most recent report/update/completion event, not last-ride end. Two independent unchanged travel observations over ten minutes establish stability; startup/re-enable sets a baseline and does not replay historical rides. IDs are durably deduplicated; later corrections can emit a report-update event, but never repeat the completion event. Unknown before the first new event is expected. Restored event timestamps never trigger automations; rides during downtime can be missed.
+Trip Event state is the timestamp of the most recent report/update/completion event, not last-ride end. Completion requires at least two independent successful travel observations with the relevant ride facts unchanged for at least ten minutes; startup/re-enable sets a baseline and does not replay historical rides. IDs are durably deduplicated; later corrections can emit a report-update event, but never repeat the completion event. Unknown before the first new event is expected. Restored event timestamps never trigger automations; rides during downtime can be missed.
 
 Native `type: map` with the location tracker and `hours_to_show: 24` shows only positions Recorder actually observed. It cannot reconstruct downloaded historical trail arrays; use the bundled workbench for a saved ride.
 
