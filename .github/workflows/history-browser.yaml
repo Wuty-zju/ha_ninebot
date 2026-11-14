@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    # Playwright 1.55.1 supports Ubuntu 24.04; keep browser/OS versions paired.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
