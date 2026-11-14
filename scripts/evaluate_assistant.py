@@ -131,6 +131,7 @@ def tool_message(name: str, call_id: str, response: dict) -> dict:
             raise ValueError
     except (KeyError, TypeError, ValueError, RecursionError) as err:
         raise InvalidReply("unexpected_tool_response") from err
+    safe_result(payload)
     return {"role": "tool", "name": name, "tool_call_id": call_id, "content": text}
 
 

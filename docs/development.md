@@ -159,6 +159,8 @@ The `assistant-model-<attempt>` artifact contains source/dependency versions, vi
 
 Model tool messages contain the returned [MCP text content](https://modelcontextprotocol.io/specification/2025-11-25/server/tools#tool-results), following the [Transformers tool-message contract](https://huggingface.co/docs/transformers/v4.57.1/en/chat_extras). Call IDs associate replies with requests; the full JSON-RPC envelope stays in the recorded trace. Unexpected or inconsistent responses stop the case. Reports identify this host contract separately from the model revision; older envelope-based runs remain exploratory evidence.
 
+The synthetic privacy guard checks both the transport response and the decoded business payload before that payload enters the model conversation or a completed report. JSON escaping in MCP text content cannot hide guarded field names from the check.
+
 Controlled comparisons use the fixture's fixed UTC clock for snapshots, query periods and view context; latency still uses the real monotonic clock. `tool_calls` counts model-selected reads; host-context calls and conversation HTTP requests have separate counters. Fixture preflight and cleanup are outside those measurements.
 
 ```sh
