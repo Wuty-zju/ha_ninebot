@@ -85,3 +85,21 @@ def test_first_empty_account_is_not_a_removed_known_vehicle(tmp_path):
     from custom_components.ninebot.vehicle_cache import reconcile_cache
 
     assert reconcile_cache(tmp_path, None, frozenset(), True)
+
+
+@pytest.mark.parametrize("business_line", [[], {}, ["ebike"]])
+def test_malformed_business_line_uses_protocol_error_without_rewriting_cache(
+    tmp_path, business_line
+):
+    import json
+
+    path = tmp_path / "vehicles.json"
+    original = json.dumps(
+        {"vehicles": [{"wnumber": "synthetic", "business_line": business_line}]}
+    ).encode()
+    path.write_bytes(original)
+    previous = b'{"vehicles":[{"wnumber":"known","business_line":"ebike"}]}'
+    with pytest.raises(NinebotError) as error:
+        merge_partial_cache(tmp_path, previous)
+    assert error.value.kind is ErrorKind.PROTOCOL
+    assert path.read_bytes() == original
