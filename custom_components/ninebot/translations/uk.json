@@ -109,7 +109,7 @@
           "manage_archive": "Export or import history database (Beta)",
           "enable_assistant": "Увімкнути Ninebot Assistant (бета)",
           "assistant_vehicles": "Транспорт, доступний Assistant",
-          "enable_assistant_tasks": "Allow reviewable history tasks (Beta)",
+          "enable_assistant_tasks": "Дозволити завдання історії поїздок із підтвердженням (бета)",
           "debug_mode": "Показувати діагностичні сутності"
         },
         "data_description": {
@@ -127,7 +127,7 @@
           "polling_profile": "Інтервали стану/батареї/поїздок: {polling_setting}. Враховуються заряджання й активність.",
           "enable_assistant": "Дозвольте вибраній системі ШІ читати назви вибраного транспорту, локальні значення, час і якість даних. Облікові записи, дані входу, точні координати й необроблені відповіді виключено. Без оновлення з хмари та керування транспортом.",
           "assistant_vehicles": "Вибирайте транспорт окремо від дистанційного керування. Вимкнення Assistant зберігає вибір.",
-          "enable_assistant_tasks": "After saving, review the scope and approve history-detail proposals in [Ninebot Assistant](/ninebot-assistant) before cloud requests begin. Off by default.",
+          "enable_assistant_tasks": "Після збереження перевірте обсяг і підтвердьте пропозиції синхронізації деталей поїздок у [Ninebot Assistant](/ninebot-assistant), перш ніж почнуться запити до хмари. Типово вимкнено.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },

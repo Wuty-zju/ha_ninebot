@@ -109,7 +109,7 @@
           "manage_archive": "Export or import history database (Beta)",
           "enable_assistant": "Activer Ninebot Assistant (Bêta)",
           "assistant_vehicles": "Véhicules accessibles à l’assistant",
-          "enable_assistant_tasks": "Allow reviewable history tasks (Beta)",
+          "enable_assistant_tasks": "Autoriser les tâches d’historique à approuver (bêta)",
           "debug_mode": "Afficher les entités de diagnostic"
         },
         "data_description": {
@@ -127,7 +127,7 @@
           "polling_profile": "Intervalles état/batterie/trajets : {polling_setting}. Ils suivent la charge et l’activité.",
           "enable_assistant": "Autorise le système d’IA choisi à lire les noms des véhicules sélectionnés, les valeurs locales, les horaires et la qualité des données. Comptes, identifiants, positions précises et réponses brutes exclus. Aucune actualisation cloud ni commande du véhicule.",
           "assistant_vehicles": "Sélectionnez les véhicules indépendamment de la commande à distance. La sélection est conservée si l’assistant est désactivé.",
-          "enable_assistant_tasks": "After saving, review the scope and approve history-detail proposals in [Ninebot Assistant](/ninebot-assistant) before cloud requests begin. Off by default.",
+          "enable_assistant_tasks": "Après l’enregistrement, vérifiez le périmètre et approuvez les propositions de synchronisation des détails de trajet dans [Ninebot Assistant](/ninebot-assistant) avant toute requête cloud. Désactivé par défaut.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
