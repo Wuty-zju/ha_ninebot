@@ -68,6 +68,7 @@ def native_rows(data: bytes | None) -> list[dict[str, Any]]:
         not isinstance(row, dict)
         or not isinstance(row.get("wnumber"), str)
         or not row["wnumber"].strip()
+        or not isinstance(row.get("business_line"), str)
         or row.get("business_line") not in {"ebike", "motor"}
         for row in values
     ):
