@@ -195,6 +195,37 @@ async def store_exists(store):
     return await store.hass.async_add_executor_job(Path(store._store.path).exists)
 
 
+@pytest.mark.parametrize("replace_driver", [False, True])
+async def test_closed_driver_does_not_reattach_after_delayed_restore(
+    hass, entry, task_store, replace_driver
+):
+    from custom_components.ninebot.assistant_execution import driver_for
+
+    store, plan, context = task_store.store, task_store.plan, task_store.context
+    await approve_task(store, await store.async_request(plan, context), context)
+    entry.runtime_data.assistant_tasks = store
+    driver = driver_for(hass, entry)
+    entered, release = asyncio.Event(), asyncio.Event()
+    original = store.async_execution_tickets
+
+    async def delayed_read():
+        tickets = await original()
+        entered.set()
+        await release.wait()
+        return tickets
+
+    with patch.object(store, "async_execution_tickets", side_effect=delayed_read):
+        restoring = asyncio.create_task(driver.async_restore())
+        await entered.wait()
+        task_store.co.preservation.detach_assistant()
+        replacement = driver_for(hass, entry) if replace_driver else None
+        release.set()
+        await restoring
+
+    assert driver.closed and not driver.tickets and not driver.contexts
+    assert task_store.co.preservation._assistant is replacement
+
+
 async def test_closed_owner_preserves_pending_for_a_new_owner(task_store):
     s, p, c = task_store.store, task_store.plan, task_store.context
     pending = await s.async_request(p, c)

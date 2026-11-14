@@ -70,7 +70,10 @@ class AssistantExecution:
         )
 
     async def async_restore(self) -> None:
-        for ticket in await self.store.async_execution_tickets():
+        tickets = await self.store.async_execution_tickets()
+        if self.closed or self.store.closed:
+            return
+        for ticket in tickets:
             self.tickets.setdefault(ticket.task_id, ticket)
             # Server-owned persisted principal; never use an anonymous automation Context.
             self.contexts.setdefault(
