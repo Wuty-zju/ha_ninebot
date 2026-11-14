@@ -29,6 +29,8 @@ Feature PRs do not each require a release. Publish useful preview increments fro
 
 English is the maintenance source; README, setup/history/migration guides have corresponding Simplified Chinese pages. Architecture/development have Chinese summaries. Keep meaning, units, defaults and limits aligned; a matching outline alone is not a translation review.
 
+Maintain `strings.json` and `translations/en.json` together inside the integration directory. Edit locale resources directly, preserving reviewed wording and format placeholders. New messages may use English fallback until translated. Run the translation resource checks after edits and review meaning separately from structure.
+
 Use repository-relative links and stable section anchors. Architecture images use paired light/dark SVGs selected with `<picture>`; keep labels readable in both themes. Preserve or bridge existing public links when reorganizing. Synthetic examples must be labeled; review screenshots and diagnostics before sharing. Do not publish private captures, credentials, real vehicle/account identifiers or precise trails.
 
 ```sh
