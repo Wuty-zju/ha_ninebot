@@ -109,7 +109,7 @@
           "manage_archive": "Export or import history database (Beta)",
           "enable_assistant": "Ninebot Assistantを有効にする（ベータ）",
           "assistant_vehicles": "Assistantに公開する車両",
-          "enable_assistant_tasks": "Allow reviewable history tasks (Beta)",
+          "enable_assistant_tasks": "確認が必要な履歴タスクを許可（ベータ）",
           "debug_mode": "診断エンティティを表示"
         },
         "data_description": {
@@ -127,7 +127,7 @@
           "polling_profile": "現在の状態／バッテリー／走行の間隔：{polling_setting}。充電と車両の活動に応じて調整します。",
           "enable_assistant": "選択したAIホストに、対象車両の名前、ローカルの値、時刻、データ品質の読み取りを許可します。アカウント、認証情報、正確な位置、未加工の応答は含みません。クラウドの更新や車両操作は行いません。",
           "assistant_vehicles": "遠隔操作の対象とは別に車両を選択します。Assistantを無効にしても選択は保持されます。",
-          "enable_assistant_tasks": "After saving, review the scope and approve history-detail proposals in [Ninebot Assistant](/ninebot-assistant) before cloud requests begin. Off by default.",
+          "enable_assistant_tasks": "保存後、クラウドへのリクエストを開始する前に、[Ninebot Assistant](/ninebot-assistant)で対象範囲を確認し、走行詳細の同期リクエストを承認してください。既定ではオフです。",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
