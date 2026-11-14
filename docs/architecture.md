@@ -160,3 +160,5 @@ Today mileage declares the DAY dependency used by daily-index repair. History pr
 A compatible AI host selects the native Ninebot API through HA’s LLM registry or MCP Server. The adapter preserves the authenticated Context, applies separate account/vehicle consent and read admission, then reuses cached snapshots or existing local history Actions. Safe result projections carry units, freshness and coverage; ownership and consent are checked again before return. The adapter does not add a model provider, listener, archive or collection scheduler.
 
 The feature is off by default. Its modern native API requirement is separate from the overall integration minimum. [Setup, tool schemas and data disclosure](assistant.md) describe the preview; [development entry points](development.md#assistant-development) identify the implementation and isolated checks.
+
+Approved tasks use the existing preservation scheduler. A restored driver rechecks its own and its Store's closure after reading durable tickets, before attaching to that scheduler; a late read cannot replace the active driver after detachment.
