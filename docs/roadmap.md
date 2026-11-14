@@ -26,9 +26,11 @@ Current scope for the stable 2.0 series and optional 2.1 preview. Usage and data
 
 Six dedicated local tools expose authorized vehicle status, statistics, saved trips and synchronization health through the native LLM API/MCP Server. The feature is off by default, uses separate account/vehicle consent and keeps coordinates and raw responses outside tool results. [Setup and tool reference](assistant.md).
 
-Next steps are a measured single-agent query/diagnostic baseline, versioned help retrieval and reusable task procedures. Approved synchronization needs a trusted human approval path and an exact request budget before it can become an execution tool. Multi-agent work remains an experiment subject to a measured benefit over the single-agent baseline.
+Versioned bilingual help and bounded task checklists are available from 2.1.1. From 2.1.2, a separate task option supports local proposals, human review, exact request budgets and resumable execution through the existing history scheduler. [Task workflow](assistant.md#reviewable-history-tasks-beta).
 
-2.1预览提供六个专属本地只读工具，默认关闭，按账号和车辆单独授权。[使用说明](assistant_zh.md)。后续按实测结果完善单Agent查询／诊断、版本化帮助检索和任务流程；同步执行先落实可信人工审批及精确请求预算，多Agent实验有实测收益才保留。
+Next steps are a measured single-agent query/diagnostic baseline and retrieval comparisons. The evaluated CPU host has not passed conversation acceptance. Multi-agent work remains an experiment subject to a measured benefit over the single-agent baseline.
+
+2.1预览提供六个专属本地只读工具，默认关闭，按账号和车辆单独授权。[使用说明](assistant_zh.md)。2.1.1已提供双语版本帮助和有界任务清单；2.1.2起，独立任务选项支持本地申请、人工审核、精确请求预算和既有调度器中的执行恢复。[任务流程](assistant_zh.md#可审核的历史任务beta)。后续继续验收单Agent查询／诊断及检索对照，已评测CPU宿主尚未通过对话验收；多Agent实验有实测收益才保留。
 
 ## Early alpha: visualization and cards
 
