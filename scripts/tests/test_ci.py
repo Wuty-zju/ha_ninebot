@@ -94,6 +94,26 @@ class ScopeTests(unittest.TestCase):
         self.assertIn("assistant", corpus["reasons"])
         self.assertNotIn("unmapped-runtime", corpus["reasons"])
 
+    def test_vehicle_cache_keeps_related_native_and_client_checks_without_full_fallback(self):
+        for path in (
+            "custom_components/ninebot/vehicle_cache.py",
+            "tests/test_vehicle_cache.py",
+            "tests/test_native_cache_routing.py",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(path)
+                self.assertNotIn("unmapped-runtime", plan["reasons"])
+                self.assertIn("history", plan["reasons"])
+                self.assertLess(len(plan["tests"]), len(self.available))
+                for test in (
+                    "tests/test_vehicle_cache.py",
+                    "tests/test_native_cache_routing.py",
+                    "tests/test_client.py",
+                    "tests/test_coordinator.py",
+                    "tests/test_query_broker.py",
+                ):
+                    self.assertIn(test, plan["tests"])
+
     def test_new_unmapped_runtime_is_conservative(self):
         plan = self.plan("custom_components/ninebot/future_protocol.py")
         self.assertEqual(set(plan["tests"]), self.available)
