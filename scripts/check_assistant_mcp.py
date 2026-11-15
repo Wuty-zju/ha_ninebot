@@ -15,6 +15,8 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+FIXTURE_INTEGRATION_VERSION = "2.1.0"
+
 
 async def main() -> None:
     with TemporaryDirectory(prefix="ninebot-mcp-") as directory:
@@ -38,7 +40,7 @@ async def check(
     from homeassistant.util import dt as dt_util
 
     from custom_components.ninebot import assistant_queries
-    from custom_components.ninebot.assistant_api import NinebotReadAPI, async_register
+    from custom_components.ninebot.assistant_api import PROMPT, NinebotReadAPI, async_register
     from custom_components.ninebot.compat import validation
     from custom_components.ninebot.models import (
         Freshness,
@@ -188,7 +190,7 @@ async def check(
         patch.object(
             assistant_queries,
             "async_get_integration",
-            new=AsyncMock(return_value=SimpleNamespace(version="2.1.0")),
+            new=AsyncMock(return_value=SimpleNamespace(version=FIXTURE_INTEGRATION_VERSION)),
         ),
         patch.object(NinebotReadAPI, "async_get_api_instance", new=add_write_probe),
         patch("custom_components.ninebot.services.dr.async_get", return_value=registry),
@@ -229,6 +231,17 @@ async def check(
                 f"ninebot__{spec.key}" for spec in assistant_queries.SPECS
             }
             assert all(tool["annotations"]["readOnlyHint"] for tool in body["result"]["tools"])
+            for token, expected in (("missing", 401), ("fixture-member", 403)):
+                status, _ = await rpc("prompts/get", {"name": "Ninebot"}, token=token)
+                assert status == expected
+            status, prompts = await rpc("prompts/list")
+            assert status == 200 and [row["name"] for row in prompts["result"]["prompts"]] == [
+                "Ninebot"
+            ]
+            status, prompt = await rpc("prompts/get", {"name": "Ninebot"})
+            assert status == 200 and prompt["result"]["messages"] == [
+                {"role": "assistant", "content": {"type": "text", "text": PROMPT}}
+            ]
             status, help_body = await rpc(
                 "tools/call",
                 {
@@ -297,7 +310,9 @@ async def check(
             unregister()
             _, removed = await rpc("tools/list")
             assert "error" in removed
-    print("Native MCP HTTP: local read tools, original Context, consent revocation and removal OK")
+            _, removed_prompt = await rpc("prompts/get", {"name": "Ninebot"})
+            assert "error" in removed_prompt
+    print("Native MCP HTTP: read tools/prompts, original Context, consent revocation/removal OK")
 
 
 if __name__ == "__main__":

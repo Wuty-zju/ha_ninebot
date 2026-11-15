@@ -11,6 +11,7 @@ from scripts.evaluate_assistant import (
     available_tools,
     diagnostic_health,
     parse_calls,
+    prompt_text,
     safe_result,
     select_cases,
     statistics_observations,
@@ -21,6 +22,28 @@ from scripts.evaluate_assistant import (
 
 
 class ModelProtocolTests(unittest.TestCase):
+    def test_native_prompt_is_text_from_the_selected_api_without_an_envelope(self):
+        message = {"role": "assistant", "content": {"type": "text", "text": "Native API guidance"}}
+        response = {"jsonrpc": "2.0", "id": 1, "result": {"messages": [message]}}
+        self.assertEqual(prompt_text(response), "Native API guidance")
+        self.assertEqual(response["result"]["messages"], [message])
+
+    def test_prompt_errors_multiple_blocks_and_non_text_content_stop_before_inference(self):
+        for messages in (
+            None,
+            [],
+            [None],
+            [{"role": "user", "content": {"type": "text", "text": "unexpected role"}}],
+            [{"role": "assistant", "content": {"type": "image", "text": "attachment"}}],
+            [{"role": "assistant", "content": {"type": "text", "text": ""}}],
+            [{"role": "assistant", "content": {"type": "text", "text": "车" * 6000}}],
+            [{"role": "assistant", "content": {"type": "text", "text": "one"}}] * 2,
+        ):
+            with self.subTest(messages=messages), self.assertRaises(InvalidReply):
+                prompt_text({"result": {"messages": messages}})
+        with self.assertRaises(InvalidReply):
+            prompt_text({"error": {"code": -32603}})
+
     def test_profile_selects_original_unique_cases_without_changing_expectations(self):
         path = (
             Path(__file__).resolve().parents[2] / "tests/fixtures/assistant/evaluation-tasks.json"
