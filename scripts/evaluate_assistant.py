@@ -10,10 +10,12 @@ import json
 import re
 import subprocess
 import time
-from datetime import datetime
+from calendar import monthrange
+from datetime import datetime, timedelta
 from importlib.metadata import version
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from zoneinfo import ZoneInfo
 
 from scripts.assistant_model import MAX_TOKENS, MODEL, REVISION, CpuModel
 
@@ -23,6 +25,7 @@ PROFILES = {
     "host_probe": ("Q04",),
     "lid_probe": ("D05",),
     "diagnostics": ("D01", "F03"),
+    "statistics": ("Q01", "Q02", "Q09", "Q10"),
 }
 MAX_TURNS = 3
 MAX_CALLS = 4
@@ -168,12 +171,11 @@ def diagnostic_health(fixture_data: dict) -> dict:
     }
 
 
-def install_diagnostic_actions(fixture, fixture_data: dict) -> None:
-    """Use real statistics projections; only the underlying observations are synthetic."""
+def install_statistics_action(fixture, store) -> None:
+    """Route the native tool through the existing deterministic response builder."""
     from homeassistant.core import SupportsResponse
     from homeassistant.util import dt as dt_util
 
-    from custom_components.ninebot.archive_statistics import ArchiveStatisticsView
     from custom_components.ninebot.statistics_actions import months_between, statistics_response
 
     async def statistics(call):
@@ -181,12 +183,25 @@ def install_diagnostic_actions(fixture, fixture_data: dict) -> None:
         assert call.data["device_id"] == fixture.vehicle_ref
         assert call.data["refresh"] is False
         return statistics_response(
-            ArchiveStatisticsView(),
+            store,
             "synthetic-vehicle",
             months_between(call.data["start_month"], call.data["end_month"]),
             dt_util.utcnow(),
             call.data["include_daily"],
         )
+
+    fixture.hass.services.async_register(
+        "ninebot", "get_statistics", statistics, supports_response=SupportsResponse.ONLY
+    )
+
+
+def install_diagnostic_actions(fixture, fixture_data: dict) -> None:
+    """Use real statistics projections; only the underlying observations are synthetic."""
+    from homeassistant.core import SupportsResponse
+
+    from custom_components.ninebot.archive_statistics import ArchiveStatisticsView
+
+    install_statistics_action(fixture, ArchiveStatisticsView())
 
     async def health(call):
         assert call.context.user_id == "synthetic-admin"
@@ -194,10 +209,105 @@ def install_diagnostic_actions(fixture, fixture_data: dict) -> None:
         return diagnostic_health(fixture_data)
 
     fixture.entry.options["history_requests_per_hour"] = fixture_data["health"]["hourly_budget"]
-    for name, handler in (("get_statistics", statistics), ("sync_history", health)):
-        fixture.hass.services.async_register(
-            "ninebot", name, handler, supports_response=SupportsResponse.ONLY
+    fixture.hass.services.async_register(
+        "ninebot", "sync_history", health, supports_response=SupportsResponse.ONLY
+    )
+
+
+def statistics_observations(fixture_data: dict, *, empty: bool) -> list[tuple[str, dict]]:
+    """Generate labeled synthetic observations from the catalog's fixed period facts."""
+    observations = []
+    zone = ZoneInfo(fixture_data["business_timezone"])
+    for key in ("yesterday", "last_month"):
+        period = fixture_data["periods"][key]
+        facts = (
+            fixture_data["periods"]["verified_empty"] if empty and key == "yesterday" else period
         )
+        day = datetime.fromisoformat(period["start_date"]).replace(tzinfo=zone)
+        count = facts["ride_count"]
+        assert type(count) is int and 0 <= count <= 20
+        duration = facts["duration_s"] / count if count else 0
+        rows = []
+        for index in range(count):
+            start = day + timedelta(hours=8, seconds=index * (duration + 60))
+            end = start + timedelta(seconds=duration)
+            assert end.date() == day.date()
+            rows.append(
+                {
+                    "travel_id": f"synthetic-period-{day:%Y%m}-{index}",
+                    "start_time": int(start.timestamp()),
+                    "end_time": int(end.timestamp()),
+                    "duration": duration,
+                    "mileages": facts["distance_m"] / 1000 / count,
+                    "ec": facts["energy_wh"] / count,
+                }
+            )
+        chart = [0] * monthrange(day.year, day.month)[1]
+        chart[day.day - 1] = facts["distance_m"] / 1000
+        observations.append(
+            (
+                day.strftime("%Y%m"),
+                {
+                    "times": count,
+                    "duration": facts["duration_s"],
+                    "total_mileages": facts["distance_m"] / 1000,
+                    "ec": facts["energy_wh"],
+                    "detail": chart,
+                    "list": rows,
+                },
+            )
+        )
+    return observations
+
+
+def install_synthetic_statistics(fixture, fixture_data: dict, *, empty: bool) -> None:
+    """Normalize invented observations in memory, without creating any database."""
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot.adapters import travel
+    from custom_components.ninebot.statistics_store import TravelStatisticsStore
+
+    store = TravelStatisticsStore(fixture.hass, "synthetic-evaluation")
+    for month, payload in statistics_observations(fixture_data, empty=empty):
+        assert store.update("synthetic-vehicle", travel(payload, month), dt_util.utcnow())
+    install_statistics_action(fixture, store)
+
+
+async def verify_statistics_fixture(fixture, fixture_data: dict) -> dict:
+    """Prove period/zero/unit results through native MCP before running the model."""
+    payloads = {}
+    for case, period, count, energy in (
+        ("Q01", "yesterday", 2, 600),
+        ("Q02", "last_month", 20, 9000),
+        ("Q09", "yesterday", 0, 0),
+        ("Q10", "yesterday", 2, 600),
+    ):
+        install_synthetic_statistics(fixture, fixture_data, empty=case == "Q09")
+        status, response = await fixture.rpc(
+            "tools/call",
+            {
+                "name": "ninebot__get_statistics",
+                "arguments": {"vehicle_ref": fixture.vehicle_ref, "period": period},
+            },
+        )
+        assert status == 200 and not response["result"].get("isError", False)
+        result = json.loads(tool_message("get_statistics", "preflight", response)["content"])
+        assert result["data"]["ride_count"] == count
+        assert result["data"]["energy_wh"] == energy
+        assert result["data"]["units"]["energy_wh"] == "Wh"
+        assert result["data"]["units"]["duration_s"] == "s"
+        assert result["quality"]["metrics"]["ride_count"]["status"] == "available"
+        expected_period = fixture_data["periods"][period]
+        for key in ("start_date", "end_date"):
+            assert result["query"][key] == expected_period[key]
+        if case == "Q09":
+            assert result["data"]["duration_s"] == result["data"]["distance_km"] == 0
+            assert result["data"]["energy_intensity_wh_per_km"] is None
+        if case == "Q10":
+            assert result["data"]["duration_s"] == 3600
+            assert result["data"]["energy_intensity_wh_per_km"] == 30
+        payloads[case] = result
+    return payloads
 
 
 async def verify_diagnostic_fixture(fixture, fixture_data: dict) -> dict:
@@ -269,6 +379,8 @@ async def conversation(
     )
     if case["id"] in PROFILES["diagnostics"]:
         install_diagnostic_actions(fixture, fixture_data)
+    elif case["id"] in PROFILES["statistics"]:
+        install_synthetic_statistics(fixture, fixture_data, empty=case["id"] == "Q09")
     if case["id"] == "P06":
         context["selected_ride"] = {"ride_id": "synthetic-ride-a", "query_month": "202611"}
         user_message = "查看 Vehicle A 所选行程的已保存详情。"
@@ -446,7 +558,8 @@ async def evaluate(output: Path, profile: str, host: str = "process") -> None:
         "fixture_status_age_seconds": 20,
         "scope": (
             "Real CPU model and native MCP HTTP/policy; synthetic auth, registry, snapshots, "
-            "empty statistics and revoking detail Action. No production OAuth, SQLite or cloud."
+            "case-specific synthetic Action observations and real statistical projections. "
+            "No production OAuth, SQLite or cloud."
         ),
         "limits": {
             "turns": MAX_TURNS,
@@ -461,12 +574,15 @@ async def evaluate(output: Path, profile: str, host: str = "process") -> None:
         "provider_cost_usd": None,
         "cases": [],
     }
-    if profile == "diagnostics":
+    if profile in {"diagnostics", "statistics"}:
 
         async def verify(fixture):
-            report["fixture_validation"] = await verify_diagnostic_fixture(fixture, fixture_data)
+            validate = (
+                verify_diagnostic_fixture if profile == "diagnostics" else verify_statistics_fixture
+            )
+            report["fixture_validation"] = await validate(fixture, fixture_data)
 
-        with TemporaryDirectory(prefix="ninebot-diagnostic-fixture-") as directory:
+        with TemporaryDirectory(prefix="ninebot-evaluation-fixture-") as directory:
             await check(directory, scenario=verify, reference_time=reference_time)
     model = await asyncio.to_thread(CpuModel, host)
     report["model_host"] = model.metadata
