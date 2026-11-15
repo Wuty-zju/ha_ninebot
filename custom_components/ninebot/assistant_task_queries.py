@@ -43,7 +43,9 @@ SPECS = (
         "preview_detail_sync",
         "Preview missing local details",
         "Preview at most 31 business days and twenty locally mapped missing details. "
-        "Unobserved history is not zero. Does not create a task or query the cloud.",
+        "Unobserved history is not zero. task_created=false means no application was filed. "
+        "On explicit intent to apply, follow the preview with request_detail_sync_approval. "
+        "Does not create a task or query the cloud.",
         vol.Schema(DATES),
     ),
     ToolSpec(

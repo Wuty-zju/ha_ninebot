@@ -101,6 +101,8 @@ For an AI client to propose work, select the separate **Ninebot tasks** native A
 
 For a host that supports several API selections, select **Ninebot** and **Ninebot tasks** together to use versioned help and task checklists during an application. From **2.1.11**, task identifier types and constraints are preserved in either selection order.
 
+Previewing a range leaves the application unsubmitted. Submission is confirmed by `task_recorded: true` and a returned task ID. Human approval follows in the review panel; a promise to submit does not record a task.
+
 Sign in as the same Home Assistant administrator used by the AI client. Open **Ninebot Assistant**, choose the vehicle and review the dates, selected detail count, total request limit and expiry. Only **Approve and synchronize** starts the approved work. The plan includes at most twenty missing details and a total request allowance of twice the selected count, capped at twenty; retries share that allowance and the account's pacing. Existing saved details are reused. **Cancel task** stops that task's remaining work while other synchronization continues.
 
 The task view reports the last saved checkpoint, actual request consumption, retry eligibility and result. Approval is valid for ten minutes; approved work expires after 24 hours. Normal restarts resume permitted work. Restoring an official HA backup requires fresh human approval. The panel reads local metadata; it does not refresh vehicle data or fetch whole months when you review a task.

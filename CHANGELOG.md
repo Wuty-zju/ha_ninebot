@@ -6,6 +6,7 @@ Entries describe each version at release time. See the [current guides](docs/REA
 
 - Preserve task identifier types and constraints when combining the native read/help and task APIs, in either selection order.
 - Share the task-reference validator and serializer while retaining existing authorization and execution checks.
+- Clarify preview, application submission and later human approval in task guidance and the bilingual user guide.
 
 ## 2.1.10
 
