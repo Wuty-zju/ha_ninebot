@@ -20,7 +20,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
         self.assertEqual(len(catalog["entries"]), 14)
-        self.assertEqual(catalog["corpus_version"], "1.2.4")
+        self.assertEqual(catalog["corpus_version"], "1.2.5")
         self.assertEqual(catalog["source_version"], "2.1.2")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
@@ -49,6 +49,34 @@ class KnowledgeTests(unittest.TestCase):
             self.assertEqual(k.search_help("unknown", "en", version)["matches"], [])
         with self.assertRaises(k.KnowledgeUnavailable):
             k.search_help("unknown", "en", "not-a-version")
+
+    def test_request_budget_does_not_suggest_task_applications(self):
+        for query in (
+            "等待额度 request budget 处理",
+            "request budget",
+            "同步请求额度",
+            "sync history quota",
+        ):
+            for language in ("en", "zh-Hans"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.13", include_procedures=True)
+                    self.assertEqual([m["source_id"] for m in result["matches"]], ["sync_budget"])
+                    self.assertEqual([p["id"] for p in result["procedures"]], ["SK06"])
+
+    def test_explicit_task_tools_find_their_versioned_application_checklist(self):
+        for query in ("request_detail_sync_approval", "preview_detail_sync"):
+            for language in ("en", "zh-Hans"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.13", include_procedures=True)
+                    self.assertEqual(
+                        [m["source_id"] for m in result["matches"]], ["task_application"]
+                    )
+                    self.assertEqual([p["id"] for p in result["procedures"]], ["SK09"])
+                    self.assertIn(
+                        "does not bypass" if language == "en" else "不会绕过",
+                        result["matches"][0]["text"],
+                    )
+                    self.assertEqual(k.search_help(query, language, "2.1.1")["matches"], [])
 
     def test_login_keywords_do_not_return_incidental_log_privacy_prose(self):
         for query, language in (
