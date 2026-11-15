@@ -48,6 +48,8 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 
 All tools read local information. Missing details remain missing until acquired through the normal [history features](history.md); an AI read never starts a cloud fetch. List cursors can be consumed: follow the returned next cursor rather than replaying the previous one. A page count is not the period's total.
 
+From **2.1.9**, recorded-trip pages retain each ride's `received_at` and up to three month observations in `quality.months`, including on an empty page. `query.as_of` is the current tool-call time; `quality.page_as_of` is the selection cutoff retained across cursor pages. These are distinct from the archive's observation times. A fixed cutoff does not freeze the entire database or prove cloud completeness. Missing observation metadata stays `null`.
+
 ## Read the evidence
 
 Results include a business date range, observation times, units, metric quality, source evidence and warnings. Business dates use **Asia/Shanghai**, matching the integration's current archive contract, independently of browser timezone.

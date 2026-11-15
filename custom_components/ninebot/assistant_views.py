@@ -246,15 +246,32 @@ def ride_view(row: dict[str, Any]) -> dict[str, Any]:
 def trips_view(response: dict[str, Any], rides: list[dict[str, Any]]) -> AssistantView:
     coverage = mapping(response.get("coverage"))
     cursor = response.get("next_cursor")
+    month_rows = response.get("months")
+    months = [
+        {
+            "month": row["month"],
+            "received_at": timestamp(row.get("received_at")),
+            "observed_list_complete": flag(row.get("observed_list_complete")),
+        }
+        for row in (month_rows[:3] if isinstance(month_rows, list) else [])
+        if isinstance(row, dict)
+        and isinstance(row.get("month"), str)
+        and re.fullmatch(r"20[0-9]{2}(0[1-9]|1[0-2])", row["month"])
+    ]
     return AssistantView(
         data={
-            "rides": [ride_view(row) for row in rides],
+            "rides": [
+                {**ride_view(row), "received_at": timestamp(row.get("received_at"))}
+                for row in rides
+            ],
             "units": RIDE_UNITS,
             "returned": len(rides),
             "has_more": cursor is not None,
             "next_cursor": cursor,
         },
         quality={
+            "page_as_of": timestamp(mapping(response.get("range")).get("as_of")),
+            "months": months,
             "all_observed_lists_complete": flag(coverage.get("all_observed_lists_complete")),
             "upstream_history_complete": "unverified",
             "missing_month_count": list_count(coverage.get("missing_months")),

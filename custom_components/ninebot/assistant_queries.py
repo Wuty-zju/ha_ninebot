@@ -24,7 +24,6 @@ from .assistant_views import (
     AssistantView,
     detail_view,
     mapping,
-    ride_view,
     safe_label,
     statistics_view,
     status_view,
@@ -333,10 +332,11 @@ async def _vehicle_query(
             raise AssistantError("response_too_large")
         if response.get("next_cursor") is not None:
             cursor_value(response["next_cursor"])
-        for ride in rides:
-            if len(json.dumps(ride_view(ride), ensure_ascii=False).encode()) > MAX_RIDE_BYTES:
+        view = trips_view(response, rides)
+        for ride in view.data["rides"]:
+            if len(json.dumps(ride, ensure_ascii=False).encode()) > MAX_RIDE_BYTES:
                 raise AssistantError("response_too_large")
-        return trips_view(response, rides), {**data, "sort": "desc"}
+        return view, {**data, "sort": "desc"}
     if key == "get_trip_detail":
         response = await _action(
             hass,
