@@ -63,6 +63,8 @@ Public help and task checklists are available from **2.1.1**.
 
 Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches bundled bilingual topics (thirteen in 2.1.2) without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
 
+General help questions need no vehicle selection or date. For example, “What does waiting for request budget mean?” can go directly to help search; “What is Vehicle A waiting for now?” also needs that vehicle's synchronization-health result.
+
 Search returns at most three topics in 4 KiB. It reports no match or no applicable knowledge rather than using another release’s rules. Other languages use English. A damaged help catalog leaves the six vehicle tools available. Published source links stay pinned even when the main documentation changes.
 
 ## Task checklists
