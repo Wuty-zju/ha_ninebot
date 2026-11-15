@@ -4,7 +4,7 @@ Entries describe each version at release time. See the [current guides](docs/REA
 
 ## Unreleased
 
-- Recognize fourth-column and `mph` questions in public help, returning the existing verified guidance on unknown sample units.
+- Separate unverified raw-sample unit guidance from maximum/average-speed and battery-score help, and return ready-to-use pinned-source citations with the knowledge corpus version.
 - Document native MCP prompt selection and keep task-evaluation boundaries aligned with native human review.
 
 ## 2.1.4

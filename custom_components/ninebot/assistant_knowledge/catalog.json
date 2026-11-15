@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.1",
+  "corpus_version": "1.2.2",
   "source_version": "2.1.2",
   "entries": [
     {
@@ -279,34 +279,73 @@
       "translations": {
         "en": {
           "title": "Preserve measurement semantics",
-          "text": "Server maximum speed is different from overall average speed calculated from distance and duration. Unknown sample units stay unverified. Use returned units rather than guessing. Battery score is not SOH or a health diagnosis. Do not infer movement, maintenance advice or charging energy from incomplete samples.",
+          "text": "Server maximum speed is different from overall average speed calculated from distance and duration. Use returned units rather than guessing. Battery score is not SOH or a health diagnosis. Do not infer movement, maintenance advice or charging energy from incomplete samples.",
           "keywords": [
             "speed",
             "average",
             "maximum",
             "energy",
             "score",
-            "units",
-            "mph",
-            "fourth column"
+            "units"
           ]
         },
         "zh-Hans": {
           "title": "保留指标语义与单位",
-          "text": "服务端最高速度不同于距离除以时长的总平均速度；未知采样单位仍待验证，应使用工具返回单位。电池评分不是SOH或健康诊断。不从不完整采样推断移动、维修建议或充电能量。",
+          "text": "服务端最高速度不同于距离除以时长的总平均速度；应使用工具返回单位。电池评分不是SOH或健康诊断。不从不完整采样推断移动、维修建议或充电能量。",
           "keywords": [
             "速度",
             "平均",
             "最高",
             "能量",
             "评分",
-            "单位",
-            "第四列",
-            "采样单位"
+            "单位"
           ]
         }
       },
-      "content_sha256": "0c30a11a89ce46a1be53ec179b802065de2514e825d03ed7bad8ebaeba25d59e",
+      "content_sha256": "bc31cde94137de774552af24b731758ef62328b608515fabea55cd2c7afac310",
+      "procedure_id": "SK08"
+    },
+    {
+      "id": "sample_units",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-15",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "translations": {
+        "en": {
+          "title": "Unverified raw sample units",
+          "text": "Point-by-point raw sample units are unverified. In particular, do not identify the fourth column as mph or the trip's overall average speed, and do not convert it. Separate maximum speed and distance/total-duration average values cannot establish the meaning or unit of a raw sample column.",
+          "keywords": [
+            "sample units",
+            "raw sample",
+            "fourth column",
+            "mph",
+            "point samples"
+          ]
+        },
+        "zh-Hans": {
+          "title": "原始采样单位尚未验证",
+          "text": "逐点原始采样单位尚未验证。尤其不能认定第四列是 mph 或行程总平均速度，也不要换算。独立的最高速度、距离除以总时长的平均速度，均不能用于推断原始采样列的含义或单位。",
+          "keywords": [
+            "采样单位",
+            "第四列",
+            "逐点采样",
+            "原始采样",
+            "单位未验证",
+            "不换算"
+          ]
+        }
+      },
+      "content_sha256": "d70e4ef42cb09d2d30225c7a4b3177a7ff5f888a2c0db6198f93c35ad4045a22",
       "procedure_id": "SK08"
     },
     {
