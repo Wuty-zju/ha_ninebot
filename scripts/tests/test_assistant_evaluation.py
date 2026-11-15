@@ -9,6 +9,7 @@ from scripts.evaluate_assistant import (
     MAX_REPORT_BYTES,
     InvalidReply,
     available_tools,
+    diagnostic_health,
     parse_calls,
     safe_result,
     select_cases,
@@ -29,11 +30,28 @@ class ModelProtocolTests(unittest.TestCase):
         self.assertEqual({case["id"] for case in cases}, {"R02", "R04"})
         lid_cases = select_cases(catalog, "lid_probe")
         self.assertEqual([case["id"] for case in lid_cases], ["D05"])
+        diagnostics = select_cases(catalog, "diagnostics")
+        self.assertEqual([case["id"] for case in diagnostics], ["D01", "F03"])
+        self.assertTrue(all(any(case is original for original in catalog) for case in diagnostics))
         self.assertIs(lid_cases[0], next(case for case in catalog if case["id"] == "D05"))
         self.assertTrue(all(any(case is original for original in catalog) for case in cases))
         for incomplete in (cases[:1], [cases[0], cases[0]]):
             with self.assertRaises(ValueError):
                 select_cases(incomplete, "retrieval")
+
+    def test_diagnostic_health_keeps_observed_schedule_without_inventing_remaining_budget(self):
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "tests/fixtures/assistant/evaluation-fixtures.json"
+        )
+        fixture = json.loads(path.read_text())
+        before = json.dumps(fixture, sort_keys=True)
+        response = diagnostic_health(fixture)
+        self.assertEqual(response["sync_state"], "waiting_budget")
+        self.assertEqual(response["next_request_at"], fixture["health"]["next_request_at"])
+        self.assertFalse(response["operation_performed"])
+        self.assertNotIn("remaining", json.dumps(response))
+        self.assertEqual(json.dumps(fixture, sort_keys=True), before)
 
     def test_retrieval_off_keeps_other_tools_and_rejects_hidden_help_before_rpc(self):
         tools = [{"name": name} for name in ("ninebot__search_help", "ninebot__get_statistics")]

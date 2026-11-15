@@ -16,7 +16,7 @@ on:
       assistant_profile:
         description: Fixed evaluation case group
         type: choice
-        options: [baseline, retrieval, host_probe, lid_probe]
+        options: [baseline, retrieval, host_probe, lid_probe, diagnostics]
         default: baseline
       assistant_host:
         description: CPU completion host (reusable is a CI-only experiment)
