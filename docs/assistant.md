@@ -9,7 +9,7 @@ Ninebot Assistant makes selected local vehicle information available to a compat
 1. Install a **2.1.x prerelease** from Marketplace/HACS, or its packaged release. The recommended stable integration remains [v2.0.0](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0).
 2. Use Home Assistant **2026.11+** for the native Assistant API. On earlier versions, ordinary Ninebot features retain the integration's **2026.1.0** minimum; the Assistant option is unavailable without the required native API.
 3. Open **Settings → Devices & services → Ninebot → Configure** for each account you want to expose. Enable **Ninebot Assistant (Beta)** and select its vehicles. The default is off with no vehicles selected. This selection is separate from the remote-control allowlist.
-4. In the native **MCP Server** integration, turn off access to all LLM APIs and select **Ninebot**. Keep administrator access required and read-only mode enabled. Connect your MCP client using Home Assistant's supported authentication.
+4. In the native **MCP Server** integration, turn off access to all LLM APIs and select **Ninebot**. Keep administrator access required and read-only mode enabled. Connect your MCP client to `/api/mcp` using Home Assistant's supported authentication.
 5. Use an active administrator identity. Every tool call checks that user, the account's Assistant setting and the vehicle selection again. Calls without a user identity are rejected.
 
 For a native Conversation/Assist host, select the **Ninebot** API if the host supports custom LLM APIs and preserves an authenticated user Context. Available selectors and tool support depend on that host. Ninebot does not configure a model, an API key or a separate listener. A generic Action tool or access to exposed entities is a separate capability; registering Ninebot Actions alone does not enable these dedicated tools.
@@ -99,7 +99,7 @@ The host follows the checklist within its existing tool loop. There is no separa
 
 From **2.1.2**, a separate **Allow reviewable history tasks (Beta)** option is available. Enable Assistant and select its vehicles first, then enable this option and save. **Ninebot Assistant** appears in the administrator sidebar. Tasks remain off by default.
 
-For an AI client to propose work, select the separate **Ninebot tasks** native API. Applications are local writes, so a native MCP Server restricted to read-only tools will hide that application tool. Keep the ordinary **Ninebot** collection selected for local data and help. The task tools list permitted vehicles, preview missing details over up to 31 business days, request human review, and read task progress. They cannot approve a request.
+For an AI client to propose work, select the separate **Ninebot tasks** native API. Applications are local writes, so the global `/api/mcp` route hides that tool when the server's read-only option is enabled. Keep the ordinary **Ninebot** collection selected for local data and help. The task tools list permitted vehicles, preview missing details over up to 31 business days, request human review, and read task progress. They cannot approve a request.
 
 For a host that supports several API selections, select **Ninebot** and **Ninebot tasks** together to use versioned help and task checklists during an application. From **2.1.11**, task identifier types and constraints are preserved in either selection order.
 
@@ -122,6 +122,8 @@ Enabling the option allows the chosen host to receive selected vehicle labels, s
 The dedicated API admits **20 calls per authenticated user per rolling minute**, with **two calls in flight across the API**, a **10-second** call deadline, a **16 KiB** result limit and a **2 KiB** limit per listed ride. Vehicle discovery returns at most 20 allowed vehicles and explicitly reports when more are available; narrow the account selections in that case. These local limits are separate from the cloud history-request budget. When the host propagates cancellation to a tool, that call releases its admission slot. The selected host controls model-generation deadlines and retries; the ten-second limit applies to each Ninebot tool call.
 
 Selecting broader administrator APIs alongside Ninebot can give a host capabilities outside this dedicated read contract. Use the dedicated collection and native read-only setting when you only want these queries. The read-only collection exposes no vehicle commands, archive import/deletion or synchronization requests. The separate task collection can request review; cloud work requires human approval in the panel.
+
+Explicit `/api/mcp/<api_id>` URLs select registered collections directly and do not inherit the global API selection or read-only setting. The `/api/mcp/ninebot` collection contains only read tools. The task collection still requires account task consent and human approval before cloud execution.
 
 ## Troubleshooting
 

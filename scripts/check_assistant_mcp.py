@@ -54,7 +54,12 @@ async def check(
     from homeassistant.util import dt as dt_util
 
     from custom_components.ninebot import assistant_queries
-    from custom_components.ninebot.assistant_api import PROMPT, NinebotReadAPI, async_register
+    from custom_components.ninebot.assistant_api import (
+        PROMPT,
+        NinebotReadAPI,
+        async_register,
+        native_result,
+    )
     from custom_components.ninebot.compat import validation
     from custom_components.ninebot.models import (
         Freshness,
@@ -170,20 +175,34 @@ async def check(
     metadata_devices = []
 
     class SyntheticWriteTool(llm.Tool):
-        name = "ninebot__synthetic_write"
-        integration = "ninebot"
+        name = "fixture__synthetic_write"
+        integration = "fixture"
         parameters = validation.Schema({})
         annotations = llm.ToolAnnotations(read_only=False)
 
         async def async_call(self, actual_hass, tool_input, llm_context):
+            assert actual_hass is hass and llm_context.context is contexts[-1]
+            assert llm_context.context.user_id == "synthetic-admin"
             writes.append(True)
-            raise AssertionError("Read-only MCP must remove synthetic write tools")
+            return native_result({"synthetic_mark": True})
 
-    async def add_write_probe(api, context):
+    class SyntheticWriteAPI(llm.API):
+        def __init__(self):
+            super().__init__(hass=hass, id="fixture_write", name="Fixture write probe")
+            self.requires_admin = True
+
+        async def async_get_api_instance(self, context):
+            return llm.APIInstance(
+                api=self,
+                api_prompt="Synthetic in-memory marker; no external action.",
+                llm_context=context,
+                tools=[SyntheticWriteTool()],
+            )
+
+    async def capture_api_context(api, context):
         instance = await original_instance(api, context)
         if context.platform == "mcp_server":
             metadata_devices.append(context.device_id)
-            instance.tools.append(SyntheticWriteTool())
         return instance
 
     async def capture_context(request, context, *args):
@@ -215,7 +234,7 @@ async def check(
             "async_get_integration",
             new=AsyncMock(return_value=SimpleNamespace(version=FIXTURE_INTEGRATION_VERSION)),
         ),
-        patch.object(NinebotReadAPI, "async_get_api_instance", new=add_write_probe),
+        patch.object(NinebotReadAPI, "async_get_api_instance", new=capture_api_context),
         patch("custom_components.ninebot.services.dr.async_get", return_value=registry),
         patch(
             "custom_components.ninebot.assistant_queries.dr.async_entries_for_config_entry",
@@ -228,14 +247,14 @@ async def check(
         async with TestClient(TestServer(app)) as client:
             sequence = 0
 
-            async def rpc(method, params=None, token="fixture-admin"):
+            async def rpc(method, params=None, token="fixture-admin", *, path="/api/mcp"):
                 nonlocal sequence
                 sequence += 1
                 message = {"jsonrpc": "2.0", "id": sequence, "method": method}
                 if params is not None:
                     message["params"] = params
                 response = await client.post(
-                    "/api/mcp",
+                    path,
                     json=message,
                     headers={
                         "Accept": "application/json",
@@ -363,11 +382,41 @@ async def check(
                     )
                 finally:
                     entry.options["enable_assistant"] = True
-            _, filtered = await rpc(
-                "tools/call", {"name": "ninebot__synthetic_write", "arguments": {}}
-            )
-            assert "error" in filtered or filtered["result"].get("isError")
-            assert not writes
+            # Core applies the configured read-only filter only to the global route.
+            # A separate benign API measures that policy without mutating Ninebot's API.
+            remove_probe = llm.async_register_api(hass, SyntheticWriteAPI())
+            selected = mcp_entry.data["llm_hass_api"]
+            mcp_entry.data["llm_hass_api"] = ["ninebot", "fixture_write"]
+            mutation = {"name": "fixture__synthetic_write", "arguments": {}}
+            try:
+                _, global_tools = await rpc("tools/list")
+                assert {tool["name"] for tool in global_tools["result"]["tools"]} == {
+                    f"ninebot__{spec.key}" for spec in assistant_queries.SPECS
+                }
+                _, filtered = await rpc("tools/call", mutation)
+                assert "error" in filtered or filtered["result"].get("isError")
+                assert not writes
+                mcp_entry.data["llm_hass_api"] = ["ninebot"]
+                _, explicit_tools = await rpc("tools/list", path="/api/mcp/fixture_write")
+                assert [tool["name"] for tool in explicit_tools["result"]["tools"]] == [
+                    mutation["name"]
+                ]
+                _, explicit_call = await rpc("tools/call", mutation, path="/api/mcp/fixture_write")
+                assert not explicit_call["result"].get("isError", False)
+                assert writes == [True]
+                _, read_tools = await rpc("tools/list", path="/api/mcp/ninebot")
+                assert {tool["name"] for tool in read_tools["result"]["tools"]} == {
+                    f"ninebot__{spec.key}" for spec in assistant_queries.SPECS
+                }
+                assert all(
+                    tool["annotations"]["readOnlyHint"] for tool in read_tools["result"]["tools"]
+                )
+                _, absent = await rpc("tools/call", mutation, path="/api/mcp/ninebot")
+                assert "error" in absent or absent["result"].get("isError")
+                assert writes == [True]
+            finally:
+                mcp_entry.data["llm_hass_api"] = selected
+                remove_probe()
             users["fixture-admin"].is_active = False
             status, inactive = await rpc("tools/call", call)
             assert status in (401, 403) or (
@@ -389,8 +438,8 @@ async def check(
             _, removed_prompt = await rpc("prompts/get", {"name": "Ninebot"})
             assert "error" in removed_prompt
     print(
-        "Native MCP HTTP: read tools/prompts, original Context, untrusted device metadata, "
-        "consent revocation/removal OK"
+        "Native MCP HTTP: global/individual route policy, read tools/prompts, original Context, "
+        "untrusted device metadata, consent revocation/removal OK"
     )
 
 
