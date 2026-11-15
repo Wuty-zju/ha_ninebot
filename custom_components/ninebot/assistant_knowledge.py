@@ -246,23 +246,28 @@ def search_help(
         < release_tuple(entry["applicable_versions"]["max_exclusive"])
     ]
     retired = {old for entry in applicable for old in entry["supersedes"]}
-    ranked = []
+    ranked, keyword_matches = [], []
     for entry in applicable:
         if entry["id"] in retired:
             continue
         texts = entry["translations"].values()
         keywords = terms(" ".join(word for text in texts for word in text["keywords"]))
         prose = terms(" ".join(text["title"] + " " + text["text"] for text in texts))
-        score = 3 * len(query_terms & keywords) + len(query_terms & prose)
+        keyword_hits = len(query_terms & keywords)
+        score = 3 * keyword_hits + len(query_terms & prose)
         if score:
-            ranked.append((score, entry["id"], entry))
+            target = keyword_matches if keyword_hits else ranked
+            target.append((score, entry["id"], entry))
+    # Curated topic keywords distinguish intent from incidental prose mentions.
+    # Keep prose-only discovery when no applicable topic has a keyword match.
+    ranked = keyword_matches or ranked
     ranked.sort(key=lambda row: (-row[0], row[1]))
     result: dict[str, Any] = {
         "corpus_version": catalog["corpus_version"],
         "corpus_sha256": hashlib.sha256(
             json.dumps(catalog, ensure_ascii=False, sort_keys=True).encode()
         ).hexdigest(),
-        "retrieval_contract": "lexical-v1",
+        "retrieval_contract": "lexical-v2",
         "procedure_contract": "read-workflows-v1",
         "installed_version": installed_version,
         "language": language,

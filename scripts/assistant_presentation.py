@@ -155,7 +155,8 @@ def help_text(payload, args, zh):
     data = payload["data"]
     require(payload["evidence"].get("source_kind") == "bundled_public_help")
     corpus, installed = version(data.get("corpus_version")), version(data.get("installed_version"))
-    require(data.get("retrieval_contract") == "lexical-v1")
+    retrieval = data.get("retrieval_contract")
+    require(retrieval in ("lexical-v1", "lexical-v2"))
     require(data.get("procedure_contract") == "read-workflows-v1")
     matches, procedures = data.get("matches"), data.get("procedures")
     require(isinstance(matches, list) and len(matches) <= 3 and isinstance(procedures, list))
@@ -168,7 +169,7 @@ def help_text(payload, args, zh):
         in {"matched", "no_match", "no_applicable_knowledge", "no_match_within_limit"}
     )
     require(bool(matches) == (data["match_status"] == "matched"))
-    lines = [f"KB {corpus}; installed_version={installed}; lexical-v1; read-workflows-v1"]
+    lines = [f"KB {corpus}; installed_version={installed}; {retrieval}; read-workflows-v1"]
     for match in matches:
         require(isinstance(match, dict) and isinstance(match.get("applicable_versions"), dict))
         bounds = match["applicable_versions"]
