@@ -27,6 +27,9 @@ class ModelProtocolTests(unittest.TestCase):
         cases = select_cases(catalog, "retrieval")
         self.assertEqual([case["id"] for case in select_cases(catalog, "host_probe")], ["Q04"])
         self.assertEqual({case["id"] for case in cases}, {"R02", "R04"})
+        lid_cases = select_cases(catalog, "lid_probe")
+        self.assertEqual([case["id"] for case in lid_cases], ["D05"])
+        self.assertIs(lid_cases[0], next(case for case in catalog if case["id"] == "D05"))
         self.assertTrue(all(any(case is original for original in catalog) for case in cases))
         for incomplete in (cases[:1], [cases[0], cases[0]]):
             with self.assertRaises(ValueError):
