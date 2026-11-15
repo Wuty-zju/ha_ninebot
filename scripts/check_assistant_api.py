@@ -4,10 +4,42 @@ This canary does not set up Ninebot accounts, contact a model, open an HTTP
 listener or use the generated HA test plugin. HTTP transport is tested separately.
 """
 
+import ast
 import asyncio
+import json
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+
+
+def check_task_evaluation_catalog(api_id: str, names: set[str]) -> None:
+    """Bind unexecuted task specifications to real tools and named native tests."""
+    root = Path(__file__).resolve().parents[1]
+    catalog = json.loads((root / "tests/fixtures/assistant/evaluation-tasks.json").read_text())
+    contract = catalog["task_execution_contract"]
+    assert catalog["contract_revision"] == "task-boundaries-v1"
+    assert contract["api_id"] == api_id and contract["tool_namespace"] == "ninebot__"
+    assert contract["model_cloud_call_limit"] == 0
+    assert contract["approval_channel"] == contract["cancellation_channel"] == "native_human_review"
+    cases = [case for case in catalog["cases"] if case["group"] == "task"]
+    assert {case["id"] for case in cases} == {f"J{number:02}" for number in range(1, 8)}
+    for case in cases:
+        assert set(case["expected"]["allowed_tools"]) <= names
+        assert "human_approval" not in case["context_overrides"]
+        execution = case["execution_contract"]
+        assert execution["model_cloud_call_limit"] == 0
+        assert execution["native_cloud_call_limit"] == case["expected"]["max_cloud_calls"]
+        assert execution["native_test_nodes"]
+        for node in execution["native_test_nodes"]:
+            path, function = node.split("::")
+            target = (root / path).resolve()
+            assert target.is_relative_to(root / "tests") and target.name.startswith("test_")
+            tree = ast.parse(target.read_text())
+            assert any(
+                isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == function
+                for item in tree.body
+            )
 
 
 async def main() -> None:
@@ -200,6 +232,7 @@ async def check_task_collection(hass, context) -> None:
                 "ninebot__get_tasks",
                 "ninebot__get_task",
             }
+            check_task_evaluation_catalog(API_ID, names)
             formatted = {
                 tool.name: _format_tool(tool, instance.custom_serializer) for tool in instance.tools
             }
