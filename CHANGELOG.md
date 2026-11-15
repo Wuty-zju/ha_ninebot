@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## Unreleased
+
+- Recognize fourth-column and `mph` questions in public help, returning the existing verified guidance on unknown sample units.
+- Document native MCP prompt selection and keep task-evaluation boundaries aligned with native human review.
+
 ## 2.1.4
 
 - Keep closed Assistant task drivers detached when restoration finishes after account shutdown or replacement.

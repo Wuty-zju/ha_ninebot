@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.0",
+  "corpus_version": "1.2.1",
   "source_version": "2.1.2",
   "entries": [
     {
@@ -268,7 +268,7 @@
         "max_exclusive": "2.2.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-15",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
@@ -286,7 +286,9 @@
             "maximum",
             "energy",
             "score",
-            "units"
+            "units",
+            "mph",
+            "fourth column"
           ]
         },
         "zh-Hans": {
@@ -298,11 +300,13 @@
             "最高",
             "能量",
             "评分",
-            "单位"
+            "单位",
+            "第四列",
+            "采样单位"
           ]
         }
       },
-      "content_sha256": "ab6b6a41e24897151076b0ba80eb865c44083ec3ddbd4fd430f49055b913b9e0",
+      "content_sha256": "0c30a11a89ce46a1be53ec179b802065de2514e825d03ed7bad8ebaeba25d59e",
       "procedure_id": "SK08"
     },
     {
