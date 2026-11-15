@@ -88,6 +88,23 @@ class ReusableHostTests(unittest.TestCase):
                 host.complete("synthetic", time.perf_counter() + 5)
             self.assertIsNone(host.process)
 
+    def test_case_timeout_allows_the_next_case_to_start_without_cached_prompt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            binary, log = self.peer(directory, "stall")
+            host = ReusableCompletion(binary, Path("synthetic-weights"))
+            try:
+                result = host.complete("expired case", time.perf_counter() + 0.5)
+                self.assertTrue(result["deadline_limited"])
+                self.assertIsNone(host.process)
+                self.peer(directory)
+                host.reset()
+                result = host.complete("independent case", time.perf_counter() + 5)
+                self.assertEqual(result["text"], "synthetic answer")
+                rows = [json.loads(row) for row in log.read_text().splitlines()]
+                self.assertEqual([row["cache_prompt"] for row in rows], [False, False])
+            finally:
+                host.close()
+
     def test_expired_call_does_not_spawn_or_contact_a_peer(self):
         host = ReusableCompletion(Path("unused"), Path("unused"))
         with patch("scripts.assistant_model_host.subprocess.Popen") as spawn:

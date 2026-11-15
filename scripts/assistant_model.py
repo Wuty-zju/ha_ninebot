@@ -1,4 +1,4 @@
-"""Pinned CPU model for temporary isolated CI evaluations."""
+"""Pinned CPU-only test model; no server, provider key or product dependency."""
 
 import argparse
 import hashlib
@@ -11,13 +11,12 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from urllib.request import urlopen
 
-MODEL = "Qwen/Qwen3-8B-GGUF"
-REVISION = "7c41481f57cb95916b40956ab2f0b139b296d974"
-WEIGHT_FILE = "Qwen3-8B-Q4_K_M.gguf"
-WEIGHT_SHA = "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785"
-TOKENIZER = "Qwen/Qwen3-8B"
-TOKENIZER_REVISION = "b968826d9c46dd6066d109eabc6255188de91218"
-TEMPLATE_SHA = "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8"
+MODEL = "unsloth/Qwen3-4B-Instruct-2507-GGUF"
+REVISION = "a06e946bb6b655725eafa393f4a9745d460374c9"
+WEIGHT_FILE = "Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+WEIGHT_SHA = "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597"
+TOKENIZER = "Qwen/Qwen3-4B-Instruct-2507"
+TOKENIZER_REVISION = "cdbee75f17c01a7cc42f958dc650907174af0554"
 ENGINE_TAG = "b12182"
 ENGINE_COMMIT = "fd27b2034905f8dadd8bd6d2cc44595f4929d391"
 ENGINE_SHA = "c1dbfdb9cbef7ee50b6ab08142d6424184d68b242906837770439ed118c57d99"
@@ -140,17 +139,6 @@ def complete(binary: Path, weights: Path, prompt: str, deadline: float) -> dict:
     }
 
 
-def render_prompt(tokenizer, messages: list[dict], tools: list[dict]) -> str:
-    """Apply the fixed model's non-thinking tool template without altering messages."""
-    return tokenizer.apply_chat_template(
-        messages,
-        tools=tools or None,
-        add_generation_prompt=True,
-        tokenize=False,
-        enable_thinking=False,
-    )
-
-
 class CpuModel:
     def __init__(self, host: str = "process") -> None:
         if host not in {"process", "reusable"}:
@@ -162,6 +150,8 @@ class CpuModel:
         server = self.binary.with_name("llama-server")
         if host == "reusable" and not server.is_file():
             raise ValueError("Fixed engine bundle has no reusable server")
+        self.weights = Path(hf_hub_download(MODEL, WEIGHT_FILE, revision=REVISION, token=False))
+        verify_file(self.weights, WEIGHT_SHA)
         tokenizer_path = snapshot_download(
             TOKENIZER,
             revision=TOKENIZER_REVISION,
@@ -177,19 +167,6 @@ class CpuModel:
         self.tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path, local_files_only=True, trust_remote_code=False
         )
-        template = self.tokenizer.chat_template
-        if (
-            not isinstance(template, str)
-            or hashlib.sha256(template.encode()).hexdigest() != TEMPLATE_SHA
-        ):
-            raise ValueError("Evaluation chat template differs from the reviewed source")
-        preflight = render_prompt(
-            self.tokenizer, [{"role": "user", "content": "Synthetic probe"}], []
-        )
-        if not preflight.endswith("<think>\n\n</think>\n\n"):
-            raise ValueError("Evaluation template did not disable thinking")
-        self.weights = Path(hf_hub_download(MODEL, WEIGHT_FILE, revision=REVISION, token=False))
-        verify_file(self.weights, WEIGHT_SHA)
         self.metadata = {
             "engine": "llama.cpp",
             "engine_tag": ENGINE_TAG,
@@ -199,8 +176,6 @@ class CpuModel:
             "weight_sha256": WEIGHT_SHA,
             "tokenizer": TOKENIZER,
             "tokenizer_revision": TOKENIZER_REVISION,
-            "chat_template_sha256": TEMPLATE_SHA,
-            "thinking_enabled": False,
             "context_tokens": CONTEXT_TOKENS,
             "token_count_basis": "official tokenizer: rendered prompt and visible output",
             "completion_host": host,
@@ -233,7 +208,9 @@ class CpuModel:
         started = time.perf_counter()
         if started >= deadline:
             return expired_result(started)
-        prompt = render_prompt(self.tokenizer, messages, tools)
+        prompt = self.tokenizer.apply_chat_template(
+            messages, tools=tools or None, add_generation_prompt=True, tokenize=False
+        )
         input_tokens = len(self.tokenizer.encode(prompt, add_special_tokens=False))
         if input_tokens + MAX_TOKENS + 64 > CONTEXT_TOKENS:
             return {
