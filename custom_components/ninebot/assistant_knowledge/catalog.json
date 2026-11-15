@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.4",
+  "corpus_version": "1.2.5",
   "source_version": "2.1.2",
   "entries": [
     {
@@ -527,23 +527,25 @@
       "translations": {
         "en": {
           "title": "Request review of missing trip details",
-          "text": "From 2.1.2, the separate Ninebot tasks API offers local gap preview and an explicit application for human review. Enable account task consent and select allowed vehicles first. Preview at most 31 business days; freeze at most 20 mapped missing details. The total logical attempt allowance is twice the selected count, capped at 20, with shared account pacing. Applications do not query the cloud. The original requester must open Ninebot Assistant in HA with the same user, review the exact scope and approve separately. A read-only MCP server hides the application tool.",
+          "text": "From 2.1.2, the separate Ninebot tasks API offers local gap preview and an explicit application for human review. Enable account task consent and select allowed vehicles first. Preview at most 31 business days; freeze at most 20 mapped missing details. The total logical attempt allowance is twice the selected count, capped at 20, with shared account pacing. Applications do not query the cloud. The original requester must open Ninebot Assistant in HA with the same user, review the exact scope and approve separately. A read-only MCP server hides the application tool. Task approval does not bypass the account request budget.",
           "keywords": [
             "task",
             "application",
-            "request",
             "review",
             "approval",
             "confirm",
             "missing details",
-            "sync"
+            "request_detail_sync_approval",
+            "preview_detail_sync",
+            "ninebot__request_detail_sync_approval",
+            "ninebot__preview_detail_sync"
           ]
         },
         "zh-Hans": {
           "title": "申请审核缺失行程详情",
-          "text": "从 2.1.2 起，独立 Ninebot tasks API 提供本地预览和明确的人工审核申请。先开启账号任务功能并选择车辆；最多预览 31 个业务日，冻结最多 20 条已映射的缺失详情。总逻辑尝试上限为选中条数两倍、最多 20 次，共享账号请求间隔。申请不查询云端。原申请人须使用同一个 HA 用户去 Ninebot Assistant 面板核对范围后另行批准；MCP 只读模式隐藏申请工具。",
+          "text": "从 2.1.2 起，独立 Ninebot tasks API 提供本地预览和明确的人工审核申请。先开启账号任务功能并选择车辆；最多预览 31 个业务日，冻结最多 20 条已映射的缺失详情。总逻辑尝试上限为选中条数两倍、最多 20 次，共享账号请求间隔。申请不查询云端。原申请人须使用同一个 HA 用户去 Ninebot Assistant 面板核对范围后另行批准；MCP 只读模式隐藏申请工具。任务审批不会绕过账号请求额度。",
           "keywords": [
-            "申请同步",
+            "申请",
             "人工审核",
             "批准",
             "确认",
@@ -564,9 +566,9 @@
         "max_exclusive": "2.2.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-09",
+      "reviewed_at": "2026-11-16",
       "supersedes": [],
-      "content_sha256": "8914464a6162dc6454e4f96d71e97a5fe9f33d9bad8bb99f701af140a3fdf58a"
+      "content_sha256": "99434aee9596fb30a5133e2a58ba7182e09238527403c55515b58494649f335a"
     },
     {
       "id": "task_progress",
