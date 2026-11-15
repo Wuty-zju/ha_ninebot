@@ -20,7 +20,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
         self.assertEqual(len(catalog["entries"]), 14)
-        self.assertEqual(catalog["corpus_version"], "1.2.2")
+        self.assertEqual(catalog["corpus_version"], "1.2.3")
         self.assertEqual(catalog["source_version"], "2.1.2")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
@@ -49,6 +49,60 @@ class KnowledgeTests(unittest.TestCase):
             self.assertEqual(k.search_help("unknown", "en", version)["matches"], [])
         with self.assertRaises(k.KnowledgeUnavailable):
             k.search_help("unknown", "en", "not-a-version")
+
+    def test_help_defaults_to_topics_and_preserves_procedure_metadata(self):
+        for language in ("en", "zh-Hans"):
+            with self.subTest(language=language):
+                default = k.search_help("waiting budget", language, "2.1.2")
+                explicit = k.search_help(
+                    "waiting budget", language, "2.1.2", include_procedures=False
+                )
+                guided = k.search_help("waiting budget", language, "2.1.2", include_procedures=True)
+                self.assertEqual(default, explicit)
+                self.assertEqual(default["procedures"], [])
+                self.assertEqual(default["matches"][0], guided["matches"][0])
+                self.assertEqual(default["matches"][0]["procedure_id"], "SK06")
+                self.assertIn("citation", default["matches"][0])
+                procedure = next(row for row in guided["procedures"] if row["id"] == "SK06")
+                self.assertTrue(procedure["advisory_only"])
+                expected = "specific vehicle" if language == "en" else "具体车辆"
+                self.assertIn(expected, procedure["trigger"])
+
+    def test_procedure_option_is_a_strict_boolean_before_catalog_io(self):
+        for value in (0, 1, "true", "false", None, [], {}):
+            with (
+                self.subTest(value=value),
+                patch.object(k, "load_catalog") as load,
+                self.assertRaises(k.KnowledgeUnavailable),
+            ):
+                k.search_help("budget", "en", "2.1.2", include_procedures=value)
+            load.assert_not_called()
+
+    def test_both_modes_bound_deduplicate_and_respect_versions(self):
+        for enabled in (False, True):
+            for language in ("en", "zh-Hans"):
+                for version in ("2.1.1", "2.1.2", "2.2.0"):
+                    with self.subTest(enabled=enabled, language=language, version=version):
+                        result = k.search_help(
+                            "waiting budget sync gaps details",
+                            language,
+                            version,
+                            include_procedures=enabled,
+                        )
+                        self.assertLessEqual(len(result["matches"]), 3)
+                        self.assertLessEqual(
+                            len(json.dumps(result, ensure_ascii=False).encode()), k.MAX_HELP_BYTES
+                        )
+                        ids = [row["id"] for row in result["procedures"]]
+                        self.assertEqual(len(ids), len(set(ids)))
+                        if not enabled or version == "2.2.0":
+                            self.assertEqual(ids, [])
+                        if version == "2.2.0":
+                            self.assertEqual(result["matches"], [])
+                        if enabled and version != "2.2.0":
+                            self.assertEqual(ids.count("SK06"), 1)
+                        if version == "2.1.1":
+                            self.assertFalse(set(ids) & {"SK09", "SK10"})
 
     def test_unverified_column_and_unit_terms_retrieve_semantics_without_assigning_units(self):
         for query, language, evidence in (
@@ -204,7 +258,7 @@ class KnowledgeTests(unittest.TestCase):
             if k.release_tuple(entry["applicable_versions"]["min_inclusive"]) <= (2, 1, 1)
         ):
             query = entry["translations"][language]["title"]
-            result = k.search_help(query, language, "2.1.1")
+            result = k.search_help(query, language, "2.1.1", include_procedures=True)
             self.assertTrue(result["matches"], entry["id"])
             self.assertLessEqual(
                 len(json.dumps(result, ensure_ascii=False).encode()), k.MAX_HELP_BYTES
@@ -229,7 +283,7 @@ class KnowledgeTests(unittest.TestCase):
             ("理解历史任务进度记录", "zh-Hans", "SK10"),
         ):
             with self.subTest(query=query):
-                result = k.search_help(query, language, "2.1.2")
+                result = k.search_help(query, language, "2.1.2", include_procedures=True)
                 procedure = next(row for row in result["procedures"] if row["id"] == expected)
                 self.assertTrue(procedure["advisory_only"])
                 self.assertEqual(procedure["max_calls"], 4)
@@ -241,7 +295,7 @@ class KnowledgeTests(unittest.TestCase):
                 self.assertLessEqual(
                     len(json.dumps(result, ensure_ascii=False).encode()), k.MAX_HELP_BYTES
                 )
-                old = k.search_help(query, language, "2.1.1")
+                old = k.search_help(query, language, "2.1.1", include_procedures=True)
                 self.assertFalse({p["id"] for p in old["procedures"]} & {"SK09", "SK10"})
 
     def test_natural_task_questions_retrieve_the_intended_contract(self):
@@ -294,12 +348,13 @@ class KnowledgeTests(unittest.TestCase):
                 k.validate_catalog(catalog)
 
     def test_no_result_claims_a_match_when_the_bound_cannot_fit_it(self):
-        with patch.object(k, "MAX_HELP_BYTES", 512):
-            result = k.search_help("统计未知", "zh-Hans", "2.1.1")
-        self.assertEqual(result["matches"], [])
-        self.assertEqual(result["procedures"], [])
-        self.assertEqual(result["match_status"], "no_match_within_limit")
-        self.assertTrue(result["more_available"])
+        for enabled in (False, True):
+            with self.subTest(enabled=enabled), patch.object(k, "MAX_HELP_BYTES", 512):
+                result = k.search_help("统计未知", "zh-Hans", "2.1.1", include_procedures=enabled)
+            self.assertEqual(result["matches"], [])
+            self.assertEqual(result["procedures"], [])
+            self.assertEqual(result["match_status"], "no_match_within_limit")
+            self.assertTrue(result["more_available"])
 
     def test_superseded_applicable_topic_is_not_returned(self):
         catalog = copy.deepcopy(k.load_catalog())
