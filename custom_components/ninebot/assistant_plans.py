@@ -76,6 +76,10 @@ class DetailProposal:
             "selection": {"count": preview.selected_count, "has_more": preview.has_more},
             "requests": {
                 "preview_cloud_calls": 0,
+                "maximum_detail_attempts": plan.attempts if plan else 0,
+                "attempts_include_retries": True,
+                "attempt_scope": "entire_selection",
+                # Retained for existing clients; this also counts attempts, not details.
                 "maximum_after_approval": plan.attempts if plan else 0,
                 "account_minimum_interval_seconds": self.request_interval_seconds,
                 "shared_account_pacing": True,

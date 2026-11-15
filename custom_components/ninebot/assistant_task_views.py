@@ -32,6 +32,8 @@ def ticket_view(ticket: ApprovalTicket) -> dict[str, Any]:
         "time_zone": BUSINESS_TIMEZONE,
         "selected_count": len(plan.scope.rides),
         "maximum_detail_attempts": plan.attempts,
+        "attempts_include_retries": True,
+        "attempt_scope": "entire_selection",
         "saved_count": ticket.progress.saved if ticket.progress else None,
         "attempts_used": ticket.progress.attempts if ticket.progress else None,
         "progress_updated_at": ticket.progress.updated_at.isoformat() if ticket.progress else None,

@@ -26,6 +26,8 @@ PROMPT = (
     "Human approval happens after that application; do not wait for it before filing. "
     "Report an application as submitted only when task_recorded=true and a task_id was returned; "
     "a promise to submit is not a completed application. "
+    "Selected details and maximum_detail_attempts are separate counts. The attempt limit "
+    "includes retries across the entire selection; it does not allow more details. "
     "Ask the original requester to sign in with that same HA user "
     "and open Ninebot Assistant in HA's sidebar (/ninebot-assistant) to review and approve. "
     "Do not request or invent confirmation tokens. "
