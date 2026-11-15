@@ -22,6 +22,7 @@ PROFILES = {
     "retrieval": ("R02", "R04"),
     "host_probe": ("Q04",),
     "lid_probe": ("D05",),
+    "diagnostics": ("D01", "F03"),
 }
 MAX_TURNS = 3
 MAX_CALLS = 4
@@ -151,11 +152,91 @@ def write_report(output: Path, report: dict) -> None:
             pending.unlink(missing_ok=True)
 
 
+def diagnostic_health(fixture_data: dict) -> dict:
+    """Map the fixed synthetic scheduling observation to the Action contract."""
+    health = fixture_data["health"]
+    return {
+        "schema_version": 1,
+        "operation": "sync_status",
+        "sync_state": health["state"],
+        "next_request_at": health["next_request_at"],
+        "paused": False,
+        "background_enabled": True,
+        "automatic_sync_enabled": True,
+        "discovery_complete": False,
+        "operation_performed": False,
+    }
+
+
+def install_diagnostic_actions(fixture, fixture_data: dict) -> None:
+    """Use real statistics projections; only the underlying observations are synthetic."""
+    from homeassistant.core import SupportsResponse
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot.archive_statistics import ArchiveStatisticsView
+    from custom_components.ninebot.statistics_actions import months_between, statistics_response
+
+    async def statistics(call):
+        assert call.context.user_id == "synthetic-admin"
+        assert call.data["device_id"] == fixture.vehicle_ref
+        assert call.data["refresh"] is False
+        return statistics_response(
+            ArchiveStatisticsView(),
+            "synthetic-vehicle",
+            months_between(call.data["start_month"], call.data["end_month"]),
+            dt_util.utcnow(),
+            call.data["include_daily"],
+        )
+
+    async def health(call):
+        assert call.context.user_id == "synthetic-admin"
+        assert call.data == {"device_id": fixture.vehicle_ref, "operation": "sync_status"}
+        return diagnostic_health(fixture_data)
+
+    fixture.entry.options["history_requests_per_hour"] = fixture_data["health"]["hourly_budget"]
+    for name, handler in (("get_statistics", statistics), ("sync_history", health)):
+        fixture.hass.services.async_register(
+            "ninebot", name, handler, supports_response=SupportsResponse.ONLY
+        )
+
+
+async def verify_diagnostic_fixture(fixture, fixture_data: dict) -> dict:
+    """Verify actual native tool results before spending any model inference."""
+    install_diagnostic_actions(fixture, fixture_data)
+    payloads = {}
+    for name, extra in (("get_statistics", {"period": "today"}), ("get_sync_health", {})):
+        status, response = await fixture.rpc(
+            "tools/call",
+            {
+                "name": "ninebot__" + name,
+                "arguments": {"vehicle_ref": fixture.vehicle_ref, **extra},
+            },
+        )
+        assert status == 200 and not response["result"].get("isError", False)
+        payloads[name] = json.loads(tool_message(name, "preflight", response)["content"])
+    statistics, health = payloads["get_statistics"], payloads["get_sync_health"]
+    assert all(value is None for key, value in statistics["data"].items() if key != "units")
+    assert all(
+        metric == {"status": "missing", "reason": "missing_month"}
+        for metric in statistics["quality"]["metrics"].values()
+    )
+    assert statistics["quality"]["received_at"] is None
+    assert health["data"]["state"] == fixture_data["health"]["state"] == "waiting_budget"
+    assert datetime.fromisoformat(health["data"]["next_request_at"]) == datetime.fromisoformat(
+        fixture_data["health"]["next_request_at"]
+    )
+    assert health["data"]["request_policy"]["configured_requests_per_hour"] == 60
+    assert health["data"]["request_policy"]["minimum_interval_s"] == 60
+    assert "remaining" not in json.dumps(health)
+    return payloads
+
+
 async def conversation(
     model: CpuModel,
     fixture,
     case: dict,
     *,
+    fixture_data: dict,
     tools_enabled: bool,
     help_enabled: bool = True,
     arm: str | None = None,
@@ -186,6 +267,8 @@ async def conversation(
     fixture.hass.services.async_register(
         "ninebot", "get_statistics", empty_statistics, supports_response=SupportsResponse.ONLY
     )
+    if case["id"] in PROFILES["diagnostics"]:
+        install_diagnostic_actions(fixture, fixture_data)
     if case["id"] == "P06":
         context["selected_ride"] = {"ride_id": "synthetic-ride-a", "query_month": "202611"}
         user_message = "查看 Vehicle A 所选行程的已保存详情。"
@@ -378,6 +461,13 @@ async def evaluate(output: Path, profile: str, host: str = "process") -> None:
         "provider_cost_usd": None,
         "cases": [],
     }
+    if profile == "diagnostics":
+
+        async def verify(fixture):
+            report["fixture_validation"] = await verify_diagnostic_fixture(fixture, fixture_data)
+
+        with TemporaryDirectory(prefix="ninebot-diagnostic-fixture-") as directory:
+            await check(directory, scenario=verify, reference_time=reference_time)
     model = await asyncio.to_thread(CpuModel, host)
     report["model_host"] = model.metadata
     try:
@@ -403,6 +493,7 @@ async def evaluate(output: Path, profile: str, host: str = "process") -> None:
                         model,
                         fixture,
                         case,
+                        fixture_data=fixture_data,
                         tools_enabled=tools_enabled,
                         help_enabled=help_enabled,
                         arm=arm,
