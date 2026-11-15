@@ -32,7 +32,7 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 
 | Tool | Parameters | Result |
 |---|---|---|
-| `ninebot__search_help` | `query`; optional `language` (`en` or `zh-Hans`) | Up to three cited public help topics for the installed version; no vehicle facts. |
+| `ninebot__search_help` | `query`; optional `language` (`en` or `zh-Hans`), `include_procedures` (default `false`) | Up to three cited public help topics; explicitly request task checklists when guiding a task. |
 | `ninebot__get_vehicles` | None | AI-authorized vehicle references, display labels and local-data capabilities. |
 | `ninebot__get_vehicle_status` | `vehicle_ref` | Cached status/BMS values and per-group observation quality; no refresh or coordinates. |
 | `ninebot__get_statistics` | `vehicle_ref`, `period` | Local `today`, `yesterday`, `this_month` or `last_month` statistics with per-metric coverage. |

@@ -2,9 +2,10 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
-## Unreleased
+## 2.1.6
 
 - Keep public-help answers focused on documented concepts by default; retrieve advisory task checklists only when explicitly requested for a specific task.
+- Clarify the distinction between general synchronization guidance and a selected vehicle's current synchronization state in English and Chinese.
 
 ## 2.1.5
 
