@@ -2,6 +2,17 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.4
+
+- Keep closed Assistant task drivers detached when restoration finishes after account shutdown or replacement.
+- Close read-only archive connections when validation or initialization fails, preserving the original database.
+- Resume temporary history-busy retries after restart instead of treating saved scheduler state as invalid.
+- Clarify cached-data capabilities, group observation times, ACC and seat-latch semantics in the native Assistant tools.
+- Ground period answers in the selected vehicle, business dates, coverage and returned sources.
+- Distinguish the unverified fourth track column, energy, power and latch-unlock labels; curate Traditional Chinese archive and command feedback.
+- Refresh field-to-entity evidence, local-history action descriptions and Assistant task consent across shipped languages.
+- Tighten synthetic evaluation privacy checks and scope descriptive field checks to their actual consumers.
+
 ## 2.1.3
 
 - Skip Recorder writes for unchanged statistics while retaining corrections and chart configurations.
