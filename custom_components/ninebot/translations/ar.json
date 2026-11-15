@@ -722,7 +722,7 @@
               "locked": "مقفل",
               "unlocked": "غير مقفل",
               "seat_locked": "قفل حجرة المقعد",
-              "seat_unlocked": "فتح حجرة المقعد"
+              "seat_unlocked": "إلغاء قفل حجرة المقعد"
             }
           },
           "changes": {
@@ -735,7 +735,7 @@
               "locked": "مقفل",
               "unlocked": "غير مقفل",
               "seat_locked": "قفل حجرة المقعد",
-              "seat_unlocked": "فتح حجرة المقعد"
+              "seat_unlocked": "إلغاء قفل حجرة المقعد"
             }
           },
           "summary": {

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "date": "2026-10-21",
-  "implementation_version": "2.0.0rc4",
-  "implementation_base_commit": "eca7fd3884b3fe08fe71727f288cf6df0711426a",
+  "date": "2026-11-15",
+  "implementation_version": "2.1.3",
+  "implementation_base_commit": "3f14e9b075bfdfc41ee3180fd180accea80c7362",
   "ninecli_version": "0.1.7",
   "scope": "Current reviewed uses of recorded sanitized business shapes; no payload values. Historical inventory remains immutable. Source aliases/candidates are referenced separately, not promoted to real observations.",
   "sources": [
@@ -965,7 +965,7 @@
             "tests/fixtures/ninecli/0.1.7/status-charging.json",
             "tests/fixtures/field_inventory/sources/maintainer-20261008.json"
           ],
-          "current_use": "seat_lock原生Lock；0锁定／1解锁，buck只请求解锁。确认15秒，观察到解锁后显示至少5秒；上报锁舌与显示分开，不推断盖子开合。未确认时使用座桶专属提示。",
+          "current_use": "原生seat_lock：0锁定/1解锁。15秒内高频确认，观察到解锁即显示并至少保持5秒；锁舌原始状态与显示分离。最多60秒有界渐降跟随，不推断座桶盖开合；未确认时使用座桶专属提示。",
           "implementation_sources": [
             "custom_components/ninebot/lock.py",
             "custom_components/ninebot/control_polling.py",
@@ -1247,7 +1247,7 @@
             "tests/fixtures/ninecli/0.1.7/status-02.json",
             "tests/fixtures/ninecli/0.1.7/status-charging.json"
           ],
-          "current_use": "R3b/b38已交付车辆Lock替代旧binary.unlocked，保UID/旧历史；保留engine buttons共享守卫/目标回读。b40起不以运动/P本地拦截stop；每次1POST、0/2/5s确认及10/20/25s跟随；反码重复vehicle_lock_raw已退役"
+          "current_use": "原生vehicle_lock保留既有身份；1锁定/0解锁。每次单个POST，15秒内按有界时隙快速回读，观察到目标即更新；其后沿本次确认窗口起点的10/20/25秒时隙继续跟随，已过时隙不补发。不根据运动/P档本地阻拦，也不因待确认禁止新指令。"
         },
         {
           "path": "$.loc.lon",
@@ -1530,7 +1530,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "returned_pack_count已取list长度并放普通区、名“上报电池组数”，不将server0误当无电池、不计铅酸单体数量；编码继续debug。"
+          "current_use": "returned_pack_count显示主电池组数，取battery_list长度；上游原始编码仅作reported_pack_count属性/调试。不得把编码0误作无电池或铅酸单体数量。"
         },
         {
           "path": "$.battery_find_my_support",
@@ -1553,7 +1553,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "b35已交付准确名称Apple查找支持、支持/不支持状态翻译的既有布尔诊断实体；不新增FindMy定位接口。"
+          "current_use": "主电池Find My支持，既有布尔诊断实体；true支持/false不支持，不新增Find My定位接口或推断控制权限。"
         },
         {
           "path": "$.battery_list",
@@ -1645,7 +1645,7 @@
             "tests/fixtures/ninecli/0.1.7/battery-02.json",
             "tests/fixtures/ninecli/0.1.7/battery-charging.json"
           ],
-          "current_use": "支持明确为true时battery_cycles实体；包reported_cycles及调试保留原上报，不把false哨兵当有效循环数。"
+          "current_use": "主电池循环次数保留身份：明确support=true才呈现数值；false显示不支持，缺失保持未知。调试保留上报循环值，不把哨兵100当有效计数。"
         },
         {
           "path": "$.battery_list[].bms_volt",
@@ -2033,7 +2033,7 @@
           ],
           "container": false,
           "meaning": "按月日历的numeric字符串日里程；本次既有归档30/31项、和匹配月总且9月20/20日映射匹配",
-          "unit": "—",
+          "unit": "km",
           "classification": "A/E/H/I",
           "enabled": "默认启用（保留用户选择；GPS/debug/controls仍按功能选项）",
           "device_class": "—",
@@ -2070,7 +2070,7 @@
             "tests/fixtures/ninecli/0.1.7/travel-02.json",
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "默认启用服务端本月聚合实体，独立于部分ride列表。"
+          "current_use": "服务端本月行程时长，独立于部分行程列表；原生秒值/秒精度，HA默认转换为小时、显示四位小数。Action和Event保留duration_s，不从显示值反推秒数。"
         },
         {
           "path": "$.ec",
@@ -2170,7 +2170,7 @@
           ],
           "container": false,
           "meaning": "对应结束日的日里程，本次9月20/20与detail[index]匹配；不能按每条ride相加",
-          "unit": "待验证",
+          "unit": "km",
           "classification": "H/I",
           "enabled": "—",
           "device_class": "—",
@@ -2201,7 +2201,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "sensor.last_ride_duration、Ride、Action和event；总平均速度分母"
+          "current_use": "最近行程时长、Ride、Action与Event；原生秒值，HA默认显示小时/四位小数。总平均速度使用真实distance/duration，不使用显示后的舍入时长。"
         },
         {
           "path": "$.list[].ec",
@@ -2241,7 +2241,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "sensor.last_ride_end、Ride、查询response和completed事件"
+          "current_use": "Ride.ended_at用于最近行程排序；Action与车辆行程事件latest_end_time/latest_ride；独立last_ride_end传感器已退役。新上报与完成事件分别判断，不把存在end_time直接当物理完成。"
         },
         {
           "path": "$.list[].end_time_format",
@@ -2321,7 +2321,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "sensor.last_mileage、Ride、Action和event；总平均速度分子"
+          "current_use": "最近里程last_mileage、Ride、Action与Event；km原值经规范化为米，一位小数仅控制HA显示，不覆盖原始精度。"
         },
         {
           "path": "$.list[].speed",
@@ -2341,7 +2341,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "sensor.last_ride_max_speed、Ride、Action和event；不被sample覆盖"
+          "current_use": "最近行程最高速度、Ride、Action与Event；服务端最高km/h，与总平均速度分开，不被轨迹样本覆盖。"
         },
         {
           "path": "$.list[].start_time",
@@ -2361,7 +2361,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/travel-nonempty.json"
           ],
-          "current_use": "sensor.last_ride_start、Ride、查询response和completed事件"
+          "current_use": "Ride.started_at、Action与车辆行程事件latest_start_time/latest_ride；独立last_ride_start传感器已退役，保留原实体迁移契约。"
         },
         {
           "path": "$.list[].travel_id",
@@ -2624,7 +2624,7 @@
           ],
           "container": false,
           "meaning": "单次行程能量；维护者确认Wh",
-          "unit": "未知",
+          "unit": "Wh",
           "classification": "E/H",
           "enabled": "—",
           "device_class": "—",
@@ -2715,7 +2715,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/trip-detail.json"
           ],
-          "current_use": "有界raw/审核schema；不猜Power/Speed/Torque、不强制按HA功能映射。"
+          "current_use": "上游显示策略提示保留在独立私有raw/轨迹质量证据；不单凭false认定完整轨迹，也不由true创建独立实体。"
         },
         {
           "path": "$.max_shaft_speed",
@@ -2835,7 +2835,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/trip-detail.json"
           ],
-          "current_use": "有界raw/审核schema；不猜Power/Speed/Torque、不强制按HA功能映射。"
+          "current_use": "原始策略提示保留；180为当前样本返回值，不代表云端永久保留承诺或本地到期删除规则。"
         },
         {
           "path": "$.speed",
@@ -2963,7 +2963,7 @@
             "str"
           ],
           "container": false,
-          "meaning": "分号分点/逗号四列；lon/lat/speed_raw/delta_raw；CRS和后两列单位未知",
+          "meaning": "分号分点/逗号四列；lon/lat/speed_raw/第四列raw；坐标系、速度采样单位及第四列含义/单位待验证",
           "unit": "混合；未核实单位不能转换",
           "classification": "E/H",
           "enabled": "—",
@@ -2975,7 +2975,7 @@
           "sources": [
             "tests/fixtures/ninecli/0.1.7/trip-detail.json"
           ],
-          "current_use": "Ride轨迹/速度样本，显式include_track且位置opt-in后Action返回坐标；不进state/diagnostics/recorder。"
+          "current_use": "经验证四列字符串保留为轨迹点及原始采样列；明确请求轨迹且位置授权后Action/本地地图读取。独立私有档案保存最新响应及最佳几何，质量降级不覆盖优质旧轨迹；不进state/diagnostics/Recorder。"
         },
         {
           "path": "$.used_electricity",
@@ -3326,5 +3326,6 @@
       "sha256": "cab627e7a6bcd8ab49cc771967026725c952f4f17367c693444970817ef2e9f4",
       "url": "https://github.com/Wuty-zju/ha_ninebot/blob/fbac9ec9b67ae9d318b090f5c9b8e1dc64f2f422/docs/v2x-全面数据适配与连续开发.md"
     }
-  ]
+  ],
+  "implementation_channel": "dev; includes unreleased changes after v2.1.3"
 }

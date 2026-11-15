@@ -181,6 +181,8 @@ gh workflow run checks.yaml --ref YOUR_BRANCH -f assistant_evaluation=true
 
 ## Fixtures and privacy
 
+The curated field disposition matrix selects its three inventory contract checks. Recorded payloads, source maps and unknown shared fixture inputs retain the conservative complete-suite selection.
+
 Record fixture source/version and distinguish recorded, synthetic and maintainer-confirmed values. Field semantics are indexed in [source-map.json](../tests/fixtures/field_inventory/source-map.json). Units, aliases and coordinate transformations need evidence before entering a production parser.
 
 Keep credentials, account/vehicle identifiers and precise routes out of Git. Use sanitized fixtures and mock servers for development. Live cloud, SMS, controls and production changes require specific authorization. Share reviewed diagnostics through Issues and use [SECURITY](../SECURITY.md) for sensitive reports.

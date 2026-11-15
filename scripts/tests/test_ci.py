@@ -145,6 +145,20 @@ class ScopeTests(unittest.TestCase):
         for path in ("tests/conftest.py", "tests/fixtures/example.json", "pyproject.toml"):
             self.assertEqual(set(self.plan(path)["tests"]), self.available)
 
+    def test_descriptive_inventory_is_checked_without_broadening_recorded_fixture_scope(self):
+        inventory = "tests/fixtures/field_inventory/current-field-usage.json"
+        self.assertEqual(self.plan(inventory)["tests"], ["tests/test_field_inventory.py"])
+        self.assertIn("field-disposition", self.plan(inventory)["reasons"])
+        for path in (
+            "tests/fixtures/ninecli/0.1.7/status-01.json",
+            "tests/fixtures/field_inventory/source-map.json",
+            "tests/fixtures/field_inventory/future.json",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(inventory, path)
+                self.assertEqual(set(plan["tests"]), self.available)
+                self.assertIn("shared-test-input", plan["reasons"])
+
     def test_changed_test_and_ci_self_changes(self):
         plan = select(
             ["tests/test_future.py"], self.config, self.available | {"tests/test_future.py"}
