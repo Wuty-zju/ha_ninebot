@@ -536,7 +536,9 @@
             "confirm",
             "missing details",
             "request_detail_sync_approval",
-            "preview_detail_sync"
+            "preview_detail_sync",
+            "ninebot__request_detail_sync_approval",
+            "ninebot__preview_detail_sync"
           ]
         },
         "zh-Hans": {
@@ -566,7 +568,7 @@
       "evidence_status": "first_party_contract",
       "reviewed_at": "2026-11-16",
       "supersedes": [],
-      "content_sha256": "499f56da33b5234cedcc09c69580d1aedd5a6b653fc76936c90d8507431834d1"
+      "content_sha256": "99434aee9596fb30a5133e2a58ba7182e09238527403c55515b58494649f335a"
     },
     {
       "id": "task_progress",

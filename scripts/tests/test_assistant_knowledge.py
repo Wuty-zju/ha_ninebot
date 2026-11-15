@@ -64,7 +64,12 @@ class KnowledgeTests(unittest.TestCase):
                     self.assertEqual([p["id"] for p in result["procedures"]], ["SK06"])
 
     def test_explicit_task_tools_find_their_versioned_application_checklist(self):
-        for query in ("request_detail_sync_approval", "preview_detail_sync"):
+        for query in (
+            "request_detail_sync_approval",
+            "preview_detail_sync",
+            "ninebot__request_detail_sync_approval",
+            "ninebot__preview_detail_sync",
+        ):
             for language in ("en", "zh-Hans"):
                 with self.subTest(query=query, language=language):
                     result = k.search_help(query, language, "2.1.13", include_procedures=True)
