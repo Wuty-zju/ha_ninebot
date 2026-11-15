@@ -13,6 +13,7 @@ from scripts.evaluate_assistant import (
     parse_calls,
     safe_result,
     select_cases,
+    statistics_observations,
     tool_message,
     visible_text,
     write_report,
@@ -32,12 +33,45 @@ class ModelProtocolTests(unittest.TestCase):
         self.assertEqual([case["id"] for case in lid_cases], ["D05"])
         diagnostics = select_cases(catalog, "diagnostics")
         self.assertEqual([case["id"] for case in diagnostics], ["D01", "F03"])
+        statistics = select_cases(catalog, "statistics")
+        self.assertEqual([case["id"] for case in statistics], ["Q01", "Q02", "Q09", "Q10"])
+        self.assertTrue(all(any(case is original for original in catalog) for case in statistics))
         self.assertTrue(all(any(case is original for original in catalog) for case in diagnostics))
         self.assertIs(lid_cases[0], next(case for case in catalog if case["id"] == "D05"))
         self.assertTrue(all(any(case is original for original in catalog) for case in cases))
         for incomplete in (cases[:1], [cases[0], cases[0]]):
             with self.assertRaises(ValueError):
                 select_cases(incomplete, "retrieval")
+
+    def test_statistics_observations_preserve_period_facts_and_keep_empty_separate(self):
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "tests/fixtures/assistant/evaluation-fixtures.json"
+        )
+        fixture = json.loads(path.read_text())
+        before = json.dumps(fixture, sort_keys=True)
+        for empty in (False, True):
+            observations = statistics_observations(fixture, empty=empty)
+            for (month, raw), key in zip(observations, ("yesterday", "last_month"), strict=True):
+                period = fixture["periods"][key]
+                facts = (
+                    fixture["periods"]["verified_empty"] if empty and key == "yesterday" else period
+                )
+                self.assertEqual(month, period["start_date"][:7].replace("-", ""))
+                self.assertEqual(len(raw["list"]), facts["ride_count"])
+                for field, total in (("ec", "energy_wh"), ("duration", "duration_s")):
+                    self.assertEqual(sum(row[field] for row in raw["list"]), facts[total])
+                self.assertEqual(
+                    sum(row["mileages"] for row in raw["list"]), facts["distance_m"] / 1000
+                )
+                self.assertEqual(len({row["travel_id"] for row in raw["list"]}), len(raw["list"]))
+                self.assertTrue(
+                    all(
+                        row["end_time"] - row["start_time"] == row["duration"]
+                        for row in raw["list"]
+                    )
+                )
+        self.assertEqual(json.dumps(fixture, sort_keys=True), before)
 
     def test_diagnostic_health_keeps_observed_schedule_without_inventing_remaining_budget(self):
         path = (
