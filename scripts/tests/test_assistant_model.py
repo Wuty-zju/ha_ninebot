@@ -7,12 +7,56 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
-from scripts.assistant_model import complete, verify_file
+from scripts.assistant_model import MODELS, CpuModel, complete, render_prompt, verify_file
 
 
 class CpuHostTests(unittest.TestCase):
+    def test_candidate_selection_is_fixed_and_rejects_unknown_inputs(self):
+        self.assertEqual(MODELS["baseline"].threads, 2)
+        self.assertEqual(MODELS["capacity"].threads, 4)
+        with self.assertRaisesRegex(ValueError, "Unsupported evaluation candidate"):
+            CpuModel(candidate="arbitrary/model")
+
+    def test_capacity_rejects_insufficient_cpu_before_model_dependencies_or_download(self):
+        with patch("scripts.assistant_model.os.cpu_count", return_value=2):
+            with self.assertRaisesRegex(RuntimeError, "fewer reported CPUs"):
+                CpuModel(candidate="capacity")
+
+    def test_render_preserves_baseline_and_explicitly_disables_candidate_thinking(self):
+        tokenizer = Mock()
+        messages = [{"role": "user", "content": "Synthetic question"}]
+        render_prompt(tokenizer, messages, [], MODELS["baseline"])
+        tokenizer.apply_chat_template.assert_called_once_with(
+            messages, tools=None, add_generation_prompt=True, tokenize=False
+        )
+        render_prompt(tokenizer, messages, [], MODELS["capacity"])
+        self.assertIs(tokenizer.apply_chat_template.call_args.kwargs["enable_thinking"], False)
+
+    def test_wrong_candidate_template_stops_before_weight_download(self):
+        download = Mock()
+        tokenizer = Mock(chat_template="unexpected template")
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "huggingface_hub": SimpleNamespace(
+                        hf_hub_download=download, snapshot_download=Mock(return_value="tokenizer")
+                    ),
+                    "transformers": SimpleNamespace(
+                        AutoTokenizer=SimpleNamespace(from_pretrained=Mock(return_value=tokenizer))
+                    ),
+                },
+            ),
+            patch.dict("os.environ", {"NINEBOT_EVAL_LLAMA": "unused-completion"}),
+            patch("scripts.assistant_model.os.cpu_count", return_value=4),
+            self.assertRaisesRegex(ValueError, "chat template differs"),
+        ):
+            CpuModel(candidate="capacity")
+        download.assert_not_called()
+
     def test_asset_bytes_must_match_the_fixed_digest(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "engine"
@@ -71,6 +115,23 @@ class CpuHostTests(unittest.TestCase):
         self.assertIn("--no-conversation", command)
         self.assertNotIn("--server", command)
         self.assertIsNone(data["length_limited"])
+
+    def test_fixed_threads_apply_to_generation_and_prompt_processing(self):
+        for threads in (2, 4):
+            with patch(
+                "scripts.assistant_model.subprocess.run",
+                return_value=subprocess.CompletedProcess([], 0, stdout="answer", stderr=""),
+            ) as run:
+                complete(
+                    Path("binary"),
+                    Path("weights"),
+                    "prompt",
+                    time.perf_counter() + 2,
+                    threads=threads,
+                )
+            command = run.call_args.args[0]
+            self.assertEqual(command[command.index("-t") + 1], str(threads))
+            self.assertEqual(command[command.index("-tb") + 1], str(threads))
 
     def test_engine_error_text_is_not_exposed(self):
         with (

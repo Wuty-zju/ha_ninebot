@@ -1,4 +1,4 @@
-"""Pinned CPU-only test model; no server, provider key or product dependency."""
+"""Fixed CPU model inputs for disposable synthetic evaluations."""
 
 import argparse
 import hashlib
@@ -7,16 +7,46 @@ import re
 import subprocess
 import tarfile
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from urllib.request import urlopen
 
-MODEL = "unsloth/Qwen3-4B-Instruct-2507-GGUF"
-REVISION = "a06e946bb6b655725eafa393f4a9745d460374c9"
-WEIGHT_FILE = "Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
-WEIGHT_SHA = "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597"
-TOKENIZER = "Qwen/Qwen3-4B-Instruct-2507"
-TOKENIZER_REVISION = "cdbee75f17c01a7cc42f958dc650907174af0554"
+
+@dataclass(frozen=True)
+class ModelSpec:
+    model: str
+    revision: str
+    weight_file: str
+    weight_sha: str
+    tokenizer: str
+    tokenizer_revision: str
+    threads: int = 2
+    disable_thinking: bool = False
+    template_sha: str | None = None
+
+
+MODELS = {
+    "baseline": ModelSpec(
+        "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+        "a06e946bb6b655725eafa393f4a9745d460374c9",
+        "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+        "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+        "Qwen/Qwen3-4B-Instruct-2507",
+        "cdbee75f17c01a7cc42f958dc650907174af0554",
+    ),
+    "capacity": ModelSpec(
+        "Qwen/Qwen3-8B-GGUF",
+        "7c41481f57cb95916b40956ab2f0b139b296d974",
+        "Qwen3-8B-Q4_K_M.gguf",
+        "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+        "Qwen/Qwen3-8B",
+        "b968826d9c46dd6066d109eabc6255188de91218",
+        threads=4,
+        disable_thinking=True,
+        template_sha="a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8",
+    ),
+}
 ENGINE_TAG = "b12182"
 ENGINE_COMMIT = "fd27b2034905f8dadd8bd6d2cc44595f4929d391"
 ENGINE_SHA = "c1dbfdb9cbef7ee50b6ab08142d6424184d68b242906837770439ed118c57d99"
@@ -71,7 +101,9 @@ def expired_result(started: float) -> dict:
     }
 
 
-def complete(binary: Path, weights: Path, prompt: str, deadline: float) -> dict:
+def complete(
+    binary: Path, weights: Path, prompt: str, deadline: float, *, threads: int = 2
+) -> dict:
     """Kill the single completion process at the case deadline, including prefill."""
     started = time.perf_counter()
     remaining = deadline - started
@@ -91,7 +123,9 @@ def complete(binary: Path, weights: Path, prompt: str, deadline: float) -> dict:
             "-c",
             str(CONTEXT_TOKENS),
             "-t",
-            "2",
+            str(threads),
+            "-tb",
+            str(threads),
             "--temp",
             "0",
             "--seed",
@@ -139,10 +173,23 @@ def complete(binary: Path, weights: Path, prompt: str, deadline: float) -> dict:
     }
 
 
+def render_prompt(tokenizer, messages: list[dict], tools: list[dict], spec: ModelSpec) -> str:
+    options = {"enable_thinking": False} if spec.disable_thinking else {}
+    return tokenizer.apply_chat_template(
+        messages, tools=tools or None, add_generation_prompt=True, tokenize=False, **options
+    )
+
+
 class CpuModel:
-    def __init__(self, host: str = "process") -> None:
+    def __init__(self, host: str = "process", candidate: str = "baseline") -> None:
         if host not in {"process", "reusable"}:
             raise ValueError("Unsupported evaluation host")
+        if candidate not in MODELS:
+            raise ValueError("Unsupported evaluation candidate")
+        self.spec = spec = MODELS[candidate]
+        reported_cpus = os.cpu_count()
+        if (reported_cpus or 1) < spec.threads:
+            raise RuntimeError("Evaluation runner has fewer reported CPUs than the fixed candidate")
         from huggingface_hub import hf_hub_download, snapshot_download
         from transformers import AutoTokenizer
 
@@ -150,11 +197,9 @@ class CpuModel:
         server = self.binary.with_name("llama-server")
         if host == "reusable" and not server.is_file():
             raise ValueError("Fixed engine bundle has no reusable server")
-        self.weights = Path(hf_hub_download(MODEL, WEIGHT_FILE, revision=REVISION, token=False))
-        verify_file(self.weights, WEIGHT_SHA)
         tokenizer_path = snapshot_download(
-            TOKENIZER,
-            revision=TOKENIZER_REVISION,
+            spec.tokenizer,
+            revision=spec.tokenizer_revision,
             token=False,
             allow_patterns=[
                 "tokenizer*.json",
@@ -167,15 +212,38 @@ class CpuModel:
         self.tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path, local_files_only=True, trust_remote_code=False
         )
+        if spec.template_sha is not None:
+            template = self.tokenizer.chat_template
+            if (
+                not isinstance(template, str)
+                or hashlib.sha256(template.encode()).hexdigest() != spec.template_sha
+            ):
+                raise ValueError("Evaluation chat template differs from the reviewed source")
+        if spec.disable_thinking and not render_prompt(
+            self.tokenizer, [{"role": "user", "content": "Synthetic probe"}], [], spec
+        ).endswith("<think>\n\n</think>\n\n"):
+            raise ValueError("Evaluation template did not disable thinking")
+        self.weights = Path(
+            hf_hub_download(spec.model, spec.weight_file, revision=spec.revision, token=False)
+        )
+        verify_file(self.weights, spec.weight_sha)
         self.metadata = {
             "engine": "llama.cpp",
             "engine_tag": ENGINE_TAG,
             "engine_commit": ENGINE_COMMIT,
             "engine_asset_sha256": ENGINE_SHA,
-            "weight_file": WEIGHT_FILE,
-            "weight_sha256": WEIGHT_SHA,
-            "tokenizer": TOKENIZER,
-            "tokenizer_revision": TOKENIZER_REVISION,
+            "candidate": candidate,
+            "weight_file": spec.weight_file,
+            "weight_sha256": spec.weight_sha,
+            "tokenizer": spec.tokenizer,
+            "tokenizer_revision": spec.tokenizer_revision,
+            "chat_template_sha256": spec.template_sha,
+            "thinking_control": "enable_thinking_false"
+            if spec.disable_thinking
+            else "fixed_instruct_template",
+            "reported_cpus": reported_cpus,
+            "generation_threads": spec.threads,
+            "batch_threads": spec.threads,
             "context_tokens": CONTEXT_TOKENS,
             "token_count_basis": "official tokenizer: rendered prompt and visible output",
             "completion_host": host,
@@ -190,7 +258,7 @@ class CpuModel:
         if host == "reusable":
             from scripts.assistant_model_host import ReusableCompletion
 
-            self._host = ReusableCompletion(server, self.weights)
+            self._host = ReusableCompletion(server, self.weights, threads=spec.threads)
             with server.open("rb") as stream:
                 self.metadata["server_executable_sha256"] = hashlib.file_digest(
                     stream, "sha256"
@@ -208,9 +276,7 @@ class CpuModel:
         started = time.perf_counter()
         if started >= deadline:
             return expired_result(started)
-        prompt = self.tokenizer.apply_chat_template(
-            messages, tools=tools or None, add_generation_prompt=True, tokenize=False
-        )
+        prompt = render_prompt(self.tokenizer, messages, tools, self.spec)
         input_tokens = len(self.tokenizer.encode(prompt, add_special_tokens=False))
         if input_tokens + MAX_TOKENS + 64 > CONTEXT_TOKENS:
             return {
@@ -225,7 +291,7 @@ class CpuModel:
         result = (
             self._host.complete(prompt, deadline)
             if self._host is not None
-            else complete(self.binary, self.weights, prompt, deadline)
+            else complete(self.binary, self.weights, prompt, deadline, threads=self.spec.threads)
         )
         if not result["deadline_limited"]:
             result["input_tokens"] = input_tokens

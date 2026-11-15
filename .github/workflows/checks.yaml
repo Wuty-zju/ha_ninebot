@@ -16,13 +16,18 @@ on:
       assistant_profile:
         description: Fixed evaluation case group
         type: choice
-        options: [baseline, retrieval, host_probe, lid_probe, diagnostics, statistics]
+        options: [baseline, retrieval, host_probe, lid_probe, diagnostics, statistics, statistics_probe]
         default: baseline
       assistant_host:
         description: CPU completion host (reusable is a CI-only experiment)
         type: choice
         options: [process, reusable]
         default: process
+      assistant_model:
+        description: Fixed CPU model candidate (capacity requires four reported CPUs)
+        type: choice
+        options: [baseline, capacity]
+        default: baseline
 permissions:
   contents: read
 concurrency:
@@ -143,7 +148,8 @@ jobs:
         env:
           NINEBOT_EVAL_PROFILE: ${{ inputs.assistant_profile || 'baseline' }}
           NINEBOT_EVAL_HOST: ${{ inputs.assistant_host || 'process' }}
-        run: python -m scripts.evaluate_assistant --profile "$NINEBOT_EVAL_PROFILE" --host "$NINEBOT_EVAL_HOST" --output model-results.json
+          NINEBOT_EVAL_MODEL: ${{ inputs.assistant_model || 'baseline' }}
+        run: python -m scripts.evaluate_assistant --profile "$NINEBOT_EVAL_PROFILE" --host "$NINEBOT_EVAL_HOST" --candidate "$NINEBOT_EVAL_MODEL" --output model-results.json
       - name: Preserve completed measurements
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
