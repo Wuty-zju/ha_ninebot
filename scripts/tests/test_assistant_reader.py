@@ -18,6 +18,7 @@ from scripts.assistant_reader import (
     run_reader,
     vehicle_context,
 )
+from scripts.check_assistant_knowledge import knowledge
 from scripts.tests.test_assistant_presentation import receipt
 
 
@@ -189,7 +190,7 @@ class ReaderTests(unittest.IsolatedAsyncioTestCase):
             "等待额度是什么意思？",
         )
         self.assertEqual(result["outcome"], "evidence")
-        self.assertIn("KB 1.2.3", result["text"])
+        self.assertIn(f"KB {knowledge.load_catalog()['corpus_version']}", result["text"])
         self.assertEqual([name for name, _ in backend.calls], [ROSTER, item["name"]])
 
     async def test_help_uses_client_language_when_model_omits_optional_language(self):

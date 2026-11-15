@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.8
+
+- Focus help retrieval on matching topic keywords, keeping prose-only discovery when no topic keyword matches.
+- Clarify the version boundary for sign-in support logs in the bilingual guides and versioned help corpus.
+- Check native Conversation API reuse, current-user permissions, Action responses and cancellation alongside the existing MCP canary.
+
 ## 2.1.7
 
 - Add a development reference host for evaluating period statistics, synchronization health and versioned help through the native Ninebot MCP collection.

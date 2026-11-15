@@ -35,7 +35,7 @@ def receipt(name="get_statistics"):
     args = {"vehicle_ref": "synthetic-device", "period": "yesterday"}
     if name == "search_help":
         args = {"query": "等待额度", "language": "zh-Hans"}
-        payload["data"] = knowledge.search_help("等待额度", "zh-Hans", "2.1.6")
+        payload["data"] = copy.deepcopy(knowledge.search_help("等待额度", "zh-Hans", "2.1.6"))
         payload["quality"] = {}
         payload["evidence"]["source_kind"] = "bundled_public_help"
     return {"name": "ninebot__" + name, "arguments": args, "result": payload}

@@ -246,7 +246,8 @@ def search_help(
         < release_tuple(entry["applicable_versions"]["max_exclusive"])
     ]
     retired = {old for entry in applicable for old in entry["supersedes"]}
-    ranked, keyword_matches = [], []
+    ranked: list[tuple[int, str, dict[str, Any]]] = []
+    keyword_matches: list[tuple[int, str, dict[str, Any]]] = []
     for entry in applicable:
         if entry["id"] in retired:
             continue
