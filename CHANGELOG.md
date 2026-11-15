@@ -2,7 +2,7 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
-## Unreleased
+## 2.1.7
 
 - Add an optional local Qwen reader for period statistics, synchronization health and versioned help through the native Ninebot MCP collection.
 - Display checked tool receipts with dates, metric quality, observation times and source citations; keep model drafts separate from the displayed facts.
