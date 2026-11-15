@@ -16,6 +16,7 @@ from scripts.assistant_reader import (
     native_mcp,
     read_tools,
     run_reader,
+    vehicle_context,
 )
 from scripts.tests.test_assistant_presentation import receipt
 
@@ -69,7 +70,19 @@ class FakeBackend:
     async def call(self, name, args):
         self.calls.append((name, args))
         if name == ROSTER:
-            return {"data": {"vehicles": [{"vehicle_ref": "synthetic-device", "label": "A"}]}}
+            return {
+                "schema_version": 1,
+                "data": {
+                    "vehicles": [
+                        {
+                            "vehicle_ref": "synthetic-device",
+                            "label": "A",
+                            "capabilities": {"cached_status": True, "local_history": True},
+                            "unrecognized_raw": "DO_NOT_SEND_ROSTER",
+                        }
+                    ]
+                },
+            }
         payload = self.payloads.pop(0)
         if isinstance(payload, Exception):
             raise payload
@@ -119,6 +132,30 @@ class ReaderProtocolTests(unittest.TestCase):
             with self.subTest(value=type(value)), self.assertRaises(ReaderError):
                 decode_result(value)
 
+    def test_roster_rejects_invalid_labels_and_capabilities_before_model_input(self):
+        item = {
+            "schema_version": 1,
+            "data": {
+                "vehicles": [
+                    {
+                        "vehicle_ref": "v",
+                        "label": "A",
+                        "capabilities": {"cached_status": True, "local_history": False},
+                    }
+                ]
+            },
+        }
+        self.assertEqual(vehicle_context(item)[0]["label"], "A")
+        for field, value in (
+            ("label", {}),
+            ("label", "A\nB"),
+            ("capabilities", {"cached_status": 1, "local_history": False}),
+        ):
+            broken = copy.deepcopy(item)
+            broken["data"]["vehicles"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ReaderError):
+                vehicle_context(broken)
+
 
 class ReaderTests(unittest.IsolatedAsyncioTestCase):
     async def test_model_draft_is_separate_from_verified_receipt_display(self):
@@ -133,6 +170,8 @@ class ReaderTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("999", result["model_final_answer"])
         self.assertNotIn("999", result["text"])
         self.assertNotIn("DO_NOT_SEND_TO_MODEL", json.dumps(model.inputs))
+        self.assertNotIn("DO_NOT_SEND_ROSTER", json.dumps(model.inputs))
+        self.assertNotIn("DO_NOT_SEND_ROSTER", json.dumps(result["context"]))
         self.assertIn("2026-11-05", result["text"])
         self.assertIn("account_archive", result["text"])
         self.assertEqual(result["tool_calls"], 1)
@@ -152,6 +191,15 @@ class ReaderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["outcome"], "evidence")
         self.assertIn("KB 1.2.3", result["text"])
         self.assertEqual([name for name, _ in backend.calls], [ROSTER, item["name"]])
+
+    async def test_help_uses_client_language_when_model_omits_optional_language(self):
+        item = receipt("search_help")
+        model = FakeModel(
+            generation({"name": item["name"], "arguments": {"query": "等待额度"}}), generation()
+        )
+        backend = FakeBackend(item["result"])
+        await run_reader(model, backend, "等待额度", language="zh-Hans")
+        self.assertEqual(backend.calls[1][1]["language"], "zh-Hans")
 
     async def test_missing_selection_blocks_arbitrary_first_vehicle_before_read(self):
         item = receipt()
@@ -211,6 +259,22 @@ class ReaderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["outcome"], "unavailable")
         self.assertEqual(result["tool_calls"], 2)
         self.assertNotIn("2026-11-05", result["text"])
+
+    async def test_loop_failure_after_success_is_explicit_in_visible_answer(self):
+        item = receipt()
+        call = {"name": item["name"], "arguments": item["arguments"]}
+        for second in (
+            generation({"name": "unsupported", "arguments": {}}),
+            {**generation(), "failure_kind": "host_error"},
+        ):
+            result = await run_reader(
+                FakeModel(generation(call), second),
+                FakeBackend(item["result"]),
+                "compound question",
+                selected_vehicle="synthetic-device",
+            )
+            self.assertIn("2026-11-05", result["text"])
+            self.assertIn("未完成全部查询", result["text"])
 
     async def test_cancel_propagates_without_a_followup_read(self):
         waiting = asyncio.Event()

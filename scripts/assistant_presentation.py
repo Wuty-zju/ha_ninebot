@@ -144,6 +144,10 @@ def statistics(payload, args, zh):
         if zh
         else "available means the metric is available, not proof of a complete total."
     )
+    if any(data[key] is None for key in METRICS):
+        lines.append(
+            "null表示缺少数据，不能当作0。" if zh else "null means missing data, not zero."
+        )
     return lines, True
 
 
@@ -194,6 +198,22 @@ def help_text(payload, args, zh):
             f"{procedure['id']}: "
             + ("辅助清单，不执行操作。" if zh else "Advisory checklist; no operation executed.")
         )
+        for key in ("trigger", "stop", "verify"):
+            lines.append(f"{key}: {prose(procedure.get(key))}")
+        for key in ("required_inputs", "steps"):
+            values = procedure.get(key)
+            require(isinstance(values, list) and len(values) <= 8)
+            lines.extend(f"{key}: {prose(value)}" for value in values)
+        tools = procedure.get("allowed_tools")
+        require(isinstance(tools, list) and 1 <= len(tools) <= 8)
+        require(
+            all(
+                isinstance(tool, str) and re.fullmatch(r"ninebot__[a-z_]{1,64}", tool)
+                for tool in tools
+            )
+        )
+        require(type(procedure.get("max_calls")) is int and 1 <= procedure["max_calls"] <= 4)
+        lines.append(f"advisory_tools: {', '.join(tools)}; max_calls: {procedure['max_calls']}")
     if not matches:
         lines.append("没有适用的帮助证据。" if zh else "No applicable help evidence.")
     return lines, bool(matches)

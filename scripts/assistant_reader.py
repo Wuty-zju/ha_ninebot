@@ -9,6 +9,7 @@ import argparse
 import asyncio
 import getpass
 import json
+import re
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -108,6 +109,43 @@ def read_tools(tools: list[dict], *, help_enabled: bool) -> list[dict]:
     if ROSTER not in names:
         raise ReaderError("vehicle_discovery_unavailable")
     return selected
+
+
+def vehicle_context(roster: dict) -> list[dict]:
+    """Project discovery before any model input or console output."""
+    try:
+        if type(roster.get("schema_version")) is not int or roster["schema_version"] != 1:
+            raise ValueError
+        rows = roster["data"]["vehicles"]
+        if not isinstance(rows, list) or not 1 <= len(rows) <= 20:
+            raise ValueError
+        vehicles = []
+        for row in rows:
+            ref, label, caps = row["vehicle_ref"], row["label"], row["capabilities"]
+            if (
+                not isinstance(ref, str)
+                or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", ref)
+                or not isinstance(label, str)
+                or not 1 <= len(label) <= 96
+                or not label.isprintable()
+                or not isinstance(caps, dict)
+                or any(
+                    type(caps.get(key)) is not bool for key in ("cached_status", "local_history")
+                )
+            ):
+                raise ValueError
+            vehicles.append(
+                {
+                    "vehicle_ref": ref,
+                    "label": label,
+                    "capabilities": {key: caps[key] for key in ("cached_status", "local_history")},
+                }
+            )
+        if len({row["vehicle_ref"] for row in vehicles}) != len(vehicles):
+            raise ValueError
+        return vehicles
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise ReaderError("invalid_vehicle_roster") from None
 
 
 class NativeMCP:
@@ -233,15 +271,8 @@ async def _run_reader(
                 "mcp_tool_calls": 0,
                 "seconds": time.perf_counter() - started,
             }
-        try:
-            vehicles = roster["data"]["vehicles"]
-            if not isinstance(vehicles, list) or not 1 <= len(vehicles) <= 20:
-                raise ValueError
-            refs = [row["vehicle_ref"] for row in vehicles]
-            if any(not isinstance(ref, str) for ref in refs) or len(set(refs)) != len(refs):
-                raise ValueError
-        except (KeyError, TypeError, ValueError):
-            raise ReaderError("invalid_vehicle_roster") from None
+        vehicles = vehicle_context(roster)
+        refs = [row["vehicle_ref"] for row in vehicles]
         if selected_vehicle is not None and selected_vehicle not in refs:
             raise ReaderError("vehicle_not_selected")
         context = {"vehicles": vehicles, "now": now or datetime.now(UTC).isoformat()}
@@ -285,6 +316,8 @@ async def _run_reader(
                 calls += 1
                 state["calls"] = calls
                 name, args = request["name"], request["arguments"]
+                if name == "ninebot__search_help":
+                    args = {"language": language, **args}
                 if name != "ninebot__search_help" and (
                     selected_vehicle is None or args.get("vehicle_ref") != selected_vehicle
                 ):
@@ -330,6 +363,15 @@ async def _run_reader(
                 else "Select a vehicle and retry.",
                 "outcome": "needs_input",
             }
+        elif answer["outcome"] == "evidence" and stop != "model_finished":
+            answer["text"] += (
+                "\n本轮未完成全部查询；以上仅为已核对的结果。"
+                if language == "zh-Hans"
+                else "\nThis turn did not finish all queries; only the checked results are shown."
+            )
+        if len(answer["text"].encode()) > MAX_BYTES:
+            answer = render_answer([], language)
+            stop = "response_too_large"
         return {
             **answer,
             "answer_mode": "verified_tool_presentation",
@@ -353,7 +395,7 @@ async def console(args, token: str) -> None:
             roster = await backend.call(ROSTER, {})
             if "error" in roster:
                 raise ReaderError("vehicle_discovery_unavailable")
-            for vehicle in roster["data"]["vehicles"]:
+            for vehicle in vehicle_context(roster):
                 print(
                     json.dumps(
                         {key: vehicle[key] for key in ("label", "vehicle_ref")}, ensure_ascii=False

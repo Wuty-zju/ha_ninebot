@@ -42,6 +42,25 @@ def receipt(name="get_statistics"):
 
 
 class PresentationTests(unittest.TestCase):
+    def test_all_bundled_checklists_fit_the_reader_without_granting_tools(self):
+        seen = set()
+        for entry in knowledge.load_catalog()["entries"]:
+            for language in ("en", "zh-Hans"):
+                item = receipt("search_help")
+                args = {
+                    "query": entry["translations"][language]["title"],
+                    "language": language,
+                    "include_procedures": True,
+                }
+                item["arguments"] = args
+                item["result"]["data"] = knowledge.search_help(
+                    args["query"], language, "2.1.6", include_procedures=True
+                )
+                answer = render_answer([item], language)
+                self.assertLessEqual(len(json.dumps(answer, ensure_ascii=False).encode()), 16384)
+                seen.update(row["id"] for row in item["result"]["data"]["procedures"])
+        self.assertEqual(seen, {f"SK{i:02}" for i in range(1, 11)})
+
     def test_statistics_date_value_coverage_observation_source_in_both_languages(self):
         for language in ("zh-Hans", "en"):
             answer = render_answer([receipt()], language)
@@ -91,7 +110,12 @@ class PresentationTests(unittest.TestCase):
         item["result"]["data"] = knowledge.search_help(
             "等待额度", "zh-Hans", "2.1.6", include_procedures=True
         )
-        self.assertIn("辅助清单，不执行操作", render_answer([item])["text"])
+        text = render_answer([item])["text"]
+        self.assertIn("辅助清单，不执行操作", text)
+        self.assertIn("required_inputs:", text)
+        self.assertIn("steps:", text)
+        self.assertIn("stop:", text)
+        self.assertIn("max_calls: 3", text)
 
     def test_denial_withdraws_all_success_and_mixed_failure_is_visible(self):
         failure = {
