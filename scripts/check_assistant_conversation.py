@@ -38,7 +38,12 @@ async def check(fixture: SimpleNamespace) -> None:
     action_contexts: list[Context] = []
     sequence = 0
 
-    async def turn(text: str) -> None:
+    async def turn(
+        text: str,
+        *,
+        prompt: str = "Answer the user's question using the selected tools.",
+        extra_system_prompt: str | None = None,
+    ) -> None:
         nonlocal current_context
         current_context = Context(user_id="synthetic-admin")
         user_input = ConversationInput(
@@ -49,12 +54,14 @@ async def check(fixture: SimpleNamespace) -> None:
             satellite_id=None,
             language="en",
             agent_id="conversation.synthetic",
+            extra_system_prompt=extra_system_prompt,
         )
         log.async_add_user_content(UserContent(text))
         await log.async_provide_llm_data(
             user_input.as_llm_context("synthetic_provider"),
             "ninebot",
-            "Answer the user's question using the selected tools.",
+            prompt,
+            user_input.extra_system_prompt,
         )
         assert log.llm_api is not None
         assert log.llm_api.llm_context.context is current_context
@@ -134,6 +141,19 @@ async def check(fixture: SimpleNamespace) -> None:
         assert status.result.data["data"]["battery_soc_percent"] == 42
         assert status.result.data["data"]["charging"] is False
         assert authorized_contexts[-1] is current_context
+
+        cached_prompt, previous_context = log.content[0].content, current_context
+        await turn("Keep this conversation.", prompt="Changed configuration prompt.")
+        assert log.llm_api is instance and log.content[0].content == cached_prompt
+        assert current_context is not previous_context
+
+        selected_ride = (
+            "Current view selection: ride_id=synthetic-visible-ride; query_month=202611."
+        )
+        await turn("Show the selected trip.", extra_system_prompt=selected_ride)
+        assert log.llm_api is not instance
+        assert selected_ride in log.content[0].content and PROMPT in log.content[0].content
+        instance = log.llm_api
 
         snapshot = fixture.coordinator.data["synthetic-vehicle"]
         fixture.coordinator.data["synthetic-vehicle"] = replace(
@@ -246,6 +266,6 @@ async def check(fixture: SimpleNamespace) -> None:
     )
     assert hass.data[DATA_KEY].active == 0
     print(
-        "Native Conversation: seven tools, clarification, turn Context, quality, "
+        "Native Conversation: seven tools, clarification, turn Context/view updates, quality, "
         "Action response, tool-I/O cancellation and cached-API revocation OK (scripted; no model)"
     )
