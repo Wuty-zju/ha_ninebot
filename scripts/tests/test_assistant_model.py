@@ -7,9 +7,9 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from scripts.assistant_model import complete, verify_file
+from scripts.assistant_model import complete, render_prompt, verify_file
 
 
 class CpuHostTests(unittest.TestCase):
@@ -21,6 +21,21 @@ class CpuHostTests(unittest.TestCase):
             path.write_bytes(b"changed-engine")
             with self.assertRaises(ValueError):
                 verify_file(path, hashlib.sha256(b"synthetic-engine").hexdigest())
+
+    def test_render_disables_thinking_and_preserves_tool_messages(self):
+        tokenizer = Mock()
+        tokenizer.apply_chat_template.return_value = "rendered non-thinking prompt"
+        messages = [
+            {"role": "assistant", "tool_calls": [{"id": "call-1", "function": {"name": "query"}}]},
+            {"role": "tool", "tool_call_id": "call-1", "content": '{"value":0}'},
+        ]
+        tools = [{"type": "function", "function": {"name": "query"}}]
+        self.assertEqual(render_prompt(tokenizer, messages, tools), "rendered non-thinking prompt")
+        tokenizer.apply_chat_template.assert_called_once_with(
+            messages, tools=tools, add_generation_prompt=True, tokenize=False, enable_thinking=False
+        )
+        render_prompt(tokenizer, messages, [])
+        self.assertIsNone(tokenizer.apply_chat_template.call_args.kwargs["tools"])
 
     def test_expired_deadline_never_starts_another_process(self):
         with patch("scripts.assistant_model.subprocess.run") as run:
