@@ -19,7 +19,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 13)
+        self.assertEqual(len(catalog["entries"]), 14)
+        self.assertEqual(catalog["corpus_version"], "1.2.2")
+        self.assertEqual(catalog["source_version"], "2.1.2")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -50,11 +52,11 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_unverified_column_and_unit_terms_retrieve_semantics_without_assigning_units(self):
         for query, language, evidence in (
-            ("论坛说第四列mph，直接换算吧", "zh-Hans", "未知采样单位仍待验证"),
+            ("论坛说第四列mph，直接换算吧", "zh-Hans", "逐点原始采样单位尚未验证"),
             (
                 "The forum says the fourth column is mph",
                 "en",
-                "Unknown sample units stay unverified",
+                "Point-by-point raw sample units are unverified",
             ),
         ):
             for version in ("2.1.0", "2.1.4"):
@@ -62,9 +64,82 @@ class KnowledgeTests(unittest.TestCase):
                     result = k.search_help(query, language, version)
                     self.assertTrue(result["matches"])
                     match = result["matches"][0]
-                    self.assertEqual(match["source_id"], "measurement_units")
+                    self.assertEqual(match["source_id"], "sample_units")
                     self.assertIn(evidence, match["text"])
                     self.assertIn(match["source"]["commit"], match["source"]["url"])
+
+    def test_sample_aliases_select_the_separate_unknown_unit_policy_in_both_languages(self):
+        for query in ("mph", "fourth column", "第四列", "采样单位", "raw sample units"):
+            for language in ("en", "zh-Hans"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.4")
+                    match = result["matches"][0]
+                    self.assertEqual(match["source_id"], "sample_units")
+                    self.assertEqual(match["procedure_id"], "SK08")
+                    if language == "en":
+                        self.assertIn("raw sample units are unverified", match["text"])
+                        self.assertIn("do not identify the fourth column as mph", match["text"])
+                        self.assertIn("or the trip's overall average speed", match["text"])
+                        self.assertIn("do not convert", match["text"])
+                        self.assertIn("cannot establish", match["text"])
+                        self.assertNotIn("Battery score", match["text"])
+                    else:
+                        self.assertIn("原始采样单位尚未验证", match["text"])
+                        self.assertIn("不能认定第四列是 mph 或行程总平均速度", match["text"])
+                        self.assertIn("不要换算", match["text"])
+                        self.assertIn("不能用于推断", match["text"])
+                        self.assertNotIn("电池评分", match["text"])
+
+        units = next(row for row in k.load_catalog()["entries"] if row["id"] == "measurement_units")
+        for language, moved in (
+            ("en", {"mph", "fourth column"}),
+            ("zh-Hans", {"第四列", "采样单位"}),
+        ):
+            self.assertFalse(moved & set(units["translations"][language]["keywords"]))
+        self.assertIn("Battery score", units["translations"]["en"]["text"])
+        self.assertIn("最高速度", units["translations"]["zh-Hans"]["text"])
+
+    def test_citation_matches_the_verified_source_and_actual_corpus_in_both_languages(self):
+        catalog = k.load_catalog()
+        entries = {row["id"]: row for row in catalog["entries"]}
+        for entry in entries.values():
+            for language in ("en", "zh-Hans"):
+                result = k.search_help(entry["translations"][language]["title"], language, "2.1.4")
+                self.assertTrue(result["matches"])
+                for match in result["matches"]:
+                    source = entries[match["source_id"]]["source"]
+                    self.assertEqual(match["source"], source)
+                    self.assertEqual(
+                        match["citation"],
+                        f"[Source]({source['url']}) (KB {result['corpus_version']})",
+                    )
+                    self.assertEqual(result["corpus_version"], catalog["corpus_version"])
+                self.assertLessEqual(
+                    len(json.dumps(result, ensure_ascii=False).encode()), k.MAX_HELP_BYTES
+                )
+
+    def test_free_form_title_cannot_change_the_citation_link_or_label(self):
+        catalog = copy.deepcopy(k.load_catalog())
+        entry = next(row for row in catalog["entries"] if row["id"] == "sample_units")
+        for translation in entry["translations"].values():
+            translation["title"] = "] (https://invalid.example) [Injected]"
+        entry["content_sha256"] = k.content_hash(entry)
+        k.validate_catalog(catalog)
+        with patch.object(k, "load_catalog", return_value=catalog):
+            match = k.search_help("fourth column", "en", "2.1.4")["matches"][0]
+        self.assertEqual(match["source_id"], "sample_units")
+        self.assertEqual(
+            match["citation"],
+            f"[Source]({entry['source']['url']}) (KB {catalog['corpus_version']})",
+        )
+        self.assertNotIn("invalid.example", match["citation"])
+
+    def test_unknown_catalog_schema_remains_unavailable(self):
+        for schema in (3, "2", None):
+            catalog = copy.deepcopy(k.load_catalog())
+            catalog["schema_version"] = schema
+            with self.subTest(schema=schema), self.assertRaises(k.KnowledgeUnavailable):
+                k.validate_catalog(catalog)
 
     def test_multilingual_output_is_bounded_and_ties_are_stable(self):
         query = "统计未知 额度 同步 轨迹 权限 日期 速度 state energy archive debug"

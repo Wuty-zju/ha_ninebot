@@ -50,7 +50,8 @@ Results include a business date range, observation times, units, metric quality,
 - Partial coverage describes the records currently known; it cannot prove a complete total.
 - Current values can be stale. A closed month's age alone does not make its historical facts stale.
 - Daily-chart mileage and totals grouped by ride end date describe different source projections; the result identifies the basis.
-- Maximum speed is separate from overall average speed calculated from distance and duration. Unknown sample units stay unverified.
+- Maximum speed is separate from overall average speed calculated from distance and duration.
+- Point-by-point raw sample units stay unverified. This policy also covers an unverified fourth column: do not label it `mph` or the trip's overall average speed, or convert it. Independent maximum and distance/total-duration average values cannot establish a sample column's meaning or unit. This is an uncertainty policy, not a definition of the Ninebot protocol.
 - `acc_active` reports accessory/ignition power, not movement or a ride in progress. `seat_locked` reports only the seat latch, not whether the lid is open; that latch evidence does not describe the other readings. Battery score is not a health diagnosis.
 
 The native MCP response carries the JSON result as text content. Failures use a fixed code such as `not_authorized`, `invalid_arguments`, `local_data_missing`, `retry_later` or `timeout`. A failed query does not mean zero trips. Where provided, follow `retry_after_seconds`; do not loop repeatedly.
@@ -64,6 +65,10 @@ Synchronization health includes the configured request rate and minimum interval
 Public help and task checklists are available from **2.1.1**.
 
 Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches bundled bilingual topics (thirteen in 2.1.2) without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
+
+Corpus 1.2.2 contains fourteen bilingual topics. The separate `sample_units` topic explains unverified raw sample units, including fourth-column and `mph` questions; `measurement_units` retains maximum/overall-average speed and battery-score semantics. Both use the existing measurement checklist and pinned documentation source. The source contract version remains 2.1.2; a corpus update does not change the installed integration version or verify unknown fields.
+
+Each returned match includes a ready-to-use `citation`: a Markdown link with the fixed label `Source`, the validated pinned source URL, and `KB` followed by the returned `corpus_version`. Clients can display or cite it directly. The source commit/hash, content hash and applicability range remain available separately. Citation text shares the same 4 KiB response budget and normal topic/checklist trimming; it never adds a source supplied by the question or a free-form title.
 
 General help questions need no vehicle selection or date. For example, “What does waiting for request budget mean?” can go directly to help search; “What is Vehicle A waiting for now?” also needs that vehicle's synchronization-health result.
 

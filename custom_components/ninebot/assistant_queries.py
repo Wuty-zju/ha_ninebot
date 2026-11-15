@@ -73,6 +73,7 @@ SPECS = (
         "Search Ninebot integration help",
         "Search bundled public help for the installed integration version. Return cited "
         "documentation and advisory task checklists, not vehicle facts. "
+        "Use the returned citation, including its corpus version, when citing help. "
         "Use for general integration behavior, synchronization waits and field meanings. "
         "No vehicle selection or date is required for this help query. "
         "Check required inputs, call budget and stop conditions. "
