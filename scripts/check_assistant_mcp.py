@@ -46,6 +46,7 @@ async def check(
     from aiohttp.test_utils import TestClient, TestServer
     from homeassistant.components.http import KEY_HASS
     from homeassistant.components.mcp_server import http as native_http
+    from homeassistant.components.mcp_server.server import META_DEVICE_ID
     from homeassistant.config_entries import ConfigEntryState
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers import llm
@@ -166,6 +167,7 @@ async def check(
     original_authorize = assistant_queries.async_authorize
     original_instance = NinebotReadAPI.async_get_api_instance
     writes = []
+    metadata_devices = []
 
     class SyntheticWriteTool(llm.Tool):
         name = "ninebot__synthetic_write"
@@ -180,6 +182,7 @@ async def check(
     async def add_write_probe(api, context):
         instance = await original_instance(api, context)
         if context.platform == "mcp_server":
+            metadata_devices.append(context.device_id)
             instance.tools.append(SyntheticWriteTool())
         return instance
 
@@ -293,6 +296,58 @@ async def check(
                     "120.12345",
                 )
             )
+            # Client-origin device metadata must neither select nor authorize a vehicle.
+            hidden_sn, hidden_ref = "synthetic-unexposed-vehicle", "synthetic-unexposed-device"
+            co.data[hidden_sn] = VehicleSnapshot(
+                VehicleProfile(hidden_sn, "Unexposed fixture", "Fixture"),
+                status=VehicleStatus(battery=99),
+                status_freshness=stamp,
+            )
+            co._ownership[hidden_sn] = 0
+            devices[hidden_ref] = SimpleNamespace(
+                id=hidden_ref,
+                config_entry_id=entry_id,
+                identifiers={("ninebot", hidden_sn)},
+                disabled_by=None,
+                parent_device_id=None,
+                name_by_user=None,
+            )
+            try:
+                for source_device in (vehicle_ref, hidden_ref):
+                    _, missing_target = await rpc(
+                        "tools/call",
+                        {
+                            "name": "ninebot__get_vehicle_status",
+                            "arguments": {},
+                            "_meta": {META_DEVICE_ID: source_device},
+                        },
+                    )
+                    assert metadata_devices[-1] == source_device
+                    assert missing_target["result"]["isError"]
+                    _, forbidden = await rpc(
+                        "tools/call",
+                        {
+                            **call,
+                            "arguments": {"vehicle_ref": hidden_ref},
+                            "_meta": {META_DEVICE_ID: source_device},
+                        },
+                    )
+                    assert metadata_devices[-1] == source_device
+                    assert forbidden["result"]["isError"]
+                    error = json.loads(forbidden["result"]["content"][0]["text"])
+                    assert error["error"]["code"] == "not_authorized" and "data" not in error
+                    assert hidden_sn not in json.dumps(forbidden)
+                _, explicit_target = await rpc(
+                    "tools/call", {**call, "_meta": {META_DEVICE_ID: hidden_ref}}
+                )
+                assert metadata_devices[-1] == hidden_ref
+                assert not explicit_target["result"].get("isError", False)
+                value = json.loads(explicit_target["result"]["content"][0]["text"])
+                assert value["data"]["battery_soc_percent"] == 42
+            finally:
+                co.data.pop(hidden_sn)
+                co._ownership.pop(hidden_sn)
+                devices.pop(hidden_ref)
             if scenario is not None:
                 try:
                     await scenario(
@@ -333,7 +388,10 @@ async def check(
             assert "error" in removed
             _, removed_prompt = await rpc("prompts/get", {"name": "Ninebot"})
             assert "error" in removed_prompt
-    print("Native MCP HTTP: read tools/prompts, original Context, consent revocation/removal OK")
+    print(
+        "Native MCP HTTP: read tools/prompts, original Context, untrusted device metadata, "
+        "consent revocation/removal OK"
+    )
 
 
 if __name__ == "__main__":

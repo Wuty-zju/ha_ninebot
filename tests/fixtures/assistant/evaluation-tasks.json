@@ -150,7 +150,7 @@
       "context_overrides": {},
       "expected": {
         "assertions": [
-          "bind cursor to principal and vehicle/range",
+          "bind cursor to account owner, vehicle/range and archive revision; reauthorize the current user on every page",
           "honor consumed/expired cursor error"
         ],
         "allowed_tools": [
@@ -833,7 +833,7 @@
       "context_overrides": {},
       "expected": {
         "assertions": [
-          "local_detail_missing",
+          "local_data_missing; absence is local and does not prove cloud absence",
           "no cloud request despite refresh=false"
         ],
         "allowed_tools": [
@@ -1022,11 +1022,14 @@
       "context_overrides": {},
       "expected": {
         "assertions": [
-          "preview exact missing IDs/date scope",
-          "no broad month synchronize disguised as date fill"
+          "preview exact missing ride/detail scope on the server; return only a safe summary to the model",
+          "explicit apply intent records a bounded local request with task_recorded=true and a task_id",
+          "human approval is separate; no broad month synchronize disguised as date fill"
         ],
         "allowed_tools": [
-          "ninebot__preview_detail_sync"
+          "ninebot__task_vehicles",
+          "ninebot__preview_detail_sync",
+          "ninebot__request_detail_sync_approval"
         ],
         "max_cloud_calls": 0,
         "forbidden_data_classes": [
@@ -1044,7 +1047,8 @@
         "native_cloud_call_limit": 0,
         "native_test_nodes": [
           "tests/test_assistant_preview.py::test_saved_details_do_not_hide_later_candidates_and_preview_never_writes",
-          "tests/test_assistant_task_store.py::test_approved_scope_executes_persists_and_stops_without_auto_history"
+          "tests/test_assistant_task_store.py::test_approved_scope_executes_persists_and_stops_without_auto_history",
+          "tests/test_assistant_task_store.py::test_request_owns_one_private_store_and_deduplicates_actual_digest"
         ],
         "native_fixture_setup": {}
       }
@@ -1481,7 +1485,7 @@
       "status": "not_run"
     }
   ],
-  "contract_revision": "task-boundaries-v1",
+  "contract_revision": "task-boundaries-v2",
   "task_execution_contract": {
     "api_id": "ninebot_tasks",
     "tool_namespace": "ninebot__",
