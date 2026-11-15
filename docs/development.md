@@ -141,7 +141,7 @@ Applications create local review requests. After human approval, the existing sc
 
 ### Versioned public help
 
-`assistant_knowledge.py` lazily reads the bundled JSON catalog in an executor on an authorized help query. Thirteen bilingual topics carry immutable first-party source commits/hashes, content hashes, evidence status and a numeric version range. No private history or external source is indexed. Lexical English/code tokens and Han bigrams rank at most three chunks in a 4 KiB body. Unsupported versions do not borrow newer knowledge. Runtime corruption fails only help.
+`assistant_knowledge.py` lazily reads the bundled JSON catalog in an executor on an authorized help query. Bilingual topics carry immutable first-party source commits/hashes, content hashes, evidence status and a numeric version range. No private history or external source is indexed. Lexical English/code tokens and Han bigrams rank at most three chunks in a 4 KiB body. Unsupported versions do not borrow newer knowledge. Runtime corruption fails only help.
 
 Corpus 1.2.2 gives unverified raw-sample units a separate bilingual topic and moves the fourth-column/`mph` lookup terms there. The existing measurement-semantics topic keeps maximum/overall-average speed and battery-score guidance. Each match also returns a ready-to-use pinned-source `citation` with the actual corpus version. Source validation, applicability, lexical ranking and the combined 4 KiB response limit remain unchanged; see [versioned help](assistant.md#versioned-help).
 
