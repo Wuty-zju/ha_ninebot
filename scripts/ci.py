@@ -67,6 +67,15 @@ def select(paths: list[str], config: dict, available: set[str]) -> dict:
             selected.add("tests/test_field_inventory.py")
             reasons.add("field-disposition")
             continue
+        if path in {
+            "tests/fixtures/assistant/evaluation-tasks.json",
+            "tests/fixtures/assistant/evaluation-fixtures.json",
+        }:
+            # These inputs belong to the protocol tests and native API canary,
+            # not to the HA runtime fixtures. Unknown fixture paths stay broad.
+            native_api = True
+            reasons.add("assistant-evaluation-input")
+            continue
         if matches(path, config["shared_paths"]):
             selected.update(available)
             reasons.add("shared-test-input")

@@ -159,6 +159,20 @@ class ScopeTests(unittest.TestCase):
                 self.assertEqual(set(plan["tests"]), self.available)
                 self.assertIn("shared-test-input", plan["reasons"])
 
+    def test_assistant_evaluation_inputs_keep_native_checks_and_unknown_fixtures_broad(self):
+        for path in (
+            "tests/fixtures/assistant/evaluation-tasks.json",
+            "tests/fixtures/assistant/evaluation-fixtures.json",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(path)
+                self.assertTrue(plan["native_api"])
+                self.assertEqual(plan["tests"], [])
+                self.assertIn("assistant-evaluation-input", plan["reasons"])
+                mixed = self.plan(path, "tests/fixtures/assistant/future.json")
+                self.assertEqual(set(mixed["tests"]), self.available)
+                self.assertTrue(mixed["native_api"])
+
     def test_changed_test_and_ci_self_changes(self):
         plan = select(
             ["tests/test_future.py"], self.config, self.available | {"tests/test_future.py"}
