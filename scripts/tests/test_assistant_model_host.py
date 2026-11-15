@@ -21,6 +21,7 @@ class ReusableHostTests(unittest.TestCase):
             "from http.server import BaseHTTPRequestHandler,HTTPServer\n"
             "assert 'HF_TOKEN' not in os.environ and 'LLAMA_ARG_AGENT' not in os.environ\n"
             "assert '--no-agent' in sys.argv and '--no-webui' in sys.argv\n"
+            "assert sys.argv[sys.argv.index('-t')+1]==sys.argv[sys.argv.index('-tb')+1]\n"
             "class Peer(BaseHTTPRequestHandler):\n"
             " def log_message(self,*args): pass\n"
             " def do_GET(self):\n"
@@ -43,7 +44,7 @@ class ReusableHostTests(unittest.TestCase):
     def test_reuses_one_owned_process_and_resets_cache_between_cases(self):
         with tempfile.TemporaryDirectory() as directory:
             binary, log = self.peer(directory)
-            host = ReusableCompletion(binary, Path("synthetic-weights"))
+            host = ReusableCompletion(binary, Path("synthetic-weights"), threads=4)
             try:
                 with patch.dict("os.environ", {"LLAMA_ARG_AGENT": "true", "HF_TOKEN": "canary"}):
                     first = host.complete("synthetic prompt", time.perf_counter() + 5)
@@ -101,7 +102,9 @@ class ReusableHostTests(unittest.TestCase):
                 result = host.complete("independent case", time.perf_counter() + 5)
                 self.assertEqual(result["text"], "synthetic answer")
                 rows = [json.loads(row) for row in log.read_text().splitlines()]
-                self.assertEqual([row["cache_prompt"] for row in rows], [False, False])
+                # The deadline can expire during startup, before the first POST.
+                self.assertEqual(rows[-1]["prompt"], "independent case")
+                self.assertTrue(all(row["cache_prompt"] is False for row in rows))
             finally:
                 host.close()
 

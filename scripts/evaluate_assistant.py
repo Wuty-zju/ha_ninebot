@@ -17,7 +17,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from zoneinfo import ZoneInfo
 
-from scripts.assistant_model import MAX_TOKENS, MODEL, REVISION, CpuModel
+from scripts.assistant_model import MAX_TOKENS, MODELS, CpuModel
 from scripts.check_assistant_mcp import FIXTURE_INTEGRATION_VERSION
 
 PROFILES = {
@@ -27,6 +27,7 @@ PROFILES = {
     "lid_probe": ("D05",),
     "diagnostics": ("D01", "F03"),
     "statistics": ("Q01", "Q02", "Q09", "Q10"),
+    "statistics_probe": ("Q01",),
 }
 MAX_TURNS = 3
 MAX_CALLS = 4
@@ -551,7 +552,9 @@ async def conversation(
     }
 
 
-async def evaluate(output: Path, profile: str, host: str = "process") -> None:
+async def evaluate(
+    output: Path, profile: str, host: str = "process", candidate: str = "baseline"
+) -> None:
     from scripts.check_assistant_mcp import check
 
     cases_path = ROOT / "tests/fixtures/assistant/evaluation-tasks.json"
@@ -575,8 +578,9 @@ async def evaluate(output: Path, profile: str, host: str = "process") -> None:
                 subprocess.check_output, ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
             )
         ).strip(),
-        "model": MODEL,
-        "model_revision": REVISION,
+        "model": MODELS[candidate].model,
+        "model_revision": MODELS[candidate].revision,
+        "model_candidate": candidate,
         "host_contract": "mcp-text-content-v2",
         "prompt_contract": "native-mcp-prompts-get-v1",
         "request_accounting_contract": "bootstrap-separated-v1",
@@ -603,7 +607,7 @@ async def evaluate(output: Path, profile: str, host: str = "process") -> None:
         "provider_cost_usd": None,
         "cases": [],
     }
-    if profile in {"diagnostics", "statistics"}:
+    if profile in {"diagnostics", "statistics", "statistics_probe"}:
 
         async def verify(fixture):
             validate = (
@@ -613,7 +617,7 @@ async def evaluate(output: Path, profile: str, host: str = "process") -> None:
 
         with TemporaryDirectory(prefix="ninebot-evaluation-fixture-") as directory:
             await check(directory, scenario=verify, reference_time=reference_time)
-    model = await asyncio.to_thread(CpuModel, host)
+    model = await asyncio.to_thread(CpuModel, host, candidate)
     report["model_host"] = model.metadata
     try:
         for case in selected:
@@ -659,9 +663,10 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--profile", choices=PROFILES, default="baseline")
     parser.add_argument("--host", choices=("process", "reusable"), default="process")
+    parser.add_argument("--candidate", choices=MODELS, default="baseline")
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    asyncio.run(evaluate(args.output, args.profile, args.host))
+    asyncio.run(evaluate(args.output, args.profile, args.host, args.candidate))
 
 
 if __name__ == "__main__":

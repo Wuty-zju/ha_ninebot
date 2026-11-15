@@ -23,8 +23,11 @@ class NoRedirect(HTTPRedirectHandler):
 class ReusableCompletion:
     """One owned loopback process, bounded requests and no inherited tool configuration."""
 
-    def __init__(self, binary: Path, weights: Path) -> None:
+    def __init__(self, binary: Path, weights: Path, *, threads: int = 2) -> None:
+        if type(threads) is not int or threads not in {2, 4}:
+            raise ValueError("Unsupported evaluation thread count")
         self.binary, self.weights = binary, weights
+        self.threads = threads
         self.process: subprocess.Popen | None = None
         self.closed = False
         self._token = secrets.token_urlsafe(32)
@@ -106,7 +109,9 @@ class ReusableCompletion:
                 "-c",
                 str(CONTEXT_TOKENS),
                 "-t",
-                "2",
+                str(self.threads),
+                "-tb",
+                str(self.threads),
                 "-ngl",
                 "0",
                 "--parallel",

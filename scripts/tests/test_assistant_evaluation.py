@@ -58,6 +58,7 @@ class ModelProtocolTests(unittest.TestCase):
         self.assertEqual([case["id"] for case in diagnostics], ["D01", "F03"])
         statistics = select_cases(catalog, "statistics")
         self.assertEqual([case["id"] for case in statistics], ["Q01", "Q02", "Q09", "Q10"])
+        self.assertIs(select_cases(catalog, "statistics_probe")[0], statistics[0])
         self.assertTrue(all(any(case is original for original in catalog) for case in statistics))
         self.assertTrue(all(any(case is original for original in catalog) for case in diagnostics))
         self.assertIs(lid_cases[0], next(case for case in catalog if case["id"] == "D05"))
