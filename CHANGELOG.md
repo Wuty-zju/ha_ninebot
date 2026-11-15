@@ -2,6 +2,18 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.13
+
+- Focus account-budget help on request pacing, avoiding unrelated task-application matches.
+- Recognize preview and application tool names in help, including their native prefixes, and clarify that approvals share the account request budget.
+- Add native MCP checks for untrusted device metadata and distinguish tool-I/O cancellation from provider-generation deadlines.
+- Align evaluation contracts with account-scoped cursors, local missing-detail errors and recorded task applications.
+
+## 2.1.12
+
+- Distinguish selected details from the shared attempt allowance, including retries, in task previews, applications and progress.
+- Preserve the earlier preview allowance field and document the matching English and Chinese response contracts.
+
 ## 2.1.11
 
 - Preserve task identifier types and constraints when combining the native read/help and task APIs, in either selection order.
