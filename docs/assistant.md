@@ -14,6 +14,8 @@ Ninebot Assistant makes selected local vehicle information available to a compat
 
 For a native Conversation/Assist host, select the **Ninebot** API if the host supports custom LLM APIs and preserves an authenticated user Context. Available selectors and tool support depend on that host. Ninebot does not configure a model, an API key or a separate listener. A generic Action tool or access to exposed entities is a separate capability; registering Ninebot Actions alone does not enable these dedicated tools.
 
+MCP clients that support prompts can retrieve the **Ninebot** prompt through `prompts/list` and `prompts/get`. Apply it using the client's prompt interface; discovering tools alone does not ensure the client applies this guidance. Permissions are enforced on every tool call regardless of prompt support.
+
 The native MCP handler and tool chain are checked with synthetic authorization and local records. Model-driven answers remain experimental: the evaluated CPU host has not passed the conversation acceptance checks. Authentication and model behavior depend on the chosen host.
 
 ## Ask about local data
