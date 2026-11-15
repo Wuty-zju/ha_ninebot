@@ -722,7 +722,7 @@
               "locked": "Terkunci",
               "unlocked": "Terbuka",
               "seat_locked": "Kompartemen terkunci",
-              "seat_unlocked": "Kompartemen terbuka"
+              "seat_unlocked": "Kunci kompartemen tidak terkunci"
             }
           },
           "changes": {
@@ -735,7 +735,7 @@
               "locked": "Terkunci",
               "unlocked": "Terbuka",
               "seat_locked": "Kompartemen terkunci",
-              "seat_unlocked": "Kompartemen terbuka"
+              "seat_unlocked": "Kunci kompartemen tidak terkunci"
             }
           },
           "summary": {

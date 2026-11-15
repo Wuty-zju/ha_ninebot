@@ -510,10 +510,10 @@
         "name": "昨日: 電力量"
       },
       "month_energy_intensity": {
-        "name": "今月: 距離あたりの消費電力"
+        "name": "今月: 距離あたりの消費電力量"
       },
       "last_energy_intensity": {
-        "name": "前回の走行: 距離あたりの消費電力"
+        "name": "前回の走行: 距離あたりの消費電力量"
       },
       "emergency_battery": {
         "name": "緊急通信用バッテリー"

@@ -46,6 +46,8 @@ Shanghai day changes invalidate only a successful previous-day travel scheduling
 | `used_electricity` | Raw usage with unverified unit; do not silently assign Wh or %. |
 | point speed/delta/CRS/timestamps | Unverified unless that specific shape is evidenced; no automatic scaling, time inference or coordinate conversion. |
 
+The [field disposition matrix](../tests/fixtures/field_inventory/current-field-usage.json) records its source commit and development channel. It maps observed paths to current models and HA representations; historical source snapshots remain unchanged. Reconcile this matrix when changing field units, entity presentation or control observation timing.
+
 Read [fixture provenance](../tests/fixtures/ninecli/0.1.7/metadata.json) before promoting a candidate alias or unit. Recorded/synthetic/maintainer-confirmed evidence are different. Reference parsers without a clear license are behavior/schema leads, not copyable implementation.
 
 ## Historical acquisition
