@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.10
+
+- Query one explicit historical business date through the native Assistant statistics tool, reusing local daily projections and their metric quality.
+- Keep existing relative periods and distinguish verified empty days from missing observations; reject future dates before reading the archive.
+
 ## 2.1.9
 
 - Preserve trip and month observation times in native Assistant pages, including empty results and continued pages.

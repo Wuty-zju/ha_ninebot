@@ -83,6 +83,12 @@ async def check(config_dir: str) -> None:
             properties = formatted.input_schema["properties"]
             assert properties["limit"]["minimum"] == 1 and properties["limit"]["maximum"] == 20
             assert properties["start_date"]["format"] == "date"
+        if tool.name == "ninebot__get_statistics":
+            periods = formatted.input_schema["properties"]["period"]["anyOf"]
+            assert periods == [
+                {"type": "string", "enum": ["today", "yesterday", "this_month", "last_month"]},
+                {"type": "string", "format": "date"},
+            ]
     invalid = await api.async_call_tool(
         llm.ToolInput(
             tool_name="ninebot__get_vehicle_status",
