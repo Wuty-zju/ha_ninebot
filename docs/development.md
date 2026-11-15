@@ -163,6 +163,8 @@ Use `--answer-mode verified --host ollama` with a supported statistics, retrieva
 
 `python -m scripts.check_assistant_mcp` also checks the official SDK's initialize, tool/prompt discovery, authenticated read and close against the installed native handler with synthetic identity. The source client adds no integration dependency, service or persistence. Its access token is prompted locally and never enters the model; it has no production connection during fixture evaluation. Standard-library reader/presentation tests run in the existing Core lint job.
 
+The same native canary replays provider-independent Conversation turns through Core's `ConversationInput` and `ChatLog`. It checks all seven registered tool schemas, clarification without a vehicle read, fresh user context when the API instance is reused, zero/stale/missing values, original-context Action responses, cancellation and consent/user revocation. Scripted stream deltas make these protocol checks deterministic; model-driven decisions and answers are measured separately with the chosen test provider. The fixture's synthetic write probe applies only to the MCP read-only filtering check.
+
 For an explicitly authorized development endpoint, use a source checkout matching the reviewed preview tag and an environment with `mcp==2.3.0`:
 
 ```sh

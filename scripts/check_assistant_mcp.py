@@ -20,6 +20,7 @@ FIXTURE_INTEGRATION_VERSION = "2.1.0"
 
 async def main() -> None:
     from scripts.assistant_reader import native_mcp, read_tools
+    from scripts.check_assistant_conversation import check as check_conversation
 
     async def sdk_handshake(fixture):
         async with native_mcp(fixture.mcp_url, "fixture-admin") as backend:
@@ -29,6 +30,7 @@ async def main() -> None:
             roster = await backend.call("ninebot__get_vehicles", {})
             assert not roster.get("error") and len(roster["data"]["vehicles"]) == 2
         print("Official MCP SDK: initialize, tools, prompt, authenticated read and close OK")
+        await check_conversation(fixture)
 
     with TemporaryDirectory(prefix="ninebot-mcp-") as directory:
         await check(directory, scenario=sdk_handshake)
@@ -66,6 +68,7 @@ async def check(
         "fixture-member": SimpleNamespace(id="synthetic-member", is_admin=False, is_active=True),
     }
     for user in users.values():
+        user.name = "Synthetic user"
         user.permissions = SimpleNamespace(access_all_entities=lambda _permission: True)
     hass.auth = SimpleNamespace(
         async_get_user=AsyncMock(
@@ -176,7 +179,8 @@ async def check(
 
     async def add_write_probe(api, context):
         instance = await original_instance(api, context)
-        instance.tools.append(SyntheticWriteTool())
+        if context.platform == "mcp_server":
+            instance.tools.append(SyntheticWriteTool())
         return instance
 
     async def capture_context(request, context, *args):
