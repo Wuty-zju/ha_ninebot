@@ -11,10 +11,11 @@ import pytest
 from homeassistant.core import Context
 from homeassistant.helpers import device_registry as dr
 
+from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.assistant_errors import error_data
 from custom_components.ninebot.assistant_knowledge import READ_TOOLS, KnowledgeUnavailable
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
-from custom_components.ninebot.assistant_policy import async_require_admin
+from custom_components.ninebot.assistant_policy import AssistantError, async_require_admin
 from custom_components.ninebot.assistant_queries import SPECS, async_query, period_dates
 from custom_components.ninebot.assistant_views import (
     AssistantView,
@@ -118,6 +119,12 @@ async def query(hass, assistant, key, **arguments):
         ("get_vehicle_status", {"fields": ["latitude"]}),
         ("get_statistics", {"period": "all"}),
         ("get_statistics", {"period": "today", "sql": "SELECT *"}),
+        ("get_statistics", {"period": "2026-02-30"}),
+        ("get_statistics", {"period": "2026-2-01"}),
+        ("get_statistics", {"period": "20261006"}),
+        ("get_statistics", {"period": "1999-12-31"}),
+        ("get_statistics", {"period": "2026-10-08"}),
+        ("get_statistics", {"period": "2026-10-06", "end_date": "2026-10-07"}),
         ("get_trip_detail", {"ride_id": "ride-0", "query_month": "202610", "include_track": True}),
         (
             "get_recorded_trips",
@@ -229,6 +236,9 @@ async def test_vehicle_list_uses_consented_names_and_explicit_fleet_limit(hass, 
         ("yesterday", 2, "202610"),
         ("this_month", 2, "202610"),
         ("last_month", None, "202609"),
+        ("2026-10-06", 2, "202610"),
+        ("2026-10-05", 0, "202610"),
+        ("2026-09-30", None, "202609"),
     ],
 )
 async def test_period_statistics_reuse_actions_with_original_context_and_no_refresh(
@@ -242,13 +252,47 @@ async def test_period_statistics_reuse_actions_with_original_context_and_no_refr
     assert action.await_args.kwargs["context"] is assistant.context
     assert action.await_args.args[2]["start_month"] == month
     assert action.await_args.args[2]["refresh"] is False
+    if period[0].isdigit():
+        assert result["query"]["period"] == period
+        assert result["query"]["start_date"] == result["query"]["end_date"] == period
+        assert action.await_args.args[2]["include_daily"] is True
     if count is None:
         assert result["quality"]["metrics"]["ride_count"]["status"] == "missing"
-    if period in {"today", "yesterday"}:
+    if period in {"today", "yesterday", "2026-10-06", "2026-10-05", "2026-09-30"}:
         assert result["evidence"]["ride_date_assignment"] == "whole_ride_end_business_date"
         assert "server_daily_distance_and_ride_end_date_can_differ" in result["warnings"]
     else:
         assert result["evidence"]["ride_date_assignment"] == "server_month"
+
+
+async def test_explicit_business_date_preserves_incomplete_daily_metrics(hass, assistant):
+    payload = {
+        "total_mileages": 14.8,
+        "ec": 340,
+        "times": 2,
+        "duration": 2671,
+        "detail": [0] * 5 + [14.8] + [0] * 24,
+        "list": [
+            {
+                "travel_id": "partial-ride",
+                "mileages": 14.8,
+                "ec": 340,
+                "start_time_format": "2026-09-06 19:00:00",
+                "end_time_format": "2026-09-06 19:44:31",
+                "duration": 2671,
+            }
+        ],
+    }
+    await assistant.co.statistics.async_record(SN, travel(payload, "202609"), NOW)
+    result, error = await query(hass, assistant, "get_statistics", period="2026-09-06")
+    assert not error and result["data"]["distance_km"] == 14.8
+    assert result["data"]["ride_count"] is result["data"]["energy_wh"] is None
+    assert result["quality"]["metrics"]["ride_count"] == {
+        "status": "missing",
+        "reason": "incomplete_month_list",
+    }
+    assert result["quality"]["ride_window_complete"] is False
+    assert result["evidence"]["distance_basis"] == "server_daily_chart"
 
 
 async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(
@@ -690,3 +734,7 @@ def test_business_period_uses_one_business_clock_at_month_rollover():
         "2026-10-01",
         "2026-10-31",
     ]
+    assert [day.isoformat() for day in period_dates("2026-10-31", now)] == ["2026-10-31"] * 2
+    assert [day.isoformat() for day in period_dates("2026-11-01", now)] == ["2026-11-01"] * 2
+    with pytest.raises(AssistantError, match="invalid_arguments"):
+        period_dates("2026-11-02", now)

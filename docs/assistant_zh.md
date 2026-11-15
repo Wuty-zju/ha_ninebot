@@ -30,6 +30,7 @@ Ninebot Assistant 使用 Home Assistant 原生 LLM API 和 MCP 工具。在选�
 
 - “Vehicle A 昨天骑了几趟？”
 - “Vehicle A 上个月耗电多少？”
+- “Vehicle A 在2026年11月5日骑了几趟？”
 - “列出 Vehicle A 11月5日的行程，再查看选中行程的已保存详情。”
 - “Vehicle A 当前状态是否新鲜？”
 - “历史同步在等待什么？”
@@ -41,12 +42,14 @@ Ninebot Assistant 使用 Home Assistant 原生 LLM API 和 MCP 工具。在选�
 | `ninebot__search_help` | `query`；可选 `language`（`en` 或 `zh-Hans`）、`include_procedures`（默认 `false`） | 最多三条附引用的公开帮助；指导具体任务时显式请求任务清单。 |
 | `ninebot__get_vehicles` | 无 | 已向 AI 授权的车辆引用、显示名称及本地数据能力。 |
 | `ninebot__get_vehicle_status` | `vehicle_ref` | 缓存状态/BMS 数值及分组观测质量，不刷新、不返回坐标。 |
-| `ninebot__get_statistics` | `vehicle_ref`、`period` | 本地 `today`、`yesterday`、`this_month`、`last_month` 统计及逐指标覆盖情况。 |
+| `ninebot__get_statistics` | `vehicle_ref`、`period` | 本地 `today`、`yesterday`、`this_month`、`last_month` 或单个明确业务日期的统计及逐指标覆盖情况。 |
 | `ninebot__get_recorded_trips` | `vehicle_ref`、`start_date`、`end_date`；可选 `limit`、`cursor` | 一页按时间倒序排列的本地行程。日期格式 `YYYY-MM-DD`，含首尾最多31天；默认10条，最多20条。 |
 | `ninebot__get_trip_detail` | `vehicle_ref`、`ride_id`、`query_month` | 对应车辆及月份中已验证行程的本地标量详情。使用列表返回的行程 ID 和 `YYYYMM` 月份。 |
 | `ninebot__get_sync_health` | `vehicle_ref` | 本地覆盖、进度、额度和调度状态，不启动或恢复同步。 |
 
 全部工具均读取本地信息。缺失详情需要通过正常的[历史功能](history_zh.md)采集；AI 只读调用不会触发云请求。列表游标可能被消费，应继续使用返回的下一页游标，不反复重放上一游标。一页记录数量不代表整个时间段的行程总数。
+
+从 **2.1.10** 起，`get_statistics` 的 `period` 也接受一个 `YYYY-MM-DD` 日期，例如 `2026-11-05`。日期沿用 Asia/Shanghai，范围从2000年起，不接受未来日期；查询读取已有本地日投影。已验证的空日可返回0，未观测日期保持未知，原四个相对周期继续可用。
 
 从 **2.1.9** 起，行程分页保留每条记录的 `received_at`，并在 `quality.months` 返回最多三个月份的观测摘要，空页也保留这些信息。`query.as_of` 表示本次工具调用时间，`quality.page_as_of` 表示游标各页沿用的选取截止时点，均与档案的实际观测时间区分。固定截止时点不等于冻结整个数据库，也不能证明云端完整性；缺失的观测信息保持 `null`。
 

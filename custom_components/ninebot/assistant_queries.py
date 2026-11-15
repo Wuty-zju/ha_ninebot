@@ -113,12 +113,16 @@ SPECS = (
         "get_statistics",
         "Read local trip statistics",
         "Read the user's selected vehicle and explicit business period. Ask for a period if "
-        "none is specified. Null/missing metrics are unknown, never zero; partial coverage "
-        "does not prove a total. Use returned values, units and per-metric quality, not SQL.",
+        "none is specified. Use today, yesterday, this_month, last_month, or one YYYY-MM-DD "
+        "date on or before today in Asia/Shanghai. Null/missing metrics are unknown, never zero; "
+        "partial coverage does not prove a total. Use returned values, units and per-metric "
+        "quality, not SQL.",
         vol.Schema(
             {
                 **VEHICLE,
-                vol.Required("period"): vol.In(("today", "yesterday", "this_month", "last_month")),
+                vol.Required("period"): vol.Any(
+                    vol.In(("today", "yesterday", "this_month", "last_month")), business_date
+                ),
             }
         ),
     ),
@@ -196,7 +200,13 @@ def period_dates(period: str, now: datetime) -> tuple[date, date]:
     if period == "last_month":
         last = today.replace(day=1) - timedelta(days=1)
         return last.replace(day=1), last
-    raise AssistantError("invalid_arguments")
+    try:
+        selected = date.fromisoformat(business_date(period))
+    except vol.Invalid as err:
+        raise AssistantError("invalid_arguments") from err
+    if selected > today:
+        raise AssistantError("invalid_arguments")
+    return selected, selected
 
 
 async def _action(
@@ -284,7 +294,7 @@ async def _vehicle_query(
         ), query
     if key == "get_statistics":
         start, end = period_dates(args["period"], now)
-        daily = args["period"] in {"today", "yesterday"}
+        daily = args["period"] not in {"this_month", "last_month"}
         query = {
             "period": args["period"],
             "start_date": start.isoformat(),

@@ -30,6 +30,7 @@ Examples:
 
 - “How many trips did Vehicle A make yesterday?”
 - “How much energy did Vehicle A use last month?”
+- “How many trips did Vehicle A make on November 5, 2026?”
 - “List Vehicle A's trips on November 5, then show the selected trip's saved detail.”
 - “Is Vehicle A's status fresh?”
 - “What is the history synchronization waiting for?”
@@ -41,12 +42,14 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 | `ninebot__search_help` | `query`; optional `language` (`en` or `zh-Hans`), `include_procedures` (default `false`) | Up to three cited public help topics; explicitly request task checklists when guiding a task. |
 | `ninebot__get_vehicles` | None | AI-authorized vehicle references, display labels and local-data capabilities. |
 | `ninebot__get_vehicle_status` | `vehicle_ref` | Cached status/BMS values and per-group observation quality; no refresh or coordinates. |
-| `ninebot__get_statistics` | `vehicle_ref`, `period` | Local `today`, `yesterday`, `this_month` or `last_month` statistics with per-metric coverage. |
+| `ninebot__get_statistics` | `vehicle_ref`, `period` | Local `today`, `yesterday`, `this_month`, `last_month` or one explicit business date, with per-metric coverage. |
 | `ninebot__get_recorded_trips` | `vehicle_ref`, `start_date`, `end_date`; optional `limit`, `cursor` | One descending local page. Dates use `YYYY-MM-DD`, up to 31 inclusive days; default 10, maximum 20 records. |
 | `ninebot__get_trip_detail` | `vehicle_ref`, `ride_id`, `query_month` | Saved scalar detail for a verified trip from that vehicle/month. Use the list's ID and `YYYYMM` month. |
 | `ninebot__get_sync_health` | `vehicle_ref` | Local coverage, progress, budget and scheduling state. Does not start or resume work. |
 
 All tools read local information. Missing details remain missing until acquired through the normal [history features](history.md); an AI read never starts a cloud fetch. List cursors can be consumed: follow the returned next cursor rather than replaying the previous one. A page count is not the period's total.
+
+From **2.1.10**, `get_statistics` also accepts a single `YYYY-MM-DD` value in `period`, such as `2026-11-05`. Dates use Asia/Shanghai, start at 2000 and cannot be in the future. This reads the existing local daily projection for that date. A verified empty day can return zero; an unobserved day remains unknown. The four relative periods continue to work.
 
 From **2.1.9**, recorded-trip pages retain each ride's `received_at` and up to three month observations in `quality.months`, including on an empty page. `query.as_of` is the current tool-call time; `quality.page_as_of` is the selection cutoff retained across cursor pages. These are distinct from the archive's observation times. A fixed cutoff does not freeze the entire database or prove cloud completeness. Missing observation metadata stays `null`.
 
