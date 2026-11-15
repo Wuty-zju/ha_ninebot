@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.2",
+  "corpus_version": "1.2.3",
   "source_version": "2.1.2",
   "entries": [
     {
@@ -881,7 +881,7 @@
         "max_exclusive": "2.2.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-15",
       "allowed_tools": [
         "get_sync_health",
         "get_recorded_trips",
@@ -891,13 +891,14 @@
       "translations": {
         "en": {
           "title": "Inspect synchronization coverage",
-          "trigger": "User asks about waiting or missing details.",
+          "trigger": "User asks about a specific vehicle's current synchronization or missing details.",
           "required_inputs": [
             "Selected vehicle",
             "Dates when listing gaps"
           ],
           "steps": [
-            "Read sync health and scheduling/coverage denominators.",
+            "For a general concept, use documented help without selecting or reading a vehicle.",
+            "For the selected vehicle, read sync health and scheduling/coverage denominators.",
             "Use one local page or matching help when needed."
           ],
           "stop": "Do not start sync or change budget; saved 100% is not full cloud history.",
@@ -905,20 +906,21 @@
         },
         "zh-Hans": {
           "title": "检查同步和缺口",
-          "trigger": "询问同步等待或缺失详情。",
+          "trigger": "询问具体车辆当前的同步状态或缺失详情。",
           "required_inputs": [
             "已选车辆",
             "列缺口时提供日期"
           ],
           "steps": [
-            "读取同步健康，核对调度及覆盖率分母。",
+            "一般概念仅查文档帮助，无须选车或读取车辆。",
+            "针对已选车辆读取同步健康，核对调度及覆盖率分母。",
             "按需读取一页本地记录或对应帮助。"
           ],
           "stop": "不启动同步或修改额度，保存100%不是全云历史。",
           "verify": "区分发现、保存、映射与校验，说明下次/重试时间。"
         }
       },
-      "content_sha256": "9fa0ba45f74412a4b6de11ed04765f6d6abc727c7b23cd3ee996a8a49188b0f0"
+      "content_sha256": "639b0c91f62481c2fe364184473288c2c29d392b31e53cae55a37d4d2f292f22"
     },
     {
       "id": "SK07",

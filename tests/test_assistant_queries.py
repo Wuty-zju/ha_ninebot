@@ -14,6 +14,7 @@ from homeassistant.helpers import device_registry as dr
 from custom_components.ninebot.assistant_errors import error_data
 from custom_components.ninebot.assistant_knowledge import READ_TOOLS, KnowledgeUnavailable
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
+from custom_components.ninebot.assistant_policy import async_require_admin
 from custom_components.ninebot.assistant_queries import SPECS, async_query, period_dates
 from custom_components.ninebot.assistant_views import AssistantView, numeric, statistics_view
 from custom_components.ninebot.raw import Endpoint, build_record
@@ -338,21 +339,54 @@ async def test_sync_health_reports_configured_pacing_not_invented_remaining_call
     assert "remaining" not in result["data"]
 
 
-async def test_help_reads_only_bundled_sources_and_never_calls_actions(hass, assistant):
-    with patch.object(type(hass.services), "async_call", new=AsyncMock()) as action:
+@pytest.mark.parametrize(
+    "option", [{}, {"include_procedures": False}, {"include_procedures": True}]
+)
+async def test_help_reads_only_bundled_sources_and_never_calls_actions(hass, assistant, option):
+    with (
+        patch.object(type(hass.services), "async_call", new=AsyncMock()) as action,
+        patch(
+            "custom_components.ninebot.assistant_queries.async_require_admin",
+            new=AsyncMock(wraps=async_require_admin),
+        ) as require_admin,
+    ):
         result, error = await async_query(
-            hass, "search_help", {"query": "等待请求额度", "language": "zh-Hans"}, assistant.context
+            hass,
+            "search_help",
+            {"query": "等待请求额度", "language": "zh-Hans", **option},
+            assistant.context,
         )
     assert not error
     assert "vehicle_ref" not in result
     assert result["data"]["matches"][0]["source_id"] == "sync_budget"
     assert result["evidence"]["source_kind"] == "bundled_public_help"
-    assert result["data"]["procedures"][0]["id"] == "SK06"
+    assert result["data"]["matches"][0]["procedure_id"] == "SK06"
+    assert "citation" in result["data"]["matches"][0]
+    if option.get("include_procedures", False):
+        assert result["data"]["procedures"][0]["id"] == "SK06"
+        assert set(result["data"]["procedures"][0]["allowed_tools"]) <= {
+            f"ninebot__{spec.key}" for spec in SPECS
+        }
+    else:
+        assert result["data"]["procedures"] == []
     assert all(name in {spec.key for spec in SPECS} for name in READ_TOOLS)
-    assert set(result["data"]["procedures"][0]["allowed_tools"]) <= {
-        f"ninebot__{spec.key}" for spec in SPECS
-    }
     assert len(json.dumps(result["data"], ensure_ascii=False).encode()) <= 4096
+    assert require_admin.call_count > 0
+    assert all(call.args[1] is assistant.context for call in require_admin.call_args_list)
+    action.assert_not_awaited()
+
+
+@pytest.mark.parametrize("value", [0, 1, "true", "false", None, [], {}])
+async def test_help_rejects_non_boolean_procedure_option_before_read(hass, assistant, value):
+    with (
+        patch("custom_components.ninebot.assistant_queries.search_help") as search,
+        patch.object(type(hass.services), "async_call", new=AsyncMock()) as action,
+    ):
+        result, error = await async_query(
+            hass, "search_help", {"query": "budget", "include_procedures": value}, assistant.context
+        )
+    assert error and result["error"]["code"] == "invalid_arguments"
+    search.assert_not_called()
     action.assert_not_awaited()
 
 
@@ -378,7 +412,8 @@ async def test_help_corruption_does_not_break_vehicle_queries(hass, assistant):
     assert not error
 
 
-async def test_help_rechecks_consent_after_executor_read(hass, assistant):
+@pytest.mark.parametrize("include_procedures", [False, True])
+async def test_help_rechecks_consent_after_executor_read(hass, assistant, include_procedures):
     original_executor = hass.async_add_executor_job
 
     async def revoke_after_read(*args):
@@ -391,7 +426,10 @@ async def test_help_rechecks_consent_after_executor_read(hass, assistant):
 
     with patch.object(hass, "async_add_executor_job", side_effect=revoke_after_read):
         result, error = await async_query(
-            hass, "search_help", {"query": "statistics"}, assistant.context
+            hass,
+            "search_help",
+            {"query": "statistics", "include_procedures": include_procedures},
+            assistant.context,
         )
     assert error and result["error"]["code"] == "not_authorized"
     assert "data" not in result

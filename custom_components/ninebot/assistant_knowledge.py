@@ -226,10 +226,14 @@ def terms(text: str) -> set[str]:
     return result
 
 
-def search_help(query: str, language: str, installed_version: str) -> dict[str, Any]:
+def search_help(
+    query: str, language: str, installed_version: str, *, include_procedures: bool = False
+) -> dict[str, Any]:
     """Retrieve at most three applicable evidence chunks in a 4 KiB body."""
     if not isinstance(query, str) or not 1 <= len(query.strip()) <= 240:
         raise KnowledgeUnavailable("invalid_help_query")
+    if type(include_procedures) is not bool:
+        raise KnowledgeUnavailable("invalid_help_options")
     catalog = load_catalog()
     version = release_tuple(installed_version)
     language = "zh-Hans" if language.casefold().startswith("zh") else "en"
@@ -284,8 +288,10 @@ def search_help(query: str, language: str, installed_version: str) -> dict[str, 
             "procedure_id": entry["procedure_id"],
         }
         result["matches"].append(match)
-        new_procedure = entry["procedure_id"] is not None and all(
-            row["id"] != entry["procedure_id"] for row in result["procedures"]
+        new_procedure = (
+            include_procedures
+            and entry["procedure_id"] is not None
+            and all(row["id"] != entry["procedure_id"] for row in result["procedures"])
         )
         if new_procedure:
             procedure = next(

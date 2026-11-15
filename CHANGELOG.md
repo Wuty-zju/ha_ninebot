@@ -2,6 +2,10 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## Unreleased
+
+- Keep public-help answers focused on documented concepts by default; retrieve advisory task checklists only when explicitly requested for a specific task.
+
 ## 2.1.5
 
 - Separate unverified raw-sample unit guidance from maximum/average-speed and battery-score help, and return ready-to-use pinned-source citations with the knowledge corpus version.
