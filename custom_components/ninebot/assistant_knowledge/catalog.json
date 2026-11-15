@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.5",
+  "corpus_version": "1.2.6",
   "source_version": "2.1.2",
   "entries": [
     {
@@ -54,39 +54,44 @@
         "max_exclusive": "2.2.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-16",
       "supersedes": [],
       "source": {
         "path": "docs/history.md",
-        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
-        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
-        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#coverage-and-statistics"
+        "commit": "3c89cfe244e1eea4a214c033629aad3db11ed575",
+        "sha256": "db2435d0b64eec2a46ceb46f55b617213cbcb2bd72040cd4b42c0079c22bd1fb",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/3c89cfe244e1eea4a214c033629aad3db11ed575/docs/history.md#coverage-and-statistics"
       },
       "translations": {
         "en": {
           "title": "Business dates and period boundaries",
-          "text": "Rides belong wholly to their Asia/Shanghai end date, without invented midnight allocation. Adjacent-month evidence may be needed. New days and months never inherit previous-period totals. Cached same-period entity values do not establish completeness for strict historical statistics.",
+          "text": "Count, duration, energy and ride-based average consumption use whole rides assigned to their Asia/Shanghai end date, without midnight allocation. Daily distance prefers server_daily_chart; verified returned_unique_rides may supply missing chart distance. Check distance_basis. A recorded-trip page selects overlapping rides, not daily-statistics membership. Browser timezone does not change this contract. Adjacent-month evidence may be needed; new periods never inherit old totals, and cached entity values do not certify strict statistics.",
           "keywords": [
             "date",
             "midnight",
             "period",
             "timezone",
-            "end date"
+            "end date",
+            "attribution",
+            "overlap"
           ]
         },
         "zh-Hans": {
           "title": "业务日期与周期边界",
-          "text": "行程整体归入上海时区的结束日期，不按午夜虚构拆分；月边界可能需要相邻月份证据。新日或新月不会继承旧周期总量。实体保留同周期缓存值并不代表严格历史统计已经完整。",
+          "text": "次数、时长、能量及行程平均能耗按上海时区的结束日整趟归属，不按午夜拆分。每日里程优先使用 server_daily_chart，缺报时可由已核验的 returned_unique_rides 补足，应核对 distance_basis。行程分页选择日期有重叠的记录，不能把浏览范围等同按日统计归属。浏览器时区不改变此契约；月边界可能需相邻月份证据。新周期不继承旧总量，实体缓存不代表严格统计已完整。",
           "keywords": [
             "日期",
             "跨日",
             "时区",
             "周期",
-            "结束时间"
+            "结束时间",
+            "跨零点",
+            "午夜",
+            "算哪天"
           ]
         }
       },
-      "content_sha256": "771ba66b0e88473b406df691fa2a2e03bce9a74fbd77a8f246f97637d76927c1",
+      "content_sha256": "1b4cc6efe15d0f3db2608c4e9e96443a05ee7e862c0400334b2690a6f12097a6",
       "procedure_id": "SK03"
     },
     {
@@ -268,18 +273,18 @@
         "max_exclusive": "2.2.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-15",
+      "reviewed_at": "2026-11-16",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
-        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
-        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
-        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+        "commit": "3c89cfe244e1eea4a214c033629aad3db11ed575",
+        "sha256": "7d63e6df96c291123b7ebef19b84046a4db521d85d2941aa30ae02c4eb14a3cf",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/3c89cfe244e1eea4a214c033629aad3db11ed575/docs/assistant.md#read-the-evidence"
       },
       "translations": {
         "en": {
           "title": "Preserve measurement semantics",
-          "text": "Server maximum speed is different from overall average speed calculated from distance and duration. Use returned units rather than guessing. Battery score is not SOH or a health diagnosis. Do not infer movement, maintenance advice or charging energy from incomplete samples.",
+          "text": "Server maximum speed is different from overall average speed calculated from distance and duration. Use returned units rather than guessing. Battery score is not SOH or a health diagnosis. The integration displays score 0 as unsupported under a maintainer rule; it does not establish battery damage. Do not infer movement, maintenance advice or charging energy from incomplete samples.",
           "keywords": [
             "speed",
             "average",
@@ -291,7 +296,7 @@
         },
         "zh-Hans": {
           "title": "保留指标语义与单位",
-          "text": "服务端最高速度不同于距离除以时长的总平均速度；应使用工具返回单位。电池评分不是SOH或健康诊断。不从不完整采样推断移动、维修建议或充电能量。",
+          "text": "服务端最高速度不同于距离除以时长的总平均速度；应使用工具返回单位。电池评分不是SOH或健康诊断；集成按维护者规则将评分 0 显示为不支持，不能据此判断电池损坏。不从不完整采样推断移动、维修建议或充电能量。",
           "keywords": [
             "速度",
             "平均",
@@ -302,7 +307,7 @@
           ]
         }
       },
-      "content_sha256": "bc31cde94137de774552af24b731758ef62328b608515fabea55cd2c7afac310",
+      "content_sha256": "c9128d2a37c65e8f81e87b1cb40d6d1fc37b425d1b799ef8e7108b940ce3b370",
       "procedure_id": "SK08"
     },
     {
@@ -527,7 +532,7 @@
       "translations": {
         "en": {
           "title": "Request review of missing trip details",
-          "text": "From 2.1.2, the separate Ninebot tasks API offers local gap preview and an explicit application for human review. Enable account task consent and select allowed vehicles first. Preview at most 31 business days; freeze at most 20 mapped missing details. The total logical attempt allowance is twice the selected count, capped at 20, with shared account pacing. Applications do not query the cloud. The original requester must open Ninebot Assistant in HA with the same user, review the exact scope and approve separately. A read-only MCP server hides the application tool. Task approval does not bypass the account request budget.",
+          "text": "From 2.1.2, the separate Ninebot tasks API offers local gap preview and an explicit application for human review. Enable account task consent and select allowed vehicles first. Preview at most 31 business days; freeze at most 20 mapped missing details. The total logical attempt allowance is twice the selected count, capped at 20, with shared account pacing. Applications do not query the cloud. The original requester reviews and approves in HA's Ninebot Assistant panel with the same user. The global /api/mcp route hides applications when read-only is enabled; explicit /api/mcp/ninebot_tasks does not inherit that filter. Account consent still applies; cloud execution requires separate human approval. Approval does not bypass the account request budget.",
           "keywords": [
             "task",
             "application",
@@ -543,7 +548,7 @@
         },
         "zh-Hans": {
           "title": "申请审核缺失行程详情",
-          "text": "从 2.1.2 起，独立 Ninebot tasks API 提供本地预览和明确的人工审核申请。先开启账号任务功能并选择车辆；最多预览 31 个业务日，冻结最多 20 条已映射的缺失详情。总逻辑尝试上限为选中条数两倍、最多 20 次，共享账号请求间隔。申请不查询云端。原申请人须使用同一个 HA 用户去 Ninebot Assistant 面板核对范围后另行批准；MCP 只读模式隐藏申请工具。任务审批不会绕过账号请求额度。",
+          "text": "从 2.1.2 起，独立 Ninebot tasks API 提供本地预览和明确的人工审核申请。先开启账号任务功能并选择车辆；最多预览 31 个业务日，冻结最多 20 条已映射缺失详情。总逻辑尝试上限为选中条数两倍、最多 20 次，共享账号请求间隔。申请不查询云端。原申请人须用同一 HA 用户去 Ninebot Assistant 面板核对并另行批准。全局 /api/mcp 在只读开启时隐藏申请工具；显式 /api/mcp/ninebot_tasks 不继承此过滤，仍须账号任务授权，云端执行须独立人工批准。任务审批不会绕过账号请求额度。",
           "keywords": [
             "申请",
             "人工审核",
@@ -557,9 +562,9 @@
       },
       "source": {
         "path": "docs/assistant.md",
-        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
-        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
-        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+        "commit": "3c89cfe244e1eea4a214c033629aad3db11ed575",
+        "sha256": "7d63e6df96c291123b7ebef19b84046a4db521d85d2941aa30ae02c4eb14a3cf",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/3c89cfe244e1eea4a214c033629aad3db11ed575/docs/assistant.md#reviewable-history-tasks-beta"
       },
       "applicable_versions": {
         "min_inclusive": "2.1.2",
@@ -568,7 +573,7 @@
       "evidence_status": "first_party_contract",
       "reviewed_at": "2026-11-16",
       "supersedes": [],
-      "content_sha256": "99434aee9596fb30a5133e2a58ba7182e09238527403c55515b58494649f335a"
+      "content_sha256": "3d2bbfc3bbb47710f1a7b53f08d695259f8c5057cde7059b2c29db669bcf88a7"
     },
     {
       "id": "task_progress",
