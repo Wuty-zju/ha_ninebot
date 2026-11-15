@@ -312,8 +312,11 @@ def proposal_month(count=2):
     )
 
 
+@pytest.mark.parametrize(
+    "count, selected, attempts", [(1, 1, 2), (2, 2, 4), (12, 12, 20), (21, 20, 20)]
+)
 async def test_local_proposal_binds_original_caller_and_projects_no_private_plan(
-    hass, entry, proposal_device, app_client, freezer
+    hass, entry, proposal_device, app_client, freezer, count, selected, attempts
 ):
     import hashlib
     import json
@@ -324,7 +327,7 @@ async def test_local_proposal_binds_original_caller_and_projects_no_private_plan
     now = datetime(2026, 11, 7, tzinfo=UTC)
     freezer.move_to(now)
     archive = entry.runtime_data.coordinator.statistics.archive
-    await archive.async_record_month("SyntheticSN", proposal_month(), now)
+    await archive.async_record_month("SyntheticSN", proposal_month(count), now)
     await hass.async_block_till_done()
     context = Context(user_id="synthetic")
     app_client.reset_mock()
@@ -339,11 +342,15 @@ async def test_local_proposal_binds_original_caller_and_projects_no_private_plan
     assert plan.user_id == context.user_id and plan.account_key == archive.owner
     assert plan.sn == "SyntheticSN" and plan.vehicle_ref == proposal_device
     assert plan.start_date == plan.end_date == date(2026, 11, 6)
-    assert plan.created_at == now and plan.attempts == 4
+    assert plan.created_at == now and plan.attempts == attempts
     output = result.model_data()
-    assert output["coverage"]["known_local_rides"] == 2
+    assert output["coverage"]["known_local_rides"] == count
     assert output["coverage"]["missing_months"] == []
-    assert output["requests"]["maximum_after_approval"] == 4
+    assert output["selection"] == {"count": selected, "has_more": count > selected}
+    assert output["requests"]["maximum_detail_attempts"] == attempts
+    assert output["requests"]["maximum_after_approval"] == attempts
+    assert output["requests"]["attempts_include_retries"] is True
+    assert output["requests"]["attempt_scope"] == "entire_selection"
     assert output["requests"]["account_minimum_interval_seconds"] == 60
     assert output["task_created"] is False and output["approval_required"] is True
     assert output["plan"]["digest"] == plan.digest
@@ -381,6 +388,7 @@ async def test_proposal_no_local_scope_does_not_create_an_executable_plan(
     assert result.plan is None
     output = result.model_data()
     assert output["plan"] is None and output["requests"]["maximum_after_approval"] == 0
+    assert output["selection"]["count"] == output["requests"]["maximum_detail_attempts"] == 0
     assert output["coverage"]["upstream_history_complete"] == "unverified"
     # Setup may have observed this month without a complete list.
     if count == 0:

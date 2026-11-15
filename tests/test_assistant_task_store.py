@@ -313,6 +313,7 @@ async def test_request_owns_one_private_store_and_deduplicates_actual_digest(
     import hashlib
     import json
 
+    from custom_components.ninebot.assistant_task_views import ticket_view
     from custom_components.ninebot.assistant_tasks import async_request_details
 
     first = await seeded_request(hass, entry, task_store)
@@ -332,6 +333,12 @@ async def test_request_owns_one_private_store_and_deduplicates_actual_digest(
         assert secret not in raw
     pending = (await store._read())[first["task"]["task_id"]]
     assert pending.nonce_hash is None and pending.approved_at is None
+    task = ticket_view(pending)
+    assert task["selected_count"] == first["selection"]["count"] == 1
+    for key in ("maximum_detail_attempts", "attempts_include_retries", "attempt_scope"):
+        assert task[key] == first["requests"][key]
+    assert task["maximum_detail_attempts"] == 2
+    assert task["saved_count"] is task["attempts_used"] is None
     _, nonce = await store.async_prepare(pending.task_id, task_store.context)
     await store.async_approve(pending.task_id, task_store.context, nonce, pending.plan.digest)
     repeated = await async_request_details(
