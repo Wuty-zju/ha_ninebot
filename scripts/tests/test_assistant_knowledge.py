@@ -48,6 +48,24 @@ class KnowledgeTests(unittest.TestCase):
         with self.assertRaises(k.KnowledgeUnavailable):
             k.search_help("unknown", "en", "not-a-version")
 
+    def test_unverified_column_and_unit_terms_retrieve_semantics_without_assigning_units(self):
+        for query, language, evidence in (
+            ("论坛说第四列mph，直接换算吧", "zh-Hans", "未知采样单位仍待验证"),
+            (
+                "The forum says the fourth column is mph",
+                "en",
+                "Unknown sample units stay unverified",
+            ),
+        ):
+            for version in ("2.1.0", "2.1.4"):
+                with self.subTest(query=query, version=version):
+                    result = k.search_help(query, language, version)
+                    self.assertTrue(result["matches"])
+                    match = result["matches"][0]
+                    self.assertEqual(match["source_id"], "measurement_units")
+                    self.assertIn(evidence, match["text"])
+                    self.assertIn(match["source"]["commit"], match["source"]["url"])
+
     def test_multilingual_output_is_bounded_and_ties_are_stable(self):
         query = "统计未知 额度 同步 轨迹 权限 日期 速度 state energy archive debug"
         first = k.search_help(query, "zh-Hans", "2.1.1")
