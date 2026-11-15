@@ -21,6 +21,7 @@ PROFILES = {
     "baseline": ("Q03", "Q04", "P06", "S02"),
     "retrieval": ("R02", "R04"),
     "host_probe": ("Q04",),
+    "lid_probe": ("D05",),
 }
 MAX_TURNS = 3
 MAX_CALLS = 4
