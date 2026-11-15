@@ -4,6 +4,9 @@ import asyncio
 import copy
 import json
 import unittest
+from contextlib import asynccontextmanager
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from scripts.assistant_reader import (
     ROSTER,
@@ -229,6 +232,35 @@ class ReaderTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ReaderError):
             async with native_mcp("http://127.0.0.1/api/mcp/ninebot", "Bearer\nsecret"):
                 self.fail("invalid credential reached a session")
+
+    async def test_fixture_utc_alias_is_canonical_before_scoring(self):
+        from scripts.evaluate_assistant import verified_conversation
+
+        @asynccontextmanager
+        async def backend(_endpoint, _token):
+            yield FakeBackend()
+
+        fixture = SimpleNamespace(
+            mcp_url="http://127.0.0.1/api/mcp/ninebot",
+            vehicle_ref="synthetic-device",
+            request_count=lambda: 0,
+        )
+        with (
+            patch("scripts.assistant_reader.native_mcp", backend),
+            patch("scripts.evaluate_assistant.prepare_case_actions", new=AsyncMock()),
+        ):
+            result = await verified_conversation(
+                FakeModel(generation(text="unverified")),
+                fixture,
+                {"id": "Q01", "prompt": "Yesterday?", "expected": {"allowed_tools": []}},
+                fixture_data={"now": "2026-11-06T04:00:00Z"},
+                tools_enabled=False,
+                help_enabled=True,
+                arm="single_prompt",
+            )
+        self.assertEqual(result["context"]["now"], "2026-11-06T04:00:00+00:00")
+        self.assertEqual(result["model_final_answer"], "unverified")
+        self.assertNotIn("unverified", result["final_answer"])
 
 
 if __name__ == "__main__":

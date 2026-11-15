@@ -527,7 +527,7 @@ async def verified_conversation(
             case["prompt"],
             selected_vehicle=fixture.vehicle_ref,
             language="zh-Hans",
-            now=fixture_data["now"],
+            now=datetime.fromisoformat(fixture_data["now"]).isoformat(),
             tools_enabled=tools_enabled,
             help_enabled=help_enabled,
         )
@@ -686,12 +686,12 @@ async def evaluate(
                         help_enabled=help_enabled,
                         arm=arm,
                     )
-                    assert result["context"]["now"] == reference_time.isoformat()
                     report["cases"].append(result)
+                    await asyncio.to_thread(write_report, output, report)
+                    assert result.get("context", {}).get("now") == reference_time.isoformat()
 
                 with TemporaryDirectory(prefix="ninebot-eval-") as directory:
                     await check(directory, scenario=scenario, reference_time=reference_time)
-                await asyncio.to_thread(write_report, output, report)
                 print(f"Measured {case['id']} {arm}", flush=True)
     finally:
         await asyncio.to_thread(model.close)
