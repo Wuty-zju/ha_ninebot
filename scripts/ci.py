@@ -62,6 +62,11 @@ def select(paths: list[str], config: dict, available: set[str]) -> dict:
         ):
             frontend = True
             continue
+        if path == "tests/fixtures/field_inventory/current-field-usage.json":
+            # Curated descriptions are consumed only by the inventory contract tests.
+            selected.add("tests/test_field_inventory.py")
+            reasons.add("field-disposition")
+            continue
         if matches(path, config["shared_paths"]):
             selected.update(available)
             reasons.add("shared-test-input")
