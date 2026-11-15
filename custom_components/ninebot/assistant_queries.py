@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from functools import partial
@@ -54,6 +55,12 @@ def help_query(value: object) -> str:
     if not isinstance(value, str) or not 1 <= len(value.strip()) <= 240 or not value.isprintable():
         raise vol.Invalid("Use a short public help question")
     return value.strip()
+
+
+def task_reference(value: object) -> str:
+    if not isinstance(value, str) or re.fullmatch(r"[a-f0-9]{32}", value) is None:
+        raise vol.Invalid("Use a task ID returned by the task tools")
+    return value
 
 
 @dataclass(frozen=True)
@@ -184,6 +191,8 @@ def parameter_schema(value: object) -> dict[str, Any] | None:
         return {"type": "string", "minLength": 1, "maxLength": 256}
     if value is cursor_value:
         return {"type": "string", "pattern": "^[0-9a-f]{32}$"}
+    if value is task_reference:
+        return {"type": "string", "pattern": "^[a-f0-9]{32}$"}
     if isinstance(value, partial) and value.func is bounded_integer:
         return {"type": "integer", "minimum": 1, "maximum": value.keywords["maximum"]}
     return None

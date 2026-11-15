@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import re
 from functools import partial
 from typing import Any
 from uuid import uuid4
@@ -16,7 +15,7 @@ from .assistant_errors import error_data
 from .assistant_limits import ReadLimitExceeded, read_slot
 from .assistant_plans import async_detail_proposal
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
-from .assistant_queries import MAX_RESPONSE_BYTES, VEHICLE, ToolSpec, _vehicles
+from .assistant_queries import MAX_RESPONSE_BYTES, VEHICLE, ToolSpec, _vehicles, task_reference
 from .assistant_review import REGISTERED
 from .assistant_task_store import ApprovalStore, TaskStoreUnavailable
 from .assistant_task_views import ticket_view
@@ -26,13 +25,6 @@ from .const import BUSINESS_TIMEZONE
 from .recorded_actions import business_date
 from .ride_archive import ArchiveError
 from .services import bounded_integer
-
-
-def task_reference(value: object) -> str:
-    if not isinstance(value, str) or re.fullmatch(r"[a-f0-9]{32}", value) is None:
-        raise vol.Invalid("Use a task ID returned by the task tools")
-    return value
-
 
 DATES = {
     **VEHICLE,

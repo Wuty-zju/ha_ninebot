@@ -10,7 +10,7 @@ from homeassistant.helpers import llm
 from .assistant_api import NinebotTool, native_result, tool_serializer
 from .assistant_policy import async_require_admin
 from .assistant_queries import ToolSpec
-from .assistant_task_queries import REQUEST_TOOL, SPECS, async_task_query, available, task_reference
+from .assistant_task_queries import REQUEST_TOOL, SPECS, async_task_query, available
 
 API_ID = "ninebot_tasks"
 PROMPT = (
@@ -42,7 +42,7 @@ class NinebotTaskAPI(llm.API):
             api_prompt=PROMPT,
             llm_context=llm_context,
             tools=[TaskTool(spec) for spec in SPECS],
-            custom_serializer=task_serializer,
+            custom_serializer=tool_serializer,
         )
 
 
@@ -63,12 +63,6 @@ class TaskTool(NinebotTool):
             hass, self.spec.key, tool_input.tool_args, llm_context.context
         )
         return native_result(data, error=error)
-
-
-def task_serializer(value: Any) -> Any:
-    if value is task_reference:
-        return {"type": "string", "pattern": "^[a-f0-9]{32}$"}
-    return tool_serializer(value)
 
 
 def async_register(hass: HomeAssistant) -> Callable[[], None]:
