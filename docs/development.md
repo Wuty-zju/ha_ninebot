@@ -169,6 +169,8 @@ Use `--answer-mode verified --host ollama` with a supported statistics, retrieva
 
 The same native canary replays provider-independent Conversation turns through Core's `ConversationInput` and `ChatLog`. It checks all seven registered tool schemas, clarification without a vehicle read, fresh user context when the API instance is reused, zero/stale/missing values, original-context Action responses, cancellation while awaiting tool I/O and consent/user revocation. Scripted stream deltas make these protocol checks deterministic; provider-generation cancellation, conversation recovery and model-driven answers require their own host evidence. A separate benign API verifies global-route read-only filtering and explicit-route behavior without adding a write tool to the Ninebot read collection.
 
+Core caches the configured system prompt between turns while updating the caller Context. A host that changes the selected vehicle or trip during a conversation should pass current selection data through `ConversationInput.extra_system_prompt`. The canary verifies that this refreshes the native prompt and API instance. Supply trip references from actual list results; selection text does not authorize a vehicle or replace per-call permission checks.
+
 For an explicitly authorized development endpoint, use a source checkout matching the reviewed preview tag and an environment with `mcp==2.3.0`:
 
 ```sh
