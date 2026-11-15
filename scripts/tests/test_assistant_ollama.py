@@ -238,7 +238,31 @@ class OllamaTests(unittest.TestCase):
         function = native[0]["tool_calls"][0]["function"]
         self.assertIs(function["arguments"], arguments)
         self.assertEqual(function["index"], 0)
+        self.assertEqual(native[0]["tool_calls"][0]["id"], "call_1")
+        self.assertEqual(native[0]["tool_calls"][0]["type"], "function")
         self.assertNotIn("tool_call_id", json.dumps(native))
+
+    def test_recorded_native_call_id_survives_assistant_replay_without_receipt_id(self):
+        call = {
+            "id": "call_pt5p187g",
+            "function": {"index": 0, "name": "synthetic_add", "arguments": {"a": 17, "b": 25}},
+        }
+        for extra in ({}, {"type": "function"}):
+            messages = [
+                {"role": "assistant", "content": "", "tool_calls": [call | extra]},
+                {
+                    "role": "tool",
+                    "name": "synthetic_add",
+                    "tool_call_id": call["id"],
+                    "content": "42",
+                },
+            ]
+            replay = ollama_messages(messages)
+            self.assertEqual(replay[0]["tool_calls"], [call | extra])
+            self.assertEqual(
+                replay[1], {"role": "tool", "tool_name": "synthetic_add", "content": "42"}
+            )
+            self.assertNotIn("tool_call_id", replay[1])
 
     def test_true_slow_drip_deadline_and_next_case_recovery(self):
         first = True

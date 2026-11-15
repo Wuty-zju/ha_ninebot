@@ -113,7 +113,12 @@ def parse_native_calls(calls: object, remaining: int, *, allowed_names: set[str]
     for call in calls:
         if (
             not isinstance(call, dict)
-            or set(call) != {"function"}
+            or not {"function"} <= set(call) <= {"id", "type", "function"}
+            or (
+                "id" in call
+                and (not isinstance(call["id"], str) or not 1 <= len(call["id"].encode()) <= 128)
+            )
+            or ("type" in call and call["type"] != "function")
             or not isinstance(function := call["function"], dict)
             or not {"name", "arguments"} <= set(function) <= {"index", "name", "arguments"}
             or (
@@ -543,7 +548,12 @@ async def conversation(
             if native and not text:
                 step["stop_reason"] = "empty_model_reply"
             break
-        call_ids = [f"call_{calls + index + 1}" for index in range(len(requests))]
+        call_ids = [
+            native_calls[index].get("id", f"call_{calls + index + 1}")
+            if native
+            else f"call_{calls + index + 1}"
+            for index in range(len(requests))
+        ]
         messages.append(
             {
                 "role": "assistant",

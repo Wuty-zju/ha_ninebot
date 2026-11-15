@@ -129,7 +129,7 @@ def request_json(url: str, path: str, body: dict | None, deadline: float) -> dic
 
 
 def ollama_messages(messages: list[dict]) -> list[dict]:
-    """Translate host IDs to Ollama's native tool_name; keep argument objects."""
+    """Keep assistant call IDs/arguments and use tool_name on native receipts."""
     native = []
     for message in messages:
         item = {"role": message["role"], "content": message["content"]}
@@ -137,7 +137,10 @@ def ollama_messages(messages: list[dict]) -> list[dict]:
             item["tool_name"] = message["name"]
         if "tool_calls" in message:
             item["tool_calls"] = [
-                {"function": {"index": index, **call["function"]}}
+                {
+                    **{key: call[key] for key in ("id", "type") if key in call},
+                    "function": {"index": index, **call["function"]},
+                }
                 for index, call in enumerate(message["tool_calls"])
             ]
         native.append(item)
