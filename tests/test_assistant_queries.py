@@ -313,6 +313,23 @@ async def test_recorded_empty_page_preserves_known_month_observation(hass, assis
     assert result["quality"]["all_observed_lists_complete"] is True
 
 
+async def test_recorded_ride_limit_counts_the_returned_observation_timestamp(hass, assistant):
+    arguments = {"start_date": "2026-10-06", "end_date": "2026-10-06", "limit": 1}
+    result, error = await query(hass, assistant, "get_recorded_trips", **arguments)
+    assert not error
+    ride = result["data"]["rides"][0]
+    assert ride["received_at"] == NOW.isoformat()
+    without_observation = {key: value for key, value in ride.items() if key != "received_at"}
+    old_size = len(json.dumps(without_observation, ensure_ascii=False).encode())
+    returned_size = len(json.dumps(ride, ensure_ascii=False).encode())
+    limit = (old_size + returned_size) // 2
+    assert old_size < limit < returned_size
+    with patch("custom_components.ninebot.assistant_queries.MAX_RIDE_BYTES", limit):
+        rejected, error = await query(hass, assistant, "get_recorded_trips", **arguments)
+    assert error and rejected["error"]["code"] == "response_too_large"
+    assert "data" not in rejected
+
+
 def test_recorded_observation_projection_is_bounded_and_whitelisted():
     old = "2020-01-01T00:00:00+00:00"
     response = {
