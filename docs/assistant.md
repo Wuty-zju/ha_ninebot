@@ -49,7 +49,7 @@ Results include a business date range, observation times, units, metric quality,
 - Current values can be stale. A closed month's age alone does not make its historical facts stale.
 - Daily-chart mileage and totals grouped by ride end date describe different source projections; the result identifies the basis.
 - Maximum speed is separate from overall average speed calculated from distance and duration. Unknown sample units stay unverified.
-- ACC does not prove movement; seat-latch status does not prove whether the seat lid is open. Battery score is not a health diagnosis.
+- `acc_active` reports accessory/ignition power, not movement or a ride in progress. `seat_locked` reports only the seat latch, not whether the lid is open; that latch evidence does not describe the other readings. Battery score is not a health diagnosis.
 
 The native MCP response carries the JSON result as text content. Failures use a fixed code such as `not_authorized`, `invalid_arguments`, `local_data_missing`, `retry_later` or `timeout`. A failed query does not mean zero trips. Where provided, follow `retry_after_seconds`; do not loop repeatedly.
 
