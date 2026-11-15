@@ -46,6 +46,10 @@ class ReusableCompletion:
 
     def close(self) -> None:
         self.closed = True
+        self._stop()
+
+    def _stop(self) -> None:
+        """Reap this process; an independent case may still start another one."""
         process, self.process = self.process, None
         self._cache = False
         if process is not None:
@@ -199,7 +203,7 @@ class ReusableCompletion:
                 **counts,
             }
         except (TimeoutError, URLError, HTTPException, OSError, ValueError, RuntimeError):
-            self.close()
+            self._stop()
             if time.perf_counter() >= deadline:
                 return expired_result(started)
             raise RuntimeError("Evaluation completion process failed") from None
