@@ -49,7 +49,7 @@ Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼�
 - 当前状态可能陈旧；已结束月份的历史事实不会仅因时间久而被判过期。
 - 每日里程图与按行程结束日期归属的统计采用不同来源投影，结果会标明依据。
 - 最高速度与距离除以时长得出的总平均速度分别表达；未知采样单位保持待验证。
-- ACC 不证明车辆移动；座桶锁舌状态不证明盖子打开；电池评分不能用作健康诊断。
+- `acc_active` 表示电门状态，不证明车辆移动或正在骑行。`seat_locked` 只表示座桶锁舌状态，不证明盖子打开；锁舌来源说明不适用于其他读数。电池评分不能用作健康诊断。
 
 原生 MCP 将 JSON 结果作为文本内容返回。失败使用固定代码，如 `not_authorized`、`invalid_arguments`、`local_data_missing`、`retry_later`、`timeout`。查询失败不表示没有骑车；若返回 `retry_after_seconds`，应遵循等待时间，避免连续重试。
 

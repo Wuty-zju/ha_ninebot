@@ -97,7 +97,11 @@ SPECS = (
         "get_vehicle_status",
         "Read cached vehicle status",
         "Read cached status for the user's selected vehicle. Include group observation times "
-        "and freshness in the answer. Null means unknown. vehicle_locked=true means locked. "
+        "from quality.groups.<group>.received_at and each group's freshness in the answer. "
+        "Null means unknown. vehicle_locked=true means locked. "
+        "acc_active reports accessory/ignition power, not movement or a ride in progress. "
+        "seat_locked reports only the seat latch, not whether the lid is open. "
+        "The lock_latch_only evidence applies only to seat_locked, not other readings. "
         "Does not refresh the cloud or return GPS.",
         vol.Schema(VEHICLE),
     ),
