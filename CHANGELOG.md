@@ -2,7 +2,7 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
-## Unreleased
+## 2.1.5
 
 - Separate unverified raw-sample unit guidance from maximum/average-speed and battery-score help, and return ready-to-use pinned-source citations with the knowledge corpus version.
 - Document native MCP prompt selection and keep task-evaluation boundaries aligned with native human review.
