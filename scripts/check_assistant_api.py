@@ -18,7 +18,7 @@ def check_task_evaluation_catalog(api_id: str, names: set[str]) -> None:
     root = Path(__file__).resolve().parents[1]
     catalog = json.loads((root / "tests/fixtures/assistant/evaluation-tasks.json").read_text())
     contract = catalog["task_execution_contract"]
-    assert catalog["contract_revision"] == "task-boundaries-v1"
+    assert catalog["contract_revision"] == "task-boundaries-v2"
     assert contract["api_id"] == api_id and contract["tool_namespace"] == "ninebot__"
     assert contract["model_cloud_call_limit"] == 0
     assert contract["approval_channel"] == contract["cancellation_channel"] == "native_human_review"

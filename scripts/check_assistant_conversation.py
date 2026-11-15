@@ -1,8 +1,9 @@
 """Replay provider-independent native Conversation turns with scripted deltas.
 
-Core owns ChatLog, API caching, tool execution and cancellation. The existing
-MCP canary supplies invented accounts and cached data. No model is called, so
-these checks establish host contracts rather than model answer quality.
+Core owns ChatLog, API caching and tool execution. Cancellation here interrupts
+tool I/O, independently of provider-generation cancellation. The existing MCP
+canary supplies invented accounts and cached data. No model is called, so these
+checks establish host contracts rather than model answer quality.
 """
 
 import asyncio
@@ -246,5 +247,5 @@ async def check(fixture: SimpleNamespace) -> None:
     assert hass.data[DATA_KEY].active == 0
     print(
         "Native Conversation: seven tools, clarification, turn Context, quality, "
-        "Action response, cancellation and cached-API revocation OK (scripted; no model)"
+        "Action response, tool-I/O cancellation and cached-API revocation OK (scripted; no model)"
     )
