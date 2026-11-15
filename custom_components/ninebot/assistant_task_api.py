@@ -10,7 +10,7 @@ from homeassistant.helpers import llm
 from .assistant_api import NinebotTool, native_result, tool_serializer
 from .assistant_policy import async_require_admin
 from .assistant_queries import ToolSpec
-from .assistant_task_queries import REQUEST_TOOL, SPECS, async_task_query, available, task_reference
+from .assistant_task_queries import REQUEST_TOOL, SPECS, async_task_query, available
 
 API_ID = "ninebot_tasks"
 PROMPT = (
@@ -19,7 +19,14 @@ PROMPT = (
     "Cache/archive flags mean local readiness, never hardware support or trip counts. "
     "Ask which vehicle when ambiguous. Preview reads local gaps; an application only records "
     "a request for human review in Home Assistant. Never claim approval, execution or completion "
-    "from an accepted request. Ask the original requester to sign in with that same HA user "
+    "from an accepted request. When help is available and the user asks to follow a task "
+    "checklist, retrieve it with include_procedures=true before proceeding. "
+    "A preview with task_created=false has not submitted an application. When the user "
+    "explicitly asks to apply, follow the preview with request_detail_sync_approval. "
+    "Human approval happens after that application; do not wait for it before filing. "
+    "Report an application as submitted only when task_recorded=true and a task_id was returned; "
+    "a promise to submit is not a completed application. "
+    "Ask the original requester to sign in with that same HA user "
     "and open Ninebot Assistant in HA's sidebar (/ninebot-assistant) to review and approve. "
     "Do not request or invent confirmation tokens. "
     "Approved metadata is not proof of saved details. Missing/partial data is not zero. "
@@ -42,7 +49,7 @@ class NinebotTaskAPI(llm.API):
             api_prompt=PROMPT,
             llm_context=llm_context,
             tools=[TaskTool(spec) for spec in SPECS],
-            custom_serializer=task_serializer,
+            custom_serializer=tool_serializer,
         )
 
 
@@ -63,12 +70,6 @@ class TaskTool(NinebotTool):
             hass, self.spec.key, tool_input.tool_args, llm_context.context
         )
         return native_result(data, error=error)
-
-
-def task_serializer(value: Any) -> Any:
-    if value is task_reference:
-        return {"type": "string", "pattern": "^[a-f0-9]{32}$"}
-    return tool_serializer(value)
 
 
 def async_register(hass: HomeAssistant) -> Callable[[], None]:

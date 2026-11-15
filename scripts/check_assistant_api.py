@@ -250,6 +250,27 @@ async def check_task_collection(hass, context) -> None:
             fields = formatted["ninebot__get_task"].input_schema["properties"]
             assert fields["task_id"]["pattern"] == "^[a-f0-9]{32}$"
             assert not {"nonce", "token", "user_id", "account", "confirmed"} & set(fields)
+            from custom_components.ninebot.assistant_api import async_register as register_read
+
+            remove_read = register_read(hass)
+            try:
+                for order in (["ninebot", API_ID], [API_ID, "ninebot"]):
+                    merged = await llm.async_get_api(hass, order, context)
+                    combined = {
+                        tool.name: _format_tool(tool, merged.custom_serializer)
+                        for tool in merged.tools
+                    }
+                    assert len(combined) == 12
+                    for name, original in formatted.items():
+                        assert combined[name].input_schema == original.input_schema
+                    assert (
+                        combined["ninebot__get_recorded_trips"].input_schema["properties"][
+                            "start_date"
+                        ]["format"]
+                        == "date"
+                    )
+            finally:
+                remove_read()
             pages = formatted["ninebot__get_tasks"].input_schema["properties"]
             assert pages["page"]["minimum"] == 1 and pages["page"]["maximum"] == 24
             assert pages["limit"]["minimum"] == 1 and pages["limit"]["maximum"] == 10

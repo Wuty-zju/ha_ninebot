@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.11
+
+- Preserve task identifier types and constraints when combining the native read/help and task APIs, in either selection order.
+- Share the task-reference validator and serializer while retaining existing authorization and execution checks.
+- Clarify preview, application submission and later human approval in task guidance and the bilingual user guide.
+
 ## 2.1.10
 
 - Query one explicit historical business date through the native Assistant statistics tool, reusing local daily projections and their metric quality.
