@@ -19,8 +19,19 @@ FIXTURE_INTEGRATION_VERSION = "2.1.0"
 
 
 async def main() -> None:
+    from scripts.assistant_reader import native_mcp, read_tools
+
+    async def sdk_handshake(fixture):
+        async with native_mcp(fixture.mcp_url, "fixture-admin") as backend:
+            tools = await backend.tools()
+            assert len(read_tools(tools, help_enabled=True)) == 3
+            assert "Ninebot" in await backend.prompt()
+            roster = await backend.call("ninebot__get_vehicles", {})
+            assert not roster.get("error") and len(roster["data"]["vehicles"]) == 2
+        print("Official MCP SDK: initialize, tools, prompt, authenticated read and close OK")
+
     with TemporaryDirectory(prefix="ninebot-mcp-") as directory:
-        await check(directory)
+        await check(directory, scenario=sdk_handshake)
 
 
 async def check(
@@ -130,8 +141,12 @@ async def check(
         async_get_entry=lambda target: entry if target == entry_id else None,
     )
 
+    http_requests = 0
+
     @web.middleware
     async def synthetic_auth(request, handler):
+        nonlocal http_requests
+        http_requests += 1
         user = users.get(request.headers.get("Authorization", "").removeprefix("Bearer "))
         if user is None:
             raise web.HTTPUnauthorized()
@@ -142,6 +157,7 @@ async def check(
     app = web.Application(middlewares=[synthetic_auth])
     app[KEY_HASS] = hass
     native_http.ModelContextProtocolStreamableView().register(hass, app, app.router)
+    native_http.ModelContextProtocolStreamableApiView().register(hass, app, app.router)
     contexts = []
     original_create = native_http.create_mcp_server
     original_authorize = assistant_queries.async_authorize
@@ -281,8 +297,9 @@ async def check(
                             entry=entry,
                             coordinator=co,
                             rpc=rpc,
+                            mcp_url=str(client.make_url("/api/mcp/ninebot")),
                             vehicle_ref=vehicle_ref,
-                            request_count=lambda: sequence,
+                            request_count=lambda: http_requests,
                         )
                     )
                 finally:
