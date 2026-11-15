@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.9
+
+- Preserve trip and month observation times in native Assistant pages, including empty results and continued pages.
+- Distinguish the current query time from the page's fixed selection time, and apply the per-ride size limit to the final returned fields.
+
 ## 2.1.8
 
 - Focus help retrieval on matching topic keywords, keeping prose-only discovery when no topic keyword matches.
