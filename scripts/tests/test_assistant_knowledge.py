@@ -20,7 +20,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
         self.assertEqual(len(catalog["entries"]), 14)
-        self.assertEqual(catalog["corpus_version"], "1.2.3")
+        self.assertEqual(catalog["corpus_version"], "1.2.4")
         self.assertEqual(catalog["source_version"], "2.1.2")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
@@ -49,6 +49,35 @@ class KnowledgeTests(unittest.TestCase):
             self.assertEqual(k.search_help("unknown", "en", version)["matches"], [])
         with self.assertRaises(k.KnowledgeUnavailable):
             k.search_help("unknown", "en", "not-a-version")
+
+    def test_login_keywords_do_not_return_incidental_log_privacy_prose(self):
+        for query, language in (
+            ("登录日志 authentication log", "zh-Hans"),
+            ("login logs", "en"),
+        ):
+            with self.subTest(query=query):
+                result = k.search_help(query, language, "2.1.7")
+                self.assertEqual(result["retrieval_contract"], "lexical-v2")
+                self.assertEqual(
+                    [row["source_id"] for row in result["matches"]], ["authentication_support"]
+                )
+                match = result["matches"][0]
+                self.assertIn("2.0.0", match["text"])
+                self.assertIn("2.0.1", match["text"])
+                self.assertIn("Account setup failed", match["text"])
+                self.assertIn("support", match["text"])
+                self.assertFalse(result["more_available"])
+
+    def test_keyword_selection_keeps_multiple_topics_and_prose_only_discovery(self):
+        combined = k.search_help("waiting budget unknown statistics", "en", "2.1.7")
+        self.assertEqual(
+            {row["source_id"] for row in combined["matches"]},
+            {"sync_budget", "statistics_missing"},
+        )
+        prose_only = k.search_help("proxy", "en", "2.1.7")
+        self.assertEqual(
+            [row["source_id"] for row in prose_only["matches"]], ["authentication_support"]
+        )
 
     def test_help_defaults_to_topics_and_preserves_procedure_metadata(self):
         for language in ("en", "zh-Hans"):

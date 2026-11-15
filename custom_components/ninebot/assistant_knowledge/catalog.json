@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.3",
+  "corpus_version": "1.2.4",
   "source_version": "2.1.2",
   "entries": [
     {
@@ -355,18 +355,18 @@
         "max_exclusive": "2.2.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-15",
       "supersedes": [],
       "source": {
         "path": "docs/guide.md",
-        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
-        "sha256": "54eea5ea99da125cbc855dc1302dfab57c0b4137c4e78cfc7b5fc18b37bab893",
-        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/guide.md#login-fails-before-the-account-is-added"
+        "commit": "32958f4d25bdfedec529f8bdaee6e1d636f00292",
+        "sha256": "682f5e4995ce3cb9b61658e443177c63c15c90e52e6c4476c4f618786156014a",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/32958f4d25bdfedec529f8bdaee6e1d636f00292/docs/guide.md#login-fails-before-the-account-is-added"
       },
       "translations": {
         "en": {
           "title": "Collect a safe sign-in failure report",
-          "text": "For an existing account, use the integration menu’s Enable debug logging, reproduce once, then disable and download the log. Before setup, use the guide’s native logger steps and note the support identifier, form error and versions. A local proxy status does not prove a cloud region or internal authentication cause. Share no credentials, account value or vehicle/location data.",
+          "text": "From 2.0.1, failed sign-in attempts include Account setup failed and a support identifier; 2.0.0 lacks these fields. Before an account exists, enable native integration DEBUG logging, submit once, download the Core log, then restore the prior level. For an existing account, use Enable debug logging in the integration menu. Include the support ID, form error and versions in a report; omit credentials, account values and location. Proxy status alone does not establish a cloud region or internal authentication cause.",
           "keywords": [
             "auth_required",
             "reauth",
@@ -378,7 +378,7 @@
         },
         "zh-Hans": {
           "title": "收集安全的登录故障信息",
-          "text": "已有账号使用集成菜单的启用调试日志，复现一次后关闭并下载。添加前失败按指南使用原生日志步骤，记录support编号、表单错误和版本。本地代理状态不证明云端地区或内部认证原因。反馈不包含凭据、账号值或车辆位置。",
+          "text": "2.0.1起，登录失败提供Account setup failed记录与support关联编号；2.0.0没有这两个字段。添加账号前按指南启用原生集成DEBUG日志，提交一次后下载Core日志，再恢复原日志级别。已有账号使用集成菜单的启用调试日志。反馈提供support编号、表单错误和版本，省略凭据、账号值及位置。代理状态不能证明云端地区或内部认证原因。",
           "keywords": [
             "认证",
             "重新认证",
@@ -389,7 +389,7 @@
           ]
         }
       },
-      "content_sha256": "0298d8b1cb41d1e06f3a8f8b5aa330e21f1ce8cd787d342079642a0f5d0140b4",
+      "content_sha256": "67638984960f03d7f48ba2a9552cc423032aadf706a7eba02d3f775120cfc491",
       "procedure_id": "SK07"
     },
     {

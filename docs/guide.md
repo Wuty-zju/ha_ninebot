@@ -179,6 +179,8 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 
 ### Login fails before the account is added
 
+Version 2.0.1 added the per-attempt `Account setup failed` record and `support` identifier described below. Version 2.0.0 does not include these fields.
+
 Enable logging for this integration in **Developer tools → Actions**:
 
 ```yaml

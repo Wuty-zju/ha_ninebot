@@ -35,7 +35,7 @@ def receipt(name="get_statistics"):
     args = {"vehicle_ref": "synthetic-device", "period": "yesterday"}
     if name == "search_help":
         args = {"query": "等待额度", "language": "zh-Hans"}
-        payload["data"] = knowledge.search_help("等待额度", "zh-Hans", "2.1.6")
+        payload["data"] = copy.deepcopy(knowledge.search_help("等待额度", "zh-Hans", "2.1.6"))
         payload["quality"] = {}
         payload["evidence"]["source_kind"] = "bundled_public_help"
     return {"name": "ninebot__" + name, "arguments": args, "result": payload}
@@ -103,7 +103,7 @@ class PresentationTests(unittest.TestCase):
         item = receipt("search_help")
         item["result"]["data"]["matches"][0]["citation"] = "https://evil.example"
         answer = render_answer([item])
-        self.assertIn("KB 1.2.3", answer["text"])
+        self.assertIn(f"KB {knowledge.load_catalog()['corpus_version']}", answer["text"])
         self.assertIn("github.com/Wuty-zju/ha_ninebot/blob/", answer["text"])
         self.assertNotIn("evil.example", answer["text"])
         item["arguments"]["include_procedures"] = True
@@ -116,6 +116,16 @@ class PresentationTests(unittest.TestCase):
         self.assertIn("steps:", text)
         self.assertIn("stop:", text)
         self.assertIn("max_calls: 3", text)
+
+    def test_help_accepts_known_retrieval_revisions_and_rejects_unknown_ones(self):
+        item = receipt("search_help")
+        for revision in ("lexical-v1", "lexical-v2"):
+            with self.subTest(revision=revision):
+                item["result"]["data"]["retrieval_contract"] = revision
+                self.assertIn(revision, render_answer([item])["text"])
+        item["result"]["data"]["retrieval_contract"] = "lexical-v99"
+        with self.assertRaises(PresentationError):
+            render_answer([item])
 
     def test_denial_withdraws_all_success_and_mixed_failure_is_visible(self):
         failure = {
