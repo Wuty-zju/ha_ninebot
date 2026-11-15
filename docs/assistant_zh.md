@@ -16,28 +16,13 @@ Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼�
 
 支持提示模板的 MCP 客户端可通过 `prompts/list` 和 `prompts/get` 获取 **Ninebot** 模板，并在客户端的提示入口应用它。仅发现工具不代表客户端已应用这份说明。无论是否支持模板，工具调用始终执行相同的权限校验。
 
-原生 MCP 请求处理及工具链使用合成授权和本地记录进行检查。模型自由回答仍属实验功能。下面的可选本地客户端展示经过核对的工具回执，并单独保留模型草稿；这项展示策略由客户端实施。认证配置和对话行为取决于所选宿主。
+## 选择宿主和模型
 
-### 可选的本地 Qwen 客户端
+Ninebot Assistant 使用 Home Assistant 原生 LLM API 和 MCP 工具。在选用的 HA 对话代理或 MCP 客户端中配置模型；宿主需要支持工具调用、Ninebot 集合并保留已认证用户上下文。集成不要求指定模型厂商、本机推理引擎或模型权重。
 
-源码仓库提供 **周期统计、同步健康和公开帮助** 查询客户端，使用现有本机 Ollama 服务的`qwen3.5:4b-q4_K_M`及官方 MCP Python 客户端（`mcp==2.3.0`）。使用其他 AI 宿主的 HACS 用户无需安装它。
+宿主负责对话与模型访问，Ninebot 提供获准的本地查询、版本化帮助、任务清单及独立的人类审核任务 API。模型选择和回答展示由宿主负责，所有模型使用相同的工具参数及权限检查。
 
-开启专属 Ninebot API 后，在源码目录执行：
-
-```sh
-python -m scripts.assistant_reader \
-  --endpoint https://homeassistant.example/api/mcp/ninebot --list-vehicles
-
-python -m scripts.assistant_reader \
-  --endpoint https://homeassistant.example/api/mcp/ninebot \
-  --vehicle VEHICLE_REF --language zh-Hans "昨天骑了几趟？"
-```
-
-客户端会提示输入现有 Home Assistant 访问令牌，只在内存持有并向所选原生端点发送。车辆查询使用枚举返回的不透明引用；一般帮助不需要选车。问题参数填写`-`可从标准输入读取。
-
-模型最多使用3轮、4次工具调用和180秒来选择查询。客户端直接展示实际返回的数值、业务日期、覆盖依据、观测时间和固定引用，模型草稿单独保留。未完成或失败的循环会明确提示；访问被拒绝后撤回本轮展示。模型未指定帮助语言时沿用客户端语言。显式请求的任务清单包含输入、步骤、停止条件和预算，实际调用仍受客户端只读工具范围限制。
-
-客户端不创建监听服务、档案、后台同步或凭据文件，默认仅打印核对后的结果，不保存对话记录。原生 Assist 和其他 MCP 客户端继续使用各自的对话与展示策略。当前状态、本地行程浏览和审核任务仍可通过集成的原有工具使用，本客户端首阶段覆盖上面三类查询。
+固定模型和参考宿主仅用于开发评测，说明见[开发指南](development.md#small-model-baseline)，与上述用户安装和模型配置分开维护。
 
 ## 查询本地数据
 
