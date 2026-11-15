@@ -153,11 +153,30 @@ The same catalog owns eight bounded read procedures (SK01–SK08) with bilingual
 
 ### Small model baseline
 
-The optional [local reader](assistant.md#optional-local-qwen-reader) is a source-checkout reference host. `assistant_reader` uses the official MCP `ClientSession` against `/api/mcp/ninebot` and the existing fixed local Ollama adapter. `assistant_protocol` shares the evaluator's original bounded call and prompt contracts. `assistant_presentation` consumes only actual, parameter-associated v1 receipts for statistics, synchronization health and help. It retains metric quality, source and observation time; unrecognized fields do not enter model messages or console output. Roster data receives its own small projection. Checklists remain advisory and never enlarge the available tool set.
+The runtime Assistant contract is model-independent: existing Home Assistant conversation agents or MCP clients provide model access and the conversation loop. Tests keep model-specific adapters and weight pins in `scripts/`; they are development inputs, not production model requirements.
+
+#### Reference-host evaluation
+
+The source-checkout `assistant_reader` is a development reference host using the pinned local Qwen/Ollama baseline. `assistant_reader` uses the official MCP `ClientSession` against `/api/mcp/ninebot` and the existing fixed local Ollama adapter. `assistant_protocol` shares the evaluator's original bounded call and prompt contracts. `assistant_presentation` consumes only actual, parameter-associated v1 receipts for statistics, synchronization health and help. It retains metric quality, source and observation time; unrecognized fields do not enter model messages or console output. Roster data receives its own small projection. Checklists remain advisory and never enlarge the available tool set.
 
 Use `--answer-mode verified --host ollama` with a supported statistics, retrieval or diagnostics profile to evaluate this host. Reports keep `model_final_answer` separate from `final_answer`, identify `verified_tool_presentation`, count actual MCP calls separately from model-requested calls, and include SDK initialization/notification/close traffic. Presentation bytes are distinct from the unchanged 256-token model budget. Each completed case is saved before fixture-invariant checks. Actual query periods and original assertions still determine task completion; a well-formed receipt alone cannot prove the question was answered. Existing model mode remains the default.
 
 `python -m scripts.check_assistant_mcp` also checks the official SDK's initialize, tool/prompt discovery, authenticated read and close against the installed native handler with synthetic identity. The source client adds no integration dependency, service or persistence. Its access token is prompted locally and never enters the model; it has no production connection during fixture evaluation. Standard-library reader/presentation tests run in the existing Core lint job.
+
+For an explicitly authorized development endpoint, use a source checkout matching the reviewed preview tag and an environment with `mcp==2.3.0`:
+
+```sh
+python -m scripts.assistant_reader \
+  --endpoint https://homeassistant.example/api/mcp/ninebot --list-vehicles
+
+python -m scripts.assistant_reader \
+  --endpoint https://homeassistant.example/api/mcp/ninebot \
+  --vehicle VEHICLE_REF --language en "How many trips yesterday?"
+```
+
+This helper prompts for an existing HA token and keeps it outside model messages. It stores no credentials or conversations. The fixed Qwen model and its checked presentation policy make this test host reproducible; its results do not establish acceptance for other hosts. User-facing setup remains the native [host and model selection](assistant.md#choose-a-host-and-model).
+
+#### Synthetic model cases
 
 The optional **Checks → assistant_evaluation** dispatch runs Q03, Q04, P06 and S02 through a fixed CPU model and the installed native MCP HTTP handler. It compares a single prompt without tools against a bounded tool loop. Authorization, registry, snapshots and Action returns are synthetic; this run does not connect to a production HA instance or exercise a real archive. Q03 supplies two vehicles; P06 supplies a selected ride and revokes consent inside its detail read.
 

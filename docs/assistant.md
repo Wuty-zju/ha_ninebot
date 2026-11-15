@@ -16,28 +16,13 @@ For a native Conversation/Assist host, select the **Ninebot** API if the host su
 
 MCP clients that support prompts can retrieve the **Ninebot** prompt through `prompts/list` and `prompts/get`. Apply it using the client's prompt interface; discovering tools alone does not ensure the client applies this guidance. Permissions are enforced on every tool call regardless of prompt support.
 
-The native MCP handler and tool chain are checked with synthetic authorization and local records. Model-driven prose remains experimental. The optional local reader below displays checked tool receipts and keeps the model draft separate; this policy belongs to that client. Authentication and conversation behavior depend on the chosen host.
+## Choose a host and model
 
-### Optional local Qwen reader
+Ninebot Assistant uses Home Assistant's native LLM API and MCP tools. Configure the model in your chosen Home Assistant conversation agent or MCP client. A compatible host must support tool calling, the Ninebot collection and authenticated user context. The integration has no required model vendor, local inference engine or model weights.
 
-A source-checkout client is available for **period statistics, synchronization health and public help**. It uses an existing local Ollama service with `qwen3.5:4b-q4_K_M`, plus the official MCP Python client (`mcp==2.3.0`). HACS users can continue using their own AI host without installing this client.
+The host handles conversation and model access. Ninebot supplies authorized local queries, versioned help, task checklists and the separate human-reviewed task API. Model choice and response presentation belong to the host; the same tool schemas and permission checks apply to every model.
 
-After enabling the dedicated Ninebot API, run these commands from a checkout of this repository:
-
-```sh
-python -m scripts.assistant_reader \
-  --endpoint https://homeassistant.example/api/mcp/ninebot --list-vehicles
-
-python -m scripts.assistant_reader \
-  --endpoint https://homeassistant.example/api/mcp/ninebot \
-  --vehicle VEHICLE_REF --language en "How many trips yesterday?"
-```
-
-The client prompts for an existing Home Assistant access token. It keeps the credential in memory and sends it only to the selected native endpoint. Use the returned opaque vehicle reference for a vehicle query. General help needs no vehicle selection. Supply `-` as the question to read it from standard input.
-
-The model selects tools within three turns, four calls and 180 seconds. The reader displays actual returned values, business dates, coverage, observation times and pinned help citations. It never treats discovery as a measurement or a model draft as a verified result. A failed or unfinished loop is visible; access denial withdraws the turn's facts. Help inherits the client's language when the model omits it. Explicitly requested checklists provide inputs, steps, stop rules and budgets; the client continues to enforce its smaller read-only tool set.
-
-The reader creates no listener, archive, background synchronization or credential file. It prints the checked answer and does not save chat traces. Native Assist and other MCP clients keep their own conversation and presentation policies. Saved-trip browsing, current-state views and approved task execution remain available through the normal integration tools; this reader's initial scope is the three query types above.
+Developer test hosts and fixed model baselines are documented in the [evaluation guide](development.md#small-model-baseline). They are separate from the installation and model configuration above.
 
 ## Ask about local data
 

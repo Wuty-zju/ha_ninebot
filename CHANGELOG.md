@@ -4,9 +4,9 @@ Entries describe each version at release time. See the [current guides](docs/REA
 
 ## 2.1.7
 
-- Add an optional local Qwen reader for period statistics, synchronization health and versioned help through the native Ninebot MCP collection.
-- Display checked tool receipts with dates, metric quality, observation times and source citations; keep model drafts separate from the displayed facts.
-- Make explicitly requested task checklists available to the local reader within its existing tool and request limits.
+- Add a development reference host for evaluating period statistics, synchronization health and versioned help through the native Ninebot MCP collection.
+- Validate checked receipt presentation with dates, metric quality, observation times and source citations, retaining the test model’s draft separately.
+- Exercise explicitly requested task checklists within the reference host’s existing tool and request limits.
 
 ## 2.1.6
 
