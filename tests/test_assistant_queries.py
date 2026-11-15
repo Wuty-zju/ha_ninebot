@@ -16,7 +16,13 @@ from custom_components.ninebot.assistant_knowledge import READ_TOOLS, KnowledgeU
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
 from custom_components.ninebot.assistant_policy import async_require_admin
 from custom_components.ninebot.assistant_queries import SPECS, async_query, period_dates
-from custom_components.ninebot.assistant_views import AssistantView, numeric, statistics_view
+from custom_components.ninebot.assistant_views import (
+    AssistantView,
+    detail_view,
+    numeric,
+    statistics_view,
+    trips_view,
+)
 from custom_components.ninebot.raw import Endpoint, build_record
 from custom_components.ninebot.travel import merge_detail, parse_ride
 
@@ -245,7 +251,9 @@ async def test_period_statistics_reuse_actions_with_original_context_and_no_refr
         assert result["evidence"]["ride_date_assignment"] == "server_month"
 
 
-async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(hass, assistant):
+async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(
+    hass, assistant, freezer
+):
     first, error = await query(
         hass,
         assistant,
@@ -256,7 +264,11 @@ async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(ha
     )
     assert not error and first["data"]["returned"] == 1 and first["data"]["has_more"]
     assert first["data"]["rides"][0]["ride_id"] == "ride-1"
+    assert first["data"]["rides"][0]["received_at"] == NOW.isoformat()
+    assert first["quality"]["page_as_of"] == NOW.isoformat()
     assert "returned_page_is_not_a_period_total" in first["warnings"]
+    later = NOW + timedelta(minutes=5)
+    freezer.move_to(later)
     second, error = await query(
         hass,
         assistant,
@@ -267,6 +279,9 @@ async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(ha
         cursor=first["data"]["next_cursor"],
     )
     assert not error and second["data"]["rides"][0]["ride_id"] == "ride-0"
+    assert second["query"]["as_of"] == later.isoformat()
+    assert second["quality"]["page_as_of"] == first["quality"]["page_as_of"]
+    assert second["data"]["rides"][0]["received_at"] == NOW.isoformat()
     replay, error = await query(
         hass,
         assistant,
@@ -278,6 +293,83 @@ async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(ha
     )
     assert error and replay["error"]["code"] == "retry_later"
     assert next(spec for spec in SPECS if spec.key == "get_recorded_trips").idempotent is False
+
+
+async def test_recorded_empty_page_preserves_known_month_observation(hass, assistant, freezer):
+    later = NOW + timedelta(days=1)
+    freezer.move_to(later)
+    result, error = await query(
+        hass,
+        assistant,
+        "get_recorded_trips",
+        start_date="2026-10-05",
+        end_date="2026-10-05",
+    )
+    assert not error and result["data"]["rides"] == []
+    assert result["query"]["as_of"] == result["quality"]["page_as_of"] == later.isoformat()
+    assert result["quality"]["months"] == [
+        {"month": "202610", "received_at": NOW.isoformat(), "observed_list_complete": True}
+    ]
+    assert result["quality"]["all_observed_lists_complete"] is True
+
+
+def test_recorded_observation_projection_is_bounded_and_whitelisted():
+    old = "2020-01-01T00:00:00+00:00"
+    response = {
+        "range": {"as_of": NOW, "private": "never-forward"},
+        "months": [
+            {
+                "month": month,
+                "received_at": old,
+                "observed_list_complete": True,
+                "raw": "never-forward",
+            }
+            for month in ("202001", "202002", "202003", "202004")
+        ],
+        "private": "never-forward",
+    }
+    rides = [{"ride_id": "ride-0", "received_at": old, "private": "never-forward"}]
+    view = trips_view(response, rides)
+    assert view.data["rides"][0]["received_at"] == old
+    assert view.quality["page_as_of"] == NOW.isoformat()
+    assert view.quality["months"] == [
+        {"month": month, "received_at": old, "observed_list_complete": True}
+        for month in ("202001", "202002", "202003")
+    ]
+    assert "never-forward" not in json.dumps({"data": view.data, "quality": view.quality})
+    assert "received_at" not in detail_view({"ride": rides[0]}).data
+
+
+@pytest.mark.parametrize("metadata", [None, [], "invalid", {}])
+def test_recorded_missing_observation_metadata_stays_unknown(metadata):
+    view = trips_view({"range": metadata, "months": metadata}, [{}])
+    assert view.data["rides"][0]["received_at"] is None
+    assert view.quality["page_as_of"] is None
+    assert view.quality["months"] == []
+
+
+@pytest.mark.parametrize("invalid_time", [None, "invalid", "2026-10-07T04:00:00", True, {}])
+def test_recorded_invalid_observation_metadata_is_not_fabricated(invalid_time):
+    view = trips_view(
+        {
+            "range": {"as_of": invalid_time},
+            "months": [
+                {
+                    "month": "202610",
+                    "received_at": invalid_time,
+                    "observed_list_complete": "true",
+                },
+                {"month": "202613", "received_at": NOW},
+                {"month": 202610, "received_at": NOW},
+            ],
+        },
+        [{"received_at": invalid_time}],
+    )
+    assert view.data["rides"][0]["received_at"] is None
+    assert view.quality["page_as_of"] is None
+    assert view.quality["months"] == [
+        {"month": "202610", "received_at": None, "observed_list_complete": None}
+    ]
 
 
 async def test_detail_missing_never_falls_back_to_cloud_then_saved_detail_is_small(
