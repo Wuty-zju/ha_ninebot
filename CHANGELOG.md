@@ -2,6 +2,13 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.14
+
+- Clarify daily mileage sources, whole-ride end-date attribution and overlapping trip-page selections in versioned Assistant help.
+- Explain score 0 as the integration's unsupported-display rule, preserving the distinction from battery health or SOH.
+- Scope MCP read-only guidance to the global route and retain account consent, request budgets and separate human approval for task applications.
+- Verify native MCP route policy and per-turn Conversation selection updates, with matching bilingual guides.
+
 ## 2.1.13
 
 - Focus account-budget help on request pacing, avoiding unrelated task-application matches.

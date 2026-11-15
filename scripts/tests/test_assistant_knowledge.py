@@ -17,10 +17,59 @@ class KnowledgeTests(unittest.TestCase):
     def tearDown(self):
         k.load_catalog.cache_clear()
 
+    def test_midnight_queries_keep_per_metric_attribution_and_browsing_separate(self):
+        for query in ("跨零点那趟算哪天？", "跨午夜", "cross midnight attribution"):
+            for language in ("en", "zh-Hans"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.14")
+                    match = result["matches"][0]
+                    self.assertEqual(match["source_id"], "business_dates")
+                    self.assertIn(
+                        "Asia/Shanghai" if language == "en" else "上海时区", match["text"]
+                    )
+                    for basis in ("server_daily_chart", "returned_unique_rides", "distance_basis"):
+                        self.assertIn(basis, match["text"])
+                    self.assertIn("overlapping" if language == "en" else "重叠", match["text"])
+                    self.assertIn("end date" if language == "en" else "结束日", match["text"])
+
+    def test_zero_score_help_states_the_display_rule_without_battery_diagnosis(self):
+        for query in ("健康评分=0，是电池坏了吗？", "battery score zero damaged"):
+            for language in ("en", "zh-Hans"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.14")
+                    match = result["matches"][0]
+                    self.assertEqual(match["source_id"], "measurement_units")
+                    self.assertIn("score 0" if language == "en" else "评分 0", match["text"])
+                    self.assertIn(
+                        "maintainer rule" if language == "en" else "维护者规则", match["text"]
+                    )
+                    self.assertIn("unsupported" if language == "en" else "不支持", match["text"])
+                    self.assertIn(
+                        "not establish battery damage"
+                        if language == "en"
+                        else "不能据此判断电池损坏",
+                        match["text"],
+                    )
+
+    def test_task_application_help_scopes_read_only_to_the_global_mcp_route(self):
+        for language in ("en", "zh-Hans"):
+            result = k.search_help("request_detail_sync_approval MCP read-only", language, "2.1.14")
+            match = result["matches"][0]
+            self.assertEqual(match["source_id"], "task_application")
+            self.assertIn("/api/mcp/ninebot_tasks", match["text"])
+            self.assertIn("global /api/mcp" if language == "en" else "全局 /api/mcp", match["text"])
+            self.assertIn("does not inherit" if language == "en" else "不继承", match["text"])
+            self.assertIn(
+                "separate human approval" if language == "en" else "独立人工批准", match["text"]
+            )
+            self.assertIn(
+                "account request budget" if language == "en" else "账号请求额度", match["text"]
+            )
+
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
         self.assertEqual(len(catalog["entries"]), 14)
-        self.assertEqual(catalog["corpus_version"], "1.2.5")
+        self.assertEqual(catalog["corpus_version"], "1.2.6")
         self.assertEqual(catalog["source_version"], "2.1.2")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
