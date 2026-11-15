@@ -18,6 +18,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from zoneinfo import ZoneInfo
 
 from scripts.assistant_model import MAX_TOKENS, MODELS, CpuModel
+from scripts.assistant_ollama import DEFAULT_URL, DIGEST, MODEL, OllamaModel
 from scripts.check_assistant_mcp import FIXTURE_INTEGRATION_VERSION
 
 PROFILES = {
@@ -65,14 +66,25 @@ def parse_calls(text: str, remaining: int, *, allowed_names: set[str] | None = N
     parts = re.findall(r"<tool_call>(.*?)</tool_call>", text, re.S)
     if text.count("<tool_call>") != len(parts) or text.count("</tool_call>") != len(parts):
         raise InvalidReply("unfinished_tool_call")
-    if len(parts) > remaining:
-        raise InvalidReply("tool_budget")
     calls = []
     for part in parts:
         try:
             call = json.loads(part)
         except (json.JSONDecodeError, RecursionError) as err:
             raise InvalidReply("invalid_tool_json") from err
+        calls.append(call)
+    return validate_calls(calls, remaining, allowed_names=allowed_names)
+
+
+def validate_calls(
+    calls: object, remaining: int, *, allowed_names: set[str] | None = None
+) -> list[dict]:
+    """Shared XML/native shape, name, argument and budget gate before any MCP RPC."""
+    if not isinstance(calls, list):
+        raise InvalidReply("invalid_tool_shape")
+    if len(calls) > remaining:
+        raise InvalidReply("tool_budget")
+    for call in calls:
         if (
             not isinstance(call, dict)
             or set(call) != {"name", "arguments"}
@@ -83,8 +95,40 @@ def parse_calls(text: str, remaining: int, *, allowed_names: set[str] | None = N
             raise InvalidReply("invalid_tool_shape")
         if allowed_names is not None and call["name"] not in allowed_names:
             raise InvalidReply("tool_not_exposed")
-        calls.append(call)
+    try:
+        if len(json.dumps(calls, ensure_ascii=False, allow_nan=False).encode()) > 16 * 1024:
+            raise InvalidReply("model_reply_too_large")
+    except (TypeError, ValueError, RecursionError) as err:
+        if isinstance(err, InvalidReply):
+            raise
+        raise InvalidReply("invalid_tool_arguments") from err
     return calls
+
+
+def parse_native_calls(calls: object, remaining: int, *, allowed_names: set[str]) -> list[dict]:
+    """Validate Ollama's structured calls directly; never reinterpret text as XML."""
+    if not isinstance(calls, list):
+        raise InvalidReply("invalid_tool_shape")
+    normalized = []
+    for call in calls:
+        if (
+            not isinstance(call, dict)
+            or not {"function"} <= set(call) <= {"id", "type", "function"}
+            or (
+                "id" in call
+                and (not isinstance(call["id"], str) or not 1 <= len(call["id"].encode()) <= 128)
+            )
+            or ("type" in call and call["type"] != "function")
+            or not isinstance(function := call["function"], dict)
+            or not {"name", "arguments"} <= set(function) <= {"index", "name", "arguments"}
+            or (
+                "index" in function
+                and (type(function["index"]) is not int or function["index"] < 0)
+            )
+        ):
+            raise InvalidReply("invalid_tool_shape")
+        normalized.append({"name": function["name"], "arguments": function["arguments"]})
+    return validate_calls(normalized, remaining, allowed_names=allowed_names)
 
 
 def safe_result(result: object) -> None:
@@ -364,7 +408,7 @@ async def verify_diagnostic_fixture(fixture, fixture_data: dict) -> dict:
 
 
 async def conversation(
-    model: CpuModel,
+    model: CpuModel | OllamaModel,
     fixture,
     case: dict,
     *,
@@ -458,8 +502,13 @@ async def conversation(
             break
         generated = await asyncio.to_thread(model.reply, messages, functions, deadline)
         text = visible_text(generated.pop("text"))
+        native = "tool_calls" in generated
+        native_calls = generated.pop("tool_calls", None)
         step = {"generation": generated, "visible_reply": text, "tools": []}
         trace.append(step)
+        if generated.get("failure_kind") and not generated["deadline_limited"]:
+            step["stop_reason"] = "model_host_error"
+            break
         if generated.get("context_limited"):
             step["stop_reason"] = "model_context_limit"
             break
@@ -467,13 +516,20 @@ async def conversation(
             step["stop_reason"] = "case_deadline"
             break
         try:
-            requests = (
-                parse_calls(text, MAX_CALLS - calls, allowed_names=allowed_names)
-                if tools_enabled
-                else []
-            )
+            if native:
+                requests = parse_native_calls(
+                    native_calls, MAX_CALLS - calls, allowed_names=allowed_names
+                )
+            else:
+                requests = (
+                    parse_calls(text, MAX_CALLS - calls, allowed_names=allowed_names)
+                    if tools_enabled
+                    else []
+                )
         except InvalidReply as err:
             step["protocol_error"] = str(err)
+            if native:
+                break
             if retries:
                 break
             retries += 1
@@ -489,12 +545,19 @@ async def conversation(
             continue
         if not requests:
             final = text
+            if native and not text:
+                step["stop_reason"] = "empty_model_reply"
             break
-        call_ids = [f"call_{calls + index + 1}" for index in range(len(requests))]
+        call_ids = [
+            native_calls[index].get("id", f"call_{calls + index + 1}")
+            if native
+            else f"call_{calls + index + 1}"
+            for index in range(len(requests))
+        ]
         messages.append(
             {
                 "role": "assistant",
-                "content": "",
+                "content": text if native else "",
                 "tool_calls": [
                     {"id": call_id, "type": "function", "function": request}
                     for call_id, request in zip(call_ids, requests, strict=True)
@@ -539,6 +602,7 @@ async def conversation(
         "fixture_preflight_excluded": True,
         "seconds": time.perf_counter() - started,
         "checks": {
+            "model_answer_present": bool(final.strip()),
             "tool_budget": calls <= MAX_CALLS,
             "expected_tool_names_only": set(names) <= set(case["expected"]["allowed_tools"]),
             "revocation_condition_exercised": detail_reads > 0 if case["id"] == "P06" else None,
@@ -553,7 +617,11 @@ async def conversation(
 
 
 async def evaluate(
-    output: Path, profile: str, host: str = "process", candidate: str = "baseline"
+    output: Path,
+    profile: str,
+    host: str = "process",
+    candidate: str = "baseline",
+    ollama_url: str = DEFAULT_URL,
 ) -> None:
     from scripts.check_assistant_mcp import check
 
@@ -578,19 +646,30 @@ async def evaluate(
                 subprocess.check_output, ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
             )
         ).strip(),
-        "model": MODELS[candidate].model,
-        "model_revision": MODELS[candidate].revision,
-        "model_candidate": candidate,
-        "host_contract": "mcp-text-content-v2",
+        "model": MODEL if host == "ollama" else MODELS[candidate].model,
+        "model_revision": DIGEST if host == "ollama" else MODELS[candidate].revision,
+        "model_candidate": "ollama_fixed" if host == "ollama" else candidate,
+        "host_contract": "mcp-text-content-ollama-tool-name-v1"
+        if host == "ollama"
+        else "mcp-text-content-v2",
+        "response_contract": "ollama-native-tool-calls-v1"
+        if host == "ollama"
+        else "xml-tool-call-v1",
         "prompt_contract": "native-mcp-prompts-get-v1",
         "request_accounting_contract": "bootstrap-separated-v1",
         "fixture_integration_version": FIXTURE_INTEGRATION_VERSION,
-        "versions": {key: version(key) for key in ("homeassistant", "transformers")},
+        "versions": {
+            key: version(key)
+            for key in (
+                ("homeassistant",) if host == "ollama" else ("homeassistant", "transformers")
+            )
+        },
         "synthetic": True,
         "fixture_clock": reference_time.isoformat(),
         "fixture_status_age_seconds": 20,
         "scope": (
-            "Real CPU model and native MCP HTTP/policy; synthetic auth, registry, snapshots, "
+            f"Real {'local Ollama' if host == 'ollama' else 'CPU'} model and native MCP "
+            "HTTP/policy; synthetic auth, registry, snapshots, "
             "case-specific synthetic Action observations and real statistical projections. "
             "No production OAuth, SQLite or cloud."
         ),
@@ -600,10 +679,14 @@ async def evaluate(
             "tokens_per_turn": MAX_TOKENS,
             "case_seconds": MAX_CASE_SECONDS,
         },
-        "deadline_contract": "owned_loopback_deadline_v1"
-        if host == "reusable"
-        else "single_process_deadline_v1",
-        "cache_reset_between_arms": host == "reusable",
+        "deadline_contract": (
+            "local_http_worker_deadline_v1"
+            if host == "ollama"
+            else (
+                "owned_loopback_deadline_v1" if host == "reusable" else "single_process_deadline_v1"
+            )
+        ),
+        "cache_reset_between_arms": host in {"reusable", "ollama"},
         "provider_cost_usd": None,
         "cases": [],
     }
@@ -617,12 +700,16 @@ async def evaluate(
 
         with TemporaryDirectory(prefix="ninebot-evaluation-fixture-") as directory:
             await check(directory, scenario=verify, reference_time=reference_time)
-    model = await asyncio.to_thread(CpuModel, host, candidate)
+    model = (
+        await asyncio.to_thread(OllamaModel, ollama_url)
+        if host == "ollama"
+        else await asyncio.to_thread(CpuModel, host, candidate)
+    )
     report["model_host"] = model.metadata
     try:
         for case in selected:
             for enabled in (False, True):
-                model.reset()
+                await asyncio.to_thread(model.reset)
                 tools_enabled = enabled or profile == "retrieval"
                 help_enabled = enabled or profile != "retrieval"
                 arm = (
@@ -662,11 +749,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--profile", choices=PROFILES, default="baseline")
-    parser.add_argument("--host", choices=("process", "reusable"), default="process")
+    parser.add_argument("--host", choices=("process", "reusable", "ollama"), default="process")
+    parser.add_argument("--ollama-url", default=None, help="Explicit local Ollama HTTP authority")
     parser.add_argument("--candidate", choices=MODELS, default="baseline")
     args = parser.parse_args()
+    if args.ollama_url is not None and args.host != "ollama":
+        parser.error("--ollama-url requires --host ollama")
+    if args.host == "ollama" and args.candidate != "baseline":
+        parser.error("--host ollama uses its fixed installed model, not a CPU candidate")
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    asyncio.run(evaluate(args.output, args.profile, args.host, args.candidate))
+    asyncio.run(
+        evaluate(
+            args.output, args.profile, args.host, args.candidate, args.ollama_url or DEFAULT_URL
+        )
+    )
 
 
 if __name__ == "__main__":

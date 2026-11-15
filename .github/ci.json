@@ -333,6 +333,10 @@
       "paths": [
         "custom_components/ninebot/assistant*.py",
         "scripts/check_assistant*.py",
+        "scripts/assistant_ollama.py",
+        "scripts/evaluate_assistant.py",
+        "scripts/tests/test_assistant_ollama.py",
+        "scripts/tests/test_assistant_evaluation.py",
         "custom_components/ninebot/assistant_knowledge/**"
       ],
       "tests": [

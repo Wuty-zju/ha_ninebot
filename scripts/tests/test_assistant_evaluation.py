@@ -11,6 +11,7 @@ from scripts.evaluate_assistant import (
     available_tools,
     diagnostic_health,
     parse_calls,
+    parse_native_calls,
     prompt_text,
     safe_result,
     select_cases,
@@ -173,6 +174,79 @@ class ModelProtocolTests(unittest.TestCase):
         self.assertEqual(visible_text("<think>private</think>answer"), "answer")
         self.assertEqual(visible_text("<think>unfinished"), "")
         self.assertEqual(visible_text("hidden<think>nested</think>hidden</think>answer"), "answer")
+
+    def test_native_calls_use_the_common_shape_name_argument_and_budget_gate(self):
+        arguments = {"vehicle_ref": "fixture", "include_daily": False}
+        call = {"function": {"index": 0, "name": "ninebot__get_statistics", "arguments": arguments}}
+        allowed = {"ninebot__get_statistics"}
+        result = parse_native_calls([call], 1, allowed_names=allowed)
+        self.assertEqual(result, [{"name": "ninebot__get_statistics", "arguments": arguments}])
+        self.assertIs(result[0]["arguments"], arguments)
+        for calls, remaining, names, kind in (
+            ([call, call], 1, allowed, "tool_budget"),
+            ([call], 1, set(), "tool_not_exposed"),
+            (
+                [{"function": {"name": "tool", "arguments": "{}"}}],
+                1,
+                {"tool"},
+                "invalid_tool_shape",
+            ),
+            (
+                [{"function": {"name": "tool", "arguments": {"x": float("nan")}}}],
+                1,
+                {"tool"},
+                "invalid_tool_arguments",
+            ),
+            (
+                [{"function": {"name": "tool", "arguments": {"x": "车" * 6000}}}],
+                1,
+                {"tool"},
+                "model_reply_too_large",
+            ),
+            (
+                [{"function": {"name": "tool", "arguments": {}, "index": True}}],
+                1,
+                {"tool"},
+                "invalid_tool_shape",
+            ),
+            (
+                [{"function": {"name": "tool", "arguments": {}}, "unexpected": True}],
+                1,
+                {"tool"},
+                "invalid_tool_shape",
+            ),
+            ({}, 1, allowed, "invalid_tool_shape"),
+        ):
+            with self.subTest(kind=kind), self.assertRaisesRegex(InvalidReply, kind):
+                parse_native_calls(calls, remaining, allowed_names=names)
+        self.assertEqual(parse_native_calls([], 0, allowed_names=set()), [])
+
+    def test_recorded_ollama_call_id_and_optional_function_type_are_validated(self):
+        call = {
+            "id": "call_pt5p187g",
+            "function": {"index": 0, "name": "synthetic_add", "arguments": {"a": 17, "b": 25}},
+        }
+        expected = [{"name": "synthetic_add", "arguments": {"a": 17, "b": 25}}]
+        for extra in ({}, {"type": "function"}):
+            result = parse_native_calls([call | extra], 1, allowed_names={"synthetic_add"})
+            self.assertEqual(result, expected)
+            self.assertNotIn("id", result[0])
+            self.assertNotIn("type", result[0])
+        for extra in (
+            {"id": ""},
+            {"id": "x" * 129},
+            {"id": "车" * 43},
+            {"id": 42},
+            {"id": None},
+            {"type": "other"},
+            {"type": None},
+            {"unknown": True},
+        ):
+            with (
+                self.subTest(extra=extra),
+                self.assertRaisesRegex(InvalidReply, "invalid_tool_shape"),
+            ):
+                parse_native_calls([call | extra], 1, allowed_names={"synthetic_add"})
 
     def test_multiple_calls_respect_the_remaining_budget(self):
         call = {"name": "ninebot__get_vehicle_status", "arguments": {"vehicle_ref": "fixture"}}

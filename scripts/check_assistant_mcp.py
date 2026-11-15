@@ -1,6 +1,6 @@
 """Replay the installed HA MCP HTTP handler with synthetic authorization and data.
 
-The ephemeral aiohttp test listener runs only in CI. HA's request handler,
+The ephemeral aiohttp test listener runs in isolated validation environments. HA's request handler,
 MCP dispatcher, native API and Ninebot consent checks are real; bearer lookup,
 config entries, device registry and vehicle snapshots are synthetic. This does
 not exercise production HA, OAuth, a model provider or the Ninebot cloud.
