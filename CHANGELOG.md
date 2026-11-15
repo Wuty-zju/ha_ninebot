@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## Unreleased
+
+- Add an optional local Qwen reader for period statistics, synchronization health and versioned help through the native Ninebot MCP collection.
+- Display checked tool receipts with dates, metric quality, observation times and source citations; keep model drafts separate from the displayed facts.
+- Make explicitly requested task checklists available to the local reader within its existing tool and request limits.
+
 ## 2.1.6
 
 - Keep public-help answers focused on documented concepts by default; retrieve advisory task checklists only when explicitly requested for a specific task.

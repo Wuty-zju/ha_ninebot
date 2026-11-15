@@ -7,7 +7,6 @@ Its CPU model is a test dependency, not an integration dependency or provider.
 import argparse
 import asyncio
 import json
-import re
 import subprocess
 import time
 from calendar import monthrange
@@ -19,6 +18,14 @@ from zoneinfo import ZoneInfo
 
 from scripts.assistant_model import MAX_TOKENS, MODELS, CpuModel
 from scripts.assistant_ollama import DEFAULT_URL, DIGEST, MODEL, OllamaModel
+from scripts.assistant_protocol import (
+    InvalidReply,
+    parse_calls,
+    parse_native_calls,
+    prompt_text,
+    tool_functions,
+    visible_text,
+)
 from scripts.check_assistant_mcp import FIXTURE_INTEGRATION_VERSION
 
 PROFILES = {
@@ -49,88 +56,6 @@ def available_tools(tools: list[dict], help_enabled: bool) -> list[dict]:
     return [tool for tool in tools if help_enabled or tool["name"] != "ninebot__search_help"]
 
 
-class InvalidReply(ValueError):
-    """A bounded model response does not match the host tool-call protocol."""
-
-
-def visible_text(text: str) -> str:
-    """Do not persist reasoning blocks, including an unfinished block."""
-    if "</think>" in text:
-        text = text.rsplit("</think>", 1)[1]
-    return text.split("<think>", 1)[0].strip()
-
-
-def parse_calls(text: str, remaining: int, *, allowed_names: set[str] | None = None) -> list[dict]:
-    if len(text.encode()) > 16 * 1024:
-        raise InvalidReply("model_reply_too_large")
-    parts = re.findall(r"<tool_call>(.*?)</tool_call>", text, re.S)
-    if text.count("<tool_call>") != len(parts) or text.count("</tool_call>") != len(parts):
-        raise InvalidReply("unfinished_tool_call")
-    calls = []
-    for part in parts:
-        try:
-            call = json.loads(part)
-        except (json.JSONDecodeError, RecursionError) as err:
-            raise InvalidReply("invalid_tool_json") from err
-        calls.append(call)
-    return validate_calls(calls, remaining, allowed_names=allowed_names)
-
-
-def validate_calls(
-    calls: object, remaining: int, *, allowed_names: set[str] | None = None
-) -> list[dict]:
-    """Shared XML/native shape, name, argument and budget gate before any MCP RPC."""
-    if not isinstance(calls, list):
-        raise InvalidReply("invalid_tool_shape")
-    if len(calls) > remaining:
-        raise InvalidReply("tool_budget")
-    for call in calls:
-        if (
-            not isinstance(call, dict)
-            or set(call) != {"name", "arguments"}
-            or not isinstance(call["name"], str)
-            or not 1 <= len(call["name"]) <= 128
-            or not isinstance(call["arguments"], dict)
-        ):
-            raise InvalidReply("invalid_tool_shape")
-        if allowed_names is not None and call["name"] not in allowed_names:
-            raise InvalidReply("tool_not_exposed")
-    try:
-        if len(json.dumps(calls, ensure_ascii=False, allow_nan=False).encode()) > 16 * 1024:
-            raise InvalidReply("model_reply_too_large")
-    except (TypeError, ValueError, RecursionError) as err:
-        if isinstance(err, InvalidReply):
-            raise
-        raise InvalidReply("invalid_tool_arguments") from err
-    return calls
-
-
-def parse_native_calls(calls: object, remaining: int, *, allowed_names: set[str]) -> list[dict]:
-    """Validate Ollama's structured calls directly; never reinterpret text as XML."""
-    if not isinstance(calls, list):
-        raise InvalidReply("invalid_tool_shape")
-    normalized = []
-    for call in calls:
-        if (
-            not isinstance(call, dict)
-            or not {"function"} <= set(call) <= {"id", "type", "function"}
-            or (
-                "id" in call
-                and (not isinstance(call["id"], str) or not 1 <= len(call["id"].encode()) <= 128)
-            )
-            or ("type" in call and call["type"] != "function")
-            or not isinstance(function := call["function"], dict)
-            or not {"name", "arguments"} <= set(function) <= {"index", "name", "arguments"}
-            or (
-                "index" in function
-                and (type(function["index"]) is not int or function["index"] < 0)
-            )
-        ):
-            raise InvalidReply("invalid_tool_shape")
-        normalized.append({"name": function["name"], "arguments": function["arguments"]})
-    return validate_calls(normalized, remaining, allowed_names=allowed_names)
-
-
 def safe_result(result: object) -> None:
     """Fail before artifact publication if the synthetic server leaks guarded data."""
     text = json.dumps(result, ensure_ascii=False)
@@ -148,20 +73,6 @@ def safe_result(result: object) -> None:
         )
     ):
         raise AssertionError("Synthetic server result crossed the data boundary")
-
-
-def tool_functions(tools: list[dict]) -> list[dict]:
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": tool["name"],
-                "description": tool.get("description", ""),
-                "parameters": tool["inputSchema"],
-            },
-        }
-        for tool in tools
-    ]
 
 
 def tool_message(name: str, call_id: str, response: dict) -> dict:
@@ -185,26 +96,6 @@ def tool_message(name: str, call_id: str, response: dict) -> dict:
         raise InvalidReply("unexpected_tool_response") from err
     safe_result(payload)
     return {"role": "tool", "name": name, "tool_call_id": call_id, "content": text}
-
-
-def prompt_text(response: dict) -> str:
-    """Accept only the native API's single text prompt, never an error or attachment."""
-    try:
-        if "error" in response:
-            raise ValueError
-        messages = response["result"]["messages"]
-        if (
-            not isinstance(messages, list)
-            or len(messages) != 1
-            or messages[0]["role"] != "assistant"
-            or messages[0]["content"]["type"] != "text"
-            or not isinstance(text := messages[0]["content"]["text"], str)
-            or not 1 <= len(text.encode()) <= 16 * 1024
-        ):
-            raise ValueError
-    except (KeyError, TypeError, ValueError) as err:
-        raise InvalidReply("unexpected_prompt_response") from err
-    return text
 
 
 def write_report(output: Path, report: dict) -> None:
@@ -407,6 +298,22 @@ async def verify_diagnostic_fixture(fixture, fixture_data: dict) -> dict:
     return payloads
 
 
+async def prepare_case_actions(fixture, case: dict, fixture_data: dict) -> None:
+    from homeassistant.core import SupportsResponse
+
+    async def empty_statistics(call):
+        assert call.context.user_id == "synthetic-admin"
+        return {"months": [], "days": []}
+
+    fixture.hass.services.async_register(
+        "ninebot", "get_statistics", empty_statistics, supports_response=SupportsResponse.ONLY
+    )
+    if case["id"] in PROFILES["diagnostics"]:
+        install_diagnostic_actions(fixture, fixture_data)
+    elif case["id"] in PROFILES["statistics"]:
+        install_synthetic_statistics(fixture, fixture_data, empty=case["id"] == "Q09")
+
+
 async def conversation(
     model: CpuModel | OllamaModel,
     fixture,
@@ -437,17 +344,7 @@ async def conversation(
     user_message = case["prompt"]
     detail_reads = 0
 
-    async def empty_statistics(call):
-        assert call.context.user_id == "synthetic-admin"
-        return {"months": [], "days": []}
-
-    fixture.hass.services.async_register(
-        "ninebot", "get_statistics", empty_statistics, supports_response=SupportsResponse.ONLY
-    )
-    if case["id"] in PROFILES["diagnostics"]:
-        install_diagnostic_actions(fixture, fixture_data)
-    elif case["id"] in PROFILES["statistics"]:
-        install_synthetic_statistics(fixture, fixture_data, empty=case["id"] == "Q09")
+    await prepare_case_actions(fixture, case, fixture_data)
     if case["id"] == "P06":
         context["selected_ride"] = {"ride_id": "synthetic-ride-a", "query_month": "202611"}
         user_message = "查看 Vehicle A 所选行程的已保存详情。"
@@ -616,12 +513,58 @@ async def conversation(
     }
 
 
+async def verified_conversation(
+    model, fixture, case, *, fixture_data, tools_enabled, help_enabled, arm
+) -> dict:
+    from scripts.assistant_reader import native_mcp, run_reader
+
+    await prepare_case_actions(fixture, case, fixture_data)
+    initial = fixture.request_count()
+    async with native_mcp(fixture.mcp_url, "fixture-admin") as backend:
+        result = await run_reader(
+            model,
+            backend,
+            case["prompt"],
+            selected_vehicle=fixture.vehicle_ref,
+            language="zh-Hans",
+            now=datetime.fromisoformat(fixture_data["now"]).isoformat(),
+            tools_enabled=tools_enabled,
+            help_enabled=help_enabled,
+        )
+    safe_result(result)
+    names = [tool["name"] for step in result["trace"] for tool in step["tools"]]
+    total = fixture.request_count() - initial
+    return {
+        **result,
+        "id": case["id"],
+        "arm": arm,
+        "task_prompt": case["prompt"],
+        "expected": case["expected"],
+        "final_answer": result["text"],
+        "http_requests_total_in_case": total,
+        "http_requests_during_conversation": result["mcp_tool_calls"],
+        "host_bootstrap_and_close_http_requests": total - result["mcp_tool_calls"],
+        "fixture_preflight_excluded": True,
+        "checks": {
+            "presentation_present": bool(result["text"]),
+            "model_answer_present": bool(result["model_final_answer"]),
+            "tool_budget": result["tool_calls"] <= MAX_CALLS,
+            "expected_tool_names_only": set(names) <= set(case["expected"]["allowed_tools"]),
+        },
+        "task_completion": None,
+        "fact_accuracy": None,
+        "review": "Judge the actual period and receipts against original assertions; "
+        "verified presentation does not verify user intent or the model's separate draft.",
+    }
+
+
 async def evaluate(
     output: Path,
     profile: str,
     host: str = "process",
     candidate: str = "baseline",
     ollama_url: str = DEFAULT_URL,
+    answer_mode: str = "model",
 ) -> None:
     from scripts.check_assistant_mcp import check
 
@@ -635,6 +578,7 @@ async def evaluate(
     assert reference_time.tzinfo is not None
     report = {
         "schema_version": 1,
+        "answer_mode": answer_mode,
         "profile": profile,
         "comparison": (
             "same Agent, search_help hidden versus available; other read tools unchanged"
@@ -690,6 +634,13 @@ async def evaluate(
         "provider_cost_usd": None,
         "cases": [],
     }
+    if answer_mode == "verified":
+        report["host_contract"] = "official-mcp-sdk-verified-tool-presentation-v1"
+        report["scope"] += (
+            " The optional reference reader exposes only statistics, help and sync health. "
+            "Model drafts are separate from deterministic receipt presentation. "
+            "SDK initialization/notifications and close are included in HTTP accounting."
+        )
     if profile in {"diagnostics", "statistics", "statistics_probe"}:
 
         async def verify(fixture):
@@ -725,7 +676,8 @@ async def evaluate(
                     help_enabled=help_enabled,
                     arm=arm,
                 ):
-                    result = await conversation(
+                    execute = verified_conversation if answer_mode == "verified" else conversation
+                    result = await execute(
                         model,
                         fixture,
                         case,
@@ -734,12 +686,12 @@ async def evaluate(
                         help_enabled=help_enabled,
                         arm=arm,
                     )
-                    assert result["context"]["now"] == reference_time.isoformat()
                     report["cases"].append(result)
+                    await asyncio.to_thread(write_report, output, report)
+                    assert result.get("context", {}).get("now") == reference_time.isoformat()
 
                 with TemporaryDirectory(prefix="ninebot-eval-") as directory:
                     await check(directory, scenario=scenario, reference_time=reference_time)
-                await asyncio.to_thread(write_report, output, report)
                 print(f"Measured {case['id']} {arm}", flush=True)
     finally:
         await asyncio.to_thread(model.close)
@@ -752,15 +704,26 @@ def main() -> None:
     parser.add_argument("--host", choices=("process", "reusable", "ollama"), default="process")
     parser.add_argument("--ollama-url", default=None, help="Explicit local Ollama HTTP authority")
     parser.add_argument("--candidate", choices=MODELS, default="baseline")
+    parser.add_argument("--answer-mode", choices=("model", "verified"), default="model")
     args = parser.parse_args()
     if args.ollama_url is not None and args.host != "ollama":
         parser.error("--ollama-url requires --host ollama")
     if args.host == "ollama" and args.candidate != "baseline":
         parser.error("--host ollama uses its fixed installed model, not a CPU candidate")
+    if args.answer_mode == "verified" and (
+        args.host != "ollama"
+        or args.profile not in {"statistics_probe", "statistics", "retrieval", "diagnostics"}
+    ):
+        parser.error("verified reader requires Ollama and a supported statistics/help profile")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     asyncio.run(
         evaluate(
-            args.output, args.profile, args.host, args.candidate, args.ollama_url or DEFAULT_URL
+            args.output,
+            args.profile,
+            args.host,
+            args.candidate,
+            args.ollama_url or DEFAULT_URL,
+            args.answer_mode,
         )
     )
 
