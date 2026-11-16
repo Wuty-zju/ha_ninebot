@@ -134,6 +134,8 @@ SPECS = (
         "none is specified. Use today, yesterday, this_month, last_month, one YYYY-MM-DD "
         "date or one YYYY-MM month on or before today in Asia/Shanghai. "
         "The current month ends at today's business date. "
+        "This is the archive timezone, not the browser timezone; "
+        "no alternate timezone is accepted. "
         "Null/missing metrics are unknown, never zero; "
         "partial coverage does not prove a total. Use returned values, units and per-metric "
         "quality, not SQL.",

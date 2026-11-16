@@ -8,7 +8,8 @@ ERROR_MESSAGES = {
     "approval_expired": "The plan expired. Preview the range and request a new plan.",
     "not_authorized": (
         "Access denied for this user or vehicle. No data was returned. "
-        "This does not mean the trip is missing. Review permissions in Home Assistant."
+        "Check the exact supplied vehicle reference and Home Assistant permissions. "
+        "This does not establish whether a trip or vehicle exists, or which check failed."
     ),
     "invalid_arguments": (
         "Arguments do not match the tool. Use the user's selected vehicle and date range."
