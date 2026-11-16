@@ -97,6 +97,8 @@ async def test_call_budget_reserves_before_parallel_work(turn):
 def test_discovery_is_not_an_answer_and_large_result_is_explicit(turn):
     turn.results = [{"tool": "ninebot__get_vehicles", "error": False, "result": {}}]
     assert turn.response()["outcome"] == "needs_input"
+    turn.results = [{"tool": "ninebot__get_statistics", "error": True, "result": {}}]
+    assert turn.response()["outcome"] == "failed"
     turn.results = [
         {
             "tool": "ninebot__get_statistics",

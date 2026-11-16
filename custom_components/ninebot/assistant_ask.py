@@ -123,6 +123,8 @@ class EvidenceTurn:
             "results": self.results,
             "stop_reason": self.stop,
         }
+        if not has_evidence and any(row["error"] for row in self.results):
+            response["outcome"] = "failed"
         if (
             len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
             > MAX_RESPONSE_BYTES
@@ -207,6 +209,12 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
                     )
                 except TurnStopped:
                     pass
+                except (AssistantError, Unauthorized):
+                    raise
+                except Exception:
+                    # Provider implementations own their exceptions. Keep their
+                    # arbitrary messages outside this response/log boundary.
+                    return failed("model_task_failed")
                 # Generated prose is not a source of numeric facts or executable instructions.
                 await turn.async_validate()
                 return turn.response()
@@ -214,7 +222,7 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
             return failed("not_authorized")
         except TimeoutError:
             return failed("timeout")
-        except (HomeAssistantError, ImportError, AttributeError, ValueError):
+        except (HomeAssistantError, ImportError, AttributeError, ValueError, KeyError, TypeError):
             return failed("model_task_failed")
         finally:
             active.discard(task)
