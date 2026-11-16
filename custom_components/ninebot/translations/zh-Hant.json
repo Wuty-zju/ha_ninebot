@@ -1227,6 +1227,24 @@
           "description": "asc：最早優先；desc：最新優先。繼續分頁時保持相同方向。"
         }
       }
+    },
+    "ask": {
+      "name": "Ask Ninebot Assistant",
+      "description": "Ask a local-data question using an existing AI task entity. Returns authorized tool results with their sources and quality.",
+      "fields": {
+        "question": {
+          "name": "Question",
+          "description": "Ask about local vehicle data or integration help."
+        },
+        "ai_task_entity_id": {
+          "name": "AI task",
+          "description": "An existing model provider with native tool calling."
+        },
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select a vehicle when more than one is allowed for Assistant."
+        }
+      }
     }
   },
   "selector": {

@@ -348,7 +348,8 @@
         "tests/test_assistant_approval.py",
         "tests/test_assistant_task_store.py",
         "tests/test_assistant_preview.py",
-        "tests/test_assistant_panel.py"
+        "tests/test_assistant_panel.py",
+        "tests/test_assistant_ask.py"
       ]
     }
   },

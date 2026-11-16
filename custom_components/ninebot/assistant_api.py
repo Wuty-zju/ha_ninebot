@@ -107,4 +107,17 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
     """Use the existing HA API registry; never add a listener or provider."""
     if not all(hasattr(llm, name) for name in ("ToolResult", "ToolAnnotations")):
         raise HomeAssistantError("unsupported_native_api")
-    return llm.async_register_api(hass, NinebotReadAPI(hass))
+    from .assistant_ask import async_register as register_ask
+
+    remove_api = llm.async_register_api(hass, NinebotReadAPI(hass))
+    try:
+        remove_ask = register_ask(hass)
+    except Exception:
+        remove_api()
+        raise
+
+    def remove() -> None:
+        remove_ask()
+        remove_api()
+
+    return remove

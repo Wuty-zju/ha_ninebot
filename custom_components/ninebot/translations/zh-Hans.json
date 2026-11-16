@@ -1227,6 +1227,24 @@
           "description": "asc：最早优先；desc：最新优先。继续分页时保持相同方向。"
         }
       }
+    },
+    "ask": {
+      "name": "询问 Ninebot Assistant",
+      "description": "通过已配置的 AI 任务查询本地资料，返回获准工具结果及其来源和质量。",
+      "fields": {
+        "question": {
+          "name": "问题",
+          "description": "查询本地车辆数据或集成帮助。"
+        },
+        "ai_task_entity_id": {
+          "name": "AI 任务",
+          "description": "选择支持原生工具调用的已配置模型。"
+        },
+        "device_id": {
+          "name": "车辆",
+          "description": "允许多辆车使用 Assistant 时，请选择车辆。"
+        }
+      }
     }
   },
   "selector": {
