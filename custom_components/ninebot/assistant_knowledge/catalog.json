@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.6",
+  "corpus_version": "1.2.7",
   "source_version": "2.1.2",
   "entries": [
     {
@@ -621,6 +621,51 @@
       "reviewed_at": "2026-11-09",
       "supersedes": [],
       "content_sha256": "15c03b817b4b9b4258236501da07016cd38242618d6aa032ade4255d9dd8fabf"
+    },
+    {
+      "id": "mcp_configuration",
+      "applicable_versions": {
+        "min_inclusive": "2.1.22",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-16",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "60275456d65afc1347531fec56f853d1fbbf926f",
+        "sha256": "2150ae97caa2e10a66e8faff764fa4390b183d9a657b68eb50bc7fa342e3e36c",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/60275456d65afc1347531fec56f853d1fbbf926f/docs/assistant.md#check-mcp-api-selection"
+      },
+      "translations": {
+        "en": {
+          "title": "Main and individual MCP API settings",
+          "text": "On HA 2026.11+, all_llm_apis=true selects every registered API for the main /api/mcp URL, including later additions; a saved llm_hass_api selection does not restrict it. With all_llm_apis=false, llm_hass_api selects the collections. read_only filters tools on that main URL. An individual /api/mcp/<api_id> selects its registered API directly and ignores those main settings. The Ninebot read API has only local read tools; its tasks API still checks account consent and requires the original user to approve cloud execution in HA. This describes route behavior, not an inspection of current configuration.",
+          "keywords": [
+            "all_llm_apis",
+            "llm_hass_api",
+            "read_only",
+            "API selection",
+            "expose all AI tools",
+            "main URL settings"
+          ]
+        },
+        "zh-Hans": {
+          "title": "MCP主地址与独立地址的API设置",
+          "text": "HA 2026.11+中，all_llm_apis=true让主/api/mcp地址选择全部已注册API，包括之后新增的集合；已保存的llm_hass_api选择不限制该列表。all_llm_apis=false时才按llm_hass_api选集合。read_only只过滤主地址工具。独立/api/mcp/<api_id>直接选对应已注册API，不继承主地址的这些设置。Ninebot只读API仅查本地；任务API仍要求账号授权，云端执行仍须原申请人在HA中另行人工批准。这是路由规则，不能当作已检查当前配置。",
+          "keywords": [
+            "all_llm_apis",
+            "llm_hass_api",
+            "read_only",
+            "API选择",
+            "全部AI工具",
+            "主地址设置",
+            "MCP配置"
+          ]
+        }
+      },
+      "content_sha256": "2535006f294c4a690e026d1ab1e02316164abba602af3759e604f7bd8642bc2a",
+      "procedure_id": null
     }
   ],
   "procedures": [
