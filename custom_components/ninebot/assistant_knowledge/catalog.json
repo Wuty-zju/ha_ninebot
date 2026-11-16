@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.7",
-  "source_version": "2.1.2",
+  "corpus_version": "1.2.8",
+  "source_version": "2.1.23",
   "entries": [
     {
       "id": "statistics_missing",
@@ -665,6 +665,144 @@
       },
       "content_sha256": "cceaf315adbc772a76ae3d9c123431f11acc505b5ebca0aa51ab357046ef0461",
       "procedure_id": null
+    },
+    {
+      "id": "data_availability",
+      "applicable_versions": {
+        "min_inclusive": "2.1.24",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-17",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "9ddd8e724fcfee720a171f9dff2b98377d4ba7c4",
+        "sha256": "5ee88231eeaf2d6a7faa876656bfb02e714f50f5eff15b2e987327e5f52b90f4",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/9ddd8e724fcfee720a171f9dff2b98377d4ba7c4/docs/guide.md#missing-data-and-controls"
+      },
+      "translations": {
+        "en": {
+          "title": "Missing App/HA data and empty history",
+          "text": "Compare the same account, vehicle and business month in the App and HA. Status, history and controls have separate requests and permissions; a working SOC does not establish history coverage. Unknown, unsupported and zero are different. A confirmed empty list can have 100% progress: inspect reported/returned counts, discovery state and scanned range. An unknown last trip or event may lack a usable record or a new event after startup. Enable native debug logging, note the time and message, then download Diagnostics and disable/download the log. Diagnostic entities do not enable DEBUG logs. Missing cache is unobserved; downloading diagnostics does not fetch data. Explain observed evidence only; the root cause remains unknown.",
+          "keywords": [
+            "missing data",
+            "App",
+            "HA",
+            "unknown values",
+            "zero trips",
+            "100%",
+            "last trip",
+            "trip event",
+            "diagnostics"
+          ]
+        },
+        "zh-Hans": {
+          "title": "App与HA数据缺失及空行程",
+          "text": "先对齐App与HA的账号、车辆和业务月份。状态、历史和控制的请求与权限不同；SOC有值不能证明历史完整。未知、不支持与零不同。已确认的空列表也可达到100%，需核对报告/返回条数、发现状态与扫描范围。最近行程或事件未知，可能尚无可用记录或启动后新事件。启用HA原生调试日志，记录时间和提示，下载诊断后停用并下载日志；显示诊断实体不等于DEBUG日志。缺失缓存是未观察，下载诊断不补查数据。只解释已有证据，未证根因保持未知。",
+          "keywords": [
+            "数据缺失",
+            "App与HA",
+            "未知值",
+            "零行程",
+            "100%",
+            "最近行程",
+            "行程事件",
+            "完整率",
+            "诊断"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "508a81adc915572942f3a29b6da22523881fac56eb465bc4b05dd93599d03848"
+    },
+    {
+      "id": "control_outcomes",
+      "applicable_versions": {
+        "min_inclusive": "2.1.24",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-17",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "9ddd8e724fcfee720a171f9dff2b98377d4ba7c4",
+        "sha256": "5ee88231eeaf2d6a7faa876656bfb02e714f50f5eff15b2e987327e5f52b90f4",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/9ddd8e724fcfee720a171f9dff2b98377d4ba7c4/docs/guide.md#missing-data-and-controls"
+      },
+      "translations": {
+        "en": {
+          "title": "Controls ready, accepted and confirmed",
+          "text": "Ready means local eligibility; accepted is a command receipt. Only a later fresh observation confirms the requested state. A rejected attempt was not sent; an uncertain invocation is not safe to retry automatically. Inspect control_policy and the latest control_results promptly; these records reset on reload. Native DEBUG Control result lines contain a short support identifier, outcome, readback and confirmation. HA can reject an unavailable entity before any integration record. To collect evidence, note the original action, time and message, enable native logging and download reviewed diagnostics/log excerpts; data collection alone does not require a control. No response alone does not identify the cause; unproven causes remain unknown.",
+          "keywords": [
+            "control",
+            "command",
+            "ready",
+            "accepted",
+            "confirmation",
+            "no response",
+            "control_policy",
+            "control_results"
+          ]
+        },
+        "zh-Hans": {
+          "title": "控制可发送、接受与确认",
+          "text": "可发送只表示本地准入，接受是命令回执；后续新鲜观测才确认目标状态。已拒绝表示未发送，结果不确定不能自动重试。及时核对control_policy和最新control_results，重载会清空记录。原生DEBUG的Control result行包含短support编号、结果、回读及确认。HA也可能在不可用实体到达集成前拒绝，不生成控制记录。收集证据时记录原动作、时间和提示，启用原生日志并下载审核过的诊断/日志片段；单纯取证无需控制车辆。没有反应时，未证原因仍未知。",
+          "keywords": [
+            "控制",
+            "可发送",
+            "命令接受",
+            "没有反应",
+            "确认状态",
+            "远程开启"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "6ca0f8eebf33055fc07719b6ec8f303bc524a74990eedd6dc1145550af0b3c69"
+    },
+    {
+      "id": "battery_support",
+      "applicable_versions": {
+        "min_inclusive": "2.1.24",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-17",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "9ddd8e724fcfee720a171f9dff2b98377d4ba7c4",
+        "sha256": "5ee88231eeaf2d6a7faa876656bfb02e714f50f5eff15b2e987327e5f52b90f4",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/9ddd8e724fcfee720a171f9dff2b98377d4ba7c4/docs/guide.md#missing-data-and-controls"
+      },
+      "translations": {
+        "en": {
+          "title": "Unsupported main-battery cycle counts",
+          "text": "A BMS metric marked Not supported has no supported upstream value under the reviewed mapping; it does not establish battery damage. Compare the same field in the App before reporting it. A received voltage or SOC does not establish that cycle count is supported. Unsupported is different from zero or unknown. Record the specific field, model family, account-owner/shared status and software versions; share reviewed diagnostics or relevant log excerpts without account/vehicle identities, credentials, coordinates or raw responses. Keep the cause unknown until evidence establishes it.",
+          "keywords": [
+            "battery cycles",
+            "BMS",
+            "unsupported",
+            "not supported",
+            "cycle count"
+          ]
+        },
+        "zh-Hans": {
+          "title": "主电池循环次数显示不支持",
+          "text": "BMS指标显示不支持，表示按已核对映射没有受支持的上游值，不能据此判断电池损坏。反馈前先对比App的同一字段。电压或SOC有值不能证明循环次数受支持；不支持与零、未知不同。记录具体字段、车型、主账号/分享车辆及软件版本，提供审核后的诊断或相关日志片段，省略账号/车辆身份、凭据、坐标和原始返回。证据不足时原因保持未知。",
+          "keywords": [
+            "主电池",
+            "循环次数",
+            "循环计数",
+            "不支持",
+            "BMS"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "7d92762445325396570bf3955967094bcc502be5b844a115ce0ca369ac13b498"
     }
   ],
   "procedures": [
