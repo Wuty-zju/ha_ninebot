@@ -56,7 +56,7 @@ Examples:
 - “Is Vehicle A's status fresh?”
 - “What is the history synchronization waiting for?”
 
-With several vehicles, select a vehicle before asking for a measurement. The host obtains an opaque `vehicle_ref` from `ninebot__get_vehicles`; an account number, vehicle serial number or MCP client-origin `device_id` is not a substitute.
+With several vehicles, select a vehicle before asking for a measurement. The host obtains an opaque `vehicle_ref` from `ninebot__get_vehicles`; an account number, vehicle serial number or MCP client-origin `device_id` is not a substitute. Copy the returned reference exactly. A denied request does not identify a configuration fault or establish whether a hidden vehicle exists; check the selected reference and HA access. An allowed vehicle is not a substitute for a different target in the question.
 
 | Tool | Parameters | Result |
 |---|---|---|
@@ -81,7 +81,7 @@ From **2.1.9**, recorded-trip pages retain each ride's `received_at` and up to t
 
 ## Read the evidence
 
-Results include a business date range, observation times, units, metric quality, source evidence and warnings. Business dates use **Asia/Shanghai**, matching the integration's current archive contract, independently of browser timezone.
+Results include a business date range, observation times, units, metric quality, source evidence and warnings. Business dates use **Asia/Shanghai**, matching the integration's current archive contract, independently of browser timezone. This field describes the archive, not the browser setting. The tools do not regroup daily/monthly totals into another timezone. A UI may display timestamps locally while the statistics retain their documented business-date boundaries.
 
 - A verified empty period can report **0**. An absent measurement is **null**, with its reason/quality.
 - Partial coverage describes the records currently known; it cannot prove a complete total.
@@ -133,7 +133,7 @@ Previewing a range leaves the application unsubmitted. Submission is confirmed b
 
 The selected detail count and the attempt allowance are separate. From **2.1.12**, preview/application responses name the allowance `requests.maximum_detail_attempts`, matching task metadata. `attempts_include_retries: true` and `attempt_scope: entire_selection` describe one shared allowance for the selected details. For example, one selected detail with two attempts allows one retry; it does not select a second detail. The earlier `maximum_after_approval` key remains an equivalent alias for existing clients. An attempt is a scheduler-level detail request, not a count of HTTP transmissions or guaranteed saved records.
 
-Sign in as the same Home Assistant administrator used by the AI client. Open **Ninebot Assistant**, choose the vehicle and review the dates, selected detail count, total request limit and expiry. Only **Approve and synchronize** starts the approved work. The plan includes at most twenty missing details and a total request allowance of twice the selected count, capped at twenty; retries share that allowance and the account's pacing. Existing saved details are reused. **Cancel task** stops that task's remaining work while other synchronization continues.
+Sign in as the same Home Assistant administrator used by the AI client. Open **Ninebot Assistant**, choose the vehicle and review the dates, selected detail count, total request limit and expiry. Only **Approve and synchronize** starts the approved work. The plan includes at most twenty missing details and a total request allowance of twice the selected count, capped at twenty; retries share that allowance and the account's pacing. Existing saved details are reused. **Cancel task** stops that task's remaining work while other synchronization continues. To cancel, the original requester signs in as the same HA user, opens this panel and selects **Cancel task**. A read tool or chat confirmation cannot cancel it. An unapproved request expires without execution; creating a different date range leaves the earlier request in place.
 
 The task view reports the last saved checkpoint, actual request consumption, retry eligibility and result. Approval is valid for ten minutes; approved work expires after 24 hours. Normal restarts resume permitted work. Restoring an official HA backup requires fresh human approval. The panel reads local metadata; it does not refresh vehicle data or fetch whole months when you review a task.
 

@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.20
+
+- Clarify archive business dates, exact vehicle references and denied-access guidance for Assistant hosts.
+- Direct task cancellation to the original requester's native review panel, distinguishing expiry and new applications from cancellation.
+
 ## 2.1.19
 
 - Keep recorded Assistant evidence independent of provider-side tool-result formatting.

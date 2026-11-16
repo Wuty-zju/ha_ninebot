@@ -75,7 +75,10 @@ SPECS = (
         "get_task",
         "Read one local task",
         "Read one task ID from your task list for the selected vehicle. Missing is not "
-        "completed. No approval, cloud requests or private ride data.",
+        "completed. No approval, cancellation, cloud requests or private ride data. "
+        "To cancel, the original requester opens Ninebot Assistant in HA's sidebar "
+        "(/ninebot-assistant) as the same HA user and selects Cancel task. "
+        "Expiry or a new application does not cancel the selected task.",
         vol.Schema({**VEHICLE, vol.Required("task_id"): task_reference}),
     ),
 )
