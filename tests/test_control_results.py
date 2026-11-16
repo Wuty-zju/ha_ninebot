@@ -54,3 +54,31 @@ def test_latest_command_uses_dispatch_order_instead_of_timestamp_ties():
     start.outcome = CommandOutcome.UNCERTAIN
     assert results.latest("vehicle", ("engine/start", "engine/stop"))["outcome"] == "accepted"
     assert results.latest("other", ("engine/start", "engine/stop")) is None
+
+
+def test_support_result_keeps_safe_response_metadata_and_logs_no_identity(caplog):
+    import logging
+
+    from custom_components.ninebot.exceptions import NinebotError
+
+    secret = "synthetic-account-token-location-secret"
+    error = NinebotError(ErrorKind.SERVICE)
+    error.observe_response(502, {"error": {"code": "upstream_error", "message": secret}})
+    result = ControlResults().start(secret, "bell", NOW)
+    result.outcome = CommandOutcome.UNCERTAIN
+    result.error = error.kind
+    result.failure_context = error.context
+    result.finished_at = NOW
+    with caplog.at_level(logging.DEBUG, logger="custom_components.ninebot.control_results"):
+        result.log("bell")
+    row = result.diagnostics()
+    assert len(row["support_id"]) == 8
+    assert row["proxy_http_status"] == 502 and row["envelope_code"] == "upstream_error"
+    assert row["outcome"] == "uncertain" and row["physical_outcome_verified"] is False
+    assert f"support={row['support_id']}" in caplog.text
+    assert "action=bell" in caplog.text and "outcome=uncertain" in caplog.text
+    assert secret not in caplog.text and secret not in str(row)
+    caplog.clear()
+    with caplog.at_level(logging.DEBUG, logger="custom_components.ninebot.control_results"):
+        result.log(secret)
+    assert not caplog.records
