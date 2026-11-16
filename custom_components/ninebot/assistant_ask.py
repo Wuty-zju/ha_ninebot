@@ -109,7 +109,7 @@ class EvidenceTurn:
         # Only the bounded safe result, never the original Action/raw payload, reaches the model.
         from .assistant_api import native_result
 
-        return native_result(payload, error=result.error)
+        return native_result(copy.deepcopy(payload), error=result.error)
 
     def response(self) -> dict[str, Any]:
         has_evidence = any(

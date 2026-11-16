@@ -82,6 +82,33 @@ async def test_original_context_and_post_read_withdrawal(hass, turn):
     assert turn.results == []
 
 
+async def test_provider_formatting_cannot_mutate_business_or_recorded_evidence(hass, turn):
+    original = {"data": {"duration_s": 1200}, "evidence": {"source_kind": "account_archive"}}
+    base = SimpleNamespace(
+        async_call=AsyncMock(return_value=SimpleNamespace(data=original, error=False))
+    )
+    with (
+        patch.object(ask.EvidenceTurn, "async_validate", new=AsyncMock()),
+        patch(
+            "custom_components.ninebot.assistant_api.native_result",
+            side_effect=lambda data, *, error: SimpleNamespace(data=data, error=error),
+        ),
+    ):
+        returned = await turn.async_call(
+            base,
+            SimpleNamespace(
+                tool_name="ninebot__get_statistics", tool_args={"vehicle_ref": "selected"}
+            ),
+            SimpleNamespace(context=turn.call.context),
+        )
+    returned.data["data"]["duration_s"] = 9999
+    returned.data["evidence"]["source_kind"] = "changed_by_provider"
+    recorded = turn.response()["results"][0]["result"]
+    assert recorded == original
+    assert recorded is not original and returned.data is not recorded
+    assert recorded["data"]["duration_s"] == original["data"]["duration_s"] == 1200
+
+
 async def test_multi_vehicle_requires_selection_before_read(turn):
     turn.selected = None
     base = SimpleNamespace(async_call=AsyncMock())

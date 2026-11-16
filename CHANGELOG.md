@@ -2,6 +2,10 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.19
+
+- Keep recorded Assistant evidence independent of provider-side tool-result formatting.
+
 ## 2.1.18
 
 - Preserve verified Assistant tool results when the model provider fails later in the query, returning explicit partial status.
