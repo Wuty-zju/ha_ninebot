@@ -2,6 +2,13 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.15
+
+- Add an optional `ninebot.ask` response Action using an existing Home Assistant AI Task provider, with no required model vendor.
+- Return actual local tool results, quality and sources; generated prose does not replace measured values or saved records.
+- Bound each query's duration, tool calls, concurrency and response size, and require explicit selection for multi-vehicle reads.
+- Recheck the original user's consent and ownership before returning results; cancel active queries when the Assistant API is withdrawn.
+
 ## 2.1.14
 
 - Clarify daily mileage sources, whole-ride end-date attribution and overlapping trip-page selections in versioned Assistant help.

@@ -24,6 +24,25 @@ The host handles conversation and model access. Ninebot supplies authorized loca
 
 Developer test hosts and fixed model baselines are documented in the [evaluation guide](development.md#small-model-baseline). They are separate from the installation and model configuration above.
 
+## Query through an existing AI task
+
+From **2.1.15**, **Developer tools → Actions → Ninebot: Ask Ninebot Assistant** offers a bounded local query without an additional MCP client. Enable Assistant for the account and select its vehicles first. Choose an existing **AI task** entity that supports native tool calling and per-task LLM APIs, enter the question, and select the vehicle when more than one is allowed. The Action requires an authenticated active administrator. Model configuration remains in the selected provider.
+
+```yaml
+action: ninebot.ask
+data:
+  ai_task_entity_id: ai_task.your_model
+  device_id: your_ninebot_device_id
+  question: How many trips did this vehicle make yesterday?
+response_variable: ninebot_answer
+```
+
+The response uses `answer_mode: verified_tool_results`. Its `results` contain the actual tool names, arguments, data, quality and evidence. `outcome: evidence` means a data/help result was obtained; check the returned period and coverage before interpreting a total. It does not certify that a model understood every part of the question. Discovery alone or no data tool produces `needs_input`; provide a vehicle, date or more specific question. A stopped query with usable evidence reports `partial`. Failed or denied reads never become zero trips.
+
+The model selects among the seven local tools. Its free-form final text is discarded; numbers and source links come from the tools. General help can be queried without selecting a vehicle. Requests have a 180-second deadline, at most four tool calls, one active query across this integration and a 32 KiB response limit. They do not refresh the cloud, submit history jobs or control vehicles. The same user Context is passed to the model task and business reads, with consent/ownership checked again before returning data.
+
+Use Core with `ai_task.async_generate_data(..., llm_api=...)` support and a compatible configured provider. An unsupported task API returns `unsupported_capability`; no new provider or listener is installed. Ordinary native MCP/Conversation tools remain available independently. This response Action is not added to the dedicated Ninebot LLM tool collection.
+
 ## Ask about local data
 
 Examples:

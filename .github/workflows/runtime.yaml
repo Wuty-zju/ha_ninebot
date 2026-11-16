@@ -94,3 +94,4 @@ jobs:
           python -m scripts.check_ha_api
           python -m scripts.check_assistant_api
           python -m scripts.check_assistant_mcp
+          python -m scripts.check_assistant_ask

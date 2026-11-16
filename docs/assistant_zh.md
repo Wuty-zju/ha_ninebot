@@ -24,6 +24,25 @@ Ninebot Assistant 使用 Home Assistant 原生 LLM API 和 MCP 工具。在选�
 
 固定模型和参考宿主仅用于开发评测，说明见[开发指南](development.md#small-model-baseline)，与上述用户安装和模型配置分开维护。
 
+## 通过已有AI任务查询
+
+从 **2.1.15** 起，可在 **开发者工具 → 动作 → Ninebot：询问 Ninebot Assistant** 发起有界本地查询。先在账号选项中启用Assistant并选择车辆，再选择支持原生工具调用和逐次LLM API的已有 **AI任务** 实体。填写问题；允许多辆车时明确选择车辆。调用需要当前有效管理员身份，模型仍在所选供应商集成中配置。
+
+```yaml
+action: ninebot.ask
+data:
+  ai_task_entity_id: ai_task.your_model
+  device_id: your_ninebot_device_id
+  question: 这辆车昨天骑了几趟？
+response_variable: ninebot_answer
+```
+
+响应的`answer_mode`为`verified_tool_results`，`results`保留实际工具名、参数、数据、质量和来源。`outcome: evidence`表示获得了数据或帮助结果；解读总量前仍需核对实际周期与覆盖情况，不代表模型理解了问题的全部内容。只有车辆列表或没有有效数据结果时为`needs_input`，请补充车辆、日期或更明确的问题；提前停止但已有证据时为`partial`。失败和拒绝访问不会变成零行程。
+
+模型从七个本地工具中选择调用，自由生成的最终文字不作为数值或来源；响应保留实际工具结果。一般帮助不要求车辆选择。单次上限180秒、四次工具调用、32 KiB响应，集成同一时间接受一个此类查询。不会刷新云端、申请历史任务或控制车辆。模型任务和业务读取沿用原调用身份，结果返回前重新校验同意、归属与权限。
+
+需要Core支持`ai_task.async_generate_data(..., llm_api=...)`并已有兼容供应商；不支持时返回`unsupported_capability`，不会自动安装模型或另开端口。原生MCP／Conversation七工具仍可独立使用，此动作不加入专属LLM工具集合。
+
 ## 查询本地数据
 
 例如：
