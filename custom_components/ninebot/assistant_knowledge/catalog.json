@@ -659,12 +659,11 @@
             "read_only",
             "API选择",
             "全部AI工具",
-            "主地址设置",
-            "MCP配置"
+            "主地址设置"
           ]
         }
       },
-      "content_sha256": "2535006f294c4a690e026d1ab1e02316164abba602af3759e604f7bd8642bc2a",
+      "content_sha256": "cceaf315adbc772a76ae3d9c123431f11acc505b5ebca0aa51ab357046ef0461",
       "procedure_id": null
     }
   ],
