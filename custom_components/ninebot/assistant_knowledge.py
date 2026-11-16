@@ -19,6 +19,7 @@ READ_TOOLS = {
     "get_recorded_trips",
     "get_trip_detail",
     "get_sync_health",
+    "explain_statistics",
     "search_help",
 }
 

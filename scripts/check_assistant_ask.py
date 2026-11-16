@@ -111,7 +111,7 @@ async def check(directory: str) -> None:
             provider_calls.append(current["context"])
             assert task.llm_api is not None and chat_log.llm_api is not None
             assert chat_log.llm_api.llm_context.context is current["context"]
-            assert len(chat_log.llm_api.tools) == 7
+            assert len(chat_log.llm_api.tools) == 8
             assert all(tool.name.startswith("ninebot__") for tool in chat_log.llm_api.tools)
             value = await chat_log.llm_api.async_call_tool(
                 llm.ToolInput(
@@ -181,7 +181,7 @@ async def check(directory: str) -> None:
             return_response=True,
         )
         assert response["outcome"] == "denied" and len(provider_calls) == 2
-        print("Native query: original Context, seven tools, evidence and withdrawal passed")
+        print("Native query: original Context, eight tools, evidence and withdrawal passed")
     finally:
         if remove is not None:
             remove()

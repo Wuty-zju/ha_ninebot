@@ -2,7 +2,7 @@
 
 [简体中文](assistant_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
-Ninebot Assistant makes selected local vehicle information available to a compatible AI host through Home Assistant's native LLM API and MCP Server. The preview provides six local vehicle tools and a versioned public-help search. Your existing entities, controls and history synchronization continue to work independently.
+Ninebot Assistant makes selected local vehicle information available to a compatible AI host through Home Assistant's native LLM API and MCP Server. The preview provides local vehicle queries, a bounded statistics check and versioned public help. Your existing entities, controls and history synchronization continue to work independently.
 
 ## Enable it
 
@@ -39,7 +39,7 @@ response_variable: ninebot_answer
 
 The response uses `answer_mode: verified_tool_results`. Its `results` contain the actual tool names, arguments, data, quality and evidence. `outcome: evidence` means a data/help result was obtained; check the returned period and coverage before interpreting a total. It does not certify that a model understood every part of the question. Discovery alone or no data tool produces `needs_input`; provide a vehicle, date or more specific question. A stopped query with usable evidence reports `partial`. Failed or denied reads never become zero trips.
 
-The model selects among the seven local tools. Its free-form final text is discarded; numbers and source links come from the tools. General help can be queried without selecting a vehicle. Requests have a 180-second deadline, at most four tool calls, one active query across this integration and a 32 KiB response limit. They do not refresh the cloud, submit history jobs or control vehicles. The same user Context is passed to the model task and business reads, with consent/ownership checked again before returning data.
+The model selects among the eight local tools. Its free-form final text is discarded; numbers and source links come from the tools. General help can be queried without selecting a vehicle. Requests have a 180-second deadline, at most four tool calls, one active query across this integration and a 32 KiB response limit. They do not refresh the cloud, submit history jobs or control vehicles. The same user Context is passed to the model task and business reads, with consent/ownership checked again before returning data.
 
 Use Core with `ai_task.async_generate_data(..., llm_api=...)` support and a compatible configured provider. An unsupported task API returns `unsupported_capability`; no new provider or listener is installed. Ordinary native MCP/Conversation tools remain available independently. This response Action is not added to the dedicated Ninebot LLM tool collection.
 
@@ -61,14 +61,19 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 | `ninebot__search_help` | `query`; optional `language` (`en` or `zh-Hans`), `include_procedures` (default `false`) | Up to three cited public help topics; explicitly request task checklists when guiding a task. |
 | `ninebot__get_vehicles` | None | AI-authorized vehicle references, display labels and local-data capabilities. |
 | `ninebot__get_vehicle_status` | `vehicle_ref` | Cached status/BMS values and per-group observation quality; no refresh or coordinates. |
-| `ninebot__get_statistics` | `vehicle_ref`, `period` | Local `today`, `yesterday`, `this_month`, `last_month` or one explicit business date, with per-metric coverage. |
+| `ninebot__get_statistics` | `vehicle_ref`, `period` | Local `today`, `yesterday`, `this_month`, `last_month` or one explicit business date/month, with per-metric coverage. |
 | `ninebot__get_recorded_trips` | `vehicle_ref`, `start_date`, `end_date`; optional `limit`, `cursor` | One descending local page. Dates use `YYYY-MM-DD`, up to 31 inclusive days; default 10, maximum 20 records. |
 | `ninebot__get_trip_detail` | `vehicle_ref`, `ride_id`, `query_month` | Saved scalar detail for a verified trip from that vehicle/month. Use the list's ID and `YYYYMM` month. |
 | `ninebot__get_sync_health` | `vehicle_ref` | Local coverage, progress, budget and scheduling state. Does not start or resume work. |
+| `ninebot__explain_statistics` | `vehicle_ref`, `period`, `metric`; optional `language` | Three local steps: period statistics, synchronization health and cited help with the unknown-statistic checklist. |
 
 All tools read local information. Missing details remain missing until acquired through the normal [history features](history.md); an AI read never starts a cloud fetch. List cursors can be consumed: follow the returned next cursor rather than replaying the previous one. A page count is not the period's total.
 
 From **2.1.10**, `get_statistics` also accepts a single `YYYY-MM-DD` value in `period`, such as `2026-11-05`. Dates use Asia/Shanghai, start at 2000 and cannot be in the future. This reads the existing local daily projection for that date. A verified empty day can return zero; an unobserved day remains unknown. The four relative periods continue to work.
+
+From **2.1.17**, `period` also accepts `YYYY-MM`, such as `2026-10`. Past months use the complete calendar month; the current month ends on the current business date. Years start at 2000; future months are rejected. Monthly results use the existing server-month summary, independently of daily projections and trip-page totals.
+
+To investigate a particular value, call `ninebot__explain_statistics` with a selected vehicle, period and one metric: `ride_count`, `distance_km`, `duration_s`, `energy_wh` or `energy_intensity_wh_per_km`. Its fixed workflow returns actual statistics, synchronization health, and applicable cited help with checklist SK05. `data.steps` preserves each tool result and its observation time. `quality.partial` identifies failed or unexecuted steps; the reported metric reason describes the available evidence and does not establish a root cause. The workflow does not repair data or start cloud work.
 
 From **2.1.9**, recorded-trip pages retain each ride's `received_at` and up to three month observations in `quality.months`, including on an empty page. `query.as_of` is the current tool-call time; `quality.page_as_of` is the selection cutoff retained across cursor pages. These are distinct from the archive's observation times. A fixed cutoff does not freeze the entire database or prove cloud completeness. Missing observation metadata stays `null`.
 
@@ -104,7 +109,7 @@ Each returned match includes a ready-to-use `citation`: a Markdown link with the
 
 General help questions need no vehicle selection or date. For example, “What does waiting for request budget mean?” can go directly to help search; “What is Vehicle A waiting for now?” also needs that vehicle's synchronization-health result.
 
-Search returns at most three topics in 4 KiB. It reports no match or no applicable knowledge rather than using another release’s rules. Other languages use English. A damaged help catalog leaves the six vehicle tools available. Published source links stay pinned even when the main documentation changes.
+Search returns at most three topics in 4 KiB. It reports no match or no applicable knowledge rather than using another release’s rules. Other languages use English. A damaged help catalog leaves the six vehicle queries available; a statistics check can return its other steps with partial quality. Published source links stay pinned even when the main documentation changes.
 
 ## Task checklists
 
@@ -135,6 +140,8 @@ Native notifications provide a review or result link, coalesced into one generic
 From 2.1.2, public help adds two task checklists—bounded detail applications and saved-task results—for thirteen bilingual topics in total. Each requires the separate task API and allows at most four tool calls. Read checklists retain their original read tool sets. The application checklist confirms intent, vehicle and dates before preview and local application; the result checklist reads matching metadata, preserves unknown/zero/partial distinctions and respects retry timing. Neither provides an approval or cancellation tool.
 
 ## Privacy and limits
+
+A statistics check consumes one admission for setup and one for each of its three child reads, without nesting active slots. All steps share the ten-second deadline. Verified Ninebot `busy` errors on idempotent local Actions are retried at most once within the same admission and deadline; cursors, access failures and unknown errors are not replayed. Successful results report `query.local_action_attempts`, separately from model tool calls and cloud budgets.
 
 Enabling the option allows the chosen host to receive selected vehicle labels, scalar values, times, ride identifiers and quality information. Review names that you have assigned to vehicles. Ninebot excludes account credentials, account identifiers, serial numbers, precise coordinates, raw responses, logs, full tracks and sample arrays from these tools. An external model host may retain conversation and tool results under its own policy. Turning the option off revokes future calls; it cannot remove information already sent to the host. The saved vehicle selection is retained for later use.
 

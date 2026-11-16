@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.17
+
+- Add a bounded local statistics check combining actual metric quality, synchronization health and cited help.
+- Accept explicit YYYY-MM periods using the existing monthly statistics contract.
+- Recover once from verified temporary busy errors on idempotent local reads, preserving the original user and query deadline.
+
 ## 2.1.16
 
 - Close a multi-vehicle consent race in native Assistant queries by rechecking every captured scope after asynchronous permission checks.

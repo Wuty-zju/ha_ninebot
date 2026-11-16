@@ -266,6 +266,6 @@ async def check(fixture: SimpleNamespace) -> None:
     )
     assert hass.data[DATA_KEY].active == 0
     print(
-        "Native Conversation: seven tools, clarification, turn Context/view updates, quality, "
+        "Native Conversation: eight tools, clarification, turn Context/view updates, quality, "
         "Action response, tool-I/O cancellation and cached-API revocation OK (scripted; no model)"
     )

@@ -22,6 +22,7 @@ from .assistant_knowledge import KnowledgeUnavailable, search_help
 from .assistant_limits import ReadLimitExceeded, read_slot
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .assistant_views import (
+    METRIC_UNITS,
     AssistantView,
     detail_view,
     mapping,
@@ -41,6 +42,16 @@ from .services import bounded_integer, query_month, ride_identifier
 MAX_RESPONSE_BYTES = 16 * 1024
 MAX_RIDE_BYTES = 2 * 1024
 MAX_VEHICLES = 20
+RELATIVE_PERIODS = ("today", "yesterday", "this_month", "last_month")
+
+
+def business_month(value: object) -> str:
+    if not isinstance(value, str) or re.fullmatch(r"20[0-9]{2}-(0[1-9]|1[0-2])", value) is None:
+        raise vol.Invalid("Use a YYYY-MM business month")
+    return value
+
+
+PERIOD = vol.Any(vol.In(RELATIVE_PERIODS), business_date, business_month)
 
 
 def vehicle_reference(value: object) -> str:
@@ -120,16 +131,16 @@ SPECS = (
         "get_statistics",
         "Read local trip statistics",
         "Read the user's selected vehicle and explicit business period. Ask for a period if "
-        "none is specified. Use today, yesterday, this_month, last_month, or one YYYY-MM-DD "
-        "date on or before today in Asia/Shanghai. Null/missing metrics are unknown, never zero; "
+        "none is specified. Use today, yesterday, this_month, last_month, one YYYY-MM-DD "
+        "date or one YYYY-MM month on or before today in Asia/Shanghai. "
+        "The current month ends at today's business date. "
+        "Null/missing metrics are unknown, never zero; "
         "partial coverage does not prove a total. Use returned values, units and per-metric "
         "quality, not SQL.",
         vol.Schema(
             {
                 **VEHICLE,
-                vol.Required("period"): vol.Any(
-                    vol.In(("today", "yesterday", "this_month", "last_month")), business_date
-                ),
+                vol.Required("period"): PERIOD,
             }
         ),
     ),
@@ -173,6 +184,23 @@ SPECS = (
         "Does not start or resume work or change request budgets.",
         vol.Schema(VEHICLE),
     ),
+    ToolSpec(
+        "explain_statistics",
+        "Check a local statistic",
+        "Check a selected vehicle's statistic using a fixed local workflow: statistics, "
+        "synchronization health and cited help with the SK05 checklist. Specify the user's "
+        "period and metric; ask if either is missing. Report observed quality/reasons, not "
+        "a guessed root cause. Null is not zero. At most three local steps share one deadline. "
+        "No cloud refresh or repair; a partial result names failed steps.",
+        vol.Schema(
+            {
+                **VEHICLE,
+                vol.Required("period"): PERIOD,
+                vol.Required("metric"): vol.In(tuple(METRIC_UNITS)),
+                vol.Optional("language", default="en"): vol.In(("en", "zh-Hans")),
+            }
+        ),
+    ),
 )
 TOOL_SPECS = {spec.key: spec for spec in SPECS}
 
@@ -185,6 +213,8 @@ def parameter_schema(value: object) -> dict[str, Any] | None:
         return {"type": "string", "minLength": 1, "maxLength": 240}
     if value is business_date:
         return {"type": "string", "format": "date"}
+    if value is business_month:
+        return {"type": "string", "pattern": "^20[0-9]{2}-(0[1-9]|1[0-2])$"}
     if value is query_month:
         return {"type": "string", "pattern": "^20[0-9]{2}(0[1-9]|1[0-2])$"}
     if value is ride_identifier:
@@ -209,6 +239,12 @@ def period_dates(period: str, now: datetime) -> tuple[date, date]:
     if period == "last_month":
         last = today.replace(day=1) - timedelta(days=1)
         return last.replace(day=1), last
+    if re.fullmatch(r"20[0-9]{2}-(0[1-9]|1[0-2])", period):
+        start = date.fromisoformat(f"{period}-01")
+        if start > today:
+            raise AssistantError("invalid_arguments")
+        next_month = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        return start, min(today, next_month - timedelta(days=1))
     try:
         selected = date.fromisoformat(business_date(period))
     except vol.Invalid as err:
@@ -219,19 +255,36 @@ def period_dates(period: str, now: datetime) -> tuple[date, date]:
 
 
 async def _action(
-    hass: HomeAssistant, scope: AssistantScope, name: str, arguments: dict[str, Any]
-) -> dict[str, Any]:
-    response = await hass.services.async_call(
-        DOMAIN,
-        name,
-        {"device_id": scope.vehicle_ref, **arguments},
-        blocking=True,
-        return_response=True,
-        context=scope.context,
-    )
+    hass: HomeAssistant,
+    scope: AssistantScope,
+    name: str,
+    arguments: dict[str, Any],
+    *,
+    retry_busy: bool = False,
+) -> tuple[dict[str, Any], int]:
+    for attempt in (1, 2):
+        try:
+            response = await hass.services.async_call(
+                DOMAIN,
+                name,
+                {"device_id": scope.vehicle_ref, **arguments},
+                blocking=True,
+                return_response=True,
+                context=scope.context,
+            )
+            break
+        except HomeAssistantError as err:
+            if (
+                attempt != 1
+                or not retry_busy
+                or err.translation_domain != DOMAIN
+                or err.translation_key != "busy"
+            ):
+                raise
+            await scope.async_validate(hass)
     if not isinstance(response, dict):
         raise AssistantError("local_data_missing")
-    return response
+    return response, attempt
 
 
 async def _vehicles(
@@ -292,7 +345,12 @@ async def _vehicles(
 
 
 async def _vehicle_query(
-    hass: HomeAssistant, scope: AssistantScope, key: str, args: dict[str, Any], now: datetime
+    hass: HomeAssistant,
+    scope: AssistantScope,
+    key: str,
+    args: dict[str, Any],
+    now: datetime,
+    period_now: datetime | None = None,
 ) -> tuple[AssistantView, dict[str, Any]]:
     query: dict[str, Any] = {}
     if key == "get_vehicle_status":
@@ -302,14 +360,17 @@ async def _vehicle_query(
             {group: co.fresh(scope.sn, group) for group in ("profile", "status", "battery")},
         ), query
     if key == "get_statistics":
-        start, end = period_dates(args["period"], now)
-        daily = args["period"] not in {"this_month", "last_month"}
+        start, end = period_dates(args["period"], period_now or now)
+        daily = args["period"] not in {"this_month", "last_month"} and len(args["period"]) != 7
+        if period_now is not None and not daily and period_dates(args["period"], now)[1] != end:
+            # A month summary cannot certify a shorter window across midnight.
+            raise AssistantError("retry_later")
         query = {
             "period": args["period"],
             "start_date": start.isoformat(),
             "end_date": end.isoformat(),
         }
-        response = await _action(
+        response, attempts = await _action(
             hass,
             scope,
             "get_statistics",
@@ -319,6 +380,7 @@ async def _vehicle_query(
                 "include_daily": daily,
                 "refresh": False,
             },
+            retry_busy=True,
         )
         rows = response.get("days" if daily else "months", [])
         if not isinstance(rows, list):
@@ -329,7 +391,10 @@ async def _vehicle_query(
         row = next(
             (row for row in rows if isinstance(row, dict) and row.get(target_key) == target), {}
         )
-        return statistics_view(row, daily=daily, now=now), query
+        return statistics_view(row, daily=daily, now=now), {
+            **query,
+            "local_action_attempts": attempts,
+        }
     if key == "get_recorded_trips":
         if (
             not 1
@@ -343,7 +408,9 @@ async def _vehicle_query(
             for name in ("start_date", "end_date", "limit", "cursor")
             if name in args
         }
-        response = await _action(hass, scope, "get_recorded_trips", {**data, "sort": "desc"})
+        response, attempts = await _action(
+            hass, scope, "get_recorded_trips", {**data, "sort": "desc"}, retry_busy=False
+        )
         rides = response.get("rides")
         if not isinstance(rides, list) or any(not isinstance(row, dict) for row in rides):
             raise AssistantError("unsupported_capability")
@@ -355,9 +422,9 @@ async def _vehicle_query(
         for ride in view.data["rides"]:
             if len(json.dumps(ride, ensure_ascii=False).encode()) > MAX_RIDE_BYTES:
                 raise AssistantError("response_too_large")
-        return view, {**data, "sort": "desc"}
+        return view, {**data, "sort": "desc", "local_action_attempts": attempts}
     if key == "get_trip_detail":
-        response = await _action(
+        response, attempts = await _action(
             hass,
             scope,
             "get_trip_detail",
@@ -368,6 +435,7 @@ async def _vehicle_query(
                 "include_track": False,
                 "refresh": False,
             },
+            retry_busy=True,
         )
         ride = mapping(response.get("ride"))
         if (
@@ -379,9 +447,12 @@ async def _vehicle_query(
         return detail_view(response), {
             "ride_id": args["ride_id"],
             "query_month": args["query_month"],
+            "local_action_attempts": attempts,
         }
     if key == "get_sync_health":
-        response = await _action(hass, scope, "sync_history", {"operation": "sync_status"})
+        response, attempts = await _action(
+            hass, scope, "sync_history", {"operation": "sync_status"}, retry_busy=True
+        )
         view = sync_view(response)
         budget = configured_budget(scope.entry.options)
         view.data["request_policy"] = {
@@ -389,12 +460,104 @@ async def _vehicle_query(
             "minimum_interval_s": request_interval(budget),
             "basis": "paced_account_requests",
         }
-        return view, query
+        return view, {"local_action_attempts": attempts}
     raise AssistantError("unsupported_capability")
 
 
+async def _explain_statistics(
+    hass: HomeAssistant, scope: AssistantScope, args: dict[str, Any], now: datetime
+) -> tuple[AssistantView, dict[str, Any]]:
+    start, end = period_dates(args["period"], now)
+    monthly = args["period"] in {"this_month", "last_month"} or len(args["period"]) == 7
+    period = start.strftime("%Y-%m") if monthly else start.isoformat()
+    steps: list[dict[str, Any]] = []
+    for key, arguments in (
+        ("get_statistics", {"vehicle_ref": scope.vehicle_ref, "period": period}),
+        ("get_sync_health", {"vehicle_ref": scope.vehicle_ref}),
+        (
+            "search_help",
+            {
+                "query": "unknown missing zero",
+                "language": args["language"],
+                "include_procedures": True,
+            },
+        ),
+    ):
+        await scope.async_validate(hass)
+        result, error = await async_query(hass, key, arguments, scope.context, _period_now=now)
+        await scope.async_validate(hass)
+        if error and result["error"]["code"] == "not_authorized":
+            raise AssistantError("not_authorized")
+        steps.append({"tool": f"ninebot__{key}", "error": error, "result": result})
+        if error and "retry_after_seconds" in result["error"]:
+            break
+    if all(step["error"] for step in steps):
+        failure = steps[0]["result"]["error"]
+        if "retry_after_seconds" in failure:
+            raise ReadLimitExceeded(failure["retry_after_seconds"])
+        raise AssistantError(failure["code"])
+    statistics = steps[0]
+    metric_quality = (
+        statistics["result"]["quality"]["metrics"][args["metric"]]
+        if not statistics["error"]
+        else {"status": "unknown", "reason": "statistics_query_failed"}
+    )
+    return AssistantView(
+        data={"metric": args["metric"], "steps": steps},
+        quality={
+            "partial": len(steps) != 3 or any(step["error"] for step in steps),
+            "metric": metric_quality,
+        },
+        evidence={"source_kind": "local_statistics_check", "workflow": "statistics-check-v1"},
+        warnings=["observed_conditions_do_not_establish_root_cause"],
+    ), {
+        "period": args["period"],
+        "resolved_period": period,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+    }
+
+
+async def _response(
+    hass: HomeAssistant,
+    scopes: list[AssistantScope],
+    args: dict[str, Any],
+    view: AssistantView,
+    query: dict[str, Any],
+    request_id: str,
+    now: datetime,
+) -> tuple[dict[str, Any], bool]:
+    for scope in scopes:
+        await scope.async_validate(hass)
+    # No await between the complete scope fence and the returned projection.
+    for scope in scopes:
+        scope.assert_current(hass)
+    response = {
+        "schema_version": 1,
+        "request_id": request_id,
+        **({"vehicle_ref": args["vehicle_ref"]} if "vehicle_ref" in args else {}),
+        "query": {"as_of": now.isoformat(), "business_timezone": BUSINESS_TIMEZONE, **query},
+        "data": view.data,
+        "quality": view.quality,
+        "evidence": {
+            "adapter_contract": "ninebot-assistant-v1",
+            "access_mode": "local_only",
+            **view.evidence,
+        },
+        "warnings": view.warnings,
+    }
+    if len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode()) > MAX_RESPONSE_BYTES:
+        raise AssistantError("response_too_large")
+    return response, False
+
+
 async def async_query(
-    hass: HomeAssistant, key: str, arguments: dict[str, Any], context: Context | None
+    hass: HomeAssistant,
+    key: str,
+    arguments: dict[str, Any],
+    context: Context | None,
+    *,
+    _period_now: datetime | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Authenticate, validate, read, reauthorize and bound every native tool call."""
     request_id, now = uuid4().hex, dt_util.utcnow()
@@ -402,6 +565,13 @@ async def async_query(
     try:
         async with asyncio.timeout(10):
             user_id = await async_require_admin(hass, context)
+            if key == "explain_statistics":
+                with read_slot(hass, user_id):
+                    args = TOOL_SPECS[key].parameters(arguments)
+                    scope = await async_authorize(hass, context, args["vehicle_ref"])
+                # Child reads acquire their own slots; never nest active admissions.
+                view, query = await _explain_statistics(hass, scope, args, now)
+                return await _response(hass, [scope], args, view, query, request_id, now)
             with read_slot(hass, user_id):
                 if key not in TOOL_SPECS:
                     raise AssistantError("invalid_arguments")
@@ -432,37 +602,8 @@ async def async_query(
                 else:
                     scope = await async_authorize(hass, context, args["vehicle_ref"])
                     scopes = [scope]
-                    view, query = await _vehicle_query(hass, scope, key, args, now)
-                for scope in scopes:
-                    await scope.async_validate(hass)
-                # A later vehicle's await may revoke an earlier one. No further
-                # await occurs between the final complete scope check and return.
-                for scope in scopes:
-                    scope.assert_current(hass)
-                response = {
-                    "schema_version": 1,
-                    "request_id": request_id,
-                    **({"vehicle_ref": args["vehicle_ref"]} if "vehicle_ref" in args else {}),
-                    "query": {
-                        "as_of": now.isoformat(),
-                        "business_timezone": BUSINESS_TIMEZONE,
-                        **query,
-                    },
-                    "data": view.data,
-                    "quality": view.quality,
-                    "evidence": {
-                        "adapter_contract": "ninebot-assistant-v1",
-                        "access_mode": "local_only",
-                        **view.evidence,
-                    },
-                    "warnings": view.warnings,
-                }
-                if (
-                    len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
-                    > MAX_RESPONSE_BYTES
-                ):
-                    raise AssistantError("response_too_large")
-                return response, False
+                    view, query = await _vehicle_query(hass, scope, key, args, now, _period_now)
+                return await _response(hass, scopes, args, view, query, request_id, now)
     except ReadLimitExceeded as err:
         code, retry_after = "retry_later", err.retry_after
     except Unauthorized:

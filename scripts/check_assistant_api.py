@@ -88,6 +88,7 @@ async def check(config_dir: str) -> None:
             assert periods == [
                 {"type": "string", "enum": ["today", "yesterday", "this_month", "last_month"]},
                 {"type": "string", "format": "date"},
+                {"type": "string", "pattern": "^20[0-9]{2}-(0[1-9]|1[0-2])$"},
             ]
     invalid = await api.async_call_tool(
         llm.ToolInput(
