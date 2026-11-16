@@ -22,9 +22,11 @@ from custom_components.ninebot.assistant_views import (
     AssistantView,
     detail_view,
     numeric,
+    query_failure_view,
     statistics_view,
     trips_view,
 )
+from custom_components.ninebot.exceptions import ErrorKind
 from custom_components.ninebot.raw import Endpoint, build_record
 from custom_components.ninebot.travel import merge_detail, parse_ride
 
@@ -201,6 +203,70 @@ async def test_cached_status_keeps_zero_false_stale_and_excludes_private_fields(
     assert not error and stale["data"]["battery_soc_percent"] == 0
     assert stale["quality"]["metrics"]["battery_soc_percent"]["status"] == "stale"
     assert stale["quality"]["groups"]["status"]["received_at"] == NOW.isoformat()
+
+
+async def test_cached_status_preserves_reviewed_failure_scope_without_logs_or_raw(hass, assistant):
+    snapshot = assistant.co.data[SN]
+    assistant.co.data[SN] = replace(
+        snapshot,
+        status_freshness=replace(snapshot.status_freshness, error=ErrorKind.SERVICE),
+    )
+    assistant.co._query_failures[(SN, "status")] = {
+        "error_kind": "service",
+        "stage": "request",
+        "endpoint": "vehicle_status",
+        "proxy_http_status": 502,
+        "envelope_code": "upstream_error",
+        "attempted_at": NOW.isoformat(),
+        "retryable": True,
+        "message": "never-forward-raw-account-token",
+        "vehicle": SN,
+    }
+    result, error = await query(hass, assistant, "get_vehicle_status")
+    assert not error
+    groups = result["quality"]["groups"]
+    assert groups["status"]["failure_context"] == {
+        "error_kind": "service",
+        "stage": "request",
+        "endpoint": "vehicle_status",
+        "proxy_http_status": 502,
+        "envelope_code": "upstream_error",
+        "attempted_at": NOW.isoformat(),
+        "retryable": True,
+    }
+    assert groups["battery"]["failure_context"] is None
+    assert result["evidence"]["failure_context_basis"] == "local_query_stage_and_proxy_response"
+    assert not any(v in json.dumps(result) for v in (SN, "never-forward-raw-account-token"))
+    assistant.co._query_failures.clear()
+    recovered, error = await query(hass, assistant, "get_vehicle_status")
+    assert not error and recovered["quality"]["groups"]["status"]["failure_context"] is None
+
+
+def test_failure_projection_drops_unreviewed_values_and_does_not_invent_a_failure():
+    assert query_failure_view(None) is None
+    assert query_failure_view({"error_kind": "private-error-text"}) is None
+    row = query_failure_view(
+        {
+            "error_kind": "protocol",
+            "stage": "private-stage",
+            "endpoint": "private-url",
+            "proxy_http_status": True,
+            "envelope_code": {"token": "private-code"},
+            "attempted_at": "private-time",
+            "retryable": "private-flag",
+            "raw": "private-payload",
+        }
+    )
+    assert row == {
+        "error_kind": "protocol",
+        "stage": "unknown",
+        "endpoint": "unknown",
+        "proxy_http_status": None,
+        "envelope_code": "other",
+        "attempted_at": None,
+        "retryable": None,
+    }
+    assert "private" not in json.dumps(row)
 
 
 async def test_vehicle_list_preserves_instruction_like_label_as_data(hass, assistant):

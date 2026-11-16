@@ -17,6 +17,8 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
@@ -24,5 +26,7 @@ jobs:
         run: python -m unittest discover -s scripts/tests -p 'test_docs.py'
       - name: Check public links, language outlines and assets
         run: python scripts/check_docs.py
+      - name: Verify knowledge source blobs and citation anchors
+        run: python -m scripts.check_assistant_knowledge --verify-sources
       - name: Verify reproducible bilingual light/dark diagrams
         run: python scripts/render_architecture.py --check
