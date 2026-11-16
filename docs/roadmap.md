@@ -24,13 +24,15 @@ Current scope for the stable 2.0 series and optional 2.1 preview. Usage and data
 
 ## Optional Assistant — 2.1 preview
 
-Six dedicated local tools expose authorized vehicle status, statistics, saved trips and synchronization health through the native LLM API/MCP Server. The feature is off by default, uses separate account/vehicle consent and keeps coordinates and raw responses outside tool results. [Setup and tool reference](assistant.md).
+Eight dedicated local tools expose authorized vehicle status, statistics, saved trips, synchronization health and versioned help through the native LLM API/MCP Server. The feature is off by default, uses separate account/vehicle consent and keeps coordinates and raw responses outside tool results. [Setup and tool reference](assistant.md).
 
 Versioned bilingual help and bounded task checklists are available from 2.1.1. From 2.1.2, a separate task option supports local proposals, human review, exact request budgets and resumable execution through the existing history scheduler. [Task workflow](assistant.md#reviewable-history-tasks-beta).
 
-Next steps are a measured single-agent query/diagnostic baseline and retrieval comparisons. The evaluated CPU host has not passed conversation acceptance. Multi-agent work remains an experiment subject to a measured benefit over the single-agent baseline.
+An optional native AI task Action returns verified local tool results through a user-selected provider. Queries bind to the selected vehicle; bounded statistics diagnostics reuse the existing archive, synchronization status and cited help. Provider failures can retain revalidated evidence as a partial result. [Query Action](assistant.md#query-through-an-existing-ai-task).
 
-2.1预览提供六个专属本地只读工具，默认关闭，按账号和车辆单独授权。[使用说明](assistant_zh.md)。2.1.1已提供双语版本帮助和有界任务清单；2.1.2起，独立任务选项支持本地申请、人工审核、精确请求预算和既有调度器中的执行恢复。[任务流程](assistant_zh.md#可审核的历史任务beta)。后续继续验收单Agent查询／诊断及检索对照，已评测CPU宿主尚未通过对话验收；多Agent实验有实测收益才保留。
+The product uses the model configured in a compatible HA conversation agent or MCP client. Evaluation separates native protocol checks, actual model decisions and factual answers. The measured two-unit parallel experiment did not justify extra coordination, so the current direction remains a single agent with versioned retrieval and task checklists. [Validation approach](development.md#small-model-baseline).
+
+2.1预览提供八个专属本地只读工具，默认关闭，按账号和车辆单独授权。[使用说明](assistant_zh.md)。双语版本帮助、十项辅助清单以及独立任务选项支持本地申请、人工审核、精确请求预算和执行恢复。[任务流程](assistant_zh.md#可审核的历史任务beta)。原生AI任务Action使用用户选择的供应商，绑定已选车辆并返回真实工具结果；统计排查复用档案、同步状态与引用，供应商后续失败可保留重新鉴权后的部分证据。模型与宿主由用户选择；当前保留单Agent，双工作单元实验没有证明额外收益。
 
 ## Early alpha: visualization and cards
 

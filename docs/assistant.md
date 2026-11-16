@@ -22,7 +22,9 @@ Ninebot Assistant uses Home Assistant's native LLM API and MCP tools. Configure 
 
 The host handles conversation and model access. Ninebot supplies authorized local queries, versioned help, task checklists and the separate human-reviewed task API. Model choice and response presentation belong to the host; the same tool schemas and permission checks apply to every model.
 
-Developer test hosts and fixed model baselines are documented in the [evaluation guide](development.md#small-model-baseline). They are separate from the installation and model configuration above.
+Start with one agent that can select tools, ask for a missing vehicle or date, and retain the returned units, coverage, observation time and sources. The bundled help provides task checklists inside that same tool loop. You do not need a separate RAG service, Skill engine or multi-agent framework.
+
+The [evaluation guide](development.md#small-model-baseline) distinguishes native API checks from measured model behavior. Developer test hosts and fixed model baselines are separate from user installation and model configuration.
 
 ## Query through an existing AI task
 
