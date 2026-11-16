@@ -3,7 +3,6 @@
 import asyncio
 import json
 import logging
-import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import MappingProxyType, SimpleNamespace
@@ -111,6 +110,13 @@ async def check(directory: str) -> None:
         _attr_name = "Synthetic task"
 
         async def _async_generate_data(self, task, chat_log):
+            try:
+                return await self._async_generate_test_data(task, chat_log)
+            except Exception as error:
+                current["provider_exception"] = error
+                raise
+
+        async def _async_generate_test_data(self, task, chat_log):
             provider_calls.append(current["context"])
             assert task.llm_api is not None and chat_log.llm_api is not None
             assert chat_log.llm_api.llm_context.context is current["context"]
@@ -160,11 +166,18 @@ async def check(directory: str) -> None:
         ):
             principal.is_active = True
             context = Context(user_id=principal.id)
-            current.update(context=context, revoke=revoke, provider_failure=provider_failure)
+            current.update(
+                context=context,
+                revoke=revoke,
+                provider_failure=provider_failure,
+                provider_exception=None,
+            )
 
             def observed_failure(code):
                 if code == "model_task_failed":
-                    raise AssertionError("Synthetic native task failed") from sys.exception()
+                    raise AssertionError("Synthetic native task failed") from current.get(
+                        "provider_exception"
+                    )
                 return failed(code)
 
             with (
