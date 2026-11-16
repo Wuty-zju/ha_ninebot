@@ -7,6 +7,8 @@ from datetime import datetime
 from typing import Any
 
 from .archive_timeline import SELECTION_BASIS
+from .exceptions import Endpoint as FailureEndpoint
+from .exceptions import EnvelopeCode, ErrorKind
 from .models import VehicleSnapshot
 from .parsing import boolean
 from .polling_policy import DAY_OBSERVATION_MAX_AGE
@@ -96,7 +98,33 @@ def safe_label(value: str, *identifiers: str) -> str:
     return "".join(char for char in value if char.isprintable()).strip()[:96] or "Vehicle"
 
 
-def status_view(snapshot: VehicleSnapshot, fresh: dict[str, bool]) -> AssistantView:
+def query_failure_view(value: object) -> dict[str, Any] | None:
+    """A local failure fact, never an exception, log line or whole diagnostic."""
+    row = mapping(value)
+    kind = choice(row.get("error_kind"), {kind.value for kind in ErrorKind}, "unknown")
+    if kind == "unknown":
+        return None
+    status = row.get("proxy_http_status")
+    return {
+        "error_kind": kind,
+        "stage": choice(row.get("stage"), {"request", "normalize", "archive"}, "unknown"),
+        "endpoint": choice(row.get("endpoint"), {e.value for e in FailureEndpoint}, "unknown"),
+        "proxy_http_status": status if type(status) is int and 100 <= status <= 599 else None,
+        "envelope_code": choice(
+            row.get("envelope_code"), {code.value for code in EnvelopeCode}, "other"
+        )
+        if row.get("envelope_code") is not None
+        else None,
+        "attempted_at": timestamp(row.get("attempted_at")),
+        "retryable": flag(row.get("retryable")),
+    }
+
+
+def status_view(
+    snapshot: VehicleSnapshot,
+    fresh: dict[str, bool],
+    failures: dict[str, Any] | None = None,
+) -> AssistantView:
     status, battery = snapshot.status, snapshot.battery
     seat = boolean(status.observations.get("seat_lock_raw"))
     values = {
@@ -118,6 +146,7 @@ def status_view(snapshot: VehicleSnapshot, fresh: dict[str, bool]) -> AssistantV
             "received_at": timestamp(stamp.succeeded_at),
             "last_attempt_at": timestamp(stamp.attempted_at),
             "error_kind": stamp.error.value if stamp.error else None,
+            "failure_context": query_failure_view(failures.get(group)) if failures else None,
         }
     metrics = {
         key: {"status": "missing" if value is None else groups["status"]["status"]}
@@ -162,7 +191,11 @@ def status_view(snapshot: VehicleSnapshot, fresh: dict[str, bool]) -> AssistantV
             "more_packs_available": len(battery.batteries) > 4,
         },
         quality={"groups": groups, "metrics": metrics},
-        evidence={"source_kind": "runtime_snapshot", "seat_state_basis": "lock_latch_only"},
+        evidence={
+            "source_kind": "runtime_snapshot",
+            "seat_state_basis": "lock_latch_only",
+            "failure_context_basis": "local_query_stage_and_proxy_response",
+        },
         warnings=["acc_does_not_prove_motion", "cached_values_are_not_a_cloud_refresh"],
     )
 

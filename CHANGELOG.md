@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.24
+
+- Add versioned English and Chinese help for missing vehicle data, control outcomes and battery cycle support.
+- Include reviewed local query failure context in authorized cached-status responses while filtering unknown fields and values.
+- Clarify how the existing read-only tools and task checklists separate field meanings, current status, statistics and history gaps.
+
 ## 2.1.23
 
 - Include bounded per-vehicle month counts, list field states and history progress denominators in downloaded diagnostics.

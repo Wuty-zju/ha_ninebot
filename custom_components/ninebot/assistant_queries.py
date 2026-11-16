@@ -124,6 +124,8 @@ SPECS = (
         "acc_active reports accessory/ignition power, not movement or a ride in progress. "
         "seat_locked reports only the seat latch, not whether the lid is open. "
         "The lock_latch_only evidence applies only to seat_locked, not other readings. "
+        "Failure context describes the observed local query stage and proxy response; "
+        "it does not establish a cloud region, hardware fault or cloud-side cause. "
         "Does not refresh the cloud or return GPS.",
         vol.Schema(VEHICLE),
     ),
@@ -357,9 +359,13 @@ async def _vehicle_query(
     query: dict[str, Any] = {}
     if key == "get_vehicle_status":
         co = scope.runtime.coordinator
+        failure = getattr(co, "query_failure", None)
         return status_view(
             co.data[scope.sn],
             {group: co.fresh(scope.sn, group) for group in ("profile", "status", "battery")},
+            {group: failure(scope.sn, group) for group in ("profile", "status", "battery")}
+            if callable(failure)
+            else None,
         ), query
     if key == "get_statistics":
         start, end = period_dates(args["period"], period_now or now)
