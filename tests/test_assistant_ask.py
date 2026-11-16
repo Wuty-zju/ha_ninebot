@@ -110,7 +110,8 @@ def test_discovery_is_not_an_answer_and_large_result_is_explicit(turn):
 async def test_model_draft_is_not_a_fact_and_native_context_is_preserved(hass, turn):
     contexts = []
 
-    async def generate(*, context, llm_api, **kwargs):
+    async def generate(actual_hass, *, context, llm_api, **kwargs):
+        assert actual_hass is hass
         contexts.append(context)
         return SimpleNamespace(data="2000 seconds, invented text is not evidence")
 
@@ -142,7 +143,8 @@ async def test_unregister_cancels_generation_and_releases_admission(hass, turn):
     entered = asyncio.Event()
     stopped = asyncio.Event()
 
-    async def generate(*, llm_api, **kwargs):
+    async def generate(actual_hass, *, llm_api, **kwargs):
+        assert actual_hass is hass
         entered.set()
         try:
             await asyncio.Event().wait()
