@@ -19,6 +19,7 @@ async def check(directory: str) -> None:
     from homeassistant.components.ai_task.const import DATA_COMPONENT, DATA_PREFERENCES
     from homeassistant.config_entries import ConfigEntries, ConfigEntry, ConfigEntryState
     from homeassistant.core import Context, HomeAssistant
+    from homeassistant.exceptions import HomeAssistantError
     from homeassistant.helpers import device_registry as dr
     from homeassistant.helpers import entity_registry as er
     from homeassistant.helpers import llm
@@ -121,6 +122,8 @@ async def check(directory: str) -> None:
             assert not value.error and value.data["data"]["battery_soc_percent"] == 42
             if current.get("revoke"):
                 principal.is_active = False
+            if current.get("provider_failure"):
+                raise HomeAssistantError("private provider detail: never-return-this")
             return ai_task.GenDataTaskResult(
                 conversation_id=chat_log.conversation_id, data="Invented battery value: 9999"
             )
@@ -132,9 +135,15 @@ async def check(directory: str) -> None:
         await component.async_add_entities([entity])
         assert component.get_entity(entity_id) is entity
         remove = async_register(hass)
-        for revoke in (False, True):
+        for provider_failure, revoke in (
+            (False, False),
+            (True, False),
+            (True, True),
+            (False, True),
+        ):
+            principal.is_active = True
             context = Context(user_id=principal.id)
-            current.update(context=context, revoke=revoke)
+            current.update(context=context, revoke=revoke, provider_failure=provider_failure)
 
             def observed_failure(code):
                 if code == "model_task_failed":
@@ -163,16 +172,21 @@ async def check(directory: str) -> None:
                     return_response=True,
                 )
             assert response is not None and "9999" not in json.dumps(response)
+            assert "never-return-this" not in json.dumps(response)
             if revoke:
                 assert response["outcome"] == "denied" and response["results"] == []
             else:
-                assert response["outcome"] == "evidence", response
+                assert response["outcome"] == ("partial" if provider_failure else "evidence"), (
+                    response
+                )
+                if provider_failure:
+                    assert response["stop_reason"] == "model_task_failed"
                 assert response["results"][0]["result"]["data"]["battery_soc_percent"] == 42
                 assert not any(
                     secret in json.dumps(response)
                     for secret in ("synthetic-sn", "30.12345", "120.12345")
                 )
-        assert len(provider_calls) == 2
+        assert len(provider_calls) == 4
         response = await hass.services.async_call(
             "ninebot",
             "ask",
@@ -180,8 +194,8 @@ async def check(directory: str) -> None:
             blocking=True,
             return_response=True,
         )
-        assert response["outcome"] == "denied" and len(provider_calls) == 2
-        print("Native query: original Context, eight tools, evidence and withdrawal passed")
+        assert response["outcome"] == "denied" and len(provider_calls) == 4
+        print("Native query: Context, eight tools, partial evidence and withdrawal passed")
     finally:
         if remove is not None:
             remove()

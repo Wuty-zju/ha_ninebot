@@ -39,6 +39,8 @@ response_variable: ninebot_answer
 
 响应的`answer_mode`为`verified_tool_results`，`results`保留实际工具名、参数、数据、质量和来源。`outcome: evidence`表示获得了数据或帮助结果；解读总量前仍需核对实际周期与覆盖情况，不代表模型理解了问题的全部内容。只有车辆列表或没有有效数据结果时为`needs_input`，请补充车辆、日期或更明确的问题；提前停止但已有证据时为`partial`。失败和拒绝访问不会变成零行程。
 
+模型供应商在成功读取数据或帮助之后失败时，响应会保留重新核验过的工具结果，标记为`outcome: partial`和`stop_reason: model_task_failed`。只有失败读取或车辆列表时仍返回失败；权限撤销后不返回这些结果。
+
 模型从八个本地工具中选择调用，自由生成的最终文字不作为数值或来源；响应保留实际工具结果。一般帮助不要求车辆选择。单次上限180秒、四次工具调用、32 KiB响应，集成同一时间接受一个此类查询。不会刷新云端、申请历史任务或控制车辆。模型任务和业务读取沿用原调用身份，结果返回前重新校验同意、归属与权限。
 
 需要Core支持`ai_task.async_generate_data(..., llm_api=...)`并已有兼容供应商；不支持时返回`unsupported_capability`，不会自动安装模型或另开端口。原生MCP／Conversation八工具仍可独立使用，此动作不加入专属LLM工具集合。

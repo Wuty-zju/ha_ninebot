@@ -39,6 +39,8 @@ response_variable: ninebot_answer
 
 The response uses `answer_mode: verified_tool_results`. Its `results` contain the actual tool names, arguments, data, quality and evidence. `outcome: evidence` means a data/help result was obtained; check the returned period and coverage before interpreting a total. It does not certify that a model understood every part of the question. Discovery alone or no data tool produces `needs_input`; provide a vehicle, date or more specific question. A stopped query with usable evidence reports `partial`. Failed or denied reads never become zero trips.
 
+If the provider fails after a successful data or help read, the response retains the revalidated tool results with `outcome: partial` and `stop_reason: model_task_failed`. An unsuccessful read or vehicle discovery alone remains a failure. Permission withdrawal removes the results.
+
 The model selects among the eight local tools. Its free-form final text is discarded; numbers and source links come from the tools. General help can be queried without selecting a vehicle. Requests have a 180-second deadline, at most four tool calls, one active query across this integration and a 32 KiB response limit. They do not refresh the cloud, submit history jobs or control vehicles. The same user Context is passed to the model task and business reads, with consent/ownership checked again before returning data.
 
 Use Core with `ai_task.async_generate_data(..., llm_api=...)` support and a compatible configured provider. An unsupported task API returns `unsupported_capability`; no new provider or listener is installed. Ordinary native MCP/Conversation tools remain available independently. This response Action is not added to the dedicated Ninebot LLM tool collection.

@@ -115,6 +115,8 @@ class EvidenceTurn:
         has_evidence = any(
             not row["error"] and row["tool"] != "ninebot__get_vehicles" for row in self.results
         )
+        if self.stop == "model_task_failed" and not has_evidence:
+            return failed("model_task_failed")
         response = {
             "schema_version": 1,
             "answer_mode": "verified_tool_results",
@@ -217,7 +219,7 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
                 except Exception:
                     # Provider implementations own their exceptions. Keep their
                     # arbitrary messages outside this response/log boundary.
-                    return failed("model_task_failed")
+                    turn.stop = "model_task_failed"
                 # Generated prose is not a source of numeric facts or executable instructions.
                 await turn.async_validate()
                 return turn.response()

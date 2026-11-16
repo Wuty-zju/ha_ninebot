@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.18
+
+- Preserve verified Assistant tool results when the model provider fails later in the query, returning explicit partial status.
+- Recheck permissions before returning retained evidence; discovery alone and failed reads remain failures.
+
 ## 2.1.17
 
 - Add a bounded local statistics check combining actual metric quality, synchronization health and cited help.
