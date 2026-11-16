@@ -155,9 +155,27 @@ Run `python -m unittest scripts.tests.test_assistant_knowledge -q` without HA. B
 
 The same catalog owns eight bounded read procedures (SK01–SK08) with bilingual triggers, inputs, steps, stop/verification rules, permitted tool keys and call budgets. They have independent content hashes and fixed public sources. A topic references one procedure; explicitly requested procedures are included once within the same 4 KiB limit. The validator rejects execution tools, invalid budgets and inconsistent applicability. They are task guidance for an existing host, not a runtime planner or a new authorization source. Corpus 1.2.0 adds SK09/SK10 from integration 2.1.2, with separate procedure-specific task tool sets. SK09 may name only local task discovery, preview and application plus help; SK10 may name only task discovery/list/detail plus help. Earlier integrations do not retrieve these procedures. Read procedures cannot acquire an application tool, and no procedure may name a confirmation, cloud-control or arbitrary execution tool. The task topics retain their own version applicability and permitted tool sets.
 
-### Small model baseline
+<a id="small-model-baseline"></a>
+
+### Assistant validation
 
 The runtime Assistant contract is model-independent: existing Home Assistant conversation agents or MCP clients provide model access and the conversation loop. Tests keep model-specific adapters and weight pins in `scripts/`; they are development inputs, not production model requirements.
+
+Use three distinct evidence layers:
+
+| Layer | What to verify | Relevant entry points |
+|---|---|---|
+| Business and authorization | Actual local facts, caller Context, account/vehicle scope, cancellation, budgets, durable approval and archive invariants | Related `tests/test_assistant_*.py` suites |
+| Native protocol | Installed Core API registration, schemas, prompt transport, MCP routing, Conversation turns and native AI task results | `scripts/check_assistant_mcp.py`, `scripts/check_assistant_conversation.py`, `scripts/check_assistant_ask.py` |
+| Model behavior | Real tool selection/arguments, clarification, answers, citations, recovery and task application | Fixed synthetic cases through a compatible host; retain original replies and tool traces |
+
+Native protocol success alone does not score a model answer. A model-selected call must reach the real tool, and its reply must be compared with the returned data and the case's original assertions. Use synthetic identities and archives; keep provider credentials outside messages and artifacts. Record the exact source, Core/host/model versions, enabled tools, prompt, fixture clock, call/time limits and usage. Separate query time from observation time, and check the model host's clock when assessing fixture deadlines.
+
+The 2.1.21 source has also been exercised through an independent MCP client using Core's server implementation and the official SDK over stdio. These cases use a real synthetic SQLite archive and task Store/driver: local trip selection, ambiguity, missing statistics, versioned retrieval, a pending application, timeout recovery and access withdrawal. The client supplies model access; it adds no production transport or dependency. Earlier CPU/GPU failures remain separate results, with no backfilled scores. A host qualification describes its measured cases and settings, rather than every compatible model.
+
+The bounded single-agent versus two-unit experiment did not meet its benefit criterion. Keep one agent for this scope. Reopen a parallel experiment only for a new independent workload or host change with a fixed total budget and a measured user benefit.
+
+简体中文：业务事实与权限、原生协议、模型行为分别验收。真实模型须实际调用工具，回答按原断言核对；保留失败原稿与合成档案，记录宿主、模型、版本、预算和时钟。产品不固定供应商；下面的CPU／Qwen配置只用于开发对照。当前双工作单元实验没有证明收益，维持单Agent。
 
 #### Reference-host evaluation
 
@@ -184,7 +202,9 @@ python -m scripts.assistant_reader \
 
 This helper prompts for an existing HA token and keeps it outside model messages. It stores no credentials or conversations. The fixed Qwen model and its checked presentation policy make this test host reproducible; its results do not establish acceptance for other hosts. User-facing setup remains the native [host and model selection](assistant.md#choose-a-host-and-model).
 
-#### Synthetic model cases
+<a id="synthetic-model-cases"></a>
+
+#### Historical CPU and local GPU baselines
 
 The optional **Checks → assistant_evaluation** dispatch runs Q03, Q04, P06 and S02 through a fixed CPU model and the installed native MCP HTTP handler. It compares a single prompt without tools against a bounded tool loop. Authorization, registry, snapshots and Action returns are synthetic; this run does not connect to a production HA instance or exercise a real archive. Q03 supplies two vehicles; P06 supplies a selected ride and revokes consent inside its detail read.
 
