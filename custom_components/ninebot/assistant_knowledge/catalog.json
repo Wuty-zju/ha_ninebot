@@ -689,8 +689,6 @@
             "missing data",
             "App",
             "HA",
-            "unknown values",
-            "zero trips",
             "100%",
             "last trip",
             "trip event",
@@ -714,7 +712,7 @@
         }
       },
       "procedure_id": null,
-      "content_sha256": "508a81adc915572942f3a29b6da22523881fac56eb465bc4b05dd93599d03848"
+      "content_sha256": "e00af8eecaddd50143ac8152072a52ab709b861baf09cbf0f893b5032aebcf9b"
     },
     {
       "id": "control_outcomes",

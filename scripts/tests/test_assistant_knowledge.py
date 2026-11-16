@@ -1,9 +1,7 @@
 """Public knowledge integrity, applicability and lexical retrieval boundaries."""
 
 import copy
-import hashlib
 import json
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -119,9 +117,8 @@ class KnowledgeTests(unittest.TestCase):
     def test_support_topics_have_fixed_public_provenance_and_version_gate(self):
         identifiers = {"data_availability", "control_outcomes", "battery_support"}
         commit = "9ddd8e724fcfee720a171f9dff2b98377d4ba7c4"
-        root = Path(__file__).resolve().parents[2]
-        blob = subprocess.check_output(["git", "show", f"{commit}:docs/guide.md"], cwd=root)
-        expected_hash = hashlib.sha256(blob).hexdigest()
+        # The documentation job verifies the historical blob; unit tests also run in shallow clones.
+        expected_hash = "5ee88231eeaf2d6a7faa876656bfb02e714f50f5eff15b2e987327e5f52b90f4"
         entries = [row for row in k.load_catalog()["entries"] if row["id"] in identifiers]
         self.assertEqual({row["id"] for row in entries}, identifiers)
         for entry in entries:
@@ -149,6 +146,14 @@ class KnowledgeTests(unittest.TestCase):
                 for version in ("2.1.0", "2.1.22", "2.1.23", "2.2.0"):
                     old = k.search_help(query, language, version, include_procedures=True)
                     self.assertFalse(identifiers & {row["source_id"] for row in old["matches"]})
+
+    def test_statistics_check_query_keeps_the_specific_checklist_first(self):
+        for language in ("en", "zh-Hans"):
+            result = k.search_help(
+                "unknown missing zero", language, "2.1.24", include_procedures=True
+            )
+            self.assertEqual(result["matches"][0]["source_id"], "statistics_missing")
+            self.assertIn("SK05", {row["id"] for row in result["procedures"]})
 
     def test_support_topics_keep_existing_empty_history_and_login_help(self):
         for language in ("en", "zh-Hans"):
