@@ -16,6 +16,14 @@ Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼�
 
 支持提示模板的 MCP 客户端可通过 `prompts/list` 和 `prompts/get` 获取 **Ninebot** 模板，并在客户端的提示入口应用它。仅发现工具不代表客户端已应用这份说明。无论是否支持模板，工具调用始终执行相同的权限校验。
 
+## 核对MCP的API选择
+
+HA 2026.11+ 的主 `/api/mcp` 地址优先使用“暴露全部AI工具”（`all_llm_apis`）。开启时选择当前全部已注册API，包括之后新增的集合；已保存的“AI工具”选择（`llm_hass_api`）不限制该列表。关闭后才使用所选集合。“只读”（`read_only`）过滤此主地址中的工具。
+
+独立 `/api/mcp/<api_id>` 地址直接选择对应的已注册API，不继承主地址的API选择或只读选项。因此，即使主地址只读，`/api/mcp/ninebot_tasks` 仍可能提供任务申请；Ninebot仍要求账号任务授权和原申请人的独立人工批准。普通 `/api/mcp/ninebot` 集合始终只有本地只读工具。
+
+这些是MCP路由规则，不代表已检查或修改你的配置。参阅[原生MCP配置选项](https://www.home-assistant.io/integrations/mcp_server/#configuration-options)。
+
 ## 选择宿主和模型
 
 Ninebot Assistant 使用 Home Assistant 原生 LLM API 和 MCP 工具。在选用的 HA 对话代理或 MCP 客户端中配置模型；宿主需要支持工具调用、Ninebot 集合并保留已认证用户上下文。集成不要求指定模型厂商、本机推理引擎或模型权重。
