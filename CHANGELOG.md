@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.22
+
+- Add cited bilingual help for native MCP API-selection settings and main versus individual URLs.
+- Recognize exact configuration keys and retain version filtering, account consent and human-review requirements.
+
 ## 2.1.21
 
 - Bind an existing vehicle selection to per-task Assistant tools, avoiding repeated model-supplied identifiers while preserving public MCP parameters and access checks.

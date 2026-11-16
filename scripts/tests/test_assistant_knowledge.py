@@ -68,8 +68,8 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 14)
-        self.assertEqual(catalog["corpus_version"], "1.2.6")
+        self.assertEqual(len(catalog["entries"]), 15)
+        self.assertEqual(catalog["corpus_version"], "1.2.7")
         self.assertEqual(catalog["source_version"], "2.1.2")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
@@ -78,6 +78,42 @@ class KnowledgeTests(unittest.TestCase):
             self.assertEqual(set(entry["translations"]), {"en", "zh-Hans"})
             self.assertEqual(k.content_hash(entry), entry["content_sha256"])
             self.assertIn(entry["source"]["commit"], entry["source"]["url"])
+
+    def test_exact_mcp_settings_retrieve_route_precedence(self):
+        for query in (
+            "MCP 主 URL /api/mcp llm_hass_api assist all_llm_apis read_only "
+            "独立 /api/mcp/ninebot_tasks 设置",
+            "all_llm_apis llm_hass_api read_only MCP 主入口 独立入口 配置",
+            "all_llm_apis",
+            "Expose all AI tools and a saved API selection",
+        ):
+            for language in ("en", "zh-Hans"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.22", include_procedures=True)
+                    match = result["matches"][0]
+                    self.assertEqual(match["source_id"], "mcp_configuration")
+                    for key in ("all_llm_apis=true", "all_llm_apis=false", "llm_hass_api"):
+                        self.assertIn(key, match["text"])
+                    self.assertIn("ignores" if language == "en" else "不继承", match["text"])
+                    self.assertIn(
+                        "original user" if language == "en" else "原申请人", match["text"]
+                    )
+                    self.assertTrue(match["source"]["url"].endswith("#check-mcp-api-selection"))
+                    self.assertLessEqual(len(json.dumps(result, ensure_ascii=False).encode()), 4096)
+
+        for version in ("2.0.0", "2.1.0", "2.1.21", "2.2.0"):
+            with self.subTest(version=version):
+                result = k.search_help("all_llm_apis", "en", version)
+                self.assertEqual(result["matches"], [])
+
+        for query, expected in (
+            ("request_detail_sync_approval MCP read-only", "task_application"),
+            ("request budget", "sync_budget"),
+            ("等待请求额度", "sync_budget"),
+        ):
+            with self.subTest(query=query):
+                result = k.search_help(query, "zh-Hans", "2.1.22", include_procedures=True)
+                self.assertEqual(result["matches"][0]["source_id"], expected)
 
     def test_exact_error_terms_and_chinese_bigrams(self):
         for query, target in (

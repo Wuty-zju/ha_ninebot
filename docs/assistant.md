@@ -16,6 +16,14 @@ For a native Conversation/Assist host, select the **Ninebot** API if the host su
 
 MCP clients that support prompts can retrieve the **Ninebot** prompt through `prompts/list` and `prompts/get`. Apply it using the client's prompt interface; discovering tools alone does not ensure the client applies this guidance. Permissions are enforced on every tool call regardless of prompt support.
 
+## Check MCP API selection
+
+On HA 2026.11+, the main `/api/mcp` URL uses **Expose all AI tools** (`all_llm_apis`) first. When enabled, it selects every registered API, including APIs added later; a saved **AI tools** selection (`llm_hass_api`) does not restrict that list. Turn it off to use the selected collections. **Read-only** (`read_only`) filters tools on this main URL.
+
+An individual `/api/mcp/<api_id>` URL selects that registered API directly and ignores the main URL's API selection and read-only options. For `/api/mcp/ninebot_tasks`, a request application can therefore remain available while the main URL is read-only. Account task consent and the original user's separate human approval still govern Ninebot work. The ordinary `/api/mcp/ninebot` collection contains only local read tools.
+
+These rules describe the MCP routes; they do not inspect or change your configuration. See the [native MCP configuration options](https://www.home-assistant.io/integrations/mcp_server/#configuration-options).
+
 ## Choose a host and model
 
 Ninebot Assistant uses Home Assistant's native LLM API and MCP tools. Configure the model in your chosen Home Assistant conversation agent or MCP client. A compatible host must support tool calling, the Ninebot collection and authenticated user context. The integration has no required model vendor, local inference engine or model weights.
@@ -107,7 +115,7 @@ Public help and task checklists are available from **2.1.1**.
 
 Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches bundled bilingual topics (thirteen in 2.1.2) without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
 
-Corpus 1.2.6 contains fourteen bilingual topics and ten advisory task checklists. The separate `sample_units` topic explains unverified raw sample units, including fourth-column and `mph` questions; `measurement_units` retains maximum/overall-average speed and battery-score semantics. Both use the existing measurement checklist and pinned documentation source. Login guidance distinguishes the support records added in 2.0.1 from 2.0.0. Retrieval favors matching topic keywords, reducing unrelated results from shared words. The source contract version remains 2.1.2; a corpus update does not change the installed integration version or verify unknown fields.
+Corpus 1.2.7 contains fifteen bilingual topics and ten advisory task checklists. The separate `sample_units` topic explains unverified raw sample units, including fourth-column and `mph` questions; `measurement_units` retains maximum/overall-average speed and battery-score semantics. Both use the existing measurement checklist and pinned documentation source. Login guidance distinguishes the support records added in 2.0.1 from 2.0.0. Retrieval favors matching topic keywords, reducing unrelated results from shared words. The source contract version remains 2.1.2; a corpus update does not change the installed integration version or verify unknown fields. From 2.1.22, the `mcp_configuration` topic explains main/individual URL settings and recognizes the exact configuration keys.
 
 From **2.1.13**, request-budget searches exclude generic task-application keywords. The exact `preview_detail_sync` and `request_detail_sync_approval` names retrieve their applicable task checklist. Approved tasks continue to share the account request budget.
 
