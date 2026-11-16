@@ -51,7 +51,7 @@ class HistoryProgress:
 
     @property
     def scan_percent(self) -> int | None:
-        if self.total_months is None or self.verified_months is None:
+        if self.total_months is None or self.total_months <= 0 or self.verified_months is None:
             return None
         return min(100, self.verified_months * 100 // self.total_months)
 
@@ -60,7 +60,7 @@ class HistoryProgress:
         if self.discovered is None or self.saved is None:
             return None
         if self.discovered == 0:
-            return 100 if self.discovery_complete else None
+            return 100 if self.saved == 0 and self.discovery_complete else None
         return min(100, self.saved * 100 // self.discovered)
 
 

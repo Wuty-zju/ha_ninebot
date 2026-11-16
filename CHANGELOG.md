@@ -6,6 +6,7 @@ Entries describe each version at release time. See the [current guides](docs/REA
 
 - Include bounded per-vehicle month counts, list field states and history progress denominators in downloaded diagnostics.
 - Retain safe query failure context and add correlated control-result DEBUG logs, including local rejections and state confirmation.
+- Keep empty scan denominators unknown and share the same progress calculation between entities and diagnostics.
 - Explain empty-history progress, unsupported metrics and control receipts in the English and Chinese troubleshooting guides.
 
 ## 2.1.22

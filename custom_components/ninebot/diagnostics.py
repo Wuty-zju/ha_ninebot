@@ -87,7 +87,9 @@ def _month_evidence(
             # The snapshot owns this exact successful response; reuse its summary.
             parsed = (
                 travel
-                if summary is not None and succeeded_at == record.received_at
+                if summary is not None
+                and isinstance(raw, dict)
+                and succeeded_at == record.received_at
                 else adapters.travel(raw, month)
             )
         except NinebotError:
@@ -123,7 +125,17 @@ def _month_evidence(
 def _scan_scope(plan: HistoryPlan | None) -> dict[str, Any]:
     if plan is None:
         return {"source": "unobserved", "start_month": None, "end_month": None, "next_month": None}
-    month_count(plan.start_month, plan.end_month)
+    try:
+        month_count(plan.start_month, plan.end_month)
+        if plan.next_month is not None:
+            month_count(plan.next_month, plan.next_month)
+    except (ValueError, NinebotError):
+        return {
+            "source": "invalid_cache",
+            "start_month": None,
+            "end_month": None,
+            "next_month": None,
+        }
     return {
         "source": "bootstrap_cache",
         "start_month": plan.start_month,
@@ -166,17 +178,8 @@ def _history_evidence(preservation: "HistoryPreservation", sn: str) -> dict[str,
         if progress and progress.phase in {"discovering", "preserving", "verifying", "incremental"}
         else None,
         discovery_complete=progress.discovery_complete if progress else None,
-        scan_percent=(min(100, result["verified_months"] * 100 // result["total_months"]))
-        if result["total_months"] and result["verified_months"] is not None
-        else None,
-        detail_percent=(min(100, result["saved"] * 100 // result["discovered"]))
-        if result["discovered"] and result["saved"] is not None
-        else 100
-        if result["discovered"] == 0
-        and result["saved"] == 0
-        and progress is not None
-        and progress.discovery_complete is True
-        else None,
+        scan_percent=progress.scan_percent if progress else None,
+        detail_percent=progress.detail_percent if progress else None,
         scan_basis="verified_months/total_months",
         detail_basis="saved/discovered",
     )

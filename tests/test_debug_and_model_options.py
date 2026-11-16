@@ -398,6 +398,7 @@ def test_diagnostics_history_zero_denominator_and_cache_only_scope(complete, det
     evidence = _history_evidence(preservation, "PRIVATE_SN")
     assert evidence["scan_percent"] is None
     assert evidence["detail_percent"] == detail_percent
+    assert progress.scan_percent is None and progress.detail_percent == detail_percent
     assert evidence["discovered"] == evidence["saved"] == 0
     assert evidence["discovery_complete"] is complete
     assert evidence["baseline_scope"] == {
@@ -417,6 +418,16 @@ def test_diagnostics_history_zero_denominator_and_cache_only_scope(complete, det
         value in json.dumps([evidence, guarded], allow_nan=False)
         for value in ("PRIVATE", plan.plan_id, plan.vehicle)
     )
+    preservation.bootstrap.snapshots["PRIVATE_SN"] = (
+        replace(plan, start_month="PRIVATE"),
+        None,
+    )
+    assert _history_evidence(preservation, "PRIVATE_SN")["baseline_scope"] == {
+        "source": "invalid_cache",
+        "start_month": None,
+        "end_month": None,
+        "next_month": None,
+    }
 
 
 async def test_diagnostics_isolate_vehicle_months_without_queries(hass, entry, app_client):
