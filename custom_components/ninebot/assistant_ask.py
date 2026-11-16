@@ -60,6 +60,9 @@ class EvidenceTurn:
         await async_require_admin(self.hass, self.call.context)
         for scope in self.scopes.values():
             await scope.async_validate(self.hass)
+        # A later permission await may revoke an already checked vehicle.
+        for scope in self.scopes.values():
+            scope.assert_current(self.hass)
 
     async def async_prepare(self) -> None:
         await async_require_admin(self.hass, self.call.context)

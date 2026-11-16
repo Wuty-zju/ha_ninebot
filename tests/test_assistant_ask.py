@@ -2,7 +2,7 @@
 
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant.core import Context, ServiceCall
@@ -26,8 +26,33 @@ def turn(hass):
         context=context,
     )
     result = ask.EvidenceTurn(hass, call)
-    result.scopes = {"selected": SimpleNamespace(async_validate=AsyncMock())}
+    result.scopes = {"selected": SimpleNamespace(async_validate=AsyncMock(), assert_current=Mock())}
     return result
+
+
+async def test_later_scope_await_cannot_release_a_revoked_earlier_vehicle(hass, turn):
+    current = True
+
+    def assert_current(actual_hass):
+        assert actual_hass is hass
+        if not current:
+            raise AssistantError("not_authorized")
+
+    async def later_validation(actual_hass):
+        nonlocal current
+        assert actual_hass is hass
+        current = False
+
+    first = SimpleNamespace(async_validate=AsyncMock(), assert_current=assert_current)
+    last = SimpleNamespace(
+        async_validate=AsyncMock(side_effect=later_validation), assert_current=Mock()
+    )
+    turn.scopes = {"earlier": first, "later": last}
+    with patch.object(ask, "async_require_admin", new=AsyncMock()):
+        with pytest.raises(AssistantError, match="not_authorized"):
+            await turn.async_validate()
+    first.async_validate.assert_awaited_once_with(hass)
+    last.async_validate.assert_awaited_once_with(hass)
 
 
 @pytest.mark.parametrize("value", ["", "\t", "x" * 1001, 7, "bad\x00value"])
