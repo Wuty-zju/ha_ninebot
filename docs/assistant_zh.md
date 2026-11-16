@@ -2,7 +2,7 @@
 
 [English](assistant.md) · [文档](README.md) · [历史行程与地图](history_zh.md)
 
-Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼容的 AI 宿主提供用户选定车辆的本地信息。预览提供六个本地车辆工具和版本化公开帮助检索，现有实体、控制及历史同步继续独立运行。
+Ninebot Assistant 通过 Home Assistant 原生 LLM API 和 MCP Server，向兼容的 AI 宿主提供用户选定车辆的本地信息。预览提供本地车辆查询、有界统计排查和版本化公开帮助，现有实体、控制及历史同步继续独立运行。
 
 ## 开启方式
 
@@ -39,9 +39,9 @@ response_variable: ninebot_answer
 
 响应的`answer_mode`为`verified_tool_results`，`results`保留实际工具名、参数、数据、质量和来源。`outcome: evidence`表示获得了数据或帮助结果；解读总量前仍需核对实际周期与覆盖情况，不代表模型理解了问题的全部内容。只有车辆列表或没有有效数据结果时为`needs_input`，请补充车辆、日期或更明确的问题；提前停止但已有证据时为`partial`。失败和拒绝访问不会变成零行程。
 
-模型从七个本地工具中选择调用，自由生成的最终文字不作为数值或来源；响应保留实际工具结果。一般帮助不要求车辆选择。单次上限180秒、四次工具调用、32 KiB响应，集成同一时间接受一个此类查询。不会刷新云端、申请历史任务或控制车辆。模型任务和业务读取沿用原调用身份，结果返回前重新校验同意、归属与权限。
+模型从八个本地工具中选择调用，自由生成的最终文字不作为数值或来源；响应保留实际工具结果。一般帮助不要求车辆选择。单次上限180秒、四次工具调用、32 KiB响应，集成同一时间接受一个此类查询。不会刷新云端、申请历史任务或控制车辆。模型任务和业务读取沿用原调用身份，结果返回前重新校验同意、归属与权限。
 
-需要Core支持`ai_task.async_generate_data(..., llm_api=...)`并已有兼容供应商；不支持时返回`unsupported_capability`，不会自动安装模型或另开端口。原生MCP／Conversation七工具仍可独立使用，此动作不加入专属LLM工具集合。
+需要Core支持`ai_task.async_generate_data(..., llm_api=...)`并已有兼容供应商；不支持时返回`unsupported_capability`，不会自动安装模型或另开端口。原生MCP／Conversation八工具仍可独立使用，此动作不加入专属LLM工具集合。
 
 ## 查询本地数据
 
@@ -61,14 +61,19 @@ response_variable: ninebot_answer
 | `ninebot__search_help` | `query`；可选 `language`（`en` 或 `zh-Hans`）、`include_procedures`（默认 `false`） | 最多三条附引用的公开帮助；指导具体任务时显式请求任务清单。 |
 | `ninebot__get_vehicles` | 无 | 已向 AI 授权的车辆引用、显示名称及本地数据能力。 |
 | `ninebot__get_vehicle_status` | `vehicle_ref` | 缓存状态/BMS 数值及分组观测质量，不刷新、不返回坐标。 |
-| `ninebot__get_statistics` | `vehicle_ref`、`period` | 本地 `today`、`yesterday`、`this_month`、`last_month` 或单个明确业务日期的统计及逐指标覆盖情况。 |
+| `ninebot__get_statistics` | `vehicle_ref`、`period` | 本地 `today`、`yesterday`、`this_month`、`last_month` 或单个明确业务日期／月份的统计及逐指标覆盖情况。 |
 | `ninebot__get_recorded_trips` | `vehicle_ref`、`start_date`、`end_date`；可选 `limit`、`cursor` | 一页按时间倒序排列的本地行程。日期格式 `YYYY-MM-DD`，含首尾最多31天；默认10条，最多20条。 |
 | `ninebot__get_trip_detail` | `vehicle_ref`、`ride_id`、`query_month` | 对应车辆及月份中已验证行程的本地标量详情。使用列表返回的行程 ID 和 `YYYYMM` 月份。 |
 | `ninebot__get_sync_health` | `vehicle_ref` | 本地覆盖、进度、额度和调度状态，不启动或恢复同步。 |
+| `ninebot__explain_statistics` | `vehicle_ref`、`period`、`metric`；可选 `language` | 三个本地步骤：周期统计、同步健康、附引用的帮助与统计排查清单。 |
 
 全部工具均读取本地信息。缺失详情需要通过正常的[历史功能](history_zh.md)采集；AI 只读调用不会触发云请求。列表游标可能被消费，应继续使用返回的下一页游标，不反复重放上一游标。一页记录数量不代表整个时间段的行程总数。
 
 从 **2.1.10** 起，`get_statistics` 的 `period` 也接受一个 `YYYY-MM-DD` 日期，例如 `2026-11-05`。日期沿用 Asia/Shanghai，范围从2000年起，不接受未来日期；查询读取已有本地日投影。已验证的空日可返回0，未观测日期保持未知，原四个相对周期继续可用。
+
+从 **2.1.17** 起，`period` 也接受 `YYYY-MM`，例如 `2026-10`。已结束月份取完整自然月，当前月份截至当前业务日；年份从2000年起，不接受未来月份。月统计使用已有服务端月汇总，与每日投影及行程分页小计分别表达。
+
+排查具体数值时，可用 `ninebot__explain_statistics` 指定车辆、周期及一个指标：`ride_count`、`distance_km`、`duration_s`、`energy_wh` 或 `energy_intensity_wh_per_km`。固定流程返回实际统计、同步健康、适用版本的帮助引用与SK05清单。`data.steps`保留各工具结果及观测时间，`quality.partial`表示有步骤失败或未执行。指标原因描述目前的证据，不直接判定根因；此查询不修复数据、不启动云端任务。
 
 从 **2.1.9** 起，行程分页保留每条记录的 `received_at`，并在 `quality.months` 返回最多三个月份的观测摘要，空页也保留这些信息。`query.as_of` 表示本次工具调用时间，`quality.page_as_of` 表示游标各页沿用的选取截止时点，均与档案的实际观测时间区分。固定截止时点不等于冻结整个数据库，也不能证明云端完整性；缺失的观测信息保持 `null`。
 
@@ -132,6 +137,8 @@ response_variable: ninebot_answer
 从 2.1.2 起，版本帮助增加“申请有界详情同步”和“核对任务结果”两项流程。它们要求已暴露独立任务 API，最多使用 4 次工具调用；普通只读流程不能因此获得申请或审批能力。申请流程先明确用户意图、车辆与日期，再预览并提交本地待审请求；结果流程只读匹配任务，区分未知、零值、等待、部分完成与核验完成，不循环查询。
 
 ## 隐私与限额
+
+统计排查先占用一次准入，每个子查询另占一次，完整三步共四次；活动读取槽位不嵌套，全部步骤共用10秒期限。幂等本地动作遇到已确认的Ninebot暂忙错误时至多重试一次，仍在原准入与期限内；分页游标、权限错误及未知错误不重放。成功结果的`query.local_action_attempts`记录底层本地动作次数，与模型工具调用数及云端额度区分。
 
 启用选项后，所选宿主可以接收授权车辆的显示名称、标量数值、时间、行程标识及质量信息。请留意自行设置的车辆名称。工具不输出账号凭据、账号标识、序列号、精确坐标、原始响应、日志、完整轨迹和采样数组。外部模型宿主可能按其自身政策保存对话与工具结果。关闭选项会撤销后续调用权限，无法移除已经发送给宿主的信息；车辆选择会保留，便于下次开启。
 

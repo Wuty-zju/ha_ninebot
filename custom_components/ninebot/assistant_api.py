@@ -22,6 +22,8 @@ PROMPT = (
     "vehicles again to confirm it. Ask for unspecified statistical periods. "
     "For a specified past period, query statistics directly; current status cannot establish "
     "past trips. "
+    "To investigate a specific unknown statistic, use explain_statistics with the selected "
+    "vehicle, period and metric for the bounded local check and cited checklist. "
     "Capabilities report local cache/archive readiness, not hardware support, measurements "
     "or proof of recorded trips. A false cached_status means no successful local status receipt. "
     "Null/missing is unknown, "

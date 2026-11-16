@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant.core import Context
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.ninebot.adapters import travel
@@ -124,6 +125,12 @@ async def query(hass, assistant, key, **arguments):
         ("get_statistics", {"period": "20261006"}),
         ("get_statistics", {"period": "1999-12-31"}),
         ("get_statistics", {"period": "2026-10-08"}),
+        ("get_statistics", {"period": "2026-11"}),
+        ("get_statistics", {"period": "2026-13"}),
+        ("get_statistics", {"period": "2026-9"}),
+        ("get_statistics", {"period": "1999-12"}),
+        ("explain_statistics", {"period": "today"}),
+        ("explain_statistics", {"period": "today", "metric": "latitude"}),
         ("get_statistics", {"period": "2026-10-06", "end_date": "2026-10-07"}),
         ("get_trip_detail", {"ride_id": "ride-0", "query_month": "202610", "include_track": True}),
         (
@@ -239,6 +246,8 @@ async def test_vehicle_list_uses_consented_names_and_explicit_fleet_limit(hass, 
         ("2026-10-06", 2, "202610"),
         ("2026-10-05", 0, "202610"),
         ("2026-09-30", None, "202609"),
+        ("2026-10", 2, "202610"),
+        ("2026-09", None, "202609"),
     ],
 )
 async def test_period_statistics_reuse_actions_with_original_context_and_no_refresh(
@@ -252,10 +261,14 @@ async def test_period_statistics_reuse_actions_with_original_context_and_no_refr
     assert action.await_args.kwargs["context"] is assistant.context
     assert action.await_args.args[2]["start_month"] == month
     assert action.await_args.args[2]["refresh"] is False
-    if period[0].isdigit():
+    if period[0].isdigit() and len(period) == 10:
         assert result["query"]["period"] == period
         assert result["query"]["start_date"] == result["query"]["end_date"] == period
         assert action.await_args.args[2]["include_daily"] is True
+    if len(period) == 7:
+        assert result["query"]["period"] == period
+        assert result["query"]["start_date"] == f"{period}-01"
+        assert action.await_args.args[2]["include_daily"] is False
     if count is None:
         assert result["quality"]["metrics"]["ride_count"]["status"] == "missing"
     if period in {"today", "yesterday", "2026-10-06", "2026-10-05", "2026-09-30"}:
@@ -738,3 +751,259 @@ def test_business_period_uses_one_business_clock_at_month_rollover():
     assert [day.isoformat() for day in period_dates("2026-11-01", now)] == ["2026-11-01"] * 2
     with pytest.raises(AssistantError, match="invalid_arguments"):
         period_dates("2026-11-02", now)
+
+
+@pytest.mark.parametrize(
+    "period,expected",
+    [
+        ("2024-02", ("2024-02-01", "2024-02-29")),
+        ("2025-02", ("2025-02-01", "2025-02-28")),
+        ("2025-12", ("2025-12-01", "2025-12-31")),
+        ("2026-10", ("2026-10-01", "2026-10-07")),
+    ],
+)
+def test_explicit_month_uses_calendar_bounds_and_stops_at_today(period, expected):
+    assert tuple(day.isoformat() for day in period_dates(period, NOW)) == expected
+
+
+async def test_verified_busy_is_retried_once_with_original_scope_context_and_deadline(
+    hass, assistant
+):
+    original = hass.services.async_call
+    attempts = []
+
+    async def busy_once(*args, **kwargs):
+        attempts.append((args, kwargs))
+        assert kwargs["context"] is assistant.context
+        assert hass.data[LIMITS_KEY].active == 1
+        if len(attempts) == 1:
+            raise HomeAssistantError(translation_domain="ninebot", translation_key="busy")
+        return await original(*args, **kwargs)
+
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(side_effect=busy_once)):
+        result, error = await query(hass, assistant, "get_statistics", period="yesterday")
+    assert not error and result["data"]["ride_count"] == 2
+    assert result["query"]["local_action_attempts"] == 2 and len(attempts) == 2
+    assert attempts[0][0] == attempts[1][0]
+    assert len(hass.data[LIMITS_KEY].calls[assistant.context.user_id]) == 1
+
+
+@pytest.mark.parametrize(
+    "key,arguments,domain,error_key,attempts",
+    [
+        ("get_statistics", {"period": "today"}, "ninebot", "busy", 2),
+        ("get_statistics", {"period": "today"}, "other", "busy", 1),
+        ("get_statistics", {"period": "today"}, "ninebot", "auth", 1),
+        ("get_statistics", {"period": "today"}, "ninebot", "unknown_error", 1),
+        ("get_statistics", {"period": "today"}, "ninebot", "query_unavailable", 1),
+        (
+            "get_recorded_trips",
+            {"start_date": "2026-10-06", "end_date": "2026-10-06", "cursor": "a" * 32},
+            "ninebot",
+            "busy",
+            1,
+        ),
+    ],
+)
+async def test_retry_is_bounded_and_never_replays_cursors_or_unverified_errors(
+    hass, assistant, key, arguments, domain, error_key, attempts
+):
+    with patch.object(
+        type(hass.services),
+        "async_call",
+        new=AsyncMock(
+            side_effect=HomeAssistantError(translation_domain=domain, translation_key=error_key)
+        ),
+    ) as action:
+        result, error = await query(hass, assistant, key, **arguments)
+    assert error and "data" not in result
+    assert action.await_count == attempts
+    assert hass.data[LIMITS_KEY].active == 0
+
+
+async def test_revocation_before_busy_retry_prevents_second_action(hass, assistant):
+    async def revoke(*args, **kwargs):
+        hass.config_entries.async_update_entry(
+            assistant.entry, options={**assistant.entry.options, "enable_assistant": False}
+        )
+        raise HomeAssistantError(translation_domain="ninebot", translation_key="busy")
+
+    with patch.object(
+        type(hass.services), "async_call", new=AsyncMock(side_effect=revoke)
+    ) as action:
+        result, error = await query(hass, assistant, "get_statistics", period="yesterday")
+    assert error and result["error"]["code"] == "not_authorized"
+    assert action.await_count == 1
+
+
+@pytest.mark.parametrize(
+    "period,count,status",
+    [("yesterday", 2, "available"), ("today", 0, "available"), ("2026-09", None, "missing")],
+)
+async def test_statistics_check_uses_real_local_statistics_health_and_cited_checklist(
+    hass, assistant, period, count, status
+):
+    original = hass.services.async_call
+
+    async def observed(*args, **kwargs):
+        assert kwargs["context"] is assistant.context
+        assert hass.data[LIMITS_KEY].active == 1
+        return await original(*args, **kwargs)
+
+    with patch.object(
+        type(hass.services), "async_call", new=AsyncMock(side_effect=observed)
+    ) as action:
+        result, error = await query(
+            hass,
+            assistant,
+            "explain_statistics",
+            period=period,
+            metric="ride_count",
+            language="zh-Hans",
+        )
+    assert not error and result["quality"] == {
+        "partial": False,
+        "metric": {
+            "status": status,
+            "reason": "available" if count is not None else "missing_month",
+        },
+    }
+    steps = result["data"]["steps"]
+    assert [step["tool"] for step in steps] == [
+        "ninebot__get_statistics",
+        "ninebot__get_sync_health",
+        "ninebot__search_help",
+    ]
+    assert all(not step["error"] for step in steps)
+    assert steps[0]["result"]["data"]["ride_count"] == count
+    assert steps[1]["result"]["data"]["background_enabled"] is False
+    help_data = steps[2]["result"]["data"]
+    assert help_data["matches"][0]["source_id"] == "statistics_missing"
+    assert help_data["matches"][0]["citation"]
+    assert help_data["procedures"][0]["id"] == "SK05"
+    assert action.await_count == 2
+    assert len(hass.data[LIMITS_KEY].calls[assistant.context.user_id]) == 4
+    assert hass.data[LIMITS_KEY].active == 0
+
+
+async def test_statistics_check_fixes_business_period_before_month_rollover(hass, assistant):
+    before = datetime(2026, 10, 31, 15, 59, 59, tzinfo=UTC)
+    after = before + timedelta(seconds=2)
+    clock = Mock(side_effect=lambda: before if clock.call_count == 1 else after)
+    with patch("custom_components.ninebot.assistant_queries.dt_util.utcnow", clock):
+        result, error = await query(
+            hass, assistant, "explain_statistics", period="this_month", metric="ride_count"
+        )
+    assert not error
+    assert result["query"]["end_date"] == "2026-10-31"
+    child = result["data"]["steps"][0]["result"]
+    assert child["query"]["as_of"] == after.isoformat()
+    assert child["query"]["period"] == "2026-10"
+    assert child["query"]["end_date"] == "2026-10-31"
+
+
+async def test_statistics_check_does_not_relabel_a_new_day_month_summary(hass, assistant):
+    before = datetime(2026, 10, 6, 15, 59, 59, tzinfo=UTC)
+    after = before + timedelta(seconds=2)
+    clock = Mock(side_effect=lambda: before if clock.call_count == 1 else after)
+    with patch("custom_components.ninebot.assistant_queries.dt_util.utcnow", clock):
+        result, error = await query(
+            hass, assistant, "explain_statistics", period="this_month", metric="ride_count"
+        )
+    assert not error and result["quality"]["partial"]
+    assert result["query"]["end_date"] == "2026-10-06"
+    assert result["data"]["steps"][0]["result"]["error"]["code"] == "retry_later"
+
+
+async def test_statistics_check_keeps_partial_errors_without_inventing_zero(hass, assistant):
+    original = hass.services.async_call
+
+    async def missing(*args, **kwargs):
+        if args[1] == "get_statistics":
+            raise HomeAssistantError(
+                translation_domain="ninebot", translation_key="query_unavailable"
+            )
+        return await original(*args, **kwargs)
+
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(side_effect=missing)):
+        result, error = await query(
+            hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+        )
+    assert not error and result["quality"]["partial"]
+    assert result["quality"]["metric"] == {"status": "unknown", "reason": "statistics_query_failed"}
+    assert result["data"]["steps"][0]["error"] is True
+    assert result["data"]["steps"][1]["error"] is False
+
+
+async def test_statistics_check_discards_all_evidence_when_consent_is_revoked(hass, assistant):
+    original = hass.services.async_call
+
+    async def revoke(*args, **kwargs):
+        result = await original(*args, **kwargs)
+        if args[1] == "sync_history":
+            hass.config_entries.async_update_entry(
+                assistant.entry, options={**assistant.entry.options, "enable_assistant": False}
+            )
+        return result
+
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(side_effect=revoke)):
+        result, error = await query(
+            hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+        )
+    assert error and result["error"]["code"] == "not_authorized" and "data" not in result
+
+
+async def test_statistics_check_marks_missing_applicable_help_as_partial(hass, assistant):
+    with patch(
+        "custom_components.ninebot.assistant_queries.search_help",
+        return_value={"matches": [], "procedures": [], "match_status": "no_applicable_knowledge"},
+    ):
+        result, error = await query(
+            hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+        )
+    assert not error and result["quality"]["partial"]
+    assert result["data"]["steps"][0]["result"]["data"]["ride_count"] == 2
+    assert result["data"]["steps"][2]["result"]["data"]["match_status"] == "no_applicable_knowledge"
+
+
+async def test_statistics_check_stops_when_child_admission_is_limited(hass, assistant):
+    for _ in range(18):
+        assert not (await query(hass, assistant, "get_vehicle_status"))[1]
+    original = hass.services.async_call
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(wraps=original)) as action:
+        result, error = await query(
+            hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+        )
+    assert not error and result["quality"]["partial"]
+    assert len(result["data"]["steps"]) == 2
+    assert result["data"]["steps"][1]["result"]["error"]["retry_after_seconds"] > 0
+    assert action.await_count == 1 and hass.data[LIMITS_KEY].active == 0
+
+
+async def test_statistics_check_does_not_claim_evidence_when_all_steps_are_limited(hass, assistant):
+    for _ in range(19):
+        assert not (await query(hass, assistant, "get_vehicle_status"))[1]
+    result, error = await query(
+        hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+    )
+    assert error and result["error"]["code"] == "retry_later"
+    assert result["error"]["retry_after_seconds"] > 0 and "data" not in result
+
+
+async def test_statistics_check_cancellation_releases_the_child_slot(hass, assistant):
+    entered = asyncio.Event()
+
+    async def blocked(*args, **kwargs):
+        assert hass.data[LIMITS_KEY].active == 1
+        entered.set()
+        await asyncio.Event().wait()
+
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(side_effect=blocked)):
+        task = asyncio.create_task(
+            query(hass, assistant, "explain_statistics", period="yesterday", metric="ride_count")
+        )
+        await asyncio.wait_for(entered.wait(), 5)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert hass.data[LIMITS_KEY].active == 0

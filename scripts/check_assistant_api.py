@@ -88,6 +88,7 @@ async def check(config_dir: str) -> None:
             assert periods == [
                 {"type": "string", "enum": ["today", "yesterday", "this_month", "last_month"]},
                 {"type": "string", "format": "date"},
+                {"type": "string", "pattern": "^20[0-9]{2}-(0[1-9]|1[0-2])$"},
             ]
     invalid = await api.async_call_tool(
         llm.ToolInput(
@@ -251,6 +252,7 @@ async def check_task_collection(hass, context) -> None:
             assert fields["task_id"]["pattern"] == "^[a-f0-9]{32}$"
             assert not {"nonce", "token", "user_id", "account", "confirmed"} & set(fields)
             from custom_components.ninebot.assistant_api import async_register as register_read
+            from custom_components.ninebot.assistant_queries import SPECS
 
             remove_read = register_read(hass)
             try:
@@ -260,7 +262,7 @@ async def check_task_collection(hass, context) -> None:
                         tool.name: _format_tool(tool, merged.custom_serializer)
                         for tool in merged.tools
                     }
-                    assert len(combined) == 12
+                    assert set(combined) == names | {f"ninebot__{spec.key}" for spec in SPECS}
                     for name, original in formatted.items():
                         assert combined[name].input_schema == original.input_schema
                     assert (
