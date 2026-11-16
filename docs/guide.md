@@ -195,6 +195,27 @@ For an existing account, use the integration menu's **Enable debug logging**, re
 
 When reporting sign-in failures, include the support identifier, form error, software versions, your App's account/service region if known, and whether you entered a phone number, email or username. Omit the actual account, password, tokens and vehicle/location data. Keep history exports private. Enabling logging sends no authentication request.
 
+### Missing data and controls
+
+Compare the same account, vehicle and business month in the App and HA. A working SOC or voltage reading establishes that those values were received; history and controls use separate requests and permissions.
+
+| Display | Meaning and next check |
+|---|---|
+| Zero trips with 100% list/detail progress | Progress describes its known denominator. A confirmed empty list can be complete without containing a trip. Inspect the reported/returned counts, discovery state and scanned range. |
+| Average energy unknown with zero distance | No distance-based average can be calculated. Zero total energy and an unknown average are distinct. |
+| Last trip or trip event unknown | No usable recent record, or no new event after the startup baseline. Event entities do not replay all saved trips. |
+| BMS value “Not supported” | This metric has no supported upstream value under the reviewed mapping. It does not establish a faulty battery; compare the same App field before reporting it. |
+| Remaining charge time unknown while not charging | The endpoint may omit a charging estimate outside charging. Check its field availability and charging state. |
+| Controls ready / command accepted | Ready is local eligibility; accepted is a command receipt. Only a later fresh observation confirms the requested state. |
+
+For an existing account, enable native debug logging, note the exact time, operation and full message, then download Diagnostics and disable/download the log. Data collection alone does not require a vehicle control. If an entity is unavailable before an action reaches the integration, HA may reject it without a control record.
+
+From 2.1.23, diagnostics include up to 32 vehicles and the current/previous cached month per vehicle, with counts, list field state and independently identified sources. History progress includes its known counts and cached scan range. Missing cache is marked unobserved; downloading diagnostics does not refresh the cloud or scan the database. Truncation is reported explicitly.
+
+`groups.status/battery/travel.failure_context` retains the current safe query failure, distinguishing request, normalization and archive stages. Successful recovery clears it. `control_policy` explains current local gates; `control_results` retains the latest attempt for each action. Native DEBUG lines named `Control result` contain a short `support` identifier, acceptance/rejection, readback and confirmation. A rejected attempt was not sent; an uncertain invocation must not be treated as a safe automatic retry. Download diagnostics promptly because these observations are kept in memory and reset on reload.
+
+Include both software versions, model family, account-owner/shared status, the affected period and the specific missing field or failed action. Share only reviewed diagnostics or small relevant log excerpts; omit raw responses, account/vehicle identities, coordinates and history exports. The **Show diagnostic entities** option does not enable these logs.
+
 ## Privacy, backup and removal
 
 Location display defaults on, and detail preservation can retain precise tracks. The archive and HA backups are private location records even if an individual response omits coordinates. Automation traces may retain requested Action responses. Diagnostics export reviewed schema/status metadata, not credentials, identities or GPS trails; review any file before sharing.

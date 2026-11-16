@@ -48,16 +48,24 @@ async def test_seat_state_is_strict_not_lid_position(controls, value, expected):
 
 
 @pytest.mark.parametrize("action,target", [("engine/start", "vehicle_lock"), ("buck", "seat_lock")])
-async def test_command_updates_target_and_preserves_buttons(controls, entry, action, target):
+async def test_command_updates_target_and_preserves_buttons(
+    controls, entry, action, target, caplog
+):
+    import logging
+
     co = controls
     co.client.async_get_status_once.side_effect = [payload(), payload(vehicle=0, seat=1)]
-    await co.async_control("SyntheticSN", action)
+    with caplog.at_level(logging.DEBUG, logger="custom_components.ninebot.control_results"):
+        await co.async_control("SyntheticSN", action)
     co.client.async_control.assert_awaited_once_with("SyntheticSN", action)
     assert co.client.async_get_status_once.await_count == 2
     assert co.lock_state("SyntheticSN", target) is False
     result = co.control_results.diagnostics("SyntheticSN")[action]
     assert result["confirmation"] == "confirmed" and result["read_attempts"] == 2
     assert result["physical_outcome_verified"] is False
+    assert f"support={result['support_id']}" in caplog.text
+    assert "outcome=accepted" in caplog.text and "confirmation=confirmed" in caplog.text
+    assert "SyntheticSN" not in caplog.text
     assert not co.pending_controls and not co._control_leases
     rows = er.async_entries_for_config_entry(er.async_get(co.hass), entry.entry_id)
     assert sum(row.domain == "lock" for row in rows) == 2

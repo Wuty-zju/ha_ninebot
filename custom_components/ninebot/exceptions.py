@@ -65,6 +65,15 @@ class FailureContext:
     proxy_http_status: int | None = None
     envelope_code: EnvelopeCode | None = None
 
+    def diagnostics(self) -> dict[str, str | int | None]:
+        """Only reviewed enum values and the observed local HTTP status."""
+        return {
+            "phase": self.phase.value,
+            "endpoint": self.endpoint.value,
+            "proxy_http_status": self.proxy_http_status,
+            "envelope_code": self.envelope_code.value if self.envelope_code else None,
+        }
+
 
 class NinebotError(Exception):
     """Never carry an upstream response or command line in the exception."""

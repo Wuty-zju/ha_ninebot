@@ -22,6 +22,8 @@ Start with [AGENTS](../AGENTS.md), inspect the checkout, then read the relevant 
 
 Use `rg --files` to locate test families and [fixture metadata](../tests/fixtures/ninecli/0.1.7/metadata.json) to establish provenance. Each source file stays responsible for its own layer; shared contracts belong in the relevant model or protocol.
 
+Support evidence stays local and bounded. `diagnostics` projects current/previous cached months and history progress without acquisition or database scans; `history_progress` owns the percentage semantics. Query failures retain reviewed `FailureContext` metadata, and `control_results` emits one DEBUG outcome per explicit invocation. Preserve the original dispatch, confirmation, cancellation and ownership behavior when extending these records. See [data and control troubleshooting](guide.md#missing-data-and-controls).
+
 ## Documentation ownership
 
 | Question | Maintained source |
