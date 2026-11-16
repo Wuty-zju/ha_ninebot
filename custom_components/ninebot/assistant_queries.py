@@ -502,10 +502,14 @@ async def _explain_statistics(
         if not statistics["error"]
         else {"status": "unknown", "reason": "statistics_query_failed"}
     )
+    help_data = steps[2]["result"]["data"] if len(steps) == 3 and not steps[2]["error"] else {}
+    help_complete = any(
+        match["source_id"] == "statistics_missing" for match in help_data.get("matches", [])
+    ) and any(procedure["id"] == "SK05" for procedure in help_data.get("procedures", []))
     return AssistantView(
         data={"metric": args["metric"], "steps": steps},
         quality={
-            "partial": len(steps) != 3 or any(step["error"] for step in steps),
+            "partial": not help_complete or any(step["error"] for step in steps),
             "metric": metric_quality,
         },
         evidence={"source_kind": "local_statistics_check", "workflow": "statistics-check-v1"},
@@ -565,6 +569,7 @@ async def async_query(
     try:
         async with asyncio.timeout(10):
             user_id = await async_require_admin(hass, context)
+            query: dict[str, Any]
             if key == "explain_statistics":
                 with read_slot(hass, user_id):
                     args = TOOL_SPECS[key].parameters(arguments)
@@ -576,7 +581,6 @@ async def async_query(
                 if key not in TOOL_SPECS:
                     raise AssistantError("invalid_arguments")
                 args = TOOL_SPECS[key].parameters(arguments)
-                query: dict[str, Any]
                 if key in {"get_vehicles", "search_help"}:
                     view, scopes = await _vehicles(hass, context)
                     query = {}

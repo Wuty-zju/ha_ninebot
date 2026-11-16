@@ -953,6 +953,19 @@ async def test_statistics_check_discards_all_evidence_when_consent_is_revoked(ha
     assert error and result["error"]["code"] == "not_authorized" and "data" not in result
 
 
+async def test_statistics_check_marks_missing_applicable_help_as_partial(hass, assistant):
+    with patch(
+        "custom_components.ninebot.assistant_queries.search_help",
+        return_value={"matches": [], "procedures": [], "match_status": "no_applicable_knowledge"},
+    ):
+        result, error = await query(
+            hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+        )
+    assert not error and result["quality"]["partial"]
+    assert result["data"]["steps"][0]["result"]["data"]["ride_count"] == 2
+    assert result["data"]["steps"][2]["result"]["data"]["match_status"] == "no_applicable_knowledge"
+
+
 async def test_statistics_check_stops_when_child_admission_is_limited(hass, assistant):
     for _ in range(18):
         assert not (await query(hass, assistant, "get_vehicle_status"))[1]
