@@ -5,6 +5,7 @@ import copy
 import inspect
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 from uuid import uuid4
 
@@ -74,7 +75,12 @@ class EvidenceTurn:
             self.selected = next(iter(self.scopes))
 
     async def async_call(
-        self, tool: Any, tool_input: llm.ToolInput, context: llm.LLMContext
+        self,
+        tool: Any,
+        tool_input: llm.ToolInput,
+        context: llm.LLMContext,
+        *,
+        bound_vehicle: str | None = None,
     ) -> Any:
         if context.context is not self.call.context:
             raise AssistantError("not_authorized")
@@ -83,6 +89,12 @@ class EvidenceTurn:
             self.stop = "tool_budget"
             raise TurnStopped
         self.calls += 1  # Reserve before awaiting a possibly parallel native tool call.
+        if bound_vehicle is not None:
+            if "vehicle_ref" in tool_input.tool_args:
+                raise AssistantError("not_authorized")
+            tool_input = replace(
+                tool_input, tool_args={**tool_input.tool_args, "vehicle_ref": bound_vehicle}
+            )
         if "vehicle_ref" in tool_input.tool_args:
             if self.selected is None:
                 self.stop = "vehicle_selection_required"
@@ -151,13 +163,29 @@ def failed(code: str) -> dict[str, Any]:
 def turn_api(turn: EvidenceTurn) -> llm.API:
     """A fresh native collection per task; no registry entry or model provider."""
     from .assistant_api import PROMPT, NinebotTool, tool_serializer
-    from .assistant_queries import SPECS
+    from .assistant_queries import SPECS, ToolSpec
 
     class EvidenceTool(NinebotTool):
+        def __init__(self, spec: ToolSpec) -> None:
+            super().__init__(spec)
+            parameters = {
+                key: value
+                for key, value in spec.parameters.schema.items()
+                if getattr(key, "schema", key) != "vehicle_ref"
+            }
+            self.bound_vehicle = (
+                turn.selected if len(parameters) != len(spec.parameters.schema) else None
+            )
+            if self.bound_vehicle is not None:
+                self.parameters = vol.Schema(parameters)
+                self.description = "Uses this Action's selected vehicle. " + spec.description
+
         async def async_call(
             self, hass: HomeAssistant, tool_input: llm.ToolInput, llm_context: llm.LLMContext
         ) -> Any:
-            return await turn.async_call(super(), tool_input, llm_context)
+            return await turn.async_call(
+                super(), tool_input, llm_context, bound_vehicle=self.bound_vehicle
+            )
 
     class EvidenceAPI(llm.API):
         requires_admin = True
@@ -168,7 +196,14 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
             await turn.async_validate()
             return llm.APIInstance(
                 api=self,
-                api_prompt=PROMPT,
+                api_prompt=PROMPT
+                + (
+                    " This Action has already selected a vehicle. Its vehicle tools are bound "
+                    "to that selection; call them directly without vehicle_ref. If the question "
+                    "requires another vehicle, ask the user to select it in the Action."
+                    if turn.selected is not None
+                    else ""
+                ),
                 llm_context=llm_context,
                 tools=[EvidenceTool(spec) for spec in SPECS],
                 custom_serializer=tool_serializer,
@@ -199,7 +234,10 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
                     or "llm_api" not in inspect.signature(generate).parameters
                 ):
                     return failed("unsupported_capability")
-                selection = {"vehicle_ref": turn.selected, "business_timezone": "Asia/Shanghai"}
+                selection = {
+                    "vehicle_selected": turn.selected is not None,
+                    "business_timezone": "Asia/Shanghai",
+                }
                 instructions = (
                     call.data["question"] + "\nUser selection (data): " + json.dumps(selection)
                 )

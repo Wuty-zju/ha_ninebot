@@ -25,9 +25,11 @@ async def check(directory: str) -> None:
     from homeassistant.helpers import llm
     from homeassistant.helpers.entity_component import EntityComponent
     from homeassistant.util import dt as dt_util
+    from probatio import to_openapi
 
-    from custom_components.ninebot.assistant_api import async_register
+    from custom_components.ninebot.assistant_api import NinebotTool, async_register
     from custom_components.ninebot.assistant_ask import failed
+    from custom_components.ninebot.assistant_queries import SPECS
     from custom_components.ninebot.models import (
         Freshness,
         VehicleProfile,
@@ -114,10 +116,24 @@ async def check(directory: str) -> None:
             assert chat_log.llm_api.llm_context.context is current["context"]
             assert len(chat_log.llm_api.tools) == 8
             assert all(tool.name.startswith("ninebot__") for tool in chat_log.llm_api.tools)
-            value = await chat_log.llm_api.async_call_tool(
-                llm.ToolInput(
-                    tool_name="ninebot__get_vehicle_status", tool_args={"vehicle_ref": device.id}
+            for tool in chat_log.llm_api.tools:
+                schema = to_openapi(
+                    tool.parameters,
+                    custom_serializer=chat_log.llm_api.custom_serializer,
+                    openapi_version="3.1.0",
                 )
+                assert "vehicle_ref" not in schema.get("properties", {})
+            public_tool = NinebotTool(
+                next(spec for spec in SPECS if spec.key == "get_vehicle_status")
+            )
+            public_schema = to_openapi(
+                public_tool.parameters,
+                custom_serializer=chat_log.llm_api.custom_serializer,
+                openapi_version="3.1.0",
+            )
+            assert "vehicle_ref" in public_schema["required"]
+            value = await chat_log.llm_api.async_call_tool(
+                llm.ToolInput(tool_name="ninebot__get_vehicle_status", tool_args={})
             )
             assert not value.error and value.data["data"]["battery_soc_percent"] == 42
             value.data["data"]["battery_soc_percent"] = 9999  # Provider-side formatting.
@@ -183,6 +199,7 @@ async def check(directory: str) -> None:
                 if provider_failure:
                     assert response["stop_reason"] == "model_task_failed"
                 assert response["results"][0]["result"]["data"]["battery_soc_percent"] == 42
+                assert response["results"][0]["arguments"] == {"vehicle_ref": device.id}
                 assert not any(
                     secret in json.dumps(response)
                     for secret in ("synthetic-sn", "30.12345", "120.12345")

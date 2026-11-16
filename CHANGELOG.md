@@ -2,6 +2,10 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.21
+
+- Bind an existing vehicle selection to per-task Assistant tools, avoiding repeated model-supplied identifiers while preserving public MCP parameters and access checks.
+
 ## 2.1.20
 
 - Clarify archive business dates, exact vehicle references and denied-access guidance for Assistant hosts.

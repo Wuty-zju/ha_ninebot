@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant.core import Context, ServiceCall
+from homeassistant.helpers import llm
 
 from custom_components.ninebot import assistant_ask as ask
 from custom_components.ninebot.assistant_policy import AssistantError
@@ -131,6 +132,46 @@ async def test_wrong_vehicle_and_context_never_dispatch(turn):
                 await turn.async_call(
                     base, SimpleNamespace(tool_args=args), SimpleNamespace(context=context)
                 )
+    base.async_call.assert_not_awaited()
+
+
+async def test_bound_selection_preserves_provider_input_and_records_resolved_target(hass, turn):
+    original = llm.ToolInput(tool_name="ninebot__get_statistics", tool_args={"period": "yesterday"})
+    context = SimpleNamespace(context=turn.call.context)
+    base = SimpleNamespace(
+        async_call=AsyncMock(return_value=SimpleNamespace(data={"data": {}}, error=False))
+    )
+    with (
+        patch.object(ask.EvidenceTurn, "async_validate", new=AsyncMock()),
+        patch(
+            "custom_components.ninebot.assistant_api.native_result",
+            side_effect=lambda data, *, error: SimpleNamespace(data=data, error=error),
+        ),
+    ):
+        await turn.async_call(base, original, context, bound_vehicle="selected")
+    actual = base.async_call.await_args.args[1]
+    assert actual is not original and actual.id == original.id
+    assert original.tool_args == {"period": "yesterday"}
+    assert actual.tool_args == {"period": "yesterday", "vehicle_ref": "selected"}
+    base.async_call.assert_awaited_once_with(hass, actual, context)
+    assert turn.results[0]["arguments"] == actual.tool_args
+
+
+@pytest.mark.parametrize("override", ["selected", "other"])
+async def test_bound_selection_rejects_explicit_target_even_when_matching(turn, override):
+    base = SimpleNamespace(async_call=AsyncMock())
+    with patch.object(ask.EvidenceTurn, "async_validate", new=AsyncMock()):
+        with pytest.raises(AssistantError, match="not_authorized"):
+            await turn.async_call(
+                base,
+                llm.ToolInput(
+                    tool_name="ninebot__get_statistics",
+                    tool_args={"vehicle_ref": override, "period": "yesterday"},
+                ),
+                SimpleNamespace(context=turn.call.context),
+                bound_vehicle="selected",
+            )
+    assert turn.calls == 1 and turn.results == []
     base.async_call.assert_not_awaited()
 
 
