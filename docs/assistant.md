@@ -41,7 +41,9 @@ The response uses `answer_mode: verified_tool_results`. Its `results` contain th
 
 If the provider fails after a successful data or help read, the response retains the revalidated tool results with `outcome: partial` and `stop_reason: model_task_failed`. An unsuccessful read or vehicle discovery alone remains a failure. Permission withdrawal removes the results.
 
-The model selects among the eight local tools. Its free-form final text is discarded; numbers and source links come from the tools. General help can be queried without selecting a vehicle. Requests have a 180-second deadline, at most four tool calls, one active query across this integration and a 32 KiB response limit. They do not refresh the cloud, submit history jobs or control vehicles. The same user Context is passed to the model task and business reads, with consent/ownership checked again before returning data.
+The model selects among the eight local tools. From **2.1.21**, the Action binds vehicle queries to its authenticated selection; the model supplies dates and other query parameters without copying `vehicle_ref`. An additional target parameter is rejected. With several vehicles and no selection, the Action still requires the user to choose one. The public MCP/Conversation tools keep their explicit vehicle references.
+
+Its free-form final text is discarded; numbers and source links come from the tools. General help can be queried without selecting a vehicle. Requests have a 180-second deadline, at most four tool calls, one active query across this integration and a 32 KiB response limit. They do not refresh the cloud, submit history jobs or control vehicles. The same user Context is passed to the model task and business reads, with consent/ownership checked again before returning data.
 
 Use Core with `ai_task.async_generate_data(..., llm_api=...)` support and a compatible configured provider. An unsupported task API returns `unsupported_capability`; no new provider or listener is installed. Ordinary native MCP/Conversation tools remain available independently. This response Action is not added to the dedicated Ninebot LLM tool collection.
 
