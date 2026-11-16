@@ -178,7 +178,7 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
             )
             if self.bound_vehicle is not None:
                 self.parameters = vol.Schema(parameters)
-                self.description = "Uses this Action's selected vehicle. " + self.description
+                self.description = "Uses this Action's selected vehicle. " + spec.description
 
         async def async_call(
             self, hass: HomeAssistant, tool_input: llm.ToolInput, llm_context: llm.LLMContext

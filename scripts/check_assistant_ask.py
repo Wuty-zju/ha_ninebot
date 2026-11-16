@@ -17,6 +17,7 @@ INSTALLED = json.loads(
 async def check(directory: str) -> None:
     from homeassistant.components import ai_task
     from homeassistant.components.ai_task.const import DATA_COMPONENT, DATA_PREFERENCES
+    from homeassistant.components.mcp_server.server import _format_tool
     from homeassistant.config_entries import ConfigEntries, ConfigEntry, ConfigEntryState
     from homeassistant.core import Context, HomeAssistant
     from homeassistant.exceptions import HomeAssistantError
@@ -25,7 +26,6 @@ async def check(directory: str) -> None:
     from homeassistant.helpers import llm
     from homeassistant.helpers.entity_component import EntityComponent
     from homeassistant.util import dt as dt_util
-    from voluptuous_serialize import convert
 
     from custom_components.ninebot.assistant_api import NinebotTool, async_register
     from custom_components.ninebot.assistant_ask import failed
@@ -117,16 +117,14 @@ async def check(directory: str) -> None:
             assert len(chat_log.llm_api.tools) == 8
             assert all(tool.name.startswith("ninebot__") for tool in chat_log.llm_api.tools)
             for tool in chat_log.llm_api.tools:
-                schema = convert(
-                    tool.parameters, custom_serializer=chat_log.llm_api.custom_serializer
-                )
+                schema = _format_tool(tool, chat_log.llm_api.custom_serializer).inputSchema
                 assert "vehicle_ref" not in schema.get("properties", {})
             public_tool = NinebotTool(
                 next(spec for spec in SPECS if spec.key == "get_vehicle_status")
             )
-            public_schema = convert(
-                public_tool.parameters, custom_serializer=chat_log.llm_api.custom_serializer
-            )
+            public_schema = _format_tool(
+                public_tool, chat_log.llm_api.custom_serializer
+            ).inputSchema
             assert "vehicle_ref" in public_schema["required"]
             value = await chat_log.llm_api.async_call_tool(
                 llm.ToolInput(tool_name="ninebot__get_vehicle_status", tool_args={})
