@@ -120,6 +120,7 @@ async def check(directory: str) -> None:
                 )
             )
             assert not value.error and value.data["data"]["battery_soc_percent"] == 42
+            value.data["data"]["battery_soc_percent"] = 9999  # Provider-side formatting.
             if current.get("revoke"):
                 principal.is_active = False
             if current.get("provider_failure"):
