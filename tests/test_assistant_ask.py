@@ -166,6 +166,58 @@ async def test_model_draft_is_not_a_fact_and_native_context_is_preserved(hass, t
     assert "2000" not in str(result)
 
 
+@pytest.mark.parametrize("kind", ["no_results", "discovery", "failed_read", "evidence"])
+async def test_provider_failure_preserves_only_revalidated_evidence(hass, turn, kind):
+    rows = (
+        []
+        if kind == "no_results"
+        else [
+            {
+                "tool": "ninebot__get_vehicles"
+                if kind == "discovery"
+                else "ninebot__get_statistics",
+                "error": kind == "failed_read",
+                "result": {"data": {"duration_s": 1200}},
+            }
+        ]
+    )
+
+    async def generate(actual_hass, *, context, llm_api, **kwargs):
+        assert actual_hass is hass and context is turn.call.context
+        llm_api.results = rows
+        raise RuntimeError("private provider detail token=never-return-this")
+
+    with (
+        patch.object(ask.EvidenceTurn, "async_prepare", new=AsyncMock()),
+        patch.object(ask.EvidenceTurn, "async_validate", new=AsyncMock()) as validate,
+        patch.object(ask, "turn_api", side_effect=lambda actual_turn: actual_turn),
+        patch.object(
+            ask,
+            "async_import_module",
+            new=AsyncMock(return_value=SimpleNamespace(async_generate_data=generate)),
+        ),
+    ):
+        remove = ask.async_register(hass)
+        try:
+            result = await hass.services.async_call(
+                "ninebot",
+                "ask",
+                dict(turn.call.data),
+                blocking=True,
+                return_response=True,
+                context=turn.call.context,
+            )
+        finally:
+            remove()
+    validate.assert_awaited_once()
+    if kind == "evidence":
+        assert result["outcome"] == "partial" and result["stop_reason"] == "model_task_failed"
+        assert result["results"] == rows
+    else:
+        assert result == ask.failed("model_task_failed")
+    assert "never-return-this" not in str(result)
+
+
 async def test_unregister_cancels_generation_and_releases_admission(hass, turn):
     entered = asyncio.Event()
     stopped = asyncio.Event()
