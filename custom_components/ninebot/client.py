@@ -354,7 +354,7 @@ class NinecliClient:
                     if control is not None:
                         self._request_ready = False
                         sn, action = control
-                        route = await cache_io(control_route, self.config_dir, sn)
+                        route = await cache_io(control_route, self.config_dir, sn, action)
                         if self._closed:
                             raise NinebotError(ErrorKind.CLOSED)
                         self.control_routing.pop(sn, None)

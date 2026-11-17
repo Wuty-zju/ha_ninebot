@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from .exceptions import ErrorKind, FailurePhase, NinebotError
+from .exceptions import ErrorKind, FailurePhase, NinebotError, backend_error
 from .vehicle_cache import native_rows, read_cache
 
 COMMANDS = {
@@ -25,6 +25,7 @@ class ControlRoute:
     state: Literal["missing", "known", "ambiguous"]
     business_line: Literal["ebike", "motor"] | None
     matching_rows: int
+    action: str | None = None
 
     @property
     def native(self) -> bool:
@@ -37,11 +38,12 @@ class ControlRoute:
             "state": self.state,
             "business_line": self.business_line,
             "matching_rows": self.matching_rows,
+            "action": self.action if self.action in COMMANDS else None,
             "transport": "native_cli" if self.native else "serve",
         }
 
 
-def control_route(directory: Path, sn: str) -> ControlRoute:
+def control_route(directory: Path, sn: str, action: str | None = None) -> ControlRoute:
     rows = [row for row in native_rows(read_cache(directory)) if row["wnumber"] == sn]
     lines = {row["business_line"] for row in rows}
     line = next(iter(lines)) if len(lines) == 1 else None
@@ -50,20 +52,23 @@ def control_route(directory: Path, sn: str) -> ControlRoute:
         "known" if line else "ambiguous" if lines else "missing",
         line,
         len(rows),
+        action,
     )
 
 
 def control_failure(diagnostic: bytes) -> NinebotError:
-    """Interpret only reviewed native prefixes/codes, discard all free text."""
-    message = diagnostic[:1024].decode("utf-8", errors="replace").splitlines()
-    first = message[0].removeprefix("Error: ") if message else ""
-    if first.startswith("decrypt failed:"):
-        first = f"control: {first}"
-    match = _CODE.match(first)
+    """Skip setup notices; interpret bounded known formats, never retain stderr."""
     error = NinebotError(ErrorKind.SERVICE)
     error.at_phase(FailurePhase.NATIVE_CONTROL)
-    error.observe_response(
-        None,
-        {"error": {"upstream_code": match[1] if match else None, "message": first}},
-    )
+    for row in diagnostic[:1024].decode("utf-8", errors="replace").splitlines()[:8]:
+        row = row.removeprefix("Error: ")
+        if row.startswith("decrypt failed:"):
+            row = f"control: {row}"
+        match = _CODE.match(row)
+        if match or backend_error(row) is not None:
+            error.observe_response(
+                None,
+                {"error": {"upstream_code": match[1] if match else None, "message": row}},
+            )
+            break
     return error

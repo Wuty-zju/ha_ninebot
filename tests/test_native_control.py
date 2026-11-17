@@ -86,6 +86,18 @@ def test_only_bounded_numeric_upstream_code_survives(value, expected):
             BackendError.RESPONSE_DECRYPTION,
         ),
         (b"unknown private account-token-location\n", None, None),
+        (
+            b"config.json generated at /private/synthetic-account/path\n"
+            b'control: server code=340000 message="private"\n',
+            340000,
+            None,
+        ),
+        (
+            b"config.json generated at /private/synthetic-account/path\n"
+            b"decrypt failed: missing or non-string 'r' field\n",
+            None,
+            BackendError.RESPONSE_DECRYPTION,
+        ),
     ],
 )
 def test_native_error_keeps_codes_and_known_classification_without_stderr(text, code, category):
