@@ -174,3 +174,81 @@ async def test_native_routes_and_endpoint_specific_cache_requirements(
             assert client._process is None
     finally:
         await runner.cleanup()
+
+
+@pytest.mark.parametrize("business_line", ["ebike", "motor"])
+async def test_pinned_control_uses_the_native_cached_business_line(
+    tmp_path, monkeypatch, business_line
+):
+    """Both transports reach only synthetic peers; an invalid reply tests safe errors."""
+    from custom_components.ninebot.exceptions import BackendError
+
+    calls, runners, origins = [], [], {}
+    for label in ("ebike", "motor"):
+
+        async def upstream(request, label=label):
+            calls.append((label, request.path))
+            return web.json_response({"code": 503, "message": "synthetic-private"})
+
+        app = web.Application()
+        app.router.add_route("*", "/{path:.*}", upstream)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", 0)
+        await site.start()
+        runners.append(runner)
+        origins[label] = f"http://127.0.0.1:{site._server.sockets[0].getsockname()[1]}"
+    (tmp_path / "tokens.json").write_text(
+        json.dumps(
+            {
+                "uuid": "synthetic-uuid",
+                "access_token": "synthetic-access",
+                "refresh_token": "synthetic-refresh",
+                "accessTokenValidity": "4102444800000",
+                "business_uid": "123",
+                "saved_at": int(time.time()),
+            }
+        )
+    )
+    (tmp_path / "vehicles.json").write_text(
+        json.dumps({"vehicles": [{"wnumber": "synthetic-vehicle", "business_line": business_line}]})
+    )
+    execute = asyncio.create_subprocess_exec
+    children = []
+
+    async def spawn(*args, **kwargs):
+        flags = tuple(
+            item
+            for flag in (
+                "--passport-base",
+                "--biz-host",
+                "--ebike-host",
+                "--motor-host",
+                "--travel-host",
+            )
+            for item in (flag, origins["motor" if flag == "--motor-host" else "ebike"])
+        )
+        child = await execute(*args[:5], *flags, *args[5:], **kwargs)
+        children.append(child)
+        return child
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
+    try:
+        async with aiohttp.ClientSession(trust_env=False) as session:
+            client = NinecliClient(tmp_path, session, timeout=5)
+            try:
+                with pytest.raises(NinebotError) as caught:
+                    await client.async_control("synthetic-vehicle", "buck")
+                assert caught.value.context.backend_error is BackendError.RESPONSE_DECRYPTION
+                assert caught.value.context.proxy_http_status == (
+                    502 if business_line == "ebike" else None
+                )
+                assert "synthetic-private" not in str(caught.value)
+                assert calls == [(business_line, "/devices/control/open_buck")]
+                assert client.control_routing["synthetic-vehicle"].business_line == business_line
+            finally:
+                await client.async_close()
+        assert all(child.returncode is not None for child in children)
+    finally:
+        for runner in runners:
+            await runner.cleanup()

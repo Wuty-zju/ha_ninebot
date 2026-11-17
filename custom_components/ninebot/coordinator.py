@@ -947,13 +947,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             ):
                 LOGGER.debug(
                     "Query failed (group=%s, stage=%s, kind=%s, endpoint=%s, "
-                    "proxy_http_status=%s, envelope_code=%s)",
+                    "proxy_http_status=%s, envelope_code=%s, upstream_code=%s, backend_error=%s)",
                     group,
                     stage,
                     err.kind.value,
                     err.context.endpoint.value,
                     err.context.proxy_http_status,
                     err.context.envelope_code.value if err.context.envelope_code else None,
+                    err.context.upstream_code,
+                    err.context.backend_error.value if err.context.backend_error else None,
                 )
             self._query_failures[(sn, group)] = {**failure, "attempted_at": now.isoformat()}
             if err.retry_after:

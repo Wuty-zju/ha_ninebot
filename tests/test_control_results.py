@@ -63,7 +63,9 @@ def test_support_result_keeps_safe_response_metadata_and_logs_no_identity(caplog
 
     secret = "synthetic-account-token-location-secret"
     error = NinebotError(ErrorKind.SERVICE)
-    error.observe_response(502, {"error": {"code": "upstream_error", "message": secret}})
+    error.observe_response(
+        502, {"error": {"code": "upstream_error", "upstream_code": "340000", "message": secret}}
+    )
     result = ControlResults().start(secret, "bell", NOW)
     result.outcome = CommandOutcome.UNCERTAIN
     result.error = error.kind
@@ -74,6 +76,8 @@ def test_support_result_keeps_safe_response_metadata_and_logs_no_identity(caplog
     row = result.diagnostics()
     assert len(row["support_id"]) == 8
     assert row["proxy_http_status"] == 502 and row["envelope_code"] == "upstream_error"
+    assert row["upstream_code"] == 340000
+    assert "upstream_code=340000" in caplog.text
     assert row["outcome"] == "uncertain" and row["physical_outcome_verified"] is False
     assert f"support={row['support_id']}" in caplog.text
     assert "action=bell" in caplog.text and "outcome=uncertain" in caplog.text

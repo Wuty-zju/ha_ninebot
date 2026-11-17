@@ -4,6 +4,31 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 
 
+def upstream_result_code(value: object) -> int | None:
+    """A bounded numeric result code, never an arbitrary proxy string."""
+    if isinstance(value, str) and 1 <= len(value) <= 8:
+        digits = value.removeprefix("-")
+        value = int(value) if digits and digits.isascii() and digits.isdecimal() else None
+    return value if type(value) is int and -999_999 <= value <= 9_999_999 else None
+
+
+class BackendError(StrEnum):
+    """Observed native error formats; these labels grant no permission."""
+
+    RESPONSE_DECRYPTION = "response_decryption"
+    CONTROL_COMMAND_BUILD = "control_command_build"
+
+
+def backend_error(message: object) -> BackendError | None:
+    if not isinstance(message, str):
+        return None
+    if message.startswith(("control: decrypt failed:", "travel: decrypt failed:")):
+        return BackendError.RESPONSE_DECRYPTION
+    if message.startswith("control: build cmd:"):
+        return BackendError.CONTROL_COMMAND_BUILD
+    return None
+
+
 class ErrorKind(StrEnum):
     """Stable categories for diagnostics and translated HA errors."""
 
@@ -27,6 +52,7 @@ class FailurePhase(StrEnum):
     ACCOUNT_IDENTITY = "account_identity"
     VEHICLES = "vehicles"
     SESSION_COMMIT = "session_commit"
+    NATIVE_CONTROL = "native_control"
 
 
 class Endpoint(StrEnum):
@@ -64,6 +90,8 @@ class FailureContext:
     endpoint: Endpoint = Endpoint.UNKNOWN
     proxy_http_status: int | None = None
     envelope_code: EnvelopeCode | None = None
+    upstream_code: int | None = None
+    backend_error: BackendError | None = None
 
     def diagnostics(self) -> dict[str, str | int | None]:
         """Only reviewed enum values and the observed local HTTP status."""
@@ -72,6 +100,8 @@ class FailureContext:
             "endpoint": self.endpoint.value,
             "proxy_http_status": self.proxy_http_status,
             "envelope_code": self.envelope_code.value if self.envelope_code else None,
+            "upstream_code": self.upstream_code,
+            "backend_error": self.backend_error.value if self.backend_error else None,
         }
 
 
@@ -100,6 +130,8 @@ class NinebotError(Exception):
     def observe_response(self, status: int | None, raw: object = None) -> None:
         """Whitelist metadata; never retain or stringify the response itself."""
         code = None
+        upstream = None
+        category = None
         if isinstance(raw, dict) and isinstance(error := raw.get("error"), dict):
             value = error.get("code")
             if value is not None:
@@ -108,10 +140,14 @@ class NinebotError(Exception):
                     if isinstance(value, str) and value in EnvelopeCode
                     else EnvelopeCode.OTHER
                 )
+            upstream = upstream_result_code(error.get("upstream_code"))
+            category = backend_error(error.get("message"))
         self.context = replace(
             self.context,
             proxy_http_status=status if type(status) is int and 100 <= status <= 599 else None,
             envelope_code=code if raw is not None else self.context.envelope_code,
+            upstream_code=upstream if raw is not None else self.context.upstream_code,
+            backend_error=category if raw is not None else self.context.backend_error,
         )
 
 
