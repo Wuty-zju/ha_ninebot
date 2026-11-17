@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.25
+
+- Preserve completed control-state reads when the local confirmation window expires, with an explicit deadline indicator in diagnostics and DEBUG logs.
+- Keep proxy command errors separate from confirmation deadlines and clarify empty-history troubleshooting.
+
 ## 2.1.24
 
 - Add versioned English and Chinese help for missing vehicle data, control outcomes and battery cycle support.

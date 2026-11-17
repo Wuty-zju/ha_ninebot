@@ -63,6 +63,7 @@ async def test_command_updates_target_and_preserves_buttons(
     result = co.control_results.diagnostics("SyntheticSN")[action]
     assert result["confirmation"] == "confirmed" and result["read_attempts"] == 2
     assert result["physical_outcome_verified"] is False
+    assert result["confirmation_deadline_reached"] is False
     assert f"support={result['support_id']}" in caplog.text
     assert "outcome=accepted" in caplog.text and "confirmation=confirmed" in caplog.text
     assert "SyntheticSN" not in caplog.text
@@ -241,6 +242,57 @@ async def test_confirmation_deadline_cancels_wire_and_clears_pending(controls, m
     assert (
         co.control_results.diagnostics("SyntheticSN")["engine/start"]["confirmation"] == "unknown"
     )
+    result = co.control_results.diagnostics("SyntheticSN")["engine/start"]
+    assert result["confirmation_deadline_reached"] is True
+    assert result["readback"] == "failed" and result["readback_error"] is None
+
+
+@pytest.mark.parametrize("action", ["engine/start", "buck"])
+@pytest.mark.parametrize("post_failed", [False, True])
+async def test_confirmation_deadline_retains_fresh_read_and_original_post_error(
+    controls, monkeypatch, action, post_failed, caplog
+):
+    import logging
+
+    co = controls
+    monkeypatch.setattr(module, "CONFIRMATION_TIMEOUT", 0.1)
+    if post_failed:
+        failure = NinebotError(ErrorKind.SERVICE, retryable=True)
+        failure.observe_response(502, {"error": {"code": "upstream_error"}})
+        co.client.async_control.side_effect = failure
+
+    async def read(*args):
+        if co.client.async_get_status_once.await_count == 1:
+            return payload()
+        await asyncio.Event().wait()
+
+    co.client.async_get_status_once.side_effect = read
+    with caplog.at_level(logging.DEBUG, logger="custom_components.ninebot.control_results"):
+        with pytest.raises(HomeAssistantError):
+            await co.async_control("SyntheticSN", action)
+    result = co.control_results.diagnostics("SyntheticSN")[action]
+    assert result["confirmation_deadline_reached"] is True
+    assert result["readback"] == "refreshed" and result["readback_error"] is None
+    assert result["confirmation"] == "target_not_observed"
+    assert result["observed_locked"] is True and result["target_locked"] is False
+    assert result["outcome"] == ("uncertain" if post_failed else "accepted")
+    assert result["proxy_http_status"] == (502 if post_failed else None)
+    assert result["envelope_code"] == ("upstream_error" if post_failed else None)
+    assert result["error"] == ("service" if post_failed else None)
+    assert "deadline_reached=True" in caplog.text and "SyntheticSN" not in caplog.text
+    co.client.async_control.assert_awaited_once_with("SyntheticSN", action)
+    assert co.client.async_get_status_once.await_count == 2
+    assert not co.pending_controls and not co._control_leases
+
+
+async def test_actual_readback_connection_failure_is_not_a_confirmation_deadline(controls):
+    controls.client.async_get_status_once.side_effect = NinebotError(ErrorKind.CONNECTION)
+    with pytest.raises(HomeAssistantError):
+        await controls.async_control("SyntheticSN", "engine/start")
+    result = controls.control_results.diagnostics("SyntheticSN")["engine/start"]
+    assert result["confirmation_deadline_reached"] is False
+    assert result["readback"] == "failed" and result["readback_error"] == "connection"
+    controls.client.async_control.assert_awaited_once()
 
 
 async def test_confirmation_auth_failure_stops_without_another_read(controls):

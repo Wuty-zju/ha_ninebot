@@ -214,6 +214,10 @@ From 2.1.23, diagnostics include up to 32 vehicles and the current/previous cach
 
 `groups.status/battery/travel.failure_context` retains the current safe query failure, distinguishing request, normalization and archive stages. Successful recovery clears it. `control_policy` explains current local gates; `control_results` retains the latest attempt for each action. Native DEBUG lines named `Control result` contain a short `support` identifier, acceptance/rejection, readback and confirmation. A rejected attempt was not sent; an uncertain invocation must not be treated as a safe automatic retry. Download diagnostics promptly because these observations are kept in memory and reset on reload.
 
+From 2.1.25, `confirmation_deadline_reached` identifies the end of the local 15-second confirmation window. Completed reads retain their result and any actual transport error; expiration alone does not establish a connection failure. If no read completed, confirmation remains unknown. A proxy `502 / upstream_error` belongs to the command response and is recorded separately; it does not disclose the cloud's business rejection reason.
+
+If the month endpoint reports zero trips with a null list, increasing the detail budget cannot discover IDs absent from that response. Provide the date of an App-visible trip in the same month, omitting location. For a failed control, identify whether the App's corresponding operation uses nearby Bluetooth or remote connectivity; successful Bluetooth control does not establish cloud-control support. Reinstalling or deleting the archive is unnecessary for collecting these observations.
+
 Include both software versions, model family, account-owner/shared status, the affected period and the specific missing field or failed action. Share only reviewed diagnostics or small relevant log excerpts; omit raw responses, account/vehicle identities, coordinates and history exports. The **Show diagnostic entities** option does not enable these logs.
 
 ## Privacy, backup and removal

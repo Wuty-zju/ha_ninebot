@@ -58,6 +58,7 @@ class ControlResult:
     target_locked: bool | None = None
     observed_locked: bool | None = None
     confirmation: Confirmation = Confirmation.NOT_REQUESTED
+    confirmation_deadline_reached: bool = False
     read_attempts: int = 0
     support_id: str = field(default_factory=lambda: secrets.token_hex(4))
     blocked_reason: str | None = None
@@ -76,6 +77,7 @@ class ControlResult:
             "target_locked": self.target_locked,
             "observed_locked": self.observed_locked,
             "confirmation": self.confirmation.value,
+            "confirmation_deadline_reached": self.confirmation_deadline_reached,
             "read_attempts": self.read_attempts,
             "blocked_reason": self.blocked_reason,
             **self.failure_context.diagnostics(),
@@ -92,7 +94,7 @@ class ControlResult:
         )
         LOGGER.debug(
             "Control result (support=%s, action=%s, outcome=%s, blocked_reason=%s, "
-            "error=%s, readback=%s, confirmation=%s, reads=%s, elapsed_ms=%s, "
+            "error=%s, readback=%s, confirmation=%s, deadline_reached=%s, reads=%s, elapsed_ms=%s, "
             "endpoint=%s, proxy_http_status=%s, envelope_code=%s)",
             self.support_id,
             action,
@@ -101,6 +103,7 @@ class ControlResult:
             self.error.value if self.error else None,
             self.readback.value,
             self.confirmation.value,
+            self.confirmation_deadline_reached,
             self.read_attempts,
             elapsed,
             self.failure_context.endpoint.value,

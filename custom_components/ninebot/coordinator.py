@@ -1976,8 +1976,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         loop = asyncio.get_running_loop()
         started = loop.time()
         result.readback = ReadbackOutcome.PENDING
+        deadline = asyncio.timeout_at(started + CONFIRMATION_TIMEOUT)
         try:
-            async with asyncio.timeout_at(started + CONFIRMATION_TIMEOUT):
+            async with deadline:
                 async for _ in read_slots(started, CONFIRMATION_DELAYS):
                     if not self._owns(owner):
                         result.readback = ReadbackOutcome.SKIPPED
@@ -2024,8 +2025,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             result.readback = ReadbackOutcome.FAILED
             result.readback_error = ErrorKind.AUTH
         except TimeoutError:
-            result.readback = ReadbackOutcome.FAILED
-            result.readback_error = ErrorKind.CONNECTION
+            if deadline.expired():
+                result.confirmation_deadline_reached = True
+                # Preserve completed reads; this local window is not evidence
+                # that the transport failed or that the command was accepted.
+                if result.readback is ReadbackOutcome.PENDING:
+                    result.readback = ReadbackOutcome.FAILED
+            else:
+                result.readback = ReadbackOutcome.FAILED
+                result.readback_error = ErrorKind.CONNECTION
         result.confirmation = (
             Confirmation.TARGET_NOT_OBSERVED
             if result.readback is ReadbackOutcome.REFRESHED and result.observed_locked is not None
