@@ -27,6 +27,7 @@ from .const import CLI_TIMEOUT, MAX_RESPONSE_BYTES
 from .exceptions import Endpoint, ErrorKind, FailurePhase, NinebotAuthError, NinebotError
 from .http_policy import rate_limit_delay
 from .http_policy import retry_after_seconds as retry_after_seconds
+from .native_control import COMMANDS, MAX_ROUTES, ControlRoute, control_failure, control_route
 from .vehicle_cache import cache_io, read_cache, reconcile_cache, restore_cache
 
 
@@ -106,6 +107,7 @@ class NinecliClient:
         self._pending = 0
         self._request_ready = False
         self.vehicle_discovery_complete = False
+        self.control_routing: dict[str, ControlRoute] = {}
 
     @staticmethod
     def _environment() -> dict[str, str]:
@@ -243,6 +245,7 @@ class NinecliClient:
             await async_drain(self._close_task)
         finally:
             self._bearer = ""
+            self.control_routing.clear()
 
     async def _finish_close(self) -> None:
         try:
@@ -335,13 +338,31 @@ class NinecliClient:
             raise
 
     async def _request(
-        self, method: str, path: str, body: dict[str, str] | None = None, *, retry: bool = True
+        self,
+        method: str,
+        path: str,
+        body: dict[str, str] | None = None,
+        *,
+        retry: bool = True,
+        control: tuple[str, str] | None = None,
     ) -> Any:
         async with self._operation():
             loop = asyncio.get_running_loop()
             deadline = loop.time() + self._timeout
             try:
                 async with asyncio.timeout(self._timeout):
+                    if control is not None:
+                        self._request_ready = False
+                        sn, action = control
+                        route = await cache_io(control_route, self.config_dir, sn, action)
+                        if self._closed:
+                            raise NinebotError(ErrorKind.CLOSED)
+                        self.control_routing.pop(sn, None)
+                        self.control_routing[sn] = route
+                        while len(self.control_routing) > MAX_ROUTES:
+                            self.control_routing.pop(next(iter(self.control_routing)))
+                        if route.native:
+                            return await self._native_control_locked(sn, action)
                     for attempt in range(2):
                         try:
                             return await self._request_locked(method, path, body)
@@ -363,7 +384,52 @@ class NinecliClient:
                 if not self._request_ready:
                     failure.at_phase(FailurePhase.BACKEND_START)
                 raise failure from None
+            except NinebotError as err:
+                err.at_endpoint(request_endpoint(path))
+                raise
             raise AssertionError("unreachable request retry")
+
+    async def _native_control_locked(self, sn: str, action: str) -> None:
+        """REST 0.1.7 uses ebike for all controls; CLI honors cached motor routing.
+
+        The existing operation lock owns token writes and child reaping. This
+        is chosen before dispatch, never a retry after a failed REST command.
+        """
+        await self._stop()
+        self._request_ready = False
+        try:
+            self._process = process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-m",
+                "ninecli",
+                "--config",
+                str(self.config_dir),
+                "--json",
+                "--yes",
+                COMMANDS[action],
+                "--",
+                sn,
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=self._environment(),
+            )
+            self._request_ready = True
+            if self._closed:
+                raise NinebotError(ErrorKind.CLOSED)
+            assert process.stdout is not None and process.stderr is not None
+            _, diagnostic = await self._read_cli_output(process.stdout, process.stderr)
+            code = await process.wait()
+            if self._closed:
+                raise NinebotError(ErrorKind.CLOSED)
+            if code != 0:
+                raise control_failure(diagnostic)
+        except OSError:
+            failure = NinebotError(ErrorKind.PLATFORM)
+            failure.at_phase(FailurePhase.NATIVE_CONTROL)
+            raise failure from None
+        finally:
+            await self._stop()
 
     async def async_login(self, account: str, password: str) -> None:
         await self._request("POST", "/auth/login", {"account": account, "password": password})
@@ -553,4 +619,6 @@ class NinecliClient:
         """One attempt only. A timeout leaves the physical outcome unknown."""
         if action not in {"engine/start", "engine/stop", "bell", "buck"}:
             raise ValueError("Unsupported action")
-        await self._request("POST", f"/vehicles/{quote(sn, safe='')}/{action}")
+        await self._request(
+            "POST", f"/vehicles/{quote(sn, safe='')}/{action}", control=(sn, action)
+        )

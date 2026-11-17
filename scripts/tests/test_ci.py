@@ -97,6 +97,8 @@ class ScopeTests(unittest.TestCase):
     def test_vehicle_cache_keeps_related_native_and_client_checks_without_full_fallback(self):
         for path in (
             "custom_components/ninebot/vehicle_cache.py",
+            "custom_components/ninebot/native_control.py",
+            "tests/test_native_control.py",
             "tests/test_vehicle_cache.py",
             "tests/test_native_cache_routing.py",
         ):

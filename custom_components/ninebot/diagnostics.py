@@ -20,6 +20,7 @@ from .history_entities import HISTORY_STATES
 from .history_plan import HistoryPlan, month_count
 from .models import TravelMonth
 from .month_summary import MonthSummary
+from .native_control import ControlRoute
 from .parsing import integer, number, previous_month
 from .raw import Endpoint, RawRecord
 from .ride_models import FieldState
@@ -287,6 +288,12 @@ async def async_get_config_entry_diagnostics(
                 "control_results": runtime.coordinator.control_results.diagnostics(
                     snapshot.profile.sn
                 ),
+                "control_routing": route.diagnostics()
+                if isinstance(
+                    routes := getattr(runtime.coordinator.client, "control_routing", None), dict
+                )
+                and isinstance(route := routes.get(sn), ControlRoute)
+                else {"state": "unobserved"},
             }
         )
     return {

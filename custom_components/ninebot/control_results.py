@@ -95,7 +95,8 @@ class ControlResult:
         LOGGER.debug(
             "Control result (support=%s, action=%s, outcome=%s, blocked_reason=%s, "
             "error=%s, readback=%s, confirmation=%s, deadline_reached=%s, reads=%s, elapsed_ms=%s, "
-            "endpoint=%s, proxy_http_status=%s, envelope_code=%s)",
+            "endpoint=%s, proxy_http_status=%s, envelope_code=%s, upstream_code=%s, "
+            "backend_error=%s)",
             self.support_id,
             action,
             self.outcome.value,
@@ -110,6 +111,10 @@ class ControlResult:
             self.failure_context.proxy_http_status,
             self.failure_context.envelope_code.value
             if self.failure_context.envelope_code
+            else None,
+            self.failure_context.upstream_code,
+            self.failure_context.backend_error.value
+            if self.failure_context.backend_error
             else None,
         )
 

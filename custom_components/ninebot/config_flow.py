@@ -264,7 +264,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         logging.DEBUG if err.kind is ErrorKind.AUTH else logging.WARNING,
                         "Account setup failed (support=%s, phase=%s, endpoint=%s, "
                         "kind=%s, retryable=%s, proxy_http_status=%s, envelope_code=%s, "
-                        "elapsed_ms=%s)",
+                        "upstream_code=%s, backend_error=%s, elapsed_ms=%s)",
                         support_id,
                         context.phase.value,
                         context.endpoint.value,
@@ -272,6 +272,8 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         err.retryable,
                         context.proxy_http_status,
                         context.envelope_code.value if context.envelope_code else None,
+                        context.upstream_code,
+                        context.backend_error.value if context.backend_error else None,
                         min(3_600_000, max(0, int((time.monotonic() - started) * 1000))),
                     )
                     errors["base"] = ERRORS[err.kind]

@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.26
+
+- Route controls for vehicles explicitly identified as motor in the native cache through the managed native command path, correcting the pinned REST proxy's ebike-only control routing.
+- Preserve bounded upstream result codes and recognized backend error categories in support diagnostics and logs.
+- Report the observed control route without exposing vehicle identities; retain the existing telemetry service and command confirmation behavior.
+
 ## 2.1.25
 
 - Preserve completed control-state reads when the local confirmation window expires, with an explicit deadline indicator in diagnostics and DEBUG logs.
