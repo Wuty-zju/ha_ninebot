@@ -234,7 +234,7 @@ Native `type: map` with the location tracker and `hours_to_show: 24` shows only 
 
 ## Verification and recovery
 
-The account-scoped SQLite archive holds normalized facts and credential/profile-redacted compressed business evidence. Each detail can retain the latest payload and independently selected better geometry; a newer simplified/empty response must not erase a better saved route. There is **no automatic TTL**, but quota/disk/backup settings apply. 180-day cloud observations are not a contractual retention guarantee. Protect saved details before the server potentially simplifies them.
+The account-scoped SQLite archive holds normalized facts and credential/profile-redacted compressed business evidence. Each detail can retain the latest payload and independently selected better geometry; a newer simplified/empty response must not erase a better saved route. When the same vehicle and ride are indexed in more than one month, each saved detail keeps its original source month. There is **no automatic TTL**, but quota/disk/backup settings apply. 180-day cloud observations are not a contractual retention guarantee. Protect saved details before the server potentially simplifies them.
 
 Quota exhaustion pauses writes instead of silently evicting rides. Healthy reads and ordinary telemetry can continue when storage permits; structural startup failures remain strict. HA pre/post-backup hooks pause/drain archive writes and keep allowed reads available; they do not create/upload a backup themselves. See [upgrade and rollback](migration.md#archive-schema-and-rollback).
 

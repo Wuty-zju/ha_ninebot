@@ -2,8 +2,9 @@
 
 import hashlib
 import json
+import sqlite3
 import zlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from .const import MAX_RESPONSE_BYTES
@@ -13,6 +14,10 @@ from .ride_models import Ride, TrackQuality
 
 class CorruptPayload(ValueError):
     """An individual stored business object failed bounded integrity validation."""
+
+
+class DetailMonthConflict(CorruptPayload):
+    """The source month is outside the stored ride membership."""
 
 
 @dataclass(frozen=True)
@@ -109,14 +114,36 @@ def unpacked(
     return record
 
 
+def detail_source_scope(
+    db: sqlite3.Connection, vehicle: str, month: str | None, current: Ride
+) -> Ride:
+    """Bind a stored detail to its original month if the scalar index has moved."""
+    if month == current.query_month:
+        return current
+    if (
+        month is None
+        or not db.execute(
+            "SELECT 1 FROM membership WHERE vehicle=? AND month=? AND ride=?",
+            (vehicle, month, current.ride_id),
+        ).fetchone()
+    ):
+        raise DetailMonthConflict("Private detail month contradiction")
+    return replace(current, query_month=month)
+
+
 def scoped_ride(
-    record: RawRecord, current: Ride, *, max_points: int = 1, point_offset: int = 0
+    db: sqlite3.Connection,
+    vehicle: str,
+    record: RawRecord,
+    current: Ride,
+    *,
+    max_points: int = 1,
+    point_offset: int = 0,
 ) -> Ride:
     """Reject explicit identity contradictions; retain ID-less query provenance."""
     from .travel import parse_ride
 
-    if record.query_month != current.query_month:
-        raise CorruptPayload("Private detail month contradiction")
+    current = detail_source_scope(db, vehicle, record.query_month, current)
     parsed = parse_ride(
         record.payload(),
         current.query_month,

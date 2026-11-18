@@ -40,8 +40,9 @@ def proposal(
         return Reconstruction("corrupt"), None
     if latest.received_at < observed:
         return Reconstruction("stale"), None
+    assert latest.query_month is not None  # The archive reader validated this scope.
     detail = parse_ride(
-        latest.payload(), current.query_month, source=Endpoint.TRIP_DETAIL, max_points=1
+        latest.payload(), latest.query_month, source=Endpoint.TRIP_DETAIL, max_points=1
     )
     if {"conflicting_ride_ids", "conflicting_detail_ids"} & set(detail.issues):
         return Reconstruction("unverifiable"), None
@@ -60,7 +61,7 @@ def proposal(
             (
                 vehicle,
                 current.ride_id,
-                current.query_month,
+                latest.query_month,
                 latest.received_at.isoformat(timespec="microseconds"),
             ),
         ).fetchall()

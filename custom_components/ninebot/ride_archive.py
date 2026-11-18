@@ -58,7 +58,15 @@ from .archive_timeline import (
     timeline_query,
 )
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
-from .detail_codec import ArchivedDetail, CorruptPayload, packed, scoped_ride, unpacked
+from .detail_codec import (
+    ArchivedDetail,
+    CorruptPayload,
+    DetailMonthConflict,
+    detail_source_scope,
+    packed,
+    scoped_ride,
+    unpacked,
+)
 from .detail_health import HistoryHealth
 from .exceptions import NinebotError
 from .history_budget import request_interval, valid_budget
@@ -1599,8 +1607,7 @@ class RideArchive:
                     )
                     if blob is None:
                         raise CorruptPayload("Missing private payload object")
-                    if blob[2] != summary[0].query_month:
-                        raise ValueError("Invalid private payload month scope")
+                    source_scope = detail_source_scope(self._db(), vehicle, blob[2], summary[0])
                     decoded_record = unpacked(
                         blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]
                     )
@@ -1608,13 +1615,18 @@ class RideArchive:
                     # the same pass. Never cache across reads, revisions or users.
                     selected = digest == row[1]
                     scoped = scoped_ride(
+                        self._db(),
+                        vehicle,
                         decoded_record,
-                        summary[0],
+                        source_scope,
                         max_points=max_points if selected else 1,
                         point_offset=point_offset if selected else 0,
                     )
                     decoded_payloads[digest] = decoded_record
                     parsed_payloads[digest] = scoped
+                except DetailMonthConflict:
+                    # A scope contradiction cannot be presented as a partially readable detail.
+                    raise ValueError("Invalid private payload month scope") from None
                 except CorruptPayload:
                     decoded_payloads[digest] = None
                     if not allow_partial:

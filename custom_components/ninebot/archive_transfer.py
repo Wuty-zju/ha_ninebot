@@ -117,7 +117,7 @@ def validate(actor: "RideArchive", db: sqlite3.Connection) -> None:
             "SELECT data FROM rides WHERE vehicle=? AND id=?", (vehicle, identity)
         ).fetchone()
         raw = unpacked(body, digest, stamp(observed), month, backend, endpoint)
-        scoped_ride(raw, restored_ride(decoded(row[0])))
+        scoped_ride(db, vehicle, raw, restored_ride(decoded(row[0])))
     for _, month, digest, body, observed, backend, endpoint, _ in db.execute(
         "SELECT * FROM month_sources"
     ):
@@ -334,6 +334,8 @@ def _merge_rows(actor: "RideArchive", incoming: sqlite3.Connection, selected: se
             )
         }
         chosen = scoped_ride(
+            db,
+            vehicle,
             unpacked(
                 payloads[geometry_hash][3],
                 geometry_hash,
