@@ -46,7 +46,7 @@ Existing `start`/`continue`/`status`/`cancel` range jobs remain supported (up to
 ### Read progress correctly
 
 - **Sync state** describes the current acquisition phase. Waiting for request budget is local scheduling, not an application for Ninebot permission. Inspect `next_request_at`, `retry_at`, `sync_phase` and errors before intervening.
-- **Month-scan progress** separates processed/verified/gapped months. Page totals, membership and references must agree; a visited month is not automatically verified.
+- **Month-scan progress** separates processed, verified and gapped months. Page totals, membership and references must agree. A conflicting or invalid month in a response keeps that response out of statistics. History scans retain the captured page as evidence of the gap.
 - **Saved-detail progress** covers discovered ride IDs. 100% does not mean all cloud rides were discovered or that every saved route has a full geometry.
 - **Last successful sync** records accepted page/detail progress; task completion is separately identified by `last_completed`. A historical completion time is not erased merely because current verification is pending.
 - **Monthly list coverage** describes the latest list response, not accumulated archive completeness. A 20/37 response is different from an archive that has reconciled all 37 IDs.

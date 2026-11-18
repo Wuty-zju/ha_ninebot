@@ -220,6 +220,37 @@ async def test_empty_month_preserved_while_last_ride_falls_back(coordinator, fre
     assert current.last_ride.mileage == 0.3
 
 
+async def test_poll_preserves_statistics_after_wrong_numeric_month(coordinator, freezer):
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    now = datetime(2026, 10, 3, tzinfo=UTC)
+    freezer.move_to(now)
+    await co._async_update_data()
+    sn, month = "synthetic-one", "202610"
+    before = co.data[sn].travel
+    saved = await co.statistics.archive.async_month(sn, month)
+    assert before is not None and saved is not None
+
+    freezer.tick(timedelta(seconds=1))
+    rejected = {
+        "month": 202609,
+        "times": 1,
+        "total_mileages": "12",
+        "list": [{"travel_id": "wrong-month-ride"}],
+    }
+    co.client.async_get_travel.return_value = rejected
+    await co._group(sn, "travel", force=True, include_last_ride=False)
+
+    failure = co.query_failure(sn, "travel")
+    assert failure is not None
+    assert failure["stage"] == "normalize" and failure["error_kind"] == "protocol"
+    assert co.data[sn].travel is before
+    assert await co.statistics.archive.async_month(sn, month) == saved
+    raw = co.raw.get(Endpoint.TRAVEL, sn, month, now=now + timedelta(seconds=1))
+    assert raw is not None and raw.payload() == rejected
+
+
 async def test_manual_refresh_forces_status_and_coalesces(coordinator):
     co = coordinator
     await co._async_update_data()

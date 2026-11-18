@@ -169,15 +169,8 @@ def month_at(now: datetime) -> str:
 
 
 def travel(raw: object, query_month: str) -> TravelMonth:
-    previous_month(query_month)  # Validate the caller's month even if data is empty.
-    item = payload(raw)
-    reported = text(item.get("month"))
-    if reported is not None and reported != query_month:
-        raise NinebotError(ErrorKind.PROTOCOL)
-    rows = item.get("list")
-    if rows is not None and not isinstance(rows, list):
-        raise NinebotError(ErrorKind.PROTOCOL)
     rides = parse_rides(raw, query_month)
+    item = payload(raw)
     selected = latest_ride(rides)
     last = None
     if selected is not None or rides:
