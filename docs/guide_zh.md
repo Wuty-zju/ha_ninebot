@@ -29,27 +29,25 @@
 
 ## 通过 Marketplace 安装（HA 2026.11+）
 
-打开**设置 → Marketplace → 自定义仓库**，按提示连接 GitHub，添加 `https://github.com/Wuty-zju/ha_ninebot`，类别为**集成**。安装所需版本后添加 Ninebot 账号。首次安装可直接进入配置；更新已加载的集成时按提示重启。
+1. 使用管理员账号进入 **设置 → Marketplace**，阅读并确认商店提示。
+2. 当前从 **⋮ → 通过链接添加** 安装。按提示连接 GitHub，输入 `Wuty-zju/ha_ninebot`，类别选择 **集成**。
+3. 打开 **Ninebot**，选择正式版并安装。首次安装可直接进入添加账号流程。如果 HA 已经加载了此集成，请根据「修复」提示重启。
 
-当前需添加自定义仓库。进入默认目录需要独立审核；Marketplace 与旧版 HACS 使用同一目录和发布包。随包提供品牌图标，无需另一套品牌下载配置。
+进入默认目录后，安装入口为 Marketplace 中搜索 **Ninebot**。目录收录后可直接安装，连接 GitHub 属于链接添加自定义仓库的步骤。[Marketplace 使用说明](https://www.home-assistant.io/integrations/marketplace/) · [默认目录](https://github.com/hacs/default/blob/master/integration)
 
 ## 通过 HACS 安装
 
-1. HACS 右上角三点菜单 → **自定义仓库**。
-2. 添加 `https://github.com/Wuty-zju/ha_ninebot`，类型选择 **集成 Integration**。
-3. 打开 **Ninebot**，选择 **v2.2.0** 并下载。
-4. 按提示重启 HA。文件版本更新不代表运行中的集成已加载新版。
-5. **设置 → 设备与服务 → 添加集成 → Ninebot**。
+在 Home Assistant 2026.11 之前的受支持版本中，进入 **HACS → ⋮ → 自定义仓库**。添加 `https://github.com/Wuty-zju/ha_ninebot`，类别选 **集成**。打开 **Ninebot**，下载正式版，按提示重启，再到 **设置 → 设备与服务 → 添加集成** 中选择 Ninebot。收录后可直接在 HACS 搜索；若设置了国家筛选，选择中国或「全部」。
 
-[打开 HACS 仓库](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) · [添加 Ninebot](https://my.home-assistant.io/redirect/config_flow_start/?domain=ninebot)
-
-链接打开你配置的 HA，不会安装 HACS 本身。当前通过**自定义仓库**分发，不宣称已进入 HACS 默认列表。
+从旧 HACS 升级到 Home Assistant 2026.11 时，Marketplace 会自动接管已安装项目、自定义仓库和更新实体。[HACS 迁移说明](https://www.home-assistant.io/integrations/marketplace/#coming-from-hacs)
 
 ## 手动安装
 
-下载所选 [GitHub Release](https://github.com/Wuty-zju/ha_ninebot/releases) 的 `ninebot.zip`，将包内文件解压到 `<config>/custom_components/ninebot`，重启后添加集成。旧版本若没有此附件，则从源码包中复制 `custom_components/ninebot`。不要把整个开发仓库复制进配置目录，也不要混合不同版本文件。
+从[发行页](https://github.com/Wuty-zju/ha_ninebot/releases/latest)下载正式版的 `ninebot.zip`，将内容解压至 `<config>/custom_components/ninebot/`，使该目录直接包含 `manifest.json`。重启后添加 Ninebot。手动更新可备份配置后替换集成目录，再重启。运行代码、翻译、品牌图和面板资源都随该目录分发。
 
-所有运行所需 Python、翻译、品牌和卡片资源都随集成目录分发，无需手动安装独立服务、另一个卡片包或仓库根脚本。
+## 更新已安装的集成
+
+Marketplace 的更新出现在 **设置 → 更新**。选择发布版并在安装后按「修复」提示重启。继续使用原有 Ninebot 账号条目和本地行程档案。Marketplace 通常每六小时刷新目录；链接添加的仓库从 GitHub 读取版本。预发布需要单独开启。较旧的 HA 可在商店中选用兼容的历史版本。[升级与回退](migration_zh.md) · [Marketplace 更新说明](https://www.home-assistant.io/integrations/marketplace/#keeping-installations-up-to-date)
 
 ## 添加账号与车辆
 
