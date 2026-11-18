@@ -6,7 +6,9 @@
 
 [English](README.md) · 简体中文
 
-[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%2Flatest&query=%24.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases/latest) [![HACS Custom](https://img.shields.io/badge/HACS-Custom_repository-orange)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
+<!-- ha-marketplace:exclude-start -->
+[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%2Flatest&query=%24.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases/latest) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Package downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Package%20downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
+<!-- ha-marketplace:exclude-end -->
 
 [安装](#安装) · [历史行程](#历史行程轨迹与详情同步) · [Ninebot Assistant](#ninebot-assistant) · [工作原理](#工作原理) · [文档导航](docs/README.md)
 
@@ -34,22 +36,24 @@
 
 需要 Home Assistant **2026.1.0 或更新版本**、受支持的 64 位运行环境，以及在九号 App 中可以查看车辆的账号。登录和实时数据需要联网，已保存的行程可以在本地读取。可选 Assistant 工具还需要兼容的 HA 原生 API 和对话宿主。[运行环境与账号](docs/guide_zh.md#环境要求)
 
+当前已用中国大陆版「九号出行」账号验证。其他服务地区的登录和车辆数据可用性有待验证。
+
+<!-- ha-marketplace:exclude-start -->
 <a id="marketplacehome-assistant-202611"></a>
 
 ### Marketplace · Home Assistant 2026.11 及更新版本
 
-1. 进入 **设置 → Marketplace → 自定义仓库**，按提示关联 GitHub。
-2. 添加 `https://github.com/Wuty-zju/ha_ninebot`，选择 **集成**。
-3. 安装 **Ninebot**，按提示重启，再选择 **添加集成 → Ninebot**。
+[![在 Marketplace 中打开 Ninebot](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
 
-目前以自定义仓库形式分发。[Marketplace 安装指南](docs/guide_zh.md#通过-marketplace-安装ha-202611) · [Home Assistant Marketplace](https://www.home-assistant.io/blog/2026/11/04/release-202611/#welcome-to-the-marketplace)
+目前通过链接安装。打开 **设置 → Marketplace → ⋮ → 通过链接添加**，按提示连接 GitHub，输入 `Wuty-zju/ha_ninebot`，类别选 **集成**。安装正式版后，进入 Ninebot 的账号设置。同意 Marketplace 提示后，默认目录中的项目可直接搜索并安装。 [Marketplace 安装指南](docs/guide_zh.md#通过-marketplace-安装ha-202611)
 
 <a id="hacs--推荐"></a>
+<a id="hacs"></a>
 
-### HACS
+### 旧版本 Home Assistant 上的 HACS
 
-1. 打开 **HACS → ⋮ → 自定义仓库**，添加上面的仓库地址，类型选 **集成**。
-2. 打开 **Ninebot**，下载正式版并按提示重启。
+1. 打开 **HACS → ⋮ → 自定义仓库**，添加 `https://github.com/Wuty-zju/ha_ninebot`，类型选 **集成**。
+2. 选择 **Ninebot**，安装正式版并按提示重启。
 3. 前往 **设置 → 设备与服务 → 添加集成 → Ninebot**。
 
 [![打开 HACS 仓库](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
@@ -57,7 +61,9 @@
 
 ### 手动安装
 
-从[最新正式版](https://github.com/Wuty-zju/ha_ninebot/releases/latest)下载 `ninebot.zip`，解压到 `<config>/custom_components/ninebot/`，使该目录直接包含 `manifest.json`。重启后到“设备与服务”添加 Ninebot。发行包同时提供 `SHA256SUMS`。Home Assistant 会安装清单声明的运行依赖。
+从[最新正式版](https://github.com/Wuty-zju/ha_ninebot/releases/latest)下载 `ninebot.zip`，解压至 `<config>/custom_components/ninebot/`，使该目录直接包含 `manifest.json`。重启后在「设备与服务」添加 Ninebot。发行版同时提供 `SHA256SUMS`。
+
+<!-- ha-marketplace:exclude-end -->
 
 ### 从 1.x 升级
 
@@ -174,7 +180,9 @@
 - 历史轨迹和 HA 备份可能含精确位置。可以分别选择是否展示位置、是否加载外部底图。
 - Assistant 专属读取工具省略账号凭据、原始响应和精确 GPS。提交给宿主的选定信息受该宿主的数据政策约束。
 - 电池健康评分、额定容量和实测电压各有独立含义。坐标系和部分轨迹采样单位仍有待验证。
-- Downloads 徽章统计各发行版 `ninebot.zip` 附件的下载次数，含更新和重复下载。Marketplace 或 HACS 可展示相应发行版的计数。[分发和下载量口径](docs/development.md#package-download-audit)
+<!-- ha-marketplace:exclude-start -->
+- README 的包下载徽章累加公开发行版中 `ninebot.zip` 附件的下载，含更新和重复下载。Marketplace 显示所选版本包的计数，数据会随目录刷新。旧 HACS 2.0.5 读取所选版本的首个附件。 [下载量口径](docs/development.md#package-download-audit)
+<!-- ha-marketplace:exclude-end -->
 
 ## 后续方向
 

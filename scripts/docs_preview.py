@@ -10,16 +10,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def branding() -> bytes:
-    """Compare the existing packaged icon on light/dark surfaces, unchanged."""
+    """Compare the packaged brand images on light and dark surfaces."""
     return b"""<!doctype html><meta charset="utf-8"><title>Brand review</title>
 <style>body{font:18px system-ui;margin:32px;background:#ddd;color:#123}
-section{display:inline-block;padding:24px;margin:12px;border-radius:12px}
-.light{background:#fff}.dark{background:#18232b;color:#fff}img{margin:16px}</style>
-<h1>Existing Ninebot integration icon</h1><p>Repository asset, not a new logo.</p>
-<section class="light">Light<br><img src="/ninebot-brand/icon.png" width="96" alt="96px">
-<img src="/ninebot-brand/icon.png" width="32" alt="32px"></section>
-<section class="dark">Dark fallback<br><img src="/ninebot-brand/icon.png" width="96" alt="96px">
-<img src="/ninebot-brand/icon.png" width="32" alt="32px"></section>"""
+section{padding:24px;margin:12px 0;border-radius:12px;max-width:520px}
+.light{background:#fff}.dark{background:#18232b;color:#fff}
+img{margin:12px;vertical-align:middle;max-width:100%;height:auto}</style>
+<h1>Ninebot brand preview</h1>
+<section class="light">Light<br>
+<img src="/ninebot-brand/icon.png" srcset="/ninebot-brand/icon@2x.png 2x"
+     width="32" alt="Ninebot icon">
+<img src="/ninebot-brand/logo.png" srcset="/ninebot-brand/logo@2x.png 2x"
+     width="330" alt="Ninebot logo"></section>
+<section class="dark">Dark<br>
+<img src="/ninebot-brand/dark_icon.png" srcset="/ninebot-brand/dark_icon@2x.png 2x"
+     width="32" alt="Ninebot icon">
+<img src="/ninebot-brand/dark_logo.png" srcset="/ninebot-brand/dark_logo@2x.png 2x"
+     width="330" alt="Ninebot logo"></section>"""
 
 
 def document(language: str = "en", scale: str = "1") -> bytes:
@@ -44,9 +51,19 @@ def document(language: str = "en", scale: str = "1") -> bytes:
 
 
 def asset(path: str) -> Path:
-    """Only expose packaged frontend assets, never the configuration or repo."""
-    if path == "/ninebot-brand/icon.png":
-        return ROOT / "custom_components/ninebot/brand/icon.png"
+    """Resolve a packaged frontend or brand preview image."""
+    name = path.removeprefix("/ninebot-brand/")
+    if path != name and name in {
+        "icon.png",
+        "icon@2x.png",
+        "logo.png",
+        "logo@2x.png",
+        "dark_icon.png",
+        "dark_icon@2x.png",
+        "dark_logo.png",
+        "dark_logo@2x.png",
+    }:
+        return ROOT / "custom_components/ninebot/brand" / name
     prefix = "/ninebot-static/"
     if not path.startswith(prefix):
         raise ValueError("Not a preview asset")

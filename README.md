@@ -6,7 +6,9 @@
 
 English · [简体中文](README_zh.md)
 
-[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%2Flatest&query=%24.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases/latest) [![HACS Custom](https://img.shields.io/badge/HACS-Custom_repository-orange)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
+<!-- ha-marketplace:exclude-start -->
+[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%2Flatest&query=%24.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases/latest) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Package downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Package%20downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
+<!-- ha-marketplace:exclude-end -->
 
 [Installation](#installation) · [Ride history](#ride-history-and-track-synchronization) · [Ninebot Assistant](#ninebot-assistant) · [Architecture](#how-it-works) · [Documentation](docs/README.md)
 
@@ -34,21 +36,23 @@ Vehicles report different measurements. A missing reading stays unknown, and a r
 
 Home Assistant **2026.1.0 or newer**, a supported 64-bit runtime, and an account with vehicles visible in the Ninebot app. Authentication and live data require internet access. Saved rides can be read locally. The optional native Assistant tools require a compatible HA API and host. [Platform and account requirements](docs/guide.md#requirements)
 
+Sign-in and vehicle discovery are verified with the mainland China Ninebot app service. Availability in other service regions is unverified.
+
+<!-- ha-marketplace:exclude-start -->
 <a id="marketplace--home-assistant-202611"></a>
 
 ### Marketplace · Home Assistant 2026.11 and newer
 
-1. Open **Settings → Marketplace → Custom repositories**. Connect GitHub if prompted.
-2. Add `https://github.com/Wuty-zju/ha_ninebot` as an **Integration**.
-3. Install **Ninebot**, follow any restart prompt, then choose **Add integration → Ninebot**.
+[![Open Ninebot in the Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration)
 
-Ninebot is distributed as a custom repository. [Marketplace installation guide](docs/guide.md#install-through-marketplace--ha-202611) · [Home Assistant Marketplace](https://www.home-assistant.io/blog/2026/11/04/release-202611/#welcome-to-the-marketplace)
+Install from the repository link today. In **Settings → Marketplace → ⋮ → Add from link**, connect GitHub if prompted and enter `Wuty-zju/ha_ninebot` as an **Integration**. Install the stable version and open Ninebot's account setup. Projects in the default catalog can be found through Marketplace search after you accept the Marketplace warning. [Marketplace installation guide](docs/guide.md#install-through-marketplace--ha-202611)
 
 <a id="hacs--recommended"></a>
+<a id="hacs"></a>
 
-### HACS
+### HACS on older Home Assistant versions
 
-1. Open **HACS → ⋮ → Custom repositories** and add the same URL under **Integration**.
+1. Open **HACS → ⋮ → Custom repositories** and add `https://github.com/Wuty-zju/ha_ninebot` as an **Integration**.
 2. Open **Ninebot**, download the stable release and restart when prompted.
 3. Open **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -57,7 +61,9 @@ Ninebot is distributed as a custom repository. [Marketplace installation guide](
 
 ### Manual installation
 
-Download `ninebot.zip` from [Releases](https://github.com/Wuty-zju/ha_ninebot/releases/latest). Extract its contents into `<config>/custom_components/ninebot/` so the manifest sits directly in that directory. Restart Home Assistant and add Ninebot from **Devices & services**. The release also includes `SHA256SUMS`. Home Assistant installs the declared runtime dependency.
+Download `ninebot.zip` from [the latest stable release](https://github.com/Wuty-zju/ha_ninebot/releases/latest). Extract it into `<config>/custom_components/ninebot/` with `manifest.json` directly in that directory. Restart Home Assistant and add Ninebot from **Devices & services**. The release includes `SHA256SUMS`.
+
+<!-- ha-marketplace:exclude-end -->
 
 ### Upgrading from 1.x
 
@@ -174,7 +180,9 @@ A command is sent once. Status reads then check the vehicle for up to 15 seconds
 - Archived tracks and HA backups can contain precise locations. Location exposure and optional external basemap tiles are configurable.
 - Dedicated Assistant reads omit account credentials, raw payloads and precise GPS. The chosen host's data policy applies to the selected local information that reaches it.
 - The health score, rated battery capacity and measured voltage describe different properties. The coordinate system and some point-level units remain unverified.
-- The Downloads badge counts downloads of the published `ninebot.zip` assets, including updates and repeat downloads. Marketplace or HACS can display a selected release's count. [Distribution and download accounting](docs/development.md#package-download-audit)
+<!-- ha-marketplace:exclude-start -->
+- The README package badge sums downloads of the `ninebot.zip` assets across published releases, including updates and repeat downloads. The Marketplace uses the selected version’s package count. HACS 2.0.5 uses the first asset of that version. [Download accounting](docs/development.md#package-download-audit)
+<!-- ha-marketplace:exclude-end -->
 
 ## Next steps
 

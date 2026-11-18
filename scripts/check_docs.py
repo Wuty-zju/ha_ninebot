@@ -178,6 +178,26 @@ def asset_errors(root: Path) -> list[str]:
     return errors
 
 
+def brand_errors(root: Path) -> list[str]:
+    """Check the complete packaged brand set without a development dependency."""
+    brand = root / "custom_components/ninebot/brand"
+    errors = []
+    for prefix in ("", "dark_"):
+        for kind, (width, height) in {"icon": (256, 256), "logo": (904, 192)}.items():
+            for scale, suffix in ((1, ""), (2, "@2x")):
+                path = brand / f"{prefix}{kind}{suffix}.png"
+                expected = (".png", scale * width, scale * height)
+                try:
+                    content = path.read_bytes()
+                    if image_size(content) != expected or content[25:26] != b"\x06":
+                        errors.append(
+                            f"{path.name} must be a transparent PNG of size {expected[1:]}"
+                        )
+                except (OSError, ValueError):
+                    errors.append(f"Missing or malformed brand asset: {path.name}")
+    return errors
+
+
 def audit(root: Path) -> tuple[list[str], int]:
     """Only inspect public Git files, never a parent workspace/capture tree."""
     tracked = (
@@ -207,6 +227,7 @@ def audit(root: Path) -> tuple[list[str], int]:
         ]:
             errors.append(f"Bilingual outline differs: {english}, {chinese}")
     errors.extend(asset_errors(root))
+    errors.extend(brand_errors(root))
     return errors, len(paths)
 
 
@@ -217,7 +238,7 @@ def main() -> None:
         raise SystemExit(f"Documentation check failed: {type(error).__name__}") from error
     if errors:
         raise SystemExit("\n".join(errors))
-    print(f"Documentation: {count} Markdown files; links, NOTICE, assets and outlines OK")
+    print(f"Documentation: {count} Markdown files; links, NOTICE, assets, brand and outlines OK")
     print("External availability, translation meaning and screenshot privacy require human review.")
 
 

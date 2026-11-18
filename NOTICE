@@ -1,4 +1,8 @@
 Ninebot / Segway trademarks and vehicle images belong to their respective owners.
+The packaged brand PNGs identify the supported Ninebot service and use the
+Ninebot China support site artwork. Source details are in
+docs/development.md#hacs-readiness-and-branding. The MIT code license excludes
+third-party brand artwork.
 This integration is not affiliated with or supported by Ninebot / Segway.
 
 The Home Assistant integration is developed in this repository.
