@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 
 from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_TASKS
 from .assistant_errors import error_data
+from .assistant_evidence import prioritize_help_citations
 from .assistant_knowledge import KnowledgeUnavailable, search_help
 from .assistant_limits import ReadLimitExceeded, read_slot
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
@@ -88,10 +89,12 @@ SPECS = (
     ToolSpec(
         "search_help",
         "Search Ninebot integration help",
-        "Search bundled public help for the installed integration version. Return cited "
-        "documentation, not vehicle facts. "
-        "Use the returned citation, including its corpus version, when citing help. "
-        "Use for general integration behavior, synchronization waits and field meanings. "
+        "Search bundled public help for the installed integration version. Use for general "
+        "behavior, field meanings and reported errors, including sign-in failures. Search with "
+        "the operation and observable error code when available. Choose the user's language. "
+        "Start the answer with the best match's complete citation, including the KB version, "
+        "then give only brief documented facts and checks. Help alone cannot establish a "
+        "vehicle's condition or the underlying cause of a reported error. "
         "General concepts need no vehicle selection, date or vehicle reads. "
         "Only when guiding a specific task, set include_procedures=true for advisory checklists; "
         "then check required inputs, call budget and stop conditions before following them. "
@@ -138,9 +141,9 @@ SPECS = (
         "The current month ends at today's business date. "
         "This is the archive timezone, not the browser timezone; "
         "no alternate timezone is accepted. "
-        "Null/missing metrics are unknown, never zero; "
-        "partial coverage does not prove a total. Use returned values, units and per-metric "
-        "quality, not SQL.",
+        "Missing metrics are unknown. Use the returned values, units, exact dates, "
+        "per-metric quality, observation time and source. Partial coverage leaves a full "
+        "total unverified. Report recorded reasons for gaps without guessing their cause.",
         vol.Schema(
             {
                 **VEHICLE,
@@ -607,7 +610,7 @@ async def async_query(
                         except KnowledgeUnavailable as err:
                             raise AssistantError("unsupported_capability") from err
                         view = AssistantView(
-                            data=help_data,
+                            data=prioritize_help_citations(help_data),
                             evidence={"source_kind": "bundled_public_help"},
                             warnings=["documentation_is_not_vehicle_evidence"],
                         )
