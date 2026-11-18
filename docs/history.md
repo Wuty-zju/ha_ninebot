@@ -232,6 +232,8 @@ Trip Event state is the timestamp of the most recent report/update/completion ev
 
 Native `type: map` with the location tracker and `hours_to_show: 24` shows only positions Recorder actually observed. It cannot reconstruct downloaded historical trail arrays; use the bundled workbench for a saved ride.
 
+An interrupted historical month read may already have a complete verified page on disk. Once its claim or retry delay expires, the scheduler checks local page evidence first. A matching page advances discovery even when the hourly budget is exhausted. Active claims and future retry deadlines still take precedence.
+
 ## Verification and recovery
 
 The account-scoped SQLite archive holds normalized facts and credential/profile-redacted compressed business evidence. Each detail can retain the latest payload and independently selected better geometry; a newer simplified/empty response must not erase a better saved route. When the same vehicle and ride are indexed in more than one month, each saved detail keeps its original source month. There is **no automatic TTL**, but quota/disk/backup settings apply. 180-day cloud observations are not a contractual retention guarantee. Protect saved details before the server potentially simplifies them.
@@ -255,3 +257,5 @@ Quality-only corrections keep newer scalar observations and selected geometry. E
 Use the current `sync_status`, `verify_status` or reconstruction result to distinguish pending/invalid/repaired/with-gaps outcomes. Do not delete private storage or manually replace a live database to improve a percentage. Keep unresolved Repairs and evidence for supported recovery. Detailed boundaries live in [architecture](architecture.md#storage-and-integrity); original version-specific behavior remains in [release history](../CHANGELOG.md).
 
 History belongs to the authenticated account, not the configuration entry. Removing/re-adding an account retains and reconnects its archive by default. Use the [archive export/import tools](guide.md#export-and-import-history-databases) for selected vehicles or multiple accounts; imports merge facts and better tracks without starting cloud queries. Distinct historical page evidence from merged sources remains inside the canonical schema 7 database; an absent discovery baseline can resume validated committed page coverage with in-flight request claims reset; an existing local baseline is never replaced.
+
+Some backups index one ride under adjacent source months. Merge accepts the overlap when one validated archive proves both memberships for the same account, vehicle and ride, and the detail identifiers agree. Importing either backup first retains the newest measurements and best verified route. A conflicting identity or unproven membership stops the import and leaves the original archive available.

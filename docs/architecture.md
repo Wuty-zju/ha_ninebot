@@ -163,12 +163,16 @@ Today mileage declares the DAY dependency used by daily-index repair. History pr
 
 简体中文：统一资源取消排空，账号独立设置清理互不阻断；额定参数以真实落盘结果确认保存，失败保留重试状态。今日里程声明日索引依赖；历史进度合并为一次数据库快照，单车更新复用其他车辆投影及日统计缓存。
 
-## Optional Assistant boundary — 2.1 preview
+<a id="optional-assistant-boundary--21-preview"></a>
+
+## Optional Assistant boundary
 
 A compatible AI host selects the native Ninebot API through HA’s LLM registry or MCP Server. The adapter preserves the authenticated Context, applies separate account/vehicle consent and read admission, then reuses cached snapshots or existing local history Actions. Safe result projections carry units, freshness and coverage; ownership and consent are checked again before return. The adapter does not add a model provider, listener, archive or collection scheduler.
 
-The feature is off by default. Its modern native API requirement is separate from the overall integration minimum. [Setup, tool schemas and data disclosure](assistant.md) describe the preview; [development entry points](development.md#assistant-development) identify the implementation and isolated checks.
+The feature is off by default. Its modern native API requirement is separate from the overall integration minimum. [Setup, tool schemas and data disclosure](assistant.md) describe the optional tools, and [development entry points](development.md#assistant-development) identify the implementation and isolated checks.
 
 The optional `ninebot.ask` response Action delegates tool selection to an existing native AI Task entity. Each turn supplies only the eight read tools, preserves the caller's Context and returns actual tool evidence rather than generated numeric prose. Scope snapshots, explicit multi-vehicle selection, four-call admission, a 180-second deadline and a 32 KiB response bound apply independently of the chosen model. Provider-facing tool results are independent copies of the recorded evidence, including nested fields. A late provider failure retains successful tool receipts as an explicit partial response after the same final permission checks. The Action shares the Assistant API's lifetime; it adds no model provider or scheduler.
 
 Approved tasks use the existing preservation scheduler. A restored driver rechecks its own and its Store's closure after reading durable tickets, before attaching to that scheduler; a late read cannot replace the active driver after detachment.
+
+Task progress and the human review panel bind each read to a specific account grant. They verify the same grant again after asynchronous work. Withdrawing and restoring consent invalidates the previous read even when the same account store remains open.

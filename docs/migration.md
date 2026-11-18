@@ -2,6 +2,17 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
+
+## Upgrade to 2.2.0
+
+| Installed version | Upgrade path |
+|---|---|
+| 2.0.x | Update from Marketplace, HACS or the packaged ZIP and follow the restart prompt. Check the running version in Devices & services. Assistant is optional and starts off. |
+| 2.1.x | Update in place. Existing account options, vehicle entities, history tasks and schema 7 archives keep their identities. An interrupted month scan can reuse a complete verified page when it is due again. |
+| 1.x | Back up HA and private storage, then review the account, entity and lock transitions below. |
+
+An existing 2.x archive stays in place. A rollback to an older storage format requires a matching pre-upgrade backup. Use the [archive transfer tools](guide.md#export-and-import-history-databases) to move saved rides between installations.
+
 ## Moving to 2.0.0
 
 The stable release retains rc4 entity identities, archive schema 7, polling profiles and control timing. Upgrade the installed files and restart Home Assistant; keep the existing account entry. Moving from rc4 requires no account recreation or history import.

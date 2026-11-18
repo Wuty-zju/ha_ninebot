@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [2.0 development history](releases/2.0.md)
 
-Current scope for the stable 2.0 series and optional 2.1 preview. Usage and data contracts are maintained in the guides; beta and RC milestones belong in the development history.
+Version 2.2.0 brings the vehicle integration, the account-owned archive and the optional Assistant into the stable distribution. The table below dates the original 2.0 capabilities. See the [2.2 release summary](../CHANGELOG.md#220) for subsequent delivery.
 
 <a id="added-in-200rc4"></a>
 <a id="available-in-200rc1"></a>
@@ -22,7 +22,9 @@ Current scope for the stable 2.0 series and optional 2.1 preview. Usage and data
 
 2.0 已交付独立账号与原生实体、五档自适应更新、控制确认、日／月／最近行程统计、事件与可选日历、可续接的历史同步、账号数据库、导入导出及有界校验恢复。正式版延续 rc4 的业务行为；完整 beta／RC 演进见[开发回顾](releases/2.0.md#简体中文)。
 
-## Optional Assistant — 2.1 preview
+<a id="optional-assistant--21-preview"></a>
+
+## Ninebot Assistant in 2.2
 
 Eight dedicated local tools expose authorized vehicle status, statistics, saved trips, synchronization health and versioned help through the native LLM API/MCP Server. The feature is off by default, uses separate account/vehicle consent and keeps coordinates and raw responses outside tool results. [Setup and tool reference](assistant.md).
 
@@ -32,7 +34,7 @@ An optional native AI task Action returns verified local tool results through a 
 
 The product uses the model configured in a compatible HA conversation agent or MCP client. Evaluation separates native protocol checks, actual model decisions and factual answers. The measured two-unit parallel experiment did not justify extra coordination, so the current direction remains a single agent with versioned retrieval and task checklists. [Validation approach](development.md#small-model-baseline).
 
-2.1预览提供八个专属本地只读工具，默认关闭，按账号和车辆单独授权。[使用说明](assistant_zh.md)。双语版本帮助、十项辅助清单以及独立任务选项支持本地申请、人工审核、精确请求预算和执行恢复。[任务流程](assistant_zh.md#可审核的历史任务beta)。原生AI任务Action使用用户选择的供应商，绑定已选车辆并返回真实工具结果；统计排查复用档案、同步状态与引用，供应商后续失败可保留重新鉴权后的部分证据。模型与宿主由用户选择；当前保留单Agent，双工作单元实验没有证明额外收益。
+2.2 正式版随包提供八个本地只读工具，默认关闭，按账号和车辆单独授权。[使用说明](assistant_zh.md)。双语版本帮助、十项辅助清单以及独立任务选项支持本地申请、人工审核、精确请求预算和执行恢复。[任务流程](assistant_zh.md#可审核的历史任务beta)。原生AI任务Action使用用户选择的供应商，绑定已选车辆并返回真实工具结果；统计排查复用档案、同步状态与引用，供应商后续失败可保留重新鉴权后的部分证据。模型与宿主由用户选择；当前保留单Agent，双工作单元实验没有证明额外收益。
 
 ## Early alpha: visualization and cards
 
