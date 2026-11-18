@@ -11,7 +11,7 @@ from .archive_codec import decoded, encoded, stamp
 from .const import MAX_RESPONSE_BYTES
 from .detail_codec import packed, unpacked
 from .history_plan import MAX_PAGES, HistoryPlan, HistoryState, plan_data, restored
-from .parsing import text
+from .parsing import matches_query_month
 from .raw import Endpoint, RawRecord
 from .travel import MAX_RIDES, opaque_id
 
@@ -171,9 +171,8 @@ def _shape(data: dict, *, month: str) -> tuple[tuple[str, ...], int | None, str 
         total = int(total)
     if type(total) is not int or not 0 <= total <= 1_000_000:
         total = None
-    reported = text(data.get("month"))
-    if reported is not None and reported != month:
-        return (), total, "schema"  # Retain the contradictory page, never index its rides.
+    if not matches_query_month(data.get("month"), month):
+        return (), total, "schema"  # Retain the invalid page without indexing its rides.
     if "list" not in data:
         return (), total, "schema"
     rows = data.get("list")

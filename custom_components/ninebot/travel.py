@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotError
-from .parsing import number, numeric_precision, payload, previous_month, text
+from .parsing import matches_query_month, number, numeric_precision, payload, previous_month, text
 from .raw import Endpoint
 from .ride_models import FieldState, GeometryKind, Ride, RideTrackPoint, SpeedSample, TrackQuality
 
@@ -305,8 +305,7 @@ def parse_ride(
 def parse_rides(raw: object, month: str) -> tuple[Ride, ...]:
     previous_month(month)
     item = payload(raw)
-    reported = text(item.get("month"))
-    if reported is not None and reported != month:
+    if not matches_query_month(item.get("month"), month):
         raise NinebotError(ErrorKind.PROTOCOL)
     rows = item.get("list")
     if rows is None:
