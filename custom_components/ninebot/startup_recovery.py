@@ -71,7 +71,7 @@ def rows(db: sqlite3.Connection, path: Path, owner: str) -> list[tuple] | None:
                 continue
             try:
                 raw = unpacked(body, digest, stamp(meta[0]), meta[1], meta[2], meta[3])
-                scoped_ride(raw, normalized)
+                scoped_ride(db, vehicle, raw, normalized)
                 if packed(raw)[0] != digest:
                     continue
             except (CorruptPayload, ValueError):
