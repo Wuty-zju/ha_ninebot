@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.27
+
+- Add versioned English and Chinese Assistant help for command errors, confirmation deadlines, backend codes and observed control routes.
+- Validate the month reported by live trip queries and archived pages before assigning rides to the requested month.
+
 ## 2.1.26
 
 - Route controls for vehicles explicitly identified as motor in the native cache through the managed native command path, correcting the pinned REST proxy's ebike-only control routing.
