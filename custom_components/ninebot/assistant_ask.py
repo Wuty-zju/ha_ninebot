@@ -6,7 +6,7 @@ import inspect
 import json
 from collections.abc import Callable
 from dataclasses import replace
-from typing import Any
+from typing import Any, NoReturn
 from uuid import uuid4
 
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
@@ -14,13 +14,14 @@ from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import llm
 from homeassistant.helpers.importlib import async_import_module
 
+from .assistant_evidence import MAX_RECEIPTS, render_evidence_answer
 from .assistant_policy import AssistantError, AssistantScope, async_require_admin
 from .assistant_queries import _vehicles
 from .compat import validation as vol
 from .const import DOMAIN
 
 ACTION = "ask"
-MAX_TOOL_CALLS = 4
+MAX_TOOL_CALLS = MAX_RECEIPTS
 MAX_SECONDS = 180
 MAX_RESPONSE_BYTES = 32 * 1024
 
@@ -56,14 +57,25 @@ class EvidenceTurn:
         self.results: list[dict[str, Any]] = []
         self.calls = 0
         self.stop: str | None = None
+        self.denied = False
+
+    def deny(self) -> NoReturn:
+        self.denied = True
+        raise AssistantError("not_authorized")
 
     async def async_validate(self) -> None:
-        await async_require_admin(self.hass, self.call.context)
-        for scope in self.scopes.values():
-            await scope.async_validate(self.hass)
-        # A later permission await may revoke an already checked vehicle.
-        for scope in self.scopes.values():
-            scope.assert_current(self.hass)
+        if self.denied:
+            self.deny()
+        try:
+            await async_require_admin(self.hass, self.call.context)
+            for scope in self.scopes.values():
+                await scope.async_validate(self.hass)
+            # A later permission await may revoke an already checked vehicle.
+            for scope in self.scopes.values():
+                scope.assert_current(self.hass)
+        except (AssistantError, Unauthorized):
+            self.denied = True
+            raise
 
     async def async_prepare(self) -> None:
         await async_require_admin(self.hass, self.call.context)
@@ -83,7 +95,7 @@ class EvidenceTurn:
         bound_vehicle: str | None = None,
     ) -> Any:
         if context.context is not self.call.context:
-            raise AssistantError("not_authorized")
+            self.deny()
         await self.async_validate()
         if self.calls >= MAX_TOOL_CALLS:
             self.stop = "tool_budget"
@@ -91,7 +103,7 @@ class EvidenceTurn:
         self.calls += 1  # Reserve before awaiting a possibly parallel native tool call.
         if bound_vehicle is not None:
             if "vehicle_ref" in tool_input.tool_args:
-                raise AssistantError("not_authorized")
+                self.deny()
             tool_input = replace(
                 tool_input, tool_args={**tool_input.tool_args, "vehicle_ref": bound_vehicle}
             )
@@ -100,7 +112,7 @@ class EvidenceTurn:
                 self.stop = "vehicle_selection_required"
                 raise TurnStopped
             if tool_input.tool_args["vehicle_ref"] != self.selected:
-                raise AssistantError("not_authorized")
+                self.deny()
         result = await tool.async_call(self.hass, tool_input, context)
         await self.async_validate()
         payload = copy.deepcopy(result.data)
@@ -108,6 +120,8 @@ class EvidenceTurn:
             rows = payload["data"]["vehicles"]
             allowed = {self.selected} if self.selected is not None else self.scopes.keys()
             payload["data"]["vehicles"] = [row for row in rows if row["vehicle_ref"] in allowed]
+        if result.error and payload.get("error", {}).get("code") == "not_authorized":
+            self.deny()
         self.results.append(
             {
                 "tool": tool_input.tool_name,
@@ -116,14 +130,14 @@ class EvidenceTurn:
                 "result": payload,
             }
         )
-        if result.error and payload.get("error", {}).get("code") == "not_authorized":
-            raise AssistantError("not_authorized")
         # Only the bounded safe result, never the original Action/raw payload, reaches the model.
         from .assistant_api import native_result
 
         return native_result(copy.deepcopy(payload), error=result.error)
 
     def response(self) -> dict[str, Any]:
+        if self.denied:
+            return failed("not_authorized")
         has_evidence = any(
             not row["error"] and row["tool"] != "ninebot__get_vehicles" for row in self.results
         )
@@ -147,17 +161,28 @@ class EvidenceTurn:
             > MAX_RESPONSE_BYTES
         ):
             return failed("response_too_large")
+        if (answer := render_evidence_answer(self.results)) is not None:
+            response["answer"] = answer
+            if (
+                len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
+                > MAX_RESPONSE_BYTES
+            ):
+                del response["answer"]  # Prefer complete tool results over a truncated display.
         return response
 
 
 def failed(code: str) -> dict[str, Any]:
-    return {
+    denied = code == "not_authorized"
+    result: dict[str, Any] = {
         "schema_version": 1,
         "answer_mode": "verified_tool_results",
-        "outcome": "denied" if code == "not_authorized" else "failed",
+        "outcome": "denied" if denied else "failed",
         "error": {"code": code},
         "results": [],
     }
+    if denied:
+        result["answer"] = render_evidence_answer([], denied=True)
+    return result
 
 
 def turn_api(turn: EvidenceTurn) -> llm.API:

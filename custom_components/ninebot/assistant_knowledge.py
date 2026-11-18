@@ -285,9 +285,9 @@ def search_help(
         match = {
             "source_id": entry["id"],
             "title": text["title"],
+            "citation": f"[Source]({entry['source']['url']}) (KB {catalog['corpus_version']})",
             "text": text["text"],
             "source": entry["source"],
-            "citation": f"[Source]({entry['source']['url']}) (KB {catalog['corpus_version']})",
             "content_sha256": entry["content_sha256"],
             "applicable_versions": entry["applicable_versions"],
             "evidence_status": entry["evidence_status"],

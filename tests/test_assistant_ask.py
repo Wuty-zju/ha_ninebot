@@ -1,6 +1,8 @@
 """Local evidence orchestration boundaries; providers are tested by native canaries."""
 
 import asyncio
+import json
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -9,7 +11,9 @@ from homeassistant.core import Context, ServiceCall
 from homeassistant.helpers import llm
 
 from custom_components.ninebot import assistant_ask as ask
+from custom_components.ninebot.assistant_knowledge import search_help
 from custom_components.ninebot.assistant_policy import AssistantError
+from custom_components.ninebot.assistant_views import statistics_view
 
 
 @pytest.fixture
@@ -334,3 +338,214 @@ async def test_unregister_cancels_generation_and_releases_admission(hass, turn):
             await first
         assert stopped.is_set()
     assert not hass.services.has_service("ninebot", "ask")
+
+
+def _help_receipt(question, language="en"):
+    data = search_help(question, language, "2.1.27")
+    return {
+        "schema_version": 1,
+        "request_id": "a" * 32,
+        "data": data,
+        "evidence": {"source_kind": "bundled_public_help"},
+    }
+
+
+async def test_action_displays_full_catalog_citation_from_recorded_tool_result(hass, turn):
+    receipt = _help_receipt("ready accepted confirmed control_policy")
+    control = next(
+        match for match in receipt["data"]["matches"] if match["source_id"] == "control_outcomes"
+    )
+    native_tool = SimpleNamespace(
+        async_call=AsyncMock(return_value=SimpleNamespace(data=receipt, error=False)),
+    )
+
+    async def generate(actual_hass, *, context, llm_api, **kwargs):
+        result = await llm_api.async_call(
+            native_tool,
+            llm.ToolInput(tool_name="ninebot__search_help", tool_args={"query": "control_policy"}),
+            SimpleNamespace(context=context),
+        )
+        result.data["data"]["matches"][0]["text"] = "provider-modified receipt"
+        return SimpleNamespace(data="invented root cause and [Source](https://github")
+
+    with (
+        patch.object(ask.EvidenceTurn, "async_prepare", new=AsyncMock()),
+        patch.object(ask.EvidenceTurn, "async_validate", new=AsyncMock()),
+        patch.object(ask, "turn_api", side_effect=lambda actual_turn: actual_turn),
+        patch.object(
+            ask,
+            "async_import_module",
+            new=AsyncMock(return_value=SimpleNamespace(async_generate_data=generate)),
+        ),
+        patch(
+            "custom_components.ninebot.assistant_api.native_result",
+            side_effect=lambda data, *, error: SimpleNamespace(data=data, error=error),
+        ),
+    ):
+        remove = ask.async_register(hass)
+        try:
+            response = await hass.services.async_call(
+                "ninebot",
+                "ask",
+                dict(turn.call.data),
+                blocking=True,
+                return_response=True,
+                context=turn.call.context,
+            )
+        finally:
+            remove()
+
+    assert response["answer_mode"] == "verified_tool_results" and response["outcome"] == "evidence"
+    assert response["results"][0]["result"] == receipt
+    answer = response["answer"]
+    assert answer["contract"] == "ninebot-evidence-answer-v1"
+    assert answer["request_ids"] == [receipt["request_id"]]
+    assert control["citation"] in answer["text"]
+    assert "local eligibility" in answer["text"] and "Native DEBUG" in answer["text"]
+    assert "provider-modified" not in str(response) and "invented root cause" not in str(response)
+
+
+def test_help_display_preserves_local_language_and_checks_fixed_citation(turn):
+    receipt = _help_receipt("主电池循环计数显示不支持", "zh-Hans")
+    turn.results = [{"tool": "ninebot__search_help", "error": False, "result": receipt}]
+    answer = turn.response()["answer"]["text"]
+    assert "证据不足时原因保持未知" in answer
+    assert "对比App的同一字段" in answer
+    assert receipt["data"]["matches"][0]["citation"] in answer
+    receipt["data"]["matches"][0]["citation"] = "[Source](https://github"
+    assert "answer" not in turn.response()
+
+
+def _partial_statistics():
+    now = datetime(2026, 11, 14, 12, tzinfo=UTC)
+    view = statistics_view(
+        {
+            "duration_s": 0,
+            "period_closed": True,
+            "ride_window_complete": False,
+            "completeness_basis": "incomplete",
+            "availability": {"ride_count": "incomplete_month_list"},
+            "received_at": "2026-11-14T07:05:00+00:00",
+        },
+        daily=True,
+        now=now,
+    )
+    return {
+        "schema_version": 1,
+        "request_id": "b" * 32,
+        "query": {
+            "start_date": "2026-11-13",
+            "end_date": "2026-11-13",
+            "business_timezone": "Asia/Shanghai",
+        },
+        "data": view.data,
+        "quality": view.quality,
+        "evidence": view.evidence,
+    }
+
+
+def test_statistics_display_keeps_zero_distinct_from_unknown_and_cause_unverified(turn):
+    receipt = _partial_statistics()
+    turn.results = [{"tool": "ninebot__get_statistics", "error": False, "result": receipt}]
+    answer = turn.response()["answer"]["text"]
+    assert "2026-11-13 (Asia/Shanghai)" in answer
+    assert "Ride count: unknown (missing, recorded reason `incomplete_month_list`)" in answer
+    assert "Duration: 0 s" in answer
+    assert "2026-11-14T07:05:00+00:00" in answer
+    assert "`account_archive` with coverage basis `business_day_projection`" in answer
+    assert "complete period total unverified" in answer
+    assert "cause of any data gap remains unverified" in answer
+
+
+def test_statistics_workflow_uses_selected_metric_and_preserves_help_citation(turn):
+    stats = {"tool": "ninebot__get_statistics", "error": False, "result": _partial_statistics()}
+    help_receipt = _help_receipt("unknown missing zero")
+    sync_receipt = {"data": {"state": "waiting_budget"}}
+    receipt = {
+        "schema_version": 1,
+        "request_id": "c" * 32,
+        "data": {
+            "metric": "ride_count",
+            "steps": [
+                stats,
+                {"tool": "ninebot__get_sync_health", "error": False, "result": sync_receipt},
+                {"tool": "ninebot__search_help", "error": False, "result": help_receipt},
+            ],
+        },
+        "quality": {"partial": True},
+        "evidence": {"source_kind": "local_statistics_check"},
+    }
+    turn.results = [{"tool": "ninebot__explain_statistics", "error": False, "result": receipt}]
+    answer = turn.response()["answer"]
+    assert answer["request_ids"] == [receipt["request_id"]]
+    assert "Ride count: unknown" in answer["text"] and "Duration: 0 s" not in answer["text"]
+    assert "`waiting_budget`" in answer["text"] and "underlying cause unverified" in answer["text"]
+    assert "incomplete evidence" in answer["text"]
+    assert any(match["citation"] in answer["text"] for match in help_receipt["data"]["matches"])
+
+
+def test_auth_required_displays_safe_error_without_an_upstream_diagnosis(turn):
+    receipt = {
+        "schema_version": 1,
+        "request_id": "d" * 32,
+        "error": {"code": "auth_required", "message": "private arbitrary error"},
+    }
+    turn.results = [{"tool": "ninebot__get_statistics", "error": True, "result": receipt}]
+    response = turn.response()
+    assert response["outcome"] == "failed"
+    answer = response["answer"]
+    assert answer["request_ids"] == [receipt["request_id"]]
+    assert "reauthentication in Home Assistant" in answer["text"]
+    assert "authentication failure is unverified" in answer["text"]
+    assert "private arbitrary error" not in answer["text"]
+
+
+async def test_native_access_denial_withdraws_earlier_evidence_even_if_provider_continues(turn):
+    turn.results = [
+        {"tool": "ninebot__get_statistics", "error": False, "result": _partial_statistics()}
+    ]
+    base = SimpleNamespace(
+        async_call=AsyncMock(
+            return_value=SimpleNamespace(data={"error": {"code": "not_authorized"}}, error=True)
+        )
+    )
+    with (
+        patch.object(ask, "async_require_admin", new=AsyncMock()),
+        pytest.raises(AssistantError, match="not_authorized"),
+    ):
+        await turn.async_call(
+            base,
+            llm.ToolInput(tool_name="ninebot__get_statistics", tool_args={"period": "yesterday"}),
+            SimpleNamespace(context=turn.call.context),
+            bound_vehicle="selected",
+        )
+    response = turn.response()
+    assert response["outcome"] == "denied" and response["results"] == []
+    assert response["answer"]["request_ids"] == []
+    assert "which check failed" in response["answer"]["text"]
+    assert "ride_count" not in response["answer"]["text"]
+
+
+def test_display_is_optional_when_repeating_evidence_would_exceed_budget(turn):
+    receipt = _help_receipt("ready accepted confirmed control_policy")
+    turn.results = [{"tool": "ninebot__search_help", "error": False, "result": receipt}]
+    full = turn.response()
+    del full["answer"]
+    with patch.object(
+        ask, "MAX_RESPONSE_BYTES", len(json.dumps(full, ensure_ascii=False).encode())
+    ):
+        assert turn.response() == full
+
+
+def test_sign_in_502_help_displays_reviewed_guidance_and_canonical_citation(turn):
+    receipt = _help_receipt("login 502")
+    help_data = search_help("login 502", "en", "2.1.27", include_procedures=True)
+    receipt["data"] = help_data
+    assert help_data["procedures"][0]["id"] == "SK07"
+    match = help_data["matches"][0]
+    assert match["source_id"] == "authentication_support"
+    turn.results = [{"tool": "ninebot__search_help", "error": False, "result": receipt}]
+    answer = turn.response()["answer"]["text"]
+    assert match["citation"] in answer
+    assert "native integration DEBUG logging" in answer and "omit credentials" in answer
+    assert "does not establish a cloud region or internal authentication cause" in answer

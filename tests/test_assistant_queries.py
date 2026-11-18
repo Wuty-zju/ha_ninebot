@@ -603,7 +603,11 @@ async def test_help_reads_only_bundled_sources_and_never_calls_actions(hass, ass
     assert result["data"]["matches"][0]["source_id"] == "sync_budget"
     assert result["evidence"]["source_kind"] == "bundled_public_help"
     assert result["data"]["matches"][0]["procedure_id"] == "SK06"
-    assert "citation" in result["data"]["matches"][0]
+    for match in result["data"]["matches"]:
+        assert list(match)[:4] == ["source_id", "title", "citation", "text"]
+        assert match["citation"] == (
+            f"[Source]({match['source']['url']}) (KB {result['data']['corpus_version']})"
+        )
     if option.get("include_procedures", False):
         assert result["data"]["procedures"][0]["id"] == "SK06"
         assert set(result["data"]["procedures"][0]["allowed_tools"]) <= {

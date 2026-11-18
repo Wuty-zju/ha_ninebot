@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.1.28
+
+- Keep a ride’s best saved track accessible when verified lists report the same ride in adjacent months. Archive reads, recovery and account transfers check each source against its recorded ride membership.
+- Put the complete troubleshooting citation ahead of each help excerpt. Ninebot Assistant now guides compatible conversation hosts to answer from the returned evidence. The `ninebot.ask` action can return display-ready help and statistics directly from its verified tool results.
+
 ## 2.1.27
 
 - Add versioned English and Chinese Assistant help for command errors, confirmation deadlines, backend codes and observed control routes.

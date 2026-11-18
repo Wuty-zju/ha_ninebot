@@ -1,0 +1,269 @@
+"""Render bounded Ninebot answers from host-recorded native tool results."""
+
+import json
+import math
+import re
+from datetime import date, datetime
+from html import escape
+from typing import Any
+
+CONTRACT = "ninebot-evidence-answer-v1"
+MAX_ANSWER_BYTES = 16 * 1024
+MAX_RECEIPTS = 4
+DENIED_TEXT = (
+    "Access was denied. Check the selected vehicle reference and Home Assistant permissions. "
+    "The result does not identify which check failed or establish what data exists."
+)
+ERROR_TEXT = {
+    "auth_required": (
+        "The local read reports that the account needs reauthentication in Home Assistant. "
+        "The reason for the authentication failure is unverified."
+    ),
+    "local_data_missing": (
+        "The requested data is unavailable or unverified locally. The result remains unknown."
+    ),
+    "retry_later": "The local read could not finish. Use any retry delay supplied in the result.",
+    "timeout": "The local read timed out. The result remains unknown.",
+    "invalid_arguments": "The supplied arguments do not match this tool's input.",
+    "unsupported_capability": "The local operation or returned result shape is unsupported.",
+    "response_too_large": "The result exceeded the response limit. Narrow the local query range.",
+}
+METRIC_LABELS = {
+    "distance_km": ("Distance", "km"),
+    "ride_count": ("Ride count", None),
+    "duration_s": ("Duration", "s"),
+    "energy_wh": ("Energy", "Wh"),
+    "energy_intensity_wh_per_km": ("Energy intensity", "Wh/km"),
+}
+STATUS = frozenset(("available", "missing", "partial", "stale"))
+PINNED_GUIDE = re.compile(
+    r"https://github\.com/Wuty-zju/ha_ninebot/blob/[a-f0-9]{40}/docs/[a-z_]+\.md#[a-z0-9-]+"
+)
+VERSION = re.compile(r"[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}")
+CODE = re.compile(r"[a-z][a-z0-9_]{0,47}")
+REQUEST_ID = re.compile(r"[0-9a-f]{32}")
+
+
+def _object(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _matches(pattern: re.Pattern[str], value: Any) -> bool:
+    return isinstance(value, str) and pattern.fullmatch(value) is not None
+
+
+def _prose(value: str) -> str:
+    return re.sub(r"([\\`*_\[\]])", r"\\\1", escape(value, quote=False))
+
+
+def _help(payload: dict[str, Any]) -> str:
+    data = _object(payload.get("data"))
+    corpus, installed = data.get("corpus_version"), data.get("installed_version")
+    matches = data.get("matches")
+    if (
+        _object(payload.get("evidence")).get("source_kind") != "bundled_public_help"
+        or not _matches(VERSION, corpus)
+        or not _matches(VERSION, installed)
+        or data.get("language") not in ("en", "zh-Hans")
+        or not isinstance(matches, list)
+        or not 1 <= len(matches) <= 3
+        or data.get("match_status") != "matched"
+    ):
+        return ""
+    topics = []
+    for match in matches:
+        match = _object(match)
+        title, text = match.get("title"), match.get("text")
+        url = _object(match.get("source")).get("url")
+        citation = match.get("citation")
+        if (
+            not isinstance(title, str)
+            or not 1 <= len(title.encode()) <= 160
+            or not isinstance(text, str)
+            or not 1 <= len(text.encode()) <= 1200
+            or not _matches(PINNED_GUIDE, url)
+            or citation != f"[Source]({url}) (KB {corpus})"
+        ):
+            return ""
+        topics.append(f"**{_prose(title)}**\n\n{_prose(text)} {citation}")
+    intro = (
+        f"Ninebot {installed} 公开帮助。车辆状况须结合该车的观测证据。"
+        if data["language"] == "zh-Hans"
+        else f"Public help for Ninebot {installed}. A vehicle diagnosis requires its own evidence."
+    )
+    return "\n\n".join((intro, *topics))
+
+
+def _date(value: Any) -> date | None:
+    if isinstance(value, str) and len(value) == 10:
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError:
+            return None
+        if parsed.isoformat() == value:
+            return parsed
+    return None
+
+
+def _observation(value: Any) -> str:
+    if isinstance(value, str) and len(value) <= 64:
+        try:
+            stamp = datetime.fromisoformat(value)
+        except ValueError:
+            return "unrecorded"
+        if stamp.tzinfo is not None:
+            return stamp.isoformat()
+    return "unrecorded"
+
+
+def _statistics(payload: dict[str, Any], selected_metric: str | None = None) -> str:
+    query = _object(payload.get("query"))
+    data, quality = _object(payload.get("data")), _object(payload.get("quality"))
+    evidence = _object(payload.get("evidence"))
+    start, end = _date(query.get("start_date")), _date(query.get("end_date"))
+    source, coverage = evidence.get("source_kind"), evidence.get("coverage_basis")
+    if (
+        start is None
+        or end is None
+        or start > end
+        or query.get("business_timezone") != "Asia/Shanghai"
+        or (source, coverage)
+        not in (
+            ("account_archive", "business_day_projection"),
+            ("server_month_summary", "server_month_summary"),
+        )
+    ):
+        return ""
+    label = f"{start}" if start == end else f"{start} through {end}"
+    lines = [f"**Local statistics for {label} (Asia/Shanghai)**"]
+    metrics = [selected_metric] if selected_metric is not None else list(METRIC_LABELS)
+    complete_period = quality.get("period_closed") is True and (
+        quality.get("ride_window_complete") is True
+        if source == "account_archive"
+        else quality.get("observed_after_period_end") is True
+    )
+    qualified_metric = False
+    for metric in metrics:
+        name, unit = METRIC_LABELS[metric]
+        measured = _object(_object(quality.get("metrics")).get(metric))
+        value, status, reason = data.get(metric), measured.get("status"), measured.get("reason")
+        if (
+            not isinstance(status, str)
+            or status not in STATUS
+            or not _matches(CODE, reason)
+            or metric not in data
+            or _object(data.get("units")).get(metric, "") != unit
+            or (value is None) != (status == "missing")
+            or (value is not None and type(value) not in (int, float))
+            or (type(value) is float and not math.isfinite(value))
+        ):
+            return ""
+        if value is None:
+            displayed = "unknown"
+        else:
+            displayed = f"{value} {unit}" if unit else str(value)
+        lines.append(f"- {name}: {displayed} ({status}, recorded reason `{reason}`).")
+        qualified_metric |= status != "available"
+    lines.append(f"- Local source `{source}` with coverage basis `{coverage}`.")
+    lines.append(f"- Observation time: {_observation(quality.get('received_at'))}.")
+    if (basis := quality.get("completeness_basis")) in (
+        "upstream_complete",
+        "local_reconciled",
+        "incomplete",
+        "unknown",
+        "server_month_summary",
+    ):
+        lines.append(f"- Reported completeness basis `{basis}`.")
+    if not complete_period:
+        lines.append("- Reported coverage leaves the complete period total unverified.")
+    if not complete_period or qualified_metric:
+        lines.append("- The cause of any data gap remains unverified.")
+    return lines[0] + "\n\n" + "\n".join(lines[1:])
+
+
+def _error(row: dict[str, Any]) -> Any:
+    return (
+        _object(_object(row.get("result")).get("error")).get("code")
+        if row.get("error") is True
+        else None
+    )
+
+
+def _workflow(payload: dict[str, Any]) -> str:
+    data = _object(payload.get("data"))
+    steps, metric = data.get("steps"), data.get("metric")
+    if (
+        _object(payload.get("evidence")).get("source_kind") != "local_statistics_check"
+        or not isinstance(steps, list)
+        or not 1 <= len(steps) <= 3
+        or not isinstance(metric, str)
+        or metric not in METRIC_LABELS
+    ):
+        return ""
+    sections = []
+    for step in steps:
+        step = _object(step)
+        result = _object(step.get("result"))
+        tool = step.get("tool")
+        if isinstance(code := _error(step), str) and code in ERROR_TEXT:
+            sections.append(ERROR_TEXT[code])
+        elif step.get("error") is False and tool == "ninebot__get_statistics":
+            sections.append(_statistics(result, metric))
+        elif step.get("error") is False and tool == "ninebot__search_help":
+            sections.append(_help(result))
+        elif step.get("error") is False and tool == "ninebot__get_sync_health":
+            state = _object(result.get("data")).get("state")
+            if _matches(CODE, state):
+                sections.append(f"Local synchronization reported the state `{state}`.")
+    if _object(payload.get("quality")).get("partial") is True:
+        sections.append("The local statistics check returned incomplete evidence.")
+    if sections:
+        sections.append("These observations leave the underlying cause unverified.")
+    return "\n\n".join(filter(None, sections))
+
+
+def _answer(text: str, request_ids: list[str]) -> dict[str, Any]:
+    return {"contract": CONTRACT, "text": text, "request_ids": request_ids}
+
+
+def render_evidence_answer(
+    results: list[dict[str, Any]], *, denied: bool = False
+) -> dict[str, Any] | None:
+    """Render a host's authorized read receipts. Model-supplied rows cannot establish provenance."""
+    if denied:
+        return _answer(DENIED_TEXT, [])
+    if len(results) > MAX_RECEIPTS:
+        return None
+    sections, request_ids = [], []
+    for row in results:
+        payload = _object(row.get("result"))
+        tool = row.get("tool")
+        code = _error(row)
+        if code == "not_authorized":
+            return _answer(DENIED_TEXT, [])
+        request_id = payload.get("request_id")
+        if type(payload.get("schema_version")) is not int or payload["schema_version"] != 1:
+            continue
+        if not isinstance(request_id, str) or REQUEST_ID.fullmatch(request_id) is None:
+            continue
+        if isinstance(code, str):
+            text = ERROR_TEXT.get(code, "")
+        elif row.get("error") is not False or "error" in payload:
+            continue
+        elif tool == "ninebot__search_help":
+            text = _help(payload)
+        elif tool == "ninebot__get_statistics":
+            text = _statistics(payload)
+        elif tool == "ninebot__explain_statistics":
+            text = _workflow(payload)
+        else:
+            continue
+        if text:
+            sections.append(text)
+            request_ids.append(request_id)
+    if not sections:
+        return None
+    answer = _answer("\n\n".join(sections), request_ids)
+    return (
+        answer if len(json.dumps(answer, ensure_ascii=False).encode()) <= MAX_ANSWER_BYTES else None
+    )
