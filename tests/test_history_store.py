@@ -1111,7 +1111,7 @@ async def test_empty_enumerated_month_has_explicit_zero_count(store):
     assert evidence and evidence.pages == 1 and evidence.rides == 0
 
 
-@pytest.mark.parametrize("reported", ["202609", "not-a-month"])
+@pytest.mark.parametrize("reported", ["202609", "not-a-month", 202609])
 async def test_contradictory_body_month_is_retained_as_gap_without_indexing(store, reported):
     payload = {"month": reported, "times": 1, "list": [{"travel_id": "wrong-month-ride"}]}
     raw = build_record(
@@ -1137,6 +1137,7 @@ async def test_contradictory_body_month_is_retained_as_gap_without_indexing(stor
     assert not checks.captured_links_verified
     with closing(sqlite3.connect(store.path)) as db:
         assert db.execute("SELECT count(*) FROM rides").fetchone()[0] == 0
+        assert db.execute("SELECT count(*) FROM membership").fetchone()[0] == 0
         assert db.execute("SELECT count(*) FROM history_ids").fetchone()[0] == 0
     path = store.path
     await store.async_close()
@@ -1162,10 +1163,11 @@ async def test_contradictory_body_month_is_retained_as_gap_without_indexing(stor
         await reopened.async_close()
 
 
-async def test_matching_reported_body_month_keeps_normal_history_projection(store):
+@pytest.mark.parametrize("reported", ["202610", 202610])
+async def test_matching_reported_body_month_keeps_normal_history_projection(store, reported):
     raw = build_record(
         Endpoint.TRAVEL,
-        {"month": "202610", "times": 1, "list": [{"travel_id": "matching-month-ride"}]},
+        {"month": reported, "times": 1, "list": [{"travel_id": "matching-month-ride"}]},
         NOW,
         "202610",
         backend_version="0.1.7",
