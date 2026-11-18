@@ -60,6 +60,39 @@ async def test_later_scope_await_cannot_release_a_revoked_earlier_vehicle(hass, 
     last.async_validate.assert_awaited_once_with(hass)
 
 
+@pytest.mark.skipif(
+    not all(hasattr(llm, name) for name in ("ToolAnnotations", "ToolResult")),
+    reason="Native tool API is unavailable",
+)
+async def test_native_action_tools_are_bound_to_the_request_and_selected_vehicle(hass, turn):
+    api = ask.turn_api(turn)
+    with pytest.raises(AssistantError, match="^not_authorized$"):
+        await api.async_get_api_instance(SimpleNamespace(context=Context(user_id="other")))
+    context = llm.LLMContext(
+        platform="ai_task",
+        context=turn.call.context,
+        language="en",
+        assistant="conversation",
+        device_id=None,
+    )
+    with patch.object(ask, "async_require_admin", new=AsyncMock()):
+        instance = await api.async_get_api_instance(context)
+        status = next(tool for tool in instance.tools if tool.name == "ninebot__get_vehicle_status")
+        assert "vehicle_ref" not in {key.schema for key in status.parameters.schema}
+        with patch(
+            "custom_components.ninebot.assistant_api.async_query",
+            new=AsyncMock(return_value=({"data": {"vehicle_locked": False}}, False)),
+        ) as read:
+            result = await status.async_call(
+                hass, llm.ToolInput(tool_name=status.name, tool_args={}), instance.llm_context
+            )
+        assert not result.error and result.data["data"]["vehicle_locked"] is False
+        read.assert_awaited_once_with(
+            hass, "get_vehicle_status", {"vehicle_ref": "selected"}, turn.call.context
+        )
+        assert turn.results[0]["arguments"] == {"vehicle_ref": "selected"}
+
+
 @pytest.mark.parametrize("value", ["", "\t", "x" * 1001, 7, "bad\x00value"])
 def test_question_is_bounded(value):
     with pytest.raises(ask.vol.Invalid):
@@ -455,6 +488,109 @@ def test_statistics_display_keeps_zero_distinct_from_unknown_and_cause_unverifie
     assert "`account_archive` with coverage basis `business_day_projection`" in answer
     assert "complete period total unverified" in answer
     assert "cause of any data gap remains unverified" in answer
+
+
+def test_month_display_uses_the_closed_summary_and_its_own_observation_time(turn):
+    now = datetime(2026, 11, 14, tzinfo=UTC)
+    view = statistics_view(
+        {
+            "period_closed": True,
+            "observed_after_period_end": True,
+            "received_at": now.isoformat(),
+            "distance_km": 20,
+            "ride_count": 2,
+            "duration_s": 3600,
+            "energy_wh": 600,
+            "energy_intensity_wh_per_km": 30,
+        },
+        daily=False,
+        now=now,
+    )
+    receipt = {
+        **_partial_statistics(),
+        "data": view.data,
+        "quality": view.quality,
+        "evidence": view.evidence,
+        "query": {
+            "start_date": "2026-10-01",
+            "end_date": "2026-10-31",
+            "business_timezone": "Asia/Shanghai",
+        },
+    }
+    turn.results = [{"tool": "ninebot__get_statistics", "error": False, "result": receipt}]
+    text = turn.response()["answer"]["text"]
+    assert "2026-10-01 through 2026-10-31" in text and "Ride count: 2" in text
+    assert "`server_month_summary`" in text and now.isoformat() in text
+    assert "complete period total unverified" not in text and "data gap" not in text
+
+    for missing_observation in (None, "unknown", "2026-11-14T00:00:00"):
+        receipt["quality"]["received_at"] = missing_observation
+        text = turn.response()["answer"]["text"]
+        assert "Observation time: unrecorded." in text and "Ride count: 2" in text
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"schema_version": True},
+        {"request_id": "not-a-receipt"},
+        {
+            "query": {
+                "business_timezone": "Asia/Shanghai",
+                "start_date": "2026-02-30",
+                "end_date": "2026-03-01",
+            }
+        },
+        {"quality": {"metrics": {"distance_km": {"status": "missing", "reason": "not_reported"}}}},
+        {"evidence": {"source_kind": "unknown", "coverage_basis": "unverified"}},
+        {"error": {"code": "timeout"}},
+    ],
+)
+def test_malformed_statistic_does_not_displace_an_independent_help_receipt(turn, change):
+    help_receipt = _help_receipt("login 502")
+    malformed = {**_partial_statistics(), **change}
+    turn.results = [
+        {"tool": "ninebot__get_statistics", "error": False, "result": malformed},
+        {"tool": "ninebot__search_help", "error": False, "result": help_receipt},
+    ]
+    answer = turn.response()["answer"]
+    assert answer["request_ids"] == [help_receipt["request_id"]]
+    assert help_receipt["data"]["matches"][0]["citation"] in answer["text"]
+    assert "Local statistics" not in answer["text"]
+
+
+def test_partial_workflow_reports_timed_out_step_and_omits_invalid_sync_state(turn):
+    turn.results = [
+        {
+            "tool": "ninebot__explain_statistics",
+            "error": False,
+            "result": {
+                "schema_version": 1,
+                "request_id": "c" * 32,
+                "data": {
+                    "metric": "ride_count",
+                    "steps": [
+                        {
+                            "tool": "ninebot__get_statistics",
+                            "error": True,
+                            "result": {"error": {"code": "timeout"}},
+                        },
+                        {
+                            "tool": "ninebot__get_sync_health",
+                            "error": False,
+                            "result": {"data": {"state": "private raw state"}},
+                        },
+                    ],
+                },
+                "quality": {"partial": True},
+                "evidence": {"source_kind": "local_statistics_check"},
+            },
+        }
+    ]
+    answer = turn.response()["answer"]
+    assert answer["request_ids"] == ["c" * 32]
+    assert "timed out" in answer["text"] and "incomplete evidence" in answer["text"]
+    assert "private raw state" not in answer["text"] and "Ride count:" not in answer["text"]
 
 
 def test_statistics_workflow_uses_selected_metric_and_preserves_help_citation(turn):

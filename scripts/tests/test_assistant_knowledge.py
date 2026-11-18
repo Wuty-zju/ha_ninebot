@@ -584,6 +584,22 @@ class KnowledgeTests(unittest.TestCase):
             with self.subTest(schema=schema), self.assertRaises(k.KnowledgeUnavailable):
                 k.validate_catalog(catalog)
 
+    def test_help_update_rejects_broken_release_and_procedure_references(self):
+        source = k.load_catalog()
+        for field, change in (
+            ("applicable_versions", {"min_inclusive": "2.1.0"}),
+            ("applicable_versions", {"min_inclusive": "2.2.0", "max_exclusive": "2.1.0"}),
+            ("procedure_id", "nonexistent"),
+            ("supersedes", [source["entries"][0]["id"]]),
+        ):
+            with self.subTest(field=field, change=change):
+                catalog = copy.deepcopy(source)
+                entry = catalog["entries"][0]
+                entry[field] = change
+                entry["content_sha256"] = k.content_hash(entry)
+                with self.assertRaisesRegex(k.KnowledgeUnavailable, "^invalid_knowledge_catalog$"):
+                    k.validate_catalog(catalog)
+
     def test_multilingual_output_is_bounded_and_ties_are_stable(self):
         query = "统计未知 额度 同步 轨迹 权限 日期 速度 state energy archive debug"
         first = k.search_help(query, "zh-Hans", "2.1.1")
