@@ -688,6 +688,45 @@ async def reusable_month(archive, *, month="202608", partial=False, source_befor
     return baseline, run
 
 
+@pytest.mark.parametrize("wait", [False, True], ids=["query-lease", "retry-delay"])
+async def test_resumed_discovery_reuses_local_month_only_when_due(tmp_path, wait):
+    archive = RideArchive(tmp_path / "resume.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await reusable_month(archive)
+        since = NOW + timedelta(seconds=10)
+        claim = await archive.async_claim_history_page(SN, since, 1, guard=lambda: True)
+        assert claim is not None
+        if wait:
+            await archive.async_wait_history_page(
+                claim, since, "connection", 120, guard=lambda: True
+            )
+        deadline = since + timedelta(seconds=120)
+        before = await archive.async_history_plan(SN)
+
+        def spent():
+            return (
+                archive._db()
+                .execute("SELECT value FROM meta WHERE key='preservation_budget'")
+                .fetchone()
+            )
+
+        prior_spend = await archive._run(spent)
+        assert prior_spend is not None
+        assert not await archive.async_reuse_history_month(
+            SN, deadline - timedelta(microseconds=1), guard=lambda: True
+        )
+        assert await archive.async_history_plan(SN) == before
+        assert await archive.async_reuse_history_month(SN, deadline, guard=lambda: True)
+        after = await archive.async_history_plan(SN)
+        assert after.verified_months == 1 and after.revision == before.revision + 1
+        assert after.next_month == "202607" and after.retry_at is None
+        assert await archive._run(spent) == prior_spend
+        assert await archive.async_claim_history_page(SN, deadline, 1, guard=lambda: True) is None
+    finally:
+        await archive.async_close()
+
+
 @pytest.mark.parametrize("cancel", [False, True], ids=["normal", "cancel-after-write"])
 async def test_verified_month_reuse_preserves_original_receipts_ids_budget_and_restart(
     tmp_path, monkeypatch, cancel
@@ -789,6 +828,7 @@ async def test_reused_month_geometry_survives_later_evidence_in_another_indexed_
     from custom_components.ninebot.travel import merge_detail, parse_ride
 
     path = tmp_path / "reused-track.sqlite3"
+    earlier = tmp_path / "before-second-month.sqlite3"
     exported = path.with_name(f"{path.stem}.recovery-{'1' * 32}.sqlite3")
     archive = RideArchive(path, OWNER)
     identity = "reused-1"
@@ -813,6 +853,7 @@ async def test_reused_month_geometry_survives_later_evidence_in_another_indexed_
         await archive.async_open()
         baseline, _ = await reusable_month(archive)
         await save_track(archive, "202608", 5, high, simplified=False)
+        await archive.async_export_archive(earlier)
         before = await archive.async_private_detail(SN, identity)
         assert await archive.async_reuse_history_month(
             SN, NOW + timedelta(seconds=10), guard=lambda: True
@@ -885,6 +926,7 @@ async def test_reused_month_geometry_survives_later_evidence_in_another_indexed_
         await reopened.async_close()
 
     restored = RideArchive(tmp_path / "restored.sqlite3", OWNER)
+    overlapping = RideArchive(earlier, OWNER)
     foreign = RideArchive(tmp_path / "foreign.sqlite3", "f" * 64)
     try:
         await restored.async_open()
@@ -895,6 +937,21 @@ async def test_reused_month_geometry_survives_later_evidence_in_another_indexed_
             and imported.geometry_hash == before.geometry_hash
         )
         assert imported.geometry.query_month == "202608" and imported.ride.distance_m == 14000
+        await restored.async_merge_archive(earlier)
+        retained = await restored.async_private_detail(SN, identity)
+        assert (
+            retained.latest_hash == mixed.latest_hash
+            and retained.geometry_hash == before.geometry_hash
+        )
+        assert retained.ride.query_month == "202607" and retained.ride.distance_m == 14000
+        await overlapping.async_open()
+        assert await overlapping.async_merge_archive(exported) == {"rides": 0, "details": 0}
+        joined = await overlapping.async_private_detail(SN, identity)
+        assert (
+            joined.latest_hash == mixed.latest_hash and joined.geometry_hash == before.geometry_hash
+        )
+        assert joined.ride.query_month == "202607" and joined.ride.distance_m == 14000
+        assert await overlapping.async_merge_archive(exported) == {"rides": 0, "details": 0}
         await foreign.async_open()
         with pytest.raises(ArchiveError) as rejected:
             await foreign.async_merge_archive(exported)
@@ -902,7 +959,31 @@ async def test_reused_month_geometry_survives_later_evidence_in_another_indexed_
         assert await foreign.async_private_detail(SN, identity) is None
     finally:
         await restored.async_close()
+        await overlapping.async_close()
         await foreign.async_close()
+
+
+async def test_import_does_not_join_unrelated_months_on_ride_id_alone(tmp_path):
+    target = RideArchive(tmp_path / "target.sqlite3", OWNER)
+    source = RideArchive(tmp_path / "source.sqlite3", OWNER)
+    try:
+        for archive, month in ((target, "202608"), (source, "202607")):
+            await archive.async_open()
+            plan = HistoryPlan.create("b" * 32, vehicle_key(SN), month, month, NOW.isoformat())
+            await archive.async_set_history_plan(SN, plan, None, guard=lambda: True)
+            await archive.async_accept_history_page(
+                SN, plan, record(("same-id",), 1, month), guard=lambda: True
+            )
+        exported = tmp_path / "independent-month.sqlite3"
+        await source.async_export_archive(exported)
+        with pytest.raises(ArchiveError) as error:
+            await target.async_merge_archive(exported)
+        assert error.value.kind is ArchiveFailure.SCHEMA
+        assert await target.async_month(SN, "202607") is None
+        assert await target.async_month(SN, "202608") is not None
+    finally:
+        await target.async_close()
+        await source.async_close()
 
 
 @pytest.mark.parametrize(

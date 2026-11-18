@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PAIRS = (
     ("README.md", "README_zh.md"),
     ("docs/guide.md", "docs/guide_zh.md"),
+    ("docs/assistant.md", "docs/assistant_zh.md"),
     ("docs/history.md", "docs/history_zh.md"),
     ("docs/migration.md", "docs/migration_zh.md"),
 )

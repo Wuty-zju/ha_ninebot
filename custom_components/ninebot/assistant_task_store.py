@@ -232,7 +232,7 @@ class ApprovalStore:
     async def _read(self) -> dict[str, ApprovalTicket]:
         if self._closed:
             raise TaskStoreUnavailable("Task store is closed")
-        self._assert_policy()
+        self.assert_policy_current()
         try:
             data = await self.hass.async_add_executor_job(
                 partial(read_envelope, Path(self._store.path), self.key)
@@ -263,7 +263,7 @@ class ApprovalStore:
                 for key, row in records.items()
             ):
                 raise TaskStoreUnavailable("Task account binding mismatch")
-            self._assert_policy()
+            self.assert_policy_current()
             self._cache = dict(records)
             return records
         except (OSError, UnicodeError) as err:
@@ -272,7 +272,7 @@ class ApprovalStore:
     async def _commit(self, records: dict[str, ApprovalTicket]) -> None:
         if self._closed:
             raise AssistantError("not_authorized")
-        self._assert_policy()
+        self.assert_policy_current()
         data = {
             "policy_epoch": self.policy_epoch,
             "tickets": {key: ticket_data(row) for key, row in records.items()},
@@ -301,7 +301,7 @@ class ApprovalStore:
 
     def _notice_current(self) -> bool:
         try:
-            self._assert_policy()
+            self.assert_policy_current()
         except AssistantError:
             return False
         entry = self.hass.config_entries.async_get_entry(self.entry_id)
@@ -333,7 +333,7 @@ class ApprovalStore:
             _LOGGER.debug("Ninebot task notice could not be shown")
 
     async def _scope(self, plan: DetailPlan, context: Context | None) -> AssistantScope:
-        self._assert_policy()
+        self.assert_policy_current()
         scope = await async_plan_scope(self.hass, plan, context)
         if (
             self._closed
@@ -416,7 +416,7 @@ class ApprovalStore:
     def is_current(self, expected: ApprovalTicket) -> bool:
         """Synchronous commit guard after a validated read; not a substitute for live auth."""
         try:
-            self._assert_policy()
+            self.assert_policy_current()
         except AssistantError:
             return False
         return not self._closed and self._cache.get(expected.task_id) == expected
@@ -590,11 +590,12 @@ class ApprovalStore:
             return updated
 
     def _current(self, scope: AssistantScope) -> bool:
-        self._assert_policy()
+        self.assert_policy_current()
         scope.assert_task_current(self.hass)
         return not self._closed
 
-    def _assert_policy(self) -> None:
+    def assert_policy_current(self) -> None:
+        """Require the same live grant that owns these task records."""
         entry = self.hass.config_entries.async_get_entry(self.entry_id)
         if (
             not valid_policy_epoch(self.policy_epoch)

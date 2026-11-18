@@ -3343,14 +3343,7 @@ class RideArchive:
                 current = (
                     resolve(db, vehicle, plan_id) if plan_id is not None else root(db, vehicle)
                 )
-                if (
-                    current is None
-                    or current.next_month is None
-                    or current.state
-                    not in {HistoryState.DISCOVER, HistoryState.QUERYING, HistoryState.WAITING}
-                    or current.retry_at is not None
-                    and stamp(current.retry_at) > now
-                ):
+                if current is None or not current.page_due(now):
                     return None
                 if not self._reserve_background(db, vehicle, now.timestamp(), budget, "month"):
                     return None

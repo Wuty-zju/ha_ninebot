@@ -269,23 +269,28 @@ def _merge_rows(actor: "RideArchive", incoming: sqlite3.Connection, selected: se
                 (row[1], row[2], row[0]),
             )
     for row in incoming.execute("SELECT * FROM rides"):
-        if row[0] in selected:
-            old = actor._ride(row[0], row[1])
-            candidate = restored_ride(decoded(row[2]))
-            if old and (
-                (
-                    old[0].detail_id is not None
-                    and candidate.detail_id is not None
-                    and old[0].detail_id != candidate.detail_id
-                )
-                or old[0].query_month != candidate.query_month
-            ):
+        vehicle, ride_id = row[:2]
+        if vehicle not in selected:
+            continue
+        old = actor._ride(vehicle, ride_id)
+        candidate = restored_ride(decoded(row[2]))
+        if old:
+            prior, observed = old[:2]
+            if prior.detail_id and candidate.detail_id and prior.detail_id != candidate.detail_id:
                 raise ValueError("Conflicting ride identity")
-            if old and old[1] >= row[3]:
-                candidate = merged_ride(candidate, old[0])
-                actor._upsert_ride(row[0], candidate, old[1], ordered=True)
-            else:
-                actor._upsert_ride(row[0], candidate, row[3])
+            if prior.query_month != candidate.query_month and not any(
+                connection.execute(
+                    "SELECT count(*) FROM membership WHERE vehicle=? AND ride=? AND month IN (?,?)",
+                    (vehicle, ride_id, prior.query_month, candidate.query_month),
+                ).fetchone()[0]
+                == 2
+                for connection in (db, incoming)
+            ):
+                raise ValueError("No shared membership evidence for the two ride months")
+            if observed >= row[3]:
+                actor._upsert_ride(vehicle, merged_ride(candidate, prior), observed, ordered=True)
+                continue
+        actor._upsert_ride(vehicle, candidate, row[3])
     for row in incoming.execute("SELECT * FROM months"):
         if row[0] not in selected:
             continue

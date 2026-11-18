@@ -61,6 +61,7 @@ def assert_task_owner(hass: HomeAssistant, scope: AssistantScope, store: Approva
     scope.assert_task_current(hass)
     if scope.runtime.assistant_tasks is not store or store.closed:
         raise AssistantError("not_authorized")
+    store.assert_policy_current()
 
 
 async def async_request_details(

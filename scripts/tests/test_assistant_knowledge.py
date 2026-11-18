@@ -69,7 +69,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
         self.assertEqual(len(catalog["entries"]), 19)
-        self.assertEqual(catalog["corpus_version"], "1.2.9")
+        self.assertEqual(catalog["corpus_version"], "1.2.10")
         self.assertEqual(catalog["source_version"], "2.1.26")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
@@ -78,6 +78,15 @@ class KnowledgeTests(unittest.TestCase):
             self.assertEqual(set(entry["translations"]), {"en", "zh-Hans"})
             self.assertEqual(k.content_hash(entry), entry["content_sha256"])
             self.assertIn(entry["source"]["commit"], entry["source"]["url"])
+
+    def test_shipped_version_finds_reviewed_help_and_its_checklist(self):
+        manifest = k.CATALOG.parents[1] / "manifest.json"
+        version = json.loads(manifest.read_bytes())["version"]
+        for language, query in (("en", "waiting for request budget"), ("zh-Hans", "等待请求额度")):
+            with self.subTest(language=language, version=version):
+                result = k.search_help(query, language, version, include_procedures=True)
+                self.assertEqual(result["matches"][0]["source_id"], "sync_budget")
+                self.assertIn("SK06", {step["id"] for step in result["procedures"]})
 
     def test_support_topics_retrieve_natural_questions_in_both_languages(self):
         cases = (
@@ -124,7 +133,7 @@ class KnowledgeTests(unittest.TestCase):
         for entry in entries:
             self.assertEqual(
                 entry["applicable_versions"],
-                {"min_inclusive": "2.1.24", "max_exclusive": "2.2.0"},
+                {"min_inclusive": "2.1.24", "max_exclusive": "2.3.0"},
             )
             self.assertEqual(
                 entry["source"],
@@ -141,9 +150,9 @@ class KnowledgeTests(unittest.TestCase):
                 result = k.search_help(query, language, "2.1.24")
                 match = next(row for row in result["matches"] if row["source_id"] == entry["id"])
                 self.assertEqual(
-                    match["citation"], f"[Source]({entry['source']['url']}) (KB 1.2.9)"
+                    match["citation"], f"[Source]({entry['source']['url']}) (KB 1.2.10)"
                 )
-                for version in ("2.1.0", "2.1.22", "2.1.23", "2.2.0"):
+                for version in ("2.1.0", "2.1.22", "2.1.23", "2.3.0"):
                     old = k.search_help(query, language, version, include_procedures=True)
                     self.assertFalse(identifiers & {row["source_id"] for row in old["matches"]})
 
@@ -203,7 +212,7 @@ class KnowledgeTests(unittest.TestCase):
             match = result["matches"][0]
             self.assertEqual(
                 match["applicable_versions"],
-                {"min_inclusive": "2.1.26", "max_exclusive": "2.2.0"},
+                {"min_inclusive": "2.1.26", "max_exclusive": "2.3.0"},
             )
             self.assertEqual(
                 match["source"],
@@ -214,8 +223,8 @@ class KnowledgeTests(unittest.TestCase):
                     "url": url,
                 },
             )
-            self.assertEqual(match["citation"], f"[Source]({url}) (KB 1.2.9)")
-            for version in ("2.1.25", "2.2.0"):
+            self.assertEqual(match["citation"], f"[Source]({url}) (KB 1.2.10)")
+            for version in ("2.1.25", "2.3.0"):
                 with self.subTest(version=version, language=language):
                     self.assertEqual(
                         k.search_help("control_routing", language, version)["matches"], []
@@ -330,7 +339,7 @@ class KnowledgeTests(unittest.TestCase):
                     self.assertTrue(match["source"]["url"].endswith("#check-mcp-api-selection"))
                     self.assertLessEqual(len(json.dumps(result, ensure_ascii=False).encode()), 4096)
 
-        for version in ("2.0.0", "2.1.0", "2.1.21", "2.2.0"):
+        for version in ("2.0.0", "2.1.0", "2.1.21", "2.3.0"):
             with self.subTest(version=version):
                 result = k.search_help("all_llm_apis", "en", version)
                 self.assertEqual(result["matches"], [])
@@ -359,7 +368,7 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_unrelated_query_and_unsupported_version_do_not_guess(self):
         self.assertEqual(k.search_help("zzzz_unrelated", "en", "2.1.1")["matches"], [])
-        for version in ("2.0.0", "2.2.0", "3.0.0"):
+        for version in ("2.0.0", "2.3.0", "3.0.0"):
             self.assertEqual(k.search_help("unknown", "en", version)["matches"], [])
         with self.assertRaises(k.KnowledgeUnavailable):
             k.search_help("unknown", "en", "not-a-version")
@@ -457,7 +466,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_both_modes_bound_deduplicate_and_respect_versions(self):
         for enabled in (False, True):
             for language in ("en", "zh-Hans"):
-                for version in ("2.1.1", "2.1.2", "2.2.0"):
+                for version in ("2.1.1", "2.1.2", "2.2.0", "2.3.0"):
                     with self.subTest(enabled=enabled, language=language, version=version):
                         result = k.search_help(
                             "waiting budget sync gaps details",
@@ -471,11 +480,11 @@ class KnowledgeTests(unittest.TestCase):
                         )
                         ids = [row["id"] for row in result["procedures"]]
                         self.assertEqual(len(ids), len(set(ids)))
-                        if not enabled or version == "2.2.0":
+                        if not enabled or version == "2.3.0":
                             self.assertEqual(ids, [])
-                        if version == "2.2.0":
+                        if version == "2.3.0":
                             self.assertEqual(result["matches"], [])
-                        if enabled and version != "2.2.0":
+                        if enabled and version != "2.3.0":
                             self.assertEqual(ids.count("SK06"), 1)
                         if version == "2.1.1":
                             self.assertFalse(set(ids) & {"SK09", "SK10"})

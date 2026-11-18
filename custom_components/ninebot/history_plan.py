@@ -6,6 +6,7 @@ No credentials, precise locations or upstream payloads belong in root metadata.
 
 import re
 from dataclasses import asdict, dataclass, replace
+from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
@@ -88,6 +89,14 @@ class HistoryPlan:
     def create(cls, plan_id: str, vehicle: str, start: str, end: str, now: str) -> "HistoryPlan":
         plan = cls(plan_id, vehicle, start, end, now, now, now, next_month=end)
         return restored(asdict(plan))
+
+    def page_due(self, now: datetime) -> bool:
+        """Local reuse and a network claim respect the same lease and retry deadline."""
+        return (
+            self.next_month is not None
+            and self.state in {HistoryState.DISCOVER, HistoryState.QUERYING, HistoryState.WAITING}
+            and (self.retry_at is None or stamp(self.retry_at) <= now)
+        )
 
     def page_committed(self, now: str, *, finished: bool, verified: bool) -> "HistoryPlan":
         """Called only in the transaction that persists the accepted page evidence."""
