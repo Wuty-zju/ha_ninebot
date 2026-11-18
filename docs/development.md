@@ -219,42 +219,35 @@ The sixteen architecture SVGs (four diagrams × two languages × two themes) are
 
 ## HACS readiness and branding
 
-The repository distributes one integration under `custom_components/ninebot`, with runtime assets inside that directory. `manifest.json` supplies integration metadata; `hacs.json` selects the packaged ZIP and declared minimum HA. Installation currently uses **HACS Custom repository**.
+The root `hacs.json` describes one integration, `custom_components/ninebot`. The manifest declares domain `ninebot` and the vehicles category. Every packaged release places the contents of that integration directory at the root of `ninebot.zip`. User settings and archives live outside the integration directory, so replacing installed files preserves them. Keep the exact `ninebot.zip` filename and attach it before `SHA256SUMS`. [Integration packaging](https://contributors.home-assistant.io/marketplace/guides/integrations/) · [Releases and updates](https://contributors.home-assistant.io/marketplace/guides/releases/)
 
-Before applying for default inclusion, review the [HACS integration requirements](https://www.hacs.xyz/docs/publish/integration/) and [submission process](https://www.hacs.xyz/docs/publish/include/), then check:
+The brand set in `custom_components/ninebot/brand/` contains:
 
-- Final released manifest, package layout, public guides and issue tracker.
-- Successful HACS and Hassfest validation on the release candidate.
-- MIT license, [NOTICE](../NOTICE), runtime attribution and artwork permission.
-- Brand variants and readability on light/dark backgrounds.
+| Shape | Light theme | Dark theme | Sizes |
+|---|---|---|---|
+| Square | `icon.png`, `icon@2x.png` | `dark_icon.png`, `dark_icon@2x.png` | 256 × 256, 512 × 512 |
+| Horizontal | `logo.png`, `logo@2x.png` | `dark_logo.png`, `dark_logo@2x.png` | 904 × 192, 1808 × 384 |
 
-The bundled `brand/icon.png` is a 256×256 transparent PNG. Its source/rights and a dark variant remain maintainer follow-ups. HA supports local custom-integration branding from 2026.3; older supported HA may use an upstream image or placeholder. HACS download/icon presentation also depends on the installed HACS version.
+The assets use the `ic-nine-logo` vector from the [mainland China support site](https://support.ninebot.com/cn-zh/). The [source sprite](https://support.ninebot.com/_nuxt/icons.HSXRRtD1.svg) has SHA-256 `753ca87c06ad80d5461419b14eb06d40a4ba043fce90c31045acb5a1b8afd581`. Render the full 113 × 24 view box for the horizontal logo and its first 24 × 24 units for the circular mark. Preserve transparency and use black for light surfaces and white for dark surfaces. The artwork identifies the supported brand. Ownership and license treatment are in [NOTICE](../NOTICE).
 
-简体中文：RC／正式发版须提供完整Checks运行ID，发布器核对仓库、工作流、两HA和Node步骤及输入摘要；主线提升只复用相同输入的成功结果，轻量同SHA门禁照常。按任务定位源码与测试，普通改动做相关检查，RC 在固定候选上完成一次最低／当前 HA 综合验证。英文与中文同步维护默认值、单位和迁移说明。短分支回 dev，验收后正常合 main 并回灌；预发布保留对应标志。历史库与身份迁移按专门指南操作，图表、资源和运行文件各有明确目录。
-
+Home Assistant 2026.3+ looks in the installed integration for brand images. Marketplace can show an icon for an uninstalled integration once the catalog has the project and its brand service has scanned the latest release tag. Earlier HA and the retired HACS client can fall back to older brand assets or a placeholder. Use `python scripts/docs_preview.py` and open `/branding` to review both themes locally. [Brand files and fallbacks](https://contributors.home-assistant.io/core/integrations/brands/) · [Marketplace brand sync](https://github.com/home-assistant/brands#marketplace-icons)
 
 ## Marketplace catalog preparation
 
-Ninebot is currently installed as a custom repository. Before submitting it to the shared [Marketplace/HACS catalog](https://contributors.home-assistant.io/marketplace/guides/catalog/), record the reviewed release and successful HACS/Hassfest runs, confirm repository description/topics and issue handling, and verify these items:
+Marketplace and HACS use the same [default integration catalog](https://github.com/hacs/default/blob/master/integration). Until its entry is included, users install Ninebot through the repository link. The core domain `ninebot` and the published package are the same for both store paths. The `CN` metadata describes the verified service region and is used by the old HACS country filter. Marketplace currently ignores that field, so keep the mainland China service note visible in both READMEs. [Catalog requirements](https://contributors.home-assistant.io/marketplace/guides/catalog/) · [Repository metadata](https://contributors.home-assistant.io/marketplace/reference/hacs-json/)
 
-- One integration at `custom_components/ninebot`, with all runtime resources in that directory.
-- A matching manifest/tag/release, `ninebot.zip` and `SHA256SUMS`; a clean install from the selected package.
-- Local `brand` assets, suitable in light and dark themes, and the `vehicles_transport.bikes_scooters` category.
-- Accurate authentication, platform and verified service-region information in the guide; no inferred global server support.
-- Existing naming, unique IDs and Recorder history preserved. Custom views use HA's display-name helper where available.
+1. Verify the public repository's description, topics, enabled issues, license and manifest. Run HACS validation with every check enabled, and run Hassfest on the candidate.
+2. Verify the package from a full GitHub release. The tagged tree contains `hacs.json`, the matching integration manifest and all brand files. Check the ZIP contents, uploaded asset digest and restart behavior. The README's `ha-marketplace:exclude` markers hide GitHub install directions while leaving service requirements visible.
+3. Continue [the existing catalog request](https://github.com/hacs/default/pull/6217) once its release and CI links are ready. The single changed file is `integration`, with one repository entry in case-insensitive alphabetical order. Use the official checklist, permit maintainer edits on the personal fork, and let the upstream checks run.
+4. After review and merge, verify the next catalog refresh finds `Wuty-zju/ha_ninebot`. Test Marketplace search with an account that has never added the repository from a link. Check the catalog icon, the version offered, and its package count.
 
-The catalog is maintained in `hacs/default`. Prepare a sorted integration-list change and the current submission checklist; inclusion is complete only after upstream review/merge and catalog processing. Catalog inclusion and Core inclusion are separate processes.
-
-The generated HA test plugin currently pins an older Core release. `.github/ci.json` therefore separates its compatible full/scoped test boundaries from the exact published Core used by `scripts/check_ha_api.py`. The latter checks installed native API contracts without the plugin or network requests; it does not replace the runtime regression suites. Update the paired runtime boundary when a matching plugin is available. Do not bypass dependency constraints to claim a new-version pass.
-
-简体中文：默认目录申请需附真实发布与官方校验记录，核对包、品牌、分类、区域说明和用户文档；审核合入后才可声明默认可搜。最新 Core 的独立 API 检查与配套测试插件的运行回归分开记录，保留最低版本兼容和实体身份。
-
+简体中文：同一份目录控制 Marketplace 和旧 HACS 的默认搜索。申请时核对正式版标签与品牌图片、完整安装包、仓库公开信息、HACS 全量校验和 Hassfest。按审核员要求在 #6217 继续复审，合入及目录同步后再验证无自定义仓库的首次安装。
 
 ## Package download audit
 
 Run **Actions → Package download audit → Run workflow** on the maintained branch. The read-only workflow paginates the full release catalog (100 per page), excludes drafts and checksums, deduplicates asset IDs and counts only uploaded `ninebot.zip` assets. It includes previews, updates and repeat downloads. Its job summary and `package-download-counts` JSON artifact provide totals, per-release counts, asset IDs and the capture interval. Failed reads fail the job and do not publish a zero count.
 
-The integration sends no installation telemetry. Marketplace/HACS may show its selected release's count, while the README badge is supplied by Shields and its cache. GitHub source archives, clones, mirrors and offline copies cannot be reconstructed as a single installation total. Keep published release assets fixed; the audit does not rewrite README or create a metadata branch.
+The README package badge sums the named ZIP assets across published releases and may lag the audit because of caching. Home Assistant Marketplace selects the version's package by filename and can use the shared catalog's cached count. HACS 2.0.5 reads the first asset of the selected release, so the publisher attaches `ninebot.zip` first. Counts include downloads by testers, updates and repeat downloads. GitHub source archives, clones, cached mirror requests and local copies fall outside these counts. The integration sends no installation telemetry. [Marketplace asset selection](https://github.com/home-assistant/core/blob/2026.11.2/homeassistant/components/marketplace/repositories/base.py) · [HACS 2.0.5 implementation](https://github.com/hacs/integration/blob/2.0.5/custom_components/hacs/repositories/base.py)
 
 The counter is a standard-library maintenance tool: `python -m scripts.download_counts --repository OWNER/REPOSITORY --output downloads.json`, using `GH_TOKEN` with read access. Keep the output outside the runtime directory. Unit checks use synthetic metadata and no network.
 

@@ -29,27 +29,25 @@ Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject 
 
 ## Install through Marketplace — HA 2026.11+
 
-Open **Settings → Marketplace → Custom repositories**, connect GitHub when prompted, and add `https://github.com/Wuty-zju/ha_ninebot` as an **Integration**. Install your chosen release and add a Ninebot account. First installs can open setup directly; updates to loaded integrations require the prompted restart.
+1. As an administrator, open **Settings → Marketplace** and accept the Marketplace warning.
+2. Install from **⋮ → Add from link** today. Connect GitHub when prompted, enter `Wuty-zju/ha_ninebot`, and choose **Integration**.
+3. Open **Ninebot** and install the stable release. A first install can open account setup immediately. If HA already loaded Ninebot, follow the restart reminder in Repairs.
 
-A custom repository is currently required. Default-catalog inclusion has a separate review; Marketplace and older HACS use the same catalog and release packages. Brand images are bundled with the integration.
+Once included in the default catalog, **Ninebot** can be installed directly from Marketplace search. The GitHub connection is part of adding a custom repository from a link. [Marketplace instructions](https://www.home-assistant.io/integrations/marketplace/) · [Default catalog](https://github.com/hacs/default/blob/master/integration)
 
 ## Install with HACS
 
-1. In HACS, open the three-dot menu and choose **Custom repositories**.
-2. Add `https://github.com/Wuty-zju/ha_ninebot` with type **Integration**.
-3. Open **Ninebot**, choose **v2.2.0**, and download it.
-4. Restart Home Assistant when prompted. A downloaded file version alone does not mean the running integration has loaded it.
-5. Go to **Settings → Devices & services → Add integration → Ninebot**.
+On supported Home Assistant versions earlier than 2026.11, open **HACS → ⋮ → Custom repositories**. Add `https://github.com/Wuty-zju/ha_ninebot` as an **Integration**, open **Ninebot** and download the stable release. Restart when prompted, then choose **Settings → Devices & services → Add integration → Ninebot**. After listing, search in HACS. If you use its country filter, select China or **All**.
 
-[Open the HACS repository](https://my.home-assistant.io/redirect/hacs_repository/?owner=Wuty-zju&repository=ha_ninebot&category=integration) · [Add Ninebot](https://my.home-assistant.io/redirect/config_flow_start/?domain=ninebot)
-
-These links open your configured Home Assistant instance. Install HACS first, then add this **custom repository**.
+Home Assistant 2026.11 migrates installed HACS projects, custom repositories and update entities into Marketplace at startup. [HACS migration](https://www.home-assistant.io/integrations/marketplace/#coming-from-hacs)
 
 ## Install manually
 
-Download `ninebot.zip` from the selected [packaged release](https://github.com/Wuty-zju/ha_ninebot/releases). Its root contains the integration files: extract them into `<config>/custom_components/ninebot`, then restart Home Assistant and add the integration. For older versions or automatic GitHub source archives, copy the contained `custom_components/ninebot` directory instead. Do not copy the entire development repository or overlay files from different releases.
+Download the stable `ninebot.zip` from [Releases](https://github.com/Wuty-zju/ha_ninebot/releases/latest). Extract it into `<config>/custom_components/ninebot/` with `manifest.json` at that folder's root. Restart and add Ninebot. For a manual update, back up the configuration, replace that integration folder with the new files and restart. The package contains all runtime code, translations, brand images and dashboard assets.
 
-All runtime Python, translations, branding and dashboard assets are inside that integration directory. No separate service, external dashboard package or repository-root script needs to be installed manually.
+## Update an installed integration
+
+Marketplace updates appear in **Settings → Updates**. Install the selected release and follow the restart reminder in **Repairs**. Your existing Ninebot account entries and local trip archives carry over. Marketplace normally checks its catalog every six hours. Repositories added from a link read their version from GitHub. Pre-releases require opt-in, and older supported HA versions can choose an earlier compatible release. [Upgrade and rollback](migration.md) · [Marketplace updates](https://www.home-assistant.io/integrations/marketplace/#keeping-installations-up-to-date)
 
 ## Add accounts and vehicles
 
