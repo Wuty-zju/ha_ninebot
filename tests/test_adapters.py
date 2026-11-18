@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 import pytest
 
 from custom_components.ninebot import adapters
-from custom_components.ninebot.exceptions import NinebotError
+from custom_components.ninebot.exceptions import ErrorKind, NinebotError
 from custom_components.ninebot.models import Freshness
 
 
@@ -115,6 +115,20 @@ def test_current_month_is_not_fallback_month():
             adapters.previous_month(bad)
     with pytest.raises(ValueError):
         adapters.month_at(datetime(2026, 1, 1))
+
+
+@pytest.mark.parametrize("reported", [202609, 202610.0, True, False, {}, [], "2026-10"])
+def test_travel_rejects_wrong_or_invalid_reported_month(reported):
+    with pytest.raises(NinebotError) as error:
+        adapters.travel({"month": reported, "list": []}, "202610")
+    assert error.value.kind is ErrorKind.PROTOCOL
+
+
+@pytest.mark.parametrize("reported", [202610, " 202610 ", " ", None])
+def test_travel_accepts_matching_or_blank_reported_month(reported):
+    month = adapters.travel({"month": reported, "list": [], "times": 0}, "202610")
+    assert month.month == "202610"
+    assert month.summary.list_complete
 
 
 def test_vehicle_identity_does_not_follow_nickname():

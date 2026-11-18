@@ -18,6 +18,34 @@ from .archive_timeline import (
 from .archive_versions import catalog_version
 from .month_enumeration import RecordedEnumeration, recorded_enumeration
 
+# The stored request month must still be an active or retained partial membership.
+# Fixed SQL only; the caller supplies vehicle and bounded archive identities.
+CURRENT_DETAIL_MAPPING = (
+    "EXISTS (SELECT 1 FROM membership dm JOIN months mo "
+    "ON mo.vehicle=dm.vehicle AND mo.month=dm.month "
+    "WHERE dm.vehicle=r.vehicle AND dm.ride=r.id "
+    "AND dm.month=json_extract(r.data,'$.query_month') "
+    "AND (dm.latest=1 OR json_extract(mo.data,'$.summary.list_complete') IS NOT 1))"
+)
+
+
+def current_detail_mappings(
+    db: sqlite3.Connection, vehicle: str, identities: tuple[str, ...]
+) -> frozenset[str]:
+    """One bounded index read, without loading detail payloads or guessing a month."""
+    if not identities:
+        return frozenset()
+    if len(identities) > MAX_TIMELINE_RIDES:
+        raise TimelineLimitError
+    return frozenset(
+        row[0]
+        for row in db.execute(
+            "SELECT r.id FROM rides r WHERE r.vehicle=? AND r.id IN "
+            f"({','.join('?' for _ in identities)}) AND {CURRENT_DETAIL_MAPPING}",
+            (vehicle, *identities),
+        )
+    )
+
 
 class RecordedCursorMismatch(Exception):
     """A read continuation no longer describes this database/scope revision."""

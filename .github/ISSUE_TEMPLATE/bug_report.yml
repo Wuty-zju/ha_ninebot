@@ -17,6 +17,7 @@ body:
     attributes:
       label: Installation / 安装方式
       options:
+        - Home Assistant Marketplace
         - HACS custom repository
         - Manual
     validations:
@@ -25,14 +26,14 @@ body:
     id: behavior
     attributes:
       label: Expected and actual behavior / 预期与实际
-      description: Include minimal steps, model family and platform/architecture; omit serials and identity.
+      description: Include minimal steps, model family, platform/architecture and whether the account owns or shares the vehicle. For missing data, name the field and period; for failed actions, include the action, time and full message. Omit serials and identity.
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
       label: Reviewed logs or diagnostics / 已检查的日志或诊断
-      description: Optional small relevant excerpt. Remove credentials, identities, addresses and coordinates; never attach the raw archive.
+      description: Enable native integration debug logging, reproduce once, then disable/download the log and download Diagnostics promptly. Show diagnostic entities is a separate option. For sign-in failures include support ID, form error, known App region and input type without the actual account. For empty history include counts/range rather than only a percentage. Do not operate the vehicle merely to collect data. Remove credentials, identities, addresses and coordinates; never attach raw responses or the archive.
       render: text
   - type: checkboxes
     id: privacy

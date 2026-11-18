@@ -50,7 +50,7 @@
           "enable_estimation": "Настроить номинальные параметры",
           "enable_coordinates": "Показывать положение транспорта",
           "enable_calendar": "Поездки (Beta)",
-          "debug_mode": "Режим отладки"
+          "debug_mode": "Показывать диагностические сущности"
         },
         "data_description": {
           "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
@@ -107,10 +107,12 @@
           "history_storage_mib": "Лимит хранилища истории (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "debug_mode": "Режим отладки"
+          "enable_assistant": "Включить Ninebot Assistant (бета)",
+          "assistant_vehicles": "Транспорт, доступный Assistant",
+          "enable_assistant_tasks": "Разрешить задачи истории поездок с подтверждением (бета)",
+          "debug_mode": "Показывать диагностические сущности"
         },
         "data_description": {
-          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
@@ -122,7 +124,11 @@
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
-          "polling_profile": "Интервалы состояния/батареи/поездок: {polling_setting}. Учитываются зарядка и активность."
+          "polling_profile": "Интервалы состояния/батареи/поездок: {polling_setting}. Учитываются зарядка и активность.",
+          "enable_assistant": "Разрешить выбранной системе ИИ читать названия выбранных транспортных средств, локальные значения, время и качество данных. Учётные записи, данные входа, точные координаты и исходные ответы исключены. Без обновления из облака и управления транспортом.",
+          "assistant_vehicles": "Выберите транспорт отдельно от дистанционного управления. Отключение Assistant сохраняет выбор.",
+          "enable_assistant_tasks": "После сохранения проверьте охват и подтвердите предложения синхронизации деталей поездок в [Ninebot Assistant](/ninebot-assistant) до начала запросов к облаку. По умолчанию отключено.",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
       "model_vehicle": {
@@ -187,7 +193,8 @@
       "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
       "control_vehicles_required": "Выберите хотя бы один автомобиль для дистанционного управления.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
-      "archive_busy": "A backup is in progress. Try again later."
+      "archive_busy": "A backup is in progress. Try again later.",
+      "assistant_vehicles_required": "Выберите хотя бы одно транспортное средство этой учётной записи для Assistant."
     }
   },
   "entity": {
@@ -1167,7 +1174,7 @@
     },
     "sync_history": {
       "name": "Синхронизировать архив поездок",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct запускает локальное восстановление с приватной точкой восстановления; reconstruct_continue/status/pause/cancel продолжает, проверяет, приостанавливает или отменяет его. Без облачных запросов и команд автомобилю.",
+      "description": "synchronize queues incremental history work and may query the cloud. Selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Range and repair operations remain supported. No operation sends vehicle commands.\n\nЛокальное восстановление: reconstruct запускает локальное восстановление с приватной точкой восстановления; reconstruct_continue/status/pause/cancel продолжает, проверяет, приостанавливает или отменяет его. Без облачных запросов и команд автомобилю.",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -1186,7 +1193,7 @@
         },
         "months": {
           "name": "Repair months (YYYYMM list)",
-          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+          "description": "For synchronize, sparse repair or cancellation; at most 12 distinct months. Active scans coalesce."
         },
         "force": {
           "name": "Повторно проверить месячные списки"
@@ -1218,6 +1225,24 @@
         "sort": {
           "name": "Sort order",
           "description": "asc: oldest first; desc: newest first. Keep the same order when continuing."
+        }
+      }
+    },
+    "ask": {
+      "name": "Ask Ninebot Assistant",
+      "description": "Ask a local-data question using an existing AI task entity. Returns authorized tool results with their sources and quality.",
+      "fields": {
+        "question": {
+          "name": "Question",
+          "description": "Ask about local vehicle data or integration help."
+        },
+        "ai_task_entity_id": {
+          "name": "AI task",
+          "description": "An existing model provider with native tool calling."
+        },
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select a vehicle when more than one is allowed for Assistant."
         }
       }
     }

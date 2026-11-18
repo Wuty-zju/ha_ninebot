@@ -7,18 +7,35 @@ import os
 import re
 import subprocess
 import sys
-from importlib.metadata import version
+from importlib.metadata import distribution, version
 from pathlib import Path
 from urllib.error import URLError
+from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 CONFIG = ROOT / ".github/ci.json"
+MIN_COVERAGE = 91
+KNOWLEDGE_TESTS = "scripts/tests/test_assistant_knowledge.py"
 
 
 def matches(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+
+
+def native_requirements(components: Path, domains: list[str]) -> list[str]:
+    """Use the pinned installed Core's manifests, including declared dependencies."""
+    pending, seen, requirements = list(domains), set(), set()
+    while pending:
+        domain = pending.pop()
+        if domain in seen:
+            continue
+        seen.add(domain)
+        manifest = json.loads((components / domain / "manifest.json").read_text())
+        requirements.update(manifest.get("requirements", []))
+        pending.extend(manifest.get("dependencies", []))
+    return sorted(requirements)
 
 
 def select(paths: list[str], config: dict, available: set[str]) -> dict:
@@ -27,13 +44,40 @@ def select(paths: list[str], config: dict, available: set[str]) -> dict:
     reasons: set[str] = set()
     boundaries = ["minimum"]
     frontend = False
+    native_api = False
     for path in paths:
+        if path in {
+            "custom_components/ninebot/compat.py",
+            "custom_components/ninebot/entity.py",
+            "custom_components/ninebot/config_flow.py",
+            "scripts/check_ha_api.py",
+            ".github/ci.json",
+        }:
+            native_api = True
+        if matches(
+            path, ["custom_components/ninebot/assistant*.py", "scripts/check_assistant*.py"]
+        ):
+            native_api = True
         if matches(path, config["critical_paths"]):
             boundaries = ["minimum", "current"]
         if matches(
             path, ["custom_components/ninebot/frontend/**", "tests/frontend/**", "tests/browser/**"]
         ):
             frontend = True
+            continue
+        if path == "tests/fixtures/field_inventory/current-field-usage.json":
+            # Curated descriptions are consumed only by the inventory contract tests.
+            selected.add("tests/test_field_inventory.py")
+            reasons.add("field-disposition")
+            continue
+        if path in {
+            "tests/fixtures/assistant/evaluation-tasks.json",
+            "tests/fixtures/assistant/evaluation-fixtures.json",
+        }:
+            # These inputs belong to the protocol tests and native API canary,
+            # not to the HA runtime fixtures. Unknown fixture paths stay broad.
+            native_api = True
+            reasons.add("assistant-evaluation-input")
             continue
         if matches(path, config["shared_paths"]):
             selected.update(available)
@@ -58,6 +102,8 @@ def select(paths: list[str], config: dict, available: set[str]) -> dict:
     tests = sorted(selected & available)
     return {
         "tests": tests,
+        "native_api": native_api,
+        "native_boundary": config["native_boundary"],
         "reasons": sorted(reasons),
         "frontend": frontend,
         "matrix": {
@@ -107,11 +153,12 @@ def pytest_command(tests: list[str], available: set[str]) -> list[str]:
         raise ValueError("The CI plan must name existing offline test files")
     coverage = (
         [
-            "--cov=custom_components.ninebot",
+            "--cov",
             "--cov-branch",
-            "--cov-fail-under=91",
+            f"--cov-fail-under={MIN_COVERAGE}",
             "--cov-report=term-missing",
             "--cov-report=xml",
+            KNOWLEDGE_TESTS,
         ]
         if set(tests) == available
         else []
@@ -130,13 +177,27 @@ def pytest_command(tests: list[str], available: set[str]) -> list[str]:
     ]
 
 
+def check_coverage(path: Path) -> None:
+    """A rounded display must never promote a run whose exact counts are below the gate."""
+    report = ElementTree.parse(path).getroot()
+    covered = int(report.attrib["lines-covered"]) + int(report.attrib["branches-covered"])
+    total = int(report.attrib["lines-valid"]) + int(report.attrib["branches-valid"])
+    if total <= 0 or not 0 <= covered <= total or 100 * covered < MIN_COVERAGE * total:
+        raise ValueError(
+            f"Coverage gate requires {MIN_COVERAGE}% of statements and branches, "
+            f"observed {covered}/{total}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--plan", action="store_true")
     action.add_argument("--matrix", action="store_true")
     action.add_argument("--install", choices=("minimum", "current"))
+    action.add_argument("--install-native", action="store_true")
     action.add_argument("--run-tests", type=Path)
+    action.add_argument("--run-full", action="store_true")
     parser.add_argument("--profile", action="store_true")
     parser.add_argument("--base")
     parser.add_argument("--head")
@@ -144,12 +205,29 @@ def main() -> None:
     args = parser.parse_args()
     config = json.loads(CONFIG.read_text())
     available = {str(path.relative_to(ROOT)) for path in (ROOT / "tests").rglob("test_*.py")}
+    if args.install_native:
+        native = config["native_boundary"]
+        expected = f"homeassistant=={native['ha']}"
+        subprocess.run([sys.executable, "-m", "pip", "install", expected], check=True)
+        if version("homeassistant") != native["ha"]:
+            raise ValueError("Installed native API boundary differs from the configured version")
+        components = Path(
+            str(distribution("homeassistant").locate_file("homeassistant/components"))
+        )
+        requirements = native_requirements(components, native["integrations"])
+        subprocess.run([sys.executable, "-m", "pip", "install", *requirements], check=True)
+        subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
+        return
     if args.install:
         install(config, args.install, args.profile)
         return
-    if args.run_tests:
-        tests = json.loads(args.run_tests.read_text())["tests"]
+    if args.run_full or args.run_tests:
+        tests = (
+            sorted(available) if args.run_full else json.loads(args.run_tests.read_text())["tests"]
+        )
         subprocess.run(pytest_command(tests, available), cwd=ROOT, check=True)
+        if set(tests) == available:
+            check_coverage(ROOT / "coverage.xml")
         return
     if args.matrix:
         result = {

@@ -1,14 +1,17 @@
 """Bounded command observations, separate from permission and physical effects."""
 
+import logging
+import secrets
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
 from .capabilities import CONTROL_ACTIONS
-from .exceptions import ErrorKind
+from .exceptions import ErrorKind, FailureContext
 
 MAX_CONTROL_RESULTS = 64
+LOGGER = logging.getLogger(__name__)
 
 
 class CommandOutcome(StrEnum):
@@ -55,10 +58,15 @@ class ControlResult:
     target_locked: bool | None = None
     observed_locked: bool | None = None
     confirmation: Confirmation = Confirmation.NOT_REQUESTED
+    confirmation_deadline_reached: bool = False
     read_attempts: int = 0
+    support_id: str = field(default_factory=lambda: secrets.token_hex(4))
+    blocked_reason: str | None = None
+    failure_context: FailureContext = field(default_factory=FailureContext)
 
     def diagnostics(self) -> dict[str, str | bool | int | None]:
         return {
+            "support_id": self.support_id,
             "attempted_at": self.attempted_at.isoformat(),
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "outcome": self.outcome.value,
@@ -69,8 +77,46 @@ class ControlResult:
             "target_locked": self.target_locked,
             "observed_locked": self.observed_locked,
             "confirmation": self.confirmation.value,
+            "confirmation_deadline_reached": self.confirmation_deadline_reached,
             "read_attempts": self.read_attempts,
+            "blocked_reason": self.blocked_reason,
+            **self.failure_context.diagnostics(),
         }
+
+    def log(self, action: str) -> None:
+        """One result line per user invocation; never log vehicle or error text."""
+        if action not in CONTROL_ACTIONS:
+            return
+        elapsed = (
+            max(0, int((self.finished_at - self.attempted_at).total_seconds() * 1000))
+            if self.finished_at
+            else None
+        )
+        LOGGER.debug(
+            "Control result (support=%s, action=%s, outcome=%s, blocked_reason=%s, "
+            "error=%s, readback=%s, confirmation=%s, deadline_reached=%s, reads=%s, elapsed_ms=%s, "
+            "endpoint=%s, proxy_http_status=%s, envelope_code=%s, upstream_code=%s, "
+            "backend_error=%s)",
+            self.support_id,
+            action,
+            self.outcome.value,
+            self.blocked_reason,
+            self.error.value if self.error else None,
+            self.readback.value,
+            self.confirmation.value,
+            self.confirmation_deadline_reached,
+            self.read_attempts,
+            elapsed,
+            self.failure_context.endpoint.value,
+            self.failure_context.proxy_http_status,
+            self.failure_context.envelope_code.value
+            if self.failure_context.envelope_code
+            else None,
+            self.failure_context.upstream_code,
+            self.failure_context.backend_error.value
+            if self.failure_context.backend_error
+            else None,
+        )
 
 
 class ControlResults:

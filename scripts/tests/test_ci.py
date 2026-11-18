@@ -2,12 +2,41 @@
 
 import json
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from scripts.ci import CONFIG, ROOT, changed_paths, install, pytest_command, select
+from scripts.ci import (
+    CONFIG,
+    KNOWLEDGE_TESTS,
+    ROOT,
+    changed_paths,
+    check_coverage,
+    install,
+    native_requirements,
+    pytest_command,
+    select,
+)
 
 
 class ScopeTests(unittest.TestCase):
+    def test_native_manifest_dependencies_are_deduplicated_and_cycles_terminate(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for domain, manifest in {
+                "mcp_server": {"dependencies": ["conversation"], "requirements": ["mcp==2.3.0"]},
+                "conversation": {
+                    "dependencies": ["mcp_server"],
+                    "requirements": ["hassil==3.12.1"],
+                },
+            }.items():
+                (root / domain).mkdir()
+                (root / domain / "manifest.json").write_text(json.dumps(manifest))
+            self.assertEqual(
+                native_requirements(root, ["mcp_server", "conversation"]),
+                ["hassil==3.12.1", "mcp==2.3.0"],
+            )
+
     def setUp(self):
         self.config = json.loads(CONFIG.read_text())
         self.available = {
@@ -45,6 +74,50 @@ class ScopeTests(unittest.TestCase):
             with self.subTest(path=path.name):
                 self.assertTrue(self.plan(str(path.relative_to(ROOT)))["tests"])
 
+    def test_native_api_only_for_relevant_contract_changes(self):
+        self.assertFalse(self.plan("docs/guide.md")["native_api"])
+        self.assertFalse(self.plan("custom_components/ninebot/adapters.py")["native_api"])
+        self.assertTrue(self.plan("custom_components/ninebot/compat.py")["native_api"])
+        self.assertTrue(self.plan("custom_components/ninebot/config_flow.py")["native_api"])
+        self.assertEqual(
+            self.plan("scripts/check_ha_api.py")["native_boundary"], self.config["native_boundary"]
+        )
+
+    def test_assistant_scope_includes_native_boundary_and_related_lifecycle(self):
+        plan = self.plan("custom_components/ninebot/assistant_api.py")
+        self.assertTrue(plan["native_api"])
+        self.assertIn("tests/test_assistant_lifecycle.py", plan["tests"])
+        self.assertNotIn("unmapped-runtime", plan["reasons"])
+        self.assertEqual(len(plan["matrix"]["include"]), 2)
+        canary = self.plan("scripts/check_assistant_mcp.py")
+        self.assertTrue(canary["native_api"])
+        self.assertIn("tests/test_assistant_limits.py", canary["tests"])
+        corpus = self.plan("custom_components/ninebot/assistant_knowledge/catalog.json")
+        self.assertIn("assistant", corpus["reasons"])
+        self.assertNotIn("unmapped-runtime", corpus["reasons"])
+
+    def test_vehicle_cache_keeps_related_native_and_client_checks_without_full_fallback(self):
+        for path in (
+            "custom_components/ninebot/vehicle_cache.py",
+            "custom_components/ninebot/native_control.py",
+            "tests/test_native_control.py",
+            "tests/test_vehicle_cache.py",
+            "tests/test_native_cache_routing.py",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(path)
+                self.assertNotIn("unmapped-runtime", plan["reasons"])
+                self.assertIn("history", plan["reasons"])
+                self.assertLess(len(plan["tests"]), len(self.available))
+                for test in (
+                    "tests/test_vehicle_cache.py",
+                    "tests/test_native_cache_routing.py",
+                    "tests/test_client.py",
+                    "tests/test_coordinator.py",
+                    "tests/test_query_broker.py",
+                ):
+                    self.assertIn(test, plan["tests"])
+
     def test_new_unmapped_runtime_is_conservative(self):
         plan = self.plan("custom_components/ninebot/future_protocol.py")
         self.assertEqual(set(plan["tests"]), self.available)
@@ -76,6 +149,34 @@ class ScopeTests(unittest.TestCase):
         for path in ("tests/conftest.py", "tests/fixtures/example.json", "pyproject.toml"):
             self.assertEqual(set(self.plan(path)["tests"]), self.available)
 
+    def test_descriptive_inventory_is_checked_without_broadening_recorded_fixture_scope(self):
+        inventory = "tests/fixtures/field_inventory/current-field-usage.json"
+        self.assertEqual(self.plan(inventory)["tests"], ["tests/test_field_inventory.py"])
+        self.assertIn("field-disposition", self.plan(inventory)["reasons"])
+        for path in (
+            "tests/fixtures/ninecli/0.1.7/status-01.json",
+            "tests/fixtures/field_inventory/source-map.json",
+            "tests/fixtures/field_inventory/future.json",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(inventory, path)
+                self.assertEqual(set(plan["tests"]), self.available)
+                self.assertIn("shared-test-input", plan["reasons"])
+
+    def test_assistant_evaluation_inputs_keep_native_checks_and_unknown_fixtures_broad(self):
+        for path in (
+            "tests/fixtures/assistant/evaluation-tasks.json",
+            "tests/fixtures/assistant/evaluation-fixtures.json",
+        ):
+            with self.subTest(path=path):
+                plan = self.plan(path)
+                self.assertTrue(plan["native_api"])
+                self.assertEqual(plan["tests"], [])
+                self.assertIn("assistant-evaluation-input", plan["reasons"])
+                mixed = self.plan(path, "tests/fixtures/assistant/future.json")
+                self.assertEqual(set(mixed["tests"]), self.available)
+                self.assertTrue(mixed["native_api"])
+
     def test_changed_test_and_ci_self_changes(self):
         plan = select(
             ["tests/test_future.py"], self.config, self.available | {"tests/test_future.py"}
@@ -97,9 +198,26 @@ class ScopeTests(unittest.TestCase):
         command = pytest_command(sorted(self.available), self.available)
         self.assertIn("--cov-fail-under=91", command)
         self.assertIn("--cov-report=xml", command)
+        self.assertEqual(command.count(KNOWLEDGE_TESTS), 1)
         self.assertEqual(command.count("-m"), 1)
         partial = pytest_command(["tests/test_coordinator.py"], self.available)
         self.assertFalse(any(arg.startswith("--cov") for arg in partial))
+        self.assertNotIn(KNOWLEDGE_TESTS, partial)
+
+    def test_coverage_uses_exact_statement_and_branch_counts(self):
+        with TemporaryDirectory() as directory:
+            report = Path(directory) / "coverage.xml"
+            for branches, passes in ((6399, False), (6400, True), (6401, True)):
+                with self.subTest(branches=branches):
+                    report.write_text(
+                        '<coverage lines-covered="30000" lines-valid="32000" '
+                        f'branches-covered="{branches}" branches-valid="8000"/>'
+                    )
+                    if passes:
+                        check_coverage(report)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "36399/40000"):
+                            check_coverage(report)
 
     def test_test_runner_rejects_empty_or_unavailable_inputs(self):
         for tests in ([], ["tests/not-present.py"]):

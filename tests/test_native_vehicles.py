@@ -3,6 +3,7 @@
 import asyncio
 import json
 import sys
+import threading
 import traceback
 from unittest.mock import AsyncMock
 
@@ -11,7 +12,7 @@ import pytest
 
 from custom_components.ninebot.client import NinecliClient
 from custom_components.ninebot.const import MAX_RESPONSE_BYTES
-from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
+from custom_components.ninebot.exceptions import Endpoint, ErrorKind, NinebotAuthError, NinebotError
 
 
 @pytest.fixture
@@ -33,6 +34,49 @@ def native(monkeypatch):
         monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
 
     return install, children, calls, started
+
+
+async def test_close_waits_for_cache_reconciliation_and_rollback(tmp_path, native, monkeypatch):
+    from custom_components.ninebot import client as client_module
+
+    install, _, _, _ = native
+    install(
+        "from pathlib import Path; import json; "
+        f"Path({str(tmp_path / 'vehicles.json')!r}).write_text("
+        "json.dumps({'vehicles':[{'wnumber':'synthetic','business_line':'ebike'}]})); "
+        "print(json.dumps([{'wnumber':'synthetic'}]))"
+    )
+    entered, stopping = asyncio.Event(), asyncio.Event()
+    release, loop = threading.Event(), asyncio.get_running_loop()
+    reconcile = client_module.reconcile_cache
+
+    def paused_reconcile(*args):
+        loop.call_soon_threadsafe(entered.set)
+        assert release.wait(5)
+        return reconcile(*args)
+
+    monkeypatch.setattr(client_module, "reconcile_cache", paused_reconcile)
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        stop = client._stop
+
+        async def observed_stop():
+            stopping.set()
+            await stop()
+
+        request = asyncio.create_task(client.async_list_vehicles())
+        await asyncio.wait_for(entered.wait(), 5)
+        client._stop = observed_stop
+        closing = asyncio.create_task(client.async_close())
+        await asyncio.wait_for(stopping.wait(), 5)
+        assert not closing.done()
+        release.set()
+        with pytest.raises(NinebotError) as error:
+            await asyncio.wait_for(request, 5)
+        assert error.value.kind is ErrorKind.CLOSED
+        await asyncio.wait_for(closing, 5)
+    assert not (tmp_path / "vehicles.json").exists()
+    assert client._pending == 0 and not client._lock.locked()
 
 
 async def test_native_discovery_returns_raw_and_discards_old_serve(tmp_path, native, monkeypatch):
@@ -135,13 +179,20 @@ async def test_cli_failure_uses_explicit_rest_auth_evidence(tmp_path, native, au
     install("import sys;sys.stderr.write('synthetic-private-secret');sys.exit(1)")
     async with aiohttp.ClientSession() as session:
         client = NinecliClient(tmp_path, session)
+        auth_error = NinebotAuthError()
+        auth_error.at_endpoint(Endpoint.ACCOUNT)
+        auth_error.observe_response(401)
         client._request_locked = AsyncMock(
-            side_effect=NinebotAuthError() if auth_failure else None,
+            side_effect=auth_error if auth_failure else None,
             return_value={"synthetic": True},
         )
         with pytest.raises(NinebotError) as error:
             await client.async_list_vehicles()
         assert error.value.kind is (ErrorKind.AUTH if auth_failure else ErrorKind.SERVICE)
+        assert error.value.context.endpoint is (
+            Endpoint.ACCOUNT if auth_failure else Endpoint.VEHICLES
+        )
+        assert error.value.context.proxy_http_status == (401 if auth_failure else None)
         client._request_locked.assert_awaited_once_with("GET", "/whoami")
         assert "synthetic-private-secret" not in "".join(traceback.format_exception(error.value))
         assert children[0].returncode == 1 and client._process is None
@@ -258,6 +309,7 @@ async def test_failed_discovery_restores_cache_not_tokens(tmp_path, native, mode
                 ErrorKind.SERVICE if mode == "empty_warning" else ErrorKind.PROTOCOL
             )
             assert "synthetic-private" not in "".join(traceback.format_exception(error.value))
+            assert error.value.context.endpoint is Endpoint.VEHICLES
         assert (tmp_path / "vehicles.json").read_bytes() == old
         assert (tmp_path / "tokens.json").read_text() == "synthetic-refreshed"
         assert client.vehicle_discovery_complete is False

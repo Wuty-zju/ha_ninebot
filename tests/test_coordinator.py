@@ -80,6 +80,50 @@ async def test_one_vehicle_failure_leaves_other_groups_available(coordinator):
     assert result["synthetic-two"].status.locked is False
 
 
+async def test_query_failure_retains_safe_context_until_recovery_without_repeat_logs(
+    coordinator, caplog
+):
+    import logging
+
+    co = coordinator
+    await co._async_update_data()
+    error = NinebotError(ErrorKind.SERVICE, retryable=True)
+    error.observe_response(
+        502, {"error": {"code": "upstream_error", "message": "synthetic-private-token"}}
+    )
+    co.client.async_get_status.side_effect = error
+    with caplog.at_level(logging.DEBUG, logger="custom_components.ninebot.coordinator"):
+        await co._group("synthetic-one", "status", force=True)
+        await co._group("synthetic-one", "status", force=True)
+    row = co.query_failure("synthetic-one", "status")
+    assert row is not None
+    assert row["stage"] == "request" and row["error_kind"] == "service"
+    assert row["proxy_http_status"] == 502 and row["envelope_code"] == "upstream_error"
+    assert row["endpoint"] == "vehicle_status" and row["retryable"] is True
+    assert co.query_failure("synthetic-two", "status") is None
+    assert co.query_failure("synthetic-one", "battery") is None
+    assert caplog.text.count("Query failed (group=status") == 1
+    assert "synthetic-private-token" not in caplog.text
+    assert "synthetic-one" not in caplog.text
+    row["stage"] = "modified-copy"
+    assert co.query_failure("synthetic-one", "status")["stage"] == "request"
+    co.client.async_get_status.side_effect = None
+    await co._group("synthetic-one", "status", force=True)
+    assert co.query_failure("synthetic-one", "status") is None
+
+
+async def test_normalization_failure_is_distinct_from_transport_and_clears_on_close(coordinator):
+    co = coordinator
+    await co._async_update_data()
+    co.client.async_get_status.return_value = []
+    await co._group("synthetic-one", "status", force=True)
+    failure = co.query_failure("synthetic-one", "status")
+    assert failure["stage"] == "normalize" and failure["error_kind"] == "protocol"
+    assert failure["proxy_http_status"] is None and failure["envelope_code"] is None
+    await co.async_close()
+    assert co.query_failure("synthetic-one", "status") is None
+
+
 async def test_history_page_is_brokered_without_replacing_live_month(coordinator):
     from zoneinfo import ZoneInfo
 
@@ -174,6 +218,37 @@ async def test_empty_month_preserved_while_last_ride_falls_back(coordinator, fre
     assert current.mileage == current.energy_raw == 0
     assert current.last_ride.month == "202609"
     assert current.last_ride.mileage == 0.3
+
+
+async def test_poll_preserves_statistics_after_wrong_numeric_month(coordinator, freezer):
+    from custom_components.ninebot.raw import Endpoint
+
+    co = coordinator
+    now = datetime(2026, 10, 3, tzinfo=UTC)
+    freezer.move_to(now)
+    await co._async_update_data()
+    sn, month = "synthetic-one", "202610"
+    before = co.data[sn].travel
+    saved = await co.statistics.archive.async_month(sn, month)
+    assert before is not None and saved is not None
+
+    freezer.tick(timedelta(seconds=1))
+    rejected = {
+        "month": 202609,
+        "times": 1,
+        "total_mileages": "12",
+        "list": [{"travel_id": "wrong-month-ride"}],
+    }
+    co.client.async_get_travel.return_value = rejected
+    await co._group(sn, "travel", force=True, include_last_ride=False)
+
+    failure = co.query_failure(sn, "travel")
+    assert failure is not None
+    assert failure["stage"] == "normalize" and failure["error_kind"] == "protocol"
+    assert co.data[sn].travel is before
+    assert await co.statistics.archive.async_month(sn, month) == saved
+    raw = co.raw.get(Endpoint.TRAVEL, sn, month, now=now + timedelta(seconds=1))
+    assert raw is not None and raw.payload() == rejected
 
 
 async def test_manual_refresh_forces_status_and_coalesces(coordinator):
@@ -1117,11 +1192,18 @@ async def test_control_diagnostics_and_execution_share_all_gates(coordinator):
     with pytest.raises(HomeAssistantError):
         await co.async_control("synthetic-one", "bell")
     co.client.async_control.assert_not_awaited()
+    rejected = co.control_results.diagnostics("synthetic-one")["bell"]
+    assert rejected["outcome"] == "rejected" and rejected["readback"] == "skipped"
+    assert rejected["blocked_reason"] == "transport_unsupported"
+    assert rejected["support_id"]
     assert "vehicle_not_present" in co.control_decision("missing", "bell").blockers
     co._authenticated = False
     assert "authentication_required" in co.control_decision("synthetic-one", "bell").blockers
     await co.async_close()
     assert "runtime_stopped" in co.control_decision("synthetic-one", "bell").blockers
+    with pytest.raises(HomeAssistantError):
+        await co.async_control("synthetic-one", "bell")
+    assert co.control_results.diagnostics("synthetic-one") == {}
 
 
 async def test_contexts_skip_unneeded_groups_and_scope_month_fallback(coordinator, freezer):

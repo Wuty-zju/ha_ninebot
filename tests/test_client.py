@@ -10,7 +10,7 @@ from aiohttp import web
 
 from custom_components.ninebot.client import NinecliClient, response_data, retry_after_seconds
 from custom_components.ninebot.const import MAX_RESPONSE_BYTES
-from custom_components.ninebot.exceptions import ErrorKind, NinebotError
+from custom_components.ninebot.exceptions import Endpoint, ErrorKind, FailurePhase, NinebotError
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
@@ -326,15 +326,15 @@ def test_explicit_auth_or_malformed_error_envelope(raw):
 
 
 @pytest.mark.parametrize(
-    "anonymous,authenticated,exit_code,expected",
+    "anonymous,authenticated,exit_code,expected,endpoint,status",
     [
-        (200, 404, None, ErrorKind.PROTOCOL),
-        (401, 401, None, ErrorKind.PROTOCOL),
-        (401, 404, 7, ErrorKind.PLATFORM),
+        (200, 404, None, ErrorKind.PROTOCOL, Endpoint.VEHICLES, 200),
+        (401, 401, None, ErrorKind.PROTOCOL, Endpoint.AUTH_PROBE, 401),
+        (401, 404, 7, ErrorKind.PLATFORM, Endpoint.UNKNOWN, None),
     ],
 )
 async def test_startup_rejects_unprotected_wrong_or_exited_server(
-    tmp_path, anonymous, authenticated, exit_code, expected
+    tmp_path, anonymous, authenticated, exit_code, expected, endpoint, status
 ):
     from contextlib import asynccontextmanager
     from types import SimpleNamespace
@@ -365,6 +365,12 @@ async def test_startup_rejects_unprotected_wrong_or_exited_server(
         with pytest.raises(NinebotError) as error:
             await client._start()
     assert error.value.kind == expected
+    context = error.value.context
+    assert context.phase is (
+        FailurePhase.BACKEND_START if exit_code is not None else FailurePhase.LOOPBACK_AUTH
+    )
+    assert context.endpoint is endpoint
+    assert context.proxy_http_status == status
     assert client._process is None
     process.wait.assert_awaited()
     assert "NINEBOT_SERVE_TOKEN" in spawn.call_args.kwargs["env"]
@@ -465,6 +471,110 @@ async def test_cancel_close_reaps_child_before_clearing_bearer(tmp_path):
     client._reap.assert_awaited_once()
 
 
+@pytest.mark.parametrize("stage", ["spawn", "probe"])
+@pytest.mark.parametrize("cancel_close", [False, True])
+async def test_close_drains_startup_and_shares_cleanup(tmp_path, stage, cancel_close):
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    entered, release, stopping = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    process = MagicMock(returncode=None)
+    process.wait = AsyncMock(return_value=0)
+    process.terminate.side_effect = lambda: setattr(process, "returncode", -15)
+    session = MagicMock()
+
+    async def spawn(*args, **kwargs):
+        if stage == "spawn":
+            entered.set()
+            await release.wait()
+        return process
+
+    @asynccontextmanager
+    async def get(*args, **kwargs):
+        assert stage == "probe"
+        entered.set()
+        await release.wait()
+        yield SimpleNamespace(status=401, content=SimpleNamespace(read=AsyncMock()))
+
+    session.get.side_effect = get
+    client = NinecliClient(tmp_path, session, timeout=5)
+    stop = client._stop
+
+    async def observed_stop():
+        stopping.set()
+        await stop()
+
+    with patch(
+        "custom_components.ninebot.client.asyncio.create_subprocess_exec", side_effect=spawn
+    ):
+        request = asyncio.create_task(client.async_get_status("synthetic"))
+        await asyncio.wait_for(entered.wait(), 5)
+        client._stop = observed_stop
+        closing = asyncio.create_task(client.async_close())
+        await asyncio.wait_for(stopping.wait(), 5)
+        other_closer = asyncio.create_task(client.async_close())
+        await asyncio.sleep(0)
+        if cancel_close:
+            closing.cancel()
+            await asyncio.sleep(0)
+            closing.cancel()
+            await asyncio.sleep(0)
+        assert not closing.done() and not other_closer.done()
+        release.set()
+        with pytest.raises(NinebotError) as error:
+            await asyncio.wait_for(request, 5)
+        assert error.value.kind is ErrorKind.CLOSED
+        if cancel_close:
+            with pytest.raises(asyncio.CancelledError):
+                await asyncio.wait_for(closing, 5)
+        else:
+            await asyncio.wait_for(closing, 5)
+        await asyncio.wait_for(other_closer, 5)
+    assert client._process is None and process.returncode == -15
+    process.terminate.assert_called_once()
+    process.wait.assert_awaited()
+    session.request.assert_not_called()
+    assert session.get.call_count == (1 if stage == "probe" else 0)
+    assert client._bearer == "" and client._pending == 0 and not client._lock.locked()
+
+
+async def test_close_rejects_a_response_waiting_for_json_decode(tmp_path, proxy):
+    from unittest.mock import patch
+
+    url, _, _, _ = proxy
+    entered, release, stopping = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        client._base = url
+        client._start = AsyncMock()
+
+        async def decode(function, *args):
+            entered.set()
+            await release.wait()
+            return function(*args)
+
+        stop = client._stop
+
+        async def observed_stop():
+            stopping.set()
+            await stop()
+
+        with patch("custom_components.ninebot.client.asyncio.to_thread", side_effect=decode):
+            request = asyncio.create_task(client.async_get_status("synthetic"))
+            await asyncio.wait_for(entered.wait(), 5)
+            client._stop = observed_stop
+            closing = asyncio.create_task(client.async_close())
+            await asyncio.wait_for(stopping.wait(), 5)
+            assert not closing.done()
+            release.set()
+            with pytest.raises(NinebotError) as error:
+                await asyncio.wait_for(request, 5)
+            assert error.value.kind is ErrorKind.CLOSED
+            await asyncio.wait_for(closing, 5)
+    assert client._bearer == "" and client._pending == 0
+
+
 async def test_transport_failure_does_not_leak_request_details_in_traceback(tmp_path):
     import traceback
     from unittest.mock import MagicMock
@@ -513,3 +623,37 @@ async def test_startup_deadline_or_cancellation_reaps_child(tmp_path, cancelled)
     assert client._process is None
     process.wait.assert_awaited()
     assert not client._lock.locked() and client._pending == 0
+
+
+@pytest.mark.parametrize("code", ["PRIVATE-secret", ["PRIVATE-secret"], {"PRIVATE": 1}, 90002])
+def test_failure_context_whitelists_proxy_codes(code):
+    from dataclasses import asdict
+
+    from custom_components.ninebot.exceptions import EnvelopeCode
+
+    with pytest.raises(NinebotError) as caught:
+        response_data(502, {"ok": False, "error": {"code": code, "message": "PRIVATE"}})
+    err = caught.value
+    assert err.kind is ErrorKind.SERVICE
+    assert err.context.proxy_http_status == 502
+    assert err.context.envelope_code is EnvelopeCode.OTHER
+    assert "PRIVATE" not in json.dumps(asdict(err.context))
+
+
+async def test_malformed_response_retains_only_template_and_proxy_status(tmp_path, proxy):
+    from dataclasses import asdict
+
+    from custom_components.ninebot.exceptions import Endpoint
+
+    url, requests, _, _ = proxy
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        client._base = url
+        client._start = AsyncMock()
+        with pytest.raises(NinebotError) as caught:
+            await client.async_get_status("bad")
+        assert caught.value.context.endpoint is Endpoint.STATUS
+        assert caught.value.context.proxy_http_status == 200
+        assert "bad" not in json.dumps(asdict(caught.value.context))
+        assert len(requests) == 1
+        await client.async_close()

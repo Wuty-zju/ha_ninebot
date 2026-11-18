@@ -50,7 +50,7 @@
           "enable_estimation": "设置电池额定参数",
           "enable_coordinates": "显示车辆位置",
           "enable_calendar": "启用行程日历（Beta）",
-          "debug_mode": "调试模式"
+          "debug_mode": "显示诊断实体"
         },
         "data_description": {
           "enable_estimation": "设置电池额定参数，包括电压和容量",
@@ -107,10 +107,12 @@
           "history_storage_mib": "历史存储额度（MiB）（Beta）",
           "retain_history_database": "保留本地历史行程信息数据库（Beta）",
           "manage_archive": "导出或导入历史数据库（Beta）",
-          "debug_mode": "调试模式"
+          "enable_assistant": "启用 Ninebot Assistant（Beta）",
+          "assistant_vehicles": "Assistant 可访问的车辆",
+          "enable_assistant_tasks": "允许审核历史同步任务（Beta）",
+          "debug_mode": "显示诊断实体"
         },
         "data_description": {
-          "debug_mode": "显示有界的当前数据解析视图。可从集成菜单启用调试日志、下载日志和诊断信息。",
           "configure_model": "设置电池额定参数，包括电压和容量",
           "enable_coordinates": "在地图和区域中使用车辆位置。",
           "enable_calendar": "按日期浏览本地历史行程。日历显示“无当前行程”并不代表停用；关闭此选项才会停用日历，历史记录保留。",
@@ -122,7 +124,11 @@
           "enable_vehicle_events": "同时开关车辆行程事件与车辆状态事件；默认开启。重新开启不会重放旧记录。",
           "retain_history_database": "删除账号时保留历史及轨迹；重新添加同一账号后自动恢复。取消后，下次删除账号会删除受管归档及恢复副本。",
           "manage_archive": "选择账号和车辆导出，或上传归档包校验并合并。文件包含私密位置与轨迹，请妥善保管。",
-          "polling_profile": "当前状态／电池／行程目标周期：{polling_setting}。根据充电和车辆活跃状态自动调整。"
+          "polling_profile": "当前状态／电池／行程目标周期：{polling_setting}。根据充电和车辆活跃状态自动调整。",
+          "enable_assistant": "允许所选 AI 服务读取选中车辆的名称、本地数值、时间及数据质量。不提供账号、凭据、精确位置或原始响应，不刷新云端或控制车辆。",
+          "assistant_vehicles": "此选择独立于车辆控制。关闭 Assistant 会保留所选车辆。",
+          "enable_assistant_tasks": "保存后，在 [Ninebot Assistant](/ninebot-assistant) 中核对范围并批准历史详情同步，之后才请求云端。默认关闭。",
+          "debug_mode": "显示有界的当前数据解析视图。可从集成菜单启用调试日志、下载日志和诊断信息。"
         }
       },
       "model_vehicle": {
@@ -187,7 +193,8 @@
       "model_storage_invalid": "电池参数存储不可写，请先处理修复提示。",
       "control_vehicles_required": "请选择至少一辆允许控制的车辆。",
       "archive_invalid": "无法完成归档操作。请核对账号、文件格式、完整性、容量与车辆身份。已完成的账号会保留，可安全重试；原始文件不被替换。",
-      "archive_busy": "正在备份，请稍后重试。"
+      "archive_busy": "正在备份，请稍后重试。",
+      "assistant_vehicles_required": "请为 Assistant 选择本账号的至少一辆车。"
     }
   },
   "entity": {
@@ -1167,7 +1174,7 @@
     },
     "sync_history": {
       "name": "同步行程档案",
-      "description": "synchronize 触发增量同步；指定月份或 force 重新扫描列表，复用已保存详情。pause/resume 暂停或恢复后台历史同步，sync_status 只读本地进度。保留原范围及 repair 操作。 reconstruct 创建带私有恢复点的本地标量修复任务；reconstruct_continue/status/pause/cancel 用于续跑、查看、暂停或取消。不请求云端或控制车辆。",
+      "description": "synchronize 触发增量同步，可能请求云端；指定月份或 force 重新扫描列表，复用已保存详情。pause/resume 暂停或恢复后台历史同步，sync_status 只读本地进度。保留原范围及 repair 操作。所有操作均不控制车辆。\n\n本地重建：reconstruct 创建带私有恢复点的本地标量修复任务；reconstruct_continue/status/pause/cancel 用于续跑、查看、暂停或取消。这些重建操作不请求云端。",
       "fields": {
         "device_id": {
           "name": "车辆"
@@ -1186,7 +1193,7 @@
         },
         "months": {
           "name": "指定月份（YYYYMM 列表）",
-          "description": "用于散月修复与取消；一次最多 12 个不同月份。"
+          "description": "用于 synchronize、散月修复或取消；一次最多12个不同月份。重复请求合并到已有扫描任务。"
         },
         "force": {
           "name": "重新扫描月份列表"
@@ -1218,6 +1225,24 @@
         "sort": {
           "name": "排序",
           "description": "asc：最早优先；desc：最新优先。继续分页时保持相同方向。"
+        }
+      }
+    },
+    "ask": {
+      "name": "询问 Ninebot Assistant",
+      "description": "通过已配置的 AI 任务查询本地资料，返回获准工具结果及其来源和质量。",
+      "fields": {
+        "question": {
+          "name": "问题",
+          "description": "查询本地车辆数据或集成帮助。"
+        },
+        "ai_task_entity_id": {
+          "name": "AI 任务",
+          "description": "选择支持原生工具调用的已配置模型。"
+        },
+        "device_id": {
+          "name": "车辆",
+          "description": "允许多辆车使用 Assistant 时，请选择车辆。"
         }
       }
     }

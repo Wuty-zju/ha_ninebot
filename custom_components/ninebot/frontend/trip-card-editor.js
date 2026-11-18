@@ -2,6 +2,7 @@
 import { vehicleTargets, nativeCards } from './fleet-browser.js';
 import { TripBrowser } from './trip-browser.js';
 import { LABELS } from './labels.js';
+import { formatEntityLabel } from './trip-format.js';
 
 export function checkedConfig(config) {
   const targets = vehicleTargets(config);
@@ -61,7 +62,7 @@ export class NinebotTripCardEditor extends (globalThis.HTMLElement ?? class {}) 
       const change = next => { const values = targets.map(value => ({ ...value })); values[index] = next; replace(values); };
       const label = document.createElement('label'); label.textContent = labels.editor_vehicle;
       const select = document.createElement('select');
-      const options = [...calendars.map(([id, state]) => [id, state.attributes.friendly_name ?? id]), ['@device', labels.editor_device]];
+      const options = [...calendars.map(([id, state]) => [id, formatEntityLabel(this._hass, state, id)]), ['@device', labels.editor_device]];
       if (target.entity && !calendars.some(([id]) => id === target.entity)) options.unshift([target.entity, target.entity]);
       for (const [value, name] of options) { const option = document.createElement('option'); option.value = value; option.textContent = name; select.append(option); }
       select.value = target.entity ?? '@device';

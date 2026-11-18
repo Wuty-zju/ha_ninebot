@@ -638,3 +638,64 @@ async def test_new_account_controls_select_verified_vehicles_once(hass, flow_man
     assert defaults["control_vehicles"] == ["SyntheticB"]
     assert defaults["polling_profile"] == "balanced"
     assert stored.options["poll_interval"] == 180
+
+
+@pytest.mark.parametrize("kind", [ErrorKind.AUTH, ErrorKind.SERVICE, ErrorKind.PROTOCOL])
+async def test_pre_entry_failure_logs_one_safe_support_record(hass, flow_manager, caplog, kind):
+    import logging
+
+    from custom_components.ninebot.exceptions import FailurePhase
+
+    private = "PRIVATE-account-token-location"
+    error = NinebotError(kind)
+    error.at_phase(FailurePhase.AUTH_LOGIN)
+    error.observe_response(
+        502,
+        {"error": {"code": "upstream_error", "message": private, "upstream_code": private}},
+    )
+    flow_manager.async_prepare.side_effect = error
+    caplog.set_level(logging.DEBUG, logger="custom_components.ninebot")
+    result = await hass.config_entries.flow.async_init(
+        "ninebot",
+        context={"source": SOURCE_USER},
+        data={"account": private, "password": private},
+    )
+    assert result["errors"]["base"] == ERRORS[kind]
+    records = [r for r in caplog.records if r.name == "custom_components.ninebot.config_flow"]
+    assert len(records) == 1
+    record = records[0]
+    assert record.levelno == (logging.DEBUG if kind is ErrorKind.AUTH else logging.WARNING)
+    assert "phase=auth_login" in record.message
+    assert "proxy_http_status=502" in record.message
+    assert "envelope_code=upstream_error" in record.message
+    assert "support=" in record.message
+    assert record.exc_info is None
+    assert private not in caplog.text
+    flow_manager.async_prepare.assert_awaited_once_with(private, private)
+    assert not hass.config_entries.async_entries("ninebot")
+
+
+async def test_hidden_option_omission_keeps_saved_choices_and_explicit_disable(hass, entry):
+    previous = {
+        "enable_controls": True,
+        "control_vehicles": ["SyntheticSN"],
+        "preserve_history": True,
+        "auto_history_sync": True,
+        "history_storage_mib": 256,
+        "history_requests_per_hour": 0,
+        "enable_calendar": False,
+        "debug_mode": False,
+    }
+    hass.config_entries.async_update_entry(entry, options=previous)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    # New Core omits hidden fields. Preserve their saved values on old Core too,
+    # using the same accepted input shape; no network or runtime is needed.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"enable_controls": False, "preserve_history": False, "polling_profile": "slower"},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["enable_controls"] is False
+    assert entry.options["preserve_history"] is False
+    for key in previous.keys() - {"enable_controls", "preserve_history"}:
+        assert entry.options[key] == previous[key]

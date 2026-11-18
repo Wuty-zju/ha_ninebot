@@ -1,9 +1,11 @@
 """Real account-local SQL transactions with synthetic private page evidence."""
 
+import asyncio
 import hashlib
 import sqlite3
 from contextlib import closing
 from datetime import UTC, datetime, timedelta
+from threading import Event
 
 import pytest
 
@@ -686,7 +688,49 @@ async def reusable_month(archive, *, month="202608", partial=False, source_befor
     return baseline, run
 
 
-async def test_verified_month_reuse_preserves_original_receipts_ids_budget_and_restart(tmp_path):
+@pytest.mark.parametrize("wait", [False, True], ids=["query-lease", "retry-delay"])
+async def test_resumed_discovery_reuses_local_month_only_when_due(tmp_path, wait):
+    archive = RideArchive(tmp_path / "resume.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await reusable_month(archive)
+        since = NOW + timedelta(seconds=10)
+        claim = await archive.async_claim_history_page(SN, since, 1, guard=lambda: True)
+        assert claim is not None
+        if wait:
+            await archive.async_wait_history_page(
+                claim, since, "connection", 120, guard=lambda: True
+            )
+        deadline = since + timedelta(seconds=120)
+        before = await archive.async_history_plan(SN)
+
+        def spent():
+            return (
+                archive._db()
+                .execute("SELECT value FROM meta WHERE key='preservation_budget'")
+                .fetchone()
+            )
+
+        prior_spend = await archive._run(spent)
+        assert prior_spend is not None
+        assert not await archive.async_reuse_history_month(
+            SN, deadline - timedelta(microseconds=1), guard=lambda: True
+        )
+        assert await archive.async_history_plan(SN) == before
+        assert await archive.async_reuse_history_month(SN, deadline, guard=lambda: True)
+        after = await archive.async_history_plan(SN)
+        assert after.verified_months == 1 and after.revision == before.revision + 1
+        assert after.next_month == "202607" and after.retry_at is None
+        assert await archive._run(spent) == prior_spend
+        assert await archive.async_claim_history_page(SN, deadline, 1, guard=lambda: True) is None
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("cancel", [False, True], ids=["normal", "cancel-after-write"])
+async def test_verified_month_reuse_preserves_original_receipts_ids_budget_and_restart(
+    tmp_path, monkeypatch, cancel
+):
     archive = RideArchive(tmp_path / "reuse.sqlite3", OWNER)
     await archive.async_open()
     baseline, source = await reusable_month(archive)
@@ -698,9 +742,40 @@ async def test_verified_month_reuse_preserves_original_receipts_ids_budget_and_r
                 .fetchone()
             )
         )
-        assert await archive.async_reuse_history_month(
-            SN, NOW + timedelta(seconds=10), guard=lambda: True
-        )
+        when = NOW + timedelta(seconds=10)
+        if cancel:
+            from custom_components.ninebot import history_reuse
+
+            entered, release = asyncio.Event(), Event()
+            loop = asyncio.get_running_loop()
+            reuse = history_reuse.reuse
+
+            def hold_transaction(db, vehicle, now):
+                result = reuse(db, vehicle, now)
+                loop.call_soon_threadsafe(entered.set)
+                assert release.wait(5)
+                return result
+
+            with monkeypatch.context() as patch:
+                patch.setattr(history_reuse, "reuse", hold_transaction)
+                task = asyncio.create_task(
+                    archive.async_reuse_history_month(SN, when, guard=lambda: True)
+                )
+                try:
+                    await asyncio.wait_for(entered.wait(), timeout=5)
+                    task.cancel()
+                    await asyncio.sleep(0)
+                    assert not task.done()
+                    with closing(sqlite3.connect(archive.path)) as db:
+                        assert db.execute(
+                            "SELECT count(*) FROM history_ids WHERE plan=?", (baseline.plan_id,)
+                        ).fetchone() == (0,)
+                finally:
+                    release.set()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+        else:
+            assert await archive.async_reuse_history_month(SN, when, guard=lambda: True)
         evidence = await archive.async_history_evidence(SN, guard=lambda: True)
         assert evidence.last_success == NOW + timedelta(seconds=3)
         assert evidence.last_completed is None  # Local reuse is not a new cloud success.
@@ -729,9 +804,12 @@ async def test_verified_month_reuse_preserves_original_receipts_ids_budget_and_r
                 archive._db()
                 .execute("SELECT count(*) FROM history_ids WHERE plan=?", (baseline.plan_id,))
                 .fetchone()[0],
+                archive._db()
+                .execute("SELECT count(*) FROM membership WHERE vehicle=?", (baseline.vehicle,))
+                .fetchone()[0],
             )
         )
-        assert snapshot == (before, 2, 2)
+        assert snapshot == (before, 2, 2, 2)
         order, turn = await archive.async_preservation_order((SN, "other"))
         assert order[-1] == SN and turn == "detail"
         assert not await archive.async_reuse_history_month(
@@ -744,6 +822,168 @@ async def test_verified_month_reuse_preserves_original_receipts_ids_budget_and_r
     await reopened.async_open()
     assert (await reopened.async_history_plan(SN)) == after
     await reopened.async_close()
+
+
+async def test_reused_month_geometry_survives_later_evidence_in_another_indexed_month(tmp_path):
+    from custom_components.ninebot.travel import merge_detail, parse_ride
+
+    path = tmp_path / "reused-track.sqlite3"
+    earlier = tmp_path / "before-second-month.sqlite3"
+    exported = path.with_name(f"{path.stem}.recovery-{'1' * 32}.sqlite3")
+    archive = RideArchive(path, OWNER)
+    identity = "reused-1"
+    high = "120,30,1,1;120.01,30.01,2,2;120.02,30.02,3,3"
+    low = "120,30,0,0"
+
+    async def save_track(actor, month, second, trail, *, simplified):
+        at = NOW + timedelta(seconds=second)
+        body = {
+            "travel_id": identity,
+            "trail": trail,
+            "is_show_simple_point": simplified,
+            "mileages": second,
+        }
+        summary = await actor.async_detail_summary(SN, identity, month, guard=lambda: True)
+        assert summary is not None
+        evidence = build_record(Endpoint.TRIP_DETAIL, body, at, month, backend_version="0.1.7")
+        ride = merge_detail(summary, parse_ride(body, month, source=Endpoint.TRIP_DETAIL))
+        await actor.async_record_detail(SN, ride, at, raw=evidence)
+
+    try:
+        await archive.async_open()
+        baseline, _ = await reusable_month(archive)
+        await save_track(archive, "202608", 5, high, simplified=False)
+        await archive.async_export_archive(earlier)
+        before = await archive.async_private_detail(SN, identity)
+        assert await archive.async_reuse_history_month(
+            SN, NOW + timedelta(seconds=10), guard=lambda: True
+        )
+        following = await archive.async_history_plan(SN)
+        wrong = build_record(
+            Endpoint.TRAVEL,
+            {
+                "month": 202608,
+                "times": 2,
+                "list": [{"travel_id": identity}, {"travel_id": "wrong-month-only"}],
+            },
+            NOW + timedelta(seconds=11),
+            "202607",
+            backend_version="0.1.7",
+            endpoint_version=following.provider,
+        )
+        gap = await archive.async_accept_history_page(SN, following, wrong, guard=lambda: True)
+        assert gap.stop == "schema" and gap.unique_count == 0 and gap.root.gap_months == 1
+        assert await archive.async_month(SN, "202607") is None
+        assert (
+            await archive.async_private_detail(SN, identity)
+        ).geometry_hash == before.geometry_hash
+
+        retry = await archive.async_schedule_history_run(
+            SN, "202607", NOW + timedelta(seconds=12), guard=lambda: True
+        )
+        actual = record((identity,), 1, "202607", received_at=NOW + timedelta(seconds=13))
+        receipt = await archive.async_accept_history_page(SN, retry, actual, guard=lambda: True)
+        assert receipt.verified
+        after = await archive.async_private_detail(SN, identity)
+        assert after.ride.query_month == "202607"
+        assert (
+            after.geometry.query_month == "202608" and after.geometry_hash == before.geometry_hash
+        )
+        await save_track(archive, "202607", 14, low, simplified=True)
+        audited_at = NOW + timedelta(seconds=15)
+        await archive.async_start_history_audit(SN, audited_at, guard=lambda: True)
+        for _ in range(4):
+            await archive.async_step_history_audit(SN, audited_at, guard=lambda: True)
+        await archive.async_export_archive(exported)
+    finally:
+        await archive.async_close()
+
+    # Startup recovery must accept the exact old-month original from the managed copy.
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("DELETE FROM detail_payloads WHERE hash=?", (before.geometry_hash,))
+    reopened = RideArchive(path, OWNER)
+    try:
+        await reopened.async_open()
+        mixed = await reopened.async_private_detail(SN, identity)
+        assert mixed.latest.query_month == "202607" and mixed.latest.payload()["trail"] == low
+        assert mixed.geometry.query_month == "202608" and mixed.geometry.payload()["trail"] == high
+        assert mixed.geometry_hash == before.geometry_hash != mixed.latest_hash
+        assert mixed.latest_quality.valid_point_count == 1
+        assert mixed.selected_quality.valid_point_count == 3
+        assert mixed.ride.distance_m == 14000
+        assert (await reopened.async_history_plan(SN)).gap_months == 1
+        evidence = await reopened.async_history_evidence(SN, guard=lambda: True)
+        assert evidence.gaps.pending == 0 and evidence.gaps.resolved == 1
+        assert (
+            await reopened.async_history_page(SN, baseline.plan_id, "202607", 1, guard=lambda: True)
+        ).payload() == wrong.payload()
+        assert {r.ride_id for r in (await reopened.async_page(SN)).rides} == {identity, "reused-2"}
+        assert await reopened.async_private_detail("other-vehicle", identity) is None
+        assert await reopened.async_private_detail(SN, "reused-2") is None
+        result = await reopened.async_reconstruct_ride(SN, identity, guard=lambda: True)
+        assert result.status == "healthy"
+    finally:
+        await reopened.async_close()
+
+    restored = RideArchive(tmp_path / "restored.sqlite3", OWNER)
+    overlapping = RideArchive(earlier, OWNER)
+    foreign = RideArchive(tmp_path / "foreign.sqlite3", "f" * 64)
+    try:
+        await restored.async_open()
+        assert await restored.async_merge_archive(exported) == {"rides": 2, "details": 1}
+        imported = await restored.async_private_detail(SN, identity)
+        assert (
+            imported.latest_hash == mixed.latest_hash
+            and imported.geometry_hash == before.geometry_hash
+        )
+        assert imported.geometry.query_month == "202608" and imported.ride.distance_m == 14000
+        await restored.async_merge_archive(earlier)
+        retained = await restored.async_private_detail(SN, identity)
+        assert (
+            retained.latest_hash == mixed.latest_hash
+            and retained.geometry_hash == before.geometry_hash
+        )
+        assert retained.ride.query_month == "202607" and retained.ride.distance_m == 14000
+        await overlapping.async_open()
+        assert await overlapping.async_merge_archive(exported) == {"rides": 0, "details": 0}
+        joined = await overlapping.async_private_detail(SN, identity)
+        assert (
+            joined.latest_hash == mixed.latest_hash and joined.geometry_hash == before.geometry_hash
+        )
+        assert joined.ride.query_month == "202607" and joined.ride.distance_m == 14000
+        assert await overlapping.async_merge_archive(exported) == {"rides": 0, "details": 0}
+        await foreign.async_open()
+        with pytest.raises(ArchiveError) as rejected:
+            await foreign.async_merge_archive(exported)
+        assert rejected.value.kind is ArchiveFailure.OWNER
+        assert await foreign.async_private_detail(SN, identity) is None
+    finally:
+        await restored.async_close()
+        await overlapping.async_close()
+        await foreign.async_close()
+
+
+async def test_import_does_not_join_unrelated_months_on_ride_id_alone(tmp_path):
+    target = RideArchive(tmp_path / "target.sqlite3", OWNER)
+    source = RideArchive(tmp_path / "source.sqlite3", OWNER)
+    try:
+        for archive, month in ((target, "202608"), (source, "202607")):
+            await archive.async_open()
+            plan = HistoryPlan.create("b" * 32, vehicle_key(SN), month, month, NOW.isoformat())
+            await archive.async_set_history_plan(SN, plan, None, guard=lambda: True)
+            await archive.async_accept_history_page(
+                SN, plan, record(("same-id",), 1, month), guard=lambda: True
+            )
+        exported = tmp_path / "independent-month.sqlite3"
+        await source.async_export_archive(exported)
+        with pytest.raises(ArchiveError) as error:
+            await target.async_merge_archive(exported)
+        assert error.value.kind is ArchiveFailure.SCHEMA
+        assert await target.async_month(SN, "202607") is None
+        assert await target.async_month(SN, "202608") is not None
+    finally:
+        await target.async_close()
+        await source.async_close()
 
 
 @pytest.mark.parametrize(
@@ -1111,7 +1351,7 @@ async def test_empty_enumerated_month_has_explicit_zero_count(store):
     assert evidence and evidence.pages == 1 and evidence.rides == 0
 
 
-@pytest.mark.parametrize("reported", ["202609", "not-a-month"])
+@pytest.mark.parametrize("reported", ["202609", "not-a-month", 202609])
 async def test_contradictory_body_month_is_retained_as_gap_without_indexing(store, reported):
     payload = {"month": reported, "times": 1, "list": [{"travel_id": "wrong-month-ride"}]}
     raw = build_record(
@@ -1137,6 +1377,7 @@ async def test_contradictory_body_month_is_retained_as_gap_without_indexing(stor
     assert not checks.captured_links_verified
     with closing(sqlite3.connect(store.path)) as db:
         assert db.execute("SELECT count(*) FROM rides").fetchone()[0] == 0
+        assert db.execute("SELECT count(*) FROM membership").fetchone()[0] == 0
         assert db.execute("SELECT count(*) FROM history_ids").fetchone()[0] == 0
     path = store.path
     await store.async_close()
@@ -1162,10 +1403,11 @@ async def test_contradictory_body_month_is_retained_as_gap_without_indexing(stor
         await reopened.async_close()
 
 
-async def test_matching_reported_body_month_keeps_normal_history_projection(store):
+@pytest.mark.parametrize("reported", ["202610", 202610])
+async def test_matching_reported_body_month_keeps_normal_history_projection(store, reported):
     raw = build_record(
         Endpoint.TRAVEL,
-        {"month": "202610", "times": 1, "list": [{"travel_id": "matching-month-ride"}]},
+        {"month": reported, "times": 1, "list": [{"travel_id": "matching-month-ride"}]},
         NOW,
         "202610",
         backend_version="0.1.7",

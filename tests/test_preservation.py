@@ -1,18 +1,212 @@
 """Durable preservation claims and budgets, entirely synthetic/offline."""
 
 import hashlib
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 
 from custom_components.ninebot.adapters import travel
-from custom_components.ninebot.preservation import task_state
+from custom_components.ninebot.preservation import (
+    DetailBudget,
+    DetailBudgetUnavailable,
+    DetailScope,
+    fingerprint,
+    scope_fingerprint,
+    task_state,
+)
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OWNER = hashlib.sha256(b"synthetic-account").hexdigest()
 SN = "synthetic-vehicle"
+
+
+async def archive_scope(archive):
+    from custom_components.ninebot.archive_codec import decoded, restored_ride
+
+    rows = await archive._run(lambda: archive._db().execute("SELECT id,data FROM rides").fetchall())
+    return DetailScope(
+        tuple((key, scope_fingerprint(restored_ride(decoded(data)))) for key, data in rows)
+    )
+
+
+@pytest.mark.parametrize("identity,limit", [("bad", 1), ("a" * 32, True), ("a" * 32, 21)])
+def test_task_budget_rejects_invalid_identity_and_limits(identity, limit):
+    with pytest.raises(ValueError):
+        DetailBudget(identity, limit)
+
+
+async def test_task_cap_survives_reopen_and_idempotent_initialization(tmp_path):
+    path = tmp_path / "task-budget.sqlite3"
+    archive = RideArchive(path, OWNER)
+    task_budget = DetailBudget("a" * 32, 1)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        scope = await archive_scope(archive)
+        with pytest.raises(DetailBudgetUnavailable):
+            await archive.async_preservation_claim(
+                SN, NOW, 0, scope=scope, task_budget=task_budget, guard=lambda: True
+            )
+        await archive.async_initialize_detail_budget(SN, scope, task_budget, guard=lambda: True)
+        assert await archive.async_preservation_claim(
+            SN, NOW, 0, scope=scope, task_budget=task_budget, guard=lambda: True
+        )
+    finally:
+        await archive.async_close()
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_initialize_detail_budget(SN, scope, task_budget, guard=lambda: True)
+        assert (
+            await archive.async_preservation_claim(
+                SN,
+                NOW + timedelta(seconds=61),
+                0,
+                scope=scope,
+                task_budget=task_budget,
+                guard=lambda: True,
+            )
+            is None
+        )
+        with pytest.raises(DetailBudgetUnavailable):
+            await archive.async_initialize_detail_budget(
+                SN, scope, DetailBudget(task_budget.task_id, 2), guard=lambda: True
+            )
+        with pytest.raises(DetailBudgetUnavailable):
+            await archive.async_preservation_claim(
+                "another-vehicle", NOW, 0, scope=scope, task_budget=task_budget, guard=lambda: True
+            )
+    finally:
+        await archive.async_close()
+
+
+async def test_task_and_account_reservations_roll_back_together(tmp_path):
+    archive = RideArchive(tmp_path / "rollback.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        scope = await archive_scope(archive)
+        task_budget = DetailBudget("b" * 32, 1)
+        await archive.async_initialize_detail_budget(SN, scope, task_budget, guard=lambda: True)
+        reserve = archive._reserve_background
+
+        def crash(*args):
+            assert reserve(*args)
+            raise RuntimeError("synthetic failure after account reservation")
+
+        with patch.object(archive, "_reserve_background", side_effect=crash):
+            with pytest.raises(RuntimeError):
+                await archive.async_preservation_claim(
+                    SN, NOW, 60, scope=scope, task_budget=task_budget, guard=lambda: True
+                )
+        # Same instant and one-attempt task still available: all three writes rolled back.
+        assert await archive.async_preservation_claim(
+            SN, NOW, 60, scope=scope, task_budget=task_budget, guard=lambda: True
+        )
+        with pytest.raises(ValueError):
+            await archive.async_preservation_claim(
+                SN, NOW, 60, task_budget=task_budget, guard=lambda: True
+            )
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("payload", ["{", "[]", " " * 513, '{"used":true}', None, b"{}"])
+def test_bad_task_record_requires_reapproval_not_archive_repair(payload):
+    with pytest.raises(DetailBudgetUnavailable):
+        DetailBudget("c" * 32, 1).read(payload, "0" * 64)
+
+
+async def test_task_initialization_checks_guard_and_paused_claim_preserves_budget(tmp_path):
+    archive = RideArchive(tmp_path / "task-guard.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        scope = await archive_scope(archive)
+        budget = DetailBudget("d" * 32, 1)
+        with pytest.raises(ArchiveError):
+            await archive.async_initialize_detail_budget(SN, scope, budget, guard=lambda: False)
+        with pytest.raises(DetailBudgetUnavailable):
+            await archive.async_preservation_claim(
+                SN, NOW, 60, scope=scope, task_budget=budget, guard=lambda: True
+            )
+        await archive.async_initialize_detail_budget(SN, scope, budget, guard=lambda: True)
+        await archive.async_set_history_paused(SN, True, guard=lambda: True)
+        assert (
+            await archive.async_preservation_claim(
+                SN, NOW, 60, scope=scope, task_budget=budget, guard=lambda: True
+            )
+            is None
+        )
+        await archive.async_set_history_paused(SN, False, guard=lambda: True)
+        assert await archive.async_preservation_claim(
+            SN, NOW, 60, scope=scope, task_budget=budget, guard=lambda: True
+        )
+    finally:
+        await archive.async_close()
+
+
+@pytest.mark.parametrize("rides", [(), (("a", "invalid"),), (("a", "0" * 64),) * 2])
+def test_detail_scope_rejects_empty_unbounded_or_ambiguous_ranges(rides):
+    with pytest.raises(ValueError):
+        DetailScope(rides)
+
+
+async def test_scoped_claim_filters_before_limit_and_rejects_changed_fingerprint(tmp_path):
+    from custom_components.ninebot.archive_codec import decoded, restored_ride
+
+    archive = RideArchive(tmp_path / "scoped.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        raw = {
+            "times": 150,
+            "list": [
+                {
+                    "travel_id": f"scope-{i}",
+                    "mileages": 1,
+                    "duration": 600,
+                    "start_time": int(NOW.timestamp()) + i * 1000,
+                    "end_time": int(NOW.timestamp()) + i * 1000 + 600,
+                }
+                for i in range(150)
+            ],
+        }
+        await archive.async_record_month(SN, travel(raw, "202609"), NOW)
+        identity, data = await archive._run(
+            lambda: (
+                archive._db()
+                .execute("SELECT id,data FROM rides ORDER BY started ASC LIMIT 1")
+                .fetchone()
+            )
+        )
+        wrong = DetailScope(((identity, "0" * 64),))
+        assert (
+            await archive.async_preservation_claim(SN, NOW, 60, scope=wrong, guard=lambda: True)
+            is None
+        )
+        ride = restored_ride(decoded(data))
+        before = await archive._run(lambda: archive._db().total_changes)
+        for changed in (
+            replace(ride, query_month="202610"),
+            replace(ride, issues=(*ride.issues, "conflicting_detail_ids")),
+        ):
+            # Ordinary preservation can reuse the same values; approved work cannot
+            # silently switch request months or identity evidence.
+            assert fingerprint(changed) == fingerprint(ride)
+            stale = DetailScope(((identity, scope_fingerprint(changed)),))
+            assert (
+                await archive.async_preservation_claim(SN, NOW, 60, scope=stale, guard=lambda: True)
+                is None
+            )
+            assert await archive._run(lambda: archive._db().total_changes) == before
+        scope = DetailScope(((identity, scope_fingerprint(ride)),))
+        task = await archive.async_preservation_claim(SN, NOW, 60, scope=scope, guard=lambda: True)
+        assert task is not None and task.ride.ride_id == "scope-0"
+    finally:
+        await archive.async_close()
 
 
 def sample():
@@ -878,5 +1072,141 @@ async def test_progress_snapshot_halves_actor_admission_and_keeps_values(tmp_pat
             ]
             assert actor.await_count == vehicles
         assert combined == expected
+    finally:
+        await archive.async_close()
+
+
+async def test_task_expiry_extends_retention_without_reset_and_missing_counter_stays_closed(
+    tmp_path,
+):
+    archive = RideArchive(tmp_path / "expiry.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        scope, budget = await archive_scope(archive), DetailBudget("c" * 32, 2)
+        expiry = NOW + timedelta(hours=24)
+        await archive.async_initialize_detail_budget(
+            SN, scope, budget, guard=lambda: True, expires_at=expiry
+        )
+        assert await archive.async_preservation_claim(
+            SN, NOW, 0, scope=scope, task_budget=budget, guard=lambda: True
+        )
+        await archive.async_initialize_detail_budget(
+            SN, scope, budget, guard=lambda: True, expires_at=expiry + timedelta(hours=1)
+        )
+        assert await archive.async_detail_budget_used(SN, scope, budget, guard=lambda: True) == 1
+        assert await archive.async_prune_detail_budgets(NOW, guard=lambda: True) == 0
+        assert await archive.async_prune_detail_budgets(expiry, guard=lambda: True) == 0
+        assert (
+            await archive.async_prune_detail_budgets(
+                expiry + timedelta(hours=1), guard=lambda: True
+            )
+            == 1
+        )
+        with pytest.raises(DetailBudgetUnavailable):
+            await archive.async_preservation_claim(
+                SN, expiry, 0, scope=scope, task_budget=budget, guard=lambda: True
+            )
+    finally:
+        await archive.async_close()
+
+
+async def test_counter_gc_legacy_grace_survives_reopen_and_preserves_unknown_data(tmp_path):
+    import json
+
+    path = tmp_path / "legacy-gc.sqlite3"
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        await archive.async_record_month(SN, sample(), NOW)
+        scope, budget = await archive_scope(archive), DetailBudget("d" * 32, 1)
+        await archive.async_initialize_detail_budget(SN, scope, budget, guard=lambda: True)
+
+        def unknown():
+            db = archive._db(write=True)
+            with db:
+                db.executemany(
+                    "INSERT INTO meta VALUES (?,?)",
+                    [
+                        ("assistant_attempts:" + "e" * 32, json.dumps({"unknown": True})),
+                        ("assistant_attempts:" + "f" * 32, "x" * 1024),
+                    ],
+                )
+
+        await archive._run(unknown)
+        with pytest.raises(ArchiveError):
+            await archive.async_prune_detail_budgets(NOW, guard=lambda: False)
+        assert await archive.async_prune_detail_budgets(NOW, guard=lambda: True) == 0
+    finally:
+        await archive.async_close()
+    archive = RideArchive(path, OWNER)
+    await archive.async_open()
+    try:
+        # Empty cursor page wraps without re-starting the durable grace period.
+        assert (
+            await archive.async_prune_detail_budgets(NOW + timedelta(hours=24), guard=lambda: True)
+            == 0
+        )
+        assert (
+            await archive.async_prune_detail_budgets(NOW + timedelta(hours=24), guard=lambda: True)
+            == 1
+        )
+        keys = await archive._run(
+            lambda: (
+                archive._db()
+                .execute("SELECT key FROM meta WHERE key GLOB 'assistant_attempts:*' ORDER BY key")
+                .fetchall()
+            )
+        )
+        assert keys == [("assistant_attempts:" + "e" * 32,), ("assistant_attempts:" + "f" * 32,)]
+    finally:
+        await archive.async_close()
+
+
+async def test_counter_gc_cursor_reaches_expired_keys_past_live_and_malformed_front(tmp_path):
+    import json
+
+    archive = RideArchive(tmp_path / "bounded-gc.sqlite3", OWNER)
+    await archive.async_open()
+    try:
+
+        def seed():
+            db = archive._db(write=True)
+            with db:
+                for i in range(130):
+                    value = {
+                        "scope_hash": "a" * 64,
+                        "limit": 1,
+                        "used": 0,
+                        "expires_at": NOW.timestamp() + (3600 if i < 64 else -1),
+                    }
+                    db.execute(
+                        "INSERT INTO meta VALUES (?,?)",
+                        (f"assistant_attempts:{i:032x}", json.dumps(value)),
+                    )
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?)", ("assistant_attempts:" + "!" * 32, "unknown")
+                )
+
+        await archive._run(seed)
+        assert await archive.async_prune_detail_budgets(NOW, guard=lambda: True) == 0
+        assert await archive.async_prune_detail_budgets(NOW, guard=lambda: True) == 63
+        assert await archive.async_prune_detail_budgets(NOW, guard=lambda: True) == 3
+        assert await archive.async_prune_detail_budgets(NOW, guard=lambda: True) == 0
+        assert (
+            await archive._run(
+                lambda: (
+                    archive._db()
+                    .execute("SELECT count(*) FROM meta WHERE key GLOB 'assistant_attempts:*'")
+                    .fetchone()[0]
+                )
+            )
+            == 65
+        )
+        # A wall-clock rollback must not turn the legacy marker into permission to delete.
+        assert (
+            await archive.async_prune_detail_budgets(NOW - timedelta(hours=1), guard=lambda: True)
+            == 0
+        )
     finally:
         await archive.async_close()

@@ -1,7 +1,10 @@
 """Explicit credential entry, isolated validation and account-safe reauth."""
 
 import asyncio
+import logging
 import re
+import secrets
+import time
 import uuid
 from typing import Any
 
@@ -30,8 +33,14 @@ from homeassistant.helpers.selector import (
 from .account import ACCOUNT_METADATA, AUTOMATIC_TITLE, account_update
 from .account_archive import CONF_RETAIN_ARCHIVE
 from .archive_options import ArchiveOptionsMixin
+from .assistant import (
+    CONF_ASSISTANT,
+    CONF_ASSISTANT_TASKS,
+    CONF_ASSISTANT_VEHICLES,
+    native_api_supported,
+)
 from .bootstrap import CONF_AUTO_HISTORY
-from .compat import post_create_options_supported
+from .compat import conditional_field, post_create_options_supported
 from .compat import validation as vol
 from .const import (
     CONF_ACCOUNT,
@@ -49,7 +58,7 @@ from .const import (
     DEFAULT_COORDINATES,
     DOMAIN,
 )
-from .exceptions import ErrorKind, NinebotError
+from .exceptions import ErrorKind, FailurePhase, NinebotError
 from .history_budget import CONF_BUDGET, MAX_BUDGET, MIN_BUDGET, configured_budget
 from .history_capacity import (
     CONF_HISTORY_CAPACITY,
@@ -63,6 +72,8 @@ from .polling_policy import CONF_POLLING_PROFILE, PRESETS, PollingPolicy
 from .preservation import CONF_PRESERVE
 from .services import resolve_vehicle
 from .session import SMS_LIFETIME, Candidate, SessionManager, SmsChallenge
+
+_LOGGER = logging.getLogger(__name__)
 
 ERRORS = {
     ErrorKind.AUTH: "invalid_auth",
@@ -120,6 +131,9 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 user_input = None
         if user_input is not None:
             account = str(user_input[CONF_ACCOUNT]).strip()
+            support_id = secrets.token_hex(4)
+            started = time.monotonic()
+            phase = FailurePhase.AUTH_LOGIN
             manager = self._manager()
             key = self._entry.data[CONF_SESSION_KEY] if self._entry else uuid.uuid4().hex
             async with manager.transaction(key):
@@ -140,6 +154,7 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     candidate = prepared or await manager.async_prepare(
                         account, str(user_input[CONF_PASSWORD])
                     )
+                    phase = FailurePhase.SESSION_COMMIT
                     if self._entry:
                         expected = self._entry.data.get(CONF_BUSINESS_UID)
                         if (expected and candidate.uid != expected) or (
@@ -243,8 +258,31 @@ class NinebotConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     finished = True
                     return result
                 except NinebotError as err:
+                    err.at_phase(phase)
+                    context = err.context
+                    _LOGGER.log(
+                        logging.DEBUG if err.kind is ErrorKind.AUTH else logging.WARNING,
+                        "Account setup failed (support=%s, phase=%s, endpoint=%s, "
+                        "kind=%s, retryable=%s, proxy_http_status=%s, envelope_code=%s, "
+                        "upstream_code=%s, backend_error=%s, elapsed_ms=%s)",
+                        support_id,
+                        context.phase.value,
+                        context.endpoint.value,
+                        err.kind.value,
+                        err.retryable,
+                        context.proxy_http_status,
+                        context.envelope_code.value if context.envelope_code else None,
+                        context.upstream_code,
+                        context.backend_error.value if context.backend_error else None,
+                        min(3_600_000, max(0, int((time.monotonic() - started) * 1000))),
+                    )
                     errors["base"] = ERRORS[err.kind]
                 except OSError:
+                    _LOGGER.warning(
+                        "Account setup could not save the local session (support=%s, phase=%s)",
+                        support_id,
+                        phase.value,
+                    )
                     errors["base"] = "storage_error"
                 finally:
                     if committed and await manager.async_is_pending(key):
@@ -559,6 +597,8 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        vehicles = runtime.coordinator.data if runtime else {}
         if user_input is not None:
             self._pending_options = {**self.config_entry.options, **user_input}
             self._pending_options[CONF_POLLING_PROFILE] = PollingPolicy.from_options(
@@ -569,6 +609,19 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                 CONF_CONTROL_VEHICLES
             ):
                 errors[CONF_CONTROL_VEHICLES] = "control_vehicles_required"
+            elif self._pending_options.get(CONF_ASSISTANT) is True and (
+                not isinstance(selected := self._pending_options.get(CONF_ASSISTANT_VEHICLES), list)
+                or not selected
+                or any(
+                    not isinstance(sn, str)
+                    or (
+                        sn not in vehicles
+                        and sn not in self.config_entry.options.get(CONF_ASSISTANT_VEHICLES, [])
+                    )
+                    for sn in selected
+                )
+            ):
+                errors[CONF_ASSISTANT_VEHICLES] = "assistant_vehicles_required"
             else:
                 if self._pending_options.pop("manage_archive", False):
                     return await self.async_step_archive()
@@ -577,8 +630,6 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                     return await self.async_step_model_vehicle()
                 return self.async_create_entry(title="", data=self._pending_options)
         options = {**self.config_entry.options, **(user_input or {})}
-        runtime = getattr(self.config_entry, "runtime_data", None)
-        vehicles = runtime.coordinator.data if runtime else {}
         choices = [
             SelectOptionDict(value=sn, label=f"{snapshot.profile.name} · {sn[-6:]}")
             for sn, snapshot in vehicles.items()
@@ -586,7 +637,13 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
         ]
         # Keep previously saved choices selectable when validation redisplays
         # an empty selection and vehicle discovery is temporarily unavailable.
-        for sn in self.config_entry.options.get(CONF_CONTROL_VEHICLES, []):
+        saved_choices = dict.fromkeys(
+            [
+                *self.config_entry.options.get(CONF_CONTROL_VEHICLES, []),
+                *self.config_entry.options.get(CONF_ASSISTANT_VEHICLES, []),
+            ]
+        )
+        for sn in saved_choices:
             if sn not in {choice["value"] for choice in choices}:
                 snapshot = vehicles.get(sn)
                 choices.append(
@@ -602,8 +659,10 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
             data_schema=vol.Schema(
                 {
                     vol.Optional(CONF_CONTROLS, default=options.get(CONF_CONTROLS, False)): bool,
-                    vol.Optional(
-                        CONF_CONTROL_VEHICLES, default=options.get(CONF_CONTROL_VEHICLES, [])
+                    conditional_field(
+                        CONF_CONTROL_VEHICLES,
+                        options.get(CONF_CONTROL_VEHICLES, []),
+                        when=CONF_CONTROLS,
                     ): SelectSelector(
                         SelectSelectorConfig(
                             options=choices, multiple=True, mode=SelectSelectorMode.DROPDOWN
@@ -622,23 +681,47 @@ class NinebotOptionsFlow(ArchiveOptionsMixin):
                     vol.Optional(CONF_EVENTS, default=options.get(CONF_EVENTS, True)): bool,
                     vol.Optional(CONF_CALENDAR, default=options.get(CONF_CALENDAR, True)): bool,
                     vol.Optional(CONF_PRESERVE, default=options.get(CONF_PRESERVE, False)): bool,
-                    vol.Optional(
+                    conditional_field(
                         CONF_AUTO_HISTORY,
-                        default=options.get(CONF_AUTO_HISTORY, options.get(CONF_PRESERVE, False)),
+                        options.get(CONF_AUTO_HISTORY, options.get(CONF_PRESERVE, False)),
+                        when=CONF_PRESERVE,
                     ): bool,
-                    vol.Optional(
-                        CONF_HISTORY_CAPACITY, default=history_capacity_mib(options)
+                    conditional_field(
+                        CONF_HISTORY_CAPACITY, history_capacity_mib(options), when=CONF_PRESERVE
                     ): vol.All(
                         vol.Coerce(int), vol.Range(min=MIN_HISTORY_MIB, max=MAX_HISTORY_MIB)
                     ),
-                    vol.Required(
-                        CONF_BUDGET, default=configured_budget(options)
+                    conditional_field(
+                        CONF_BUDGET, configured_budget(options), when=CONF_PRESERVE, required=True
                     ): HistoryBudgetSelector(),
                     vol.Optional(
                         CONF_RETAIN_ARCHIVE, default=options.get(CONF_RETAIN_ARCHIVE, True)
                     ): bool,
                     vol.Optional("manage_archive", default=False): bool,
                     vol.Optional("configure_model", default=False): bool,
+                    **(
+                        {
+                            vol.Optional(
+                                CONF_ASSISTANT, default=options.get(CONF_ASSISTANT, False)
+                            ): bool,
+                            conditional_field(
+                                CONF_ASSISTANT_TASKS,
+                                options.get(CONF_ASSISTANT_TASKS, False),
+                                when=CONF_ASSISTANT,
+                            ): bool,
+                            conditional_field(
+                                CONF_ASSISTANT_VEHICLES,
+                                options.get(CONF_ASSISTANT_VEHICLES, []),
+                                when=CONF_ASSISTANT,
+                            ): SelectSelector(
+                                SelectSelectorConfig(
+                                    options=choices, multiple=True, mode=SelectSelectorMode.DROPDOWN
+                                )
+                            ),
+                        }
+                        if native_api_supported()
+                        else {}
+                    ),
                     vol.Optional(CONF_DEBUG, default=options.get(CONF_DEBUG, False)): bool,
                 }
             ),

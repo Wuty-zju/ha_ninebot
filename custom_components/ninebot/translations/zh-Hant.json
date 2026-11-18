@@ -50,7 +50,7 @@
           "enable_estimation": "設定電池額定參數",
           "enable_coordinates": "顯示車輛位置",
           "enable_calendar": "啟用行程日曆（Beta）",
-          "debug_mode": "調試模式"
+          "debug_mode": "顯示診斷實體"
         },
         "data_description": {
           "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
@@ -102,27 +102,33 @@
           "enable_vehicle_events": "啟用車輛事件（Beta）",
           "enable_calendar": "啟用行程日曆（Beta）",
           "preserve_history": "自動同步歷史詳情（Beta）",
-          "history_requests_per_hour": "History requests per account per hour（Beta）",
-          "auto_history_sync": "Automatically scan trip history（Beta）",
+          "history_requests_per_hour": "每帳號每小時歷史請求限額（Beta）",
+          "auto_history_sync": "自動掃描歷史行程（Beta）",
           "history_storage_mib": "歷史儲存額度（MiB）（Beta）",
-          "retain_history_database": "保留本地历史行程信息数据库（Beta）",
-          "manage_archive": "导出或导入历史数据库（Beta）",
-          "debug_mode": "調試模式"
+          "retain_history_database": "保留本機歷史行程資料庫（Beta）",
+          "manage_archive": "匯出或匯入歷史資料庫（Beta）",
+          "enable_assistant": "啟用 Ninebot Assistant（Beta）",
+          "assistant_vehicles": "Assistant 可存取的車輛",
+          "enable_assistant_tasks": "允許審核歷史同步任務（Beta）",
+          "debug_mode": "顯示診斷實體"
         },
         "data_description": {
-          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
-          "enable_calendar": "按日期瀏覽本地歷史行程。日曆顯示“無目前行程”并不代表停用；關閉此選項才会停用日曆，歷史記錄保留。",
+          "enable_calendar": "按日期瀏覽本機歷史行程。日曆顯示「無目前行程」並不代表停用；關閉此選項才會停用日曆，歷史記錄保留。",
           "preserve_history": "Save available trip details and tracks locally; after the initial scan, fetch missing or updated records incrementally.",
           "history_requests_per_hour": "預設60；輸入0表示不限制每小時請求數（不建議），或填寫1–120的整數。月份與詳情共用此限額；雲端限流與錯誤退避仍生效。",
           "auto_history_sync": "為帳號內所有歸屬車輛發現可得歷史，隨後背景增量同步。",
           "history_storage_mib": "每帳號32–2048 MiB，預設100。降低額度不刪除已存記錄，超額時暫停寫入。",
           "control_vehicles": "從此帳號選擇一輛或多輛允許遠端控制的車輛。關閉控制會保留選擇。",
-          "enable_vehicle_events": "同時開關車輛行程事件与車輛狀態事件；預設開啟。重新開啟不会重放旧記錄。",
-          "retain_history_database": "删除账号时保留历史及轨迹；重新添加同一账号后自动恢复。取消后，下次删除账号会删除受管归档及恢复副本。",
-          "manage_archive": "选择账号和车辆导出，或上传归档包校验并合并。文件包含私密位置与轨迹，请妥善保管。",
-          "polling_profile": "目前狀態／電池／行程目標週期：{polling_setting}。依充電和車輛活動自動調整。"
+          "enable_vehicle_events": "同時開關車輛行程事件與車輛狀態事件；預設開啟。重新開啟不會重播舊記錄。",
+          "retain_history_database": "刪除帳號時保留歷史與軌跡；重新新增同一帳號後自動恢復。取消後，下次刪除帳號會刪除受管檔案與復原副本。",
+          "manage_archive": "選擇帳號與車輛匯出，或上傳檔案套件進行校驗與合併。檔案包含私人位置與軌跡，請妥善保管。",
+          "polling_profile": "目前狀態／電池／行程目標週期：{polling_setting}。依充電和車輛活動自動調整。",
+          "enable_assistant": "允許所選 AI 服務讀取選中車輛的名稱、本機數值、時間與資料品質。不提供帳號、憑證、精確位置或原始回應，不重新整理雲端或控制車輛。",
+          "assistant_vehicles": "此選擇獨立於車輛控制。關閉 Assistant 會保留所選車輛。",
+          "enable_assistant_tasks": "儲存後，在 [Ninebot Assistant](/ninebot-assistant) 核對範圍並批准歷史詳情同步，再開始雲端請求。預設關閉。",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
       "model_vehicle": {
@@ -133,61 +139,62 @@
       },
       "model_parameters": {
         "title": "配置電池額定參數",
-        "description": "Enter rated voltage and capacity. Changes update the same entity; these are not measured capacity or battery health.",
+        "description": "填寫額定電壓與容量。修改參數會更新同一實體；這些數值不代表實測容量或電池健康。",
         "data": {
           "voltage": "額定電壓 (V)",
           "capacity": "額定容量 (Ah)"
         }
       },
       "archive": {
-        "title": "历史数据库（Beta）",
+        "title": "歷史資料庫（Beta）",
         "menu_options": {
-          "archive_export": "导出数据库",
-          "archive_import": "上传并导入数据库"
+          "archive_export": "匯出資料庫",
+          "archive_import": "上傳並匯入資料庫"
         }
       },
       "archive_export": {
-        "title": "导出历史数据库",
-        "description": "选择一个或多个账号下的车辆。导出包含行程、轨迹和已保留的业务原始响应，不包含登录凭据。",
+        "title": "匯出歷史資料庫",
+        "description": "選擇一個或多個帳號下的車輛。匯出包含行程、軌跡與已保留的業務原始回應，不包含登入憑證。",
         "data": {
-          "vehicles": "账号与车辆"
+          "vehicles": "帳號與車輛"
         }
       },
       "archive_download": {
-        "title": "下载历史数据库",
+        "title": "下載歷史資料庫",
         "description": "{download_link}\n\n連結十分鐘內有效，僅目前管理員可用。下載後提交即可。"
       },
       "archive_import": {
-        "title": "上传历史数据库",
-        "description": "上传导出的 ZIP 包或支持的早期 SQLite 数据库（不超过100 MiB；ZIP 解压后不超过512 MiB）。请先登录包内账号。副本升级并校验后显示预览，确认后才会合并。",
+        "title": "上傳歷史資料庫",
+        "description": "上傳匯出的 ZIP 套件或支援的早期 SQLite 資料庫（不超過100 MiB；ZIP 解壓後不超過512 MiB）。請先登入套件內的帳號。副本升級並校驗後顯示預覽，確認後才會合併。",
         "data": {
-          "file": "上传数据库包"
+          "file": "上傳資料庫套件"
         }
       },
       "archive_confirm": {
-        "title": "确认合并历史数据库",
-        "description": "选择要恢复的车辆。每个账号的全部选中来源在同一事务内合并，保留更完整轨迹。校验提交成功后清理临时恢复文件；失败时保留恢复点。已完成账号可安全重试。",
+        "title": "確認合併歷史資料庫",
+        "description": "選擇要恢復的車輛。每個帳號的全部所選來源在同一交易內合併，保留更完整的軌跡。校驗提交成功後清理暫存復原檔案；失敗時保留復原點。已完成的帳號可安全重試。",
         "data": {
-          "vehicles": "需要恢复的车辆",
-          "confirm": "确认备份并合并"
+          "vehicles": "需要恢復的車輛",
+          "confirm": "確認備份並合併"
         }
       },
       "archive_result": {
-        "title": "历史数据库已合并",
-        "description": "新增行程 / 新增详情：\n{result}\n\n本地查询现可使用导入数据；自动同步仍遵循你的配置。"
+        "title": "歷史資料庫已合併",
+        "description": "新增行程 / 新增詳情：\n{result}\n\n本機查詢現可使用匯入資料；自動同步仍遵循你的設定。"
       }
     },
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
-      "archive_admin_required": "仅Home Assistant管理员可导入或导出历史数据库。",
-      "archive_busy": "归档下载数量已达上限，请稍后重试。"
+      "archive_admin_required": "僅 Home Assistant 管理員可匯入或匯出歷史資料庫。",
+      "archive_busy": "檔案下載數量已達上限，請稍後重試。"
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
       "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
       "control_vehicles_required": "請至少選擇一輛允許控制的車輛。",
-      "archive_invalid": "无法完成归档操作。请核对账号、文件格式、完整性、容量与车辆身份。已完成的账号会保留，可安全重试；原始文件不被替换。",
-      "archive_busy": "正在备份，请稍后重试。"
+      "archive_invalid": "無法完成檔案操作。請核對帳號、檔案格式、完整性、容量與車輛身分。已完成的帳號會保留，可安全重試；原始檔案不會被替換。",
+      "archive_busy": "正在備份，請稍後重試。",
+      "assistant_vehicles_required": "請為 Assistant 選擇此帳號的至少一輛車。"
     }
   },
   "entity": {
@@ -694,10 +701,10 @@
             "name": "最近行程"
           },
           "latest_start_time": {
-            "name": "最近行程開始时间"
+            "name": "最近行程開始時間"
           },
           "latest_end_time": {
-            "name": "最近行程結束时间"
+            "name": "最近行程結束時間"
           }
         }
       },
@@ -752,16 +759,16 @@
             "name": "最近操作"
           },
           "command_status": {
-            "name": "指令确认",
+            "name": "指令確認",
             "state": {
-              "idle": "无等待指令",
-              "not_requested": "无需状态确认",
-              "pending": "等待响应，可再次发送指令",
-              "confirmed": "状态已确认",
-              "observed_target_command_uncertain": "状态已更新，指令结果未确认",
-              "already_in_target": "已处于目标状态",
-              "target_not_observed": "15秒内未确认，请检查车辆",
-              "unknown": "未获取确认状态",
+              "idle": "無等待指令",
+              "not_requested": "無需狀態確認",
+              "pending": "等待回應，可再次傳送指令",
+              "confirmed": "狀態已確認",
+              "observed_target_command_uncertain": "狀態已更新，指令結果未確認",
+              "already_in_target": "已處於目標狀態",
+              "target_not_observed": "15秒內未確認，請檢查車輛",
+              "unknown": "未取得確認狀態",
               "cancelled": "等待已取消",
               "superseded": "等待已取消或由新指令接替"
             }
@@ -797,16 +804,16 @@
             }
           },
           "command_status": {
-            "name": "指令确认",
+            "name": "指令確認",
             "state": {
-              "idle": "无等待指令",
-              "not_requested": "无需状态确认",
-              "pending": "等待响应，可再次发送指令",
-              "confirmed": "状态已确认",
-              "observed_target_command_uncertain": "状态已更新，指令结果未确认",
-              "already_in_target": "已处于目标状态",
+              "idle": "無等待指令",
+              "not_requested": "無需狀態確認",
+              "pending": "等待回應，可再次傳送指令",
+              "confirmed": "狀態已確認",
+              "observed_target_command_uncertain": "狀態已更新，指令結果未確認",
+              "already_in_target": "已處於目標狀態",
               "target_not_observed": "解鎖指令已傳送，請檢查座桶狀態。",
-              "unknown": "未获取确认状态",
+              "unknown": "未取得確認狀態",
               "cancelled": "等待已取消",
               "superseded": "等待已取消或由新指令接替"
             }
@@ -897,7 +904,7 @@
       "message": "Entity identity storage unavailable; check Repairs."
     },
     "seat_lock_manual": {
-      "message": "請在車輛上關閉座桶。如需再次解鎖，请直接傳送解鎖指令。"
+      "message": "請在車輛上關閉座桶。如需再次解鎖，請直接傳送解鎖指令。"
     },
     "control_target_not_observed": {
       "message": "Not confirmed within 15 seconds. Check the vehicle state."
@@ -991,8 +998,8 @@
       "description": "其他記錄仍可使用。請保留備份並校驗受影響的本地檔案物件，不要刪除檔案。"
     },
     "archive_cleanup": {
-      "title": "旧历史文件需要检查",
-      "description": "部分旧历史文件无法校验或仍在使用，已保留，当前账号数据库仍可使用。处理这些文件前请备份 Home Assistant。"
+      "title": "舊歷史檔案需要檢查",
+      "description": "部分舊歷史檔案無法校驗或仍在使用，已予以保留；目前帳號資料庫仍可使用。處理這些檔案前請備份 Home Assistant。"
     },
     "session_cleanup": {
       "title": "已刪除帳號的憑證需要清理",
@@ -1037,8 +1044,8 @@
           "description": "Requires details and coordinates opt-in. Precise locations may persist in automation traces or response variables."
         },
         "refresh": {
-          "name": "重新查询云端",
-          "description": "默认读取本地档案；开启后重新查询云端。"
+          "name": "重新查詢雲端",
+          "description": "預設讀取本機檔案；開啟後重新查詢雲端。"
         }
       }
     },
@@ -1067,12 +1074,12 @@
           "description": "Requires coordinates opt-in. Precise locations may persist in automation traces or response variables."
         },
         "refresh": {
-          "name": "重新查询云端",
-          "description": "默认读取本地档案；开启后重新查询云端。"
+          "name": "重新查詢雲端",
+          "description": "預設讀取本機檔案；開啟後重新查詢雲端。"
         },
         "point_offset": {
-          "name": "原始点起始序号",
-          "description": "按原始点序号读取下一段；不转换坐标或推测时间。"
+          "name": "原始點起始序號",
+          "description": "按原始點序號讀取下一段；不轉換座標或推測時間。"
         },
         "local_only": {
           "name": "僅從本機讀取",
@@ -1167,7 +1174,7 @@
     },
     "sync_history": {
       "name": "同步行程檔案",
-      "description": "synchronize 觸發增量同步；指定月份或 force 重新掃描列表，重用已儲存詳情。pause/resume 暫停或恢復背景歷史同步，sync_status 唯讀本地進度。保留原範圍及 repair 操作。 reconstruct 建立含私有復原點的本地標量修復工作；reconstruct_continue/status/pause/cancel 用於繼續、查看、暫停或取消。不請求雲端或控制車輛。",
+      "description": "synchronize 觸發增量同步，可能請求雲端；指定月份或 force 重新掃描列表，重用已儲存詳情。pause/resume 暫停或恢復背景歷史同步，sync_status 唯讀本地進度。保留原範圍及 repair 操作。所有操作均不控制車輛。\n\n本地重建：reconstruct 建立含私有復原點的本地標量修復工作；reconstruct_continue/status/pause/cancel 用於繼續、查看、暫停或取消。這些重建操作不請求雲端。",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -1186,7 +1193,7 @@
         },
         "months": {
           "name": "指定月份（YYYYMM 列表）",
-          "description": "用于散月修复与取消；一次最多 12 个不同月份。"
+          "description": "用於 synchronize、散月修復或取消；一次最多12個不同月份。重複請求合併至既有掃描工作。"
         },
         "force": {
           "name": "重新掃描月份列表"
@@ -1217,7 +1224,25 @@
         },
         "sort": {
           "name": "排序",
-          "description": "asc：最早优先；desc：最新优先。继续分页时保持相同方向。"
+          "description": "asc：最早優先；desc：最新優先。繼續分頁時保持相同方向。"
+        }
+      }
+    },
+    "ask": {
+      "name": "Ask Ninebot Assistant",
+      "description": "Ask a local-data question using an existing AI task entity. Returns authorized tool results with their sources and quality.",
+      "fields": {
+        "question": {
+          "name": "Question",
+          "description": "Ask about local vehicle data or integration help."
+        },
+        "ai_task_entity_id": {
+          "name": "AI task",
+          "description": "An existing model provider with native tool calling."
+        },
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select a vehicle when more than one is allowed for Assistant."
         }
       }
     }

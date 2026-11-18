@@ -15,13 +15,17 @@ Arrows describe data relationships, not upstream push. The frontend's local arch
 
 `config_flow.py` and `session.py` isolate candidate sessions, validate identity and only then commit the account. Public setup uses a password; the SMS implementation remains dormant pending delivery verification. Current HA chains into account options after creation; older HA selects features after authentication and before the candidate is committed. Reauth/reconfigure keep the established business identity. Each ConfigEntry owns a coordinator, private token/config directory, archive actor and unload lifecycle. Different accounts do not share credentials or historical ownership.
 
-`runtime.py` manages a local loopback child with a random Bearer token. Passwords go in the local HTTP request body, not process arguments or ConfigEntry. Arbitrary upstream host overrides are not exposed. Tokens/config files remain local secrets; same-user and privileged host processes are inside the trust boundary. Unload cancels tasks/subscriptions/readback and drains/closes the account resources.
+`client.py` manages a local loopback child with a random Bearer token. Passwords go in the local HTTP request body, not process arguments or ConfigEntry. Arbitrary upstream host overrides are not exposed. Tokens/config files remain local secrets; same-user and privileged host processes are inside the trust boundary. Unload cancels tasks/subscriptions/readback and drains/closes the account resources. Client closure interrupts the current child, then waits for the serialized operation and reaps any child whose creation completed during shutdown. Concurrent close callers share that cleanup; cancellation does not release session resources early. Late startup, decoded-response and discovery results are rejected after closure.
 
-`backend.py` defines `NinebotBackend` and `BackendResult` with endpoint, source version, request/receipt timing and revision. `NinecliBackend` currently uses the precisely pinned managed serve client. Vehicle business-route initialization has a controlled native CLI exception. Explicit historical month/page reads use the reviewed native encrypted `native_history.py` adapter with existing account session/serialization; managed serve remains the token refresh writer. The serve client handles ongoing live queries; the native adapter handles explicit paginated history with the same account session.
+### Protocol adapter
+
+`backend.py` defines `NinebotBackend` and `BackendResult` with endpoint, source version, request/receipt timing and revision. `NinecliBackend` uses the precisely pinned managed serve client for ongoing live queries. Vehicle business-route initialization has a controlled native CLI exception. Explicit historical month/page reads use the reviewed encrypted `native_history.py` adapter with the existing account session. The same client serializes native token/cache writes.
+
+The pinned 0.1.7 REST proxy sends controls to the ebike gateway even for a cached motor vehicle; the native CLI honors that cache entry. From 2.1.26, an unambiguous `motor` entry selects one managed native control command before dispatch. It shares the existing lock, session directory, deadline, output bounds and child cleanup; the REST child is stopped before the native writer and restarts on the next live query. Other controls retain the existing REST route. This narrow control exception neither changes telemetry transport nor retries a failed command through a second route. No upstream host is configurable by the user.
 
 ## Realtime scheduling and controls
 
-`coordinator.py`, `demand.py` and `query_broker.py` track per-vehicle/per-group demand, freshness, partial failures and backoff. Identical in-flight reads share their result/error without renewing source receipt times. Status has bounded priority; background work and other vehicles receive turns. An account has one wire transaction; the shared gate allows two across accounts. Admission is bounded (12 reads + 4 commands, 64 readers overall, 32 on one shared read).
+`coordinator.py`, `demand.py` and `query_broker.py` track per-vehicle/per-group demand, freshness, partial failures and backoff. Identical in-flight reads share their result/error without renewing source receipt times. A discovery result retains the completeness flag captured with its own payload, including during metadata lookup. A closed broker rejects a receipt that is still waiting for final consumer authorization. Status has bounded priority; background work and other vehicles receive turns. An account has one wire transaction; the shared gate allows two across accounts. Admission is bounded (12 reads + 4 commands, 64 readers overall, 32 on one shared read).
 
 Transient GET transport failures can retry once within the same deadline. Authentication/schema errors and controls do not replay. Actual Retry-After metadata and existing group backoff apply. One cancelled reader does not cancel other consumers; abandoned work is reclaimed. Ownership/generation/request barriers prevent late/pre-command responses overwriting current state or confirming a command.
 
@@ -45,6 +49,8 @@ Shanghai day changes invalidate only a successful previous-day travel scheduling
 | ride maximum speed | Reviewed server maximum, separate from overall distance/duration average. |
 | `used_electricity` | Raw usage with unverified unit; do not silently assign Wh or %. |
 | point speed/delta/CRS/timestamps | Unverified unless that specific shape is evidenced; no automatic scaling, time inference or coordinate conversion. |
+
+The [field disposition matrix](../tests/fixtures/field_inventory/current-field-usage.json) records its source commit and development channel. It maps observed paths to current models and HA representations; historical source snapshots remain unchanged. Reconcile this matrix when changing field units, entity presentation or control observation timing.
 
 Read [fixture provenance](../tests/fixtures/ninecli/0.1.7/metadata.json) before promoting a candidate alias or unit. Recorded/synthetic/maintainer-confirmed evidence are different. Reference parsers without a clear license are behavior/schema leads, not copyable implementation.
 
@@ -97,7 +103,7 @@ Repairs cover actionable identity/migration/storage/schema conditions. A tempora
 - Leaflet 1.9.4 is bundled under its [BSD-2-Clause license](../custom_components/ninebot/frontend/vendor/leaflet/LICENSE). OpenStreetMap tiles/attribution apply when explicitly enabled.
 - Ninebot/Segway trademarks and vehicle images belong to their owners. This independent project is not affiliated with or supported by them. See [NOTICE](../NOTICE) and [LICENSE](../LICENSE).
 
-The backend abstraction permits future protocol replacement, but no production NativeBackend migration is promised by this documentation change. Source evidence and public contracts matter more than copying another application's heuristics.
+Future backends should preserve these field, ownership, scheduling and lifecycle contracts. Reference applications supply protocol evidence, with attribution and license review before reuse.
 
 简体中文摘要：实时状态、历史采集、私有归档和 HA 展示分层；账号、权限、预算与生命周期隔离。原件、派生值、覆盖和完整性各自有证据范围；不猜单位/坐标，不为演示改业务。依赖精确固定并保留许可/源码可用性限制，地图底图为用户显式外部请求。
 
@@ -123,6 +129,8 @@ Diagnostics include uncertain-discovery counts, next retry, configured status in
 `account_archive.py` binds `.storage/ninebot/accounts/<SHA256 business UID>/rides.sqlite3` to a verified account, independently of ConfigEntry lifetime. Setup validates the authenticated UID first, then merges matching legacy entry archives on isolated copies and removes their managed files after validated consolidation. A failed migration retains its inputs; it never initializes over an unreadable archive. Entity IDs and Recorder storage are separate from this lifecycle.
 
 `archive_transfer.py` uses SQLite’s backup API on the existing SQL actor. Versioned ZIP manifests identify each account snapshot and its immutable historical evidence by SHA256. Vehicle exports filter every scoped table and remove unselected payloads/job metadata, then VACUUM the private snapshot. Uploads reject extra/duplicate members, traversal, symlinks, oversized content, executable SQLite objects, foreign owners, invalid references and corrupt raw payloads. Schema SQL from an upload is never executed in the destination.
+
+Read-only source setup owns its SQLite connection until validation succeeds. Setup failures close it before propagating the error; successful callers close the returned connection after use.
 
 Imports replay reviewed vehicle/month/ride/membership/detail facts in a single account transaction. Newer month receipts win, historical membership is retained, and latest raw detail versus best geometry are selected independently. Imported profiles do not grant live ownership. Distinct page/month/detail originals are content-deduplicated in schema 7 `archive_evidence` inside the canonical account database and included in subset exports; existing account checkpoints survive, and audit receipts, connection sessions and hourly budgets are not copied. If no local discovery baseline exists, verified committed page coverage is restored with in-flight query claims reset; an existing baseline is never replaced. Import receipts make retries idempotent; SQLite transactions provide rollback; a temporary pre-merge recovery image is removed after a checked commit and retained on failure. Multi-account packages commit per account, not as a distributed transaction.
 
@@ -154,3 +162,17 @@ Rated battery settings acknowledge actual native Store writes, including delayed
 Today mileage declares the DAY dependency used by daily-index repair. History progress reads audit and evidence counters in one SQL-actor snapshot per vehicle. Single-vehicle archive updates reuse other vehicles’ immutable month/ride views and day-summary caches. Archive schema 7, entity identities and source/freshness semantics remain stable.
 
 简体中文：统一资源取消排空，账号独立设置清理互不阻断；额定参数以真实落盘结果确认保存，失败保留重试状态。今日里程声明日索引依赖；历史进度合并为一次数据库快照，单车更新复用其他车辆投影及日统计缓存。
+
+<a id="optional-assistant-boundary--21-preview"></a>
+
+## Optional Assistant boundary
+
+A compatible AI host selects the native Ninebot API through HA’s LLM registry or MCP Server. The adapter preserves the authenticated Context, applies separate account/vehicle consent and read admission, then reuses cached snapshots or existing local history Actions. Safe result projections carry units, freshness and coverage; ownership and consent are checked again before return. The adapter does not add a model provider, listener, archive or collection scheduler.
+
+The feature is off by default. Its modern native API requirement is separate from the overall integration minimum. [Setup, tool schemas and data disclosure](assistant.md) describe the optional tools, and [development entry points](development.md#assistant-development) identify the implementation and isolated checks.
+
+The optional `ninebot.ask` response Action delegates tool selection to an existing native AI Task entity. Each turn supplies only the eight read tools, preserves the caller's Context and returns actual tool evidence rather than generated numeric prose. Scope snapshots, explicit multi-vehicle selection, four-call admission, a 180-second deadline and a 32 KiB response bound apply independently of the chosen model. Provider-facing tool results are independent copies of the recorded evidence, including nested fields. A late provider failure retains successful tool receipts as an explicit partial response after the same final permission checks. The Action shares the Assistant API's lifetime; it adds no model provider or scheduler.
+
+Approved tasks use the existing preservation scheduler. A restored driver rechecks its own and its Store's closure after reading durable tickets, before attaching to that scheduler; a late read cannot replace the active driver after detachment.
+
+Task progress and the human review panel bind each read to a specific account grant. They verify the same grant again after asynchronous work. Withdrawing and restoring consent invalidates the previous read even when the same account store remains open.

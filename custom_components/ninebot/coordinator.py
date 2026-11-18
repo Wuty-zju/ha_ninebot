@@ -43,6 +43,7 @@ from .control_results import (
 from .control_targets import LOCK_TARGETS
 from .daily_sync import DailyStatisticsSync
 from .demand import ConsumerContext, Group, Need, PollingDemand, polling_demand
+from .exceptions import Endpoint as FailureEndpoint
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .history import HistoryStore
 from .history_capacity import history_capacity_bytes
@@ -158,6 +159,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.status_deadline_misses: dict[str, int] = {}
         self._last_status_started: dict[str, float] = {}
         self._group_timing: dict[tuple[str, str], dict[str, float]] = {}
+        self._query_failures: dict[tuple[str, str], dict[str, str | int | bool | None]] = {}
         self.realtime = RealtimePolling(self)
         self._next_attempt: dict[tuple[str, str], float] = {}
         self._retry_after_until: dict[tuple[str, str], float] = {}
@@ -199,6 +201,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.realtime.stop()
         self.activity.clear()
         self._generation += 1
+        self._query_failures.clear()
         self._clear_seat_feedback()
 
     def local_vehicle_available(self, sn: str) -> bool:
@@ -234,9 +237,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         return not revision or not stored or stored.request_revision <= revision
 
     async def _read(
-        self, key: QueryKey, operation: Callable[[], Awaitable[BackendResult]], priority: Priority
+        self,
+        key: QueryKey,
+        operation: Callable[[], Awaitable[BackendResult]],
+        priority: Priority,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> BackendResult:
-        receipt = await self.broker.async_read(key, operation, lambda: self._owns(key), priority)
+        receipt = await self.broker.async_read(
+            key, operation, lambda: self._owns(key), priority, before_request=before_request
+        )
         return replace(
             receipt.value,
             started_at=receipt.started_at,
@@ -567,6 +576,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 for group in ("status", "battery", "travel"):
                     self._next_attempt.pop((profile.sn, group), None)
                     self._failures.pop((profile.sn, group), None)
+                    self._query_failures.pop((profile.sn, group), None)
                 self.raw.discard_vehicle(profile.sn)
                 self.activity.pop(profile.sn, None)
         finished = result.received_at
@@ -660,6 +670,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         cached_success: datetime | None = None
         request_revision = 0
         timing: BackendResult | None = None
+        stage = "request"
         try:
             if group == "status":
                 result = await self._read(
@@ -674,6 +685,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 )
                 request_revision = result.request_revision
                 timing = result
+                stage = "normalize"
                 # Validate explicit identity before retaining any new raw data.
                 status = await self.hass.async_add_executor_job(
                     partial(adapters.status, result.payload, expected_sn=sn)
@@ -690,6 +702,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 )
                 request_revision = result.request_revision
                 timing = result
+                stage = "normalize"
                 record = await self._capture(result, sn, guard=lambda: self._owns(key))
                 battery = await self._normalize(
                     record, sn, "", partial(adapters.batteries, result.payload)
@@ -732,6 +745,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     record = await self._capture(result, sn, guard=lambda: self._owns(key))
                 request_revision = result.request_revision
                 timing = result
+                stage = "normalize"
                 if record and record.request_revision > request_revision and request_revision:
                     return
                 travel = await self._normalize(
@@ -823,6 +837,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
                 if not current_month():
                     return
+                stage = "archive"
                 await self.statistics.async_record(
                     sn,
                     travel,
@@ -901,6 +916,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 self._mark_seat_unlocked(sn)
             if group == "status":
                 self._observe_activity(sn, timing)
+            self._query_failures.pop((sn, group), None)
             success = True
         except NinebotAuthError:
             raise
@@ -912,6 +928,36 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             ) < self._committed.get((sn, group), 0):
                 return
             snapshot = self.data[sn]
+            err.at_endpoint(
+                {
+                    "status": FailureEndpoint.STATUS,
+                    "battery": FailureEndpoint.BATTERY,
+                    "travel": FailureEndpoint.TRAVEL,
+                }.get(group, FailureEndpoint.UNKNOWN)
+            )
+            failure: dict[str, str | int | bool | None] = {
+                **err.context.diagnostics(),
+                "error_kind": err.kind.value,
+                "retryable": err.retryable,
+                "stage": stage,
+            }
+            previous_failure = self._query_failures.get((sn, group))
+            if previous_failure is None or any(
+                previous_failure.get(name) != value for name, value in failure.items()
+            ):
+                LOGGER.debug(
+                    "Query failed (group=%s, stage=%s, kind=%s, endpoint=%s, "
+                    "proxy_http_status=%s, envelope_code=%s, upstream_code=%s, backend_error=%s)",
+                    group,
+                    stage,
+                    err.kind.value,
+                    err.context.endpoint.value,
+                    err.context.proxy_http_status,
+                    err.context.envelope_code.value if err.context.envelope_code else None,
+                    err.context.upstream_code,
+                    err.context.backend_error.value if err.context.backend_error else None,
+                )
+            self._query_failures[(sn, group)] = {**failure, "attempted_at": now.isoformat()}
             if err.retry_after:
                 self._retry_after_until[(sn, group)] = max(
                     self._retry_after_until.get((sn, group), 0),
@@ -921,8 +967,6 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 failures = self._failures.get((sn, "status"), 0)
                 if failures == 2:
                     LOGGER.warning("Status query repeatedly failed (%s); retrying", err.kind.value)
-                elif failures == 0:
-                    LOGGER.debug("Status query failed (%s); retrying", err.kind.value)
                 failed = replace(snapshot.status_freshness, attempted_at=now, error=err.kind)
                 self.data[sn] = replace(snapshot, status_freshness=failed)
             elif group == "battery":
@@ -1089,13 +1133,20 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         *,
         refresh: bool = False,
         priority: Priority = Priority.INTERACTIVE,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> RawRecord:
         """The action layer must resolve this ID from this vehicle's month index."""
         adapters.previous_month(month)
         if not detail_id or len(detail_id) > 256:
             raise NinebotError(ErrorKind.PROTOCOL)
         return await self._query_record(
-            sn, Endpoint.TRIP_DETAIL, detail_id, month, refresh=refresh, priority=priority
+            sn,
+            Endpoint.TRIP_DETAIL,
+            detail_id,
+            month,
+            refresh=refresh,
+            priority=priority,
+            before_request=before_request,
         )
 
     async def async_query_history_page(self, sn: str, month: str, page: int) -> RawRecord:
@@ -1166,6 +1217,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         *,
         priority: Priority = Priority.INTERACTIVE,
         refresh: bool = False,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> RawRecord:
         if self._query_pending >= 4:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
@@ -1175,6 +1227,14 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self._active.add(task)
         key = self._key(sn, endpoint, f"{month}:{scope}")
         try:
+            if before_request is not None:
+                await before_request()
+                # Preserve this consumer's authorization until the broker wire gate.
+                # Shared transport remains coalesced; the ordinary parse future must not
+                # erase an additional consumer's admission callback.
+                return await self._query_record_update(
+                    sn, endpoint, scope, month, key, priority, refresh, before_request
+                )
             return await self._shared(
                 self._queries,
                 key,
@@ -1196,6 +1256,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         request_key: QueryKey,
         priority: Priority = Priority.INTERACTIVE,
         refresh: bool = False,
+        before_request: Callable[[], Awaitable[None]] | None = None,
     ) -> RawRecord:
         key = self._key(sn, endpoint, month if endpoint is Endpoint.TRAVEL else f"{month}:{scope}")
         if not self._owns(request_key) or not self._owns(key) or not self.fresh(sn, "profile"):
@@ -1219,7 +1280,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     raise NinebotError(ErrorKind.CLOSED)
                 return await operation()
 
-            result = replace(await self._read(key, query, priority), query_month=month)
+            result = replace(
+                await self._read(key, query, priority, before_request), query_month=month
+            )
             if not self.fresh(sn, "profile"):
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="query_unavailable"
@@ -1559,6 +1622,11 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             ),
         )
 
+    def query_failure(self, sn: str, group: str) -> dict[str, str | int | bool | None] | None:
+        """Current safe failure only, independent of raw cache lifetime."""
+        failure = self._query_failures.get((sn, group))
+        return dict(failure) if failure is not None else None
+
     def controls_enabled(self, sn: str, action: str | None = None) -> bool:
         """Availability and the pre/post-queue execution guard use one policy."""
         return any(
@@ -1606,6 +1674,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
 
     async def async_control(self, sn: str, action: str) -> None:
         if self._control_pending >= 4:
+            self._record_control_rejection(sn, action, "pending_limit")
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="busy")
         self._control_pending += 1
         self._control_serial += 1
@@ -1647,6 +1716,21 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             finally:
                 self._control_leases.discard(sn)
 
+    def _record_control_rejection(self, sn: str, action: str, reason: str) -> None:
+        if action not in CONTROL_ACTIONS:
+            return
+        # A stopped runtime must not repopulate its cleared observations.
+        result = (
+            ControlResult(dt_util.utcnow())
+            if self._stopping
+            else self.control_results.start(sn, action, dt_util.utcnow())
+        )
+        result.blocked_reason = reason
+        result.outcome = CommandOutcome.REJECTED
+        result.readback = ReadbackOutcome.SKIPPED
+        result.finished_at = dt_util.utcnow()
+        result.log(action)
+
     async def _control(self, sn: str, action: str, serial: int) -> None:
         """Send once, reconcile status, and retain only safe outcome metadata."""
         if (
@@ -1656,6 +1740,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             or sn not in self.data
             or not self.data[sn].present
         ):
+            decision = self.control_decision(sn, action)
+            self._record_control_rejection(
+                sn, action, next(iter(decision.blockers), "runtime_stopped")
+            )
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="controls_disabled",
@@ -1679,9 +1767,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 receipt = await self._dispatch_control(sn, action, owner)
                 command_revision = receipt.revision
                 result.outcome = CommandOutcome.ACCEPTED
-            except NinebotAuthError:
+            except NinebotAuthError as err:
                 result.outcome = CommandOutcome.AUTH_REQUIRED
                 result.error = ErrorKind.AUTH
+                result.failure_context = err.context
                 result.readback = ReadbackOutcome.SKIPPED
                 result.confirmation = Confirmation.UNKNOWN if target else Confirmation.NOT_REQUESTED
                 self._manual_auth_failure()
@@ -1691,6 +1780,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             except NinebotError as err:
                 result.outcome = CommandOutcome.UNCERTAIN
                 result.error = err.kind
+                result.failure_context = err.context
                 command_revision = err.request_revision
                 command_error = err
             finally:
@@ -1699,6 +1789,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 # Broker admission/guard/cooldown rejected before the operation.
                 # No wire invocation occurred, so do not reconcile or imply it did.
                 result.outcome = CommandOutcome.REJECTED
+                result.blocked_reason = f"broker_{command_error.kind.value}"
                 result.readback = ReadbackOutcome.SKIPPED
                 result.confirmation = Confirmation.NOT_REQUESTED
                 raise HomeAssistantError(
@@ -1776,6 +1867,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         finally:
             if result is not None:
                 result.finished_at = dt_util.utcnow()
+                result.log(action)
 
     @callback
     def _mark_seat_unlocked(self, sn: str) -> None:
@@ -1886,8 +1978,9 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         loop = asyncio.get_running_loop()
         started = loop.time()
         result.readback = ReadbackOutcome.PENDING
+        deadline = asyncio.timeout_at(started + CONFIRMATION_TIMEOUT)
         try:
-            async with asyncio.timeout_at(started + CONFIRMATION_TIMEOUT):
+            async with deadline:
                 async for _ in read_slots(started, CONFIRMATION_DELAYS):
                     if not self._owns(owner):
                         result.readback = ReadbackOutcome.SKIPPED
@@ -1934,8 +2027,15 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             result.readback = ReadbackOutcome.FAILED
             result.readback_error = ErrorKind.AUTH
         except TimeoutError:
-            result.readback = ReadbackOutcome.FAILED
-            result.readback_error = ErrorKind.CONNECTION
+            if deadline.expired():
+                result.confirmation_deadline_reached = True
+                # Preserve completed reads; this local window is not evidence
+                # that the transport failed or that the command was accepted.
+                if result.readback is ReadbackOutcome.PENDING:
+                    result.readback = ReadbackOutcome.FAILED
+            else:
+                result.readback = ReadbackOutcome.FAILED
+                result.readback_error = ErrorKind.CONNECTION
         result.confirmation = (
             Confirmation.TARGET_NOT_OBSERVED
             if result.readback is ReadbackOutcome.REFRESHED and result.observed_locked is not None
@@ -2012,4 +2112,5 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         self.recorded_cursors.clear()
         self.ride_lifecycles.clear()
         self.control_results.clear()
+        self._query_failures.clear()
         await self.async_shutdown()

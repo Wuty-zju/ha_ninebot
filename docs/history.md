@@ -19,7 +19,7 @@ Historical rides and point arrays belong in the archive and bounded responses, n
 
 ## Enable preservation and synchronization
 
-In account options, review **Preserve trip details in background**, **Automatic history synchronization**, storage quota and history request budget. Calendar, preservation and automatic sync are Beta features and default off for new accounts; existing choices are retained. Enable preservation and automatic sync to start background acquisition. Turning preservation off keeps saved data but suspends background work. Location response/display consent is a separate option; protecting archived GPS/backups remains necessary.
+In account options, review **Automatically sync trip details (Beta)**, **Automatically scan trip history (Beta)**, storage quota and history request budget. Calendar, preservation and automatic sync are Beta features and default off for new accounts; existing choices are retained. Enable preservation and automatic sync to start background acquisition. Turning preservation off keeps saved data but suspends background work. Location response/display consent is a separate option; protecting archived GPS/backups remains necessary.
 
 First discovery persists a fixed baseline from the client's `200001` month lower bound through the bootstrap month for each owned vehicle. This is a **client search policy**, not an official earliest-history boundary. Empty months do not prove earlier history is impossible. Work is resumable and budgeted, so a first scan may take a long time. New months, current/previous-month changes and older gaps have separate incremental scheduling; stable saved details are reused instead of continually downloaded.
 
@@ -46,7 +46,7 @@ Existing `start`/`continue`/`status`/`cancel` range jobs remain supported (up to
 ### Read progress correctly
 
 - **Sync state** describes the current acquisition phase. Waiting for request budget is local scheduling, not an application for Ninebot permission. Inspect `next_request_at`, `retry_at`, `sync_phase` and errors before intervening.
-- **Month-scan progress** separates processed/verified/gapped months. Page totals, membership and references must agree; a visited month is not automatically verified.
+- **Month-scan progress** separates processed, verified and gapped months. Page totals, membership and references must agree. A conflicting or invalid month in a response keeps that response out of statistics. History scans retain the captured page as evidence of the gap.
 - **Saved-detail progress** covers discovered ride IDs. 100% does not mean all cloud rides were discovered or that every saved route has a full geometry.
 - **Last successful sync** records accepted page/detail progress; task completion is separately identified by `last_completed`. A historical completion time is not erased merely because current verification is pending.
 - **Monthly list coverage** describes the latest list response, not accumulated archive completeness. A 20/37 response is different from an archive that has reconciled all 37 IDs.
@@ -67,7 +67,7 @@ entity: calendar.REPLACE_WITH_VEHICLE_RIDE_CALENDAR
 limit: 20
 ```
 
-The resource and visual editor are bundled; no additional card repository is required. The integration registers a fixed static path, **not** dashboard resources/cards automatically. For `Custom element not found: ninebot-trip-card`, check that the resource loaded as a module, that the integration is loaded, then hard-reload the browser/app frontend. The footer shows the bundled card version.
+The resource and visual editor are bundled; no additional card repository is required. The integration registers a fixed static path, **not** dashboard resources/cards automatically. For `Custom element not found: ninebot-trip-card`, check that the resource loaded as a module, that the integration is loaded, then hard-reload the browser/app frontend. Find the installed integration version on its integration page.
 
 Use `device_id: REPLACE_WITH_VEHICLE_DEVICE_ID` instead of `entity` if the calendar feature is off. For multiple vehicles (up to five, including different loaded accounts):
 
@@ -92,7 +92,7 @@ limit: 40
 - Selecting a ride links its map, summary and curves. Already-saved detail can load locally; a missing detail never triggers a cloud download automatically.
 - Compare up to **five rides**, including different vehicles. Chips switch focus; totals cover selected records, not every ride matching the filter.
 - Route clicks, curve hover, point slider, drag selection and sequence playback share one focus marker/range. They make no API requests. **Show all routes** fits the map; ordinary focus and telemetry updates preserve the manual viewport.
-- **Local records updated · Read latest** is an authenticated metadata-only notification. Reading latest refreshes local lists/focused saved detail while preserving selection/view/playback. Reconnection clears old cursors; it does not start a cloud scan.
+- **Local records updated · Read latest** is an authenticated metadata-only notification. Reading latest refreshes local lists/focused saved detail while preserving the selection and map view. Playback pauses during the refresh. Reconnection clears old cursors; it does not start a cloud scan.
 - The visual editor supports vehicles, title, dates and page size; advanced options remain YAML-editable. Narrow/mobile cards stack the map, list and detail.
 
 **Fetch cloud detail** explicitly requests one selected ride/month and can save its business payload. **Show saved route** uses local-only detail with coordinate permissions. Missing saved detail needs the explicit cloud step, or background acquisition, then a local refresh. The detail response reports whether persistence succeeded; a cloud response alone is not a storage guarantee.
@@ -103,7 +103,7 @@ Each interaction loads at most four 512-source-row chunks before **Read more sav
 
 Leaflet **1.9.4** and its license/assets are bundled locally. Tiles are **off by default**. Enabling the OpenStreetMap basemap sends requests revealing the visible map area and network information to that provider. Attribution remains visible. No external JavaScript CDN is required.
 
-Coordinates are plotted as received: CRS is unverified, with no automatic WGS/GCJ conversion or road matching. Point speed and point-distance units remain unverified. Curves use **source sequence**, not elapsed time; 0.5-second playback steps are display timing, not riding speed/time. Server maximum speed and the calculated overall `distance / duration` average stay distinct; sample means cannot replace them.
+Coordinates are plotted as received: CRS is unverified, with no automatic WGS/GCJ conversion or road matching. Point speed units remain unverified. The fourth trail column is preserved as `distance_delta_raw`; its meaning and unit are unverified, so the card labels it by source column rather than treating it as a point-to-point distance. Curves use **source sequence**, not elapsed time; 0.5-second playback steps are display timing, not riding speed/time. Server maximum speed and the calculated overall `distance / duration` average stay distinct; sample means cannot replace them.
 
 Private projections are cleared on user/connection/date/vehicle scope change, revoked access and card removal. Full trails/raw do not enter HA entity attributes, Recorder, diagnostics or localStorage. Explicit GPS Action responses can still be recorded in automation traces; protect them.
 
@@ -178,6 +178,8 @@ Cloud monthly totals, the latest returned list, accumulated local rides, saved d
 
 Today/yesterday count, duration and Wh need a verified complete selection or locally accumulated IDs/count/distance that reconcile with the month; energy and duration additionally reconcile independently. Missing/conflicting fields stay unknown; proven empty windows return zero. Rides are attributed wholly to their Shanghai **end date**, with no invented midnight allocation. Month boundaries can require adjacent-month evidence.
 
+Daily distance prefers the server's daily mileage chart (`server_daily_chart`); when that value is missing, verified ride distances can supply `returned_unique_rides`. Count, duration, energy and matching ride-based average consumption use the whole-ride end-date selection. Check the returned `distance_basis` before comparing these projections. Recorded-trip pages select rides that overlap the requested dates, so page membership is a browsing scope rather than a daily-statistics attribution rule.
+
 Numeric entities retain verified values for the same date/month through a short outage or restart. Attributes preserve the actual receipt time and distinguish `current`, `cached`, `awaiting_day_close` and `reported_history`; cached values do not claim a new cloud observation. Yesterday can show its last verified same-day report while waiting for a closing report. A new day/month never inherits the previous period's totals. After setup and at Shanghai midnight, demanded trip data is scheduled promptly through the existing coalesced requests and backoff. Archive updates notify affected entities without another poll.
 
 Strict `get_statistics` daily responses and Recorder imports still require post-day-close observations for historical days and sufficiently fresh current-day evidence. Entity display continuity does not certify a period as complete for historical import. A first-ever account can remain unknown while its index is being filled; zero-distance average consumption is undefined, with `availability_reason: zero_distance` rather than an invented average.
@@ -196,7 +198,7 @@ data:
 response_variable: imported
 ```
 
-Import reads existing data and queues up to eight native series: day/month distance (km), energy (Wh), ride count and duration (s). Recorder must run; HA timezone must be `Asia/Shanghai`. Only closed verified periods enter; no spreading monthly Wh across days. `status: queued` means queue acknowledgement, not a durable commit. Repeated periods replace previous values; corrections rebuild later cumulative sums without double counting. Missing updates retain prior verified points with warnings. Incompatible metadata/units or over 12,000 points/series reject the batch.
+Import reads existing data and queues up to eight native series: day/month distance (km), energy (Wh), ride count and duration (s). Recorder must run; HA timezone must be `Asia/Shanghai`. Only closed verified periods enter; no spreading monthly Wh across days. `status: queued` means queue acknowledgement, not a durable commit. Repeated imports compare the committed values, cumulative sums and metadata first. Identical series return `status: unchanged` with `unchanged_points` and queue no writes; chart configurations remain available. Changed periods replace previous values, and corrections rebuild later cumulative sums without double counting. Missing updates retain prior verified points with warnings. Incompatible metadata/units or over 12,000 points/series reject the batch.
 
 Native statistics IDs currently include the integration entry identity. Removing and re-adding an account reconnects its ride archive, but a subsequent statistics import can use a new series. Existing Recorder series and dashboard references remain intact. Keep the returned IDs when maintaining charts; account-stable series migration will require an explicit mapping rather than automatic merging.
 
@@ -226,13 +228,15 @@ initial_view: dayGridMonth
 
 The read-only calendar shows valid past ride times/metrics from local storage. It does not fetch missing months/details or write Recorder. Its current state may be `off` when only past rides exist; browse dates rather than attributes. Complete-list withdrawals can remove current selections while preserving evidence; partial omissions retain known rides. Queries are bounded to five years, 5,000 rides and 8 MiB. Newer HA can subscribe to changed calendar ranges; older supported HA can navigate/read normally.
 
-Trip Event state is the timestamp of the most recent report/update/completion event, not last-ride end. Two independent unchanged travel observations over ten minutes establish stability; startup/re-enable sets a baseline and does not replay historical rides. IDs are durably deduplicated; later corrections can emit a report-update event, but never repeat the completion event. Unknown before the first new event is expected. Restored event timestamps never trigger automations; rides during downtime can be missed.
+Trip Event state is the timestamp of the most recent report/update/completion event, not last-ride end. Completion requires at least two independent successful travel observations with the relevant ride facts unchanged for at least ten minutes; startup/re-enable sets a baseline and does not replay historical rides. IDs are durably deduplicated; later corrections can emit a report-update event, but never repeat the completion event. Unknown before the first new event is expected. Restored event timestamps never trigger automations; rides during downtime can be missed.
 
 Native `type: map` with the location tracker and `hours_to_show: 24` shows only positions Recorder actually observed. It cannot reconstruct downloaded historical trail arrays; use the bundled workbench for a saved ride.
 
+An interrupted historical month read may already have a complete verified page on disk. Once its claim or retry delay expires, the scheduler checks local page evidence first. A matching page advances discovery even when the hourly budget is exhausted. Active claims and future retry deadlines still take precedence.
+
 ## Verification and recovery
 
-The account-scoped SQLite archive holds normalized facts and credential/profile-redacted compressed business evidence. Each detail can retain the latest payload and independently selected better geometry; a newer simplified/empty response must not erase a better saved route. There is **no automatic TTL**, but quota/disk/backup settings apply. 180-day cloud observations are not a contractual retention guarantee. Protect saved details before the server potentially simplifies them.
+The account-scoped SQLite archive holds normalized facts and credential/profile-redacted compressed business evidence. Each detail can retain the latest payload and independently selected better geometry; a newer simplified/empty response must not erase a better saved route. When the same vehicle and ride are indexed in more than one month, each saved detail keeps its original source month. There is **no automatic TTL**, but quota/disk/backup settings apply. 180-day cloud observations are not a contractual retention guarantee. Protect saved details before the server potentially simplifies them.
 
 Quota exhaustion pauses writes instead of silently evicting rides. Healthy reads and ordinary telemetry can continue when storage permits; structural startup failures remain strict. HA pre/post-backup hooks pause/drain archive writes and keep allowed reads available; they do not create/upload a backup themselves. See [upgrade and rollback](migration.md#archive-schema-and-rollback).
 
@@ -253,3 +257,5 @@ Quality-only corrections keep newer scalar observations and selected geometry. E
 Use the current `sync_status`, `verify_status` or reconstruction result to distinguish pending/invalid/repaired/with-gaps outcomes. Do not delete private storage or manually replace a live database to improve a percentage. Keep unresolved Repairs and evidence for supported recovery. Detailed boundaries live in [architecture](architecture.md#storage-and-integrity); original version-specific behavior remains in [release history](../CHANGELOG.md).
 
 History belongs to the authenticated account, not the configuration entry. Removing/re-adding an account retains and reconnects its archive by default. Use the [archive export/import tools](guide.md#export-and-import-history-databases) for selected vehicles or multiple accounts; imports merge facts and better tracks without starting cloud queries. Distinct historical page evidence from merged sources remains inside the canonical schema 7 database; an absent discovery baseline can resume validated committed page coverage with in-flight request claims reset; an existing local baseline is never replaced.
+
+Some backups index one ride under adjacent source months. Merge accepts the overlap when one validated archive proves both memberships for the same account, vehicle and ride, and the detail identifiers agree. Importing either backup first retains the newest measurements and best verified route. A conflicting identity or unproven membership stops the import and leaves the original archive available.

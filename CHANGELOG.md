@@ -1,5 +1,233 @@
 # Changelog
 
+Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
+
+
+## 2.2.0
+
+This maintenance release brings 33 releases since 2.0.0 into the stable line.
+
+| Versions | Development milestones |
+|---|---|
+| 2.0.1–2.0.4 | Sign-in and discovery diagnostics, native dashboard sections, Marketplace packaging and download accounting. |
+| 2.1.0–2.1.4 | Optional vehicle-scoped local Assistant tools, bilingual help, human-reviewed history tasks and more reliable session and archive cleanup. |
+| 2.1.5–2.1.10 | Pinned help citations, optional task checklists, explicit business dates and observation times for saved pages. |
+| 2.1.11–2.1.16 | Consistent task and budget contracts, native AI Task queries and permission checks across changing vehicle grants. |
+| 2.1.17–2.1.22 | Local statistics explanations, partial results after provider interruptions, scoped vehicle selection and documented MCP access rules. |
+| 2.1.23–2.1.28 | Per-vehicle support evidence, model-aware control routing, preserved confirmation observations, cross-month track protection and display-ready cited answers. |
+
+**Maintenance in 2.2.0**
+
+- Reuse a complete, verified local month page after a history request or retry becomes due. An exhausted cloud budget can still permit local progress.
+- Import overlapping same-account archives in either order when verified month memberships agree. Preserve the newest measurements and the strongest saved track independently.
+- Recheck the same task grant before returning progress or review data. Revoking and granting access again during a read requires a new request.
+- Keep all 19 help topics and 10 checklists available at the installed stable version, with their original source links and applicability checks.
+- Enforce the existing 91% coverage threshold from unrounded counts on both supported test environments. The release and full regression checks now use the same entry point.
+
+[Installation](README.md) · [Upgrade](docs/migration.md) · [中文安装](README_zh.md) · [中文升级](docs/migration_zh.md)
+
+## 2.1.28
+
+- Keep a ride’s best saved track accessible when verified lists report the same ride in adjacent months. Archive reads, recovery and account transfers check each source against its recorded ride membership.
+- Put the complete troubleshooting citation ahead of each help excerpt. Ninebot Assistant now guides compatible conversation hosts to answer from the returned evidence. The `ninebot.ask` action can return display-ready help and statistics directly from its verified tool results.
+
+## 2.1.27
+
+- Add versioned English and Chinese Assistant help for command errors, confirmation deadlines, backend codes and observed control routes.
+- Validate the month reported by live trip queries and archived pages before assigning rides to the requested month.
+
+## 2.1.26
+
+- Route controls for vehicles explicitly identified as motor in the native cache through the managed native command path, correcting the pinned REST proxy's ebike-only control routing.
+- Preserve bounded upstream result codes and recognized backend error categories in support diagnostics and logs.
+- Report the observed control route without exposing vehicle identities; retain the existing telemetry service and command confirmation behavior.
+
+## 2.1.25
+
+- Preserve completed control-state reads when the local confirmation window expires, with an explicit deadline indicator in diagnostics and DEBUG logs.
+- Keep proxy command errors separate from confirmation deadlines and clarify empty-history troubleshooting.
+
+## 2.1.24
+
+- Add versioned English and Chinese help for missing vehicle data, control outcomes and battery cycle support.
+- Include reviewed local query failure context in authorized cached-status responses while filtering unknown fields and values.
+- Clarify how the existing read-only tools and task checklists separate field meanings, current status, statistics and history gaps.
+
+## 2.1.23
+
+- Include bounded per-vehicle month counts, list field states and history progress denominators in downloaded diagnostics.
+- Retain safe query failure context and add correlated control-result DEBUG logs, including local rejections and state confirmation.
+- Keep empty scan denominators unknown and share the same progress calculation between entities and diagnostics.
+- Explain empty-history progress, unsupported metrics and control receipts in the English and Chinese troubleshooting guides.
+
+## 2.1.22
+
+- Add cited bilingual help for native MCP API-selection settings and main versus individual URLs.
+- Recognize exact configuration keys and retain version filtering, account consent and human-review requirements.
+
+## 2.1.21
+
+- Bind an existing vehicle selection to per-task Assistant tools, avoiding repeated model-supplied identifiers while preserving public MCP parameters and access checks.
+
+## 2.1.20
+
+- Clarify archive business dates, exact vehicle references and denied-access guidance for Assistant hosts.
+- Direct task cancellation to the original requester's native review panel, distinguishing expiry and new applications from cancellation.
+
+## 2.1.19
+
+- Keep recorded Assistant evidence independent of provider-side tool-result formatting.
+
+## 2.1.18
+
+- Preserve verified Assistant tool results when the model provider fails later in the query, returning explicit partial status.
+- Recheck permissions before returning retained evidence; discovery alone and failed reads remain failures.
+
+## 2.1.17
+
+- Add a bounded local statistics check combining actual metric quality, synchronization health and cited help.
+- Accept explicit YYYY-MM periods using the existing monthly statistics contract.
+- Recover once from verified temporary busy errors on idempotent local reads, preserving the original user and query deadline.
+
+## 2.1.16
+
+- Close a multi-vehicle consent race in native Assistant queries by rechecking every captured scope after asynchronous permission checks.
+
+## 2.1.15
+
+- Add an optional `ninebot.ask` response Action using an existing Home Assistant AI Task provider, with no required model vendor.
+- Return actual local tool results, quality and sources; generated prose does not replace measured values or saved records.
+- Bound each query's duration, tool calls, concurrency and response size, and require explicit selection for multi-vehicle reads.
+- Recheck the original user's consent and ownership before returning results; cancel active queries when the Assistant API is withdrawn.
+
+## 2.1.14
+
+- Clarify daily mileage sources, whole-ride end-date attribution and overlapping trip-page selections in versioned Assistant help.
+- Explain score 0 as the integration's unsupported-display rule, preserving the distinction from battery health or SOH.
+- Scope MCP read-only guidance to the global route and retain account consent, request budgets and separate human approval for task applications.
+- Verify native MCP route policy and per-turn Conversation selection updates, with matching bilingual guides.
+
+## 2.1.13
+
+- Focus account-budget help on request pacing, avoiding unrelated task-application matches.
+- Recognize preview and application tool names in help, including their native prefixes, and clarify that approvals share the account request budget.
+- Add native MCP checks for untrusted device metadata and distinguish tool-I/O cancellation from provider-generation deadlines.
+- Align evaluation contracts with account-scoped cursors, local missing-detail errors and recorded task applications.
+
+## 2.1.12
+
+- Distinguish selected details from the shared attempt allowance, including retries, in task previews, applications and progress.
+- Preserve the earlier preview allowance field and document the matching English and Chinese response contracts.
+
+## 2.1.11
+
+- Preserve task identifier types and constraints when combining the native read/help and task APIs, in either selection order.
+- Share the task-reference validator and serializer while retaining existing authorization and execution checks.
+- Clarify preview, application submission and later human approval in task guidance and the bilingual user guide.
+
+## 2.1.10
+
+- Query one explicit historical business date through the native Assistant statistics tool, reusing local daily projections and their metric quality.
+- Keep existing relative periods and distinguish verified empty days from missing observations; reject future dates before reading the archive.
+
+## 2.1.9
+
+- Preserve trip and month observation times in native Assistant pages, including empty results and continued pages.
+- Distinguish the current query time from the page's fixed selection time, and apply the per-ride size limit to the final returned fields.
+
+## 2.1.8
+
+- Focus help retrieval on matching topic keywords, keeping prose-only discovery when no topic keyword matches.
+- Clarify the version boundary for sign-in support logs in the bilingual guides and versioned help corpus.
+- Check native Conversation API reuse, current-user permissions, Action responses and cancellation alongside the existing MCP canary.
+
+## 2.1.7
+
+- Add a development reference host for evaluating period statistics, synchronization health and versioned help through the native Ninebot MCP collection.
+- Validate checked receipt presentation with dates, metric quality, observation times and source citations, retaining the test model’s draft separately.
+- Exercise explicitly requested task checklists within the reference host’s existing tool and request limits.
+
+## 2.1.6
+
+- Keep public-help answers focused on documented concepts by default; retrieve advisory task checklists only when explicitly requested for a specific task.
+- Clarify the distinction between general synchronization guidance and a selected vehicle's current synchronization state in English and Chinese.
+
+## 2.1.5
+
+- Separate unverified raw-sample unit guidance from maximum/average-speed and battery-score help, and return ready-to-use pinned-source citations with the knowledge corpus version.
+- Document native MCP prompt selection and keep task-evaluation boundaries aligned with native human review.
+
+## 2.1.4
+
+- Keep closed Assistant task drivers detached when restoration finishes after account shutdown or replacement.
+- Close read-only archive connections when validation or initialization fails, preserving the original database.
+- Resume temporary history-busy retries after restart instead of treating saved scheduler state as invalid.
+- Clarify cached-data capabilities, group observation times, ACC and seat-latch semantics in the native Assistant tools.
+- Ground period answers in the selected vehicle, business dates, coverage and returned sources.
+- Distinguish the unverified fourth track column, energy, power and latch-unlock labels; curate Traditional Chinese archive and command feedback.
+- Refresh field-to-entity evidence, local-history action descriptions and Assistant task consent across shipped languages.
+- Tighten synthetic evaluation privacy checks and scope descriptive field checks to their actual consumers.
+
+## 2.1.3
+
+- Skip Recorder writes for unchanged statistics while retaining corrections and chart configurations.
+- Drain active client operations and late subprocess creation before releasing session resources, including concurrent close and repeated cancellation.
+- Keep vehicle-discovery completeness bound to its own payload during metadata lookup.
+- Reject pending query receipts when the broker closes during final consumer authorization.
+
+## 2.1.2
+
+- Add an optional, separate native task API for previewing missing trip details, requesting review and reading progress.
+- Review exact vehicles, dates, selected identities, request limits and expiry in a native administrator panel before approving cloud work.
+- Run approved scopes through the existing history scheduler with durable checkpoints, bounded retries, shared account pacing and verified saved results.
+- Preserve caller identity and account/vehicle consent through execution; support cancellation, restart recovery and approval-safe backups.
+- Add native review/result notices and two versioned task checklists alongside the local read tools.
+- Verify the packaged panel, native HA WebSocket, task runner and SQLite result together with synthetic data.
+
+## 2.1.1
+
+- Add versioned public-help search with eleven bilingual topics, immutable source references and bounded local retrieval.
+- Include eight read-only task checklists for vehicle selection, statistics, saved trips, synchronization and troubleshooting.
+- Clarify cached-data readiness, observation times, access failures and account request pacing in Assistant results.
+- Prepare scope-bound detail claims, durable attempt budgets and verified confirmation storage for subsequent task support.
+
+## 2.1.0
+
+- Add an optional native Ninebot LLM API with six local read tools for authorized vehicles, current readings, period statistics, saved trips, local details and history health.
+- Require an active administrator and separate account/vehicle consent on every call; preserve user Context and verify ownership again before returning data.
+- Return bounded values with units, observation times, coverage and source evidence. Keep precise locations, raw responses and cloud refresh outside the read API.
+- Bound per-user call rates, concurrent reads, response size and execution time; release admission on cancellation.
+- Document native MCP setup, privacy and troubleshooting in English and Chinese; localize Assistant settings in all shipped languages and provide synthetic evaluation specifications.
+
+## 2.0.4
+
+- Preserve the observed local endpoint and HTTP status in service startup failure logs.
+- Identify vehicle-discovery failures while retaining more specific authentication context.
+- Clarify native debug logging and diagnostic entity settings in the English and Chinese guides.
+
+## 2.0.3
+
+- Document native dashboard sections for vehicle and period summaries, preserving numeric sensors and their statistics.
+- Add a read-only Actions download audit with full release pagination and per-package counts.
+
+- Show control-vehicle selection and historical-sync settings only when their parent feature is enabled on Home Assistant 2026.11+.
+- Preserve saved values when conditional fields are omitted, including unlimited request budgets and previously selected vehicles.
+- Keep the existing direct form on earlier Home Assistant versions, with unchanged defaults and archive-management access.
+
+## 2.0.2
+
+- Add the native vehicle category and Marketplace installation instructions while retaining HACS installation for earlier Home Assistant versions.
+- Read device identifiers through the supported DeviceInfo representation on new and older Core versions.
+- Use Home Assistant's contextual entity-name formatter in the history browser and editor, retaining legacy display names on older frontends.
+- Add an independent published-Core API check alongside the compatible runtime test boundaries and document default-catalog preparation.
+
+## 2.0.1
+
+- Add native sign-in failure logs with a per-attempt support identifier and reviewed local stage, endpoint and proxy error metadata.
+- Keep authentication errors distinct from unclassified service failures, without logging credentials or upstream response text.
+- Export basic diagnostics when account setup has failed or its runtime is unloaded, including when the backend package is unavailable.
+- Clarify the diagnostic-entity display option and document native debug logging before an account exists.
+
 ## 2.0.0
 
 - Complete the 2.0 refactor across 107 betas and four release candidates, with independent accounts, coordinated live data and native Home Assistant representations.
@@ -21,7 +249,7 @@
 - Read historical progress in one actor snapshot and reuse unaffected vehicles’ summary views and caches.
 - Refresh field evidence, translated options, installation guides and candidate-validation reuse.
 
-## v2.0.0rc3
+## 2.0.0rc3
 
 - Drain cancelled import and migration file work before releasing temporary directories, including repeated cancellation.
 - Reclaim removed-entry credentials, nominal parameters and event cursors separately from retained account history, with ownership/reference checks and actionable cleanup Repairs.
@@ -634,53 +862,53 @@
 
 ## 2.0.0b16
 
-- 修复车辆在命令后消失、回读跳过时仍正常返回的缺陷；已完成的命令前manual任务不再代替命令后读取，旧任务清理不覆盖新任务。
-- 非认证控制错误后最多协调一次status，始终保留原命令结果未知且不重发；认证/取消/卸载停止额外I/O。
-- 新增仅内存、全局64条上限的最近控制结果诊断，分开记录接口接受、错误和回读；不保存响应、身份、位置或异常文本，不创建新实体。
-- 中英回读错误说明同步；仅离线测试，无新云查询、真实车辆动作或生产HA修改。
+- Report failed state confirmation when a vehicle disappears after a command. A completed pre-command manual query cannot substitute for the new readback, and old task cleanup cannot replace a newer task.
+- Reconcile status at most once after a non-authentication control error, preserving the uncertain command result without resending. Authentication failure, cancellation and unload stop additional I/O.
+- Add a bounded, memory-only control-result diagnostic with up to 64 entries. Distinguish acceptance, errors and readback without retaining response bodies, identities, locations or exception text; no new entities.
+- Align English and Chinese readback errors. Verification used offline tests.
 
 ## 2.0.0b15
 
-- 按新的明确授权将本地发送条件与云端权限事实分开：控制启用、逐车允许、认证/新鲜度/错误/软件支持检查全部保留，未知权限由云端最终鉴权，已知拒绝和歧义仍阻止。
-- 四类正常Button不再因parser没有权限证据而永久灰色；中英状态明确“可发送命令”，不宣称已获权限或物理动作完成，失败不自动重试、仍回读状态。
-- 一辆车四种真实命令各尝试一次，均HTTP200/ok=true/空data，回读成功但选定状态未变化；生产会话文件未改动，临时目录/进程清理，物理效果待验证。
-- 增加空成功响应的选定fixture与12条命令代理字段分类，独立于136条业务路径；移除测试注入假允许能力的依赖，保留明确拒绝/队列变化/用户禁用回归。
+- Separate local dispatch conditions from cloud permission decisions. Keep control enablement, vehicle allowlists, authentication, freshness, error and command-support checks; let the cloud authorize unknown permissions while rejecting explicit denials and ambiguity.
+- Keep the four control buttons available when permission evidence is absent. Describe readiness as permission to send, without claiming cloud authorization or physical completion. Failed commands are not retried; status is still reconciled.
+- Try each of the four commands once on one authorized vehicle. All returned HTTP 200, ok=true and empty data; readback succeeded without a change to the selected states, leaving physical effects unverified. Temporary sessions and processes were cleaned up.
+- Add selected empty-success fixtures and classify 12 command-proxy fields separately from the 136 business paths. Remove fake-allowance test dependencies while retaining denial, queue-change and user-disable regressions.
 
 ## 2.0.0b14
 
-- status明确返回的sn必须匹配请求车辆，错车/非法身份不覆盖raw、telemetry或成功时间；缺失/null仍允许，partial failure与TTL保持。
-- 新增instrumented临时binary的完整控制加密模拟测试：四种接受及一次拒绝，无真实云/车辆动作，原binary不变。
-- 明确recon参考公钥/DeriveKey、opaque cmd、native成功与物理效果之间的边界，补MIT测试许可和当前字段用途。
-- 376项测试通过（97.87%分支覆盖），Ruff/format/mypy通过；未知权限门禁不变。
+- Require an explicitly returned status SN to match the requested vehicle. Invalid or mismatched identities cannot replace raw data, telemetry or success times; missing/null identity retains partial-failure and TTL behavior.
+- Add full encrypted-control simulation with an instrumented temporary binary: four accepted commands and one refusal, leaving the original binary unchanged.
+- Document the boundaries between the recon reference key/DeriveKey, opaque commands, native success and physical outcomes; add MIT test attribution and field usage.
+- Pass 376 tests with 97.87% branch coverage, plus Ruff, formatting and mypy. Unknown-permission gating is unchanged in this version.
 
 ## 2.0.0b13
 
-- 新增可选“原始数据摘要”诊断：按车辆显示有界缓存记录数及四个整数指标，无原始值/任意字段名/位置，不增加云轮询。
-- 汇总五个业务endpoint的136条已观察路径、122个非容器字段；逐项记录当前用途、单位、分类、来源和限制，保留历史清单。
-- 明确status.sn尚未返回归属校验、车型语言fallback、CLI业务线路缓存及当前实体默认策略，避免文档冒称未实现能力。
-- 增加recorded字段覆盖与隐私/车辆隔离/TTL/实际HA状态验证；369项测试通过（97.81%分支覆盖），静态检查通过。
+- Add an optional raw-data summary diagnostic with bounded cache counts and four integer metrics per vehicle. Exclude raw values, arbitrary field names and location; no extra cloud polling.
+- Inventory 136 observed paths and 122 non-container fields across five business endpoints, recording usage, units, classification, sources and limitations.
+- Document the unvalidated status SN, model-language fallback, CLI business-line cache and entity defaults against the implementation.
+- Add recorded-field coverage, privacy, vehicle-isolation, TTL and native HA-state verification. Pass 369 tests with 97.81% branch coverage and static checks.
 
 ## 2.0.0b12
 
-- 新增正常命名的远程启动/关闭 Button，保留鸣笛/座桶身份，不重新引入 Lock。
-- 已显式配置控制和车辆白名单时启用集成默认禁用的按钮；保留用户禁用，执行权限门禁不变。
-- 新增默认显示、完整中英翻译的车辆控制状态枚举诊断，只有四个小型动作状态属性，不额外查询云端。
-- 固定 native 二进制离线验证四种 REST 控制路径，纠正 REST 控制与 CLI/BMS 的缓存要求差异。
-- 366 项测试通过（97.80% 分支覆盖）；Ruff/format/mypy通过，无生产写入/真实控制。
+- Add remote start/stop buttons while retaining bell and seat-unlock identities; do not reintroduce a Lock platform in this version.
+- Enable integration-disabled buttons only after explicit control and vehicle selection. Preserve user-disabled choices and existing authorization checks.
+- Add a default-visible control-status diagnostic enum with four compact action-state attributes, complete English/Chinese translations and no extra cloud queries.
+- Verify four REST control routes offline against the pinned native binary; distinguish REST control cache requirements from CLI/BMS routing.
+- Pass 366 tests with 97.80% branch coverage, plus Ruff, formatting and mypy.
 
 ## 2.0.0b11
 
-- 修复 ninecli 0.1.7 REST 列表不建立车辆缓存导致 BMS `no_cache` 的问题：使用原生 JSON 车辆发现生成业务线路缓存，再按需启动受鉴权 REST。
-- 共用串行锁/8项队列、30秒超时、1MiB输出限额和子进程回收；未知 CLI 错误使用 REST 明确鉴权证据，不泄漏 stderr。
-- 更新缓存数据来源诊断、双语文档及 native 实际路由回归。
-- 353 项测试通过（97.77% 分支覆盖）；新版 client 在生产会话隔离副本上只读验证两车 BMS 成功，生产文件未改动，实车控制为零。
+- Fix BMS no_cache failures caused by REST vehicle listing not creating the routing cache. Discover vehicles through native JSON, build the business-line cache, then start authenticated REST as needed.
+- Share the serial lock, eight-item queue, 30-second timeout, 1 MiB output bound and child-process cleanup. Use explicit REST authentication evidence for unknown CLI failures without exposing stderr.
+- Update cache-source diagnostics, bilingual documentation and native-routing regression coverage.
+- Pass 353 tests with 97.77% branch coverage, plus static checks. Read-only BMS queries succeeded for two vehicles using isolated copies of existing sessions.
 
 ## 2.0.0b10
 
-- 默认显示普通/AI续航、最近行程距离/时长/起止时间/速度及车型图片。
-- 成功首刷后按精确身份启用旧的 integration-disabled 默认，保留用户禁用、名称和历史身份；不启用 GPS、控制、事件、估算或 raw 诊断。
-- 新默认纳入按需求行程调度，不增加详情轮询；诊断仅记录迁移数量。
-- 339 项离线测试通过（97.84% 分支覆盖）；不包含真实控制或生产 HA 修改。
+- Show standard/AI range, last-trip distance, duration, start/end, speeds and model images by default.
+- After a successful first refresh, enable exact legacy identities previously disabled by the integration. Preserve user-disabled choices, names and history; GPS, controls, events, estimation and raw diagnostics remain separately configured.
+- Include the newly visible entities in demand-based travel scheduling without detail polling. Diagnostics report only migration counts.
+- Pass 339 offline tests with 97.84% branch coverage.
 
 ## 2.0.0b9 — 2026-10-04
 
@@ -803,8 +1031,9 @@ Minimum HA and exact dependency pin remain unchanged; no production HA changes.
   speed is not replaced by a sample mean/max or the unverified avg_speed field.
 - Select timestamped last rides by time rather than server row order. Preserve
   the legacy last-returned snapshot if older payloads have no valid timestamps.
-- Parse confirmed semicolon-separated lon,lat,speed,distFromPrev trails on demand
-  with bounds, truncation and invalid-point reporting. Point speed/delta units
+- Parse semicolon-separated trail rows on demand with bounds, truncation and
+  invalid-point reporting. Preserve lon, lat and the third/fourth raw values;
+  the fourth value is not a verified point-to-point distance. Point sample units
   and coordinate reference remain unknown, without conversion or invented times.
 - Add sanitized nonempty-month and detail recorded fixtures. Real IDs, schedules
   and GPS were substituted; real duration/time relationships were checked before

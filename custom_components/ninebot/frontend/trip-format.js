@@ -20,3 +20,14 @@ export function formatRideInterval(start, end, locale = 'en', timeZone = 'Asia/S
   const finish = sameDay ? new Intl.DateTimeFormat(locale, { timeZone, timeStyle: 'medium' }) : full;
   return `${first ? full.format(first) : '—'} – ${last ? finish.format(last) : '—'}`;
 }
+
+
+/** Use native registry context on recent HA; preserve the legacy display name. */
+export function formatEntityLabel(hass, state, fallback = '') {
+  if (!state) return fallback;
+  if (typeof hass?.formatEntityName === 'function') {
+    const name = hass.formatEntityName(state, [{ type: 'device' }, { type: 'entity' }]);
+    if (typeof name === 'string' && name) return name;
+  }
+  return state.attributes?.friendly_name ?? state.entity_id ?? fallback;
+}

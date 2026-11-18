@@ -86,3 +86,13 @@ def previous_month(month: str) -> str:
         raise ValueError("Invalid month")
     date = datetime.strptime(month, "%Y%m")
     return f"{date.year - 1}12" if date.month == 1 else f"{date.year}{date.month - 1:02}"
+
+
+def matches_query_month(reported: object, query_month: str) -> bool:
+    """Check an optional response month against the validated query month."""
+    if reported is None:
+        return True
+    if isinstance(reported, str):
+        reported = reported.strip()
+        return not reported or reported == query_month
+    return type(reported) is int and 100_000 <= reported <= 999_999 and str(reported) == query_month

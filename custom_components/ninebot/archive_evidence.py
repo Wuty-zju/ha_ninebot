@@ -80,7 +80,7 @@ def check(db: sqlite3.Connection, *, deep: bool = False) -> None:
             ).fetchone()
             if row is None:
                 raise ValueError("Missing preserved ride identity")
-            scoped_ride(record, restored_ride(decoded(row[0])))
+            scoped_ride(db, vehicle, record, restored_ride(decoded(row[0])))
 
 
 def absorb(db: sqlite3.Connection, source: sqlite3.Connection, vehicles: set[str]) -> None:

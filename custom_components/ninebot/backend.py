@@ -74,12 +74,13 @@ class NinecliBackend:
 
     async def async_vehicles(self) -> BackendResult:
         payload = await self.client.async_list_vehicles()
+        complete = self.client.vehicle_discovery_complete is True
         return BackendResult(
             payload,
             Endpoint.VEHICLES,
             datetime.now(UTC),
             backend_version=await self._version(),
-            vehicles_complete=self.client.vehicle_discovery_complete is True,
+            vehicles_complete=complete,
         )
 
     async def async_status(self, vehicle: str) -> BackendResult:

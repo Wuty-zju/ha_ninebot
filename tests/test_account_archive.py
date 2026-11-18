@@ -32,6 +32,67 @@ UID = "synthetic-business"
 SN = "SyntheticSN"
 
 
+@pytest.mark.parametrize("stage", ["limit", "pragma", "corrupt"])
+def test_readonly_setup_failure_closes_connection(tmp_path, stage):
+    path = tmp_path / "candidate.sqlite3"
+    original = sqlite3.connect
+    if stage == "corrupt":
+        path.write_bytes(b"not a sqlite database")
+    else:
+        db = original(path)
+        db.execute("CREATE TABLE meta (key TEXT)")
+        db.close()
+    opened = []
+
+    class TrackedConnection(sqlite3.Connection):
+        closed = False
+
+        def close(self):
+            self.closed = True
+            return super().close()
+
+        def setlimit(self, *args):
+            if stage == "limit":
+                raise ValueError("Synthetic setup failure")
+            return super().setlimit(*args)
+
+        def execute(self, sql, *args):
+            if stage == "pragma" and sql == "PRAGMA query_only=ON":
+                raise sqlite3.DatabaseError("Synthetic setup failure")
+            return super().execute(sql, *args)
+
+    def connect(*args, **kwargs):
+        db = original(*args, **kwargs, factory=TrackedConnection)
+        opened.append(db)
+        return db
+
+    try:
+        with (
+            patch("custom_components.ninebot.archive_transfer.sqlite3.connect", connect),
+            pytest.raises((ValueError, sqlite3.DatabaseError)),
+        ):
+            readonly(path)
+        assert len(opened) == 1 and opened[0].closed
+    finally:
+        for db in opened:
+            db.close()
+
+
+def test_readonly_success_returns_owned_connection(tmp_path):
+    path = tmp_path / "candidate.sqlite3"
+    db = sqlite3.connect(path)
+    db.execute("CREATE TABLE meta (key TEXT)")
+    db.close()
+    reader = readonly(path)
+    try:
+        assert reader.execute("PRAGMA query_only").fetchone() == (1,)
+        assert reader.execute("PRAGMA trusted_schema").fetchone() == (0,)
+        with pytest.raises(sqlite3.OperationalError, match="readonly"):
+            reader.execute("INSERT INTO meta VALUES ('blocked')")
+    finally:
+        reader.close()
+
+
 def month(identity="ride", sn=SN):
     return travel(
         {

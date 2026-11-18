@@ -7,8 +7,8 @@
     },
     "current": {
       "python": "3.14",
-      "ha": "2026.10.2",
-      "plugin": "0.13.373"
+      "ha": "2026.10.4",
+      "plugin": "0.13.375"
     }
   },
   "tools": {
@@ -58,7 +58,8 @@
         "custom_components/ninebot/archive_resources.py",
         "custom_components/ninebot/button.py",
         "custom_components/ninebot/async_utils.py",
-        "tests/test_async_utils.py"
+        "tests/test_async_utils.py",
+        "custom_components/ninebot/exceptions.py"
       ],
       "tests": [
         "tests/test_account_archive.py",
@@ -101,6 +102,8 @@
         "custom_components/ninebot/native_history.py",
         "custom_components/ninebot/history_crypto.py",
         "custom_components/ninebot/client.py",
+        "custom_components/ninebot/native_control.py",
+        "custom_components/ninebot/vehicle_cache.py",
         "custom_components/ninebot/backend.py",
         "custom_components/ninebot/history_plan.py",
         "custom_components/ninebot/history_progress.py",
@@ -147,7 +150,8 @@
         "tests/test_history_store.py",
         "tests/test_bootstrap.py",
         "tests/test_history_lifecycle.py",
-        "custom_components/ninebot/http_policy.py"
+        "custom_components/ninebot/http_policy.py",
+        "custom_components/ninebot/detail_budget_gc.py"
       ],
       "tests": [
         "tests/test_account_archive.py",
@@ -177,6 +181,8 @@
         "tests/test_month_source.py",
         "tests/test_native_history.py",
         "tests/test_native_vehicles.py",
+        "tests/test_native_cache_routing.py",
+        "tests/test_native_control.py",
         "tests/test_preservation.py",
         "tests/test_private_detail_archive.py",
         "tests/test_query_broker.py",
@@ -324,6 +330,29 @@
         "tests/test_statistics_continuity.py",
         "tests/test_identity_migration.py"
       ]
+    },
+    "assistant": {
+      "paths": [
+        "custom_components/ninebot/assistant*.py",
+        "scripts/check_assistant*.py",
+        "scripts/assistant_ollama.py",
+        "scripts/evaluate_assistant.py",
+        "scripts/tests/test_assistant_ollama.py",
+        "scripts/tests/test_assistant_evaluation.py",
+        "custom_components/ninebot/assistant_knowledge/**"
+      ],
+      "tests": [
+        "tests/test_archive_lifecycle.py",
+        "tests/test_assistant_lifecycle.py",
+        "tests/test_assistant_policy.py",
+        "tests/test_assistant_queries.py",
+        "tests/test_assistant_limits.py",
+        "tests/test_assistant_approval.py",
+        "tests/test_assistant_task_store.py",
+        "tests/test_assistant_preview.py",
+        "tests/test_assistant_panel.py",
+        "tests/test_assistant_ask.py"
+      ]
     }
   },
   "critical_paths": [
@@ -340,7 +369,8 @@
     "custom_components/ninebot/migration.py",
     "custom_components/ninebot/event.py",
     "custom_components/ninebot/history_websocket.py",
-    "custom_components/ninebot/manifest.json"
+    "custom_components/ninebot/manifest.json",
+    "custom_components/ninebot/assistant*.py"
   ],
   "pipeline_tests": [
     "tests/test_config_flow.py",
@@ -354,5 +384,12 @@
     "tests/conftest.py",
     "tests/fixtures/**",
     "pyproject.toml"
-  ]
+  ],
+  "native_boundary": {
+    "python": "3.14",
+    "ha": "2026.11.0",
+    "integrations": [
+      "mcp_server"
+    ]
+  }
 }

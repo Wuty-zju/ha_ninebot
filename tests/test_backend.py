@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC
 from unittest.mock import AsyncMock, patch
 
@@ -60,3 +61,38 @@ async def test_backend_measures_installed_version_once_and_unknown_stays_unknown
         measure.assert_called_once_with("ninecli")
     with patch("custom_components.ninebot.backend.version", side_effect=PackageNotFoundError):
         assert (await NinecliBackend(client).async_status("vehicle")).backend_version is None
+
+
+@pytest.mark.parametrize("first_complete", [False, True])
+async def test_discovery_completeness_stays_with_its_payload_during_metadata_lookup(first_complete):
+    client = AsyncMock(spec=NinecliClient)
+    adapter = NinecliBackend(client)
+    metadata_started, second_discovered, release = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    calls = 0
+
+    async def discover():
+        nonlocal calls
+        calls += 1
+        client.vehicle_discovery_complete = first_complete if calls == 1 else not first_complete
+        if calls == 2:
+            second_discovered.set()
+        return [{"wnumber": f"synthetic-{calls}"}]
+
+    async def metadata():
+        metadata_started.set()
+        await release.wait()
+        return "0.1.7"
+
+    client.async_list_vehicles.side_effect = discover
+    adapter._version = AsyncMock(side_effect=metadata)
+    first = asyncio.create_task(adapter.async_vehicles())
+    await asyncio.wait_for(metadata_started.wait(), 5)
+    second = asyncio.create_task(adapter.async_vehicles())
+    await asyncio.wait_for(second_discovered.wait(), 5)
+    release.set()
+    earlier, later = await asyncio.gather(first, second)
+    assert earlier.payload == [{"wnumber": "synthetic-1"}]
+    assert earlier.vehicles_complete is first_complete
+    assert later.payload == [{"wnumber": "synthetic-2"}]
+    assert later.vehicles_complete is (not first_complete)
+    client.async_login.assert_not_awaited()

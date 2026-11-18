@@ -382,6 +382,9 @@ async def test_partial_view_refuses_two_bad_roles_and_does_not_hide_invalid_scop
     archive = await opened(tmp_path)
     try:
         await save(archive, {"trail": "120,30,1,1"}, NOW + timedelta(seconds=1))
+        # The same ride ID in another vehicle's month cannot vouch for this source.
+        other_month = travel({"times": 1, "list": [{"travel_id": "first"}]}, "202608")
+        await archive.async_record_month("foreign-vehicle", other_month, NOW)
         with closing(sqlite3.connect(archive.path)) as db, db:
             db.execute("UPDATE detail_payloads SET body=?", (b"unrecoverable-single-object",))
         with pytest.raises(ArchiveError) as bad:
@@ -411,7 +414,8 @@ async def test_explicit_wrong_ride_in_valid_blob_is_isolated_by_role(tmp_path, r
         await save(archive, raw, NOW + timedelta(seconds=1))
         good = await archive.async_private_detail(SN, "first")
         wrong = record(
-            {"travel_id": "other-ride", "trail": "121,31,9,1"}, NOW + timedelta(seconds=2)
+            {"id": "other-ride", "detail_id": "first", "trail": "121,31,9,1"},
+            NOW + timedelta(seconds=2),
         )
         digest, body, clean = packed(wrong)
 

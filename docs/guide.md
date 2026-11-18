@@ -7,11 +7,11 @@
 - Home Assistant **2026.1.0 or newer** and internet access to the Ninebot cloud service.
 - A Ninebot account with vehicles visible in the official App.
 - A compatible 64-bit host/container for the pinned runtime dependency. ARMv7/32-bit is unsupported.
-- HACS for the recommended installation. This is a custom integration, not a Supervisor app/add-on or a built-in Core integration.
+- Install the custom integration through Marketplace or HACS, or use the release ZIP.
 
 The current connection has been verified against the Chinese App service; additional service regions require validation.
 
-The current stable release is **v2.0.0**. Back up your Home Assistant configuration and private storage before upgrading.
+The stable release covered here is **v2.2.0**. Back up your Home Assistant configuration and private storage before upgrading.
 
 ### Update speed
 
@@ -27,11 +27,17 @@ Choose **Very fast**, **Faster**, **Balanced** (default), **Slower** or **Very s
 
 Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject to shared admission, queueing and server backoff. Status and battery are separate requests; querying SOC or location uses the shared status response. Changing only update speed keeps the session, local archive and entity identities in place. Feature, privacy and authentication changes retain their reload behavior.
 
+## Install through Marketplace — HA 2026.11+
+
+Open **Settings → Marketplace → Custom repositories**, connect GitHub when prompted, and add `https://github.com/Wuty-zju/ha_ninebot` as an **Integration**. Install your chosen release and add a Ninebot account. First installs can open setup directly; updates to loaded integrations require the prompted restart.
+
+A custom repository is currently required. Default-catalog inclusion has a separate review; Marketplace and older HACS use the same catalog and release packages. Brand images are bundled with the integration.
+
 ## Install with HACS
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with type **Integration**.
-3. Open **Ninebot**, choose **v2.0.0**, and download it.
+3. Open **Ninebot**, choose **v2.2.0**, and download it.
 4. Restart Home Assistant when prompted. A downloaded file version alone does not mean the running integration has loaded it.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -57,7 +63,7 @@ Expired credentials use **Reauthenticate**. Reconfigure updates the same account
 
 ## Entities and data
 
-Available fields depend on the vehicle model, permissions and cloud reports. Standard entities are enabled and visible when their feature is active. Debug-only diagnostics follow the debug option; events and calendars have separate switches. Existing user-disabled or hidden choices are retained.
+Available fields depend on the vehicle model, permissions and cloud reports. Standard entities are enabled and visible when their feature is active. Additional diagnostic entities follow their display option; events and calendars have separate switches. Existing user-disabled or hidden choices are retained.
 
 | Group | Available information | Meaning and limits |
 |---|---|---|
@@ -117,7 +123,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Option | Default / range | Effect |
 |---|---|---|
 | Update speed | Balanced; five profiles | Per-vehicle/group targets adapt to charging and ACC. Polling-only changes reuse the runtime. |
-| Enable precise location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
+| Show vehicle location | On | Allows location display/track responses; preserves an existing explicit off choice. It does not add a separate high-precision cloud request. |
 | Vehicle events (Beta) | On | Trip reports/completion and concrete vehicle transitions; turning off preserves entity identity and re-enabling establishes a silent baseline. |
 | Ride calendar (Beta) | Off for new accounts | Enables the local per-vehicle calendar; turning it off does not delete rides or disable the tracker. |
 | Automatically sync trip details (Beta) | Off for new accounts; existing choices retained | Stores private historical details/tracks and enables budgeted acquisition. Review location/backup implications. |
@@ -127,7 +133,11 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
 | Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. A failed save keeps the edit pending and reports a storage Repair; save again after resolving it. Retired low-confidence SOC estimators remain removed. |
-| Debug mode | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
+| Ninebot Assistant (Beta) | Off, no vehicles selected | Read selected vehicles through a compatible native host. [Setup and privacy](assistant.md) |
+| Assistant history tasks (Beta) | Off | Allow scoped requests to fill detail gaps. The original requester reviews and approves each request in the HA panel. |
+| Show diagnostic entities | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
+
+On HA 2026.11+, allowed vehicles appear when controls are enabled; automatic history scan, capacity and request-budget fields appear when automatic detail synchronization is enabled. Hidden settings retain their previously saved values. Earlier HA versions show the same fields directly. Archive management and retention remain available independently.
 
 With the default policy, charging targets status/battery at 15/30 seconds; ACC activity targets status/battery/travel at 10/30/120 seconds. New charge transitions, external unlocks and stops open finite observation windows. ACC indicates activity; power alone does not prove movement.
 
@@ -149,7 +159,7 @@ After a verified seat unlock, its Lock display remains unlocked for at least fiv
 
 The reported latch can reset while the compartment lid remains open. Existing data does not provide an independently verified lid-open/closed field, so the integration does not infer lid position or create a lid-state entity. The five-second display window does not prove the lid is open. New commands, unloading, authentication loss, rate limits and read errors stop the follow-up.
 
-History sync and pause appear in device diagnostics. Sync also resumes a paused task; icons and the synchronization-state attribute distinguish running, paused and budget-wait states. History status, last successful sync and parsed raw views appear only with debug mode enabled; the calendar has its own switch. Diagnostic classification does not exclude Recorder; configure Recorder filters if needed.
+History sync and pause appear in device diagnostics. Sync also resumes a paused task; icons and the synchronization-state attribute distinguish running, paused and budget-wait states. History status, last successful sync and parsed raw views appear only with diagnostic entities enabled; the calendar has its own switch. Diagnostic classification does not exclude Recorder; configure Recorder filters if needed.
 
 ## Troubleshooting
 
@@ -167,6 +177,51 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 | Track missing or a single point | Check saved-detail state, coordinate option/permissions and cloud track quality. Old simplified data cannot recreate a lost trail. |
 | Storage Repair | Preserve the files and read [verification and recovery](history.md#verification-and-recovery). Do not delete the database/registry to silence it. |
 | “Custom integration has not been tested by Home Assistant” | Standard third-party loader notice; it is not suppressed. |
+
+### Login fails before the account is added
+
+Version 2.0.1 added the per-attempt `Account setup failed` record and `support` identifier described below. Version 2.0.0 does not include these fields.
+
+Enable logging for this integration in **Developer tools → Actions**:
+
+```yaml
+action: logger.set_level
+data:
+  custom_components.ninebot: debug
+```
+
+Submit the sign-in form once, note the time and form error, then download the **Home Assistant Core** log from Settings → System → Logs. Look for `Account setup failed` and its `support` identifier. The entry reports the observed local stage, error kind and proxy response status. A proxy status does not identify a cloud region or an internal authentication stage. `loopback_auth` with `loopback_auth_probe` identifies a local service handshake failure; `vehicles` identifies vehicle discovery. Expected handshake responses (401 without authorization and 404 for the authorized probe) are silent. On Home Assistant 2026.11+, the integration’s live log view is also useful when reproducing a failure. Restore the previous log level afterward, usually `warning`.
+
+For an existing account, use the integration menu's **Enable debug logging**, reproduce the problem, then disable it and download the log. Download **Diagnostics** separately. **Show diagnostic entities** exposes the parsed current-data view and progress entities; DEBUG logging uses the integration menu. A failed or unloaded account can still export basic version/platform diagnostics.
+
+When reporting sign-in failures, include the support identifier, form error, software versions, your App's account/service region if known, and whether you entered a phone number, email or username. Omit the actual account, password, tokens and vehicle/location data. Keep history exports private. Enabling logging sends no authentication request.
+
+### Missing data and controls
+
+Compare the same account, vehicle and business month in the App and HA. A working SOC or voltage reading establishes that those values were received; history and controls use separate requests and permissions.
+
+| Display | Meaning and next check |
+|---|---|
+| Zero trips with 100% list/detail progress | Progress describes its known denominator. A confirmed empty list can be complete without containing a trip. Inspect the reported/returned counts, discovery state and scanned range. |
+| Average energy unknown with zero distance | No distance-based average can be calculated. Zero total energy and an unknown average are distinct. |
+| Last trip or trip event unknown | No usable recent record, or no new event after the startup baseline. Event entities do not replay all saved trips. |
+| BMS value “Not supported” | This metric has no supported upstream value under the reviewed mapping. It does not establish a faulty battery; compare the same App field before reporting it. |
+| Remaining charge time unknown while not charging | The endpoint may omit a charging estimate outside charging. Check its field availability and charging state. |
+| Controls ready / command accepted | Ready is local eligibility; accepted is a command receipt. Only a later fresh observation confirms the requested state. |
+
+For an existing account, enable native debug logging, note the exact time, operation and full message, then download Diagnostics and disable/download the log. Data collection alone does not require a vehicle control. If an entity is unavailable before an action reaches the integration, HA may reject it without a control record.
+
+From 2.1.23, diagnostics include up to 32 vehicles and the current/previous cached month per vehicle, with counts, list field state and independently identified sources. History progress includes its known counts and cached scan range. Missing cache is marked unobserved; downloading diagnostics does not refresh the cloud or scan the database. Truncation is reported explicitly.
+
+`groups.status/battery/travel.failure_context` retains the current safe query failure, distinguishing request, normalization and archive stages. Successful recovery clears it. `control_policy` explains current local gates; `control_results` retains the latest attempt for each action. Native DEBUG lines named `Control result` contain a short `support` identifier, acceptance/rejection, readback and confirmation. A rejected attempt was not sent; an uncertain invocation must not be treated as a safe automatic retry. Download diagnostics promptly because these observations are kept in memory and reset on reload.
+
+From 2.1.25, `confirmation_deadline_reached` identifies the end of the local 15-second confirmation window. Completed reads retain their result and any actual transport error; expiration alone does not establish a connection failure. If no read completed, confirmation remains unknown. A proxy `502 / upstream_error` belongs to the command response and is recorded separately; it does not disclose the cloud's business rejection reason.
+
+From 2.1.26, support records also retain a bounded numeric `upstream_code` when the backend provides it, plus recognized `backend_error` categories such as response decryption. These observations do not automatically identify an authentication or permission problem. Error text is omitted. Vehicle diagnostics include `control_routing` after an explicit command: the native cache's business line, observation time and selected transport, without identity values. Verified motor controls use the native path described in the [architecture](architecture.md#protocol-adapter), with the same enablement, single-attempt policy and confirmation window.
+
+If the month endpoint reports zero trips with a null list, increasing the detail budget cannot discover IDs absent from that response. Provide the date of an App-visible trip in the same month, omitting location. For a failed control, identify whether the App's corresponding operation uses nearby Bluetooth or remote connectivity; successful Bluetooth control does not establish cloud-control support. Reinstalling or deleting the archive is unnecessary for collecting these observations.
+
+Include both software versions, model family, account-owner/shared status, the affected period and the specific missing field or failed action. Share only reviewed diagnostics or small relevant log excerpts; omit raw responses, account/vehicle identities, coordinates and history exports. The **Show diagnostic entities** option does not enable these logs.
 
 ## Privacy, backup and removal
 

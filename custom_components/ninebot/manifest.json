@@ -2,7 +2,11 @@
   "domain": "ninebot",
   "name": "Ninebot",
   "after_dependencies": [
-    "recorder"
+    "recorder",
+    "frontend"
+  ],
+  "categories": [
+    "vehicles_transport.bikes_scooters"
   ],
   "codeowners": [
     "@Wuty-zju"
@@ -22,5 +26,5 @@
   "requirements": [
     "ninecli==0.1.7"
   ],
-  "version": "2.0.0"
+  "version": "2.2.0"
 }

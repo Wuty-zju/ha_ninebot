@@ -1,7 +1,9 @@
 """Centralized public-API capability detection, without HA version strings."""
 
+from collections.abc import Mapping
 from importlib import import_module
 from types import ModuleType
+from typing import Any
 
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import Entity
@@ -77,3 +79,31 @@ def device_by_identifier(
     if "config_entry_id" in signature(lookup).parameters:
         return lookup(identifiers={("ninebot", identifier)}, config_entry_id=entry_id)
     return lookup(identifiers={("ninebot", identifier)})
+
+
+def device_identifiers(info: object) -> frozenset[tuple[str, str]]:
+    """DeviceInfo is a dataclass on new Core and a mapping on older Core."""
+    values = getattr(info, "identifiers", None)
+    if values is None and isinstance(info, Mapping):
+        values = info.get("identifiers")
+    if not isinstance(values, (set, frozenset)):
+        return frozenset()
+    return frozenset(
+        (domain, identifier)
+        for item in values
+        if isinstance(item, tuple) and len(item) == 2
+        for domain, identifier in [item]
+        if isinstance(domain, str) and isinstance(identifier, str)
+    )
+
+
+def conditional_field(key: str, default: object, *, when: str, required: bool = False) -> Any:
+    """Use native boolean visibility when its schema markers are compatible."""
+    from homeassistant import data_entry_flow
+
+    name = "Required" if required else "Optional"
+    legacy = getattr(validation, name)
+    marker = getattr(data_entry_flow, name, None)
+    if isinstance(marker, type) and issubclass(marker, legacy):
+        return marker(key, default=default, visible={"field": when, "value": True})
+    return legacy(key, default=default)

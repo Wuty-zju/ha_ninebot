@@ -1,0 +1,1371 @@
+{
+  "schema_version": 2,
+  "corpus_version": "1.2.10",
+  "source_version": "2.1.26",
+  "entries": [
+    {
+      "id": "statistics_missing",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#coverage-and-statistics"
+      },
+      "translations": {
+        "en": {
+          "title": "Unknown is not zero",
+          "text": "Missing or conflicting metrics remain unknown. A proven empty window can return zero. Daily count, duration and energy require verified selection; duration and energy reconcile independently. Zero-distance average consumption is undefined. Inspect per-metric quality before drawing a conclusion.",
+          "keywords": [
+            "unknown",
+            "missing",
+            "null",
+            "zero",
+            "today",
+            "yesterday"
+          ]
+        },
+        "zh-Hans": {
+          "title": "未知不等于零",
+          "text": "缺失或冲突指标保持未知；已验证的空周期才可返回零。每日次数、时长和能耗需要已校验的记录范围，时长和能耗分别核对。零里程的平均能耗无定义。先检查逐指标质量。",
+          "keywords": [
+            "未知",
+            "缺失",
+            "今日",
+            "昨日",
+            "零值",
+            "统计"
+          ]
+        }
+      },
+      "content_sha256": "986c80ac0209958baf88892e416be8447ba04b64f5a8874df62aac6328c621d5",
+      "procedure_id": "SK05"
+    },
+    {
+      "id": "business_dates",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "3c89cfe244e1eea4a214c033629aad3db11ed575",
+        "sha256": "db2435d0b64eec2a46ceb46f55b617213cbcb2bd72040cd4b42c0079c22bd1fb",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/3c89cfe244e1eea4a214c033629aad3db11ed575/docs/history.md#coverage-and-statistics"
+      },
+      "translations": {
+        "en": {
+          "title": "Business dates and period boundaries",
+          "text": "Count, duration, energy and ride-based average consumption use whole rides assigned to their Asia/Shanghai end date, without midnight allocation. Daily distance prefers server_daily_chart; verified returned_unique_rides may supply missing chart distance. Check distance_basis. A recorded-trip page selects overlapping rides, not daily-statistics membership. Browser timezone does not change this contract. Adjacent-month evidence may be needed; new periods never inherit old totals, and cached entity values do not certify strict statistics.",
+          "keywords": [
+            "date",
+            "midnight",
+            "period",
+            "timezone",
+            "end date",
+            "attribution",
+            "overlap"
+          ]
+        },
+        "zh-Hans": {
+          "title": "业务日期与周期边界",
+          "text": "次数、时长、能量及行程平均能耗按上海时区的结束日整趟归属，不按午夜拆分。每日里程优先使用 server_daily_chart，缺报时可由已核验的 returned_unique_rides 补足，应核对 distance_basis。行程分页选择日期有重叠的记录，不能把浏览范围等同按日统计归属。浏览器时区不改变此契约；月边界可能需相邻月份证据。新周期不继承旧总量，实体缓存不代表严格统计已完整。",
+          "keywords": [
+            "日期",
+            "跨日",
+            "时区",
+            "周期",
+            "结束时间",
+            "跨零点",
+            "午夜",
+            "算哪天"
+          ]
+        }
+      },
+      "content_sha256": "36a4204f2d840a235cbeadfec3b7f3c242f10e39bd2db1da54d1c537f8591f6e",
+      "procedure_id": "SK03"
+    },
+    {
+      "id": "sync_budget",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#enable-preservation-and-synchronization"
+      },
+      "translations": {
+        "en": {
+          "title": "Waiting for the local request budget",
+          "text": "Month pages and detail requests share the durable account budget, normally 60 logical calls/hour. Waiting for budget is local scheduling, not an application for cloud permission. Inspect next_request_at, retry_at, phase and errors; repeated full scans do not replenish it. Zero disables only the hourly quota, not serialization or upstream backoff.",
+          "keywords": [
+            "budget",
+            "quota",
+            "waiting",
+            "retry",
+            "request",
+            "retry_later"
+          ]
+        },
+        "zh-Hans": {
+          "title": "等待本地请求额度",
+          "text": "月份页与详情共享账号耐久预算，通常每小时60次逻辑请求。等待额度是本地调度，不是申请云端权限。检查next_request_at、retry_at、阶段和错误；反复全量扫描不会补充额度。零仅取消小时配额，不取消串行和上游退避。",
+          "keywords": [
+            "额度",
+            "限额",
+            "等待",
+            "重试",
+            "同步"
+          ]
+        }
+      },
+      "content_sha256": "0e3d052d069d8471a43521ad57f7677bd5e641280ce1381a3665e43d9e549af1",
+      "procedure_id": "SK06"
+    },
+    {
+      "id": "history_coverage",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#read-progress-correctly"
+      },
+      "translations": {
+        "en": {
+          "title": "Different history coverage denominators",
+          "text": "Month scan, returned list coverage and saved details describe different sets. Saved-detail 100% covers discovered ride IDs, not undiscovered cloud rides or full geometry. Visited months are not automatically verified. A successful request is distinct from completion; inspect last_success and last_completed separately.",
+          "keywords": [
+            "coverage",
+            "saved",
+            "discovered",
+            "verified",
+            "gap",
+            "complete"
+          ]
+        },
+        "zh-Hans": {
+          "title": "历史覆盖率的分母不同",
+          "text": "月份扫描、返回列表覆盖率和详情保存率对应不同集合。详情100%只覆盖已发现行程，不证明未发现的云端行程或完整轨迹。访问过月份不等于已校验。一次请求成功与任务完成不同，分别检查last_success与last_completed。",
+          "keywords": [
+            "覆盖",
+            "保存",
+            "发现",
+            "校验",
+            "缺口",
+            "完整"
+          ]
+        }
+      },
+      "content_sha256": "253cf3300c1b26d6af245b8aef341a5ce7ae447553c6b3bfd952caae271a9cc1",
+      "procedure_id": "SK06"
+    },
+    {
+      "id": "saved_detail",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#ask-about-local-data"
+      },
+      "translations": {
+        "en": {
+          "title": "Select a verified saved detail",
+          "text": "Use ride_id and query_month from the selected vehicle’s recorded-trip list. Assistant detail reads use the local archive only; missing details are not fetched from the cloud. Read one bounded date page, follow its next cursor and distinguish page size from period totals. Normal history synchronization acquires missing details separately.",
+          "keywords": [
+            "local_data_missing",
+            "detail",
+            "ride_id",
+            "query_month",
+            "track"
+          ]
+        },
+        "zh-Hans": {
+          "title": "选择已校验的本地详情",
+          "text": "从所选车辆的已保存行程列表取得ride_id和query_month。Assistant详情仅查本地档案，不会为缺失详情请求云端。按有界日期分页并跟随next cursor，页内条数不等于周期总数。缺失详情由正常历史同步另行获取。",
+          "keywords": [
+            "详情",
+            "未保存",
+            "行程编号",
+            "月份",
+            "轨迹"
+          ]
+        }
+      },
+      "content_sha256": "b60a5c3e8d2ac6b8fba36b0d855695deec524e7c7d7904234a368889dbdf1197",
+      "procedure_id": "SK04"
+    },
+    {
+      "id": "status_freshness",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "translations": {
+        "en": {
+          "title": "Query time and observation time",
+          "text": "Query as_of is when the local projection was requested, not a new cloud measurement. Use group observation timestamps and freshness for cached current state, and per-metric quality for missing values. Closed-month age alone does not make historical facts stale. ACC does not prove movement; a seat-latch state does not prove the lid is open.",
+          "keywords": [
+            "stale",
+            "freshness",
+            "as_of",
+            "received_at",
+            "status",
+            "cached"
+          ]
+        },
+        "zh-Hans": {
+          "title": "查询时间与观测时间",
+          "text": "query as_of表示请求本地投影的时间，不是新的云端观测。当前缓存值应连同分组观测时间、新鲜度及逐指标质量解释。已结束月份仅因时间久不会使历史事实过期。ACC不证明移动，座桶锁舌状态不证明盖子打开。",
+          "keywords": [
+            "过期",
+            "新鲜度",
+            "观测",
+            "缓存",
+            "状态"
+          ]
+        }
+      },
+      "content_sha256": "300c283ffc7544ebc728d7723116ef387657d298d4e52c076115022b5a8039cc",
+      "procedure_id": "SK02"
+    },
+    {
+      "id": "measurement_units",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "3c89cfe244e1eea4a214c033629aad3db11ed575",
+        "sha256": "7d63e6df96c291123b7ebef19b84046a4db521d85d2941aa30ae02c4eb14a3cf",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/3c89cfe244e1eea4a214c033629aad3db11ed575/docs/assistant.md#read-the-evidence"
+      },
+      "translations": {
+        "en": {
+          "title": "Preserve measurement semantics",
+          "text": "Server maximum speed is different from overall average speed calculated from distance and duration. Use returned units rather than guessing. Battery score is not SOH or a health diagnosis. The integration displays score 0 as unsupported under a maintainer rule; it does not establish battery damage. Do not infer movement, maintenance advice or charging energy from incomplete samples.",
+          "keywords": [
+            "speed",
+            "average",
+            "maximum",
+            "energy",
+            "score",
+            "units"
+          ]
+        },
+        "zh-Hans": {
+          "title": "保留指标语义与单位",
+          "text": "服务端最高速度不同于距离除以时长的总平均速度；应使用工具返回单位。电池评分不是SOH或健康诊断；集成按维护者规则将评分 0 显示为不支持，不能据此判断电池损坏。不从不完整采样推断移动、维修建议或充电能量。",
+          "keywords": [
+            "速度",
+            "平均",
+            "最高",
+            "能量",
+            "评分",
+            "单位"
+          ]
+        }
+      },
+      "content_sha256": "e03d6f80ff64b2957afe3af54c8f6c4cf97649feee1741d31b17c34f6c67aa59",
+      "procedure_id": "SK08"
+    },
+    {
+      "id": "sample_units",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "translations": {
+        "en": {
+          "title": "Unverified raw sample units",
+          "text": "Point-by-point raw sample units are unverified. In particular, do not identify the fourth column as mph or the trip's overall average speed, and do not convert it. Separate maximum speed and distance/total-duration average values cannot establish the meaning or unit of a raw sample column.",
+          "keywords": [
+            "sample units",
+            "raw sample",
+            "fourth column",
+            "mph",
+            "point samples"
+          ]
+        },
+        "zh-Hans": {
+          "title": "原始采样单位尚未验证",
+          "text": "逐点原始采样单位尚未验证。尤其不能认定第四列是 mph 或行程总平均速度，也不要换算。独立的最高速度、距离除以总时长的平均速度，均不能用于推断原始采样列的含义或单位。",
+          "keywords": [
+            "采样单位",
+            "第四列",
+            "逐点采样",
+            "原始采样",
+            "单位未验证",
+            "不换算"
+          ]
+        }
+      },
+      "content_sha256": "ffea84b974d7757379896445790ccf5e3d1bbdee687d241f1f65dbf6665f639c",
+      "procedure_id": "SK08"
+    },
+    {
+      "id": "authentication_support",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "32958f4d25bdfedec529f8bdaee6e1d636f00292",
+        "sha256": "682f5e4995ce3cb9b61658e443177c63c15c90e52e6c4476c4f618786156014a",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/32958f4d25bdfedec529f8bdaee6e1d636f00292/docs/guide.md#login-fails-before-the-account-is-added"
+      },
+      "translations": {
+        "en": {
+          "title": "Collect a safe sign-in failure report",
+          "text": "From 2.0.1, failed sign-in attempts include Account setup failed and a support identifier; 2.0.0 lacks these fields. Before an account exists, enable native integration DEBUG logging, submit once, download the Core log, then restore the prior level. For an existing account, use Enable debug logging in the integration menu. Include the support ID, form error and versions in a report; omit credentials, account values and location. Proxy status alone does not establish a cloud region or internal authentication cause.",
+          "keywords": [
+            "auth_required",
+            "reauth",
+            "login",
+            "debug",
+            "support",
+            "network"
+          ]
+        },
+        "zh-Hans": {
+          "title": "收集安全的登录故障信息",
+          "text": "2.0.1起，登录失败提供Account setup failed记录与support关联编号；2.0.0没有这两个字段。添加账号前按指南启用原生集成DEBUG日志，提交一次后下载Core日志，再恢复原日志级别。已有账号使用集成菜单的启用调试日志。反馈提供support编号、表单错误和版本，省略凭据、账号值及位置。代理状态不能证明云端地区或内部认证原因。",
+          "keywords": [
+            "认证",
+            "重新认证",
+            "登录",
+            "调试",
+            "日志",
+            "网络"
+          ]
+        }
+      },
+      "content_sha256": "e8c9be556084a0bcb44754da8bb17e0b2f3f98e0c18e850873e70ac759fd7cf9",
+      "procedure_id": "SK07"
+    },
+    {
+      "id": "archive_retention",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#verification-and-recovery"
+      },
+      "translations": {
+        "en": {
+          "title": "Protect saved history and geometry",
+          "text": "The account SQLite archive keeps normalized facts and redacted compressed business evidence without an automatic TTL, subject to quota, disk and backup settings. Better saved geometry survives a newer simplified or empty response. Observations around 180 days are not a server guarantee. Quota exhaustion pauses writes instead of silently evicting rides. Keep exports private.",
+          "keywords": [
+            "retention",
+            "archive",
+            "backup",
+            "geometry",
+            "180",
+            "simplified"
+          ]
+        },
+        "zh-Hans": {
+          "title": "保护已保存的历史和轨迹",
+          "text": "账号SQLite保留标准化事实及已去身份的压缩业务证据，无自动TTL，仍受配额、磁盘和备份设置限制。新简化或空响应不能覆盖更好的已保存轨迹。180天附近的观察不是云端保证。超额暂停写入，不静默驱逐行程；导出文件需私密保管。",
+          "keywords": [
+            "保留",
+            "档案",
+            "备份",
+            "轨迹",
+            "180天",
+            "简化"
+          ]
+        }
+      },
+      "content_sha256": "821c3320d6c7dd63a8cff505051f308d04e04813badd9b4a450627593586c997",
+      "procedure_id": null
+    },
+    {
+      "id": "assistant_access",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#privacy-and-limits"
+      },
+      "translations": {
+        "en": {
+          "title": "Assistant access is separate consent",
+          "text": "Assistant defaults off. An active administrator, account consent and selected vehicle are checked on every read and before return. not_authorized means access denied, not that a ride is missing; stop that read and review Home Assistant permissions. Tools do not return credentials, account identifiers, raw logs or precise GPS. Turning consent off cannot retract data already sent to a chosen model host.",
+          "keywords": [
+            "not_authorized",
+            "permission",
+            "privacy",
+            "access",
+            "consent",
+            "GPS"
+          ]
+        },
+        "zh-Hans": {
+          "title": "Assistant使用独立授权",
+          "text": "Assistant默认关闭，每次读取及返回前检查有效管理员、账号同意和车辆选择。not_authorized表示权限拒绝，不能据此判断行程不存在；停止该读取并检查HA权限。工具不返回凭据、账号标识、原始日志或精确GPS。关闭授权无法撤回已发送给模型宿主的数据。",
+          "keywords": [
+            "权限",
+            "隐私",
+            "授权",
+            "拒绝",
+            "精确位置"
+          ]
+        }
+      },
+      "content_sha256": "243760bfc4e4e2d7a7d39b0a30bda49ba71ae0e055b17366a7b4f25eed9c1fdb",
+      "procedure_id": null
+    },
+    {
+      "id": "vehicle_selection",
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#ask-about-local-data"
+      },
+      "procedure_id": "SK01",
+      "translations": {
+        "en": {
+          "title": "Choose a vehicle before reading measurements",
+          "text": "With several vehicles, select one explicitly before asking for measurements. Obtain its opaque vehicle_ref from get_vehicles. Account numbers, serial numbers and the MCP client-origin device_id are not substitute references. Query capability does not identify the intended vehicle.",
+          "keywords": [
+            "vehicle",
+            "select",
+            "choose",
+            "ambiguous",
+            "vehicle_ref"
+          ]
+        },
+        "zh-Hans": {
+          "title": "查询数值前选择车辆",
+          "text": "多辆车时，先明确选择一辆，再询问实测值。用get_vehicles取得不透明vehicle_ref；账号、序列号和MCP客户端来源device_id不能替代。查询能力也不能确定用户要查哪辆。",
+          "keywords": [
+            "车辆",
+            "选车",
+            "选择",
+            "歧义",
+            "多车"
+          ]
+        }
+      },
+      "content_sha256": "bccae56339072d440699f48e3f858ad3696e1b840645355ea1d4234c0883a864"
+    },
+    {
+      "id": "task_application",
+      "procedure_id": "SK09",
+      "translations": {
+        "en": {
+          "title": "Request review of missing trip details",
+          "text": "From 2.1.2, the separate Ninebot tasks API offers local gap preview and an explicit application for human review. Enable account task consent and select allowed vehicles first. Preview at most 31 business days; freeze at most 20 mapped missing details. The total logical attempt allowance is twice the selected count, capped at 20, with shared account pacing. Applications do not query the cloud. The original requester reviews and approves in HA's Ninebot Assistant panel with the same user. The global /api/mcp route hides applications when read-only is enabled; explicit /api/mcp/ninebot_tasks does not inherit that filter. Account consent still applies; cloud execution requires separate human approval. Approval does not bypass the account request budget.",
+          "keywords": [
+            "task",
+            "application",
+            "review",
+            "approval",
+            "confirm",
+            "missing details",
+            "request_detail_sync_approval",
+            "preview_detail_sync",
+            "ninebot__request_detail_sync_approval",
+            "ninebot__preview_detail_sync"
+          ]
+        },
+        "zh-Hans": {
+          "title": "申请审核缺失行程详情",
+          "text": "从 2.1.2 起，独立 Ninebot tasks API 提供本地预览和明确的人工审核申请。先开启账号任务功能并选择车辆；最多预览 31 个业务日，冻结最多 20 条已映射缺失详情。总逻辑尝试上限为选中条数两倍、最多 20 次，共享账号请求间隔。申请不查询云端。原申请人须用同一 HA 用户去 Ninebot Assistant 面板核对并另行批准。全局 /api/mcp 在只读开启时隐藏申请工具；显式 /api/mcp/ninebot_tasks 不继承此过滤，仍须账号任务授权，云端执行须独立人工批准。任务审批不会绕过账号请求额度。",
+          "keywords": [
+            "申请",
+            "人工审核",
+            "批准",
+            "确认",
+            "任务申请",
+            "缺失详情",
+            "任务工具"
+          ]
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "3c89cfe244e1eea4a214c033629aad3db11ed575",
+        "sha256": "7d63e6df96c291123b7ebef19b84046a4db521d85d2941aa30ae02c4eb14a3cf",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/3c89cfe244e1eea4a214c033629aad3db11ed575/docs/assistant.md#reviewable-history-tasks-beta"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.2",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "content_sha256": "a8575ab637cb341f835d1a10a2427f560423d1699f56a4455309611d11f0b64e"
+    },
+    {
+      "id": "task_progress",
+      "procedure_id": "SK10",
+      "translations": {
+        "en": {
+          "title": "Understand a history task checkpoint",
+          "text": "Task reads return only the original requester’s local task state for an authorized vehicle. Approval and queueing do not prove saved detail. Completion verifies each selected private payload; progress values describe the last durable checkpoint, with null meaning unobserved rather than zero. Attempts are conservative logical endpoint attempts, not all transport HTTP exchanges. Respect account pacing, retry_at and the 24-hour execution window. Normal restarts revalidate approved work; official HA backup restores require fresh human approval. Notifications only link to the panel; use task metadata for the result. Cancellation is performed by the requester in the panel and does not stop other tasks.",
+          "keywords": [
+            "task",
+            "progress",
+            "checkpoint",
+            "result",
+            "cancel",
+            "retry_at",
+            "waiting",
+            "completed"
+          ]
+        },
+        "zh-Hans": {
+          "title": "理解历史任务进度记录",
+          "text": "任务查询只读原申请人获准车辆的本地状态；批准和排队不代表详情已保存。完成须逐条核验私有详情，数值代表最近持久记录，null 是尚未观察而非零。尝试计数是保守的逻辑端点尝试，不是全部底层 HTTP 交换数。遵守账号间隔、retry_at 和 24 小时执行期限。普通重启重验后恢复批准工作；官方 HA 备份恢复须重新人工批准。通知仅提供面板入口，结果以任务元数据为准；取消由原申请人在面板操作，不停止其他任务。",
+          "keywords": [
+            "任务进度",
+            "任务结果",
+            "取消任务",
+            "等待重试",
+            "同步结果",
+            "最近记录",
+            "原申请人"
+          ]
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
+        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.2",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "content_sha256": "8fa19c9539141f29665ddd3c2d73ac219952212ad281632e7e0efb40dd36f795"
+    },
+    {
+      "id": "mcp_configuration",
+      "applicable_versions": {
+        "min_inclusive": "2.1.22",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "60275456d65afc1347531fec56f853d1fbbf926f",
+        "sha256": "2150ae97caa2e10a66e8faff764fa4390b183d9a657b68eb50bc7fa342e3e36c",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/60275456d65afc1347531fec56f853d1fbbf926f/docs/assistant.md#check-mcp-api-selection"
+      },
+      "translations": {
+        "en": {
+          "title": "Main and individual MCP API settings",
+          "text": "On HA 2026.11+, all_llm_apis=true selects every registered API for the main /api/mcp URL, including later additions; a saved llm_hass_api selection does not restrict it. With all_llm_apis=false, llm_hass_api selects the collections. read_only filters tools on that main URL. An individual /api/mcp/<api_id> selects its registered API directly and ignores those main settings. The Ninebot read API has only local read tools; its tasks API still checks account consent and requires the original user to approve cloud execution in HA. This describes route behavior, not an inspection of current configuration.",
+          "keywords": [
+            "all_llm_apis",
+            "llm_hass_api",
+            "read_only",
+            "API selection",
+            "expose all AI tools",
+            "main URL settings"
+          ]
+        },
+        "zh-Hans": {
+          "title": "MCP主地址与独立地址的API设置",
+          "text": "HA 2026.11+中，all_llm_apis=true让主/api/mcp地址选择全部已注册API，包括之后新增的集合；已保存的llm_hass_api选择不限制该列表。all_llm_apis=false时才按llm_hass_api选集合。read_only只过滤主地址工具。独立/api/mcp/<api_id>直接选对应已注册API，不继承主地址的这些设置。Ninebot只读API仅查本地；任务API仍要求账号授权，云端执行仍须原申请人在HA中另行人工批准。这是路由规则，不能当作已检查当前配置。",
+          "keywords": [
+            "all_llm_apis",
+            "llm_hass_api",
+            "read_only",
+            "API选择",
+            "全部AI工具",
+            "主地址设置"
+          ]
+        }
+      },
+      "content_sha256": "e961da2edb30c0f96a1170742f2d239d9b61760a3ede1f83940fa423fb728e12",
+      "procedure_id": null
+    },
+    {
+      "id": "data_availability",
+      "applicable_versions": {
+        "min_inclusive": "2.1.24",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "9ddd8e724fcfee720a171f9dff2b98377d4ba7c4",
+        "sha256": "5ee88231eeaf2d6a7faa876656bfb02e714f50f5eff15b2e987327e5f52b90f4",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/9ddd8e724fcfee720a171f9dff2b98377d4ba7c4/docs/guide.md#missing-data-and-controls"
+      },
+      "translations": {
+        "en": {
+          "title": "Missing App/HA data and empty history",
+          "text": "Compare the same account, vehicle and business month in the App and HA. Status, history and controls have separate requests and permissions; a working SOC does not establish history coverage. Unknown, unsupported and zero are different. A confirmed empty list can have 100% progress: inspect reported/returned counts, discovery state and scanned range. An unknown last trip or event may lack a usable record or a new event after startup. Enable native debug logging, note the time and message, then download Diagnostics and disable/download the log. Diagnostic entities do not enable DEBUG logs. Missing cache is unobserved; downloading diagnostics does not fetch data. Explain observed evidence only; the root cause remains unknown.",
+          "keywords": [
+            "missing data",
+            "App",
+            "HA",
+            "100%",
+            "last trip",
+            "trip event",
+            "diagnostics"
+          ]
+        },
+        "zh-Hans": {
+          "title": "App与HA数据缺失及空行程",
+          "text": "先对齐App与HA的账号、车辆和业务月份。状态、历史和控制的请求与权限不同；SOC有值不能证明历史完整。未知、不支持与零不同。已确认的空列表也可达到100%，需核对报告/返回条数、发现状态与扫描范围。最近行程或事件未知，可能尚无可用记录或启动后新事件。启用HA原生调试日志，记录时间和提示，下载诊断后停用并下载日志；显示诊断实体不等于DEBUG日志。缺失缓存是未观察，下载诊断不补查数据。只解释已有证据，未证根因保持未知。",
+          "keywords": [
+            "数据缺失",
+            "App与HA",
+            "未知值",
+            "零行程",
+            "100%",
+            "最近行程",
+            "行程事件",
+            "完整率",
+            "诊断"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "01b6636901ed602cda202eb504fa4db615942fe699c0ea525d754925de6c5dd2"
+    },
+    {
+      "id": "control_outcomes",
+      "applicable_versions": {
+        "min_inclusive": "2.1.24",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "9ddd8e724fcfee720a171f9dff2b98377d4ba7c4",
+        "sha256": "5ee88231eeaf2d6a7faa876656bfb02e714f50f5eff15b2e987327e5f52b90f4",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/9ddd8e724fcfee720a171f9dff2b98377d4ba7c4/docs/guide.md#missing-data-and-controls"
+      },
+      "translations": {
+        "en": {
+          "title": "Controls ready, accepted and confirmed",
+          "text": "Ready means local eligibility; accepted is a command receipt. Only a later fresh observation confirms the requested state. A rejected attempt was not sent; an uncertain invocation is not safe to retry automatically. Inspect control_policy and the latest control_results promptly; these records reset on reload. Native DEBUG Control result lines contain a short support identifier, outcome, readback and confirmation. HA can reject an unavailable entity before any integration record. To collect evidence, note the original action, time and message, enable native logging and download reviewed diagnostics/log excerpts; data collection alone does not require a control. No response alone does not identify the cause; unproven causes remain unknown.",
+          "keywords": [
+            "control",
+            "command",
+            "ready",
+            "accepted",
+            "confirmation",
+            "no response",
+            "control_policy",
+            "control_results"
+          ]
+        },
+        "zh-Hans": {
+          "title": "控制可发送、接受与确认",
+          "text": "可发送只表示本地准入，接受是命令回执；后续新鲜观测才确认目标状态。已拒绝表示未发送，结果不确定不能自动重试。及时核对control_policy和最新control_results，重载会清空记录。原生DEBUG的Control result行包含短support编号、结果、回读及确认。HA也可能在不可用实体到达集成前拒绝，不生成控制记录。收集证据时记录原动作、时间和提示，启用原生日志并下载审核过的诊断/日志片段；单纯取证无需控制车辆。没有反应时，未证原因仍未知。",
+          "keywords": [
+            "控制",
+            "可发送",
+            "命令接受",
+            "没有反应",
+            "确认状态",
+            "远程开启"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "cb1ad9ebe78de2bfddcce359eb2d1e7ab0dab07be0939ad22a81a4f970e2d290"
+    },
+    {
+      "id": "battery_support",
+      "applicable_versions": {
+        "min_inclusive": "2.1.24",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "9ddd8e724fcfee720a171f9dff2b98377d4ba7c4",
+        "sha256": "5ee88231eeaf2d6a7faa876656bfb02e714f50f5eff15b2e987327e5f52b90f4",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/9ddd8e724fcfee720a171f9dff2b98377d4ba7c4/docs/guide.md#missing-data-and-controls"
+      },
+      "translations": {
+        "en": {
+          "title": "Unsupported main-battery cycle counts",
+          "text": "A BMS metric marked Not supported has no supported upstream value under the reviewed mapping; it does not establish battery damage. Compare the same field in the App before reporting it. A received voltage or SOC does not establish that cycle count is supported. Unsupported is different from zero or unknown. Record the specific field, model family, account-owner/shared status and software versions; share reviewed diagnostics or relevant log excerpts without account/vehicle identities, credentials, coordinates or raw responses. Keep the cause unknown until evidence establishes it.",
+          "keywords": [
+            "battery cycles",
+            "BMS",
+            "unsupported",
+            "not supported",
+            "cycle count"
+          ]
+        },
+        "zh-Hans": {
+          "title": "主电池循环次数显示不支持",
+          "text": "BMS指标显示不支持，表示按已核对映射没有受支持的上游值，不能据此判断电池损坏。反馈前先对比App的同一字段。电压或SOC有值不能证明循环次数受支持；不支持与零、未知不同。记录具体字段、车型、主账号/分享车辆及软件版本，提供审核后的诊断或相关日志片段，省略账号/车辆身份、凭据、坐标和原始返回。证据不足时原因保持未知。",
+          "keywords": [
+            "主电池",
+            "循环次数",
+            "循环计数",
+            "不支持",
+            "BMS"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "0f8029198672764a020e43daedfd01f0164727583a600b1915e473af32995618"
+    },
+    {
+      "id": "control_diagnostics",
+      "applicable_versions": {
+        "min_inclusive": "2.1.26",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "abae4862f0dde6dfa89db435073ee28f13910c7d",
+        "sha256": "fec50aee24a46c06fe78b5f671da60e54616fefe863d50b3409d534c0c8e7bf2",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/abae4862f0dde6dfa89db435073ee28f13910c7d/docs/guide.md#missing-data-and-controls"
+      },
+      "translations": {
+        "en": {
+          "title": "Control routing and readback",
+          "text": "For an existing attempt such as opening the seat compartment, a proxy 502 / upstream_error in the command response records a command error. The same error can occur during sign-in or on other endpoints. Identify the operation first. The cloud's business reason remains unknown. confirmation_deadline_reached marks the end of the local 15-second confirmation window. Completed reads preserve results and actual transport errors. Without a completed read, confirmation remains unknown. Expiration alone cannot establish a connection failure. When supplied, upstream_code is a bounded numeric backend code. backend_error records a recognized category such as response decryption. These fields alone cannot establish an authentication or permission failure. control_routing records the native cache's business line, observation time and selected transport. It shows the local choice for that attempt. Identifying motor requires an unambiguous cached business line. Review sanitized diagnostics from the original operation. Collecting diagnostics requires no new control.",
+          "keywords": [
+            "control_routing",
+            "confirmation_deadline_reached",
+            "upstream_code",
+            "backend_error",
+            "routing"
+          ]
+        },
+        "zh-Hans": {
+          "title": "控制选路与确认诊断",
+          "text": "例如开座桶时，若已有操作的命令响应中出现代理 502 / upstream_error，记录的是命令错误。登录或其他端点也可能返回同一代理错误，需先明确具体操作，云端业务原因仍未知。confirmation_deadline_reached 表示本地 15 秒确认窗口结束。已完成的回读保留结果与实际传输错误；没有完成的回读时，确认仍为未知。仅凭期限结束无法判断连接失败。后端提供时，upstream_code 记录有界数字码；backend_error 记录响应解密等已识别类别。仅凭这些字段无法判定认证或权限故障。control_routing 记录本机缓存里的业务线、观察时间和当次所选传输路径，反映本地选路。识别 motor 业务线需要明确的缓存记录。查看该操作已有的脱敏诊断，收集证据无需重发命令。",
+          "keywords": [
+            "选路"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "381f0304a9a04b000095b54cc952261655d841741a98db60a5473e3b455633fb"
+    }
+  ],
+  "procedures": [
+    {
+      "id": "SK01",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#ask-about-local-data"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "allowed_tools": [
+        "get_vehicles"
+      ],
+      "max_calls": 1,
+      "translations": {
+        "en": {
+          "title": "Select a vehicle",
+          "trigger": "No unique explicit vehicle.",
+          "required_inputs": [
+            "User vehicle selection"
+          ],
+          "steps": [
+            "Read the permitted roster once.",
+            "Ask which vehicle; wait for the answer."
+          ],
+          "stop": "Do not pick the first vehicle or infer selection from cached_status.",
+          "verify": "One explicit eligible vehicle before any measurement."
+        },
+        "zh-Hans": {
+          "title": "选择车辆",
+          "trigger": "没有唯一的明确车辆。",
+          "required_inputs": [
+            "用户选定车辆"
+          ],
+          "steps": [
+            "读取一次已授权车辆列表。",
+            "询问具体车辆，等待用户回答。"
+          ],
+          "stop": "不能默认第一辆，不能凭cached_status推断选择。",
+          "verify": "查询实测值前得到唯一的已授权车辆。"
+        }
+      },
+      "content_sha256": "4b0ff3567247debe5d51000af2deb9d50f1114eb06bb5f70d0484112b0a1ef93"
+    },
+    {
+      "id": "SK02",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "allowed_tools": [
+        "get_vehicle_status",
+        "search_help"
+      ],
+      "max_calls": 2,
+      "translations": {
+        "en": {
+          "title": "Read current state",
+          "trigger": "User asks for current state.",
+          "required_inputs": [
+            "Selected vehicle"
+          ],
+          "steps": [
+            "Read cached status once.",
+            "Report known values, units and group observation time/freshness."
+          ],
+          "stop": "Do not refresh cloud or infer lid position or motion.",
+          "verify": "Null remains unknown; query as_of is not the measurement time."
+        },
+        "zh-Hans": {
+          "title": "读取当前状态",
+          "trigger": "询问当前车辆状态。",
+          "required_inputs": [
+            "已选车辆"
+          ],
+          "steps": [
+            "读取一次缓存状态。",
+            "按已知值、单位和分组观测时间/新鲜度回答。"
+          ],
+          "stop": "不刷新云端，不推断盖子状态或车辆移动。",
+          "verify": "null保留未知，query as_of不是实测时间。"
+        }
+      },
+      "content_sha256": "cab6b6f5fe79e8e820c3eaae9a293c61d6def8c788a849ec1d80034bd60aa596"
+    },
+    {
+      "id": "SK03",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "allowed_tools": [
+        "get_statistics",
+        "search_help"
+      ],
+      "max_calls": 2,
+      "translations": {
+        "en": {
+          "title": "Read period statistics",
+          "trigger": "User asks for period totals.",
+          "required_inputs": [
+            "Selected vehicle",
+            "Explicit business period"
+          ],
+          "steps": [
+            "Ask for a missing period; use Asia/Shanghai business dates.",
+            "Read statistics and preserve per-metric quality and units."
+          ],
+          "stop": "Do not turn missing values into zero or partial values into complete totals.",
+          "verify": "State vehicle, date range, source and coverage."
+        },
+        "zh-Hans": {
+          "title": "查询周期统计",
+          "trigger": "询问周期汇总。",
+          "required_inputs": [
+            "已选车辆",
+            "明确业务周期"
+          ],
+          "steps": [
+            "缺少周期时先追问，使用上海业务日期。",
+            "读取统计，保留逐指标质量和单位。"
+          ],
+          "stop": "不把缺失当零，不把部分值当完整总量。",
+          "verify": "说明车辆、日期范围、来源和覆盖情况。"
+        }
+      },
+      "content_sha256": "f399fcc1153750fce1931b2486e439f40ea99e1ded3fe89edbb0c5f7a2e7bea4"
+    },
+    {
+      "id": "SK04",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#ask-about-local-data"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "allowed_tools": [
+        "get_recorded_trips",
+        "get_trip_detail"
+      ],
+      "max_calls": 4,
+      "translations": {
+        "en": {
+          "title": "Find a saved trip",
+          "trigger": "User asks for saved trips or detail.",
+          "required_inputs": [
+            "Selected vehicle",
+            "Explicit dates or selected ride/month"
+          ],
+          "steps": [
+            "Read one bounded local page; follow a returned cursor only when needed.",
+            "Use that vehicle’s ride_id/query_month for a saved scalar detail."
+          ],
+          "stop": "Stop on access denial; missing detail never triggers a cloud fetch.",
+          "verify": "A page is not a period total; preserve missing versus saved detail."
+        },
+        "zh-Hans": {
+          "title": "查找已保存行程",
+          "trigger": "查询已保存行程或详情。",
+          "required_inputs": [
+            "已选车辆",
+            "明确日期或所选行程/月"
+          ],
+          "steps": [
+            "读取一页有界本地记录，仅在需要时跟随返回游标。",
+            "用该车辆的ride_id/query_month读取本地标量详情。"
+          ],
+          "stop": "权限拒绝立即停止，缺失详情不触发云查询。",
+          "verify": "一页不是周期总量，区分未保存和已有详情。"
+        }
+      },
+      "content_sha256": "b030f0cbde819783415713c6946ba765fbf1f305349d0d93357347ac851ccfc1"
+    },
+    {
+      "id": "SK05",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#troubleshooting"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "allowed_tools": [
+        "get_statistics",
+        "get_sync_health",
+        "search_help"
+      ],
+      "max_calls": 3,
+      "translations": {
+        "en": {
+          "title": "Explain unknown statistics",
+          "trigger": "A specific statistic is unknown.",
+          "required_inputs": [
+            "Selected vehicle",
+            "Explicit period and metric"
+          ],
+          "steps": [
+            "Read statistics and its metric reason/coverage.",
+            "Read sync health if needed; retrieve matching public help."
+          ],
+          "stop": "Explain observed conditions only; do not guess a root cause or fill zero.",
+          "verify": "Cite period, reason, source and a bounded next step."
+        },
+        "zh-Hans": {
+          "title": "解释统计未知",
+          "trigger": "某个统计值未知。",
+          "required_inputs": [
+            "已选车辆",
+            "明确周期及指标"
+          ],
+          "steps": [
+            "读取统计及逐指标原因/覆盖。",
+            "必要时读取同步健康，检索对应公开帮助。"
+          ],
+          "stop": "只解释已观察条件，不猜根因，不补零。",
+          "verify": "引用周期、原因、来源和有界下一步。"
+        }
+      },
+      "content_sha256": "72584127ea785862dbfa20b09a764533dd8e35cfae4b517a9d6d069761414ab4"
+    },
+    {
+      "id": "SK06",
+      "source": {
+        "path": "docs/history.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "d1cf5f074bf3bbbf598d76617335bb645528ed366491878dc3bbb3d008101275",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/history.md#read-progress-correctly"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "allowed_tools": [
+        "get_sync_health",
+        "get_recorded_trips",
+        "search_help"
+      ],
+      "max_calls": 3,
+      "translations": {
+        "en": {
+          "title": "Inspect synchronization coverage",
+          "trigger": "User asks about a specific vehicle's current synchronization or missing details.",
+          "required_inputs": [
+            "Selected vehicle",
+            "Dates when listing gaps"
+          ],
+          "steps": [
+            "For a general concept, use documented help without selecting or reading a vehicle.",
+            "For the selected vehicle, read sync health and scheduling/coverage denominators.",
+            "Use one local page or matching help when needed."
+          ],
+          "stop": "Do not start sync or change budget; saved 100% is not full cloud history.",
+          "verify": "Separate discovered, saved, unmapped and verified; include next/retry time."
+        },
+        "zh-Hans": {
+          "title": "检查同步和缺口",
+          "trigger": "询问具体车辆当前的同步状态或缺失详情。",
+          "required_inputs": [
+            "已选车辆",
+            "列缺口时提供日期"
+          ],
+          "steps": [
+            "一般概念仅查文档帮助，无须选车或读取车辆。",
+            "针对已选车辆读取同步健康，核对调度及覆盖率分母。",
+            "按需读取一页本地记录或对应帮助。"
+          ],
+          "stop": "不启动同步或修改额度，保存100%不是全云历史。",
+          "verify": "区分发现、保存、映射与校验，说明下次/重试时间。"
+        }
+      },
+      "content_sha256": "92f1c51ede5f0375413634cf6347398d178e22faaa09de453144ba3e474d68f3"
+    },
+    {
+      "id": "SK07",
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "54eea5ea99da125cbc855dc1302dfab57c0b4137c4e78cfc7b5fc18b37bab893",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/guide.md#login-fails-before-the-account-is-added"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "allowed_tools": [
+        "get_sync_health",
+        "search_help"
+      ],
+      "max_calls": 2,
+      "translations": {
+        "en": {
+          "title": "Guide authentication support",
+          "trigger": "Authentication or connection failure is reported.",
+          "required_inputs": [
+            "Selected vehicle if reading health",
+            "Observed error or installed version"
+          ],
+          "steps": [
+            "Read a reported local health state when available.",
+            "Retrieve the versioned debug/support procedure."
+          ],
+          "stop": "Do not request credentials, sign in or infer region/cause from a proxy status.",
+          "verify": "Separate needs_login from retry; request only reviewed support metadata."
+        },
+        "zh-Hans": {
+          "title": "指导认证排障",
+          "trigger": "报告认证或连接故障。",
+          "required_inputs": [
+            "读取健康时选车辆",
+            "已观察错误或安装版本"
+          ],
+          "steps": [
+            "有证据时读取本地健康状态。",
+            "检索对应版本的调试/支持步骤。"
+          ],
+          "stop": "不索要凭据，不登录，不凭代理状态猜地区或根因。",
+          "verify": "区分需登录与等待重试，仅索取已审阅的支持信息。"
+        }
+      },
+      "content_sha256": "dc3d44fa0041b0b3b28bcb50e854c9e2de84dc271e2366175a42431cc38e355d"
+    },
+    {
+      "id": "SK08",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "6de97c42d062fe6e1df23fcacd4be05d49d5eb99",
+        "sha256": "e669360657ce4746d8260edbcb9b5c84c01ecb04179aadaee1750dec47c109ab",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/6de97c42d062fe6e1df23fcacd4be05d49d5eb99/docs/assistant.md#read-the-evidence"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.0",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "allowed_tools": [
+        "get_vehicle_status",
+        "get_recorded_trips",
+        "get_trip_detail",
+        "search_help"
+      ],
+      "max_calls": 3,
+      "translations": {
+        "en": {
+          "title": "Explain measurement semantics",
+          "trigger": "User asks about a unit or interpretation.",
+          "required_inputs": [
+            "Selected field",
+            "Selected vehicle/ride for private facts"
+          ],
+          "steps": [
+            "Use the relevant local result if a value is needed.",
+            "Retrieve documented semantics and cite the matching source."
+          ],
+          "stop": "Unknown sample units/CRS stay unverified; no health diagnosis.",
+          "verify": "Separate server maximum, distance/duration average and sample values."
+        },
+        "zh-Hans": {
+          "title": "解释指标语义",
+          "trigger": "询问单位或字段含义。",
+          "required_inputs": [
+            "指定字段",
+            "私有事实需选择车辆/行程"
+          ],
+          "steps": [
+            "需要具体值时读取对应本地结果。",
+            "检索文档语义并引用对应来源。"
+          ],
+          "stop": "未知采样单位/坐标系保持待验证，不做健康诊断。",
+          "verify": "区分服务端最高速度、距离/时长平均和采样值。"
+        }
+      },
+      "content_sha256": "47b8f3004194ad402d7ebbff44889340658f40f0980471cd5fcce05dbe78cd18"
+    },
+    {
+      "id": "SK09",
+      "allowed_tools": [
+        "task_vehicles",
+        "preview_detail_sync",
+        "request_detail_sync_approval",
+        "search_help"
+      ],
+      "max_calls": 4,
+      "translations": {
+        "en": {
+          "title": "Apply for a bounded detail task",
+          "trigger": "User explicitly asks to apply for synchronization of missing trip details.",
+          "required_inputs": [
+            "Ninebot tasks API exposed and account task consent enabled",
+            "Selected authorized vehicle and explicit business dates"
+          ],
+          "steps": [
+            "If task tools are absent, explain enabling them and stop. Use task_vehicles; ask when several vehicles are ambiguous.",
+            "Preview the selected dates. Report local coverage, missing selection, total attempt cap and expiry; missing history is not zero.",
+            "Only on explicit intent, apply for human review. A matching existing task can be returned; preserve its actual state. The application makes no cloud request.",
+            "If approval_required is true, ask the original requester to review in HA’s Ninebot Assistant panel with the same HA user. Never ask for a token; do not seek new approval for already approved work."
+          ],
+          "stop": "Stop for missing inputs, denied access, no executable local selection or scope/budget uncertainty; do not expand the range or poll.",
+          "verify": "Report the persisted task ID, returned state, range, selection and cap. Dedup returns existing work; acceptance alone proves neither approval nor saved detail."
+        },
+        "zh-Hans": {
+          "title": "申请有界详情同步任务",
+          "trigger": "用户明确要求申请同步缺失的行程详情。",
+          "required_inputs": [
+            "已暴露 Ninebot tasks API，且账号已开启任务功能",
+            "明确的获准车辆与业务日期范围"
+          ],
+          "steps": [
+            "缺少任务工具时说明开启方式并停止。用 task_vehicles 选车，多车歧义先询问。",
+            "预览指定日期，说明本地覆盖、待取条数、总尝试上限和有效期；缺历史不等于零。",
+            "仅在用户明确要求时申请人工审核；可能返回匹配的已有任务，应保留其真实状态，申请不查询云端。",
+            "仅 approval_required 为 true 时，请原申请人用同一个 HA 用户去 Ninebot Assistant 面板审核；不能索要凭据或要求重复批准已获准工作。"
+          ],
+          "stop": "输入缺失、拒绝访问、没有可执行的本地选择或范围/额度不明时停止；不扩大范围或循环查询。",
+          "verify": "返回持久任务 ID、实际返回状态、范围、条数和上限；去重返回已有工作，受理本身不能证明批准或详情已保存。"
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
+        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.2",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "content_sha256": "a42d67d7d20ea2812e455ada86cc8f9d4d537a571091a10388f85c4847eff584"
+    },
+    {
+      "id": "SK10",
+      "allowed_tools": [
+        "task_vehicles",
+        "get_tasks",
+        "get_task",
+        "search_help"
+      ],
+      "max_calls": 4,
+      "translations": {
+        "en": {
+          "title": "Check a saved task result",
+          "trigger": "User asks about an applied history task, its wait, result or cancellation.",
+          "required_inputs": [
+            "Ninebot tasks API exposed",
+            "Original requester’s HA identity and selected authorized vehicle",
+            "Task ID from a matching task list, or permission to list local tasks"
+          ],
+          "steps": [
+            "Use the selected task reference; if absent, list the requester’s tasks for the selected vehicle and ask which one when ambiguous.",
+            "Read the matching task once. Report state, last checkpoint, saved/selected count, actual attempt consumption, reason and next eligible time.",
+            "For waiting/retry states, respect retry_at and expiry; do not repeatedly poll or infer remaining hourly tokens. Unknown observations stay unknown.",
+            "For approval or cancellation, direct the same requester to the HA panel. New work requires a new explicit application and human approval."
+          ],
+          "stop": "Stop on denied access or missing task. Missing is not completed; a task read cannot resume, approve, cancel or refresh cloud data.",
+          "verify": "Only completed is verified completion. Distinguish partial/failed/cancelled/expired, null versus zero, conservative task attempts and saved checkpoint time."
+        },
+        "zh-Hans": {
+          "title": "核对已保存的任务结果",
+          "trigger": "用户询问已申请任务的等待原因、结果或取消方式。",
+          "required_inputs": [
+            "已暴露 Ninebot tasks API",
+            "原申请人的 HA 身份与选定的获准车辆",
+            "匹配任务列表中的任务 ID，或允许读取本地列表"
+          ],
+          "steps": [
+            "优先使用已选任务；缺少时列出该用户该车的本地任务，多条有歧义先询问。",
+            "只读一次匹配任务，说明状态、最近记录、已保存/选中条数、实际尝试消耗、原因和下次允许时间。",
+            "等待或重试时遵守 retry_at 和期限，不循环查询或推断整小时剩余额度；未观察不补零。",
+            "需要批准或取消时指引原申请人去 HA 面板；新工作须另行明确申请并人工批准。"
+          ],
+          "stop": "拒绝访问或任务缺失时停止；缺失不是完成，读取不能恢复、批准、取消或刷新云端。",
+          "verify": "仅 completed 代表核验完成；区分部分/失败/取消/过期、null 与零、保守尝试计数及最近持久记录时间。"
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
+        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.1.2",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "reviewed_procedure",
+      "reviewed_at": "2026-11-18",
+      "content_sha256": "e4fc67eb93c9593602994c58ef9fb593b4f87546a061778c0ef0224725fcc638"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from custom_components.ninebot.bootstrap import HistoryBootstrap
+from custom_components.ninebot.exceptions import ErrorKind, NinebotError
 from custom_components.ninebot.history_plan import HistoryState, month_count
 from custom_components.ninebot.raw import Endpoint, build_record
 from custom_components.ninebot.ride_archive import RideArchive
@@ -124,6 +125,45 @@ async def test_shared_budget_prevents_repeated_poll_and_reload_reuses_checkpoint
     assert root.next_page == 2
     await HistoryBootstrap(co).async_seed((SN,), NOW)
     assert await archive.async_history_plan(SN) == root
+
+
+async def test_busy_retry_survives_archive_reopen_and_resumes_same_page(context):
+    co, archive, clock, calls = context
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    original = await archive.async_history_plan(SN)
+    query = co.async_query_history_page
+    co.async_query_history_page = AsyncMock(
+        side_effect=NinebotError(ErrorKind.BUSY, retry_after=180)
+    )
+    assert await runner.async_step((SN,), NOW, 60)
+    waiting = await archive.async_history_plan(SN)
+    assert waiting.state is HistoryState.WAITING and waiting.reason == "busy"
+    assert waiting.next_month == original.next_month and waiting.next_page == original.next_page
+    assert waiting.plan_id == original.plan_id and waiting.attempts == 1
+    assert datetime.fromisoformat(waiting.retry_at) >= NOW + timedelta(seconds=180)
+    co.statistics.record_error.assert_not_called()
+    assert not calls
+    await archive.async_close()
+    reopened = RideArchive(archive.path, OWNER)
+    co.statistics.archive = reopened
+    try:
+        await reopened.async_open()
+        assert await reopened.async_history_plan(SN) == waiting
+        co.async_query_history_page = query
+        runner = HistoryBootstrap(co)
+        clock[0] = datetime.fromisoformat(waiting.retry_at) - timedelta(seconds=1)
+        await runner.async_seed((SN,), clock[0])
+        assert not await runner.async_step((SN,), clock[0], 60)
+        assert not calls
+        clock[0] += timedelta(seconds=2)
+        assert await runner.async_step((SN,), clock[0], 60)
+        assert calls == [(SN, original.next_month, original.next_page)]
+        saved = await reopened.async_history_plan(SN)
+        assert saved.plan_id == original.plan_id and saved.next_page == 2
+        assert saved.state is HistoryState.DISCOVER and saved.reason is None
+    finally:
+        await reopened.async_close()
 
 
 async def test_disabled_or_stale_profiles_do_not_create_or_query_roots(context):

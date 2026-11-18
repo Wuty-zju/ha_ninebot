@@ -558,3 +558,26 @@ async def test_removal_rejects_symlink_and_other_owner_backup(tmp_path):
         with pytest.raises(NinebotError):
             await manager.async_remove(key, "fake-uid", lambda: False)
         assert session_uid(root / "foreign") == "different"
+
+
+@pytest.mark.parametrize(
+    "method,phase",
+    [
+        ("async_login", "auth_login"),
+        ("async_get_account", "account_identity"),
+        ("async_list_vehicles", "vehicles"),
+    ],
+)
+async def test_candidate_failure_stage_and_cleanup(tmp_path, method, phase):
+    from custom_components.ninebot.exceptions import NinebotAuthError
+
+    client = AsyncMock()
+    client.async_get_account.return_value = {}
+    getattr(client, method).side_effect = NinebotAuthError()
+    async with aiohttp.ClientSession() as http:
+        manager = SessionManager(tmp_path / "private", http, lambda *_: client)
+        with pytest.raises(NinebotError) as caught:
+            await manager.async_prepare("synthetic-account", "synthetic-password")
+        assert caught.value.context.phase.value == phase
+        client.async_close.assert_awaited_once()
+        assert not list(manager.root.iterdir())

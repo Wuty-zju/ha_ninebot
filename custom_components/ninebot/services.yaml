@@ -1,3 +1,19 @@
+ask:
+  fields:
+    question:
+      required: true
+      selector:
+        text:
+          multiline: true
+    ai_task_entity_id:
+      required: true
+      selector:
+        entity:
+          domain: ai_task
+    device_id:
+      selector:
+        device:
+          integration: ninebot
 get_recorded_trips:
   fields:
     device_id:

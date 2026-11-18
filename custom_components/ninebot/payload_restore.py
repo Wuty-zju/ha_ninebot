@@ -101,7 +101,7 @@ def restore(
             record = unpacked(
                 original[0], digest, stamp(metadata[0]), metadata[1], metadata[2], metadata[3]
             )
-            scoped_ride(record, current)
+            scoped_ride(db, vehicle, record, current)
             continue
         except CorruptPayload:
             pass
@@ -128,7 +128,7 @@ def restore(
                 record = unpacked(
                     body, digest, stamp(metadata[0]), metadata[1], metadata[2], metadata[3]
                 )
-                scoped_ride(record, current)
+                scoped_ride(db, vehicle, record, current)
                 if packed(record)[0] != digest:
                     continue  # Never restore bytes that bypass current redaction policy.
             except (CorruptPayload, ValueError):

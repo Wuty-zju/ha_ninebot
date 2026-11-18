@@ -173,6 +173,7 @@ test('recent windows and month navigation cross year/month and leap-day boundari
   const [start, end] = recentDates(1830, new Date('2026-10-17T00:00:00Z'));
   assert.equal((Date.parse(end) - Date.parse(start)) / 86400000 + 1, 1830);
   const { browser, calls } = setup(() => page()); await tick();
+  browser.dates('2026-10-01', '2026-10-31');
   browser.range('previous_month'); await tick();
   assert.deepEqual([browser.start, browser.end], ['2026-09-01', '2026-09-30']);
   assert.equal(calls.at(-1).service, 'get_recorded_trips');

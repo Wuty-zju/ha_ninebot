@@ -1,0 +1,300 @@
+"""Exercise installed native API registration and MCP formatting with synthetic tools.
+
+This canary does not set up Ninebot accounts, contact a model, open an HTTP
+listener or use the generated HA test plugin. HTTP transport is tested separately.
+"""
+
+import ast
+import asyncio
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+
+
+def check_task_evaluation_catalog(api_id: str, names: set[str]) -> None:
+    """Bind unexecuted task specifications to real tools and named native tests."""
+    root = Path(__file__).resolve().parents[1]
+    catalog = json.loads((root / "tests/fixtures/assistant/evaluation-tasks.json").read_text())
+    contract = catalog["task_execution_contract"]
+    assert catalog["contract_revision"] == "task-boundaries-v2"
+    assert contract["api_id"] == api_id and contract["tool_namespace"] == "ninebot__"
+    assert contract["model_cloud_call_limit"] == 0
+    assert contract["approval_channel"] == contract["cancellation_channel"] == "native_human_review"
+    cases = [case for case in catalog["cases"] if case["group"] == "task"]
+    assert {case["id"] for case in cases} == {f"J{number:02}" for number in range(1, 8)}
+    for case in cases:
+        assert set(case["expected"]["allowed_tools"]) <= names
+        assert "human_approval" not in case["context_overrides"]
+        execution = case["execution_contract"]
+        assert execution["model_cloud_call_limit"] == 0
+        assert execution["native_cloud_call_limit"] == case["expected"]["max_cloud_calls"]
+        assert execution["native_test_nodes"]
+        for node in execution["native_test_nodes"]:
+            path, function = node.split("::")
+            target = (root / path).resolve()
+            assert target.is_relative_to(root / "tests") and target.name.startswith("test_")
+            tree = ast.parse(target.read_text())
+            assert any(
+                isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == function
+                for item in tree.body
+            )
+
+
+async def main() -> None:
+    with TemporaryDirectory(prefix="ninebot-native-") as directory:
+        await check(directory)
+
+
+async def check(config_dir: str) -> None:
+    from homeassistant.components.mcp_server.server import _format_tool, async_get_api_instance
+    from homeassistant.core import Context, HomeAssistant
+    from homeassistant.exceptions import Unauthorized
+    from homeassistant.helpers import llm
+
+    from custom_components.ninebot.assistant_api import async_register, native_result
+    from custom_components.ninebot.assistant_queries import SPECS
+    from custom_components.ninebot.compat import validation
+
+    context = llm.LLMContext(
+        platform="mcp_server",
+        context=Context(user_id="synthetic-admin"),
+        language="en",
+        assistant="conversation",
+        device_id=None,
+    )
+    hass = HomeAssistant(config_dir)
+    hass.auth = SimpleNamespace(
+        async_get_user=AsyncMock(return_value=SimpleNamespace(is_admin=True, is_active=True))
+    )
+    unregister = async_register(hass)
+    assert [api.id for api in llm.async_get_apis(hass)] == ["ninebot"]
+    api = await llm.async_get_api(hass, "ninebot", context)
+    assert api.api.requires_admin and api.llm_context is context
+    assert [tool.name for tool in api.tools] == [f"ninebot__{spec.key}" for spec in SPECS]
+    for tool in api.tools:
+        formatted = _format_tool(tool, api.custom_serializer)
+        assert formatted.annotations.read_only_hint and not formatted.annotations.open_world_hint
+        assert set(formatted.input_schema["properties"]) == {
+            marker.schema for marker in tool.parameters.schema
+        }
+        if tool.name == "ninebot__get_recorded_trips":
+            properties = formatted.input_schema["properties"]
+            assert properties["limit"]["minimum"] == 1 and properties["limit"]["maximum"] == 20
+            assert properties["start_date"]["format"] == "date"
+        if tool.name == "ninebot__get_statistics":
+            periods = formatted.input_schema["properties"]["period"]["anyOf"]
+            assert periods == [
+                {"type": "string", "enum": ["today", "yesterday", "this_month", "last_month"]},
+                {"type": "string", "format": "date"},
+                {"type": "string", "pattern": "^20[0-9]{2}-(0[1-9]|1[0-2])$"},
+            ]
+    invalid = await api.async_call_tool(
+        llm.ToolInput(
+            tool_name="ninebot__get_vehicle_status",
+            tool_args={"vehicle_ref": "synthetic", "refresh": True},
+        )
+    )
+    assert invalid.error and invalid.data["error"]["code"] == "invalid_arguments"
+    hass.auth.async_get_user.return_value = SimpleNamespace(is_admin=False, is_active=True)
+    try:
+        await llm.async_get_api(hass, "ninebot", context)
+    except Unauthorized:
+        pass
+    else:
+        raise AssertionError("Native collection must require an administrator")
+    hass.auth.async_get_user.return_value = SimpleNamespace(is_admin=True, is_active=True)
+
+    class ProbeTool(llm.Tool):
+        name = "ninebot__synthetic_probe"
+        title = "Synthetic probe"
+        integration = "ninebot"
+        parameters = validation.Schema({})
+        annotations = llm.ToolAnnotations(
+            read_only=True, destructive=False, idempotent=True, open_world=False
+        )
+
+        async def async_call(self, actual_hass, tool_input, llm_context):
+            assert actual_hass is hass and llm_context is context
+            return native_result({"zero": 0, "missing": None})
+
+    probe = ProbeTool()
+    api.tools.append(probe)
+    result = await api.async_call_tool(llm.ToolInput(tool_name=probe.name, tool_args={}))
+    assert isinstance(result, llm.ToolResult) and result.data == {"zero": 0, "missing": None}
+    formatted = _format_tool(probe, None)
+    assert formatted.name == probe.name and formatted.annotations.read_only_hint
+    with patch.object(llm, "async_get_api", AsyncMock(return_value=api)):
+        readonly = await async_get_api_instance(hass, "ninebot", context, True)
+    assert readonly.tools == api.tools
+    unregister()
+    assert llm.async_get_apis(hass) == []
+    await check_confirmation_boundary(hass, context)
+    check_review_schema(hass, api)
+    await check_task_collection(hass, context)
+    print("Native Assistant: registry, admin gate, original Context, ToolResult and MCP schema OK")
+
+
+async def check_confirmation_boundary(hass, context) -> None:
+    """A generic admin Action bridge cannot serve as a human-only nonce channel."""
+    from homeassistant.components.homeassistant.llm import CallActionTool
+    from homeassistant.core import SupportsResponse
+    from homeassistant.helpers import llm
+
+    domain = "ninebot_confirmation_probe"
+    calls = []
+
+    async def prepare(call):
+        calls.append(call)
+        assert call.context is context.context
+        assert call.data == {"task_id": "synthetic-task"}
+        return {"nonce": "synthetic-only-nonce", "plan_hash": "synthetic-plan"}
+
+    async def approve(call):
+        calls.append(call)
+        assert call.context is context.context
+        assert call.data == {"nonce": "synthetic-only-nonce", "plan_hash": "synthetic-plan"}
+        return {"approved": True}
+
+    tool = CallActionTool()
+    hass.services.async_register(
+        domain, "prepare", prepare, supports_response=SupportsResponse.ONLY
+    )
+    hass.services.async_register(
+        domain, "approve", approve, supports_response=SupportsResponse.ONLY
+    )
+    try:
+        prepared = await tool.async_call(
+            hass,
+            llm.ToolInput(
+                tool_name=tool.name,
+                tool_args={"action": f"{domain}.prepare", "data": {"task_id": "synthetic-task"}},
+            ),
+            context,
+        )
+        assert not prepared.error
+        result = await tool.async_call(
+            hass,
+            llm.ToolInput(
+                tool_name=tool.name,
+                tool_args={"action": f"{domain}.approve", "data": prepared.data["response"]},
+            ),
+            context,
+        )
+        assert not result.error and result.data == {"response": {"approved": True}}
+        assert len(calls) == 2
+        # The integration has no approval services exposed through this bridge.
+        assert not hass.services.has_service("ninebot", "prepare_task_confirmation")
+        assert not hass.services.has_service("ninebot", "approve_task")
+    finally:
+        hass.services.async_remove(domain, "prepare")
+        hass.services.async_remove(domain, "approve")
+    print(
+        "Confirmation boundary: generic Action responses enable self-approval; no approval services"
+    )
+
+
+def check_review_schema(hass, api) -> None:
+    """Use current Core's WS registry/schema; private commands are not LLM tools."""
+    from homeassistant.components import websocket_api
+    from homeassistant.components.websocket_api.connection import REDACT_KEYS
+    from homeassistant.helpers.redact import async_redact_data
+
+    from custom_components.ninebot.assistant_review import COMMAND, async_register, async_review
+
+    hass.data.setdefault(websocket_api.DOMAIN, {})
+    async_register(hass)
+    async_register(hass)
+    assert COMMAND in hass.data[websocket_api.DOMAIN]
+    assert COMMAND not in {tool.name for tool in api.tools}
+    assert not hass.services.has_service("ninebot", "assistant_review")
+    schema = async_review._ws_schema
+    message = {"id": 1, "type": COMMAND, "vehicle_ref": "synthetic-device", "operation": "list"}
+    assert schema(message)["operation"] == "list"
+    redacted = async_redact_data({"token": "synthetic-confirmation"}, REDACT_KEYS)
+    assert redacted["token"] != "synthetic-confirmation"
+    print(
+        "Private review: native WS registry/schema, secret redaction and no LLM/service exposure OK"
+    )
+
+
+async def check_task_collection(hass, context) -> None:
+    """Actual native API and MCP read-only filtering; no cloud or private data."""
+    from homeassistant.components.mcp_server.server import _format_tool, async_get_api_instance
+    from homeassistant.helpers import llm
+
+    from custom_components.ninebot.assistant_task_api import API_ID, async_register
+
+    remove = async_register(hass)
+    try:
+        with patch("custom_components.ninebot.assistant_task_queries._enabled", return_value=True):
+            instance = await llm.async_get_api(hass, API_ID, context)
+            assert instance.api.requires_admin
+            names = {tool.name for tool in instance.tools}
+            assert names == {
+                "ninebot__task_vehicles",
+                "ninebot__preview_detail_sync",
+                "ninebot__request_detail_sync_approval",
+                "ninebot__get_tasks",
+                "ninebot__get_task",
+            }
+            check_task_evaluation_catalog(API_ID, names)
+            formatted = {
+                tool.name: _format_tool(tool, instance.custom_serializer) for tool in instance.tools
+            }
+            request = formatted["ninebot__request_detail_sync_approval"]
+            assert request.annotations.read_only_hint is False
+            assert request.annotations.idempotent_hint is False
+            readonly = await async_get_api_instance(hass, API_ID, context, True)
+            assert {tool.name for tool in readonly.tools} == names - {request.name}
+            fields = formatted["ninebot__get_task"].input_schema["properties"]
+            assert fields["task_id"]["pattern"] == "^[a-f0-9]{32}$"
+            assert not {"nonce", "token", "user_id", "account", "confirmed"} & set(fields)
+            from custom_components.ninebot.assistant_api import async_register as register_read
+            from custom_components.ninebot.assistant_queries import SPECS
+
+            remove_read = register_read(hass)
+            try:
+                for order in (["ninebot", API_ID], [API_ID, "ninebot"]):
+                    merged = await llm.async_get_api(hass, order, context)
+                    combined = {
+                        tool.name: _format_tool(tool, merged.custom_serializer)
+                        for tool in merged.tools
+                    }
+                    assert set(combined) == names | {f"ninebot__{spec.key}" for spec in SPECS}
+                    for name, original in formatted.items():
+                        assert combined[name].input_schema == original.input_schema
+                    assert (
+                        combined["ninebot__get_recorded_trips"].input_schema["properties"][
+                            "start_date"
+                        ]["format"]
+                        == "date"
+                    )
+            finally:
+                remove_read()
+            pages = formatted["ninebot__get_tasks"].input_schema["properties"]
+            assert pages["page"]["minimum"] == 1 and pages["page"]["maximum"] == 24
+            assert pages["limit"]["minimum"] == 1 and pages["limit"]["maximum"] == 10
+            invalid = await instance.async_call_tool(
+                llm.ToolInput(
+                    tool_name="ninebot__request_detail_sync_approval",
+                    tool_args={
+                        "vehicle_ref": "synthetic",
+                        "start_date": "2026-11-06",
+                        "end_date": "2026-11-06",
+                        "confirmed": True,
+                    },
+                )
+            )
+            assert invalid.error and invalid.data["error"]["code"] == "invalid_arguments"
+    finally:
+        remove()
+    assert llm.async_get_apis(hass) == []
+    print(
+        "Task API: separate registry, nonce-free schema, Context and native MCP read-only filter OK"
+    )
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -39,6 +39,40 @@ def credentials(directory: Path, uid=UID, token="synthetic-access"):
     (directory / "tokens.json").write_text(json.dumps({"business_uid": uid, "access_token": token}))
 
 
+async def test_close_drains_native_page_and_rejects_its_late_result(tmp_path, monkeypatch):
+    credentials(tmp_path)
+    entered, release, stopping = asyncio.Event(), asyncio.Event(), asyncio.Event()
+
+    async def page(*args):
+        entered.set()
+        await release.wait()
+        return {"list": []}
+
+    monkeypatch.setattr(native, "request_page", page)
+    async with aiohttp.ClientSession() as session:
+        client = NinecliClient(tmp_path, session)
+        stop = client._stop
+
+        async def observed_stop():
+            stopping.set()
+            await stop()
+
+        request = asyncio.create_task(
+            client.async_get_travel_page("synthetic", "202611", 1, expected_uid=UID)
+        )
+        await asyncio.wait_for(entered.wait(), 5)
+        client._stop = observed_stop
+        closing = asyncio.create_task(client.async_close())
+        await asyncio.wait_for(stopping.wait(), 5)
+        assert not closing.done()
+        release.set()
+        with pytest.raises(NinebotError) as error:
+            await asyncio.wait_for(request, 5)
+        assert error.value.kind is ErrorKind.CLOSED
+        await asyncio.wait_for(closing, 5)
+    assert client._pending == 0 and not client._lock.locked()
+
+
 @pytest.fixture
 def peer_key(monkeypatch):
     key = rsa.generate_private_key(public_exponent=65537, key_size=1024)

@@ -26,7 +26,14 @@ from typing import TYPE_CHECKING, TypeVar
 from zoneinfo import ZoneInfo
 
 from .archive_audit import AuditPlan
-from .archive_browse import RecordedCursor, RecordedCursorMismatch, RecordedPage, recorded_page
+from .archive_browse import (
+    CURRENT_DETAIL_MAPPING,
+    RecordedCursor,
+    RecordedCursorMismatch,
+    RecordedPage,
+    current_detail_mappings,
+    recorded_page,
+)
 from .archive_codec import (
     decoded,
     encoded,
@@ -51,7 +58,15 @@ from .archive_timeline import (
     timeline_query,
 )
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
-from .detail_codec import ArchivedDetail, CorruptPayload, packed, scoped_ride, unpacked
+from .detail_codec import (
+    ArchivedDetail,
+    CorruptPayload,
+    DetailMonthConflict,
+    detail_source_scope,
+    packed,
+    scoped_ride,
+    unpacked,
+)
 from .detail_health import HistoryHealth
 from .exceptions import NinebotError
 from .history_budget import request_interval, valid_budget
@@ -70,9 +85,10 @@ from .sync_job import SyncJob, SyncState, job_data, restored_job
 from .travel import MAX_RIDES, opaque_id, parse_ride, select_geometry
 
 if TYPE_CHECKING:
+    from .assistant_preview import DetailPreview
     from .month_source import MonthSourceCheck
     from .month_tasks import MonthTask
-    from .preservation import PreservationTask
+    from .preservation import DetailBudget, DetailScope, DetailScopeState, PreservationTask
 
 SCHEMA_VERSION = 7
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024
@@ -1591,8 +1607,7 @@ class RideArchive:
                     )
                     if blob is None:
                         raise CorruptPayload("Missing private payload object")
-                    if blob[2] != summary[0].query_month:
-                        raise ValueError("Invalid private payload month scope")
+                    source_scope = detail_source_scope(self._db(), vehicle, blob[2], summary[0])
                     decoded_record = unpacked(
                         blob[0], digest, stamp(blob[1]), blob[2], blob[3], blob[4]
                     )
@@ -1600,13 +1615,18 @@ class RideArchive:
                     # the same pass. Never cache across reads, revisions or users.
                     selected = digest == row[1]
                     scoped = scoped_ride(
+                        self._db(),
+                        vehicle,
                         decoded_record,
-                        summary[0],
+                        source_scope,
                         max_points=max_points if selected else 1,
                         point_offset=point_offset if selected else 0,
                     )
                     decoded_payloads[digest] = decoded_record
                     parsed_payloads[digest] = scoped
+                except DetailMonthConflict:
+                    # A scope contradiction cannot be presented as a partially readable detail.
+                    raise ValueError("Invalid private payload month scope") from None
                 except CorruptPayload:
                     decoded_payloads[digest] = None
                     if not allow_partial:
@@ -1846,42 +1866,234 @@ class RideArchive:
             previous_month(month)
         await self._run(lambda: cancel(self._db(write=True), vehicle_key(sn), months), guard=guard)
 
+    async def async_initialize_detail_budget(
+        self,
+        sn: str,
+        scope: "DetailScope",
+        task_budget: "DetailBudget",
+        *,
+        guard: Callable[[], bool],
+        expires_at: datetime | None = None,
+    ) -> None:
+        """Initialize after human approval; never reset existing durable consumption."""
+        scope_hash = scope.digest(vehicle_key(sn))
+        if expires_at is not None:
+            utc_string(expires_at)
+
+        def initialize() -> None:
+            db = self._db(write=True)
+            with db:
+                row = db.execute(
+                    "SELECT value FROM meta WHERE key=?", (task_budget.key,)
+                ).fetchone()
+                if row is not None:
+                    value = task_budget.read(row[0], scope_hash)
+                    if expires_at is not None:
+                        value["expires_at"] = max(
+                            value.get("expires_at", 0), expires_at.timestamp()
+                        )
+                        task_budget.validate(value, scope_hash)
+                        db.execute(
+                            "UPDATE meta SET value=? WHERE key=?", (encoded(value), task_budget.key)
+                        )
+                    return
+                value = {"scope_hash": scope_hash, "limit": task_budget.limit, "used": 0}
+                if expires_at is not None:
+                    value["expires_at"] = expires_at.timestamp()
+                task_budget.validate(value, scope_hash)
+                db.execute(
+                    "INSERT INTO meta VALUES (?,?)",
+                    (
+                        task_budget.key,
+                        encoded(value),
+                    ),
+                )
+
+        await self._run(initialize, guard=guard)
+
+    async def async_prune_detail_budgets(self, now: datetime, *, guard: Callable[[], bool]) -> int:
+        """Bounded maintenance of expired non-authority counters, on the same archive actor."""
+        from .detail_budget_gc import prune
+
+        utc_string(now)
+        return await self._run(lambda: prune(self._db(write=True), now), guard=guard)
+
+    async def async_detail_budget_used(
+        self,
+        sn: str,
+        scope: "DetailScope",
+        task_budget: "DetailBudget",
+        *,
+        guard: Callable[[], bool],
+    ) -> int:
+        """Read durable consumption without reserving requests or resetting a missing counter."""
+        from .preservation import DetailBudgetUnavailable
+
+        def read() -> int:
+            row = (
+                self._db()
+                .execute("SELECT value FROM meta WHERE key=?", (task_budget.key,))
+                .fetchone()
+            )
+            if row is None:
+                raise DetailBudgetUnavailable("Missing approved task counter")
+            return int(task_budget.read(row[0], scope.digest(vehicle_key(sn)))["used"])
+
+        return await self._run(read, guard=guard)
+
+    async def async_detail_scope_state(
+        self, sn: str, scope: "DetailScope", *, guard: Callable[[], bool]
+    ) -> "DetailScopeState":
+        """Read only the frozen identities, not their months or raw payloads."""
+        from .preservation import DetailScopeState, fingerprint, scope_fingerprint, task_state
+
+        def read() -> DetailScopeState:
+            vehicle = vehicle_key(sn)
+            db = self._db()
+            rows = db.execute(
+                "SELECT r.id,r.data,d.ride," + CURRENT_DETAIL_MAPPING + ",p.value FROM rides r "
+                "LEFT JOIN details d ON d.vehicle=r.vehicle AND d.ride=r.id "
+                "LEFT JOIN meta p ON p.key='preservation:'||r.vehicle||':'||r.id "
+                "WHERE r.vehicle=? AND r.id IN (" + ",".join("?" for _ in scope.rides) + ")",
+                (vehicle, *(identity for identity, _ in scope.rides)),
+            ).fetchall()
+            indexed = {row[0]: row for row in rows}
+            saved: set[str] = set()
+            changed: set[str] = set()
+            candidates: list[Ride] = []
+            retry_times: list[float] = []
+            immediate = False
+            for identity, signature in scope.rides:
+                row = indexed.get(identity)
+                if row is None:
+                    changed.add(identity)
+                    continue
+                if row[2] is not None:
+                    saved.add(identity)
+                    continue
+                ride = restored_ride(decoded(row[1]))
+                if not row[3] or scope_fingerprint(ride) != signature:
+                    changed.add(identity)
+                else:
+                    candidates.append(ride)
+                    previous = task_state(row[4]) if row[4] is not None else None
+                    if (
+                        previous is not None
+                        and previous["fingerprint"] == fingerprint(ride)
+                        and previous["reason"] is not None
+                    ):
+                        retry_times.append(previous["next_attempt"])
+                    else:
+                        immediate = True
+            account = db.execute(
+                "SELECT value FROM meta WHERE key='preservation_budget'"
+            ).fetchone()
+            return DetailScopeState(
+                frozenset(saved),
+                frozenset(changed),
+                tuple(candidates),
+                self._history_paused(vehicle),
+                float(account[0]) if account else None,
+                min(retry_times) if retry_times and not immediate else None,
+            )
+
+        return await self._run(read, guard=guard)
+
     async def async_preservation_claim(
-        self, sn: str, now: datetime, budget: int, *, guard: Callable[[], bool]
+        self,
+        sn: str,
+        now: datetime,
+        budget: int,
+        *,
+        guard: Callable[[], bool],
+        scope: "DetailScope | None" = None,
+        task_budget: "DetailBudget | None" = None,
     ) -> "PreservationTask | None":
         utc_string(now)
         if not valid_budget(budget):
             raise ValueError("Invalid preservation budget")
+        if task_budget is not None and scope is None:
+            raise ValueError("A task budget requires its frozen scope")
         return await self._run(
-            partial(self._preservation_claim, vehicle_key(sn), now, budget), guard=guard
+            partial(self._preservation_claim, vehicle_key(sn), now, budget, scope, task_budget),
+            guard=guard,
         )
 
     def _preservation_claim(
-        self, vehicle: str, now: datetime, budget: int
+        self,
+        vehicle: str,
+        now: datetime,
+        budget: int,
+        scope: "DetailScope | None" = None,
+        task_budget: "DetailBudget | None" = None,
     ) -> "PreservationTask | None":
         from .detail_followup import put as put_followup
-        from .preservation import PreservationTask, fingerprint, mutable_detail, task_state
+        from .preservation import (
+            DetailBudgetUnavailable,
+            PreservationTask,
+            fingerprint,
+            mutable_detail,
+            scope_fingerprint,
+            task_state,
+        )
 
         epoch = now.timestamp()
+        scoped = dict(scope.rides) if scope is not None else None
+        scope_sql = (
+            "AND r.id IN ("
+            + ",".join(f":approved_{i}" for i in range(len(scoped)))
+            + ") "
+            + f"AND {CURRENT_DETAIL_MAPPING} "
+            if scoped is not None
+            else ""
+        )
+        if task_budget is not None:
+            scope_sql += (
+                "AND NOT EXISTS (SELECT 1 FROM details saved "
+                "WHERE saved.vehicle=r.vehicle AND saved.ride=r.id) "
+            )
         db = self._db(write=True)
         with db:
+            task_counter = None
+            if task_budget is not None:
+                if scope is None:
+                    raise ValueError("Missing task scope")
+                row = db.execute(
+                    "SELECT value FROM meta WHERE key=?", (task_budget.key,)
+                ).fetchone()
+                if row is None:
+                    raise DetailBudgetUnavailable("Missing approved task counter")
+                task_counter = task_budget.read(row[0], scope.digest(vehicle))
+                if task_counter["used"] >= task_budget.limit:
+                    return None
             if self._history_paused(vehicle):
                 return None
             limit = db.execute("SELECT value FROM meta WHERE key='preservation_budget'").fetchone()
             if budget and limit is not None and float(limit[0]) > epoch:
                 return None
+            eligibility = (
+                "m.value IS NULL OR json_extract(m.value,'$.revision')!=r.revision OR "
+                "json_extract(m.value,'$.next_attempt')<=:epoch OR "
+                + (
+                    "json_extract(m.value,'$.reason') IS NULL"
+                    if task_budget is not None
+                    else (
+                        "(h.value IS NULL AND (r.ended>=:recent OR "
+                        "(r.ended IS NULL AND r.started>=:recent)))"
+                    )
+                )
+            )
             rows = db.execute(
                 "SELECT r.id,r.data,r.revision,m.value,h.value FROM rides r LEFT JOIN meta m "
                 "ON m.key='preservation:'||r.vehicle||':'||r.id LEFT JOIN meta h "
                 "ON h.key='preservation_detail:'||r.vehicle||':'||r.id "
-                "WHERE r.vehicle=:vehicle AND (m.value IS NULL OR "
-                "json_extract(m.value,'$.revision')!=r.revision OR "
-                "json_extract(m.value,'$.next_attempt')<=:epoch OR "
-                "(h.value IS NULL AND "
-                "(r.ended>=:recent OR (r.ended IS NULL AND r.started>=:recent)))) "
+                "WHERE r.vehicle=:vehicle AND ("
+                + eligibility
+                + ") "
+                + scope_sql
                 # Oldest confirmed end first within the existing local risk band;
                 # do not infer a deadline for missing ends or change other ordering.
-                "ORDER BY CASE WHEN r.ended>=:risk_start AND r.ended<=:risk_end "
+                + "ORDER BY CASE WHEN r.ended>=:risk_start AND r.ended<=:risk_end "
                 "THEN 0 ELSE 1 END, "
                 "CASE WHEN r.ended>=:risk_start AND r.ended<=:risk_end THEN r.ended END, "
                 "r.started DESC,r.id LIMIT 128",
@@ -1891,10 +2103,13 @@ class RideArchive:
                     "recent": utc_string(now - timedelta(days=1)),
                     "risk_start": utc_string(now - timedelta(days=180)),
                     "risk_end": utc_string(now - timedelta(days=150)),
+                    **{f"approved_{i}": key for i, key in enumerate(scoped or {})},
                 },
             ).fetchall()
             for identity, data, revision, value, content_marker in rows:
                 ride = restored_ride(decoded(data))
+                if scoped is not None and scoped[identity] != scope_fingerprint(ride):
+                    continue  # A changed mapping must not consume budget or amend task state.
                 if ride.detail_id is None:
                     put_followup(db, vehicle, identity, None)
                     ignored = {
@@ -1947,7 +2162,9 @@ class RideArchive:
                 if content_marker is None and persisted is None:
                     put_followup(db, vehicle, identity, None)
                 state["revision"] = revision
-                if state["next_attempt"] > epoch:
+                if state["next_attempt"] > epoch and (
+                    task_budget is None or state["reason"] is not None
+                ):
                     db.execute(
                         "INSERT INTO meta VALUES (?,?) ON CONFLICT(key) "
                         "DO UPDATE SET value=excluded.value",
@@ -1962,7 +2179,14 @@ class RideArchive:
                     "DO UPDATE SET value=excluded.value",
                     (key, encoded(state)),
                 )
-                self._reserve_background(db, vehicle, epoch, budget, "detail")
+                if not self._reserve_background(db, vehicle, epoch, budget, "detail"):
+                    raise ValueError("Account reservation changed during detail claim")
+                if task_budget is not None and task_counter is not None:
+                    task_counter["used"] += 1
+                    db.execute(
+                        "UPDATE meta SET value=? WHERE key=?",
+                        (encoded(task_counter), task_budget.key),
+                    )
                 return PreservationTask(ride, signature, state["attempts"], state["observations"])
         return None
 
@@ -2323,6 +2547,52 @@ class RideArchive:
                 raise ArchiveError(ArchiveFailure.CURSOR) from None
 
         return await self._run(query)
+
+    async def async_detail_preview(
+        self,
+        sn: str,
+        start: datetime,
+        end: datetime,
+        now: datetime,
+        *,
+        guard: Callable[[], bool],
+    ) -> "DetailPreview":
+        """One guarded local scan, with the recorded-history date/selection contract."""
+        from .assistant_preview import detail_preview
+
+        vehicle, start_key, end_key = vehicle_key(sn), utc_string(start), utc_string(end)
+        as_of = utc_string(now)
+        if start_key >= end_key or (end.astimezone(UTC) - start.astimezone(UTC)) > timedelta(
+            days=31
+        ):
+            raise ValueError("Invalid detail preview range")
+        zone = ZoneInfo(BUSINESS_TIMEZONE)
+        first_month = start.astimezone(zone).strftime("%Y%m")
+        last_month = (end - timedelta(microseconds=1)).astimezone(zone).strftime("%Y%m")
+
+        def query() -> "DetailPreview":
+            try:
+                db = self._db()
+                page = recorded_page(
+                    db,
+                    self.owner,
+                    vehicle,
+                    start_key,
+                    end_key,
+                    as_of,
+                    MAX_TIMELINE_RIDES,
+                    first_month,
+                    last_month,
+                    None,
+                )
+                ids = tuple(
+                    row.ride.ride_id for row in page.records if row.ride.ride_id is not None
+                )
+                return detail_preview(page, current_detail_mappings(db, vehicle, ids))
+            except TimelineLimitError:
+                raise ArchiveError(ArchiveFailure.BUDGET) from None
+
+        return await self._run(query, guard=guard)
 
     def _page(
         self,
@@ -3073,14 +3343,7 @@ class RideArchive:
                 current = (
                     resolve(db, vehicle, plan_id) if plan_id is not None else root(db, vehicle)
                 )
-                if (
-                    current is None
-                    or current.next_month is None
-                    or current.state
-                    not in {HistoryState.DISCOVER, HistoryState.QUERYING, HistoryState.WAITING}
-                    or current.retry_at is not None
-                    and stamp(current.retry_at) > now
-                ):
+                if current is None or not current.page_due(now):
                     return None
                 if not self._reserve_background(db, vehicle, now.timestamp(), budget, "month"):
                     return None

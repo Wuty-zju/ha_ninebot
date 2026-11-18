@@ -484,10 +484,22 @@ class PackageAndPublication(unittest.TestCase):
         self.git("add", ".")
         self.commit()
         self.assertEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
-        (self.repo / "scripts/ci.py").write_text("# different HA installation or test command")
-        self.git("add", ".")
-        self.commit()
-        self.assertNotEqual(input_digest(self.repo, before), input_digest(self.repo, self.sha))
+        for name in (
+            "ci.py",
+            "ci_evidence.py",
+            "check_assistant_knowledge.py",
+            "tests/test_assistant_knowledge.py",
+        ):
+            with self.subTest(name=name):
+                before = self.sha
+                path = self.repo / "scripts" / name
+                path.parent.mkdir(exist_ok=True)
+                path.write_text("# changed full validation input")
+                self.git("add", ".")
+                self.commit()
+                self.assertNotEqual(
+                    input_digest(self.repo, before), input_digest(self.repo, self.sha)
+                )
 
     def test_validation_fetches_tested_commit_missing_from_a_shallow_checkout(self):
         tested = self.sha

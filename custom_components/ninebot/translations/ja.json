@@ -50,7 +50,7 @@
           "enable_estimation": "定格パラメーターを設定",
           "enable_coordinates": "車両の位置を表示",
           "enable_calendar": "走行履歴 (Beta)",
-          "debug_mode": "デバッグモード"
+          "debug_mode": "診断エンティティを表示"
         },
         "data_description": {
           "enable_estimation": "Set rated battery parameters, including voltage and capacity.",
@@ -107,10 +107,12 @@
           "history_storage_mib": "履歴保存上限（MiB） (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "debug_mode": "デバッグモード"
+          "enable_assistant": "Ninebot Assistantを有効にする（ベータ）",
+          "assistant_vehicles": "Assistantに公開する車両",
+          "enable_assistant_tasks": "確認が必要な履歴タスクを許可（ベータ）",
+          "debug_mode": "診断エンティティを表示"
         },
         "data_description": {
-          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics.",
           "configure_model": "Set rated battery parameters, including voltage and capacity.",
           "enable_coordinates": "Show vehicle location on maps and use it in zones.",
           "enable_calendar": "Browse saved rides by date. No current trip means no active event, not a disabled calendar. Turning this option off preserves recorded rides.",
@@ -122,7 +124,11 @@
           "enable_vehicle_events": "Enable trip and vehicle status events together. On by default; re-enabling does not replay historical events.",
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
-          "polling_profile": "現在の状態／バッテリー／走行の間隔：{polling_setting}。充電と車両の活動に応じて調整します。"
+          "polling_profile": "現在の状態／バッテリー／走行の間隔：{polling_setting}。充電と車両の活動に応じて調整します。",
+          "enable_assistant": "選択したAIホストに、対象車両の名前、ローカルの値、時刻、データ品質の読み取りを許可します。アカウント、認証情報、正確な位置、未加工の応答は含みません。クラウドの更新や車両操作は行いません。",
+          "assistant_vehicles": "遠隔操作の対象とは別に車両を選択します。Assistantを無効にしても選択は保持されます。",
+          "enable_assistant_tasks": "保存後、クラウドへのリクエストを開始する前に、[Ninebot Assistant](/ninebot-assistant)で対象範囲を確認し、走行詳細の同期リクエストを承認してください。既定ではオフです。",
+          "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
         }
       },
       "model_vehicle": {
@@ -187,7 +193,8 @@
       "model_storage_invalid": "Battery parameter storage is unavailable. Resolve the Repair before saving.",
       "control_vehicles_required": "遠隔操作を許可する車両を1台以上選択してください。",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
-      "archive_busy": "A backup is in progress. Try again later."
+      "archive_busy": "A backup is in progress. Try again later.",
+      "assistant_vehicles_required": "このアカウントからAssistantに公開する車両を1台以上選択してください。"
     }
   },
   "entity": {
@@ -503,10 +510,10 @@
         "name": "昨日: 電力量"
       },
       "month_energy_intensity": {
-        "name": "今月: 距離あたりの消費電力"
+        "name": "今月: 距離あたりの消費電力量"
       },
       "last_energy_intensity": {
-        "name": "前回の走行: 距離あたりの消費電力"
+        "name": "前回の走行: 距離あたりの消費電力量"
       },
       "emergency_battery": {
         "name": "緊急通信用バッテリー"
@@ -1167,7 +1174,7 @@
     },
     "sync_history": {
       "name": "走行履歴を同期",
-      "description": "Fill missing months by range, or use repair with 1–12 selected months. repair_status reads progress, repair_continue resumes, repair_cancel cancels. Partial lists remain partial. reconstruct は専用の復元ポイントを作成し、ローカルの数値を修復します。reconstruct_continue/status/pause/cancel で再開、確認、一時停止、取消ができます。クラウドへの要求や車両操作は行いません。",
+      "description": "synchronize queues incremental history work and may query the cloud. Selected months or force rescan month lists while reusing saved details. pause/resume control background history; sync_status reads local progress. Range and repair operations remain supported. No operation sends vehicle commands.\n\nローカル再構築： reconstruct は専用の復元ポイントを作成し、ローカルの数値を修復します。reconstruct_continue/status/pause/cancel で再開、確認、一時停止、取消ができます。クラウドへの要求や車両操作は行いません。",
       "fields": {
         "device_id": {
           "name": "Vehicle"
@@ -1186,7 +1193,7 @@
         },
         "months": {
           "name": "Repair months (YYYYMM list)",
-          "description": "For sparse repair/cancellation; at most 12 distinct months per selection."
+          "description": "For synchronize, sparse repair or cancellation; at most 12 distinct months. Active scans coalesce."
         },
         "force": {
           "name": "月別一覧を再取得"
@@ -1218,6 +1225,24 @@
         "sort": {
           "name": "Sort order",
           "description": "asc: oldest first; desc: newest first. Keep the same order when continuing."
+        }
+      }
+    },
+    "ask": {
+      "name": "Ask Ninebot Assistant",
+      "description": "Ask a local-data question using an existing AI task entity. Returns authorized tool results with their sources and quality.",
+      "fields": {
+        "question": {
+          "name": "Question",
+          "description": "Ask about local vehicle data or integration help."
+        },
+        "ai_task_entity_id": {
+          "name": "AI task",
+          "description": "An existing model provider with native tool calling."
+        },
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Select a vehicle when more than one is allowed for Assistant."
         }
       }
     }
