@@ -5,7 +5,7 @@ import math
 import re
 from datetime import date, datetime
 from html import escape
-from typing import Any
+from typing import Any, TypeGuard
 
 CONTRACT = "ninebot-evidence-answer-v1"
 MAX_ANSWER_BYTES = 16 * 1024
@@ -48,7 +48,7 @@ def _object(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _matches(pattern: re.Pattern[str], value: Any) -> bool:
+def _matches(pattern: re.Pattern[str], value: Any) -> TypeGuard[str]:
     return isinstance(value, str) and pattern.fullmatch(value) is not None
 
 
