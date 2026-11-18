@@ -1,16 +1,16 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.9",
+  "corpus_version": "1.2.10",
   "source_version": "2.1.26",
   "entries": [
     {
       "id": "statistics_missing",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/history.md",
@@ -44,17 +44,17 @@
           ]
         }
       },
-      "content_sha256": "01858bdc82e6a2b2a9594919554e46708349645abbc7ff882651f44a0c62b991",
+      "content_sha256": "986c80ac0209958baf88892e416be8447ba04b64f5a8874df62aac6328c621d5",
       "procedure_id": "SK05"
     },
     {
       "id": "business_dates",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-16",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/history.md",
@@ -91,17 +91,17 @@
           ]
         }
       },
-      "content_sha256": "1b4cc6efe15d0f3db2608c4e9e96443a05ee7e862c0400334b2690a6f12097a6",
+      "content_sha256": "36a4204f2d840a235cbeadfec3b7f3c242f10e39bd2db1da54d1c537f8591f6e",
       "procedure_id": "SK03"
     },
     {
       "id": "sync_budget",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/history.md",
@@ -134,17 +134,17 @@
           ]
         }
       },
-      "content_sha256": "00567a0c209c652ae95f6885937d24c2cad7a2be2a278cff89cc21fbfbec2eb7",
+      "content_sha256": "0e3d052d069d8471a43521ad57f7677bd5e641280ce1381a3665e43d9e549af1",
       "procedure_id": "SK06"
     },
     {
       "id": "history_coverage",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/history.md",
@@ -178,17 +178,17 @@
           ]
         }
       },
-      "content_sha256": "a2ec36f025c4e24324ba85a2a838ffeffa421a59ffe3124ad1874d9d1ca79a23",
+      "content_sha256": "253cf3300c1b26d6af245b8aef341a5ce7ae447553c6b3bfd952caae271a9cc1",
       "procedure_id": "SK06"
     },
     {
       "id": "saved_detail",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
@@ -220,17 +220,17 @@
           ]
         }
       },
-      "content_sha256": "5bb0f6581a949b672b1469fcb411581f9ba8c6d00ffa17086e834c735e4002f8",
+      "content_sha256": "b60a5c3e8d2ac6b8fba36b0d855695deec524e7c7d7904234a368889dbdf1197",
       "procedure_id": "SK04"
     },
     {
       "id": "status_freshness",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
@@ -263,17 +263,17 @@
           ]
         }
       },
-      "content_sha256": "12d24a1bf5eb241a21f75e63ae6787237042a7ad4e017a4bcacc9bbe4dccb38f",
+      "content_sha256": "300c283ffc7544ebc728d7723116ef387657d298d4e52c076115022b5a8039cc",
       "procedure_id": "SK02"
     },
     {
       "id": "measurement_units",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-16",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
@@ -307,17 +307,17 @@
           ]
         }
       },
-      "content_sha256": "c9128d2a37c65e8f81e87b1cb40d6d1fc37b425d1b799ef8e7108b940ce3b370",
+      "content_sha256": "e03d6f80ff64b2957afe3af54c8f6c4cf97649feee1741d31b17c34f6c67aa59",
       "procedure_id": "SK08"
     },
     {
       "id": "sample_units",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-15",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
@@ -350,17 +350,17 @@
           ]
         }
       },
-      "content_sha256": "d70e4ef42cb09d2d30225c7a4b3177a7ff5f888a2c0db6198f93c35ad4045a22",
+      "content_sha256": "ffea84b974d7757379896445790ccf5e3d1bbdee687d241f1f65dbf6665f639c",
       "procedure_id": "SK08"
     },
     {
       "id": "authentication_support",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-15",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/guide.md",
@@ -394,17 +394,17 @@
           ]
         }
       },
-      "content_sha256": "67638984960f03d7f48ba2a9552cc423032aadf706a7eba02d3f775120cfc491",
+      "content_sha256": "e8c9be556084a0bcb44754da8bb17e0b2f3f98e0c18e850873e70ac759fd7cf9",
       "procedure_id": "SK07"
     },
     {
       "id": "archive_retention",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/history.md",
@@ -438,17 +438,17 @@
           ]
         }
       },
-      "content_sha256": "1856755422ba6acad5acdd4fbed894b007510d2805c6cd88cb52eb6b5f78cab2",
+      "content_sha256": "821c3320d6c7dd63a8cff505051f308d04e04813badd9b4a450627593586c997",
       "procedure_id": null
     },
     {
       "id": "assistant_access",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
@@ -481,17 +481,17 @@
           ]
         }
       },
-      "content_sha256": "29361555f4908f26a4e0d9c53e8887c4868aaf01c1f47b13e8352f7bbd1cfdc3",
+      "content_sha256": "243760bfc4e4e2d7a7d39b0a30bda49ba71ae0e055b17366a7b4f25eed9c1fdb",
       "procedure_id": null
     },
     {
       "id": "vehicle_selection",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
@@ -524,7 +524,7 @@
           ]
         }
       },
-      "content_sha256": "f393958401bea916fcff8980cea6a5914178791ef307b557fc30f00411671e87"
+      "content_sha256": "bccae56339072d440699f48e3f858ad3696e1b840645355ea1d4234c0883a864"
     },
     {
       "id": "task_application",
@@ -568,12 +568,12 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.2",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-16",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
-      "content_sha256": "3d2bbfc3bbb47710f1a7b53f08d695259f8c5057cde7059b2c29db669bcf88a7"
+      "content_sha256": "a8575ab637cb341f835d1a10a2427f560423d1699f56a4455309611d11f0b64e"
     },
     {
       "id": "task_progress",
@@ -615,21 +615,21 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.2",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-09",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
-      "content_sha256": "15c03b817b4b9b4258236501da07016cd38242618d6aa032ade4255d9dd8fabf"
+      "content_sha256": "8fa19c9539141f29665ddd3c2d73ac219952212ad281632e7e0efb40dd36f795"
     },
     {
       "id": "mcp_configuration",
       "applicable_versions": {
         "min_inclusive": "2.1.22",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-16",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/assistant.md",
@@ -663,17 +663,17 @@
           ]
         }
       },
-      "content_sha256": "cceaf315adbc772a76ae3d9c123431f11acc505b5ebca0aa51ab357046ef0461",
+      "content_sha256": "e961da2edb30c0f96a1170742f2d239d9b61760a3ede1f83940fa423fb728e12",
       "procedure_id": null
     },
     {
       "id": "data_availability",
       "applicable_versions": {
         "min_inclusive": "2.1.24",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-17",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/guide.md",
@@ -712,16 +712,16 @@
         }
       },
       "procedure_id": null,
-      "content_sha256": "e00af8eecaddd50143ac8152072a52ab709b861baf09cbf0f893b5032aebcf9b"
+      "content_sha256": "01b6636901ed602cda202eb504fa4db615942fe699c0ea525d754925de6c5dd2"
     },
     {
       "id": "control_outcomes",
       "applicable_versions": {
         "min_inclusive": "2.1.24",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-17",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/guide.md",
@@ -758,16 +758,16 @@
         }
       },
       "procedure_id": null,
-      "content_sha256": "6ca0f8eebf33055fc07719b6ec8f303bc524a74990eedd6dc1145550af0b3c69"
+      "content_sha256": "cb1ad9ebe78de2bfddcce359eb2d1e7ab0dab07be0939ad22a81a4f970e2d290"
     },
     {
       "id": "battery_support",
       "applicable_versions": {
         "min_inclusive": "2.1.24",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
-      "reviewed_at": "2026-11-17",
+      "reviewed_at": "2026-11-18",
       "supersedes": [],
       "source": {
         "path": "docs/guide.md",
@@ -800,13 +800,13 @@
         }
       },
       "procedure_id": null,
-      "content_sha256": "7d92762445325396570bf3955967094bcc502be5b844a115ce0ca369ac13b498"
+      "content_sha256": "0f8029198672764a020e43daedfd01f0164727583a600b1915e473af32995618"
     },
     {
       "id": "control_diagnostics",
       "applicable_versions": {
         "min_inclusive": "2.1.26",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "first_party_contract",
       "reviewed_at": "2026-11-18",
@@ -838,7 +838,7 @@
         }
       },
       "procedure_id": null,
-      "content_sha256": "a527039be6955e3c47e767c5b2ebd5733e224e97ca60967773b63fe2d0bd3b39"
+      "content_sha256": "381f0304a9a04b000095b54cc952261655d841741a98db60a5473e3b455633fb"
     }
   ],
   "procedures": [
@@ -852,10 +852,10 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "allowed_tools": [
         "get_vehicles"
       ],
@@ -888,7 +888,7 @@
           "verify": "查询实测值前得到唯一的已授权车辆。"
         }
       },
-      "content_sha256": "f464d05d66c6a46df9af4dd6ee241916cfde3991907647fe15a1f3eaf3bfc16a"
+      "content_sha256": "4b0ff3567247debe5d51000af2deb9d50f1114eb06bb5f70d0484112b0a1ef93"
     },
     {
       "id": "SK02",
@@ -900,10 +900,10 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "allowed_tools": [
         "get_vehicle_status",
         "search_help"
@@ -937,7 +937,7 @@
           "verify": "null保留未知，query as_of不是实测时间。"
         }
       },
-      "content_sha256": "8c665d425b2aa2d75f00494eb19d5b99c194d0068f6e1db6cffcbad500124816"
+      "content_sha256": "cab6b6f5fe79e8e820c3eaae9a293c61d6def8c788a849ec1d80034bd60aa596"
     },
     {
       "id": "SK03",
@@ -949,10 +949,10 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "allowed_tools": [
         "get_statistics",
         "search_help"
@@ -988,7 +988,7 @@
           "verify": "说明车辆、日期范围、来源和覆盖情况。"
         }
       },
-      "content_sha256": "27133e966f9a47cf8d1cd6d68cc3700027ecd8e68158bfee0b1fc6ec99fcf949"
+      "content_sha256": "f399fcc1153750fce1931b2486e439f40ea99e1ded3fe89edbb0c5f7a2e7bea4"
     },
     {
       "id": "SK04",
@@ -1000,10 +1000,10 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "allowed_tools": [
         "get_recorded_trips",
         "get_trip_detail"
@@ -1039,7 +1039,7 @@
           "verify": "一页不是周期总量，区分未保存和已有详情。"
         }
       },
-      "content_sha256": "f777ca337cd97a47b3c2cf98069a1b30b0536f71a0f75211b74c08b2f1fdf280"
+      "content_sha256": "b030f0cbde819783415713c6946ba765fbf1f305349d0d93357347ac851ccfc1"
     },
     {
       "id": "SK05",
@@ -1051,10 +1051,10 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "allowed_tools": [
         "get_statistics",
         "get_sync_health",
@@ -1091,7 +1091,7 @@
           "verify": "引用周期、原因、来源和有界下一步。"
         }
       },
-      "content_sha256": "8d0d27b75127143f144daf56a0635901fd562df12afa4370cfc73101557af698"
+      "content_sha256": "72584127ea785862dbfa20b09a764533dd8e35cfae4b517a9d6d069761414ab4"
     },
     {
       "id": "SK06",
@@ -1103,10 +1103,10 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-15",
+      "reviewed_at": "2026-11-18",
       "allowed_tools": [
         "get_sync_health",
         "get_recorded_trips",
@@ -1145,7 +1145,7 @@
           "verify": "区分发现、保存、映射与校验，说明下次/重试时间。"
         }
       },
-      "content_sha256": "639b0c91f62481c2fe364184473288c2c29d392b31e53cae55a37d4d2f292f22"
+      "content_sha256": "92f1c51ede5f0375413634cf6347398d178e22faaa09de453144ba3e474d68f3"
     },
     {
       "id": "SK07",
@@ -1157,10 +1157,10 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "allowed_tools": [
         "get_sync_health",
         "search_help"
@@ -1196,7 +1196,7 @@
           "verify": "区分需登录与等待重试，仅索取已审阅的支持信息。"
         }
       },
-      "content_sha256": "8e7b404778ec3f48c3d19fe7704d684782e365385eb398ae47f6b99503373842"
+      "content_sha256": "dc3d44fa0041b0b3b28bcb50e854c9e2de84dc271e2366175a42431cc38e355d"
     },
     {
       "id": "SK08",
@@ -1208,10 +1208,10 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-18",
       "allowed_tools": [
         "get_vehicle_status",
         "get_recorded_trips",
@@ -1249,7 +1249,7 @@
           "verify": "区分服务端最高速度、距离/时长平均和采样值。"
         }
       },
-      "content_sha256": "54367bb5acba9fd9562fb4c3db4811fac7c1e761fdb4d4dcc7cc5ec1cebd2d39"
+      "content_sha256": "47b8f3004194ad402d7ebbff44889340658f40f0980471cd5fcce05dbe78cd18"
     },
     {
       "id": "SK09",
@@ -1302,11 +1302,11 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.2",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-09",
-      "content_sha256": "6b5d207b1ec7e613e4223a1f3218da704aec67fa6c417957a59f0a948845c4f3"
+      "reviewed_at": "2026-11-18",
+      "content_sha256": "a42d67d7d20ea2812e455ada86cc8f9d4d537a571091a10388f85c4847eff584"
     },
     {
       "id": "SK10",
@@ -1361,11 +1361,11 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.2",
-        "max_exclusive": "2.2.0"
+        "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-09",
-      "content_sha256": "6707818ea75a1e088586efbe629b9e2cc3c16cc436c14765c652cdf9cd4932a7"
+      "reviewed_at": "2026-11-18",
+      "content_sha256": "e4fc67eb93c9593602994c58ef9fb593b4f87546a061778c0ef0224725fcc638"
     }
   ]
 }

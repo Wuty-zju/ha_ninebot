@@ -1,12 +1,14 @@
-# Ninebot Assistant — 2.1 preview
+# Ninebot Assistant
 
 [简体中文](assistant_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
-Ninebot Assistant makes selected local vehicle information available to a compatible AI host through Home Assistant's native LLM API and MCP Server. The preview provides local vehicle queries, a bounded statistics check and versioned public help. Your existing entities, controls and history synchronization continue to work independently.
+Connect a compatible conversation host to your saved vehicle data, cited local help and optional reviewed history tasks. The native Home Assistant LLM API and MCP Server preserve the signed-in user throughout each tool call.
+
+<a id="ninebot-assistant--21-preview"></a>
 
 ## Enable it
 
-1. Install a **2.1.x prerelease** from Marketplace/HACS, or its packaged release. The recommended stable integration remains [v2.0.0](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.0.0).
+1. Install **2.2.0** through Marketplace, HACS or the [packaged release](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0). Open the account you want to use.
 2. Use Home Assistant **2026.11+** for the native Assistant API. On earlier versions, ordinary Ninebot features retain the integration's **2026.1.0** minimum; the Assistant option is unavailable without the required native API.
 3. Open **Settings → Devices & services → Ninebot → Configure** for each account you want to expose. Enable **Ninebot Assistant (Beta)** and select its vehicles. The default is off with no vehicles selected. This selection is separate from the remote-control allowlist.
 4. In the native **MCP Server** integration, turn off access to all LLM APIs and select **Ninebot**. Keep administrator access required and read-only mode enabled. Connect your MCP client to `/api/mcp` using Home Assistant's supported authentication.
@@ -123,7 +125,7 @@ Public help and task checklists are available from **2.1.1**.
 
 Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches bundled bilingual topics (thirteen in 2.1.2) without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
 
-Corpus 1.2.9 contains nineteen bilingual topics and ten advisory task checklists. For installations from 2.1.26, `control_diagnostics` uses the pinned 2.1.26 troubleshooting guide to explain `control_routing`, `confirmation_deadline_reached`, `upstream_code` and `backend_error`. The operation matters when interpreting a proxy 502. A command response, the local confirmation window and the selected route each provide different evidence about the original attempt.
+Corpus 1.2.10 contains nineteen bilingual topics and ten advisory task checklists. For installations from 2.1.26, `control_diagnostics` uses the pinned 2.1.26 troubleshooting guide to explain `control_routing`, `confirmation_deadline_reached`, `upstream_code` and `backend_error`. The operation matters when interpreting a proxy 502. A command response, the local confirmation window and the selected route each provide different evidence about the original attempt.
 
 Topics on missing vehicle data, control receipts and battery cycle support apply from 2.1.24 and cite the pinned 2.1.23 guide. `sample_units` covers unverified raw samples. `measurement_units` covers maximum and overall-average speed and battery-score semantics. Login guidance covers 2.0.0 and the support records introduced in 2.0.1. `mcp_configuration` explains main and individual URL settings and recognizes exact configuration keys. Retrieval favors matching topic keywords and applies each topic's own version bounds and source.
 
@@ -143,7 +145,7 @@ From **2.1.6**, `search_help` accepts the optional Boolean `include_procedures`,
 
 An explicitly requested versioned checklist describes: when it applies, information to ask for, permitted read tools, a call budget, stopping conditions and a result check. These cover vehicle selection, current state, period statistics, saved trips, unknown statistics, synchronization gaps, authentication support and measurement semantics. For example, an unknown-statistic check reads the selected period’s quality, then synchronization health and matching help when needed; it does not fill a missing value with zero or start synchronization.
 
-The host follows the checklist within its existing tool loop. There is no separate Skill installer or execution framework. Checklists are advisory data and cannot grant permission; every call still uses the same program authorization. Missing inputs require clarification. Access denial stops the read, and unresolved cases end with the observed evidence and a specific next step. Sync requests and task approval remain outside this read-only preview.
+The host follows the checklist within its existing tool loop. There is no separate Skill installer or execution framework. Checklists are advisory data and cannot grant permission; every call still uses the same program authorization. Missing inputs require clarification. Access denial stops the read, and unresolved cases end with the observed evidence and a specific next step. Use the separate task collection below for history requests and human approval.
 
 ## Reviewable history tasks (Beta)
 
@@ -165,6 +167,8 @@ Native notifications provide a review or result link, coalesced into one generic
 
 From 2.1.2, public help adds two task checklists—bounded detail applications and saved-task results—for thirteen bilingual topics in total. Each requires the separate task API and allows at most four tool calls. Read checklists retain their original read tool sets. The application checklist confirms intent, vehicle and dates before preview and local application; the result checklist reads matching metadata, preserves unknown/zero/partial distinctions and respects retry timing. Neither provides an approval or cancellation tool.
 
+If account consent changes while the panel or a task progress query is loading, that read ends. Reopen the panel or issue a new query after granting access again.
+
 ## Privacy and limits
 
 A statistics check consumes one admission for setup and one for each of its three child reads, without nesting active slots. All steps share the ten-second deadline. Verified Ninebot `busy` errors on idempotent local Actions are retried at most once within the same admission and deadline; cursors, access failures and unknown errors are not replayed. Successful results report `query.local_action_attempts`, separately from model tool calls and cloud budgets.
@@ -181,7 +185,7 @@ Explicit `/api/mcp/<api_id>` URLs select registered collections directly and do 
 
 | Symptom | Check |
 |---|---|
-| Ninebot is missing from the API selector | Confirm the running integration is a 2.1 preview, Core supports the native API, and at least one loaded account has Assistant enabled with vehicles selected. |
+| Ninebot is missing from the API selector | Confirm the running integration supports Ninebot Assistant, Core supports the native API, and at least one loaded account has Assistant enabled with vehicles selected. |
 | No vehicles or `not_authorized` | Check the authenticated active administrator, account consent and selected vehicle ownership. Existing remote-control permissions do not grant AI access. |
 | A trip detail is missing | Use the recorded-trip list to select its exact `ride_id` and `query_month`. Acquire missing details through normal history synchronization. |
 | Statistics are partial or unknown | Check the indicated source/coverage and history health. Read-only tools do not repair the archive automatically. |

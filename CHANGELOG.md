@@ -2,6 +2,30 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+
+## 2.2.0
+
+This maintenance release brings 33 releases since 2.0.0 into the stable line.
+
+| Versions | Development milestones |
+|---|---|
+| 2.0.1–2.0.4 | Sign-in and discovery diagnostics, native dashboard sections, Marketplace packaging and download accounting. |
+| 2.1.0–2.1.4 | Optional vehicle-scoped local Assistant tools, bilingual help, human-reviewed history tasks and more reliable session and archive cleanup. |
+| 2.1.5–2.1.10 | Pinned help citations, optional task checklists, explicit business dates and observation times for saved pages. |
+| 2.1.11–2.1.16 | Consistent task and budget contracts, native AI Task queries and permission checks across changing vehicle grants. |
+| 2.1.17–2.1.22 | Local statistics explanations, partial results after provider interruptions, scoped vehicle selection and documented MCP access rules. |
+| 2.1.23–2.1.28 | Per-vehicle support evidence, model-aware control routing, preserved confirmation observations, cross-month track protection and display-ready cited answers. |
+
+**Maintenance in 2.2.0**
+
+- Reuse a complete, verified local month page after a history request or retry becomes due. An exhausted cloud budget can still permit local progress.
+- Import overlapping same-account archives in either order when verified month memberships agree. Preserve the newest measurements and the strongest saved track independently.
+- Recheck the same task grant before returning progress or review data. Revoking and granting access again during a read requires a new request.
+- Keep all 19 help topics and 10 checklists available at the installed stable version, with their original source links and applicability checks.
+- Enforce the existing 91% coverage threshold from unrounded counts on both supported test environments. The release and full regression checks now use the same entry point.
+
+[Installation](README.md) · [Upgrade](docs/migration.md) · [中文安装](README_zh.md) · [中文升级](docs/migration_zh.md)
+
 ## 2.1.28
 
 - Keep a ride’s best saved track accessible when verified lists report the same ride in adjacent months. Archive reads, recovery and account transfers check each source against its recorded ride membership.

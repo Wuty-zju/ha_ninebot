@@ -7,11 +7,11 @@
 - Home Assistant **2026.1.0 or newer** and internet access to the Ninebot cloud service.
 - A Ninebot account with vehicles visible in the official App.
 - A compatible 64-bit host/container for the pinned runtime dependency. ARMv7/32-bit is unsupported.
-- HACS for the recommended installation. This is a custom integration, not a Supervisor app/add-on or a built-in Core integration.
+- Install the custom integration through Marketplace or HACS, or use the release ZIP.
 
 The current connection has been verified against the Chinese App service; additional service regions require validation.
 
-The current stable release is **v2.0.0**. Back up your Home Assistant configuration and private storage before upgrading.
+The stable release covered here is **v2.2.0**. Back up your Home Assistant configuration and private storage before upgrading.
 
 ### Update speed
 
@@ -37,7 +37,7 @@ A custom repository is currently required. Default-catalog inclusion has a separ
 
 1. In HACS, open the three-dot menu and choose **Custom repositories**.
 2. Add `https://github.com/Wuty-zju/ha_ninebot` with type **Integration**.
-3. Open **Ninebot**, choose **v2.0.0**, and download it.
+3. Open **Ninebot**, choose **v2.2.0**, and download it.
 4. Restart Home Assistant when prompted. A downloaded file version alone does not mean the running integration has loaded it.
 5. Go to **Settings → Devices & services → Add integration → Ninebot**.
 
@@ -133,7 +133,8 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
 | Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. A failed save keeps the edit pending and reports a storage Repair; save again after resolving it. Retired low-confidence SOC estimators remain removed. |
-| Ninebot Assistant (2.1 preview, Beta) | Off; no vehicles selected | Optional native read API for selected vehicles; requires a compatible host and modern Core. [Setup and privacy](assistant.md). |
+| Ninebot Assistant (Beta) | Off, no vehicles selected | Read selected vehicles through a compatible native host. [Setup and privacy](assistant.md) |
+| Assistant history tasks (Beta) | Off | Allow scoped requests to fill detail gaps. The original requester reviews and approves each request in the HA panel. |
 | Show diagnostic entities | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
 On HA 2026.11+, allowed vehicles appear when controls are enabled; automatic history scan, capacity and request-budget fields appear when automatic detail synchronization is enabled. Hidden settings retain their previously saved values. Earlier HA versions show the same fields directly. Archive management and retention remain available independently.

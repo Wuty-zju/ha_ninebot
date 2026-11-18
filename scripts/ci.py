@@ -10,11 +10,14 @@ import sys
 from importlib.metadata import distribution, version
 from pathlib import Path
 from urllib.error import URLError
+from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 CONFIG = ROOT / ".github/ci.json"
+MIN_COVERAGE = 91
+KNOWLEDGE_TESTS = "scripts/tests/test_assistant_knowledge.py"
 
 
 def matches(path: str, patterns: list[str]) -> bool:
@@ -150,11 +153,12 @@ def pytest_command(tests: list[str], available: set[str]) -> list[str]:
         raise ValueError("The CI plan must name existing offline test files")
     coverage = (
         [
-            "--cov=custom_components.ninebot",
+            "--cov",
             "--cov-branch",
-            "--cov-fail-under=91",
+            f"--cov-fail-under={MIN_COVERAGE}",
             "--cov-report=term-missing",
             "--cov-report=xml",
+            KNOWLEDGE_TESTS,
         ]
         if set(tests) == available
         else []
@@ -173,6 +177,18 @@ def pytest_command(tests: list[str], available: set[str]) -> list[str]:
     ]
 
 
+def check_coverage(path: Path) -> None:
+    """A rounded display must never promote a run whose exact counts are below the gate."""
+    report = ElementTree.parse(path).getroot()
+    covered = int(report.attrib["lines-covered"]) + int(report.attrib["branches-covered"])
+    total = int(report.attrib["lines-valid"]) + int(report.attrib["branches-valid"])
+    if total <= 0 or not 0 <= covered <= total or 100 * covered < MIN_COVERAGE * total:
+        raise ValueError(
+            f"Coverage gate requires {MIN_COVERAGE}% of statements and branches, "
+            f"observed {covered}/{total}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     action = parser.add_mutually_exclusive_group(required=True)
@@ -181,6 +197,7 @@ def main() -> None:
     action.add_argument("--install", choices=("minimum", "current"))
     action.add_argument("--install-native", action="store_true")
     action.add_argument("--run-tests", type=Path)
+    action.add_argument("--run-full", action="store_true")
     parser.add_argument("--profile", action="store_true")
     parser.add_argument("--base")
     parser.add_argument("--head")
@@ -204,9 +221,13 @@ def main() -> None:
     if args.install:
         install(config, args.install, args.profile)
         return
-    if args.run_tests:
-        tests = json.loads(args.run_tests.read_text())["tests"]
+    if args.run_full or args.run_tests:
+        tests = (
+            sorted(available) if args.run_full else json.loads(args.run_tests.read_text())["tests"]
+        )
         subprocess.run(pytest_command(tests, available), cwd=ROOT, check=True)
+        if set(tests) == available:
+            check_coverage(ROOT / "coverage.xml")
         return
     if args.matrix:
         result = {

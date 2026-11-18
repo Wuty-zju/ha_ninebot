@@ -595,7 +595,9 @@ async def test_task_vehicle_enumeration_filters_before_registry_and_scope(hass, 
     assert all(call.args[1] == entry.entry_id for call in read.call_args_list)
 
 
-async def test_task_read_rechecks_owner_after_awaits(hass, entry, task_store):
+@pytest.mark.parametrize("revocation", ["replace_store", "rotate_grant"])
+async def test_task_read_rechecks_owner_after_awaits(hass, entry, task_store, revocation):
+    from custom_components.ninebot.assistant import async_revoke_task_policy
     from custom_components.ninebot.assistant_review import async_register
     from custom_components.ninebot.assistant_task_queries import async_task_query
 
@@ -606,7 +608,10 @@ async def test_task_read_rechecks_owner_after_awaits(hass, entry, task_store):
 
     async def replaced(*args):
         result = await original(*args)
-        entry.runtime_data.assistant_tasks = None
+        if revocation == "rotate_grant":
+            async_revoke_task_policy(hass, entry)
+        else:
+            entry.runtime_data.assistant_tasks = None
         return result
 
     try:

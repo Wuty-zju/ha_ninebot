@@ -6,6 +6,7 @@ separately. Caller provides the existing account transaction and ownership guard
 """
 
 import sqlite3
+from dataclasses import replace
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -87,8 +88,8 @@ def reuse(db: sqlite3.Connection, vehicle: str, now: datetime) -> bool:
     expected = root(db, vehicle)
     if (
         expected is None
-        or expected.state is not HistoryState.DISCOVER
         or expected.next_month is None
+        or not expected.page_due(now)
         or expected.next_page != 1
         or expected.next_month
         >= previous_month(now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).strftime("%Y%m"))
@@ -203,7 +204,8 @@ def reuse(db: sqlite3.Connection, vehicle: str, now: datetime) -> bool:
         " FROM history_months WHERE vehicle=? AND plan=? AND month=?",
         (expected.plan_id, *scope),
     )
-    following = expected.page_committed(now.isoformat(), finished=True, verified=True)
+    ready = replace(expected, state=HistoryState.DISCOVER, reason=None, retry_at=None)
+    following = ready.page_committed(now.isoformat(), finished=True, verified=True)
     put_root(db, following, expected)
     value = encoded({"source_plan": source.plan_id, "accepted_at": now.isoformat()})
     scope_key = key(vehicle, expected.plan_id, month)

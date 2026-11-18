@@ -47,3 +47,5 @@ Use parallel agents only when explicitly authorized. Assign each a fixed base, c
 Do not force-push, discard user changes, edit production registries/databases or perform vehicle controls to test a contribution. New live cloud/SMS/control testing needs a current specific authorization. See [AGENTS](AGENTS.md) for product invariants.
 
 简体中文：先定问题与证据，按任务定位代码/测试，小改只做相关检查；英中关键行为同步，保留身份、预算和隐私。明确授权后才并行，独立 worktree、单一整合者；PR 如实记录运行/跳过，不为文档发空版本。
+
+Historical release metadata can be reclassified at the maintainer’s request. Retain the published tag, commit, package and notes. Verify the historical asset digests and keep Latest on the current stable release. [Publication checks](docs/development.md#branch-and-release-channels)

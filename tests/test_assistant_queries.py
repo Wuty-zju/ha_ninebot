@@ -2,22 +2,30 @@
 
 import asyncio
 import json
+import re
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from homeassistant.core import Context
+from homeassistant.core import Context, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.ninebot.adapters import travel
+from custom_components.ninebot.assistant_ask import EvidenceTurn
 from custom_components.ninebot.assistant_errors import error_data
 from custom_components.ninebot.assistant_knowledge import READ_TOOLS, KnowledgeUnavailable
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
 from custom_components.ninebot.assistant_policy import AssistantError, async_require_admin
-from custom_components.ninebot.assistant_queries import SPECS, async_query, period_dates
+from custom_components.ninebot.assistant_queries import (
+    SPECS,
+    async_query,
+    parameter_schema,
+    period_dates,
+)
+from custom_components.ninebot.assistant_task_queries import SPEC_BY_KEY as TASK_SPECS
 from custom_components.ninebot.assistant_views import (
     AssistantView,
     detail_view,
@@ -26,6 +34,7 @@ from custom_components.ninebot.assistant_views import (
     statistics_view,
     trips_view,
 )
+from custom_components.ninebot.compat import validation as vol
 from custom_components.ninebot.exceptions import ErrorKind
 from custom_components.ninebot.raw import Endpoint, build_record
 from custom_components.ninebot.travel import merge_detail, parse_ride
@@ -33,6 +42,44 @@ from custom_components.ninebot.travel import merge_detail, parse_ride
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 NOW = datetime(2026, 10, 7, 4, tzinfo=UTC)
 SN = "SyntheticSN"
+
+
+def test_advertised_tool_parameters_preserve_actual_read_and_task_limits():
+    specs = {**{spec.key: spec for spec in SPECS}, **TASK_SPECS}
+
+    def fields(tool):
+        return {key.schema: value for key, value in specs[tool].parameters.schema.items()}
+
+    trips = fields("get_recorded_trips")
+    tasks = fields("get_tasks")
+    detail = fields("get_trip_detail")
+    assert parameter_schema(trips["vehicle_ref"]) == {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+    }
+    assert parameter_schema(fields("search_help")["query"])["maxLength"] == 240
+    assert parameter_schema(detail["ride_id"])["maxLength"] == 256
+    assert parameter_schema(trips["start_date"]) == {"type": "string", "format": "date"}
+    for field, maximum in ((trips["limit"], 20), (tasks["page"], 24), (tasks["limit"], 10)):
+        assert parameter_schema(field) == {"type": "integer", "minimum": 1, "maximum": maximum}
+        assert field(maximum) == maximum
+        with pytest.raises(vol.Invalid):
+            field(maximum + 1)
+    period = fields("get_statistics")["period"]
+    month = period.validators[-1]
+    for validator, valid, invalid in (
+        (month, "2026-10", "2026-13"),
+        (detail["query_month"], "202001", "202013"),
+        (trips["cursor"], "a" * 32, "short"),
+        (fields("get_task")["task_id"], "f" * 32, "f" * 33),
+    ):
+        pattern = parameter_schema(validator)["pattern"]
+        assert re.fullmatch(pattern, valid) and validator(valid) == valid
+        assert not re.fullmatch(pattern, invalid)
+        with pytest.raises(vol.Invalid):
+            validator(invalid)
+    assert parameter_schema(fields("search_help")["include_procedures"]) is None
 
 
 @pytest.fixture
@@ -310,6 +357,76 @@ async def test_vehicle_list_uses_consented_names_and_explicit_fleet_limit(hass, 
     result, error = await async_query(hass, "get_vehicles", {}, assistant.context)
     assert not error and len(result["data"]["vehicles"]) == 20
     assert result["data"]["more_available"] is True
+
+
+async def test_action_selects_a_sole_authorized_vehicle_and_requires_a_choice_for_a_fleet(
+    hass, assistant
+):
+    def turn(device=None):
+        data = {"device_id": device} if device else {}
+        return EvidenceTurn(
+            hass, ServiceCall(hass, "ninebot", "ask", data, context=assistant.context)
+        )
+
+    only = turn()
+    await only.async_prepare()
+    assert only.selected == assistant.device
+
+    other = "SecondSyntheticSN"
+    snapshot = assistant.co.data[SN]
+    assistant.co.data[other] = replace(snapshot, profile=replace(snapshot.profile, sn=other))
+    second = dr.async_get(hass).async_get_or_create(
+        config_entry_id=assistant.entry.entry_id, identifiers={("ninebot", other)}
+    )
+    # A registry match alone cannot make the second vehicle a valid selection.
+    with pytest.raises(AssistantError, match="^not_authorized$"):
+        await turn(second.id).async_prepare()
+    hass.config_entries.async_update_entry(
+        assistant.entry, options={**assistant.entry.options, "assistant_vehicles": [SN, other]}
+    )
+    fleet = turn()
+    await fleet.async_prepare()
+    assert fleet.selected is None and set(fleet.scopes) == {assistant.device, second.id}
+    selected = turn(second.id)
+    await selected.async_prepare()
+    assert selected.selected == second.id
+
+
+@pytest.mark.parametrize(
+    "tool,args,response,code",
+    [
+        ("get_statistics", {"period": "yesterday"}, None, "local_data_missing"),
+        ("get_statistics", {"period": "yesterday"}, {"days": {}}, "unsupported_capability"),
+        (
+            "get_recorded_trips",
+            {"start_date": "2026-10-05", "end_date": "2026-10-06"},
+            {"rides": ["private raw row"]},
+            "unsupported_capability",
+        ),
+        (
+            "get_recorded_trips",
+            {"start_date": "2026-10-05", "end_date": "2026-10-06", "limit": 1},
+            {"rides": [{}, {}]},
+            "response_too_large",
+        ),
+        (
+            "get_trip_detail",
+            {"ride_id": "wanted", "query_month": "202610"},
+            {"source_mode": "ride_archive", "ride": {"ride_id": "other", "query_month": "202610"}},
+            "local_data_missing",
+        ),
+    ],
+)
+async def test_incompatible_local_action_results_do_not_supply_measurements(
+    hass, assistant, tool, args, response, code
+):
+    with patch.object(
+        type(hass.services), "async_call", new=AsyncMock(return_value=response)
+    ) as read:
+        result, error = await query(hass, assistant, tool, **args)
+    assert error and result["error"]["code"] == code and "data" not in result
+    read.assert_awaited_once()
+    assert read.await_args.kwargs["context"] is assistant.context
 
 
 @pytest.mark.parametrize(

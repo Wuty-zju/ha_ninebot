@@ -8,8 +8,10 @@ from unittest.mock import patch
 
 from scripts.ci import (
     CONFIG,
+    KNOWLEDGE_TESTS,
     ROOT,
     changed_paths,
+    check_coverage,
     install,
     native_requirements,
     pytest_command,
@@ -196,9 +198,26 @@ class ScopeTests(unittest.TestCase):
         command = pytest_command(sorted(self.available), self.available)
         self.assertIn("--cov-fail-under=91", command)
         self.assertIn("--cov-report=xml", command)
+        self.assertEqual(command.count(KNOWLEDGE_TESTS), 1)
         self.assertEqual(command.count("-m"), 1)
         partial = pytest_command(["tests/test_coordinator.py"], self.available)
         self.assertFalse(any(arg.startswith("--cov") for arg in partial))
+        self.assertNotIn(KNOWLEDGE_TESTS, partial)
+
+    def test_coverage_uses_exact_statement_and_branch_counts(self):
+        with TemporaryDirectory() as directory:
+            report = Path(directory) / "coverage.xml"
+            for branches, passes in ((6399, False), (6400, True), (6401, True)):
+                with self.subTest(branches=branches):
+                    report.write_text(
+                        '<coverage lines-covered="30000" lines-valid="32000" '
+                        f'branches-covered="{branches}" branches-valid="8000"/>'
+                    )
+                    if passes:
+                        check_coverage(report)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "36399/40000"):
+                            check_coverage(report)
 
     def test_test_runner_rejects_empty_or_unavailable_inputs(self):
         for tests in ([], ["tests/not-present.py"]):
