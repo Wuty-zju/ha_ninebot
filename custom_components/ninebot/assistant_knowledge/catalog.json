@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.8",
-  "source_version": "2.1.23",
+  "corpus_version": "1.2.9",
+  "source_version": "2.1.26",
   "entries": [
     {
       "id": "statistics_missing",
@@ -801,6 +801,44 @@
       },
       "procedure_id": null,
       "content_sha256": "7d92762445325396570bf3955967094bcc502be5b844a115ce0ca369ac13b498"
+    },
+    {
+      "id": "control_diagnostics",
+      "applicable_versions": {
+        "min_inclusive": "2.1.26",
+        "max_exclusive": "2.2.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-18",
+      "supersedes": [],
+      "source": {
+        "path": "docs/guide.md",
+        "commit": "abae4862f0dde6dfa89db435073ee28f13910c7d",
+        "sha256": "fec50aee24a46c06fe78b5f671da60e54616fefe863d50b3409d534c0c8e7bf2",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/abae4862f0dde6dfa89db435073ee28f13910c7d/docs/guide.md#missing-data-and-controls"
+      },
+      "translations": {
+        "en": {
+          "title": "Control routing and readback",
+          "text": "For an existing attempt such as opening the seat compartment, a proxy 502 / upstream_error in the command response records a command error. The same error can occur during sign-in or on other endpoints. Identify the operation first. The cloud's business reason remains unknown. confirmation_deadline_reached marks the end of the local 15-second confirmation window. Completed reads preserve results and actual transport errors. Without a completed read, confirmation remains unknown. Expiration alone cannot establish a connection failure. When supplied, upstream_code is a bounded numeric backend code. backend_error records a recognized category such as response decryption. These fields alone cannot establish an authentication or permission failure. control_routing records the native cache's business line, observation time and selected transport. It shows the local choice for that attempt. Identifying motor requires an unambiguous cached business line. Review sanitized diagnostics from the original operation. Collecting diagnostics requires no new control.",
+          "keywords": [
+            "control_routing",
+            "confirmation_deadline_reached",
+            "upstream_code",
+            "backend_error",
+            "routing"
+          ]
+        },
+        "zh-Hans": {
+          "title": "控制选路与确认诊断",
+          "text": "例如开座桶时，若已有操作的命令响应中出现代理 502 / upstream_error，记录的是命令错误。登录或其他端点也可能返回同一代理错误，需先明确具体操作，云端业务原因仍未知。confirmation_deadline_reached 表示本地 15 秒确认窗口结束。已完成的回读保留结果与实际传输错误；没有完成的回读时，确认仍为未知。仅凭期限结束无法判断连接失败。后端提供时，upstream_code 记录有界数字码；backend_error 记录响应解密等已识别类别。仅凭这些字段无法判定认证或权限故障。control_routing 记录本机缓存里的业务线、观察时间和当次所选传输路径，反映本地选路。识别 motor 业务线需要明确的缓存记录。查看该操作已有的脱敏诊断，收集证据无需重发命令。",
+          "keywords": [
+            "选路"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "a527039be6955e3c47e767c5b2ebd5733e224e97ca60967773b63fe2d0bd3b39"
     }
   ],
   "procedures": [

@@ -53,7 +53,7 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_task_application_help_scopes_read_only_to_the_global_mcp_route(self):
         for language in ("en", "zh-Hans"):
-            result = k.search_help("request_detail_sync_approval MCP read-only", language, "2.1.14")
+            result = k.search_help("request_detail_sync_approval MCP read-only", language, "2.1.27")
             match = result["matches"][0]
             self.assertEqual(match["source_id"], "task_application")
             self.assertIn("/api/mcp/ninebot_tasks", match["text"])
@@ -68,9 +68,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 18)
-        self.assertEqual(catalog["corpus_version"], "1.2.8")
-        self.assertEqual(catalog["source_version"], "2.1.23")
+        self.assertEqual(len(catalog["entries"]), 19)
+        self.assertEqual(catalog["corpus_version"], "1.2.9")
+        self.assertEqual(catalog["source_version"], "2.1.26")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -96,7 +96,7 @@ class KnowledgeTests(unittest.TestCase):
                 for procedures in (False, True):
                     with self.subTest(query=query, language=language, procedures=procedures):
                         result = k.search_help(
-                            query, language, "2.1.24", include_procedures=procedures
+                            query, language, "2.1.27", include_procedures=procedures
                         )
                         match = result["matches"][0]
                         self.assertEqual(match["source_id"], expected)
@@ -141,7 +141,7 @@ class KnowledgeTests(unittest.TestCase):
                 result = k.search_help(query, language, "2.1.24")
                 match = next(row for row in result["matches"] if row["source_id"] == entry["id"])
                 self.assertEqual(
-                    match["citation"], f"[Source]({entry['source']['url']}) (KB 1.2.8)"
+                    match["citation"], f"[Source]({entry['source']['url']}) (KB 1.2.9)"
                 )
                 for version in ("2.1.0", "2.1.22", "2.1.23", "2.2.0"):
                     old = k.search_help(query, language, version, include_procedures=True)
@@ -150,7 +150,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_statistics_check_query_keeps_the_specific_checklist_first(self):
         for language in ("en", "zh-Hans"):
             result = k.search_help(
-                "unknown missing zero", language, "2.1.24", include_procedures=True
+                "unknown missing zero", language, "2.1.27", include_procedures=True
             )
             self.assertEqual(result["matches"][0]["source_id"], "statistics_missing")
             self.assertIn("SK05", {row["id"] for row in result["procedures"]})
@@ -163,12 +163,117 @@ class KnowledgeTests(unittest.TestCase):
                 ("upstream_error 登录失败，没有日志，该怎么排查", "authentication_support"),
             ):
                 with self.subTest(query=query, language=language):
-                    result = k.search_help(query, language, "2.1.24")
+                    result = k.search_help(query, language, "2.1.27")
                     self.assertEqual(result["matches"][0]["source_id"], expected)
             old_month = k.search_help(
                 "本月行程次数是0，列表完整率100%，App有行程", language, "2.1.23"
             )
             self.assertEqual(old_month["matches"][0]["source_id"], "history_coverage")
+
+    def test_control_diagnostics_fields_and_seat_compartment_502_retrieve_versioned_help(self):
+        for query in (
+            "control_routing",
+            "confirmation_deadline_reached",
+            "What does confirmation_deadline_reached mean?",
+            "upstream_code",
+            "backend_error",
+            "为什么开座桶会显示502",
+            "Why did opening the seat compartment return 502?",
+            "控制选路与确认诊断",
+            "Control routing and readback",
+        ):
+            for language in ("en", "zh-Hans"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.27", include_procedures=True)
+                    match = result["matches"][0]
+                    self.assertEqual(match["source_id"], "control_diagnostics")
+                    self.assertIsNone(match["procedure_id"])
+                    self.assertLessEqual(
+                        len(json.dumps(result, ensure_ascii=False).encode()), k.MAX_HELP_BYTES
+                    )
+
+    def test_control_diagnostics_cites_the_guide_from_the_first_applicable_release(self):
+        commit = "abae4862f0dde6dfa89db435073ee28f13910c7d"
+        url = f"{k.SOURCE_PREFIX}{commit}/docs/guide.md#missing-data-and-controls"
+        for language in ("en", "zh-Hans"):
+            result = k.search_help("control_routing", language, "2.1.26")
+            self.assertEqual(
+                [row["source_id"] for row in result["matches"]], ["control_diagnostics"]
+            )
+            match = result["matches"][0]
+            self.assertEqual(
+                match["applicable_versions"],
+                {"min_inclusive": "2.1.26", "max_exclusive": "2.2.0"},
+            )
+            self.assertEqual(
+                match["source"],
+                {
+                    "path": "docs/guide.md",
+                    "commit": commit,
+                    "sha256": "fec50aee24a46c06fe78b5f671da60e54616fefe863d50b3409d534c0c8e7bf2",
+                    "url": url,
+                },
+            )
+            self.assertEqual(match["citation"], f"[Source]({url}) (KB 1.2.9)")
+            for version in ("2.1.25", "2.2.0"):
+                with self.subTest(version=version, language=language):
+                    self.assertEqual(
+                        k.search_help("control_routing", language, version)["matches"], []
+                    )
+
+    def test_control_diagnostics_keeps_proxy_errors_ambiguous_without_the_operation(self):
+        for language, details in (
+            (
+                "en",
+                (
+                    "sign-in or on other endpoints",
+                    "The cloud's business reason remains unknown",
+                    "confirmation remains unknown",
+                    "bounded numeric backend code",
+                    "unambiguous cached business line",
+                    "Collecting diagnostics requires no new control",
+                ),
+            ),
+            (
+                "zh-Hans",
+                (
+                    "登录或其他端点",
+                    "云端业务原因仍未知",
+                    "确认仍为未知",
+                    "有界数字码",
+                    "明确的缓存记录",
+                    "收集证据无需重发命令",
+                ),
+            ),
+        ):
+            for query in ("502", "502 upstream_error", "proxy 502 / upstream_error"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.27", include_procedures=True)
+                    self.assertEqual(
+                        [row["source_id"] for row in result["matches"]], ["control_diagnostics"]
+                    )
+                    self.assertEqual(result["procedures"], [])
+                    for detail in details:
+                        self.assertIn(detail, result["matches"][0]["text"])
+
+    def test_control_diagnostics_preserves_login_latch_and_permission_help(self):
+        for query, source, procedure in (
+            ("What does 502 upstream_error mean during login?", "authentication_support", "SK07"),
+            ("502 upstream_error 登录失败，没有日志，该怎么排查", "authentication_support", "SK07"),
+            ("seat latch", "status_freshness", "SK02"),
+            ("座桶锁舌", "status_freshness", "SK02"),
+            ("What does not_authorized mean?", "assistant_access", None),
+            ("没有权限查询车辆", "assistant_access", None),
+            ("request_detail_sync_approval MCP read-only", "task_application", "SK09"),
+        ):
+            for language in ("en", "zh-Hans"):
+                with self.subTest(query=query, language=language):
+                    result = k.search_help(query, language, "2.1.27", include_procedures=True)
+                    match = result["matches"][0]
+                    self.assertEqual(match["source_id"], source)
+                    self.assertEqual(match["procedure_id"], procedure)
+                    if procedure:
+                        self.assertEqual(result["procedures"][0]["id"], procedure)
 
     def test_new_support_help_keeps_root_causes_unknown_and_injection_out_of_sources(self):
         entries = {row["id"]: row for row in k.load_catalog()["entries"]}
