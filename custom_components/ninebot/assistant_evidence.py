@@ -44,22 +44,6 @@ CODE = re.compile(r"[a-z][a-z0-9_]{0,47}")
 REQUEST_ID = re.compile(r"[0-9a-f]{32}")
 
 
-def prioritize_help_citations(data: dict[str, Any]) -> dict[str, Any]:
-    """Put the canonical citation before each excerpt without changing its bytes or fields."""
-    return {
-        **data,
-        "matches": [
-            {
-                "source_id": match["source_id"],
-                "title": match["title"],
-                "citation": match["citation"],
-                **match,
-            }
-            for match in data["matches"]
-        ],
-    }
-
-
 def _object(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 

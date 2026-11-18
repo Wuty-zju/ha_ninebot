@@ -18,7 +18,6 @@ from homeassistant.util import dt as dt_util
 
 from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_TASKS
 from .assistant_errors import error_data
-from .assistant_evidence import prioritize_help_citations
 from .assistant_knowledge import KnowledgeUnavailable, search_help
 from .assistant_limits import ReadLimitExceeded, read_slot
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
@@ -610,7 +609,7 @@ async def async_query(
                         except KnowledgeUnavailable as err:
                             raise AssistantError("unsupported_capability") from err
                         view = AssistantView(
-                            data=prioritize_help_citations(help_data),
+                            data=help_data,
                             evidence={"source_kind": "bundled_public_help"},
                             warnings=["documentation_is_not_vehicle_evidence"],
                         )
