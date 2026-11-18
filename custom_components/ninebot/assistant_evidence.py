@@ -5,7 +5,7 @@ import math
 import re
 from datetime import date, datetime
 from html import escape
-from typing import Any, TypeGuard
+from typing import Any
 
 CONTRACT = "ninebot-evidence-answer-v1"
 MAX_ANSWER_BYTES = 16 * 1024
@@ -48,7 +48,7 @@ def _object(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _matches(pattern: re.Pattern[str], value: Any) -> TypeGuard[str]:
+def _matches(pattern: re.Pattern[str], value: Any) -> bool:
     return isinstance(value, str) and pattern.fullmatch(value) is not None
 
 
@@ -244,7 +244,7 @@ def render_evidence_answer(
         request_id = payload.get("request_id")
         if type(payload.get("schema_version")) is not int or payload["schema_version"] != 1:
             continue
-        if not _matches(REQUEST_ID, request_id):
+        if not isinstance(request_id, str) or REQUEST_ID.fullmatch(request_id) is None:
             continue
         if isinstance(code, str):
             text = ERROR_TEXT.get(code, "")

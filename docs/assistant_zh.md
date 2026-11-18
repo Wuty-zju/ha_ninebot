@@ -57,6 +57,8 @@ response_variable: ninebot_answer
 
 可选的 `answer` 使用 `contract: ninebot-evidence-answer-v1`，`request_ids` 列出所用的外层回执标识。它覆盖匹配到的帮助、统计、本地统计检查和已支持的读取失败。帮助保留检索返回的语言；统计与访问提示使用英文。完整的任务清单等细节仍在 `results` 中。展示文字与回执合计超限时，优先保留完整回执。原生 MCP／Conversation 工具仍将结构化回执传给各自客户端。客户端可以直接展示 `matches[].citation` 中的完整引文。
 
+上例的自动化可用 `{{ ninebot_answer.get('answer', {}).get('text', '') }}` 读取展示文本。若为空，按 `outcome` 和 `results` 处理。需要可核对出处的帮助时，直接展示该文本可避免对话模型在转述中漏掉链接。
+
 Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选择。单次上限180秒、四次工具调用、32 KiB响应，集成同一时间接受一个此类查询。不会刷新云端、申请历史任务或控制车辆。模型任务和业务读取沿用原调用身份，结果返回前重新校验同意、归属与权限。
 
 需要Core支持`ai_task.async_generate_data(..., llm_api=...)`并已有兼容供应商；不支持时返回`unsupported_capability`，不会自动安装模型或另开端口。原生MCP／Conversation八工具仍可独立使用，此动作不加入专属LLM工具集合。
