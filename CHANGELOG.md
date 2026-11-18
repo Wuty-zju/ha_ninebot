@@ -22,6 +22,7 @@ This maintenance release brings 33 releases since 2.0.0 into the stable line.
 - Import overlapping same-account archives in either order when verified month memberships agree. Preserve the newest measurements and the strongest saved track independently.
 - Recheck the same task grant before returning progress or review data. Revoking and granting access again during a read requires a new request.
 - Keep all 19 help topics and 10 checklists available at the installed stable version, with their original source links and applicability checks.
+- Enforce the existing 91% coverage threshold from unrounded counts on both supported test environments. The release and full regression checks now use the same entry point.
 
 [Installation](README.md) · [Upgrade](docs/migration.md) · [中文安装](README_zh.md) · [中文升级](docs/migration_zh.md)
 
