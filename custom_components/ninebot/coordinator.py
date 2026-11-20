@@ -757,11 +757,32 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     else partial(adapters.travel, result.payload, month),
                 )
                 applied_revision = result.request_revision
-                travel_version = result.backend_version
                 current_started = result.started_at or now
                 # A slower adjacent-month query must not renew the actual
                 # receipt of this month's payload or count as its fresh sample.
-                cached_success = result.received_at
+                observed = cached_success = result.received_at
+
+                def current_month() -> bool:
+                    return self._current_read(key, applied_revision) and (
+                        month == adapters.month_at(dt_util.utcnow())
+                    )
+
+                if not current_month():
+                    return
+                stage = "archive"
+                await self.statistics.async_record(
+                    sn,
+                    travel,
+                    observed,
+                    result.backend_version,
+                    guard=current_month,
+                    receipt_ordered=True,
+                    raw=self._retained_month_source(record),
+                )
+                if not current_month():
+                    return
+                if record is not None:
+                    self._retain_raw(record, sn, month)
                 if (include_last_ride and travel.last_ride is None) or (
                     include_previous_month and now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).day <= 2
                 ):
@@ -829,32 +850,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 updated = replace(
                     snapshot,
                     travel=travel,
-                    travel_freshness=Freshness(current_started, cached_success or dt_util.utcnow()),
-                )
-                observed = updated.travel_freshness.succeeded_at
-                assert observed is not None
-
-                def current_month() -> bool:
-                    return self._current_read(key, applied_revision) and (
-                        month == adapters.month_at(dt_util.utcnow())
-                    )
-
-                if not current_month():
-                    return
-                stage = "archive"
-                await self.statistics.async_record(
-                    sn,
-                    travel,
-                    observed,
-                    travel_version,
-                    guard=current_month,
-                    receipt_ordered=True,
-                    raw=self._retained_month_source(record),
+                    travel_freshness=Freshness(current_started, observed),
                 )
                 if not current_month():
                     return
-                if record is not None:
-                    self._retain_raw(record, sn, month)
                 lifecycle = self.ride_lifecycles.setdefault(sn, RideLifecycle())
                 lifecycle.observe(travel.rides, observed)
                 if (

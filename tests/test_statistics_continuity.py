@@ -133,6 +133,11 @@ async def test_empty_month_cannot_replace_the_last_positive_receipt(
         "detail": [0] * 31,
         "list": None,
     }
+    app_client.async_get_travel.reset_mock()
+    await co._group(SN, "travel", force=True)
+    app_client.async_get_travel.assert_awaited_once_with(SN, month)
+    assert co.data[SN].travel_freshness.succeeded_at == NOW
+    assert co.data[SN].travel_freshness.error is ErrorKind.PROTOCOL
     with pytest.raises(NinebotError) as exc:
         await co.async_query_month(SN, month, refresh=True)
     assert exc.value.context.phase is FailurePhase.MONTH_RECONCILIATION
