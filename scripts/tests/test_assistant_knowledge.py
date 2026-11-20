@@ -69,7 +69,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
         self.assertEqual(len(catalog["entries"]), 19)
-        self.assertEqual(catalog["corpus_version"], "1.2.10")
+        self.assertEqual(catalog["corpus_version"], "1.2.11")
         self.assertEqual(catalog["source_version"], "2.1.26")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
@@ -150,7 +150,7 @@ class KnowledgeTests(unittest.TestCase):
                 result = k.search_help(query, language, "2.1.24")
                 match = next(row for row in result["matches"] if row["source_id"] == entry["id"])
                 self.assertEqual(
-                    match["citation"], f"[Source]({entry['source']['url']}) (KB 1.2.10)"
+                    match["citation"], f"[Source]({entry['source']['url']}) (KB 1.2.11)"
                 )
                 for version in ("2.1.0", "2.1.22", "2.1.23", "2.3.0"):
                     old = k.search_help(query, language, version, include_procedures=True)
@@ -223,7 +223,7 @@ class KnowledgeTests(unittest.TestCase):
                     "url": url,
                 },
             )
-            self.assertEqual(match["citation"], f"[Source]({url}) (KB 1.2.10)")
+            self.assertEqual(match["citation"], f"[Source]({url}) (KB 1.2.11)")
             for version in ("2.1.25", "2.3.0"):
                 with self.subTest(version=version, language=language):
                     self.assertEqual(
@@ -365,6 +365,27 @@ class KnowledgeTests(unittest.TestCase):
                 result = k.search_help(query, "zh-CN", "2.1.0")
                 self.assertEqual(result["language"], "zh-Hans")
                 self.assertEqual(result["matches"][0]["source_id"], target)
+
+    def test_recorded_trip_tool_names_retrieve_existing_saved_detail_help(self):
+        commit = "6de97c42d062fe6e1df23fcacd4be05d49d5eb99"
+        url = f"{k.SOURCE_PREFIX}{commit}/docs/assistant.md#ask-about-local-data"
+        for name in ("get_recorded_trips", "get_trip_detail"):
+            for prefix in ("", "ninebot__"):
+                for language in ("en", "zh-Hans"):
+                    with self.subTest(name=name, prefix=prefix, language=language):
+                        result = k.search_help(
+                            prefix + name, language, "2.2.2", include_procedures=True
+                        )
+                        self.assertEqual(
+                            [m["source_id"] for m in result["matches"]], ["saved_detail"]
+                        )
+                        self.assertEqual([p["id"] for p in result["procedures"]], ["SK04"])
+                        self.assertEqual(
+                            result["matches"][0]["citation"], f"[Source]({url}) (KB 1.2.11)"
+                        )
+                        self.assertEqual(
+                            k.search_help(prefix + name, language, "2.3.0")["matches"], []
+                        )
 
     def test_unrelated_query_and_unsupported_version_do_not_guess(self):
         self.assertEqual(k.search_help("zzzz_unrelated", "en", "2.1.1")["matches"], [])

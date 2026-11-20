@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.10",
+  "corpus_version": "1.2.11",
   "source_version": "2.1.26",
   "entries": [
     {
@@ -205,7 +205,11 @@
             "detail",
             "ride_id",
             "query_month",
-            "track"
+            "track",
+            "get_recorded_trips",
+            "get_trip_detail",
+            "ninebot__get_recorded_trips",
+            "ninebot__get_trip_detail"
           ]
         },
         "zh-Hans": {
@@ -220,7 +224,7 @@
           ]
         }
       },
-      "content_sha256": "b60a5c3e8d2ac6b8fba36b0d855695deec524e7c7d7904234a368889dbdf1197",
+      "content_sha256": "d8c20ac73605d5970b3e2d71087b6783387737422d7cc015656abb9e6a57fdc0",
       "procedure_id": "SK04"
     },
     {
