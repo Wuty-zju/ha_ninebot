@@ -10,6 +10,7 @@ from .capabilities import CONTROL_ACTIONS
 from .client import NinecliClient
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .raw import Endpoint, version_metadata
+from .vehicle_cache import BusinessLine, observed_business_line
 
 
 @dataclass(frozen=True)
@@ -102,17 +103,40 @@ class NinecliBackend:
         )
 
     async def async_travel_month(self, vehicle: str, month: str) -> BackendResult:
+        backend_version = await self._version()
+        if (
+            backend_version == "0.1.7"
+            and observed_business_line(self.client, vehicle) is BusinessLine.MOTOR
+        ):
+            from .native_history import MOTOR_MONTH_CONTRACT
+
+            if not self._expected_uid:
+                raise NinebotAuthError()
+            payload = await self.client.async_get_travel_page(
+                vehicle, month, 1, expected_uid=self._expected_uid, business_line="motor"
+            )
+            if payload is not None:
+                return BackendResult(
+                    payload,
+                    Endpoint.TRAVEL,
+                    datetime.now(UTC),
+                    month,
+                    backend_version=backend_version,
+                    endpoint_version=MOTOR_MONTH_CONTRACT,
+                    provider="native_history",
+                    page=1,
+                )
         payload = await self.client.async_get_travel(vehicle, month)
         return BackendResult(
             payload,
             Endpoint.TRAVEL,
             datetime.now(UTC),
             month,
-            backend_version=await self._version(),
+            backend_version=backend_version,
         )
 
     async def async_travel_page(self, vehicle: str, month: str, page: int) -> BackendResult:
-        """The history-only adapter does not change existing serve telemetry."""
+        """Keep durable page chains on their original request contract."""
         if not self._expected_uid:
             raise NinebotAuthError()
         if await self._version() != "0.1.7":

@@ -28,6 +28,7 @@ from custom_components.ninebot.models import Battery, BatteryInfo, Freshness, Ve
 from custom_components.ninebot.raw import Endpoint, RawRecord, build_record
 from custom_components.ninebot.statistics_store import StoredMonth
 from custom_components.ninebot.storage import ModelStorage
+from custom_components.ninebot.vehicle_cache import BusinessLine
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -41,6 +42,7 @@ async def test_debug_opt_in_reuses_identity_and_never_adds_query_demand(hass, en
         "sensor", "ninebot", "SyntheticSN_raw_data_summary"
     )
     before = co.demand("SyntheticSN")
+    app_client.vehicle_business_lines = {"SyntheticSN": BusinessLine.EBIKE}
     methods = [
         app_client.async_get_status,
         app_client.async_get_battery,
@@ -79,6 +81,7 @@ async def test_debug_opt_in_reuses_identity_and_never_adds_query_demand(hass, en
     await hass.async_block_till_done()
     state = hass.states.get(row_id)
     assert state.state == "ok"
+    assert state.attributes["business_line"] == "ebike"
     assert state.attributes["parsed"]["battery"]["charging_power_w"] == 310
     assert len(state.attributes["parsed"]["battery"]["packs"]) == 4
     encoded = json.dumps(dict(state.attributes), ensure_ascii=False, allow_nan=False)
@@ -439,6 +442,11 @@ async def test_diagnostics_isolate_vehicle_months_without_queries(hass, entry, a
     co.data["PRIVATE_SECOND_SN"] = replace(
         original, profile=VehicleProfile("PRIVATE_SECOND_SN", "PRIVATE_NAME", "model"), travel=None
     )
+    app_client.vehicle_business_lines = {
+        "SyntheticSN": BusinessLine.EBIKE,
+        "PRIVATE_SECOND_SN": BusinessLine.MOTOR,
+        "PRIVATE_UNRELATED_SN": BusinessLine.MOTOR,
+    }
     for sn, month, raw in (
         ("SyntheticSN", "202611", {"times": 0, "list": None}),
         ("SyntheticSN", "202610", {"times": 2, "list": []}),
@@ -491,6 +499,12 @@ async def test_diagnostics_isolate_vehicle_months_without_queries(hass, entry, a
         diag = await async_get_config_entry_diagnostics(hass, entry)
     one, two = diag["vehicles"]
     assert [one["vehicle_index"], two["vehicle_index"]] == [1, 2]
+    assert [row["business_line"] for row in (one, two)] == ["ebike", "motor"]
+    assert diag["vehicle_business_lines"] == {
+        "source": "discovery_cache",
+        "scope": "present_vehicles",
+        "counts": {"ebike": 1, "motor": 1, "unobserved": 0, "ambiguous": 0, "unsupported": 0},
+    }
     first = one["travel_statistics"]["months"]
     second = two["travel_statistics"]["months"]
     assert [row["month"] for row in first] == ["202611", "202610"]
@@ -527,6 +541,7 @@ async def test_diagnostics_vehicle_cap_and_optional_failure_accessor(hass, entry
     assert len(diag["vehicles"]) == MAX_DIAGNOSTIC_VEHICLES
     assert diag["diagnostic_limits"]["vehicles_truncated"] is True
     assert diag["diagnostic_limits"]["vehicle_count"] == MAX_DIAGNOSTIC_VEHICLES + 2
+    assert diag["vehicle_business_lines"]["counts"]["unobserved"] == MAX_DIAGNOSTIC_VEHICLES + 2
     assert diag["diagnostic_limits"]["max_raw_payloads_per_vehicle"] == 2
     assert all(row["groups"]["travel"]["failure_context"] is None for row in diag["vehicles"])
     assert len(json.dumps(diag, allow_nan=False).encode()) < 262144

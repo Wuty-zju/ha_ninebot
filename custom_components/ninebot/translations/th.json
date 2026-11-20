@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "ข้อมูลรถ",
+        "state_attributes": {
+          "business_line": {
+            "name": "กลุ่มบริการของยานพาหนะ"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",

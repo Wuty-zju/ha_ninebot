@@ -16,7 +16,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote
 
 import aiohttp
@@ -28,7 +28,14 @@ from .exceptions import Endpoint, ErrorKind, FailurePhase, NinebotAuthError, Nin
 from .http_policy import rate_limit_delay
 from .http_policy import retry_after_seconds as retry_after_seconds
 from .native_control import COMMANDS, MAX_ROUTES, ControlRoute, control_failure, control_route
-from .vehicle_cache import cache_io, read_cache, reconcile_cache, restore_cache
+from .vehicle_cache import (
+    BusinessLine,
+    cache_business_lines,
+    cache_io,
+    read_cache,
+    reconcile_cache,
+    restore_cache,
+)
 
 
 def _response_data(status: int, raw: object) -> Any:
@@ -107,6 +114,7 @@ class NinecliClient:
         self._pending = 0
         self._request_ready = False
         self.vehicle_discovery_complete = False
+        self.vehicle_business_lines: dict[str, BusinessLine] = {}
         self.control_routing: dict[str, ControlRoute] = {}
 
     @staticmethod
@@ -246,6 +254,7 @@ class NinecliClient:
         finally:
             self._bearer = ""
             self.control_routing.clear()
+            self.vehicle_business_lines.clear()
 
     async def _finish_close(self) -> None:
         try:
@@ -508,9 +517,11 @@ class NinecliClient:
                     )
                     if not complete and not raw:
                         raise NinebotError(ErrorKind.SERVICE)
+                    business_lines = await cache_io(cache_business_lines, self.config_dir)
                     if self._closed:
                         raise NinebotError(ErrorKind.CLOSED)
                     self.vehicle_discovery_complete = complete
+                    self.vehicle_business_lines = business_lines
                     accepted = True
                     return raw
             except (TimeoutError, OSError) as transport_error:
@@ -566,20 +577,50 @@ class NinecliClient:
         return await self._request("GET", f"/vehicles/{quote(sn, safe='')}/battery")
 
     async def async_get_travel_page(
-        self, sn: str, month: str, page: int, *, expected_uid: str
+        self,
+        sn: str,
+        month: str,
+        page: int,
+        *,
+        expected_uid: str,
+        business_line: Literal["ebike", "motor"] = "ebike",
     ) -> Any:
         """Native read-only history shares the sole ninecli session lock/writer."""
-        from .native_history import read_session, request_page, validate_page
+        from .native_history import (
+            UnsupportedHistoryRegion,
+            read_session,
+            request_page,
+            validate_page,
+        )
 
         validate_page(sn, month, page)
         async with self._operation():
+            if (
+                business_line == "motor"
+                and self.vehicle_business_lines.get(sn) is not BusinessLine.MOTOR
+            ):
+                raise NinebotError(ErrorKind.BUSY, retryable=True)
             try:
                 async with asyncio.timeout(self._timeout):
                     for attempt in range(2):
-                        lease = await asyncio.to_thread(read_session, self.config_dir, expected_uid)
+                        try:
+                            lease = await asyncio.to_thread(
+                                read_session, self.config_dir, expected_uid
+                            )
+                        except UnsupportedHistoryRegion:
+                            # Serve remains available before the first native request.
+                            if business_line == "motor" and attempt == 0:
+                                return None
+                            raise
                         try:
                             result = await request_page(
-                                self._session, lease, sn, month, page, self._timeout
+                                self._session,
+                                lease,
+                                sn,
+                                month,
+                                page,
+                                self._timeout,
+                                business_line=business_line,
                             )
                         except NinebotAuthError:
                             # Only HTTP401 requests a refresh, through the Go owner.

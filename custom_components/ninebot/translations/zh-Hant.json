@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "車輛資訊",
+        "state_attributes": {
+          "business_line": {
+            "name": "車輛業務線"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",
