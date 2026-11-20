@@ -5,7 +5,7 @@ import math
 import re
 from datetime import date, datetime
 from html import escape
-from typing import Any, TypeGuard
+from typing import Any
 
 from .archive_timeline import SELECTION_BASIS
 from .assistant_views import RIDE_UNITS, numeric
@@ -62,7 +62,7 @@ def _object(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _matches(pattern: re.Pattern[str], value: Any) -> TypeGuard[str]:
+def _matches(pattern: re.Pattern[str], value: Any) -> bool:
     return isinstance(value, str) and pattern.fullmatch(value) is not None
 
 
@@ -237,7 +237,8 @@ def _month_observations(quality: dict[str, Any], start: date, end: date) -> list
         row = _object(row)
         month, complete = row.get("month"), row.get("observed_list_complete")
         if (
-            not _matches(QUERY_MONTH, month)
+            not isinstance(month, str)
+            or QUERY_MONTH.fullmatch(month) is None
             or not start.strftime("%Y%m") <= month <= end.strftime("%Y%m")
             or month in seen
             or (complete is not None and type(complete) is not bool)
