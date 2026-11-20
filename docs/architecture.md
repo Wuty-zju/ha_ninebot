@@ -89,7 +89,7 @@ Local reconstruction has durable jobs/recovery points, captured search bounds an
 
 `history_websocket.py` provides authenticated metadata-only subscriptions for 1–5 device IDs, at most eight per connection and 64 active/pending total. It checks read permission/ownership before delivery and debounces commit bursts. No raw/GPS is pushed. Browser network/session modules share identical local-detail in-flight promises and cancel timers/listeners on unload, reconnection or revocation; cloud operations and consumed page tokens are not shared/replayed.
 
-The bundled workbench uses reviewed local-only detail chunks, sequence-based focus/brush/playback and bounded comparison caches. Leaflet's Canvas redraw scheduling is adapted locally in `route-renderer.js`; upgrading the pinned vendor requires checking its private-method dependency. Basemap tiles are optional external requests, not a bundled/offline map database.
+The replay card uses local-only detail chunks and keeps one map mounted across ride changes. Current Home Assistant frontends draw route segments through `ha-map.paths` and move a static cursor through the map location interface. A scrubber follows saved sample order. Older frontends use bundled Leaflet with no tile layer. Its Canvas redraw scheduling is adapted in `route-renderer.js`; vendor upgrades should recheck that hook.
 
 ## Diagnostics and Repairs
 
@@ -102,12 +102,12 @@ Repairs cover actionable identity/migration/storage/schema conditions. A tempora
 - Runtime protocol client: **`ninecli==0.1.7`**, fixed in [manifest.json](../custom_components/ninebot/manifest.json). HA installs the declared dependency; users do not manually install an unrelated daemon. Never change this to an unreviewed `>=`/latest range.
 - Its [PyPI metadata](https://pypi.org/project/ninecli/0.1.7/) declares MIT. The audited wheel did not include standalone license text or complete Go source; source availability, reproducible builds and transitive Go licensing remain audit limitations. The integration's MIT license does not relicense the dependency/vendor APIs.
 - Reviewed native history crypto/API behavior derives from MIT [kxn/ninebot-recon](https://github.com/kxn/ninebot-recon). Runtime attribution/source pins are packaged in [licenses/SOURCES.json](../custom_components/ninebot/licenses/SOURCES.json) and [MIT notice](../custom_components/ninebot/licenses/ninebot-recon-MIT.txt). Test conformance attribution is in [tests/ninebot_recon_license.txt](../tests/ninebot_recon_license.txt).
-- Leaflet 1.9.4 is bundled under its [BSD-2-Clause license](../custom_components/ninebot/frontend/vendor/leaflet/LICENSE). OpenStreetMap tiles/attribution apply when explicitly enabled.
+- Leaflet 1.9.4 is bundled under its [BSD-2-Clause license](../custom_components/ninebot/frontend/vendor/leaflet/LICENSE). The native basemap uses [Home Assistant Map Tiles](https://www.home-assistant.io/integrations/map_tiles/).
 - Ninebot/Segway trademarks and vehicle images belong to their owners. This independent project is not affiliated with or supported by them. See [NOTICE](../NOTICE) and [LICENSE](../LICENSE).
 
 Future backends should preserve these field, ownership, scheduling and lifecycle contracts. Reference applications supply protocol evidence, with attribution and license review before reuse.
 
-简体中文摘要：实时状态、历史采集、私有归档和 HA 展示分层；账号、权限、预算与生命周期隔离。原件、派生值、覆盖和完整性各自有证据范围；不猜单位/坐标，不为演示改业务。依赖精确固定并保留许可/源码可用性限制，地图底图为用户显式外部请求。
+简体中文摘要：实时状态、历史采集、私有归档和 HA 展示分层；账号、权限、预算与生命周期隔离。原件、派生值、覆盖和完整性各自有证据范围；不猜单位/坐标，不为演示改业务。依赖精确固定并保留许可/源码可用性限制，地图复用 HA 的底图服务，旧前端使用本地无底图绘制。
 
 
 ## Connection recovery and retained availability

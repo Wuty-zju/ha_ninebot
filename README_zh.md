@@ -114,7 +114,8 @@
 
 | 想做什么 | 入口 |
 |---|---|
-| 列出行程或读取已保存轨迹 | `ninebot.get_recorded_trips`、本地模式的 `ninebot.get_trip_detail` |
+| 在同一张地图查看和重放多趟轨迹 | [历史地图卡片](docs/history_zh.md#添加历史地图) |
+| 在自动化中查询行程和已保存坐标 | `ninebot.get_recorded_trips`、本地模式的 `ninebot.get_trip_detail` |
 | 计算一个时段的总量 | `ninebot.get_statistics` |
 | 绘制每日或每月统计 | `ninebot.import_statistics` 和原生统计图卡片 |
 | 按日期浏览或响应新行程 | 车辆的行程日历、车辆行程事件 |

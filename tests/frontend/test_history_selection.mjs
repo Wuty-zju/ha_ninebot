@@ -19,40 +19,30 @@ test('single and multi-car selections share one primary and retain only reviewed
   assert.equal(session.selected.size, 5);
 });
 
-test('sample focus and brush synchronize without changing the selected rides', () => {
-  const changes = [], session = new HistorySelection(kind => changes.push(kind));
-  const value = ride('a'), key = trackKey('a', value);
-  session.select(value); session.focusSample(key, 4); session.brushSamples(key, 9, 2);
-  assert.deepEqual(session.focus, { key, sequence: 4 });
-  assert.deepEqual(session.brush, { key, start: 2, end: 9 });
-  assert.equal(session.selected.size, 1); assert.equal(session.primary, key);
-  assert.deepEqual(changes, ['selection', 'focus', 'focus']);
-  const revision = session.revision;
-  for (const seq of [-1, 1.2, NaN, 1048576]) session.focusSample(key, seq);
-  session.focusSample('another-scope', 2); session.focusSample(key, 4);
-  assert.equal(session.revision, revision);
-  session.select({ ...value, distance_m: 1300 }, true);
-  assert.equal(session.focus.sequence, 4); assert.equal(session.selected.get(key).distance_m, 1300);
-});
-
-test('removing a focused ride or clearing on scope change leaves no private selection', () => {
-  const session = new HistorySelection(), a = ride('a'), b = ride('b');
+test('refresh updates selected summaries without changing the focused ride', () => {
+  const session = new HistorySelection();
+  const a = ride('a'), b = ride('b');
   const key = trackKey('b', b);
-  session.select(a); session.select(b, true); session.focusSample(key, 1); session.brushSamples(key, 0, 4);
-  session.remove(key);
-  assert.equal(session.primary, trackKey('a', a)); assert.equal(session.focus, null); assert.equal(session.brush, null);
-  session.clear(); assert.equal(session.selected.size, 0); assert.equal(session.primary, null);
+  session.select(a);
+  session.select(b, true);
+  session.update({ ...b, distance_m: 1300 });
+  session.update(ride('unknown'));
+  assert.equal(session.selected.size, 2);
+  assert.equal(session.primary, key);
+  assert.equal(session.selected.get(key).distance_m, 1300);
 });
 
-
-test('leaving comparison cannot leave focus attached to a deselected ride', () => {
+test('removing a ride or leaving a scope drops its private selection', () => {
   const session = new HistorySelection(), a = ride('a'), b = ride('b');
-  session.select(a); session.select(b, true);
-  session.focusSample(trackKey('a', a), 2); session.brushSamples(trackKey('a', a), 1, 4);
-  session.select(b);
-  assert.equal(session.focus, null); assert.equal(session.brush, null);
+  session.select(a);
+  session.select(b, true);
+  session.remove(trackKey('b', b));
+  assert.equal(session.primary, trackKey('a', a));
   for (const value of [{}, { ...a, device_id: '' }, { ...a, query_month: 'invalid' }]) {
     assert.equal(session.select(value), false);
   }
   assert.equal(session.selected.size, 1);
+  session.clear();
+  assert.equal(session.selected.size, 0);
+  assert.equal(session.primary, null);
 });

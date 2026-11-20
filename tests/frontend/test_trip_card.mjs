@@ -186,7 +186,7 @@ test('loading a new comparison keeps active cached routes and evicts an inactive
   const selected = new Map([['active', {}], [key, fresh]]);
   const cache = new Map([['active', {}], ['old-a', {}], ['old-b', {}], ['old-c', {}], ['old-d', {}]]);
   const removed = [];
-  const fake = { browser: { active: true, busy: false, page: { rides: [fresh] } },
+  const fake = { browser: { active: true, epoch: 1, current: () => true }, stopPlayback() {},
     selection: { selected, activate() {} }, mapError: false,
     tracks: { tracks: cache, busy: false, remove(key) { removed.push(key); cache.delete(key); },
       async read() { assert.equal(cache.size, 4); assert.ok(cache.has('active')); } } };

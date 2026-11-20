@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.2.3
+
+- Rebuild the local ride card around one Home Assistant map. Overlay rides across vehicles and play, pause or scrub saved samples. Older frontends use the bundled route view.
+- Display recorded trip pages and saved detail in `ninebot.ask`, including page bounds, archive observation times, reviewed units and explicit unknowns. The bundled help index also recognizes exact trip tool names.
+- Document how to pair the replay card with native calendar and statistics cards. Cloud detail acquisition remains available through the existing Action and background sync.
+
 ## 2.2.2
 
 - Use the confirmed motor route for trip pagination as well as the first monthly read. Saved page chains keep their original route when resumed. Daily statistics can reuse a recent verified first page.

@@ -114,7 +114,8 @@ The default budget is **60 logical requests per account per hour**. The storage 
 
 | Goal | Entry point |
 |---|---|
-| List rides or open a saved track | `ninebot.get_recorded_trips` and `ninebot.get_trip_detail` in local mode |
+| Replay saved routes with a shared map and timeline | [History map card](docs/history.md#add-the-history-map) |
+| Query saved rides and coordinates from an automation | `ninebot.get_recorded_trips` and `ninebot.get_trip_detail` in local mode |
 | Calculate period totals | `ninebot.get_statistics` |
 | Chart daily or monthly aggregates | `ninebot.import_statistics` and a native statistics chart |
 | Browse by date or react to a new ride | Vehicle ride calendar or vehicle trip Event entity |
