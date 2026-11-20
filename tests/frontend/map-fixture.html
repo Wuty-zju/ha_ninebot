@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <title>Ninebot synthetic history map fixture</title>
-<style>body{margin:20px auto;max-width:850px;padding:0 16px;background:#121b22;color:#eee;font:16px system-ui;--primary-text-color:#eee;--secondary-text-color:#aab7c5;--primary-color:#03a9f4;--divider-color:#40505c;--card-background-color:#18232b;--error-color:#ff5252}ha-card{display:block;border:1px solid #40505c;border-radius:16px}pre{white-space:pre-wrap}</style>
+<style>body{margin:20px auto;max-width:850px;padding:0 16px;background:#121b22;color:#eee;font:16px system-ui;--primary-text-color:#eee;--secondary-text-color:#aab7c5;--primary-color:#03a9f4;--divider-color:#40505c;--card-background-color:#18232b;--secondary-background-color:#1d2731;--error-color:#ff5252}ha-card{display:block;border:1px solid #40505c;border-radius:16px}pre{white-space:pre-wrap} @media(prefers-color-scheme:light){body{background:#edf1f5;color:#222;--primary-text-color:#222;--secondary-text-color:#525964;--primary-color:#1c6bce;--divider-color:#ccd3de;--card-background-color:#fff;--secondary-background-color:#edf1f5}}</style>
 <h1>Synthetic vehicles · offline fixture</h1>
 <p>No real account or ride data. Map tiles are disabled.</p>
 <script type="module">
@@ -10,6 +10,22 @@ const row = { ride_id: 'synthetic-ride', detail_id: 'synthetic-detail', query_mo
   duration_s: 600, duration_h: 1/6, max_speed_m_s: 10, average_speed_m_s: 2, energy_wh: 90,
   precision: { mileages: 1 }, source: 'trip_detail', energy_intensity_wh_per_km: 75 };
 window.fixtureRequests = [];
+if (new URL(location.href).searchParams.has('native')) {
+  class SyntheticMap extends HTMLElement {
+    paths = [];
+    editableLocations = [];
+    getView() { return this.view; }
+    fitBounds(bounds) { this.view = bounds; }
+  }
+  // Exercise lazy loading through the same helper the real dashboard supplies.
+  window.loadCardHelpers = async () => ({
+    createCardElement({ type }) {
+      if (type !== 'map') throw new Error('Unexpected card');
+      customElements.define('ha-map', SyntheticMap);
+      return document.createElement('hui-map-card');
+    },
+  });
+}
 window.fixtureSaved = true;
 window.fixtureFeeds = new Set();
 const connectionListeners = new Map();
@@ -26,7 +42,8 @@ const connection = {
 };
 window.fixtureConnectionListeners = connectionListeners;
 window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: true, language: 'zh-Hans',
-  config: { time_zone: 'Asia/Shanghai' }, states: {}, callWS: async request => {
+  config: { time_zone: 'Asia/Shanghai',
+    components: location.search.includes('native') ? ['map_tiles'] : [] }, states: {}, callWS: async request => {
     window.fixtureRequests.push(request);
     if (request.type === 'config/entity_registry/get') return { device_id: 'synthetic-a' };
     if (window.fixtureDeny) throw { code: 'unauthorized' };
@@ -37,7 +54,7 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: 
     const shift = data.device_id === 'synthetic-b' ? 0.002 : 0;
     const all = Array.from({ length: 60 }, (_, sequence) => ({ sequence,
       latitude: 30 + sequence * .0001 + shift, longitude: 120 + Math.sin(sequence / 8) * .001 + shift,
-      speed_raw: 25 + Math.sin(sequence / 4) * 12, distance_delta_raw: 40 + Math.cos(sequence / 5) * 9 }));
+      speed_raw: 25 + Math.sin(sequence / 4) * 12, distance_delta_raw: 40 + Math.cos(sequence / 5) * 9 })).filter(point => ![15, 16].includes(point.sequence));
     return { response: { source_mode: 'ride_archive', query_month: '202609', received_at: row.end_time,
       detail_context: { source_mode: 'ride_archive', archive_revision: 1, scalar_revision: 1, geometry_received_at: row.end_time },
       ride: { ...row, detail_saved: true, track: data.include_track ? all.slice(data.point_offset, data.point_offset + data.max_points) : [],

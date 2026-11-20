@@ -7,6 +7,11 @@ from datetime import date, datetime
 from html import escape
 from typing import Any
 
+from .archive_timeline import SELECTION_BASIS
+from .assistant_views import RIDE_UNITS, numeric
+from .const import BUSINESS_TIMEZONE
+from .travel import opaque_id
+
 CONTRACT = "ninebot-evidence-answer-v1"
 MAX_ANSWER_BYTES = 16 * 1024
 MAX_RECEIPTS = 4
@@ -35,6 +40,14 @@ METRIC_LABELS = {
     "energy_wh": ("Energy", "Wh"),
     "energy_intensity_wh_per_km": ("Energy intensity", "Wh/km"),
 }
+RIDE_LABELS = {
+    "distance_m": "Distance",
+    "duration_s": "Duration",
+    "energy_wh": "Energy",
+    "max_speed_m_s": "Maximum speed",
+    "average_speed_m_s": "Average speed (distance/duration)",
+    "energy_intensity_wh_per_km": "Energy intensity",
+}
 STATUS = frozenset(("available", "missing", "partial", "stale"))
 PINNED_GUIDE = re.compile(
     r"https://github\.com/Wuty-zju/ha_ninebot/blob/[a-f0-9]{40}/docs/[a-z_]+\.md#[a-z0-9-]+"
@@ -42,6 +55,7 @@ PINNED_GUIDE = re.compile(
 VERSION = re.compile(r"[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}")
 CODE = re.compile(r"[a-z][a-z0-9_]{0,47}")
 REQUEST_ID = re.compile(r"[0-9a-f]{32}")
+QUERY_MONTH = re.compile(r"20[0-9]{2}(0[1-9]|1[0-2])")
 
 
 def _object(value: Any) -> dict[str, Any]:
@@ -181,6 +195,155 @@ def _statistics(payload: dict[str, Any], selected_metric: str | None = None) -> 
     return lines[0] + "\n\n" + "\n".join(lines[1:])
 
 
+def _local_archive(evidence: dict[str, Any]) -> bool:
+    return (
+        evidence.get("source_kind") == "account_archive"
+        and evidence.get("access_mode") == "local_only"
+        and evidence.get("adapter_contract") == "ninebot-assistant-v1"
+    )
+
+
+def _ride_fields(ride: dict[str, Any]) -> str:
+    identifier, month = ride.get("ride_id"), ride.get("query_month")
+    if (
+        not isinstance(identifier, str)
+        or opaque_id(identifier) != identifier
+        or not _matches(QUERY_MONTH, month)
+    ):
+        return ""
+    fields = [
+        f"Started: {_observation(ride.get('started_at'))}",
+        f"Ended: {_observation(ride.get('ended_at'))}",
+        f"Archive query month: {month}",
+    ]
+    for key, label in RIDE_LABELS.items():
+        if key not in ride:
+            return ""
+        value = ride[key]
+        if value is not None and (numeric(value) is None or value < 0):
+            return ""
+        fields.append(
+            f"{label}: unknown" if value is None else f"{label}: {value} {RIDE_UNITS[key]}"
+        )
+    return " · ".join(fields)
+
+
+def _month_observations(quality: dict[str, Any], start: date, end: date) -> list[str] | None:
+    months = quality.get("months")
+    if not isinstance(months, list) or len(months) > 3:
+        return None
+    lines, seen = [], set()
+    for row in months:
+        row = _object(row)
+        month, complete = row.get("month"), row.get("observed_list_complete")
+        if (
+            not isinstance(month, str)
+            or QUERY_MONTH.fullmatch(month) is None
+            or not start.strftime("%Y%m") <= month <= end.strftime("%Y%m")
+            or month in seen
+            or (complete is not None and type(complete) is not bool)
+        ):
+            return None
+        seen.add(month)
+        coverage = (
+            "complete" if complete is True else "incomplete" if complete is False else "unknown"
+        )
+        observed = _observation(row.get("received_at"))
+        lines.append(f"- {month} list: {coverage}. Archive observation: {observed}.")
+    return lines
+
+
+def _recorded_trips(payload: dict[str, Any]) -> str:
+    query, data = _object(payload.get("query")), _object(payload.get("data"))
+    quality, evidence = _object(payload.get("quality")), _object(payload.get("evidence"))
+    start, end = _date(query.get("start_date")), _date(query.get("end_date"))
+    rides, returned, limit = data.get("rides"), data.get("returned"), query.get("limit")
+    cursor, has_more = data.get("next_cursor"), data.get("has_more")
+    if (
+        not _local_archive(evidence)
+        or evidence.get("selection_basis") != SELECTION_BASIS
+        or evidence.get("sort") != "desc"
+        or query.get("sort") != "desc"
+        or query.get("business_timezone") != BUSINESS_TIMEZONE
+        or start is None
+        or end is None
+        or not (2000 <= start.year <= end.year <= 2099 and 0 <= (end - start).days < 31)
+        or ("cursor" in query and not _matches(REQUEST_ID, query["cursor"]))
+        or not isinstance(rides, list)
+        or type(limit) is not int
+        or not 1 <= limit <= 20
+        or type(returned) is not int
+        or returned != len(rides)
+        or returned > limit
+        or (cursor is not None and not _matches(REQUEST_ID, cursor))
+        or has_more is not (cursor is not None)
+        or data.get("units") != RIDE_UNITS
+        or quality.get("upstream_history_complete") != "unverified"
+    ):
+        return ""
+    if (months := _month_observations(quality, start, end)) is None:
+        return ""
+    missing = quality.get("missing_month_count")
+    if missing is not None and (type(missing) is not int or not 0 <= missing <= 3):
+        return ""
+    page = "Continuation page" if "cursor" in query else "First page"
+    remaining = (
+        "Another local page is available." if has_more else "No further local page is indicated."
+    )
+    lines = [
+        f"**Recorded trips for {start} through {end} ({BUSINESS_TIMEZONE})**\n",
+        f"{page}: {returned} returned (limit {limit}). {remaining} "
+        "This page count leaves the period total unverified.",
+        "- Source: local account archive, latest lists and retained partial observations. "
+        "Cloud completeness is unverified.",
+        f"- Page selection cutoff: {_observation(quality.get('page_as_of'))}. "
+        f"Tool query time: {_observation(query.get('as_of'))}.",
+        f"- Months without a recorded list: {'unknown' if missing is None else missing}.",
+        *months,
+    ]
+    for row in rides:
+        ride = _object(row)
+        fields, saved = _ride_fields(ride), ride.get("detail_saved")
+        if not fields or (saved is not None and type(saved) is not bool):
+            return ""
+        detail = "saved" if saved is True else "not saved" if saved is False else "unknown"
+        lines.append(
+            f"- {fields} · Detail: {detail} · Archive observation: "
+            f"{_observation(ride.get('received_at'))}."
+        )
+    return "\n".join(lines)
+
+
+def _saved_detail(payload: dict[str, Any]) -> str:
+    query, ride = _object(payload.get("query")), _object(payload.get("data"))
+    quality, evidence = _object(payload.get("quality")), _object(payload.get("evidence"))
+    if (
+        not _local_archive(evidence)
+        or query.get("business_timezone") != BUSINESS_TIMEZONE
+        or query.get("ride_id") != ride.get("ride_id")
+        or query.get("query_month") != ride.get("query_month")
+        or ride.get("detail_saved") is not True
+        or ride.get("units") != RIDE_UNITS
+        or not (fields := _ride_fields(ride))
+    ):
+        return ""
+    partial = quality.get("partial_payload")
+    integrity = (
+        "partial"
+        if partial is True
+        else "no partial payload reported"
+        if partial is False
+        else "unknown"
+    )
+    return (
+        f"**Saved trip detail ({BUSINESS_TIMEZONE} business dates)**\n\n"
+        f"{fields}\n\n"
+        "- Source: local account archive.\n"
+        f"- Archive observation: {_observation(quality.get('received_at'))}.\n"
+        f"- Saved payload integrity: {integrity}."
+    )
+
+
 def _error(row: dict[str, Any]) -> Any:
     return (
         _object(_object(row.get("result")).get("error")).get("code")
@@ -254,6 +417,10 @@ def render_evidence_answer(
             text = _help(payload)
         elif tool == "ninebot__get_statistics":
             text = _statistics(payload)
+        elif tool == "ninebot__get_recorded_trips":
+            text = _recorded_trips(payload)
+        elif tool == "ninebot__get_trip_detail":
+            text = _saved_detail(payload)
         elif tool == "ninebot__explain_statistics":
             text = _workflow(payload)
         else:

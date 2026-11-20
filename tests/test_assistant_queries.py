@@ -16,6 +16,7 @@ from homeassistant.helpers import device_registry as dr
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.assistant_ask import EvidenceTurn
 from custom_components.ninebot.assistant_errors import error_data
+from custom_components.ninebot.assistant_evidence import render_evidence_answer
 from custom_components.ninebot.assistant_knowledge import READ_TOOLS, KnowledgeUnavailable
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
 from custom_components.ninebot.assistant_policy import AssistantError, async_require_admin
@@ -532,6 +533,22 @@ async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(
     assert second["query"]["as_of"] == later.isoformat()
     assert second["quality"]["page_as_of"] == first["quality"]["page_as_of"]
     assert second["data"]["rides"][0]["received_at"] == NOW.isoformat()
+    answer = render_evidence_answer(
+        [
+            {"tool": "ninebot__get_recorded_trips", "result": receipt, "error": False}
+            for receipt in (first, second)
+        ]
+    )
+    assert answer is not None
+    assert answer["request_ids"] == [first["request_id"], second["request_id"]]
+    text = answer["text"]
+    assert "First page: 1 returned (limit 1). Another local page is available." in text
+    assert "Continuation page: 1 returned (limit 1). No further local page is indicated." in text
+    assert text.count(f"Page selection cutoff: {NOW.isoformat()}") == 2
+    assert f"Tool query time: {later.isoformat()}" in text
+    assert f"202610 list: complete. Archive observation: {NOW.isoformat()}" in text
+    assert "This page count leaves the period total unverified." in text
+    assert first["data"]["next_cursor"] not in text
     replay, error = await query(
         hass,
         assistant,
@@ -561,6 +578,14 @@ async def test_recorded_empty_page_preserves_known_month_observation(hass, assis
         {"month": "202610", "received_at": NOW.isoformat(), "observed_list_complete": True}
     ]
     assert result["quality"]["all_observed_lists_complete"] is True
+    row = {"tool": "ninebot__get_recorded_trips", "result": result, "error": False}
+    answer = render_evidence_answer([row])
+    assert answer is not None
+    assert "First page: 0 returned (limit 10)" in answer["text"]
+    assert f"202610 list: complete. Archive observation: {NOW.isoformat()}" in answer["text"]
+    assert "Cloud completeness is unverified." in answer["text"]
+    result["data"]["returned"] = False
+    assert render_evidence_answer([row]) is None
 
 
 async def test_recorded_ride_limit_counts_the_returned_observation_timestamp(hass, assistant):
@@ -672,6 +697,31 @@ async def test_detail_missing_never_falls_back_to_cloud_then_saved_detail_is_sma
     encoded = json.dumps(result)
     assert not {"speed_samples", "distance_samples", "track"} & result["data"].keys()
     assert not any(value in encoded for value in ("latitude", "trail", "120.001"))
+    row = {"tool": "ninebot__get_trip_detail", "result": result, "error": False}
+    answer = render_evidence_answer([row])
+    assert answer is not None and answer["request_ids"] == [result["request_id"]]
+    assert "Distance: 1200.0 m" in answer["text"] and "Duration: 600.0 s" in answer["text"]
+    assert "Energy: 120.0 Wh" in answer["text"] and "Maximum speed: " in answer["text"]
+    assert "Average speed (distance/duration): 2.0 m/s" in answer["text"]
+    assert f"Archive observation: {received.isoformat()}" in answer["text"]
+    assert "120.001" not in answer["text"]
+
+    result["data"]["energy_wh"] = None
+    result["quality"]["received_at"] = None
+    unknown = render_evidence_answer([row])
+    assert unknown is not None
+    assert (
+        "Energy: unknown" in unknown["text"]
+        and "Archive observation: unrecorded" in unknown["text"]
+    )
+    result["data"]["energy_wh"] = True
+    assert render_evidence_answer([row]) is None
+    result["data"]["energy_wh"] = 0
+    result["query"]["ride_id"] = "different-ride"
+    assert render_evidence_answer([row]) is None
+    result["query"]["ride_id"] = result["data"]["ride_id"]
+    result["evidence"]["access_mode"] = "cloud"
+    assert render_evidence_answer([row]) is None
 
 
 async def test_sync_health_is_read_only_and_reports_the_local_state(hass, assistant):

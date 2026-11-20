@@ -1,77 +1,70 @@
-/** Local map-centric ride workbench. No historical GPS is written into HA state. */
+/** Ride selection and local sample replay on a single persistent map surface. */
 import { LABELS } from './labels.js';
-import { formatRideDuration, formatRideInterval } from './trip-format.js';
+import { formatRideDuration, formatRideInterval, formatEntityLabel } from './trip-format.js';
 import { watchHistory } from './history-network.js';
-import { samplePaths, digits } from './trip-browser.js';
-export { TripBrowser, safeRide, businessDates, digits, samplePolyline, samplePaths } from './trip-browser.js';
-import { FleetBrowser, nativeCards } from './fleet-browser.js';
+import { digits } from './trip-browser.js';
+import { FleetBrowser } from './fleet-browser.js';
 import { LocalTracks, trackKey } from './local-tracks.js';
-import { RouteMap } from './route-map.js';
+import { RouteMap, ROUTE_COLORS } from './route-map.js';
 import { HistorySelection } from './history-selection.js';
+import { HISTORY_STYLE } from './trip-card-style.js';
 import './trip-card-editor.js';
 
+export { TripBrowser, safeRide, businessDates, digits, samplePolyline, samplePaths } from './trip-browser.js';
+
 function element(tag, text = '', className = '') {
-  const result = document.createElement(tag); result.textContent = String(text);
+  const result = document.createElement(tag);
+  result.textContent = text;
   if (className) result.className = className;
   return result;
 }
-const CSS = `:host{display:block;container-type:inline-size}*{box-sizing:border-box}ha-card{display:block;padding:16px;color:var(--primary-text-color)}
-h2{font-size:20px;margin:0 0 12px}h3{font-size:16px}.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
-label{display:flex;flex-direction:column;gap:4px;font-size:13px}input,button{font:inherit;color:inherit;background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px;padding:10px;min-height:44px}
-button{cursor:pointer;color:var(--primary-color)}button:disabled{opacity:.5;cursor:default}input[type=date]{max-width:150px}input[type=checkbox]{min-height:24px;width:24px}
-.note{font-size:12px;color:var(--secondary-text-color);line-height:1.5;overflow-wrap:anywhere}.error{color:var(--error-color)}
-.workbench{display:grid;grid-template-columns:minmax(0,2fr) minmax(230px,1fr);grid-template-areas:"map list" "detail list";gap:16px;align-items:start}.main,.rides,.ride-detail{min-width:0}.main{grid-area:map}.rides{grid-area:list}.ride-detail{grid-area:detail}
-.rides{max-height:850px;overflow:auto;overscroll-behavior:contain}.ride{padding:10px 0;border-bottom:1px solid var(--divider-color)}
-.ride.selected{border-left:3px solid var(--primary-color);padding-left:8px}.ride button{width:100%;text-align:start;white-space:normal}.compare{flex-direction:row;align-items:center}
-.chips{display:flex;flex-wrap:wrap;gap:6px}.chips button[aria-pressed=true]{background:var(--primary-color);color:var(--text-primary-color,#fff)}
-details{border-top:1px solid var(--divider-color);padding:12px 0}summary{cursor:pointer;font-weight:500;line-height:1.6}
-dl{display:grid;grid-template-columns:minmax(100px,1fr) 1fr;gap:8px;font-size:14px}dt{color:var(--secondary-text-color)}dd{margin:0;overflow-wrap:anywhere}
-svg{display:block;width:100%;height:140px;touch-action:pan-y}.metrics{font-size:13px;font-weight:400}.samples input[type=range]{width:100%}
-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px}.placeholder{padding:36px 16px;text-align:center;background:var(--secondary-background-color);border-radius:12px}
-:focus-visible{outline:2px solid var(--primary-color);outline-offset:3px}
-@media(max-width:650px){.workbench{grid-template-columns:minmax(0,1fr);grid-template-areas:"map" "list" "detail"}.rides{max-height:300px}.toolbar button{flex:1 1 auto}ha-card{padding:12px}}
-@container(max-width:650px){.workbench{grid-template-columns:minmax(0,1fr);grid-template-areas:"map" "list" "detail"}.rides{max-height:300px}.toolbar button{flex:1 1 auto}}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}`;
 
 export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   constructor() {
-    super(); this.attachShadow({ mode: 'open' }); this.focusBindings = []; this.curves = [];
-    this.selection = new HistorySelection(kind => {
-      if (this.resetting) return;
-      if (kind === 'focus') this.updateFocus(); else this.render();
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.selection = new HistorySelection(() => this.render());
+    this.routeMap = new RouteMap(() => {
+      this.mapError = true;
+      this.render();
     });
-    this.routeMap = this.makeMap();
-    this.tracks = new LocalTracks((service, data) => this.browser.invoke(service, data), () => {
-      if (!this.resetting) this.render();
-    });
+    this.tracks = new LocalTracks((service, data) => this.browser.invoke(service, data), () => this.render());
     this.browser = new FleetBrowser(() => this.historyChanged(), () => this.clearPrivate());
-    this.visibility = () => { if (document.hidden) this.stopPlayback(); };
+    this.index = 0;
+    this.visibility = () => {
+      if (document.hidden) this.stopPlayback();
+    };
   }
-  makeMap() {
-    return new RouteMap(() => { this.mapError = true; this.render(); },
-      key => this.focusRide(key), (key, sequence) => this.selection.focusSample(key, sequence));
-  }
+
   clearPrivate() {
-    this.stopWatch(); this.pendingUpdates = false; this.feedStatus = null;
-    this.resetting = true; cancelAnimationFrame(this.curveFrame); this.pendingFit = null; this.stopPlayback(true); this.tiles = false; this.mapError = false;
-    this.selection.clear(); this.tracks.clear(); this.routeMap.clear(); this.notice = null;
+    this.stopWatch();
+    this.pendingUpdates = false;
+    this.feedStatus = null;
+    this.resetting = true;
+    this.stopPlayback();
+    this.index = 0;
+    this.mapError = false;
+    this.selection.clear();
+    this.tracks.clear();
+    this.routeMap.clear();
     this.resetting = false;
   }
+
   historyChanged() {
-    const browser = this.browser;
+    const { browser } = this;
     if (!browser) return;
-    if (!browser.busy && browser.page?.rides.length && !this.selection.selected.size) {
-      const ride = browser.page.rides[0], epoch = browser.epoch;
-      this.resetting = true; this.selection.select(ride); this.resetting = false;
-      // Only saved local data; never implicitly fill a cloud detail.
-      if (ride.detail_saved === true) queueMicrotask(() => {
-        if (this.isConnected && browser.current(epoch) && this.selection.primary === trackKey(ride.device_id, ride)) void this.readRoute(ride);
-      });
-    }
+    const first = browser.page?.rides[0];
+    if (!browser.busy && first && !this.selection.primary) this.choose(first);
     if (!browser.busy && browser.page) this.ensureWatch();
     this.render();
   }
-  stopWatch() { this.unwatch?.(); this.unwatch = null; this.watchSignature = null; }
+
+  stopWatch() {
+    this.unwatch?.();
+    this.unwatch = null;
+    this.watchSignature = null;
+  }
+
   bindConnection() {
     const connection = this.browser.hass?.connection;
     if (this.boundConnection === connection) return;
@@ -83,72 +76,82 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     connection.addEventListener('disconnected', this.connectionLost);
     connection.addEventListener('ready', this.connectionReady);
   }
+
   unbindConnection() {
     this.boundConnection?.removeEventListener('disconnected', this.connectionLost);
     this.boundConnection?.removeEventListener('ready', this.connectionReady);
     this.boundConnection = null;
   }
+
   ensureWatch() {
     const devices = [...this.browser.resolved.values()].sort();
     if (!devices.length || !this.isConnected) return;
     const signature = JSON.stringify([this.browser.hass.user.id, devices]);
     if (signature === this.watchSignature) return;
-    this.stopWatch(); this.watchSignature = signature;
+    this.stopWatch();
+    this.watchSignature = signature;
     const epoch = this.browser.epoch;
     const stop = watchHistory(this.browser.hass, devices, event => {
       if (this.browser.current(epoch)) this.historyUpdate(event);
     });
-    if (signature === this.watchSignature) this.unwatch = stop; else stop();
+    if (signature === this.watchSignature) this.unwatch = stop;
+    else stop();
   }
+
   historyUpdate(event) {
     if (event.type === 'denied') {
-      this.browser.reset(); this.browser.error = 'denied'; this.render(); return;
+      this.browser.reset();
+      this.browser.error = 'denied';
+      this.render();
+      return;
     }
-    if (event.type === 'retrying' && event.reason === 'temporary') { this.setFeedStatus('feed_retrying'); return; }
-    if (event.type === 'retrying') {
-      this.resetting = true; this.stopPlayback(true); this.selection.clear(); this.tracks.clear(); this.routeMap.clear();
-      this.browser.page = null; this.browser.streams = []; this.browser.details.clear();
-      this.resetting = false; this.feedStatus = 'feed_retrying'; this.render(); return;
+    if (event.type === 'retrying' && event.reason !== 'temporary') {
+      // An invalidated view must drop its GPS even while the feed reconnects.
+      this.resetting = true;
+      this.stopPlayback();
+      this.selection.clear();
+      this.tracks.clear();
+      this.routeMap.clear();
+      this.browser.page = null;
+      this.browser.streams = [];
+      this.browser.details.clear();
+      this.resetting = false;
     }
-    if (event.type === 'unavailable' || event.type === 'unsupported') {
-      this.setFeedStatus(event.type === 'unsupported' ? 'feed_unsupported' : 'feed_unavailable'); return;
+    if (['retrying', 'unavailable', 'unsupported'].includes(event.type)) {
+      this.feedStatus = `feed_${event.type}`;
+      this.render();
+      return;
     }
-    this.setFeedStatus(null);
-    if (!this.browser.page) { this.browser.error = null; void this.browser.read(); return; }
-    const changed = event.vehicles.some(row => this.browser.streams.find(stream => stream.device === row.device_id)?.revision !== row.selection_version);
+    this.feedStatus = null;
+    if (!this.browser.page) {
+      this.browser.error = null;
+      void this.browser.read();
+      return;
+    }
+    const changed = event.vehicles.some(row =>
+      this.browser.streams.find(stream => stream.device === row.device_id)?.revision !== row.selection_version);
     if (event.type === 'changed' || changed) {
       this.pendingUpdates = true;
       for (const track of this.tracks.tracks.values()) track.stale = true;
       if (changed) this.browser.page.next_cursor = null;
     }
-    if (this.pendingUpdates) {
-      if (!this.shadowRoot.querySelector('[data-update-banner]')) {
-        const banner = this.button(this.labels().history_updated, () => void this.refreshLocal());
-        banner.dataset.updateBanner = 'true';
-        this.shadowRoot.querySelector('.workbench')?.before(banner);
-      }
-      if (changed) { const next = this.shadowRoot.querySelector('.rides footer button'); if (next) next.disabled = true; }
-    }
-  }
-  setFeedStatus(value) {
-    this.feedStatus = value;
-    this.shadowRoot.querySelector('[data-feed-status]')?.remove();
-    if (value) { const note = element('p', this.labels()[value], 'note'); note.dataset.feedStatus = 'true'; this.shadowRoot.querySelector('.workbench')?.before(note); }
-  }
-  async refreshLocal() {
-    this.stopWatch(); this.pendingUpdates = false;
-    for (const track of this.tracks.tracks.values()) track.stale = true;
-    await this.browser.read();
-    if (this.browser.error || !this.browser.active) return;
-    for (const ride of this.browser.page?.rides ?? []) this.selection.update(ride);
-    const ride = this.selection.selected.get(this.selection.primary);
-    if (ride && this.tracks.tracks.get(this.selection.primary)?.stale) await this.readRoute(ride);
     this.render();
   }
-  focusRide(key) {
-    this.selection.activate(key);
-    if (this.tracks.tracks.get(key)?.stale) void this.readRoute(this.selection.selected.get(key));
+
+  async refreshLocal() {
+    this.stopPlayback();
+    this.stopWatch();
+    this.pendingUpdates = false;
+    for (const track of this.tracks.tracks.values()) track.stale = true;
+    const epoch = this.browser.epoch;
+    await this.browser.read();
+    if (!this.browser.current(epoch) || this.browser.error) return;
+    for (const ride of this.browser.page?.rides ?? []) this.selection.update(ride);
+    const ride = this.activeRide;
+    if (ride && ride.detail_saved !== false) await this.readRoute(ride);
+    this.render();
   }
+
   setConfig(config) { this.browser.configure(config); }
   set hass(hass) {
     const oldLanguage = this.browser.hass?.language;
@@ -156,339 +159,404 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     if (this.isConnected) this.bindConnection();
     if (oldLanguage !== hass.language) this.render();
   }
-  connectedCallback() { document.addEventListener('visibilitychange', this.visibility); this.bindConnection(); this.browser.connect(); this.render(); }
-  disconnectedCallback() { document.removeEventListener('visibilitychange', this.visibility); this.unbindConnection(); this.browser.disconnect(); this.clearPrivate(); }
-  getCardSize() { return 12; }
+  connectedCallback() {
+    document.addEventListener('visibilitychange', this.visibility);
+    this.bindConnection();
+    this.browser.connect();
+    this.render();
+  }
+  disconnectedCallback() {
+    document.removeEventListener('visibilitychange', this.visibility);
+    this.unbindConnection();
+    this.browser.disconnect();
+  }
+  getCardSize() { return 10; }
   getGridOptions() { return { columns: 12, min_columns: 6 }; }
   static getConfigElement() { return document.createElement('ninebot-trip-card-editor'); }
   static getStubConfig(hass) {
-    const entity = Object.keys(hass.states).find(id => id.startsWith('calendar.') && hass.states[id].attributes.source === 'ride_archive');
+    const entity = Object.keys(hass.states).find(id =>
+      id.startsWith('calendar.') && hass.states[id].attributes.source === 'ride_archive');
     return entity ? { entity } : { device_id: 'REPLACE_WITH_VEHICLE_DEVICE_ID' };
   }
+
   labels() {
     const locale = this.browser.hass?.language ?? 'en';
     return LABELS[locale] ?? (locale.startsWith('zh') ? LABELS['zh-Hans'] : LABELS[locale.split('-')[0]]) ?? LABELS.en;
   }
-  number(value, precision, unit = '', preserveZero = false) {
+  number(value, precision, unit = '') {
     if (!Number.isFinite(value)) return '—';
     const language = this.browser.hass?.locale?.language ?? this.browser.hass?.language ?? 'en';
-    const n = new Intl.NumberFormat(language, { minimumFractionDigits: value === 0 && !preserveZero ? 0 : digits(precision),
-      maximumFractionDigits: value === 0 && !preserveZero ? 0 : digits(precision) }).format(value);
+    const places = value === 0 ? 0 : digits(precision);
+    const n = new Intl.NumberFormat(language, { minimumFractionDigits: places, maximumFractionDigits: places }).format(value);
     return `${n}${unit ? ` ${unit}` : ''}`;
   }
-  duration(value, seconds = null) {
+  duration(value, seconds) {
     const locale = this.browser.hass?.locale?.language ?? this.browser.hass?.language ?? 'en';
     return formatRideDuration(seconds, value, locale);
   }
   timestamp(value) {
-    if (!value || Number.isNaN(new Date(value).getTime())) return '—';
+    if (!value || !Number.isFinite(Date.parse(value))) return '—';
     return new Intl.DateTimeFormat(this.browser.hass?.language ?? 'en', {
       timeZone: this.browser.hass?.config?.time_zone ?? 'Asia/Shanghai',
-      dateStyle: 'medium', timeStyle: 'medium',
+      dateStyle: 'medium', timeStyle: 'short',
     }).format(new Date(value));
   }
-  button(text, action) {
-    const button = element('button', text); button.type = 'button'; button.disabled = this.browser.busy || this.tracks.busy;
-    button.addEventListener('click', action); return button;
+  metrics(ride) {
+    return [
+      Number.isFinite(ride.distance_m) ? this.number(ride.distance_m / 1000, ride.precision.mileages, 'km') : null,
+      Number.isFinite(ride.duration_s) || Number.isFinite(ride.duration_h) ? this.duration(ride.duration_h, ride.duration_s) : null,
+      Number.isFinite(ride.energy_wh) ? this.number(ride.energy_wh, ride.precision.ec, 'Wh') : null,
+    ].filter(Boolean).join(' · ');
   }
-  metrics(ride, labels) {
-    const dl = element('dl');
-    for (const [name, value] of [
-      [labels.ride_time, formatRideInterval(ride.start_time, ride.end_time,
-        this.browser.hass?.language ?? 'en', this.browser.hass?.config?.time_zone ?? 'Asia/Shanghai')],
-      [labels.distance, this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')],
-      [labels.duration, this.duration(ride.duration_h, ride.duration_s)],
-      [labels.max_speed, this.number(ride.max_speed_m_s === null ? null : ride.max_speed_m_s * 3.6, 0, 'km/h')],
-      [labels.avg_speed, this.number(ride.average_speed_m_s === null ? null : ride.average_speed_m_s * 3.6, 1, 'km/h')],
-      [labels.energy, this.number(ride.energy_wh, 0, 'Wh')],
-      [labels.ride_energy_intensity, this.number(ride.energy_intensity_wh_per_km, 1, 'Wh/km')],
-      [labels.observed, this.timestamp(ride.received_at)],
-    ]) { dl.append(element('dt', name), element('dd', value)); }
-    return dl;
-  }
-  stopPlayback(clearFocus = false) {
-    clearInterval(this.playback); this.playback = null; this.playKey = null;
-    if (this.playButton) this.playButton.textContent = this.labels().play_points;
-    this.playButton = null;
-    if (clearFocus) this.routeMap?.highlight();
-  }
+
+  get busy() { return this.browser.busy || this.tracks.busy; }
+  get activeRide() { return this.selection.selected.get(this.selection.primary); }
+  get activeTrack() { return this.tracks.tracks.get(this.selection.primary); }
+
   choose(ride, compare = false) {
-    if (this.browser.busy || this.tracks.busy) return;
-    this.resetting = true;
-    const accepted = this.selection.select(ride, compare);
-    if (accepted) {
-      const key = trackKey(ride.device_id, ride);
-      if (!this.routeMap.groups.has(key)) this.pendingFit = key;
-      // Reuse up to five same-scope tracks when switching the focused record.
-      this.notice = null;
-    } else this.notice = this.labels().selection_limit;
-    this.resetting = false; this.render();
-    if (accepted && ride.detail_saved === true) void this.readRoute(ride);
-  }
-  removeRide(key) {
-    if (this.tracks.busy) return;
-    this.resetting = true; this.selection.remove(key); this.tracks.remove(key); this.resetting = false;
-    this.render();
-  }
-  async readRoute(ride) {
-    const key = trackKey(ride.device_id, ride);
-    if (!this.browser.active || this.browser.busy || this.tracks.busy ||
-        (!this.browser.page?.rides.includes(ride) && !this.selection.selected.has(key))) return;
-    if (!this.selection.selected.has(key) && !this.selection.select(ride, true)) return;
-    this.selection.activate(key);
-    if (this.mapError) { this.routeMap.clear(); this.routeMap = this.makeMap(); }
+    if (this.busy || !ride?.ride_id || !this.browser.active) return;
+    if (compare && this.selection.selected.size >= 5) return;
+    this.stopPlayback();
+    this.index = 0;
     this.mapError = false;
-    if (!this.tracks.tracks.has(key)) {
-      this.pendingFit = key;
-      // A cached inactive ride must not evict a still-selected comparison track.
-      this.resetting = true;
-      for (const cached of this.tracks.tracks.keys()) {
-        if (this.tracks.tracks.size < 5) break;
-        if (!this.selection.selected.has(cached)) this.tracks.remove(cached);
-      }
-      this.resetting = false;
+    if (!this.selection.select(ride, compare)) return;
+    // The only automatic detail read is through the authenticated local archive.
+    if (ride.detail_saved === true && !this.activeTrack?.complete) void this.readRoute(ride);
+    else if (this.activeTrack?.stale) void this.readRoute(ride);
+    else if (this.activeTrack) this.routeMap.fit();
+  }
+
+  activate(key) {
+    if (!this.selection.selected.has(key) || key === this.selection.primary || this.busy) return;
+    this.stopPlayback();
+    this.index = 0;
+    this.selection.activate(key);
+    if (this.activeTrack?.stale) void this.readRoute(this.activeRide);
+  }
+
+  removeRide(key) {
+    if (this.busy) return;
+    if (key === this.selection.primary) {
+      this.stopPlayback();
+      this.index = 0;
+    }
+    this.selection.remove(key);
+  }
+
+  async readRoute(ride = this.activeRide, continuation = false) {
+    if (!ride || this.busy || !this.browser.active || ride.detail_saved === false) return;
+    const key = trackKey(ride.device_id, ride);
+    if (!this.selection.selected.has(key)) return;
+    const previous = this.tracks.tracks.get(key);
+    this.stopPlayback();
+    if (!continuation) this.index = 0;
+    this.mapError = false;
+    if (!previous && this.tracks.tracks.size >= 5) {
+      const inactive = [...this.tracks.tracks.keys()].find(cached => !this.selection.selected.has(cached));
+      if (inactive) this.tracks.remove(inactive);
     }
     const epoch = this.browser.epoch;
-    await this.tracks.read(ride.device_id, ride, { refresh: this.tracks.tracks.get(key)?.stale === true });
-    const summary = this.tracks.tracks.get(key)?.summary;
-    if (summary && this.browser.current(epoch)) { this.selection.update(summary); this.render(); }
+    await this.tracks.read(ride.device_id, ride, { refresh: previous?.stale === true });
+    if (this.browser.current(epoch) && !previous && this.activeTrack?.key === key) this.routeMap.fit();
   }
-  updateFocus() {
-    const focus = this.selection.focus;
-    const track = focus && this.tracks.tracks.get(focus.key);
-    const point = track?.points.find(point => point.sequence === focus.sequence);
+
+  stopPlayback() {
+    if (this.playback) clearInterval(this.playback);
+    this.playback = null;
+    this.updateTransport();
+  }
+
+  playOrPause() {
+    const track = this.activeTrack;
+    if (!this.canReplay(track)) return;
+    if (this.playback) {
+      this.stopPlayback();
+      return;
+    }
+    if (this.index >= track.points.length - 1) this.index = 0;
+    const step = Math.max(1, Math.ceil((track.points.length - 1) / 250));
+    this.playback = setInterval(() => {
+      this.index = Math.min(this.index + step, track.points.length - 1);
+      if (this.index === track.points.length - 1) this.stopPlayback();
+      else this.updateTransport();
+    }, 100);
+    this.updateTransport();
+  }
+
+  canReplay(track) {
+    return track?.kind === 'sampled_unverified' && track.points.length > 1;
+  }
+
+  button(text, action, className = '') {
+    const button = element('button', text, className);
+    button.type = 'button';
+    button.addEventListener('click', action);
+    return button;
+  }
+  iconButton(icon, action, className) {
+    const button = this.button('', action, className);
+    const symbol = element('ha-icon');
+    symbol.setAttribute('icon', icon);
+    button.append(symbol);
+    // Browser test fixtures and minimal dashboards can render without HA icons.
+    symbol.textContent = { 'mdi:play': '▶', 'mdi:rewind': '↶', 'mdi:fit-to-screen-outline': '⌖' }[icon] ?? '';
+    return button;
+  }
+  nameControl(control, text) {
+    control.title = text;
+    control.setAttribute('aria-label', text);
+  }
+
+  installLayout() {
+    const card = element('ha-card'), bar = element('header', '', 'bar');
+    const title = element('h2'), filters = element('details', '', 'filters'), range = element('summary');
+    const toolbar = element('div', '', 'toolbar'), messages = element('div', '', 'messages');
+    messages.setAttribute('role', 'status');
+    filters.append(range, toolbar);
+    bar.append(title, filters);
+    const layout = element('div', '', 'layout'), player = element('section', '', 'player');
+    const frame = element('div', '', 'map-frame'), placeholder = element('p', '', 'map-placeholder');
+    this.routeMap.element.className = 'map-surface';
+    const fit = this.iconButton('mdi:fit-to-screen-outline', () => this.routeMap.fit(), 'fit');
+    frame.append(this.routeMap.element, placeholder, fit);
+    const transport = element('div', '', 'transport'), now = element('div');
+    const name = element('p', '', 'track-title'), metrics = element('p', '', 'ride-metrics');
+    now.append(name, metrics);
+    const compare = element('div', '', 'compare-list'), controls = element('div', '', 'controls');
+    const restart = this.iconButton('mdi:rewind', () => { this.index = 0; this.stopPlayback(); });
+    const play = this.iconButton('mdi:play', () => this.playOrPause(), 'play');
+    restart.dataset.control = 'restart';
+    play.dataset.control = 'play';
+    const scrubber = element('label', '', 'scrubber'), slider = element('input'), sample = element('span');
+    slider.type = 'range'; slider.min = '0'; slider.step = '1'; slider.dataset.control = 'scrub';
+    slider.addEventListener('input', () => { this.index = Number(slider.value); this.stopPlayback(); });
+    scrubber.append(slider, sample);
+    controls.append(restart, play, scrubber);
+    const quality = element('div', '', 'note'), more = element('div');
+    transport.append(now, compare, controls, quality, more);
+    player.append(frame, transport);
+    const list = element('section', '', 'rides'), listHeading = element('h3');
+    const coverage = element('p', '', 'note'), items = element('div', '', 'items'), pager = element('footer', '', 'pager');
+    list.append(listHeading, coverage, items, pager);
+    layout.append(player, list);
+    card.append(bar, messages, layout);
+    this.shadowRoot.append(element('style', HISTORY_STYLE), card);
+    this.ui = { title, range, toolbar, messages, placeholder, fit, name, metrics, compare, controls, restart,
+      play, slider, sample, quality, more, listHeading, coverage, items, pager };
+  }
+
+  updateTransport() {
+    if (this.resetting || !this.ui) return;
+    const { controls, restart, play, slider, sample } = this.ui;
+    const track = this.activeTrack, labels = this.labels();
+    const enabled = this.canReplay(track);
+    controls.hidden = !enabled;
+    this.nameControl(restart, labels.replay_restart);
+    this.nameControl(play, this.playback ? labels.pause_points : labels.play_points);
+    const icon = play.firstElementChild;
+    icon.setAttribute('icon', this.playback ? 'mdi:pause' : 'mdi:play');
+    icon.textContent = this.playback ? '⏸' : '▶';
+    play.disabled = this.busy;
+    restart.disabled = this.busy;
+    slider.disabled = this.busy;
+    const index = Math.min(this.index, (track?.points.length ?? 1) - 1);
+    slider.max = String(Math.max(0, (track?.points.length ?? 1) - 1));
+    slider.value = String(Math.max(0, index));
+    slider.setAttribute('aria-label', labels.point_sequence);
+    const point = enabled ? track.points[index] : null;
+    sample.textContent = point ? `${index + 1} / ${track.points.length}` : '';
+    slider.setAttribute('aria-valuetext', point ? `${labels.point_sequence} ${point.sequence}` : '');
     this.routeMap.highlight(point);
-    this.routeMap.brush(this.selection.brush);
-    for (const binding of this.focusBindings) {
-      const brush = this.selection.brush;
-      binding.range.textContent = brush?.key === binding.key ? `${this.labels().sample_selection}: ${brush.start}–${brush.end}` : '';
-      if (focus?.key !== binding.key || !point) { binding.status.textContent = ''; continue; }
-      const index = track.points.indexOf(point);
-      binding.input.value = String(index);
-      binding.status.textContent = `${this.labels().point_sequence}: ${point.sequence} · ${this.labels().point_speed}: ${point.speed_raw ?? '—'} · ${this.labels().point_distance}: ${point.distance_delta_raw ?? '—'}`;
-    }
-    for (const curve of this.curves) {
-      const x = sequence => 8 + (sequence - curve.first) / (curve.last - curve.first || 1) * 284;
-      const visible = focus?.key === curve.key && focus.sequence >= curve.first && focus.sequence <= curve.last;
-      curve.line.setAttribute('visibility', visible ? 'visible' : 'hidden');
-      if (visible) { curve.line.setAttribute('x1', x(focus.sequence)); curve.line.setAttribute('x2', x(focus.sequence)); }
-      const brush = this.selection.brush;
-      curve.region.setAttribute('visibility', brush?.key === curve.key ? 'visible' : 'hidden');
-      if (brush?.key === curve.key) {
-        curve.region.setAttribute('x', x(brush.start)); curve.region.setAttribute('width', Math.max(0, x(brush.end) - x(brush.start)));
-      }
-    }
   }
-  pointControls(key, track, labels) {
-    const controls = element('div', '', 'samples'), status = element('p', '', 'note'), range = element('p', '', 'note');
-    const label = element('label', labels.point_sequence), input = element('input'); input.type = 'range';
-    input.min = '0'; input.max = String(Math.max(0, track.points.length - 1)); input.step = '1'; input.value = '0';
-    input.setAttribute('aria-label', `${labels.point_sequence} · ${track.label}`);
-    input.dataset.control = `samples:${key}`; input.disabled = !track.points.length;
-    const show = () => {
-      const point = track.points[Number(input.value)];
-      if (point) this.selection.focusSample(key, point.sequence);
-    };
-    input.addEventListener('input', () => { this.stopPlayback(); show(); });
-    const play = this.button(labels.play_points, () => {
-      if (this.playback) { this.stopPlayback(); return; }
-      this.stopPlayback(); show(); this.playKey = key; this.playButton = play;
-      play.textContent = labels.pause_points;
-      const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      this.playback = setInterval(() => {
-        if (!input.isConnected || document.hidden || Number(input.value) >= track.points.length - 1) { this.stopPlayback(); return; }
-        input.value = String(Number(input.value) + 1); show();
-      }, reduced ? 1500 : 500);
-    });
-    play.disabled ||= track.points.length < 2;
-    this.focusBindings.push({ key, input, status, range });
-    label.append(input); controls.append(label, play, status, range, element('p', labels.playback_note, 'note'));
-    return controls;
-  }
-  curve(parent, title, samples, field, key = null) {
-    const values = samples.filter(point => Number.isFinite(point[field]));
-    const paths = samplePaths(values.map(point => ({ sequence: point.sequence, speed_raw: point[field],
-      segment: point[field === 'speed_raw' ? 'speed_segment' : 'distance_segment'] })));
-    if (!paths.length) return;
-    parent.append(element('p', title, 'note'));
-    const svgElement = tag => document.createElementNS('http://www.w3.org/2000/svg', tag);
-    const svg = svgElement('svg'); svg.setAttribute('viewBox', '0 0 300 100');
-    svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', title);
-    const region = svgElement('rect'); region.setAttribute('y', 0); region.setAttribute('height', 100);
-    region.setAttribute('fill', 'var(--primary-color)'); region.setAttribute('opacity', .18); svg.append(region);
-    for (const points of paths) {
-      const line = svgElement('polyline'); line.setAttribute('points', points); line.setAttribute('fill', 'none');
-      line.setAttribute('stroke', 'var(--primary-color)'); line.setAttribute('stroke-width', '2'); svg.append(line);
-    }
-    const line = svgElement('line'); line.setAttribute('y1', 0); line.setAttribute('y2', 100);
-    line.setAttribute('stroke', 'var(--primary-text-color)'); line.setAttribute('pointer-events', 'none'); svg.append(line);
-    const first = values[0].sequence, last = values.at(-1).sequence;
-    this.curves.push({ key, first, last, line, region });
-    if (key) {
-      const nearest = event => {
-        const bounds = svg.getBoundingClientRect();
-        const sequence = first + Math.max(0, Math.min(1, ((event.clientX - bounds.left) / bounds.width * 300 - 8) / 284)) * (last - first);
-        return values.reduce((best, value) => Math.abs(value.sequence - sequence) < Math.abs(best.sequence - sequence) ? value : best).sequence;
-      };
-      let start = null;
-      svg.addEventListener('pointermove', event => {
-        const sequence = nearest(event);
-        cancelAnimationFrame(this.curveFrame);
-        this.curveFrame = requestAnimationFrame(() => { if (svg.isConnected) this.selection.focusSample(key, sequence); });
-      });
-      svg.addEventListener('pointerdown', event => { start = nearest(event); svg.setPointerCapture(event.pointerId); });
-      svg.addEventListener('pointerup', event => {
-        if (start !== null) this.selection.brushSamples(key, start, nearest(event));
-        start = null;
-      });
-      svg.addEventListener('pointercancel', () => { start = null; });
-    }
-    parent.append(svg, element('p', `${this.labels().sample_axis}: ${first}–${last}`, 'note'));
-  }
-  provenance(parent, ride, labels) {
-    const info = element('details'); info.append(element('summary', labels.source_fields));
-    info.append(element('p', `${ride.source_mode === 'ninecli' ? labels.cloud : labels.local} · ${ride.source ?? '—'} · ${ride.parser_contract ?? '—'} · ${labels.ride_id}: ${ride.ride_id}`, 'note'));
-    const text = Object.entries(ride.field_provenance).filter(([, value]) => value)
-      .map(([key, value]) => `${key}: ${value}`).join(' · ');
-    if (text) info.append(element('p', text, 'note'));
-    if (ride.used_electricity_raw !== null) info.append(element('p', `${labels.unknown_units}: ${ride.used_electricity_raw}`, 'note'));
-    parent.append(info);
-  }
-  routeActions(parent, ride, labels) {
-    const key = trackKey(ride.device_id, ride), saved = this.tracks.tracks.get(key);
-    const detail = this.browser.details.get(key), displayed = detail ?? ride;
-    const route = this.button(saved && !saved.complete ? labels.more_track : labels.show_track, () => void this.readRoute(ride));
-    route.disabled ||= (saved?.complete && !saved.stale) || displayed.detail_saved === false;
-    parent.append(route);
-    if (displayed.detail_saved === false) parent.append(element('p', labels.detail_missing, 'note'));
-    const source = this.browser.page?.rides.find(row => trackKey(row.device_id, row) === key);
-    if (source) {
-      const cloud = this.button(labels.cloud_detail, () => void this.browser.detail(source));
-      cloud.disabled ||= !source.detail_id; parent.append(cloud);
-    }
-  }
-  render() {
-    if (this.resetting || !this.browser?.config) return;
-    this.stopPlayback(); cancelAnimationFrame(this.curveFrame);
-    const active = this.shadowRoot.activeElement?.dataset.control;
-    const scroll = this.shadowRoot.querySelector('.rides')?.scrollTop ?? 0;
-    this.focusBindings = []; this.curves = [];
-    const browser = this.browser, labels = this.labels(), card = element('ha-card');
-    card.append(element('h2', browser.config.title ?? labels.title));
-    const toolbar = element('div', '', 'toolbar');
+
+  renderFilters(labels) {
+    const { browser, ui } = this;
+    ui.range.textContent = `${labels.filters} · ${browser.start} – ${browser.end}`;
+    const fragment = document.createDocumentFragment();
     if (browser.targets.length > 1) browser.targets.forEach((target, index) => {
-      const label = element('label', target.name ?? browser.hass?.states?.[target.entity]?.attributes?.friendly_name ?? target.entity ?? target.device_id);
-      const input = element('input'); input.type = 'checkbox'; input.checked = browser.selected.has(index);
-      input.disabled = browser.busy || this.tracks.busy;
-      input.addEventListener('change', () => browser.select(index, input.checked)); label.prepend(input); toolbar.append(label);
+      const label = element('label', target.name ?? formatEntityLabel(browser.hass,
+        browser.hass?.states?.[target.entity], target.entity ?? target.device_id), 'check');
+      const input = element('input');
+      input.type = 'checkbox';
+      input.checked = browser.selected.has(index);
+      input.disabled = this.busy;
+      input.dataset.control = `vehicle:${index}`;
+      input.addEventListener('change', () => browser.select(index, input.checked));
+      label.prepend(input);
+      fragment.append(label);
     });
-    for (const [key, text] of [['start', labels.start_date], ['end', labels.end_date]]) {
-      const label = element('label', text), input = element('input'); input.type = 'date'; input.value = browser[key];
-      input.disabled = browser.busy || this.tracks.busy; input.setAttribute('aria-label', text); input.dataset.control = key;
-      input.addEventListener('change', () => browser.dates(key === 'start' ? input.value : browser.start, key === 'end' ? input.value : browser.end));
-      label.append(input); toolbar.append(label);
+    for (const [key, title] of [['start', labels.start_date], ['end', labels.end_date]]) {
+      const label = element('label', title), input = element('input');
+      input.type = 'date';
+      input.value = browser[key];
+      input.required = true;
+      input.disabled = this.busy;
+      input.dataset.control = key;
+      input.addEventListener('change', () => {
+        if (input.value) browser.dates(key === 'start' ? input.value : browser.start,
+          key === 'end' ? input.value : browser.end);
+      });
+      label.append(input);
+      fragment.append(label);
     }
-    for (const kind of ['recent', 'last_7', 'last_30', 'previous_month', 'next_month']) toolbar.append(this.button(labels[kind], () => browser.range(kind)));
-    toolbar.append(this.button(labels.refresh, () => void this.refreshLocal()));
-    const filters = element('details', '', 'filters'); filters.open = this.filtersOpen === true;
-    filters.append(element('summary', `${labels.filters} · ${browser.start}–${browser.end}`), toolbar);
-    filters.addEventListener('toggle', () => { if (filters.isConnected) this.filtersOpen = filters.open; });
-    card.append(filters);
-    card.append(element('p', `${labels.local} · Asia/Shanghai · ${labels.workbench_note}`, 'note'));
-    for (const [text, style] of [[labels[browser.error], 'error'], [browser.busy || this.tracks.busy ? labels.loading : null, 'note'],
-      [this.tracks.error ? labels[this.tracks.error] ?? labels.track_error : null, 'error'], [this.notice, 'note']]) if (text) card.append(element('p', text, style));
-    if (this.pendingUpdates) { const banner = this.button(labels.history_updated, () => void this.refreshLocal()); banner.dataset.updateBanner = 'true'; card.append(banner); }
-    if (this.feedStatus) { const note = element('p', labels[this.feedStatus], 'note'); note.dataset.feedStatus = 'true'; card.append(note); }
-    const bench = element('div', '', 'workbench'), main = element('section', '', 'main'), list = element('section', '', 'rides');
-    const detailsArea = element('section', '', 'ride-detail');
-    main.setAttribute('aria-label', labels.map); list.setAttribute('aria-label', labels.title);
-    bench.append(main, list, detailsArea); card.append(bench);
-    const selected = [...this.selection.selected.entries()], chips = element('div', '', 'chips');
-    for (const [key, ride] of selected) {
-      const button = this.button(`${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`, () => this.focusRide(key));
-      button.setAttribute('aria-pressed', key === this.selection.primary); chips.append(button);
+    const quick = element('div', '', 'quick');
+    for (const kind of ['last_7', 'last_30', 'previous_month', 'next_month', 'recent']) {
+      const button = this.button(labels[kind], () => browser.range(kind));
+      button.disabled = this.busy;
+      button.dataset.control = kind;
+      quick.append(button);
     }
-    main.append(chips);
-    const tracks = [...this.tracks.tracks.values()].filter(track => this.selection.selected.has(track.key));
-    if (tracks.length) {
-      const controls = element('div', '', 'toolbar');
-      controls.append(this.button(labels.fit_routes, () => this.routeMap.fit()),
-        this.button(this.tiles ? labels.disable_tiles : labels.enable_tiles, () => { this.tiles = !this.tiles; this.render(); }),
-        this.button(labels.clear_tracks, () => { this.clearPrivate(); this.render(); }));
-      main.append(controls, element('p', labels.coordinate_note, 'note'), element('p', labels.tile_privacy, 'note'));
-      if (this.mapError) main.append(element('p', labels.map_error, 'error')); else main.append(this.routeMap.element);
-    } else { this.routeMap.clear(); main.append(element('p', labels.map_placeholder, 'placeholder')); }
-    if (selected.length > 1) {
-      const values = selected.map(([key, ride]) => browser.details.get(key) ?? ride);
-      // These are selected-record totals, never a claim about all filtered history.
-      const total = field => values.every(ride => Number.isFinite(ride[field])) ? values.reduce((n, ride) => n + ride[field], 0) : null;
-      main.append(element('p', `${labels.selected_total} (${values.length}) · ${this.number(total('distance_m') === null ? null : total('distance_m') / 1000, 1, 'km')} · ${this.duration(total('duration_h'), total('duration_s'))} · ${this.number(total('energy_wh'), 0, 'Wh')}`, 'note'));
+    const refresh = this.button(labels.refresh, () => void this.refreshLocal());
+    refresh.disabled = this.busy || browser.start > browser.end || !browser.selected.size;
+    refresh.dataset.control = 'refresh';
+    quick.append(refresh);
+    fragment.append(quick);
+    ui.toolbar.replaceChildren(fragment);
+  }
+
+  renderMessages(labels) {
+    const status = [];
+    const error = this.browser.error || this.tracks.error;
+    if (error) status.push(element('p', labels[error] ?? labels.track_error, 'error'));
+    if (this.busy) status.push(element('p', labels.loading, 'note'));
+    if (this.pendingUpdates) {
+      const refresh = this.button(labels.history_updated, () => void this.refreshLocal());
+      refresh.disabled = this.busy;
+      refresh.dataset.control = 'latest';
+      status.push(refresh);
     }
-    const primary = this.selection.primary, ride = this.selection.selected.get(primary);
-    if (ride) {
-      const detail = browser.details.get(primary), displayed = detail ?? ride;
-      const panel = element('section', '', 'primary'); panel.dataset.key = primary;
-      panel.append(element('h3', `${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`), this.metrics(displayed, labels));
-      this.routeActions(panel, ride, labels);
-      panel.append(this.button(labels.remove_track, () => this.removeRide(primary)));
-      const track = this.tracks.tracks.get(primary);
-      if (track) {
-        if (track.stale) panel.append(element('p', labels.history_updated, 'note'));
-        panel.append(element('p', `${labels.track_points}: ${track.valid_read}/${track.total ?? '—'} · ${track.kind === 'server_simplified' ? labels.simplified : labels.unverified_track}` +
-          (track.capped ? ` · ${labels.display_limit}` : '') + (track.complete ? '' : ` · ${labels.partial_track}`), 'note'));
-        if (track.partial) panel.append(element('p', labels.partial_archive, 'note'));
-        panel.append(this.pointControls(primary, track, labels));
-        this.curve(panel, labels.samples, track.points, 'speed_raw', primary);
-        this.curve(panel, labels.distance_samples, track.points, 'distance_delta_raw', primary);
-      } else {
-        this.curve(panel, labels.samples, displayed.speed_samples, 'speed_raw', primary);
-        this.curve(panel, labels.distance_samples, displayed.distance_samples, 'distance_delta_raw', primary);
+    if (this.feedStatus) status.push(element('p', labels[this.feedStatus], 'note'));
+    this.ui.messages.replaceChildren(...status);
+  }
+
+  renderRideList(labels) {
+    const { page, pageNumber } = this.browser;
+    const { listHeading, coverage, items, pager } = this.ui;
+    listHeading.textContent = labels.title;
+    coverage.textContent = page ? [
+      [labels.enumerated, page.coverage.enumerated_months],
+      [labels.partial, page.coverage.partial_months],
+      [labels.missing, page.coverage.missing_months],
+      [labels.unknown, page.coverage.unknown_months],
+    ].filter(([, value]) => value?.length).map(([label, value]) => `${label} ${value.length}`).join(' · ') : '';
+    const rows = page?.rides ?? [];
+    const scroll = items.scrollTop;
+    items.replaceChildren(...rows.map((ride, index) => {
+      const key = trackKey(ride.device_id, ride), row = element('article', '', 'ride');
+      const selected = this.selection.selected.has(key);
+      const choose = this.button('', () => this.choose(ride), 'choose');
+      choose.append(element('strong', ride.vehicle_label), element('small',
+        [this.timestamp(ride.start_time), this.metrics(ride)].filter(Boolean).join(' · ')));
+      choose.dataset.control = `ride:${index}`;
+      choose.disabled = this.busy;
+      choose.setAttribute('aria-pressed', String(key === this.selection.primary));
+      choose.addEventListener('keydown', event => {
+        const nextIndex = index + (event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0);
+        if (nextIndex === index || !rows[nextIndex]) return;
+        event.preventDefault();
+        items.querySelectorAll('.choose')[nextIndex]?.focus();
+      });
+      const overlay = this.button(selected ? '−' : '+',
+        () => selected ? this.removeRide(key) : this.choose(ride, true), 'compare');
+      this.nameControl(overlay, `${selected ? labels.remove_track : labels.compare} · ${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`);
+      overlay.setAttribute('aria-pressed', String(selected));
+      overlay.dataset.control = `overlay:${index}`;
+      overlay.disabled = this.busy || (!selected && this.selection.selected.size >= 5);
+      row.append(choose, overlay);
+      return row;
+    }));
+    if (page && !rows.length) items.append(element('p', labels.empty, 'note'));
+    items.scrollTop = scroll;
+    const next = this.button(labels.next, () => void this.browser.read(page.next_cursor));
+    next.disabled = this.busy || !page?.next_cursor;
+    next.dataset.control = 'next';
+    pager.replaceChildren(...(page && (page.next_cursor || pageNumber > 1) ?
+      [element('span', `${labels.page} ${pageNumber}`, 'note'), next] : []));
+  }
+
+  renderMap(labels) {
+    const { ui } = this;
+    const active = this.activeRide, track = this.activeTrack;
+    const tracks = [...this.selection.selected.keys()].map(key => this.tracks.tracks.get(key))
+      .filter(item => item?.points.length);
+    const showMap = tracks.length > 0 && !this.mapError;
+    this.routeMap.element.hidden = !showMap;
+    ui.fit.hidden = !showMap;
+    ui.placeholder.hidden = showMap;
+    ui.placeholder.textContent = this.mapError ? labels.map_error : track && !track.points.length ?
+      labels.track_error : active?.detail_saved === false ? labels.detail_missing :
+        this.busy ? labels.loading : labels.map_placeholder;
+    this.nameControl(ui.fit, labels.fit_routes);
+    ui.name.textContent = active?.vehicle_label ?? '';
+    const interval = active && formatRideInterval(active.start_time, active.end_time,
+      this.browser.hass?.language ?? 'en', this.browser.hass?.config?.time_zone ?? 'Asia/Shanghai');
+    ui.metrics.textContent = active ? [interval, this.metrics(track?.summary ?? active)].filter(Boolean).join(' · ') : '';
+    const compare = this.selection.selected.size > 1 ? [...this.selection.selected].map(([key, ride]) => {
+      const index = tracks.findIndex(item => item.key === key);
+      const chip = this.button(ride.vehicle_label, () => this.activate(key));
+      chip.setAttribute('aria-pressed', String(key === this.selection.primary));
+      chip.dataset.control = `focus:${key}`;
+      chip.disabled = this.busy;
+      if (index >= 0) {
+        const swatch = element('span', '', 'swatch');
+        swatch.style.background = ROUTE_COLORS[index];
+        chip.prepend(swatch);
       }
-      if (displayed.local_partial) panel.append(element('p', labels.partial_archive, 'note'));
-      this.provenance(panel, displayed, labels); detailsArea.append(panel);
+      return chip;
+    }) : [];
+    ui.compare.replaceChildren(...compare);
+    const notes = [];
+    if (track) {
+      notes.push(`${labels.track_points} ${track.valid_read}/${track.total ?? '—'}`);
+      if (track.kind === 'server_simplified' || track.kind === 'single_point') notes.push(labels.simplified);
+      if (track.partial) notes.push(labels.partial_archive);
+      if (track.capped) notes.push(labels.display_limit);
+      if (this.canReplay(track)) notes.push(labels.playback_note);
     }
-    const page = browser.page;
-    if (page) {
-      const coverage = page.coverage;
-      list.append(element('p', `${labels.coverage} · ${labels.missing}: ${coverage?.missing_months?.length ?? '—'} · ${labels.partial}: ${coverage?.partial_months?.length ?? '—'} · ${labels.unknown}: ${coverage?.unknown_months?.length ?? '—'} · ${labels.enumerated}: ${coverage?.enumerated_months?.length ?? '—'}`, 'note'));
-      if (!page.rides.length) list.append(element('p', labels.empty));
-      for (const ride of page.rides) {
-        const key = trackKey(ride.device_id, ride), section = element('article', '', `ride${key === primary ? ' selected' : ''}`);
-        section.dataset.key = key;
-        const choose = this.button(`${ride.vehicle_label} · ${this.timestamp(ride.start_time)}\n${this.number(ride.distance_m === null ? null : ride.distance_m / 1000, 1, 'km')} · ${this.duration(ride.duration_h, ride.duration_s)}`, () => this.choose(ride));
-        choose.dataset.control = `ride:${key}`; choose.setAttribute('aria-pressed', key === primary);
-        choose.addEventListener('keydown', event => {
-          if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
-          event.preventDefault(); const index = page.rides.indexOf(ride), next = page.rides[index + (event.key === 'ArrowDown' ? 1 : -1)];
-          if (next) { this.choose(next); this.shadowRoot.querySelectorAll('.ride button')[page.rides.indexOf(next)]?.focus({ preventScroll: true }); }
-        });
-        const label = element('label', labels.compare, 'compare'), compare = element('input'); compare.type = 'checkbox';
-        compare.checked = this.selection.selected.has(key); compare.disabled = browser.busy || this.tracks.busy;
-        compare.setAttribute('aria-label', `${labels.compare} · ${ride.vehicle_label} · ${this.timestamp(ride.start_time)}`);
-        compare.addEventListener('change', () => compare.checked ? this.choose(ride, true) : this.removeRide(key));
-        label.prepend(compare); section.append(choose, label); list.append(section);
-      }
-      const footer = element('footer'); footer.append(element('span', `${labels.page} ${browser.pageNumber} · ${page.rides.length}`, 'note'));
-      const next = this.button(labels.next, () => void browser.read(page.next_cursor)); next.disabled ||= !page.next_cursor; footer.append(next); list.append(footer);
+    if (showMap) notes.push(labels.coordinate_note);
+    ui.quality.textContent = notes.join(' · ');
+    if (active && active.detail_saved !== false && (!track?.complete || track.stale || this.mapError)) {
+      const more = this.button(track && !track.complete && !track.stale ? labels.more_track : labels.show_track,
+        () => void this.readRoute(active, Boolean(track && !track.stale)));
+      more.disabled = this.busy;
+      more.dataset.control = 'route';
+      ui.more.replaceChildren(more);
+    } else {
+      ui.more.replaceChildren();
     }
-    const native = nativeCards(browser.targets.filter((_, index) => browser.selected.has(index)), browser.config.statistics_entities ?? []);
-    if (native.cards.length) {
-      const help = element('details'); help.append(element('summary', labels.native_cards), element('p', labels.native_note, 'note'), element('pre', JSON.stringify(native, null, 2), 'note'));
-      const link = element('a', labels.open_calendar); link.href = '/calendar'; help.append(link); card.append(help);
+    if (showMap) {
+      const content = ui.quality.textContent;
+      void this.routeMap.update(tracks, this.browser.hass, labels.start).then(() => {
+        if (this.routeMap.renderer?.simplified && ui.quality.textContent === content && !track?.capped) {
+          ui.quality.textContent += ` · ${labels.display_limit}`;
+        }
+      });
+    } else {
+      void this.routeMap.update([], this.browser.hass, labels.start);
     }
-    card.append(element('small', 'Ninebot', 'note'));
-    this.shadowRoot.replaceChildren(element('style', CSS), card);
-    this.shadowRoot.querySelector('.rides').scrollTop = scroll;
-    if (active) [...this.shadowRoot.querySelectorAll('[data-control]')].find(item => item.dataset.control === active)?.focus({ preventScroll: true });
-    this.updateFocus();
-    if (tracks.length && !this.mapError) void this.routeMap.update(tracks, this.tiles === true, primary, this.selection.brush).then(() => {
-      if (this.pendingFit && this.routeMap.groups.has(this.pendingFit)) { this.routeMap.fit(); this.pendingFit = null; }
-    });
+    this.updateTransport();
+  }
+
+  render() {
+    if (this.resetting || !this.browser?.config || !this.isConnected) return;
+    if (!this.ui) this.installLayout();
+    const active = this.shadowRoot.activeElement?.dataset.control;
+    const labels = this.labels();
+    this.ui.title.textContent = this.browser.config.title ?? labels.map;
+    this.renderFilters(labels);
+    this.renderMessages(labels);
+    this.renderRideList(labels);
+    this.renderMap(labels);
+    if (active && this.shadowRoot.activeElement?.dataset.control !== active) {
+      [...this.shadowRoot.querySelectorAll('[data-control]')].find(item =>
+        item.dataset.control === active)?.focus({ preventScroll: true });
+    }
   }
 }
+
 if (globalThis.customElements && !customElements.get('ninebot-trip-card')) {
   customElements.define('ninebot-trip-card', NinebotTripCard);
   globalThis.customCards ??= [];
   globalThis.customCards.push({ type: 'ninebot-trip-card', name: 'Ninebot Ride History',
-    description: 'Linked local history map, list, comparison and sample curves', preview: true });
+    description: 'Browse and replay saved Ninebot rides on a shared map', preview: true });
 }
