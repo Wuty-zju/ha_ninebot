@@ -140,7 +140,7 @@ def prepare(
     headers = {
         "User-Agent": "okhttp/4.9.1",
         "Accept-Encoding": "gzip",
-        "Business-Type": "2",
+        "Business-Type": "1",
         "Cache-Control": "no-cache",
         "Client-Ver": CLIENT_VERSION,
         "Content-Type": "text/html;charset=UTF-8",
