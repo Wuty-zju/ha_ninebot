@@ -191,8 +191,8 @@ def test_codec_rejects_invalid_calendar_metadata_and_completeness(fault):
     raw = {
         "month": "202609",
         "total_mileages": 1.2,
-        "times": 0,
-        "list": [],
+        "times": 1,
+        "list": [{"travel_id": "archived-ride"}],
         "detail": [1.2] + [0] * 29,
     }
     data = decoded(encoded(month_data(travel(raw, "202609"))))
@@ -207,7 +207,7 @@ def test_codec_rejects_invalid_calendar_metadata_and_completeness(fault):
     elif fault == "precision_shape":
         data["precision"] = [["x"]]
     else:
-        data["summary"]["ride_count"] = 1
+        data["summary"]["ride_count"] = 2
     with pytest.raises(ValueError):
         restored_month(data)
 
