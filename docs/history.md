@@ -90,11 +90,11 @@ limit: 40
 
 - Choose **Recent rides (up to 5 years)**, **Last 7/30 days**, previous/next month, or custom dates. Choose older dates to browse earlier saved records.
 - Select a ride to load its saved track. Use **+** to overlay up to five rides from the same or different vehicles, then choose a ride chip to switch playback. **Show all routes** fits the visible tracks. Switching the active overlay or scrubbing keeps the current view.
-- Play, pause, restart, or scrub the saved samples in order. The cursor follows stored coordinates and skips gaps. The player uses its own pace; the original ride duration stays in the summary. Playback does not make history requests.
+- Play, pause, restart, or scrub the saved samples in order. The cursor follows stored coordinates and skips gaps. The summary shows the actual ride duration. The player advances at a preview pace. Playback does not make history requests.
 - **Local records updated · Read latest** refreshes the page and the active track on request. A refresh pauses playback. Reconnection reopens the local archive.
 - If a track has yet to be saved, use background detail sync or run `ninebot.get_trip_detail` for that ride in **Developer tools → Actions**. Check the response's persistence result before reloading the list. The card itself reads the local archive.
 
-Each read advances through up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains up to 4,096 samples per ride and may simplify lines for drawing. The archive preserves the original points. Simplified positions can be viewed on the map; replay requires a sequence of recorded samples.
+Each read advances through up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains up to 4,096 samples per ride and may simplify lines for drawing. The archive preserves the original points. Simplified positions remain visible on the map. Replay requires a sequence of recorded samples.
 
 ### Map privacy and units
 
@@ -118,7 +118,7 @@ An empty response that conflicts with activity already observed for the same mon
 
 The default-on **Enable vehicle events (Beta)** option controls both entities. User-disabled entities remain disabled. Startup, re-enabling, reconnection, invalid values and observation gaps establish silent baselines. Completion keeps its durable deduplication; live report/update notifications use a bounded runtime cursor and are not a physical push stream. No extra cloud polling is created.
 
-Durations retain native seconds and suggest hours with **four decimals**, including the history-calendar descriptions. The initial display migration applies once; subsequent user unit/precision changes are retained. The replay card still render original seconds, such as **45 sec**, **31 min 46 sec** or **1 hr 2 min 3 sec**.
+Duration sensors keep seconds internally and suggest hours with **four decimals** for display. The initial migration runs once. Later changes to units and precision follow user settings. The replay card formats duration from seconds, for example **45 sec**, **31 min 46 sec** or **1 hr 2 min 3 sec**.
 
 **Month trip list completeness** is a debug diagnostic: unique valid returned ride IDs divided by the server's reported month count. It is separate from **History scan progress** (verified months) and **Saved-detail progress** (saved details for discovered IDs). None alone proves a complete historical GPS archive. Debug classification and the absence of a statistics state class do not exclude ordinary Recorder states; use explicit Recorder filters when required. Full raw export is not provided by the parsed debug view or sanitized diagnostics.
 
@@ -217,7 +217,7 @@ entities:
     name: Distance
 ```
 
-Enable HA's History integration (normally part of `default_config`) for statistics cards. Use `period: month` for month series, separate units into cards, and never treat hourly views as actual ride timing. Older imported data remains; adjust the display window to see it. Native graphs and calendars have their own date controls. Use `get_statistics(refresh: false)` for an exact range.
+Enable HA's History integration for statistics cards. It normally loads through `default_config`. Use `period: month` for monthly series and a separate card for each unit. Native graphs and calendars have their own date controls. Adjust the display window to see older imports, or call `get_statistics(refresh: false)` for a specific range.
 
 ### Calendar and events
 
@@ -231,7 +231,7 @@ The read-only calendar shows valid past ride times/metrics from local storage. I
 
 Trip Event state is the timestamp of the most recent report/update/completion event, not last-ride end. Completion requires at least two independent successful travel observations with the relevant ride facts unchanged for at least ten minutes; startup/re-enable sets a baseline and does not replay historical rides. IDs are durably deduplicated; later corrections can emit a report-update event, but never repeat the completion event. Unknown before the first new event is expected. Restored event timestamps never trigger automations; rides during downtime can be missed.
 
-Native `type: map` with the location tracker and `hours_to_show: 24` shows only positions Recorder actually observed. It cannot reconstruct downloaded historical trail arrays; use the bundled history map for a saved ride.
+A native `type: map` card with the location tracker and `hours_to_show: 24` displays positions recorded by Home Assistant. Open the bundled history map to play a trip saved in the account archive.
 
 An interrupted historical month read may already have a complete verified page on disk. Once its claim or retry delay expires, the scheduler checks local page evidence first. A matching page advances discovery even when the hourly budget is exhausted. Active claims and future retry deadlines still take precedence.
 

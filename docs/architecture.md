@@ -89,7 +89,7 @@ Local reconstruction has durable jobs/recovery points, captured search bounds an
 
 `history_websocket.py` provides authenticated metadata-only subscriptions for 1–5 device IDs, at most eight per connection and 64 active/pending total. It checks read permission/ownership before delivery and debounces commit bursts. No raw/GPS is pushed. Browser network/session modules share identical local-detail in-flight promises and cancel timers/listeners on unload, reconnection or revocation; cloud operations and consumed page tokens are not shared/replayed.
 
-The replay card uses local-only detail chunks and keeps one map mounted across ride changes. Current Home Assistant frontends draw route segments through `ha-map.paths` and move a static cursor through the map location interface. A scrubber follows saved sample order. Older frontends use bundled Leaflet with no tile layer. Its Canvas redraw scheduling is adapted in `route-renderer.js`; vendor upgrades should recheck that hook.
+The replay card uses local-only detail chunks and keeps one map mounted across ride changes. Current Home Assistant frontends draw route segments through `ha-map.paths` and move a static cursor through the map location interface. A scrubber follows saved sample order. Older frontends use bundled Leaflet with no tile layer. When upgrading Leaflet, recheck the Canvas redraw hook in `route-renderer.js`.
 
 ## Diagnostics and Repairs
 
@@ -107,7 +107,7 @@ Repairs cover actionable identity/migration/storage/schema conditions. A tempora
 
 Future backends should preserve these field, ownership, scheduling and lifecycle contracts. Reference applications supply protocol evidence, with attribution and license review before reuse.
 
-简体中文摘要：实时状态、历史采集、私有归档和 HA 展示分层；账号、权限、预算与生命周期隔离。原件、派生值、覆盖和完整性各自有证据范围；不猜单位/坐标，不为演示改业务。依赖精确固定并保留许可/源码可用性限制，地图复用 HA 的底图服务，旧前端使用本地无底图绘制。
+实时状态、历史采集、本地档案和 HA 展示分层维护。各账号独立管理权限、预算和数据生命周期。字段解释、覆盖范围与完整性均以各自来源为准。底图使用 HA 地图服务，旧版前端由本地组件绘制轨迹。
 
 
 ## Connection recovery and retained availability
