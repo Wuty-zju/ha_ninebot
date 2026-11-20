@@ -26,6 +26,7 @@ from .raw import Endpoint, RawRecord
 from .ride_models import FieldState
 from .runtime import NinebotConfigEntry
 from .statistics_store import StoredMonth, timestamp
+from .vehicle_cache import BusinessLine, observed_business_line
 
 if TYPE_CHECKING:
     from .preservation import HistoryPreservation
@@ -59,13 +60,17 @@ def _month_evidence(
         "state": "unobserved",
         "source": "unobserved",
         "received_at": None,
+        "endpoint_version": None,
         "server_count": None,
         "item_count": None,
         "parse_status": "unobserved",
     }
     if record is not None:
         raw_list.update(
-            source="raw_cache", received_at=record.received_at.isoformat(), parse_status="invalid"
+            source="raw_cache",
+            received_at=record.received_at.isoformat(),
+            endpoint_version=record.endpoint_version,
+            parse_status="invalid",
         )
         raw_list["state"] = FieldState.INVALID.value
         raw = record.payload()
@@ -215,6 +220,13 @@ async def async_get_config_entry_diagnostics(
     months = (current_month, previous_month(current_month))
     coordinator = runtime.coordinator
     snapshots = tuple(islice(coordinator.data.values(), MAX_DIAGNOSTIC_VEHICLES))
+    business_lines = {
+        sn: observed_business_line(coordinator.client, sn).value for sn in coordinator.data
+    }
+    business_line_counts = dict.fromkeys((line.value for line in BusinessLine), 0)
+    for sn, snapshot in coordinator.data.items():
+        if snapshot.present:
+            business_line_counts[business_lines[sn]] += 1
     query_failure = getattr(coordinator, "query_failure", None)
     vehicles = []
     for vehicle_index, snapshot in enumerate(snapshots, start=1):
@@ -248,6 +260,7 @@ async def async_get_config_entry_diagnostics(
             {
                 "vehicle_index": vehicle_index,
                 "present": snapshot.present,
+                "business_line": business_lines[sn],
                 "groups": groups,
                 "travel_statistics": {"months": month_evidence},
                 "history_progress": _history_evidence(coordinator.preservation, sn),
@@ -314,6 +327,11 @@ async def async_get_config_entry_diagnostics(
         "standard_entities_enabled": runtime.standard_entities_enabled,
         "configured_controls_enabled": runtime.configured_controls_enabled,
         "vehicle_discovery": runtime.coordinator.discovery_diagnostics(),
+        "vehicle_business_lines": {
+            "source": "discovery_cache",
+            "scope": "present_vehicles",
+            "counts": business_line_counts,
+        },
         "diagnostic_limits": {
             "max_vehicles": MAX_DIAGNOSTIC_VEHICLES,
             "vehicle_count": len(coordinator.data),

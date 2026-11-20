@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "Araç bilgileri",
+        "state_attributes": {
+          "business_line": {
+            "name": "Araç hizmet grubu"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",

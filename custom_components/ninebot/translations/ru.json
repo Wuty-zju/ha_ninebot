@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "Информация о транспорте",
+        "state_attributes": {
+          "business_line": {
+            "name": "Сегмент обслуживания транспорта"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",

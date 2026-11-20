@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "वाहन की जानकारी",
+        "state_attributes": {
+          "business_line": {
+            "name": "वाहन की व्यावसायिक श्रेणी"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",

@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "Thông tin xe",
+        "state_attributes": {
+          "business_line": {
+            "name": "Nhóm dịch vụ của xe"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",
