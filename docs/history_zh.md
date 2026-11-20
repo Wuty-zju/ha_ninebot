@@ -104,7 +104,7 @@ limit 是**整页总数** 1–100，可以小于选车数；多车真正按最�
 
 切换用户、连接、日期或车辆范围，撤权或移除卡片时会清理轨迹缓存。轨迹在卡片打开时保留于浏览器内存。显式动作返回的 GPS 数据可能进入自动化 trace。
 
-行程日历和长期历史统计可在同一仪表板放置原生卡片。既有 YAML 的 `statistics_entities` 可保留；统计图独立配置。
+行程日历和长期统计图可在同一仪表板上各自配置原生卡片。已有 YAML 中的 `statistics_entities` 仍可保留。
 
 ## 行程摘要与车辆事件
 
@@ -217,7 +217,7 @@ entities:
     name: 里程
 ```
 
-需 HA History 集成（通常在 default_config）；月系列用 period: month，不同单位分图，小时视图不代表实际骑行分布。旧导入仍保存，调整窗口查看。原生日历和统计图可独立选日期，精确时段使用 `get_statistics(refresh: false)`。
+统计卡片需要 HA History 集成，通常由 `default_config` 加载。月系列使用 `period: month`，不同单位分别制图。原生日历与统计图都能独立选日期，查看旧导入时可调整日期范围。精确时段使用 `get_statistics(refresh: false)`。
 
 ### 日历与事件
 
