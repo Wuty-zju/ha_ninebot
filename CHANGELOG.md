@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.2.2
+
+- Use the confirmed motor route for trip pagination as well as the first monthly read. Saved page chains keep their original route when resumed. Daily statistics can reuse a recent verified first page.
+- Keep the last observed month and its original timestamp when an empty reply conflicts with verified activity. Report an unknown trip count when a zero count conflicts with the reply's own totals or rides. See [#224](https://github.com/Wuty-zju/ha_ninebot/issues/224).
+
 ## 2.2.1
 
 - Correct monthly trip and latest ride reads for vehicles discovered on the motor business line. Thanks to [@yang605256182](https://github.com/yang605256182) for the contribution in [#283](https://github.com/Wuty-zju/ha_ninebot/pull/283).

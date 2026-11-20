@@ -8,9 +8,10 @@ from homeassistant.helpers import entity_registry as er
 
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.archive_runtime import ArchiveStatistics
-from custom_components.ninebot.exceptions import ErrorKind, NinebotError
+from custom_components.ninebot.exceptions import ErrorKind, FailurePhase, NinebotError
 from custom_components.ninebot.models import VehicleProfile
 from custom_components.ninebot.period_statistics import day_summary
+from custom_components.ninebot.raw import Endpoint
 from custom_components.ninebot.statistics_actions import statistics_response
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -114,6 +115,40 @@ async def test_current_period_values_survive_stale_live_data_and_short_failure(
         assert current.attributes["data_fresh"] is False
     assert state(hass, entry, "today_ride_count").attributes["observation_state"] == "cached"
     assert state(hass, entry, "month_mileage").attributes["received_at"] == NOW.isoformat()
+
+
+async def test_empty_month_cannot_replace_the_last_positive_receipt(
+    hass, entry, app_client, freezer
+):
+    co = await setup(hass, entry, app_client, freezer)
+    month = "202610"
+    saved = await co.statistics.archive.async_month(SN, month)
+    raw = co.raw.get(Endpoint.TRAVEL, SN, month, now=NOW)
+    freezer.tick(60)
+    app_client.async_get_travel.return_value = {
+        "times": 0,
+        "total_mileages": 0,
+        "ec": 0,
+        "duration": 0,
+        "detail": [0] * 31,
+        "list": None,
+    }
+    with pytest.raises(NinebotError) as exc:
+        await co.async_query_month(SN, month, refresh=True)
+    assert exc.value.context.phase is FailurePhase.MONTH_RECONCILIATION
+    assert await co.statistics.archive.async_month(SN, month) == saved
+    assert co.raw.get(Endpoint.TRAVEL, SN, month, now=NOW) is raw
+    assert float(state(hass, entry, "today_ride_count").state) == 1
+    assert float(state(hass, entry, "month_mileage").state) == 3
+
+    # A first observation for another month may genuinely have no activity.
+    await co.async_query_month(SN, "202609", refresh=True)
+    assert co.statistics.month(SN, "202609").ride_count == 0
+    freezer.tick(60)
+    app_client.async_get_travel.return_value = payload()
+    recovered = await co.async_query_month(SN, month, refresh=True)
+    assert recovered.received_at == NOW + timedelta(seconds=120)
+    assert co.statistics.month(SN, month).ride_count == 2
 
 
 async def test_midnight_keeps_yesterday_provisional_without_fabricating_new_today(

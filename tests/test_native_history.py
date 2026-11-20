@@ -221,6 +221,8 @@ async def test_only_confirmed_motor_month_uses_the_native_first_page(
         travel = adapters.travel(result.payload, "202610")
         assert (travel.mileage, travel.reported_ride_count, travel.energy_raw) == (12.3, 1, 400)
         assert travel.last_ride is not None and travel.last_ride.ride_id == "synthetic-ride"
+        second = await backend.async_travel_page("synthetic-motor", "202610", 2)
+        assert (second.page, second.endpoint_version) == (2, result.endpoint_version)
         client.async_get_travel.assert_not_awaited()
         for vehicle in ("synthetic-ebike", "synthetic-conflict", "synthetic-unknown"):
             result = await backend.async_travel_month(vehicle, "202610")
@@ -233,7 +235,10 @@ async def test_only_confirmed_motor_month_uses_the_native_first_page(
             assert travel.mileage == travel.reported_ride_count == 0
         assert client.async_get_travel.await_count == 3
         await client.async_close()
-    assert calls == [("synthetic-motor", "202610", "1", "1")]
+    assert calls == [
+        ("synthetic-motor", "202610", "1", "1"),
+        ("synthetic-motor", "202610", "2", "1"),
+    ]
 
 
 @pytest.mark.parametrize(

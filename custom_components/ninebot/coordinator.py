@@ -742,7 +742,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         partial(self.backend.async_travel_month, sn, month),
                         Priority.BACKGROUND,
                     )
-                    record = await self._capture(result, sn, guard=lambda: self._owns(key))
+                    record = await self._capture(result, sn, retain=False)
                 request_revision = result.request_revision
                 timing = result
                 stage = "normalize"
@@ -788,7 +788,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                                 Priority.BACKGROUND,
                             )
                             fallback_record = await self._capture(
-                                result, sn, guard=lambda: self._owns(key)
+                                result, sn, guard=lambda: self._owns(key), retain=False
                             )
                         fallback = await self._normalize(
                             fallback_record,
@@ -815,6 +815,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                             receipt_ordered=True,
                             raw=self._retained_month_source(fallback_record),
                         )
+                        if fallback_record is not None and self._current_read(
+                            previous_key, previous_revision
+                        ):
+                            self._retain_raw(fallback_record, sn, previous)
                         if include_last_ride and travel.last_ride is None:
                             travel = replace(travel, last_ride=fallback.last_ride)
                     except NinebotAuthError:
@@ -849,6 +853,8 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 )
                 if not current_month():
                     return
+                if record is not None:
+                    self._retain_raw(record, sn, month)
                 lifecycle = self.ride_lifecycles.setdefault(sn, RideLifecycle())
                 lifecycle.observe(travel.rides, observed)
                 if (
@@ -1031,6 +1037,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         detail_id: str = "",
         *,
         guard: Callable[[], bool] | None = None,
+        retain: bool = True,
     ) -> RawRecord | None:
         """Raw policy failure cannot discard otherwise valid normalized data."""
         try:
@@ -1051,24 +1058,30 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return None
         record = replace(record, request_revision=result.request_revision)
         if not self._stopping and (guard is None or guard()):
-            scope = (result.query_month or "") if result.endpoint is Endpoint.TRAVEL else detail_id
-            existing = self.raw.get(
-                result.endpoint, sn, scope, now=dt_util.utcnow(), query_month=result.query_month
-            )
-            if existing and (
-                existing.received_at > record.received_at
-                or (existing.request_revision > record.request_revision > 0)
-            ):
-                return None  # A slower parser cannot restore an older response.
-            if (
-                existing
-                and existing.received_at == record.received_at
-                and existing.encoded == record.encoded
-                and existing.request_revision >= record.request_revision
-            ):
-                return existing
-            if self.raw.put(record, sn, scope):
+            if not retain:
                 return record
+            scope = (result.query_month or "") if result.endpoint is Endpoint.TRAVEL else detail_id
+            return self._retain_raw(record, sn, scope)
+        return None
+
+    def _retain_raw(self, record: RawRecord, sn: str, scope: str) -> RawRecord | None:
+        existing = self.raw.get(
+            record.endpoint, sn, scope, now=dt_util.utcnow(), query_month=record.query_month
+        )
+        if existing and (
+            existing.received_at > record.received_at
+            or (existing.request_revision > record.request_revision > 0)
+        ):
+            return None  # A slower parser cannot restore an older response.
+        if (
+            existing
+            and existing.received_at == record.received_at
+            and existing.encoded == record.encoded
+            and existing.request_revision >= record.request_revision
+        ):
+            return existing
+        if self.raw.put(record, sn, scope):
+            return record
         return None
 
     async def async_month_observation(
@@ -1149,12 +1162,17 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             before_request=before_request,
         )
 
-    async def async_query_history_page(self, sn: str, month: str, page: int) -> RawRecord:
+    async def async_query_history_page(
+        self, sn: str, month: str, page: int, *, provider: str | None = None
+    ) -> RawRecord:
         """Background paging uses the same broker but never replaces live month raw."""
-        from .native_history import CONTRACT, validate_page
+        from .native_history import PAGE_CONTRACTS, page_contract, validate_page
 
         validate_page(sn, month, page)
-        key = self._key(sn, Endpoint.TRAVEL, f"history:{month}:{page}")
+        provider = provider or page_contract(self.client, sn)
+        if provider not in PAGE_CONTRACTS:
+            raise NinebotError(ErrorKind.PROTOCOL)
+        key = self._key(sn, Endpoint.TRAVEL, f"history:{provider}:{month}:{page}")
         if (
             not self._owns(key)
             or not self.fresh(sn, "profile")
@@ -1169,7 +1187,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             async def query() -> BackendResult:
                 if not self.fresh(sn, "profile") or sn in self.preservation.bootstrap.paused:
                     raise NinebotError(ErrorKind.CLOSED)
-                return await self.backend.async_travel_page(sn, month, page)
+                return await self.backend.async_travel_page(sn, month, page, provider=provider)
 
             result = await self._read(key, query, Priority.BACKGROUND)
             if (
@@ -1177,7 +1195,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 or result.query_month != month
                 or result.page != page
                 or result.provider != "native_history"
-                or result.endpoint_version != CONTRACT
+                or result.endpoint_version != provider
             ):
                 raise NinebotError(ErrorKind.PROTOCOL)
             try:
@@ -1287,7 +1305,13 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="query_unavailable"
                 )
-            record = await self._capture(result, sn, scope, guard=lambda: self._owns(key))
+            record = await self._capture(
+                result,
+                sn,
+                scope,
+                guard=lambda: self._owns(key),
+                retain=endpoint is not Endpoint.TRAVEL,
+            )
             if record is None and self._owns(key):
                 record = self.raw.get(endpoint, sn, scope, now=dt_util.utcnow(), query_month=month)
             if record is None:
@@ -1309,6 +1333,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     receipt_ordered=True,
                     raw=self._retained_month_source(record),
                 )
+                if self._current_read(key, record.request_revision):
+                    record = self._retain_raw(record, sn, scope) or record
+                else:
+                    record = self.raw.get(endpoint, sn, scope, now=dt_util.utcnow()) or record
             if not self._owns(key) or not self.fresh(sn, "profile"):
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="query_unavailable"

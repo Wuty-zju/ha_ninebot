@@ -51,6 +51,7 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
     statistics = ArchiveStatistics(hass, "synthetic-lifecycle", "synthetic-owner")
     await statistics.async_load()
     co = SimpleNamespace(
+        client=SimpleNamespace(),
         hass=hass,
         config_entry=SimpleNamespace(
             options={
@@ -72,7 +73,7 @@ async def test_full_worker_two_vehicles_restart_retry_and_incremental(hass, tmp_
         async_query_month=AsyncMock(side_effect=AssertionError("Unexpected serve month query")),
     )
 
-    async def query_page(sn, month, page):
+    async def query_page(sn, month, page, *, provider=None):
         calls.append(("page", sn, month, page))
         found = rows.get((sn, month), [])
         return build_record(

@@ -17,6 +17,7 @@ from .const import BUSINESS_TIMEZONE
 from .detail_health import HistoryHealth
 from .exceptions import NinebotError
 from .history_plan import HistoryPlan, HistoryState
+from .native_history import page_contract
 from .preservation import retry_delay
 from .ride_archive import ArchiveError, ArchiveFailure, vehicle_key
 
@@ -119,6 +120,7 @@ class HistoryBootstrap:
             if not self.enabled(sn) or sn in self.paused or not co.fresh(sn, "profile"):
                 continue
             owns = self.guard(sn)
+            provider = page_contract(co.client, sn)
             claimed = None
             if incremental:
                 runs = await archive.async_active_history_runs(sn)
@@ -147,7 +149,7 @@ class HistoryBootstrap:
             else:
                 try:
                     reused = await archive.async_reuse_history_month(
-                        sn, max(now, dt_util.utcnow()), guard=owns
+                        sn, max(now, dt_util.utcnow()), guard=owns, provider=provider
                     )
                 except ArchiveError as err:
                     if err.kind is not ArchiveFailure.OBJECT:
@@ -166,7 +168,15 @@ class HistoryBootstrap:
             try:
                 if self.on_query:
                     await self.on_query(sn, "incremental" if incremental else "discovering")
-                raw = await co.async_query_history_page(sn, claimed.next_month, claimed.next_page)
+                if claimed.next_page > 1:
+                    # A restarted or already-discovered plan continues the exact
+                    # route of the accepted first page for this month only.
+                    stored = await archive.async_history_page_contract(sn, claimed)
+                    raw = await co.async_query_history_page(
+                        sn, claimed.next_month, claimed.next_page, provider=stored
+                    )
+                else:
+                    raw = await co.async_query_history_page(sn, claimed.next_month, 1)
                 await archive.async_accept_history_page(sn, claimed, raw, guard=owns)
                 plan = (
                     await archive.async_history_run(sn, claimed.plan_id)
@@ -181,12 +191,17 @@ class HistoryBootstrap:
                     )
                 await co.statistics.async_history_page_committed(sn, owns)
             except (NinebotError, ArchiveError, HomeAssistantError) as err:
-                if isinstance(err, ArchiveError):
+                conflict = (
+                    isinstance(err, ArchiveError) and err.kind is ArchiveFailure.MONTH_CONFLICT
+                )
+                if isinstance(err, ArchiveError) and not conflict:
                     co.statistics.record_error(err)
                 if owns() and co.statistics.writable:
                     reason = (
                         err.kind.value
                         if isinstance(err, NinebotError)
+                        else "protocol"
+                        if conflict
                         else "storage"
                         if isinstance(err, ArchiveError)
                         else "unavailable"

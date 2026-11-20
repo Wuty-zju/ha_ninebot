@@ -13,8 +13,9 @@ from zoneinfo import ZoneInfo
 from .archive_codec import decoded, encoded, stamp
 from .const import BUSINESS_TIMEZONE, MAX_RESPONSE_BYTES
 from .history_plan import HistoryState
-from .history_store import _shape, page, put_root, resolve, root
+from .history_store import _shape, page, page_contract, put_root, resolve, root
 from .incremental_runs import run_key
+from .native_history import CONTRACT
 from .parsing import previous_month
 
 PREFIX = "history_reuse:"
@@ -84,7 +85,7 @@ def check(db: sqlite3.Connection, scope: str, value: str) -> None:
             raise ValueError("Reused month provenance mismatch")
 
 
-def reuse(db: sqlite3.Connection, vehicle: str, now: datetime) -> bool:
+def reuse(db: sqlite3.Connection, vehicle: str, now: datetime, *, provider: str = CONTRACT) -> bool:
     expected = root(db, vehicle)
     if (
         expected is None
@@ -112,6 +113,8 @@ def reuse(db: sqlite3.Connection, vehicle: str, now: datetime) -> bool:
     ):
         return False
     scope = (vehicle, source.plan_id, month)
+    if page_contract(db, *scope) != provider:
+        return False
     manifest = db.execute(
         "SELECT pages,known,total,verified,stop,observed FROM history_months"
         " WHERE vehicle=? AND plan=? AND month=?",
@@ -154,7 +157,7 @@ def reuse(db: sqlite3.Connection, vehicle: str, now: datetime) -> bool:
         if (
             receipt[0] != number
             or receipt[3] != "0.1.7"
-            or receipt[4] != expected.provider
+            or receipt[4] != provider
             or receipt[5] != encoded({"ids": ids})
             or receipt[6] != total
             or receipt[7] is not None

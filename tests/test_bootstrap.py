@@ -7,11 +7,14 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.bootstrap import HistoryBootstrap
 from custom_components.ninebot.exceptions import ErrorKind, NinebotError
 from custom_components.ninebot.history_plan import HistoryState, month_count
+from custom_components.ninebot.native_history import CONTRACT, MOTOR_MONTH_CONTRACT, page_contract
 from custom_components.ninebot.raw import Endpoint, build_record
-from custom_components.ninebot.ride_archive import RideArchive
+from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure, RideArchive
+from custom_components.ninebot.vehicle_cache import BusinessLine
 
 NOW = datetime(2026, 10, 14, tzinfo=UTC)
 SN = "synthetic-bootstrap-vehicle"
@@ -24,6 +27,7 @@ async def context(tmp_path, monkeypatch):
     await archive.async_open()
     clock = [NOW]
     co = SimpleNamespace(
+        client=SimpleNamespace(vehicle_business_lines={}),
         config_entry=SimpleNamespace(options={"preserve_history": True, "auto_history_sync": True}),
         _stopping=False,
         _generation=1,
@@ -40,7 +44,7 @@ async def context(tmp_path, monkeypatch):
     )
     calls = []
 
-    async def query(sn, month, page):
+    async def query(sn, month, page, *, provider=None):
         calls.append((sn, month, page))
         rows = []
         total = 0
@@ -62,7 +66,7 @@ async def context(tmp_path, monkeypatch):
             clock[0],
             month,
             backend_version="0.1.7",
-            endpoint_version="0.1.7+native.history.v1",
+            endpoint_version=provider or page_contract(co.client, SN),
         )
 
     co.async_query_history_page = query
@@ -71,6 +75,75 @@ async def context(tmp_path, monkeypatch):
         yield co, archive, clock, calls
     finally:
         await archive.async_close()
+
+
+async def test_month_binding_survives_runner_restart_and_keeps_old_pages(context):
+    co, archive, clock, _ = context
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    assert await runner.async_step((SN,), NOW, 60)
+    first = await archive.async_history_plan(SN)
+    assert first.next_page == 2
+    assert await archive.async_history_page_contract(SN, first) == CONTRACT
+
+    # Discovery now knows the vehicle is motor. It cannot change a stored page chain.
+    co.client.vehicle_business_lines[SN] = BusinessLine.MOTOR
+    clock[0] += timedelta(seconds=61)
+    wrong = await co.async_query_history_page(SN, "202610", 2)
+    with pytest.raises(ArchiveError) as exc:
+        await archive.async_accept_history_page(SN, first, wrong, guard=lambda: True)
+    assert exc.value.kind is ArchiveFailure.SCHEMA
+    assert await archive.async_history_plan(SN) == first
+
+    restarted = HistoryBootstrap(co)
+    await restarted.async_seed((SN,), clock[0])
+    assert await restarted.async_step((SN,), clock[0], 60)
+    clock[0] += timedelta(seconds=61)
+    assert await restarted.async_step((SN,), clock[0], 60)
+    saved = await archive.async_history_plan(SN)
+    await archive.async_close()
+    reopened = RideArchive(archive.path, OWNER)
+    await reopened.async_open()
+    try:
+        for month, page, provider in (
+            ("202610", 1, CONTRACT),
+            ("202610", 2, CONTRACT),
+            ("202609", 1, MOTOR_MONTH_CONTRACT),
+        ):
+            row = await reopened.async_history_page(
+                SN, saved.plan_id, month, page, guard=lambda: True
+            )
+            assert row.endpoint_version == provider
+    finally:
+        await reopened.async_close()
+
+
+async def test_empty_month_becomes_a_gap_when_the_archive_already_has_activity(context):
+    co, archive, clock, _ = context
+    month = "202610"
+    parsed = travel(
+        {"times": 1, "total_mileages": 2.4, "list": [{"travel_id": "already-recorded"}]},
+        month,
+    )
+    await archive.async_record_month(SN, parsed, NOW)
+    saved = await archive.async_month(SN, month)
+    co.async_query_history_page = AsyncMock(
+        return_value=build_record(
+            Endpoint.TRAVEL,
+            {"times": 0, "total_mileages": 0, "list": None},
+            NOW + timedelta(seconds=61),
+            month,
+            backend_version="0.1.7",
+            endpoint_version=CONTRACT,
+        )
+    )
+    runner = HistoryBootstrap(co)
+    await runner.async_seed((SN,), NOW)
+    clock[0] += timedelta(seconds=61)
+    assert await runner.async_step((SN,), clock[0], 60)
+    plan = await archive.async_history_plan(SN)
+    assert plan.gap_months == 1 and plan.next_month == "202609"
+    assert await archive.async_month(SN, month) == saved
 
 
 async def test_first_scan_really_enumerates_full_client_range_and_preserves_all_pages(context):

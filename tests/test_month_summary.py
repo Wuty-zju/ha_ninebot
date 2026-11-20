@@ -36,7 +36,8 @@ def test_synthetic_calendar_chart_dates_and_decimal_sum(month, days):
     assert len(summary.daily_mileage) == days
     assert summary.daily_mileage[0].day.isoformat() == f"{month[:4]}-{month[4:]}-01"
     assert summary.daily_mileage[-1].day.day == days
-    assert summary.list_complete is True and summary.coverage == 1
+    assert summary.ride_count is None and summary.list_complete is None and summary.coverage is None
+    assert "reported_count_inconsistent" in summary.warnings
     assert summary.returned_energy_wh == 0
 
 

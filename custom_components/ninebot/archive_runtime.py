@@ -18,6 +18,7 @@ from .archive_statistics import ArchiveStatisticsView, StatisticsReader
 from .archive_timeline import ArchivedRide
 from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
+from .exceptions import ErrorKind, FailurePhase, NinebotError
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
 from .period_statistics import DaySummary, DaySummaryCache
@@ -349,6 +350,10 @@ class ArchiveStatistics(TravelStatisticsStore):
                 await self._project(guard, vehicle=sn)
                 self._archive_success()
             except ArchiveError as err:
+                if err.kind is ArchiveFailure.MONTH_CONFLICT:
+                    conflict = NinebotError(ErrorKind.PROTOCOL, retryable=True)
+                    conflict.at_phase(FailurePhase.MONTH_RECONCILIATION)
+                    raise conflict from None
                 self.record_error(err)
         if changed:
             self._notify_change(sn, guard)

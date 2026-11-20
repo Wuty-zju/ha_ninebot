@@ -7,10 +7,12 @@ No network or independent connection/writer exists in this module.
 import sqlite3
 from dataclasses import dataclass
 
-from .archive_codec import decoded, encoded, stamp
+from .archive_codec import decoded, encoded, restored_month, stamp
 from .const import MAX_RESPONSE_BYTES
 from .detail_codec import packed, unpacked
 from .history_plan import MAX_PAGES, HistoryPlan, HistoryState, plan_data, restored
+from .month_summary import summarize_month
+from .native_history import PAGE_CONTRACTS
 from .parsing import matches_query_month
 from .raw import Endpoint, RawRecord
 from .travel import MAX_RIDES, opaque_id
@@ -92,6 +94,15 @@ class PageReceipt:
 def root(db: sqlite3.Connection, vehicle: str) -> HistoryPlan | None:
     row = db.execute("SELECT data FROM history_roots WHERE vehicle=?", (vehicle,)).fetchone()
     return restored(decoded(row[0])) if row else None
+
+
+def page_contract(db: sqlite3.Connection, vehicle: str, plan: str, month: str) -> str | None:
+    """Page one binds this month in this run to an exact request route."""
+    row = db.execute(
+        "SELECT endpoint FROM history_pages WHERE vehicle=? AND plan=? AND month=? AND page=1",
+        (vehicle, plan, month),
+    ).fetchone()
+    return str(row[0]) if row else None
 
 
 def resolve(db: sqlite3.Connection, vehicle: str, identity: str) -> HistoryPlan | None:
@@ -187,6 +198,8 @@ def _shape(data: dict, *, month: str) -> tuple[tuple[str, ...], int | None, str 
         if identity is None or identity in ids:
             return (), total, "schema"
         ids.append(identity)
+    if total == 0 and not ids and summarize_month(data, month, ()).ride_count is None:
+        return (), total, "unstable_total"
     return tuple(ids), total, None if total is not None else "missing_total"
 
 
@@ -197,8 +210,12 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
     }:
         raise HistoryConflict
     if (
-        record.query_month != expected.next_month
-        or record.endpoint_version != expected.provider
+        expected.next_month is None
+        or record.query_month != expected.next_month
+        or record.endpoint_version not in PAGE_CONTRACTS
+        or expected.next_page > 1
+        and record.endpoint_version
+        != page_contract(db, expected.vehicle, expected.plan_id, expected.next_month)
         or record.backend_version != "0.1.7"
     ):
         raise ValueError("Invalid history page source")
@@ -230,6 +247,15 @@ def accept_page(db: sqlite3.Connection, expected: HistoryPlan, record: RawRecord
     payload = clean.payload()
     assert isinstance(payload, dict)
     ids, total, stop = _shape(payload, month=clean.query_month)
+    if total == 0 and not ids and stop is None:
+        prior = db.execute(
+            "SELECT data FROM months WHERE vehicle=? AND month=?",
+            (expected.vehicle, clean.query_month),
+        ).fetchone()
+        if prior:
+            previous = restored_month(decoded(prior[0])).summary
+            if previous and previous.has_activity:
+                stop = "unstable_total"
     observed = clean.received_at.isoformat()
     if stamp(observed) < stamp(expected.updated_at):
         raise ValueError("Stale history receipt")
@@ -435,7 +461,7 @@ def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
             or not 1 <= number <= MAX_PAGES
             or kind != "blob"
             or size < 0
-            or endpoint != current.provider
+            or endpoint not in PAGE_CONTRACTS
             or backend != "0.1.7"
             or not isinstance(digest, str)
             or len(digest) != 64
@@ -455,6 +481,12 @@ def check(db: sqlite3.Connection, *, allow_runs: bool = True) -> None:
             and (type(total) is not int or not 0 <= total <= 1_000_000)
         ):
             raise ValueError("Invalid history page identities")
+    if db.execute(
+        "SELECT 1 FROM history_pages p LEFT JOIN history_pages f"
+        " ON f.vehicle=p.vehicle AND f.plan=p.plan AND f.month=p.month AND f.page=1"
+        " WHERE f.endpoint IS NULL OR p.endpoint!=f.endpoint LIMIT 1"
+    ).fetchone():
+        raise ValueError("Mixed history page sources")
     if allow_runs:
         if db.execute(
             "SELECT 1 FROM history_pages p LEFT JOIN history_payloads h ON h.digest=p.digest"

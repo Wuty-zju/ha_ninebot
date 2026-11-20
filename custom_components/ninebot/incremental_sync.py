@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from .archive_codec import encoded, month_data
 from .archive_statistics import ArchiveStatisticsView
 from .const import BUSINESS_TIMEZONE
+from .native_history import MOTOR_MONTH_CONTRACT, page_contract
 from .parsing import previous_month
 from .ride_archive import ArchiveError, ArchiveFailure
 
@@ -27,7 +28,7 @@ class IncrementalSync:
             return  # Finish already registered manual runs without enabling future automatic work.
         local = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE))
         current = local.strftime("%Y%m")
-        months = (current, previous_month(current)) if local.day <= 7 else (current,)
+        previous = previous_month(current)
         for sn in vehicles:
             if not runner.enabled(sn) or sn in runner.paused or not self.co.fresh(sn, "profile"):
                 continue
@@ -42,6 +43,13 @@ class IncrementalSync:
                 except ArchiveError as err:
                     if err.kind is not ArchiveFailure.BUSY:
                         raise
+            # Repair a known nearby motor month even after the late-arrival week.
+            motor_previous = (
+                page_contract(self.co.client, sn) == MOTOR_MONTH_CONTRACT
+                and (prior := self.co.statistics.month(sn, previous)) is not None
+                and bool(prior.ride_count)
+            )
+            months = (current, previous) if local.day <= 7 or motor_previous else (current,)
             for month in months:
                 if (
                     baseline.next_month is not None

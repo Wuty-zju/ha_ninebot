@@ -26,7 +26,8 @@ TARGETS = (
     " JOIN history_pages p ON p.vehicle=i.vehicle AND p.plan=i.plan AND p.month=i.month"
     " AND p.page=i.first_page WHERE g.vehicle=i.vehicle AND g.plan=? AND g.month=i.month"
     " AND g.verified=0 AND p.observed>=g.observed AND p.backend='0.1.7'"
-    " AND p.endpoint=json_extract(b.data,'$.provider')))"
+    " AND p.endpoint=(SELECT f.endpoint FROM history_pages f WHERE"
+    " f.vehicle=p.vehicle AND f.plan=p.plan AND f.month=p.month AND f.page=1)))"
 )
 
 
@@ -72,6 +73,9 @@ def rows(db: sqlite3.Connection, vehicle: str, baseline: str) -> list[tuple]:
 def completed(
     db: sqlite3.Connection, root: HistoryPlan, month: str, observed: str, state: dict
 ) -> str | None:
+    from .history_store import page_contract
+    from .native_history import PAGE_CONTRACTS
+
     run = get(db, root.vehicle, state["run"])
     if (
         run is None
@@ -86,6 +90,9 @@ def completed(
     ):
         return None
     scope = (root.vehicle, run.plan_id, month)
+    provider = page_contract(db, *scope)
+    if provider not in PAGE_CONTRACTS:
+        return None
     manifest = db.execute(
         "SELECT pages,known,total,verified,stop,observed FROM history_months"
         " WHERE vehicle=? AND plan=? AND month=?",
@@ -104,7 +111,7 @@ def completed(
         " OR NOT(length(p.body)>0 OR h.digest IS NOT NULL)),0)"
         " FROM history_pages p LEFT JOIN history_payloads h ON h.digest=p.digest"
         " WHERE p.vehicle=? AND p.plan=? AND p.month=?",
-        (root.provider, manifest[2], *scope),
+        (provider, manifest[2], *scope),
     ).fetchone()
     ids = db.execute(
         "SELECT count(*) FROM history_ids WHERE vehicle=? AND plan=? AND month=?",

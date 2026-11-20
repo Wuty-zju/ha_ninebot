@@ -53,6 +53,7 @@ class FailurePhase(StrEnum):
     VEHICLES = "vehicles"
     SESSION_COMMIT = "session_commit"
     NATIVE_CONTROL = "native_control"
+    MONTH_RECONCILIATION = "month_reconciliation"
 
 
 class Endpoint(StrEnum):

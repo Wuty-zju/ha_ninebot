@@ -9,8 +9,8 @@ from typing import Any, Protocol
 from .capabilities import CONTROL_ACTIONS
 from .client import NinecliClient
 from .exceptions import ErrorKind, NinebotAuthError, NinebotError
+from .native_history import MOTOR_MONTH_CONTRACT, PAGE_CONTRACTS, page_contract
 from .raw import Endpoint, version_metadata
-from .vehicle_cache import BusinessLine, observed_business_line
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,9 @@ class NinebotBackend(Protocol):
     async def async_status_once(self, vehicle: str) -> BackendResult: ...
     async def async_battery(self, vehicle: str) -> BackendResult: ...
     async def async_travel_month(self, vehicle: str, month: str) -> BackendResult: ...
-    async def async_travel_page(self, vehicle: str, month: str, page: int) -> BackendResult: ...
+    async def async_travel_page(
+        self, vehicle: str, month: str, page: int, *, provider: str | None = None
+    ) -> BackendResult: ...
     async def async_trip_detail(self, vehicle: str, detail_id: str) -> BackendResult: ...
     async def async_control(self, vehicle: str, action: str) -> None: ...
     async def async_close(self) -> None: ...
@@ -106,26 +108,11 @@ class NinecliBackend:
         backend_version = await self._version()
         if (
             backend_version == "0.1.7"
-            and observed_business_line(self.client, vehicle) is BusinessLine.MOTOR
+            and page_contract(self.client, vehicle) == MOTOR_MONTH_CONTRACT
         ):
-            from .native_history import MOTOR_MONTH_CONTRACT
-
-            if not self._expected_uid:
-                raise NinebotAuthError()
-            payload = await self.client.async_get_travel_page(
-                vehicle, month, 1, expected_uid=self._expected_uid, business_line="motor"
-            )
-            if payload is not None:
-                return BackendResult(
-                    payload,
-                    Endpoint.TRAVEL,
-                    datetime.now(UTC),
-                    month,
-                    backend_version=backend_version,
-                    endpoint_version=MOTOR_MONTH_CONTRACT,
-                    provider="native_history",
-                    page=1,
-                )
+            result = await self._async_native_page(vehicle, month, 1, MOTOR_MONTH_CONTRACT)
+            if result is not None:
+                return result
         payload = await self.client.async_get_travel(vehicle, month)
         return BackendResult(
             payload,
@@ -135,22 +122,41 @@ class NinecliBackend:
             backend_version=backend_version,
         )
 
-    async def async_travel_page(self, vehicle: str, month: str, page: int) -> BackendResult:
-        """Keep durable page chains on their original request contract."""
-        if not self._expected_uid:
-            raise NinebotAuthError()
+    async def async_travel_page(
+        self, vehicle: str, month: str, page: int, *, provider: str | None = None
+    ) -> BackendResult:
         if await self._version() != "0.1.7":
             raise NinebotError(ErrorKind.PLATFORM)
-        payload = await self.client.async_get_travel_page(
-            vehicle, month, page, expected_uid=self._expected_uid
+        result = await self._async_native_page(
+            vehicle, month, page, provider or page_contract(self.client, vehicle)
         )
+        if result is None:
+            raise NinebotError(ErrorKind.PROTOCOL)
+        return result
+
+    async def _async_native_page(
+        self, vehicle: str, month: str, page: int, provider: str
+    ) -> BackendResult | None:
+        if not self._expected_uid:
+            raise NinebotAuthError()
+        if provider not in PAGE_CONTRACTS:
+            raise NinebotError(ErrorKind.PROTOCOL)
+        payload = await self.client.async_get_travel_page(
+            vehicle,
+            month,
+            page,
+            expected_uid=self._expected_uid,
+            business_line="motor" if provider == MOTOR_MONTH_CONTRACT else "ebike",
+        )
+        if payload is None:
+            return None  # Unsupported native region, before the request was sent.
         return BackendResult(
             payload,
             Endpoint.TRAVEL,
             datetime.now(UTC),
             month,
-            backend_version=await self._version(),
-            endpoint_version="0.1.7+native.history.v1",
+            backend_version="0.1.7",
+            endpoint_version=provider,
             provider="native_history",
             page=page,
         )
