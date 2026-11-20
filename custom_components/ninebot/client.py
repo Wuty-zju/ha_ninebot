@@ -566,13 +566,17 @@ class NinecliClient:
         return await self._request("GET", f"/vehicles/{quote(sn, safe='')}/battery")
 
     async def async_get_travel_page(
-        self, sn: str, month: str, page: int, *, expected_uid: str
+        self, sn: str, month: str, page: int, *, expected_uid: str | None = None
     ) -> Any:
         """Native read-only history shares the sole ninecli session lock/writer."""
         from .native_history import read_session, request_page, validate_page
 
         validate_page(sn, month, page)
         async with self._operation():
+            if expected_uid is None:
+                from .session import session_uid
+
+                expected_uid = await asyncio.to_thread(session_uid, self.config_dir)
             try:
                 async with asyncio.timeout(self._timeout):
                     for attempt in range(2):
@@ -606,9 +610,8 @@ class NinecliClient:
         raise NinebotAuthError()
 
     async def async_get_travel(self, sn: str, month: str) -> Any:
-        return await self._request(
-            "GET", f"/vehicles/{quote(sn, safe='')}/travel?month={quote(month, safe='')}"
-        )
+        """Read the month through the verified native travel-list contract."""
+        return await self.async_get_travel_page(sn, month, 1)
 
     async def async_get_trip_detail(self, sn: str, detail_id: str) -> Any:
         return await self._request(
