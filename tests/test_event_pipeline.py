@@ -26,13 +26,15 @@ REAL_LOAD = Store._async_load
 
 
 @pytest.fixture
-async def pipeline(hass, entry, app_client, freezer, tmp_path):
+async def pipeline(hass, entry, app_client, freezer, tmp_path, request):
     # The default HA fixture mocks writes. Test the real atomic writer only in
     # this disposable configuration, so the disk acknowledgement is meaningful.
     hass.config.config_dir = str(tmp_path)
     freezer.move_to(NOW)
-    app_client.async_get_travel.return_value = json.loads(
-        (FIXTURES / "travel-nonempty.json").read_text()
+    app_client.async_get_travel.return_value = (
+        {"times": 0, "list": []}
+        if getattr(request, "param", None) == "empty"
+        else json.loads((FIXTURES / "travel-nonempty.json").read_text())
     )
     # Tests of the pipeline itself subscribe explicitly. User disabling the
     # default-enabled Event remains supported and prevents an implicit listener.
@@ -223,13 +225,10 @@ async def test_silent_store_write_failure_is_not_acknowledged_or_emitted(
     assert entry.runtime_data.coordinator.fresh("SyntheticSN", "status")
 
 
+@pytest.mark.parametrize("pipeline", ["empty"], indirect=True)
 async def test_verified_empty_month_baselines_then_emits_first_stable_ride(
     hass, entry, app_client, freezer, pipeline
 ):
-    app_client.async_get_travel.return_value = {"times": 0, "list": []}
-    co = entry.runtime_data.coordinator
-    await co._group("SyntheticSN", "travel", force=True)
-    co.async_set_updated_data(dict(co.data))
     emitted = []
     await pipeline.async_subscribe("SyntheticSN", lambda ride, late: emitted.append(ride))
     assert pipeline._cursors[pipeline._vehicle_key("SyntheticSN")].baseline_at == NOW

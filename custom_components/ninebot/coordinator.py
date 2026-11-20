@@ -290,6 +290,23 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self._normalized[key] = (record.content_fingerprint, normalized)
         return normalized
 
+    async def _normalize_travel(
+        self, key: QueryKey, month: str, record: RawRecord | None, payload: object
+    ) -> TravelMonth:
+        operation = (
+            partial(travel_record, record, month)
+            if record is not None
+            else partial(adapters.travel, payload, month)
+        )
+        try:
+            return await self._normalize(record, key.vehicle, month, operation)
+        except NinebotError:
+            # Retain schema-rejected replies for diagnostics as before. Empty
+            # conflicts are detected later, at the archive acceptance boundary.
+            if record is not None and self._current_read(key, record.request_revision):
+                self._retain_raw(record, key.vehicle, month)
+            raise
+
     async def _shared[T](
         self,
         tasks: dict[QueryKey, asyncio.Task[T]],
@@ -748,14 +765,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 stage = "normalize"
                 if record and record.request_revision > request_revision and request_revision:
                     return
-                travel = await self._normalize(
-                    record,
-                    sn,
-                    month,
-                    partial(travel_record, record, month)
-                    if record
-                    else partial(adapters.travel, result.payload, month),
-                )
+                travel = await self._normalize_travel(key, month, record, result.payload)
                 applied_revision = result.request_revision
                 current_started = result.started_at or now
                 # A slower adjacent-month query must not renew the actual
@@ -811,15 +821,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                             fallback_record = await self._capture(
                                 result, sn, guard=lambda: self._owns(key), retain=False
                             )
-                        fallback = await self._normalize(
-                            fallback_record,
-                            sn,
-                            previous,
-                            partial(travel_record, fallback_record, previous)
-                            if fallback_record
-                            else partial(adapters.travel, result.payload, previous),
-                        )
                         previous_key = replace(key, scope=previous)
+                        fallback = await self._normalize_travel(
+                            previous_key, previous, fallback_record, result.payload
+                        )
                         previous_revision = (
                             fallback_record.request_revision
                             if fallback_record
@@ -1316,9 +1321,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             if record is None:
                 raise NinebotError(ErrorKind.PROTOCOL)
             if endpoint is Endpoint.TRAVEL:
-                normalized = await self._normalize(
-                    record, sn, month, partial(travel_record, record, month)
-                )
+                normalized = await self._normalize_travel(key, month, record, result.payload)
                 if not self._owns(key):
                     raise HomeAssistantError(
                         translation_domain=DOMAIN, translation_key="query_unavailable"
