@@ -2,9 +2,9 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
-## Unreleased
+## 2.2.1
 
-- Read monthly trip totals and the latest ride on the motor vehicle business line when confirmed by discovery. [#283](https://github.com/Wuty-zju/ha_ninebot/pull/283)
+- Correct monthly trip and latest ride reads for vehicles discovered on the motor business line. Thanks to [@yang605256182](https://github.com/yang605256182) for the contribution in [#283](https://github.com/Wuty-zju/ha_ninebot/pull/283).
 - Include the observed business line in vehicle diagnostics and aggregate counts for the account.
 
 ## 2.2.0
