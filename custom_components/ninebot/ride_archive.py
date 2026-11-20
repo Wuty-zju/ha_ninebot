@@ -1074,11 +1074,11 @@ class RideArchive:
             ).fetchone()
             if before and (before[1] > observed or (before[1] == observed and not ordered)):
                 return False
-            if before and not travel.summary.has_activity:
+            if ordered and before and not travel.summary.has_activity:
                 old = restored_month(decoded(before[0])).summary
                 if old is not None and old.has_activity:
-                    # A zero/null snapshot contradicts this vehicle's known
-                    # month. Preserve the earlier observation and its timestamps.
+                    # An ordered cloud receipt cannot withdraw known activity
+                    # from an empty snapshot. Explicit local corrections can.
                     raise ArchiveError(ArchiveFailure.MONTH_CONFLICT)
             changed = not before or (before[0], before[3], before[4]) != (data, backend, ids_data)
             db.execute("INSERT OR IGNORE INTO vehicles VALUES (?,NULL,?,0)", (vehicle, observed))
