@@ -5,7 +5,7 @@ import math
 import re
 from datetime import date, datetime
 from html import escape
-from typing import Any
+from typing import Any, TypeGuard
 
 from .archive_timeline import SELECTION_BASIS
 from .assistant_views import RIDE_UNITS, numeric
@@ -62,7 +62,7 @@ def _object(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _matches(pattern: re.Pattern[str], value: Any) -> bool:
+def _matches(pattern: re.Pattern[str], value: Any) -> TypeGuard[str]:
     return isinstance(value, str) and pattern.fullmatch(value) is not None
 
 
