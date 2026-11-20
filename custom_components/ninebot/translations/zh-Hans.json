@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "车辆信息",
+        "state_attributes": {
+          "business_line": {
+            "name": "车辆业务线"
+          }
+        },
         "state": {
           "debug_disabled": "调试已关闭",
           "ok": "正常",

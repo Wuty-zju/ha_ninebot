@@ -6,13 +6,16 @@ from typing import TYPE_CHECKING, Any
 from .models import VehicleSnapshot
 from .observations import RAW_FIELDS
 from .parsing import JsonScalar, raw_scalar
+from .vehicle_cache import observed_business_line
 
 if TYPE_CHECKING:
     from .battery_parameters import BatteryParameters
     from .coordinator import NinebotCoordinator
 
 DEBUG_STATES = ("debug_disabled", "ok", "partial", "stale", "error")
-DEBUG_ATTRIBUTES = frozenset({"groups", "parsed", "observations", "issues", "formatted"})
+DEBUG_ATTRIBUTES = frozenset(
+    {"business_line", "groups", "parsed", "observations", "issues", "formatted"}
+)
 
 
 def numeric_observation(raw: object) -> JsonScalar:
@@ -107,6 +110,7 @@ def debug_view(
     if not status.charge_remaining:
         issues.append("remaining_charge_not_reported")
     return state, {
+        "business_line": observed_business_line(co.client, snapshot.profile.sn).value,
         "groups": groups,
         "parsed": parsed,
         "observations": observations,

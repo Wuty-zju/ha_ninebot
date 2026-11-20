@@ -16,12 +16,14 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from pytest_socket import enable_socket, socket_allow_hosts
 
+from custom_components.ninebot import adapters
 from custom_components.ninebot import history_crypto as crypto
 from custom_components.ninebot import native_history as native
 from custom_components.ninebot.backend import NinecliBackend
 from custom_components.ninebot.client import NinecliClient
 from custom_components.ninebot.exceptions import ErrorKind, NinebotAuthError, NinebotError
 from custom_components.ninebot.raw import build_record
+from custom_components.ninebot.vehicle_cache import BusinessLine
 
 UID = "synthetic-business"
 
@@ -43,7 +45,7 @@ async def test_close_drains_native_page_and_rejects_its_late_result(tmp_path, mo
     credentials(tmp_path)
     entered, release, stopping = asyncio.Event(), asyncio.Event(), asyncio.Event()
 
-    async def page(*args):
+    async def page(*args, **kwargs):
         entered.set()
         await release.wait()
         return {"list": []}
@@ -119,6 +121,7 @@ async def test_real_crypto_pages_are_distinct_bound_and_do_not_write_session(
     async def handle(request):
         params, wrapper = unwrap(await request.json(), peer_key)
         seen.append(params)
+        assert request.headers["Business-Type"] == "2"
         assert request.headers["Access_token"] == params["access_token"]
         assert params["uid"] == UID and params["wnumber"] == "synthetic-vehicle"
         return web.json_response(
@@ -157,6 +160,113 @@ async def test_real_crypto_pages_are_distinct_bound_and_do_not_write_session(
         await client.async_close()
     assert [x["page"] for x in seen] == ["1", "2"]
     assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+async def test_only_confirmed_motor_month_uses_the_native_first_page(
+    tmp_path, peer_key, monkeypatch
+):
+    credentials(tmp_path)
+    calls = []
+
+    async def handle(request):
+        params, wrapper = unwrap(await request.json(), peer_key)
+        assert params["uid"] == UID
+        calls.append(
+            (params["wnumber"], params["month"], params["page"], request.headers["Business-Type"])
+        )
+        return web.json_response(
+            encrypted(
+                {
+                    "code": 0,
+                    "data": {
+                        "times": 1,
+                        "total_mileages": 12.3,
+                        "ec": 400,
+                        "duration": 1800,
+                        "list": [{"travel_id": "synthetic-ride", "mileages": 12.3}],
+                    },
+                },
+                wrapper,
+            )
+        )
+
+    app = web.Application()
+    app.router.add_post(native.TRAVEL_PATH, handle)
+    async with TestServer(app) as server, aiohttp.ClientSession() as http:
+        monkeypatch.setattr(native, "TRAVEL_BASE", str(server.make_url("/")).rstrip("/"))
+        client = NinecliClient(tmp_path, http)
+        client.vehicle_business_lines = {
+            "synthetic-motor": BusinessLine.MOTOR,
+            "synthetic-ebike": BusinessLine.EBIKE,
+            "synthetic-conflict": BusinessLine.AMBIGUOUS,
+        }
+        client.async_get_travel = AsyncMock(
+            return_value={"times": 0, "total_mileages": 0, "ec": 0, "duration": 0, "list": None}
+        )
+        backend = NinecliBackend(client, expected_uid=UID)
+        result = await backend.async_travel_month("synthetic-motor", "202610")
+        assert (result.provider, result.page) == ("native_history", 1)
+        assert result.endpoint_version == native.MOTOR_MONTH_CONTRACT
+        assert (
+            build_record(
+                result.endpoint,
+                result.payload,
+                result.received_at,
+                result.query_month,
+                backend_version=result.backend_version,
+                endpoint_version=result.endpoint_version,
+            ).endpoint_version
+            == native.MOTOR_MONTH_CONTRACT
+        )
+        travel = adapters.travel(result.payload, "202610")
+        assert (travel.mileage, travel.reported_ride_count, travel.energy_raw) == (12.3, 1, 400)
+        assert travel.last_ride is not None and travel.last_ride.ride_id == "synthetic-ride"
+        client.async_get_travel.assert_not_awaited()
+        for vehicle in ("synthetic-ebike", "synthetic-conflict", "synthetic-unknown"):
+            result = await backend.async_travel_month(vehicle, "202610")
+            assert (result.provider, result.page, result.endpoint_version) == (
+                "ninecli",
+                None,
+                None,
+            )
+            travel = adapters.travel(result.payload, "202610")
+            assert travel.mileage == travel.reported_ride_count == 0
+        assert client.async_get_travel.await_count == 3
+        await client.async_close()
+    assert calls == [("synthetic-motor", "202610", "1", "1")]
+
+
+@pytest.mark.parametrize(
+    ("uid", "region", "fallback"),
+    [
+        (UID, "unreviewed", True),
+        ("foreign-owner", "bj", False),
+        ("foreign-owner", "unreviewed", False),
+    ],
+)
+async def test_motor_month_checks_owner_before_any_request(
+    tmp_path, monkeypatch, uid, region, fallback
+):
+    credentials(tmp_path, uid=uid)
+    token_file = tmp_path / "tokens.json"
+    token_file.write_text(json.dumps({**json.loads(token_file.read_text()), "region": region}))
+    wire = AsyncMock()
+    monkeypatch.setattr(native, "request_page", wire)
+    async with aiohttp.ClientSession() as http:
+        client = NinecliClient(tmp_path, http)
+        client.vehicle_business_lines["synthetic"] = BusinessLine.MOTOR
+        client.async_get_travel = AsyncMock(return_value={"list": []})
+        backend = NinecliBackend(client, expected_uid=UID)
+        if fallback:
+            result = await backend.async_travel_month("synthetic", "202610")
+            assert result.provider == "ninecli"
+            client.async_get_travel.assert_awaited_once_with("synthetic", "202610")
+        else:
+            with pytest.raises(NinebotAuthError):
+                await backend.async_travel_month("synthetic", "202610")
+            client.async_get_travel.assert_not_awaited()
+        await client.async_close()
+    wire.assert_not_awaited()
 
 
 async def test_http401_only_refreshes_via_owner_once(tmp_path, peer_key, monkeypatch):

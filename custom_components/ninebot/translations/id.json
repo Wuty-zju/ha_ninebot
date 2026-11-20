@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "Informasi kendaraan",
+        "state_attributes": {
+          "business_line": {
+            "name": "Lini bisnis kendaraan"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",

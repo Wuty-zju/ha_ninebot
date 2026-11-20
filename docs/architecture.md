@@ -21,6 +21,8 @@ Arrows describe data relationships, not upstream push. The frontend's local arch
 
 `backend.py` defines `NinebotBackend` and `BackendResult` with endpoint, source version, request/receipt timing and revision. `NinecliBackend` uses the precisely pinned managed serve client for ongoing live queries. Vehicle business-route initialization has a controlled native CLI exception. Explicit historical month/page reads use the reviewed encrypted `native_history.py` adapter with the existing account session. The same client serializes native token/cache writes.
 
+For a vehicle with an unambiguous `motor` discovery-cache entry, monthly trip reads use page one of the encrypted adapter with the motor business header. The read is bound to the ConfigEntry's expected business UID and has its own source version. The serve path handles ebike and unclassified monthly reads. Long-running archive page chains retain their original request contract.
+
 The pinned 0.1.7 REST proxy sends controls to the ebike gateway even for a cached motor vehicle; the native CLI honors that cache entry. From 2.1.26, an unambiguous `motor` entry selects one managed native control command before dispatch. It shares the existing lock, session directory, deadline, output bounds and child cleanup; the REST child is stopped before the native writer and restarts on the next live query. Other controls retain the existing REST route. This narrow control exception neither changes telemetry transport nor retries a failed command through a second route. No upstream host is configurable by the user.
 
 ## Realtime scheduling and controls

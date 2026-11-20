@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "차량 정보",
+        "state_attributes": {
+          "business_line": {
+            "name": "차량 서비스 구분"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",
