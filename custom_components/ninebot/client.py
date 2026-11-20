@@ -28,7 +28,14 @@ from .exceptions import Endpoint, ErrorKind, FailurePhase, NinebotAuthError, Nin
 from .http_policy import rate_limit_delay
 from .http_policy import retry_after_seconds as retry_after_seconds
 from .native_control import COMMANDS, MAX_ROUTES, ControlRoute, control_failure, control_route
-from .vehicle_cache import BusinessLine, cache_io, read_cache, reconcile_cache, restore_cache
+from .vehicle_cache import (
+    BusinessLine,
+    cache_business_lines,
+    cache_io,
+    read_cache,
+    reconcile_cache,
+    restore_cache,
+)
 
 
 def _response_data(status: int, raw: object) -> Any:
@@ -501,7 +508,7 @@ class NinecliClient:
                     found = profiles(raw)
                     # Native 0.1.7 returns exit 0 even if one or both business
                     # lists failed. Diagnostic output is opaque, not auth proof.
-                    complete, business_lines = await cache_io(
+                    complete = await cache_io(
                         reconcile_cache,
                         self.config_dir,
                         previous_cache,
@@ -510,6 +517,7 @@ class NinecliClient:
                     )
                     if not complete and not raw:
                         raise NinebotError(ErrorKind.SERVICE)
+                    business_lines = await cache_io(cache_business_lines, self.config_dir)
                     if self._closed:
                         raise NinebotError(ErrorKind.CLOSED)
                     self.vehicle_discovery_complete = complete
