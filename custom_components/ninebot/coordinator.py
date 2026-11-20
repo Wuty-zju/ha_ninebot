@@ -1323,16 +1323,17 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                     raise HomeAssistantError(
                         translation_domain=DOMAIN, translation_key="query_unavailable"
                     )
+                revision = record.request_revision
                 await self.statistics.async_record(
                     sn,
                     normalized,
                     record.received_at,
                     record.backend_version,
-                    guard=lambda: self._current_read(key, record.request_revision),
+                    guard=lambda: self._current_read(key, revision),
                     receipt_ordered=True,
                     raw=self._retained_month_source(record),
                 )
-                if self._current_read(key, record.request_revision):
+                if self._current_read(key, revision):
                     record = self._retain_raw(record, sn, scope) or record
                 else:
                     record = self.raw.get(endpoint, sn, scope, now=dt_util.utcnow()) or record
