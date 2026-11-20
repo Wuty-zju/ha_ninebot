@@ -9,7 +9,8 @@ from datetime import datetime
 
 from .archive_codec import decoded
 from .const import MAX_RESPONSE_BYTES
-from .history_store import page, resolve
+from .history_store import page, page_contract, resolve
+from .native_history import PAGE_CONTRACTS
 from .ride_models import Ride
 from .travel import MAX_RIDES, opaque_id, parse_rides
 
@@ -78,11 +79,13 @@ def proposal(
                 return None
             source = resolve(db, vehicle, plan_id)
             raw = page(db, vehicle, plan_id, month, number)
+            provider = page_contract(db, vehicle, plan_id, month)
             if (
                 source is None
                 or raw is None
                 or raw.backend_version != "0.1.7"
-                or raw.endpoint_version != source.provider
+                or provider not in PAGE_CONTRACTS
+                or raw.endpoint_version != provider
                 or not source.start_month <= month <= source.end_month
                 or raw.received_at > evidence_at
             ):

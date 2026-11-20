@@ -52,18 +52,30 @@ async def export_device(
 
 
 async def record_month(entry, corrected=False):
-    # Synthetic summary deliberately keeps server daily distance independent
-    # from the complete empty returned-ride window. No energy distribution.
+    distances = [0.5, 0, 1.5] if corrected else [1, 0, 2]
+    rides = []
+    for day, duration, energy in ((1, 60, 5), (3, 120, 10)):
+        started = int(datetime(2026, 9, day, tzinfo=UTC).timestamp())
+        rides.append(
+            {
+                "travel_id": f"synthetic-september-{day}",
+                "start_time": started,
+                "end_time": started + duration,
+                "duration": duration,
+                "mileages": distances[day - 1],
+                "ec": energy,
+            }
+        )
     await entry.runtime_data.coordinator.statistics.async_record(
         "SyntheticSN",
         adapters.travel(
             {
-                "total_mileages": 2 if corrected else 3,
+                "total_mileages": sum(distances),
                 "ec": 15,
-                "times": 0,
-                "duration": 0,
-                "list": [],
-                "detail": ([0.5, 0, 1.5] if corrected else [1, 0, 2]) + [0] * 27,
+                "times": len(rides),
+                "duration": 180,
+                "list": rides,
+                "detail": distances + [0] * 27,
             },
             "202609",
         ),

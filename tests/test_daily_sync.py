@@ -7,8 +7,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.util import dt as dt_util
 
+from custom_components.ninebot.native_history import CONTRACT, MOTOR_MONTH_CONTRACT
 from custom_components.ninebot.period_statistics import day_summary
 from custom_components.ninebot.raw import Endpoint, build_record
+from custom_components.ninebot.vehicle_cache import BusinessLine
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 NOW = datetime(2026, 10, 7, 4, tzinfo=UTC)
@@ -47,7 +49,12 @@ async def setup(hass, entry, app_client, freezer, *, startup=False):
 
     async def page(sn, month, number):
         return build_record(
-            Endpoint.TRAVEL, payload(number), dt_util.utcnow(), month, backend_version="0.1.7"
+            Endpoint.TRAVEL,
+            payload(number),
+            dt_util.utcnow(),
+            month,
+            backend_version="0.1.7",
+            endpoint_version=CONTRACT,
         )
 
     query = AsyncMock(side_effect=page)
@@ -95,6 +102,51 @@ async def test_clean_account_repairs_daily_index_without_history_details(
     assert co.daily_sync.cursors == {}
 
 
+async def test_motor_reuses_live_first_page_and_fills_today_and_yesterday(
+    hass, entry, app_client, freezer
+):
+    freezer.move_to(NOW)
+    app_client.vehicle_business_lines = {SN: BusinessLine.MOTOR}
+
+    async def page(sn, month, number, *, expected_uid, business_line):
+        assert (sn, month, expected_uid, business_line) == (
+            SN,
+            "202610",
+            "synthetic-business",
+            "motor",
+        )
+        return payload(number)
+
+    app_client.async_get_travel_page.side_effect = page
+    with (
+        patch(
+            "custom_components.ninebot.backend.NinecliBackend._version",
+            AsyncMock(return_value="0.1.7"),
+        ),
+        patch(
+            "custom_components.ninebot.coordinator.NinebotCoordinator.async_schedule_statistics_refresh"
+        ),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        co = entry.runtime_data.coordinator
+        assert co.raw.get(Endpoint.TRAVEL, SN, "202610", now=NOW).endpoint_version == (
+            MOTOR_MONTH_CONTRACT
+        )
+        assert co.statistics.month_rides(SN, "202610")[1] is False
+        await co.daily_sync.async_step(NOW)
+        assert app_client.async_get_travel_page.await_count == 1
+        freezer.tick(61)
+        await co.daily_sync.async_step(dt_util.utcnow())
+    assert [call.args[2] for call in app_client.async_get_travel_page.await_args_list] == [1, 2]
+    today = day_summary(co.statistics, SN, date(2026, 10, 7), dt_util.utcnow())
+    yesterday = day_summary(co.statistics, SN, date(2026, 10, 6), dt_util.utcnow())
+    assert (today.ride_count, yesterday.ride_count) == (11, 26)
+    assert (today.energy_wh, yesterday.duration_s) == (220, 780)
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_get_trip_detail.assert_not_awaited()
+
+
 async def test_daily_repair_needs_enabled_daily_consumers(hass, entry, app_client, freezer):
     co, query = await setup(hass, entry, app_client, freezer)
     with (
@@ -108,7 +160,9 @@ async def test_daily_repair_needs_enabled_daily_consumers(hass, entry, app_clien
 async def test_daily_repeated_page_backs_off_and_keeps_gap(hass, entry, app_client, freezer):
     co, query = await setup(hass, entry, app_client, freezer)
     query.side_effect = None
-    query.return_value = build_record(Endpoint.TRAVEL, payload(1), NOW, "202610")
+    query.return_value = build_record(
+        Endpoint.TRAVEL, payload(1), NOW, "202610", endpoint_version=CONTRACT
+    )
     with patch.object(co, "async_query_history_page", query):
         await co.daily_sync.async_step(NOW)
         freezer.tick(61)

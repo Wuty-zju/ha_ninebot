@@ -153,7 +153,9 @@ async def test_history_page_is_brokered_without_replacing_live_month(coordinator
     co.backend.async_travel_page = AsyncMock(return_value=result)
     record = await co.async_query_history_page("synthetic-one", month, 1)
     assert record.payload() == result.payload and record.endpoint_version == CONTRACT
-    co.backend.async_travel_page.assert_awaited_once_with("synthetic-one", month, 1)
+    co.backend.async_travel_page.assert_awaited_once_with(
+        "synthetic-one", month, 1, provider=CONTRACT
+    )
     assert co.data["synthetic-one"].travel == snapshot
     assert co.raw.get(Endpoint.TRAVEL, "synthetic-one", month, now=now, query_month=month) == before
     co.backend.async_travel_page.return_value = replace(result, provider="unknown")

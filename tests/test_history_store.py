@@ -750,8 +750,8 @@ async def test_verified_month_reuse_preserves_original_receipts_ids_budget_and_r
             loop = asyncio.get_running_loop()
             reuse = history_reuse.reuse
 
-            def hold_transaction(db, vehicle, now):
-                result = reuse(db, vehicle, now)
+            def hold_transaction(db, vehicle, now, *, provider):
+                result = reuse(db, vehicle, now, provider=provider)
                 loop.call_soon_threadsafe(entered.set)
                 assert release.wait(5)
                 return result

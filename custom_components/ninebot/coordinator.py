@@ -290,6 +290,23 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             self._normalized[key] = (record.content_fingerprint, normalized)
         return normalized
 
+    async def _normalize_travel(
+        self, key: QueryKey, month: str, record: RawRecord | None, payload: object
+    ) -> TravelMonth:
+        operation = (
+            partial(travel_record, record, month)
+            if record is not None
+            else partial(adapters.travel, payload, month)
+        )
+        try:
+            return await self._normalize(record, key.vehicle, month, operation)
+        except NinebotError:
+            # Retain schema-rejected replies for diagnostics as before. Empty
+            # conflicts are detected later, at the archive acceptance boundary.
+            if record is not None and self._current_read(key, record.request_revision):
+                self._retain_raw(record, key.vehicle, month)
+            raise
+
     async def _shared[T](
         self,
         tasks: dict[QueryKey, asyncio.Task[T]],
@@ -742,26 +759,40 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                         partial(self.backend.async_travel_month, sn, month),
                         Priority.BACKGROUND,
                     )
-                    record = await self._capture(result, sn, guard=lambda: self._owns(key))
+                    record = await self._capture(result, sn, retain=False)
                 request_revision = result.request_revision
                 timing = result
                 stage = "normalize"
                 if record and record.request_revision > request_revision and request_revision:
                     return
-                travel = await self._normalize(
-                    record,
-                    sn,
-                    month,
-                    partial(travel_record, record, month)
-                    if record
-                    else partial(adapters.travel, result.payload, month),
-                )
+                travel = await self._normalize_travel(key, month, record, result.payload)
                 applied_revision = result.request_revision
-                travel_version = result.backend_version
                 current_started = result.started_at or now
                 # A slower adjacent-month query must not renew the actual
                 # receipt of this month's payload or count as its fresh sample.
-                cached_success = result.received_at
+                observed = cached_success = result.received_at
+
+                def current_month() -> bool:
+                    return self._current_read(key, applied_revision) and (
+                        month == adapters.month_at(dt_util.utcnow())
+                    )
+
+                if not current_month():
+                    return
+                stage = "archive"
+                await self.statistics.async_record(
+                    sn,
+                    travel,
+                    observed,
+                    result.backend_version,
+                    guard=current_month,
+                    receipt_ordered=True,
+                    raw=self._retained_month_source(record),
+                )
+                if not current_month():
+                    return
+                if record is not None:
+                    self._retain_raw(record, sn, month)
                 if (include_last_ride and travel.last_ride is None) or (
                     include_previous_month and now.astimezone(ZoneInfo(BUSINESS_TIMEZONE)).day <= 2
                 ):
@@ -788,17 +819,12 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                                 Priority.BACKGROUND,
                             )
                             fallback_record = await self._capture(
-                                result, sn, guard=lambda: self._owns(key)
+                                result, sn, guard=lambda: self._owns(key), retain=False
                             )
-                        fallback = await self._normalize(
-                            fallback_record,
-                            sn,
-                            previous,
-                            partial(travel_record, fallback_record, previous)
-                            if fallback_record
-                            else partial(adapters.travel, result.payload, previous),
-                        )
                         previous_key = replace(key, scope=previous)
+                        fallback = await self._normalize_travel(
+                            previous_key, previous, fallback_record, result.payload
+                        )
                         previous_revision = (
                             fallback_record.request_revision
                             if fallback_record
@@ -815,6 +841,10 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                             receipt_ordered=True,
                             raw=self._retained_month_source(fallback_record),
                         )
+                        if fallback_record is not None and self._current_read(
+                            previous_key, previous_revision
+                        ):
+                            self._retain_raw(fallback_record, sn, previous)
                         if include_last_ride and travel.last_ride is None:
                             travel = replace(travel, last_ride=fallback.last_ride)
                     except NinebotAuthError:
@@ -825,27 +855,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 updated = replace(
                     snapshot,
                     travel=travel,
-                    travel_freshness=Freshness(current_started, cached_success or dt_util.utcnow()),
-                )
-                observed = updated.travel_freshness.succeeded_at
-                assert observed is not None
-
-                def current_month() -> bool:
-                    return self._current_read(key, applied_revision) and (
-                        month == adapters.month_at(dt_util.utcnow())
-                    )
-
-                if not current_month():
-                    return
-                stage = "archive"
-                await self.statistics.async_record(
-                    sn,
-                    travel,
-                    observed,
-                    travel_version,
-                    guard=current_month,
-                    receipt_ordered=True,
-                    raw=self._retained_month_source(record),
+                    travel_freshness=Freshness(current_started, observed),
                 )
                 if not current_month():
                     return
@@ -1031,6 +1041,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
         detail_id: str = "",
         *,
         guard: Callable[[], bool] | None = None,
+        retain: bool = True,
     ) -> RawRecord | None:
         """Raw policy failure cannot discard otherwise valid normalized data."""
         try:
@@ -1051,24 +1062,30 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             return None
         record = replace(record, request_revision=result.request_revision)
         if not self._stopping and (guard is None or guard()):
-            scope = (result.query_month or "") if result.endpoint is Endpoint.TRAVEL else detail_id
-            existing = self.raw.get(
-                result.endpoint, sn, scope, now=dt_util.utcnow(), query_month=result.query_month
-            )
-            if existing and (
-                existing.received_at > record.received_at
-                or (existing.request_revision > record.request_revision > 0)
-            ):
-                return None  # A slower parser cannot restore an older response.
-            if (
-                existing
-                and existing.received_at == record.received_at
-                and existing.encoded == record.encoded
-                and existing.request_revision >= record.request_revision
-            ):
-                return existing
-            if self.raw.put(record, sn, scope):
+            if not retain:
                 return record
+            scope = (result.query_month or "") if result.endpoint is Endpoint.TRAVEL else detail_id
+            return self._retain_raw(record, sn, scope)
+        return None
+
+    def _retain_raw(self, record: RawRecord, sn: str, scope: str) -> RawRecord | None:
+        existing = self.raw.get(
+            record.endpoint, sn, scope, now=dt_util.utcnow(), query_month=record.query_month
+        )
+        if existing and (
+            existing.received_at > record.received_at
+            or (existing.request_revision > record.request_revision > 0)
+        ):
+            return None  # A slower parser cannot restore an older response.
+        if (
+            existing
+            and existing.received_at == record.received_at
+            and existing.encoded == record.encoded
+            and existing.request_revision >= record.request_revision
+        ):
+            return existing
+        if self.raw.put(record, sn, scope):
+            return record
         return None
 
     async def async_month_observation(
@@ -1149,12 +1166,17 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             before_request=before_request,
         )
 
-    async def async_query_history_page(self, sn: str, month: str, page: int) -> RawRecord:
+    async def async_query_history_page(
+        self, sn: str, month: str, page: int, *, provider: str | None = None
+    ) -> RawRecord:
         """Background paging uses the same broker but never replaces live month raw."""
-        from .native_history import CONTRACT, validate_page
+        from .native_history import PAGE_CONTRACTS, page_contract, validate_page
 
         validate_page(sn, month, page)
-        key = self._key(sn, Endpoint.TRAVEL, f"history:{month}:{page}")
+        provider = provider or page_contract(self.client, sn)
+        if provider not in PAGE_CONTRACTS:
+            raise NinebotError(ErrorKind.PROTOCOL)
+        key = self._key(sn, Endpoint.TRAVEL, f"history:{provider}:{month}:{page}")
         if (
             not self._owns(key)
             or not self.fresh(sn, "profile")
@@ -1169,7 +1191,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
             async def query() -> BackendResult:
                 if not self.fresh(sn, "profile") or sn in self.preservation.bootstrap.paused:
                     raise NinebotError(ErrorKind.CLOSED)
-                return await self.backend.async_travel_page(sn, month, page)
+                return await self.backend.async_travel_page(sn, month, page, provider=provider)
 
             result = await self._read(key, query, Priority.BACKGROUND)
             if (
@@ -1177,7 +1199,7 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 or result.query_month != month
                 or result.page != page
                 or result.provider != "native_history"
-                or result.endpoint_version != CONTRACT
+                or result.endpoint_version != provider
             ):
                 raise NinebotError(ErrorKind.PROTOCOL)
             try:
@@ -1287,28 +1309,37 @@ class NinebotCoordinator(DataUpdateCoordinator[dict[str, VehicleSnapshot]]):
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="query_unavailable"
                 )
-            record = await self._capture(result, sn, scope, guard=lambda: self._owns(key))
+            record = await self._capture(
+                result,
+                sn,
+                scope,
+                guard=lambda: self._owns(key),
+                retain=endpoint is not Endpoint.TRAVEL,
+            )
             if record is None and self._owns(key):
                 record = self.raw.get(endpoint, sn, scope, now=dt_util.utcnow(), query_month=month)
             if record is None:
                 raise NinebotError(ErrorKind.PROTOCOL)
             if endpoint is Endpoint.TRAVEL:
-                normalized = await self._normalize(
-                    record, sn, month, partial(travel_record, record, month)
-                )
+                normalized = await self._normalize_travel(key, month, record, result.payload)
                 if not self._owns(key):
                     raise HomeAssistantError(
                         translation_domain=DOMAIN, translation_key="query_unavailable"
                     )
+                revision = record.request_revision
                 await self.statistics.async_record(
                     sn,
                     normalized,
                     record.received_at,
                     record.backend_version,
-                    guard=lambda: self._current_read(key, record.request_revision),
+                    guard=lambda: self._current_read(key, revision),
                     receipt_ordered=True,
                     raw=self._retained_month_source(record),
                 )
+                if self._current_read(key, revision):
+                    record = self._retain_raw(record, sn, scope) or record
+                else:
+                    record = self.raw.get(endpoint, sn, scope, now=dt_util.utcnow()) or record
             if not self._owns(key) or not self.fresh(sn, "profile"):
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="query_unavailable"

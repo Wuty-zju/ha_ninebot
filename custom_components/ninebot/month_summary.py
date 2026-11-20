@@ -35,6 +35,12 @@ class MonthSummary:
     returned_energy_wh: float | None
     warnings: tuple[str, ...]
 
+    @property
+    def has_activity(self) -> bool:
+        return any(
+            (self.ride_count, self.returned_count, self.mileage_km, self.energy_wh, self.duration_s)
+        ) or any(day.distance_km > 0 for day in self.daily_mileage)
+
 
 def sum_rides(rides: tuple[Ride, ...], field: str) -> float | None:
     """Never silently add only the known values of incomplete records."""
@@ -80,7 +86,12 @@ def summarize_month(raw: dict[str, Any], month: str, rides: tuple[Ride, ...]) ->
     identity_complete = len(identities) == len(rides) == unique_count
     complete: bool | None = None
     coverage = None
-    if count is not None:
+    if count == 0 and (
+        rides or mileage or energy or duration or any(day.distance_km > 0 for day in daily)
+    ):
+        count = None
+        warnings.append("reported_count_inconsistent")
+    elif count is not None:
         if count > len(rides):
             complete = False
             warnings.append("month_list_partial")

@@ -25,15 +25,25 @@ from .exceptions import ErrorKind, NinebotAuthError, NinebotError
 from .http_policy import rate_limit_delay
 from .parsing import previous_month
 from .travel import opaque_id
+from .vehicle_cache import BusinessLine, observed_business_line
 
 TRAVEL_BASE = "https://cn-cbu-gateway.ninebot.com"
 TRAVEL_PATH = "/app-api/travel/v6/travel-list2"
 CONTRACT = "0.1.7+native.history.v1"
 MOTOR_MONTH_CONTRACT = "0.1.7+native.motor.month.v1"
+PAGE_CONTRACTS = frozenset({CONTRACT, MOTOR_MONTH_CONTRACT})
 CLIENT_VERSION = "610063322"
 RN_VERSION = "743"
 MAX_PAGE = 4096
 MAX_SESSION_BYTES = 64 * 1024
+
+
+def page_contract(client: object, vehicle: str) -> str:
+    return (
+        MOTOR_MONTH_CONTRACT
+        if observed_business_line(client, vehicle) is BusinessLine.MOTOR
+        else CONTRACT
+    )
 
 
 class UnsupportedHistoryRegion(NinebotError):

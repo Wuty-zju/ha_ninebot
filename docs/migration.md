@@ -93,6 +93,8 @@ Archive migrations validate the source, check space and create an exclusive cons
 
 Older versions may not read the upgraded schema or identity journal. Restore the matching full pre-upgrade backup in a deliberate recovery environment with the integration stopped. Keep the only recovery original intact; an older copy lacks data acquired after it was created. Do not overwrite a live archive, lower its schema marker manually or delete it to force setup.
 
+If an archive has saved motor pages with v2.2.2, use an archive backup from before the upgrade when returning to v2.2.1 or earlier.
+
 Use recovery-job copies such as `.recovery-<job_id>.sqlite3` through the supported [verification and recovery](history.md#verification-and-recovery) workflow. Keep the matching full HA backup for version rollback and retain unresolved Repairs for diagnosis.
 
 

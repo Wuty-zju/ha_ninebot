@@ -171,6 +171,7 @@ def month_at(now: datetime) -> str:
 def travel(raw: object, query_month: str) -> TravelMonth:
     rides = parse_rides(raw, query_month)
     item = payload(raw)
+    summary = summarize_month(item, query_month, rides)
     selected = latest_ride(rides)
     last = None
     if selected is not None or rides:
@@ -186,12 +187,12 @@ def travel(raw: object, query_month: str) -> TravelMonth:
         )
     return TravelMonth(
         query_month,
-        number(item.get("total_mileages"), 0, 1000000),
-        number(item.get("ec"), 0),
+        summary.mileage_km,
+        summary.energy_wh,
         last,
         rides,
-        integer(item.get("times")),
-        number(item.get("duration"), 0, 2678400),
-        summarize_month(item, query_month, rides),
+        summary.ride_count,
+        summary.duration_s,
+        summary,
         numeric_precision(item, ("total_mileages", "ec", "duration", "times")),
     )

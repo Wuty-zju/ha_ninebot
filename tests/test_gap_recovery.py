@@ -97,6 +97,7 @@ async def context(hass, tmp_path, monkeypatch):
     calls = []
     fail = [False]
     co = SimpleNamespace(
+        client=SimpleNamespace(),
         hass=hass,
         config_entry=SimpleNamespace(
             options={
@@ -118,7 +119,7 @@ async def context(hass, tmp_path, monkeypatch):
         async_query_month=AsyncMock(side_effect=AssertionError("Unexpected serve refresh")),
     )
 
-    async def query(sn, month, number):
+    async def query(sn, month, number, *, provider=None):
         calls.append(("page", sn, month, number))
         assert month == "202608"  # Stable Sept/Oct must not be scanned again.
         rows = [item(sn + "-gap-a", month), item(sn + "-gap-b", month)]

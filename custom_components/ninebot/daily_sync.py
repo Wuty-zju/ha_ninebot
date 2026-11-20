@@ -18,11 +18,13 @@ from .const import BUSINESS_TIMEZONE
 from .exceptions import NinebotError
 from .history_budget import configured_budget
 from .models import TravelMonth
+from .native_history import MOTOR_MONTH_CONTRACT, page_contract
 from .parsing import previous_month
-from .polling_policy import DAILY_REPAIR_INTERVAL
+from .polling_policy import DAILY_REPAIR_INTERVAL, MONTH_CACHE_SECONDS
 from .preservation import CONF_PRESERVE, retry_delay
-from .raw import RawRecord
+from .raw import Endpoint, RawRecord
 from .ride_archive import ArchiveError
+from .statistics_store import timestamp
 
 if TYPE_CHECKING:
     from .coordinator import NinebotCoordinator
@@ -38,6 +40,7 @@ def parse_page(record: RawRecord, month: str) -> TravelMonth:
 @dataclass
 class DailyCursor:
     total: int
+    provider: str
     page: int = 1
     seen: set[str] = field(default_factory=set)
     attempts: int = 0
@@ -56,11 +59,12 @@ class DailyStatisticsSync:
         if co.monotonic() < self.next_due:
             return
         entry = co.config_entry
-        if entry is None or not store.writable or entry.options.get(CONF_PRESERVE) is True:
-            return  # The opted-in history worker already owns paginated acquisition.
+        if entry is None or not store.writable:
+            return
+        preserving = entry.options.get(CONF_PRESERVE) is True
         local = now.astimezone(ZoneInfo(BUSINESS_TIMEZONE))
         current = local.strftime("%Y%m")
-        months = (current, previous_month(current)) if local.day <= 2 else (current,)
+        previous = previous_month(current)
         vehicles = sorted(
             sn
             for sn in co.data
@@ -71,7 +75,7 @@ class DailyStatisticsSync:
         self.cursors = {
             key: value
             for key, value in self.cursors.items()
-            if key[0] in vehicles and key[1] in months
+            if key[0] in vehicles and key[1] in (current, previous)
         }
         if self._last_vehicle in vehicles:
             index = vehicles.index(self._last_vehicle) + 1
@@ -79,6 +83,11 @@ class DailyStatisticsSync:
         for sn in vehicles:
             if not co.fresh(sn, "profile"):
                 continue
+            provider = page_contract(co.client, sn)
+            motor = provider == MOTOR_MONTH_CONTRACT
+            if preserving and (not motor or co.preservation.bootstrap.enabled(sn)):
+                continue  # The history worker already owns pagination for this vehicle.
+            months = (current, previous) if motor or local.day <= 2 else (current,)
             for month in months:
                 record = store.month(sn, month)
                 if record is None or store.month_rides(sn, month)[1]:
@@ -87,25 +96,37 @@ class DailyStatisticsSync:
                 total = record.ride_count
                 if total is None or not 0 < total <= MAX_PAGES * 20:
                     continue  # Missing/implausible totals cannot justify an open-ended scan.
-                cursor = self.cursors.setdefault((sn, month), DailyCursor(total))
-                if cursor.total != total:
-                    cursor = self.cursors[(sn, month)] = DailyCursor(total)
+                cursor = self.cursors.setdefault((sn, month), DailyCursor(total, provider))
+                if cursor.total != total or cursor.provider != provider:
+                    cursor = self.cursors[(sn, month)] = DailyCursor(total, provider)
                 if cursor.retry_at > now.timestamp():
                     continue
                 self.next_due = co.monotonic() + DAILY_REPAIR_INTERVAL
                 owns = co.preservation.months.guard(sn)
-                if not await store.archive.async_background_budget(
+                cached = (
+                    co.raw.get(Endpoint.TRAVEL, sn, month, now=now)
+                    if motor and cursor.page == 1
+                    else None
+                )
+                if cached and (
+                    cached.endpoint_version != provider
+                    or cached.received_at != timestamp(record.received_at)
+                    or not 0 <= (now - cached.received_at).total_seconds() < MONTH_CACHE_SECONDS
+                ):
+                    cached = None
+                if cached is None and not await store.archive.async_background_budget(
                     sn, now, configured_budget(entry.options), guard=owns
                 ):
                     return
                 self._last_vehicle = sn
                 try:
-                    raw = await co.async_query_history_page(sn, month, cursor.page)
+                    raw = cached or await co.async_query_history_page(sn, month, cursor.page)
                     travel = await co.hass.async_add_executor_job(parse_page, raw, month)
                     summary = travel.summary
                     ids = {ride.ride_id for ride in travel.rides if ride.ride_id is not None}
                     if (
-                        summary is None
+                        raw.endpoint_version != provider
+                        or summary is None
                         or summary.ride_count != cursor.total
                         or len(ids) != len(travel.rides)
                         or not ids
@@ -113,14 +134,15 @@ class DailyStatisticsSync:
                         or len(ids | cursor.seen) > cursor.total
                     ):
                         raise ValueError("Unstable daily list pagination")
-                    await store.async_record(
-                        sn,
-                        travel,
-                        raw.received_at,
-                        raw.backend_version,
-                        guard=owns,
-                        receipt_ordered=True,
-                    )
+                    if cached is None:
+                        await store.async_record(
+                            sn,
+                            travel,
+                            raw.received_at,
+                            raw.backend_version,
+                            guard=owns,
+                            receipt_ordered=True,
+                        )
                     if not owns() or not store.writable:
                         return  # A paused/failed write cannot advance the page cursor.
                     cursor.seen.update(ids)

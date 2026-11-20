@@ -6,7 +6,8 @@ from datetime import datetime
 
 from .archive_codec import decoded, stamp
 from .history_plan import MAX_PAGES, PROVIDERS
-from .history_store import resolve
+from .history_store import page_contract, resolve
+from .native_history import PAGE_CONTRACTS
 from .travel import opaque_id
 
 MAX_IDS = 5000
@@ -83,6 +84,9 @@ def recorded_enumeration(
     ):
         return None
     scope = (vehicle, plan_id, month)
+    provider = page_contract(db, *scope)
+    if provider not in PAGE_CONTRACTS:
+        return None
     count, size = db.execute(
         "SELECT count(*),coalesce(sum(length(CAST(ids AS BLOB))),0) FROM history_pages"
         " WHERE vehicle=? AND plan=? AND month=?",
@@ -118,7 +122,7 @@ def recorded_enumeration(
             page != expected
             or total != known
             or backend != "0.1.7"
-            or endpoint != plan.provider
+            or endpoint != provider
             or stop is not None
             or not payload_exists
             or ids is None
