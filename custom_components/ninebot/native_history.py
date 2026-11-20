@@ -15,7 +15,7 @@ import zlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import aiohttp
 
@@ -29,10 +29,16 @@ from .travel import opaque_id
 TRAVEL_BASE = "https://cn-cbu-gateway.ninebot.com"
 TRAVEL_PATH = "/app-api/travel/v6/travel-list2"
 CONTRACT = "0.1.7+native.history.v1"
+MOTOR_MONTH_CONTRACT = "0.1.7+native.motor.month.v1"
 CLIENT_VERSION = "610063322"
 RN_VERSION = "743"
 MAX_PAGE = 4096
 MAX_SESSION_BYTES = 64 * 1024
+
+
+class UnsupportedHistoryRegion(NinebotError):
+    def __init__(self) -> None:
+        super().__init__(ErrorKind.PROTOCOL)
 
 
 @dataclass(frozen=True, repr=False)
@@ -84,7 +90,7 @@ def read_session(directory: Path, expected_uid: str) -> HistorySession:
             raise ValueError("Session identity")
         assert isinstance(uid, str) and isinstance(token, str) and isinstance(device, str)
         if tokens.get("region", "bj") != "bj" or config.get("regionx", "bj") != "bj":
-            raise NinebotError(ErrorKind.PROTOCOL)
+            raise UnsupportedHistoryRegion()
         return HistorySession(
             uid, token, device, hashlib.sha256(config_raw + b"\0" + token_raw).hexdigest()
         )
@@ -106,7 +112,12 @@ def validate_page(vehicle: str, month: str, page: int) -> None:
 
 
 def prepare(
-    session: HistorySession, vehicle: str, month: str, page: int
+    session: HistorySession,
+    vehicle: str,
+    month: str,
+    page: int,
+    *,
+    business_line: Literal["ebike", "motor"] = "ebike",
 ) -> tuple[bytes, dict, dict]:
     """Build the verified ordered business request in a bounded worker."""
     validate_page(vehicle, month, page)
@@ -140,7 +151,7 @@ def prepare(
     headers = {
         "User-Agent": "okhttp/4.9.1",
         "Accept-Encoding": "gzip",
-        "Business-Type": "1",
+        "Business-Type": "1" if business_line == "motor" else "2",
         "Cache-Control": "no-cache",
         "Client-Ver": CLIENT_VERSION,
         "Content-Type": "text/html;charset=UTF-8",
@@ -211,10 +222,14 @@ async def request_page(
     month: str,
     page: int,
     deadline_seconds: float,
+    *,
+    business_line: Literal["ebike", "motor"] = "ebike",
 ) -> dict[str, Any]:
     import asyncio
 
-    wire, keys, headers = await asyncio.to_thread(prepare, lease, vehicle, month, page)
+    wire, keys, headers = await asyncio.to_thread(
+        prepare, lease, vehicle, month, page, business_line=business_line
+    )
     try:
         async with http.post(
             TRAVEL_BASE + TRAVEL_PATH,

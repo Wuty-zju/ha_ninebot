@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "車両情報",
+        "state_attributes": {
+          "business_line": {
+            "name": "車両のサービス区分"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",

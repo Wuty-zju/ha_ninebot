@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "Informações do veículo",
+        "state_attributes": {
+          "business_line": {
+            "name": "Segmento do veículo"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",

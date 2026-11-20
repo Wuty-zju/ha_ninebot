@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "Fahrzeuginformationen",
+        "state_attributes": {
+          "business_line": {
+            "name": "Fahrzeug-Geschäftsbereich"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",

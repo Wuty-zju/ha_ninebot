@@ -10,8 +10,34 @@ from aiohttp import web
 
 from custom_components.ninebot.client import NinecliClient
 from custom_components.ninebot.exceptions import ErrorKind, NinebotError
+from custom_components.ninebot.vehicle_cache import BusinessLine, reconcile_cache
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
+
+
+def test_discovery_cache_classifies_only_unambiguous_reviewed_business_lines(tmp_path):
+    rows = [
+        {"wnumber": "bike", "business_line": "ebike"},
+        {"wnumber": "motor", "business_line": "motor"},
+        {"wnumber": "conflict", "business_line": "ebike"},
+        {"wnumber": "conflict", "business_line": "motor"},
+        {"wnumber": "other", "business_line": "future-product"},
+        {"wnumber": "unreported"},
+    ]
+    path = tmp_path / "vehicles.json"
+    path.write_text(json.dumps({"vehicles": rows}))
+    observed = frozenset(row["wnumber"] for row in rows)
+    expected = {
+        "bike": BusinessLine.EBIKE,
+        "motor": BusinessLine.MOTOR,
+        "conflict": BusinessLine.AMBIGUOUS,
+        "other": BusinessLine.UNSUPPORTED,
+        "unreported": BusinessLine.UNOBSERVED,
+    }
+    assert reconcile_cache(tmp_path, None, observed, True) == (True, expected)
+    previous = path.read_bytes()
+    path.write_text(json.dumps({"vehicles": rows[:1]}))
+    assert reconcile_cache(tmp_path, previous, frozenset({"bike"}), False) == (False, expected)
 
 
 async def test_native_discovery_business_failures_are_not_successful_unbinding(

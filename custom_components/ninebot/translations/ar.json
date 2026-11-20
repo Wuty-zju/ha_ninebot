@@ -331,6 +331,11 @@
       },
       "raw_data_summary": {
         "name": "معلومات المركبة",
+        "state_attributes": {
+          "business_line": {
+            "name": "قطاع أعمال المركبة"
+          }
+        },
         "state": {
           "debug_disabled": "Debug disabled",
           "ok": "OK",
