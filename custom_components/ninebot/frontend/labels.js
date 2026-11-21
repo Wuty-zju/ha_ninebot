@@ -66,7 +66,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Follow replay",
+    "previous_page": "Previous page"
   },
   "zh-Hans": {
     "map_title": "行程回放",
@@ -135,7 +137,9 @@ export const LABELS = {
     "history_updated": "本地记录已更新，读取最新内容",
     "feed_retrying": "正在重新连接本地更新通知…",
     "feed_unavailable": "自动更新提示暂不可用，仍可手动读取。",
-    "feed_unsupported": "此版本不支持更新通知，仍可手动读取。"
+    "feed_unsupported": "此版本不支持更新通知，仍可手动读取。",
+    "follow_playback": "跟随回放",
+    "previous_page": "上一页"
   },
   "zh-Hant": {
     "map_title": "行程回放",
@@ -204,7 +208,9 @@ export const LABELS = {
     "history_updated": "本機記錄已更新，讀取最新內容",
     "feed_retrying": "正在重新連線本機更新通知…",
     "feed_unavailable": "自動更新提示暫不可用，仍可手動讀取。",
-    "feed_unsupported": "此版本不支援更新通知，仍可手動讀取。"
+    "feed_unsupported": "此版本不支援更新通知，仍可手動讀取。",
+    "follow_playback": "跟隨回放",
+    "previous_page": "上一頁"
   },
   "de": {
     "map_title": "Fahrtenwiedergabe",
@@ -273,7 +279,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Wiedergabe folgen",
+    "previous_page": "Vorherige Seite"
   },
   "fr": {
     "map_title": "Relecture de trajet",
@@ -342,7 +350,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Suivre la lecture",
+    "previous_page": "Page précédente"
   },
   "es": {
     "map_title": "Reproducción de trayectos",
@@ -411,7 +421,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Seguir la reproducción",
+    "previous_page": "Página anterior"
   },
   "it": {
     "map_title": "Riproduzione dei percorsi",
@@ -480,7 +492,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Segui la riproduzione",
+    "previous_page": "Pagina precedente"
   },
   "pt": {
     "map_title": "Reprodução de trajetos",
@@ -549,7 +563,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Seguir a reprodução",
+    "previous_page": "Página anterior"
   },
   "pt-BR": {
     "map_title": "Reprodução de trajetos",
@@ -618,7 +634,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Acompanhar a reprodução",
+    "previous_page": "Página anterior"
   },
   "ru": {
     "map_title": "Воспроизведение поездок",
@@ -687,7 +705,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Следить за воспроизведением",
+    "previous_page": "Предыдущая страница"
   },
   "ja": {
     "map_title": "走行リプレイ",
@@ -756,7 +776,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "再生位置を追跡",
+    "previous_page": "前のページ"
   },
   "ko": {
     "map_title": "주행 다시 보기",
@@ -825,7 +847,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "재생 위치 따라가기",
+    "previous_page": "이전 페이지"
   },
   "nl": {
     "map_title": "Ritten afspelen",
@@ -894,7 +918,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Afspelen volgen",
+    "previous_page": "Vorige pagina"
   },
   "pl": {
     "map_title": "Odtwarzanie przejazdów",
@@ -963,7 +989,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Śledź odtwarzanie",
+    "previous_page": "Poprzednia strona"
   },
   "uk": {
     "map_title": "Відтворення поїздок",
@@ -1032,7 +1060,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Стежити за відтворенням",
+    "previous_page": "Попередня сторінка"
   },
   "tr": {
     "map_title": "Sürüşleri tekrar oynat",
@@ -1101,7 +1131,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Oynatmayı takip et",
+    "previous_page": "Önceki sayfa"
   },
   "hi": {
     "map_title": "यात्रा फिर से देखें",
@@ -1170,7 +1202,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "रीप्ले के साथ चलें",
+    "previous_page": "पिछला पृष्ठ"
   },
   "id": {
     "map_title": "Putar ulang perjalanan",
@@ -1239,7 +1273,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Ikuti pemutaran",
+    "previous_page": "Halaman sebelumnya"
   },
   "th": {
     "map_title": "เล่นเส้นทางย้อนหลัง",
@@ -1308,7 +1344,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "ติดตามตำแหน่งที่เล่น",
+    "previous_page": "หน้าก่อนหน้า"
   },
   "vi": {
     "map_title": "Phát lại chuyến đi",
@@ -1377,7 +1415,9 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "Theo dõi phát lại",
+    "previous_page": "Trang trước"
   },
   "ar": {
     "map_title": "إعادة عرض الرحلات",
@@ -1446,6 +1486,8 @@ export const LABELS = {
     "history_updated": "Local records updated · Read latest",
     "feed_retrying": "Reconnecting local update notifications…",
     "feed_unavailable": "Automatic update notifications are unavailable. You can read locally.",
-    "feed_unsupported": "This version has no update notifications. You can read locally."
+    "feed_unsupported": "This version has no update notifications. You can read locally.",
+    "follow_playback": "متابعة التشغيل",
+    "previous_page": "الصفحة السابقة"
   }
 };

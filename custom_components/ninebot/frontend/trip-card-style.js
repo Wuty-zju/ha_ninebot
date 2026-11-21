@@ -5,6 +5,7 @@ export const HISTORY_STYLE = `
   color: var(--primary-text-color, CanvasText);
   --replay-accent: var(--primary-color, #168af9);
   --replay-card: var(--ha-card-background, var(--card-background-color, Canvas));
+  --replay-glass: color-mix(in srgb, var(--replay-card) 86%, transparent);
   --replay-muted: var(--secondary-text-color, GrayText);
   --replay-line: var(--divider-color, color-mix(in srgb, currentColor 14%, transparent));
   --replay-surface: color-mix(in srgb, currentColor 5%, var(--replay-card));
@@ -41,12 +42,20 @@ button:hover:not(:disabled) { border-color: var(--replay-accent); }
 button:disabled { opacity: .5; cursor: default; }
 :focus-visible { outline: 2px solid var(--replay-accent); outline-offset: 2px; }
 ha-icon { --mdc-icon-size: 20px; vertical-align: middle; }
-.map-tool {
-  position: absolute; z-index: 901; inset-inline-end: 11px; inset-block-start: 11px;
-  border-radius: 50%; width: 44px; padding: 0; box-shadow: 0 3px 14px #0003;
-  background: color-mix(in srgb, var(--replay-card) 90%, transparent);
-  backdrop-filter: blur(12px);
+.glass {
+  position: absolute; z-index: 901; background: var(--replay-card);
+  border: 1px solid var(--replay-line); border-radius: 28px;
+  box-shadow: 0 2px 9px #0002, 0 8px 24px #0002;
 }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: var(--replay-glass); -webkit-backdrop-filter: blur(18px) saturate(125%);
+    backdrop-filter: blur(18px) saturate(125%); }
+}
+.map-tools { display: flex; padding: 2px; inset-inline-end: 10px; inset-block-start: 10px; }
+.map-tool, .transport button {
+  border: 0; border-radius: 50%; padding: 0; background: transparent;
+}
+.map-tool[aria-pressed=true] { color: var(--replay-accent); background: var(--replay-selection); }
 .playback { padding-block: 15px 0; }
 .route-title { font-size: 19px; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .interval { margin-top: 4px; color: var(--replay-muted); font-size: 13px; }
@@ -75,11 +84,14 @@ ha-icon { --mdc-icon-size: 20px; vertical-align: middle; }
 .metrics dt { color: var(--replay-muted); font-size: 12px; overflow-wrap: anywhere; }
 .metrics dd { margin-top: 3px; font-size: clamp(13px, 2.9cqw, 19px); font-weight: 650;
   font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.transport { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.transport {
+  display: flex; align-items: center; gap: 7px; padding: 3px 5px;
+  inset-inline-start: 10px; inset-block-end: 38px; width: min(340px, calc(100% - 76px));
+}
 .transport button { flex: none; border-radius: 50%; padding: 0; }
 .transport .play { background: var(--replay-selection); }
 .seek { flex: 1; min-width: 0; display: grid; }
-.seek input { width: 100%; height: 30px; margin: 0; }
+.seek input { width: 100%; height: 26px; margin: 0; touch-action: pan-y; }
 .position { color: var(--replay-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .route-more { margin-top: 8px; }
 .library {
@@ -122,6 +134,10 @@ input[type=date] {
   .workspace { grid-template-columns: minmax(0, 1.9fr) minmax(236px, 1fr); }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .map-tool { background: var(--replay-card); backdrop-filter: none; }
+  .glass { background: var(--replay-card); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (forced-colors: active) {
+  .glass { background: Canvas; border-color: ButtonText; box-shadow: none; }
+  .map-tool[aria-pressed=true] { outline: 2px solid Highlight; outline-offset: -4px; }
 }
 `;
