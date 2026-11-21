@@ -141,8 +141,9 @@ async def test_action_returns_chart_from_same_cached_month_without_new_queries(
     app_client.async_control.assert_not_awaited()
 
 
-async def test_month_coverage_tracks_only_the_verified_archive_receipt(
-    hass, entry, app_client, freezer, enable_custom_integrations
+@pytest.mark.parametrize("reconcilable", [False, True])
+async def test_month_coverage_uses_only_current_observation_evidence(
+    hass, entry, app_client, freezer, enable_custom_integrations, reconcilable
 ):
     from datetime import UTC, datetime, timedelta
 
@@ -155,7 +156,14 @@ async def test_month_coverage_tracks_only_the_verified_archive_receipt(
     sn, month = "SyntheticSN", "202611"
     now = datetime(2026, 11, 17, 12, tzinfo=UTC)
     freezer.move_to(now)
-    app_client.async_get_travel.return_value = {"times": 2, "list": [{"travel_id": "part-one"}]}
+    totals = {"times": 2}
+    rides = [{"travel_id": "part-one"}, {"travel_id": "part-two"}]
+    if reconcilable:
+        totals.update(total_mileages=2, duration=120, ec=40)
+        for index, ride in enumerate(rides, 1):
+            end = int(now.timestamp()) - 120 * index
+            ride.update(start_time=end - 60, end_time=end, mileages=1, duration=60, ec=20)
+    app_client.async_get_travel.return_value = {**totals, "list": rides[:1]}
     hass.config_entries.async_update_entry(entry, options={**entry.options, "debug_mode": True})
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -168,10 +176,10 @@ async def test_month_coverage_tracks_only_the_verified_archive_receipt(
     plan = HistoryPlan.create("a" * 32, vehicle_key(sn), month, month, now.isoformat())
     await archive.async_set_history_plan(sn, plan, None, guard=lambda: True)
     app_client.reset_mock()
-    for name in ("part-one", "part-two"):
+    for ride in rides:
         now += timedelta(seconds=1)
         freezer.move_to(now)
-        payload = {"times": 2, "list": [{"travel_id": name}]}
+        payload = {**totals, "list": [ride]}
         raw = build_record(
             Endpoint.TRAVEL,
             payload,
@@ -190,14 +198,25 @@ async def test_month_coverage_tracks_only_the_verified_archive_receipt(
     assert state.attributes["returned_rides"] == 1 and state.attributes["list_complete"] is False
     assert state.attributes["verified_pages"] == state.attributes["verified_rides"] == 2
 
-    # The same content can be observed again without a facts revision.
-    # That newer observation has no matching verified page chain.
+    # The same content can be observed again without a facts revision. The new
+    # receipt can only show 100% if the retained rides reconcile with its totals.
     now += timedelta(seconds=1)
     freezer.move_to(now)
     await statistics.async_record(sn, adapters.travel(payload, month), now, "0.1.7")
     state = hass.states.get(entity_id)
-    assert float(state.state) == 50
-    assert state.attributes["coverage_basis"] == "returned_list"
+    assert float(state.state) == (100 if reconcilable else 50)
+    assert state.attributes["coverage_basis"] == (
+        "local_reconciled" if reconcilable else "returned_list"
+    )
     assert state.attributes["verified_pages"] is None
+    if reconcilable:
+        now += timedelta(seconds=1)
+        freezer.move_to(now)
+        await statistics.async_record(
+            sn, adapters.travel({**payload, "total_mileages": 3}, month), now, "0.1.7"
+        )
+        state = hass.states.get(entity_id)
+        assert float(state.state) == 50
+        assert state.attributes["coverage_basis"] == "returned_list"
     app_client.async_get_travel.assert_not_awaited()
     app_client.async_get_trip_detail.assert_not_awaited()

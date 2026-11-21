@@ -4,7 +4,7 @@ Entries describe each version at release time. See the [current guides](docs/REA
 
 ## 2.2.4
 
-- Show verified pagination in the current-month list diagnostic when the saved pages match the displayed observation. Keep the individual response's coverage visible. Thanks to [@yang605256182](https://github.com/yang605256182) for identifying the issue in [#289](https://github.com/Wuty-zju/ha_ninebot/pull/289).
+- Show verified pagination or local reconciliation in the current-month list diagnostic when the archive supports the displayed observation. Keep the individual response's coverage visible. Thanks to [@yang605256182](https://github.com/yang605256182) for identifying the issue in [#289](https://github.com/Wuty-zju/ha_ninebot/pull/289).
 - Distinguish a completed sync with limited tracks from unverified months. Show counts for simplified, single-point and unusable tracks in diagnostics.
 - Preserve the accepted month totals and observation time when a later page stops a history run. Retain the page and its usable ride records for recovery.
 

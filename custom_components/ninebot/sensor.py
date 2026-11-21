@@ -565,28 +565,35 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             return self.coordinator.local_vehicle_available(self.sn)
         return super().available
 
-    def _list_enumeration(
+    def _list_coverage_evidence(
         self, snapshot: VehicleSnapshot, received: datetime | None
-    ) -> RecordedEnumeration | None:
-        statistics = self.coordinator.statistics
+    ) -> tuple[str, RecordedEnumeration | None]:
+        statistics, travel = self.coordinator.statistics, snapshot.travel
         if (
-            self.entity_description.key == "month_list_coverage"
-            and snapshot.travel is not None
+            travel is not None
+            and travel.summary is not None
+            and travel.summary.list_complete is False
             and isinstance(statistics, ArchiveStatistics)
-            and (proof := statistics.month_enumeration(self.sn, snapshot.travel.month)) is not None
-            and proof.received_at == received
+            and (saved := statistics.month_snapshot(self.sn, travel.month)) is not None
+            and saved[1] == received
+            and saved[0].summary == travel.summary
         ):
-            return proof
-        return None
+            if (proof := statistics.month_enumeration(self.sn, travel.month)) is not None:
+                return "verified_pages", proof
+            if statistics.month_completeness_basis(self.sn, travel.month) == "local_reconciled":
+                return "local_reconciled", None
+        return "returned_list", None
 
     @property
     def native_value(self) -> str | float | datetime | None:
         if self.entity_description.key == "month_list_coverage":
             snapshot, cached_at = self._month_presentation()
-            if snapshot is not None and self._list_enumeration(
-                snapshot, cached_at or snapshot.travel_freshness.succeeded_at
-            ):
-                return 100
+            if snapshot is not None:
+                basis, _ = self._list_coverage_evidence(
+                    snapshot, cached_at or snapshot.travel_freshness.succeeded_at
+                )
+                if basis != "returned_list":
+                    return 100
         else:
             snapshot, _ = self._presentation()
         return self.entity_description.value(snapshot) if snapshot else None
@@ -657,9 +664,9 @@ class NinebotSensor(NinebotEntity, SensorEntity):
                 received_at=received.isoformat() if received else None,
             )
             if self.entity_description.key == "month_list_coverage":
-                proof = self._list_enumeration(snapshot, received)
+                basis, proof = self._list_coverage_evidence(snapshot, received)
                 attributes.update(
-                    coverage_basis="verified_pages" if proof else "returned_list",
+                    coverage_basis=basis,
                     verified_pages=proof.pages if proof else None,
                     verified_rides=proof.rides if proof else None,
                     returned_coverage=self.entity_description.value(snapshot),
