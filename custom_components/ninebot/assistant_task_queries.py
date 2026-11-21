@@ -15,7 +15,15 @@ from .assistant_errors import error_data
 from .assistant_limits import ReadLimitExceeded, read_slot
 from .assistant_plans import async_detail_proposal
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
-from .assistant_queries import MAX_RESPONSE_BYTES, VEHICLE, ToolSpec, _vehicles, task_reference
+from .assistant_queries import (
+    MAX_RESPONSE_BYTES,
+    MAX_VEHICLES,
+    VEHICLE,
+    ToolSpec,
+    async_vehicle_scopes,
+    task_reference,
+    vehicle_list_view,
+)
 from .assistant_review import REGISTERED
 from .assistant_task_store import ApprovalStore, TaskStoreUnavailable
 from .assistant_task_views import ticket_view
@@ -113,7 +121,10 @@ async def async_task_query(
                 evidence: dict[str, Any] = {}
                 warnings: list[str] = []
                 if key == "task_vehicles":
-                    view, scopes = await _vehicles(hass, context, tasks=True)
+                    scopes = await async_vehicle_scopes(
+                        hass, context, limit=MAX_VEHICLES + 1, tasks=True
+                    )
+                    view = vehicle_list_view(hass, scopes)
                     data, evidence, warnings = view.data, view.evidence, view.warnings
                 else:
                     scope = await async_authorize(hass, context, args["vehicle_ref"])

@@ -15,8 +15,8 @@ from homeassistant.helpers import llm
 from homeassistant.helpers.importlib import async_import_module
 
 from .assistant_evidence import MAX_RECEIPTS, render_evidence_answer
-from .assistant_policy import AssistantError, AssistantScope, async_require_admin
-from .assistant_queries import _vehicles
+from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
+from .assistant_queries import MAX_VEHICLES, async_vehicle_scopes
 from .compat import validation as vol
 from .const import DOMAIN
 
@@ -78,13 +78,15 @@ class EvidenceTurn:
             raise
 
     async def async_prepare(self) -> None:
+        if self.selected is not None:
+            scope = await async_authorize(self.hass, self.call.context, self.selected)
+            self.scopes = {scope.vehicle_ref: scope}
+            return
         await async_require_admin(self.hass, self.call.context)
-        _, scopes = await _vehicles(self.hass, self.call.context)
+        scopes = await async_vehicle_scopes(self.hass, self.call.context, limit=MAX_VEHICLES + 1)
         self.scopes = {scope.vehicle_ref: scope for scope in scopes}
-        if self.selected is not None and self.selected not in self.scopes:
-            raise AssistantError("not_authorized")
-        if self.selected is None and len(self.scopes) == 1:
-            self.selected = next(iter(self.scopes))
+        if len(scopes) == 1:
+            self.selected = scopes[0].vehicle_ref
 
     async def async_call(
         self,
@@ -192,7 +194,7 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
 
     class EvidenceTool(NinebotTool):
         def __init__(self, spec: ToolSpec) -> None:
-            super().__init__(spec)
+            super().__init__(spec, selected_vehicle=turn.selected)
             parameters = {
                 key: value
                 for key, value in spec.parameters.schema.items()

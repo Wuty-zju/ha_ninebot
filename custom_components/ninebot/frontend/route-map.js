@@ -63,11 +63,13 @@ async function loadNativeMap(hass) {
 class NativeRouteMap {
   constructor(map, host) {
     this.map = map;
+    this.canFollow = typeof map.setView === 'function' && typeof map.containsLocation === 'function';
     this.cursor = document.createElement('div');
     this.cursor.style.cssText = 'width:18px;height:18px;border:3px solid white;border-radius:100%;background:#168af9;box-shadow:0 1px 6px #0008';
     map.style.cssText = 'display:block;width:100%;height:100%';
     map.autoFit = false;
     map.zoomPosition = 'bottomright';
+    if ('scaleRuler' in map) map.scaleRuler = true;
     host.append(map);
   }
   setRoutes(tracks, labels) {
@@ -76,7 +78,14 @@ class NativeRouteMap {
     this.simplified = this.map.paths.reduce((total, path) => total + path.points.length, 0) <
       tracks.reduce((total, track) => total + track.points.length, 0);
   }
-  highlight(point) {
+  followPoint(point, center) {
+    const coords = location(point);
+    if (this.canFollow && (center || !this.map.containsLocation(coords))) {
+      this.map.setView(coords, this.map.getView()?.zoom);
+    }
+  }
+  highlight(point, color) {
+    if (color) this.cursor.style.backgroundColor = color;
     this.map.editableLocations = point ? [{ id: 'ninebot-replay', location: location(point),
       element: this.cursor, elementSize: [18, 18], locationEditable: false, fit: false }] : [];
   }
@@ -108,6 +117,7 @@ class OfflineRouteMap {
     this.map = L.map(this.container, { renderer: this.renderer, preferCanvas: true, minZoom: 1,
       scrollWheelZoom: false, zoomAnimation: false }).setView([0, 0], 1);
     this.map.attributionControl.setPrefix('Leaflet 1.9.4');
+    L.control.scale({ imperial: false }).addTo(this.map);
     this.routes = L.layerGroup().addTo(this.map);
     this.resize = new ResizeObserver(() => this.map.invalidateSize({ pan: false, debounceMoveend: true }));
     this.resize.observe(this.container);
@@ -131,15 +141,20 @@ class OfflineRouteMap {
     }
     this.focus?.bringToFront();
   }
-  highlight(point) {
+  followPoint(point, center) {
+    const coords = location(point);
+    if (center || !this.map.getBounds().contains(coords)) this.map.panTo(coords, { animate: false });
+  }
+  highlight(point, color = ROUTE_COLORS[0]) {
     if (!point) {
       this.focus?.remove();
       this.focus = null;
     } else if (this.focus) {
       this.focus.setLatLng(location(point));
+      if (this.focus.options.fillColor !== color) this.focus.setStyle({ fillColor: color });
     } else {
       this.focus = this.library.circleMarker(location(point), { color: '#ffffff',
-        fillColor: '#168af9', radius: 8, weight: 3, fillOpacity: 1, interactive: false }).addTo(this.map);
+        fillColor: color, radius: 8, weight: 3, fillOpacity: 1, interactive: false }).addTo(this.map);
     }
   }
   fit() {
@@ -235,13 +250,18 @@ export class RouteMap {
     this.renderer.setRoutes(this.tracks.map((track, index) => ({
       ...track, color: ROUTE_COLORS[this.slots[index] ?? index],
     })), this.labels);
-    this.renderer.highlight(this.point);
+    this.renderer.highlight(this.point, this.pointColor);
     if (this.fitting) this.fit();
   }
-  highlight(point) {
-    if (this.point === point) return;
+  highlight(point, color, follow = false) {
+    if (this.point === point && this.pointColor === color) return;
     this.point = point;
-    this.renderer?.highlight(point);
+    this.pointColor = color;
+    this.renderer?.highlight(point, color);
+    if (follow) this.followPoint(false);
+  }
+  followPoint(center) {
+    if (this.point) this.renderer?.followPoint(this.point, center);
   }
   fit() {
     this.fitting = !this.renderer;

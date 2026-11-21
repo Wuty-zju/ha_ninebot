@@ -295,29 +295,43 @@ async def _action(
     return response, attempt
 
 
-async def _vehicles(
-    hass: HomeAssistant, context: Context | None, *, tasks: bool = False
-) -> tuple[AssistantView, list[AssistantScope]]:
-    scopes: list[AssistantScope] = []
-    rows: list[dict[str, Any]] = []
+async def async_vehicle_scopes(
+    hass: HomeAssistant, context: Context | None, *, limit: int, tasks: bool = False
+) -> list[AssistantScope]:
+    """Discover only as many authorized vehicles as this operation needs."""
     registry = dr.async_get(hass)
     candidates = {
-        device.id: device
+        device.id
         for entry in hass.config_entries.async_entries(DOMAIN)
         if entry.options.get(CONF_ASSISTANT) is True
         and (not tasks or entry.options.get(CONF_ASSISTANT_TASKS) is True)
         for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
+        if any(domain == DOMAIN for domain, _ in device.identifiers)
     }
-    for device in sorted(candidates.values(), key=lambda row: row.id):
-        if not any(domain == DOMAIN for domain, _ in device.identifiers):
-            continue
+    scopes: list[AssistantScope] = []
+    for device_id in sorted(candidates):
         try:
-            scope = await async_authorize(hass, context, device.id)
+            scope = await async_authorize(hass, context, device_id)
             if tasks:
                 scope.assert_task_current(hass)
         except AssistantError:
             continue
         scopes.append(scope)
+        if len(scopes) == limit:
+            break
+    if not scopes:
+        raise AssistantError("not_authorized")
+    return scopes
+
+
+def vehicle_list_view(hass: HomeAssistant, scopes: list[AssistantScope]) -> AssistantView:
+    registry = dr.async_get(hass)
+    rows: list[dict[str, Any]] = []
+    for scope in scopes[:MAX_VEHICLES]:
+        device = registry.async_get(scope.vehicle_ref)
+        if device is None:
+            raise AssistantError("not_authorized")
+        scope.assert_current(hass)
         snapshot = scope.runtime.coordinator.data[scope.sn]
         private_ids = [scope.sn]
         private_ids.extend(
@@ -338,18 +352,15 @@ async def _vehicles(
                 },
             }
         )
-        if len(rows) > MAX_VEHICLES:
-            break
-    if not scopes:
-        raise AssistantError("not_authorized")
+    more = len(scopes) > MAX_VEHICLES
     return AssistantView(
-        data={"vehicles": rows[:MAX_VEHICLES], "more_available": len(rows) > MAX_VEHICLES},
+        data={"vehicles": rows, "more_available": more},
         evidence={
             "source_kind": "runtime_snapshot",
             "capabilities_basis": "local_cache_and_archive_readiness",
         },
-        warnings=["narrow_the_account_ai_selection"] if len(rows) > MAX_VEHICLES else [],
-    ), scopes
+        warnings=["narrow_the_account_ai_selection"] if more else [],
+    )
 
 
 async def _vehicle_query(
@@ -496,7 +507,14 @@ async def _explain_statistics(
         ),
     ):
         await scope.async_validate(hass)
-        result, error = await async_query(hass, key, arguments, scope.context, _period_now=now)
+        result, error = await async_query(
+            hass,
+            key,
+            arguments,
+            scope.context,
+            _period_now=now,
+            _selected_vehicle=scope.vehicle_ref,
+        )
         await scope.async_validate(hass)
         if error and result["error"]["code"] == "not_authorized":
             raise AssistantError("not_authorized")
@@ -574,6 +592,7 @@ async def async_query(
     context: Context | None,
     *,
     _period_now: datetime | None = None,
+    _selected_vehicle: str | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Authenticate, validate, read, reauthorize and bound every native tool call."""
     request_id, now = uuid4().hex, dt_util.utcnow()
@@ -581,6 +600,11 @@ async def async_query(
     try:
         async with asyncio.timeout(10):
             user_id = await async_require_admin(hass, context)
+            if (
+                _selected_vehicle is not None
+                and arguments.get("vehicle_ref", _selected_vehicle) != _selected_vehicle
+            ):
+                raise AssistantError("not_authorized")
             query: dict[str, Any]
             if key == "explain_statistics":
                 with read_slot(hass, user_id):
@@ -594,9 +618,16 @@ async def async_query(
                     raise AssistantError("invalid_arguments")
                 args = TOOL_SPECS[key].parameters(arguments)
                 if key in {"get_vehicles", "search_help"}:
-                    view, scopes = await _vehicles(hass, context)
+                    if _selected_vehicle is not None:
+                        scopes = [await async_authorize(hass, context, _selected_vehicle)]
+                    else:
+                        scopes = await async_vehicle_scopes(
+                            hass, context, limit=1 if key == "search_help" else MAX_VEHICLES + 1
+                        )
                     query = {}
-                    if key == "search_help":
+                    if key == "get_vehicles":
+                        view = vehicle_list_view(hass, scopes)
+                    else:
                         integration = await async_get_integration(hass, DOMAIN)
                         try:
                             help_data = await hass.async_add_executor_job(

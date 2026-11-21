@@ -90,8 +90,9 @@ class NinebotTool(llm.Tool):
 
     integration = "ninebot"
 
-    def __init__(self, spec: ToolSpec) -> None:
+    def __init__(self, spec: ToolSpec, *, selected_vehicle: str | None = None) -> None:
         self.spec = spec
+        self.selected_vehicle = selected_vehicle
         self.name, self.title = f"ninebot__{spec.key}", spec.title
         self.description, self.parameters = spec.description, spec.parameters
         self.annotations = cast(Any, llm).ToolAnnotations(
@@ -102,7 +103,11 @@ class NinebotTool(llm.Tool):
         self, hass: HomeAssistant, tool_input: llm.ToolInput, llm_context: llm.LLMContext
     ) -> Any:
         data, error = await async_query(
-            hass, self.spec.key, tool_input.tool_args, llm_context.context
+            hass,
+            self.spec.key,
+            tool_input.tool_args,
+            llm_context.context,
+            _selected_vehicle=self.selected_vehicle,
         )
         return native_result(data, error=error)
 

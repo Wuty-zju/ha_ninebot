@@ -359,6 +359,37 @@ async def test_vehicle_list_uses_consented_names_and_explicit_fleet_limit(hass, 
     assert not error and len(result["data"]["vehicles"]) == 20
     assert result["data"]["more_available"] is True
 
+    # An explicitly selected device is addressable even beyond the discovery page.
+    registry = dr.async_get(hass)
+    visible = {item["vehicle_ref"] for item in result["data"]["vehicles"]}
+    target = next(
+        device.id
+        for device in dr.async_entries_for_config_entry(registry, assistant.entry.entry_id)
+        if device.id not in visible
+        and any(
+            domain == "ninebot" and identifier in names for domain, identifier in device.identifiers
+        )
+    )
+    turn = EvidenceTurn(
+        hass, ServiceCall(hass, "ninebot", "ask", {"device_id": target}, context=assistant.context)
+    )
+    with patch.object(
+        dr, "async_entries_for_config_entry", side_effect=AssertionError("fleet scan")
+    ):
+        await turn.async_prepare()
+        roster, error = await async_query(
+            hass, "get_vehicles", {}, assistant.context, _selected_vehicle=target
+        )
+        assert not error and list(turn.scopes) == [target]
+        assert [row["vehicle_ref"] for row in roster["data"]["vehicles"]] == [target]
+        assert not roster["data"]["more_available"] and not roster["warnings"]
+        with patch("custom_components.ninebot.assistant_queries.vehicle_list_view") as projection:
+            _, error = await async_query(
+                hass, "search_help", {"query": "sync"}, assistant.context, _selected_vehicle=target
+            )
+            assert not error
+            projection.assert_not_called()
+
 
 async def test_action_selects_a_sole_authorized_vehicle_and_requires_a_choice_for_a_fleet(
     hass, assistant

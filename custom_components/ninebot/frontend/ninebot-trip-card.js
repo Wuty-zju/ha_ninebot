@@ -20,7 +20,14 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       this.render();
     });
     this.tracks = new LocalTracks((service, data) => this.browser.invoke(service, data), () => this.render());
-    this.browser = new FleetBrowser(() => this.historyChanged(), () => this.clearPrivate());
+    this.browser = new FleetBrowser(() => this.historyChanged(), () => this.clearPrivate(), () => {
+      if (!this.feedReady || this.busy) return false;
+      this.stopPlayback();
+      for (const key of this.tracks.tracks.keys()) {
+        if (!this.selection.selected.has(key)) this.tracks.tracks.delete(key);
+      }
+      return true;
+    });
     this.index = 0;
     this.visibility = () => {
       if (document.hidden) this.stopPlayback();
@@ -36,6 +43,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   clearRoutes() {
     this.pendingUpdates = false;
     this.resetting = true;
+    this.follow = false;
     this.stopPlayback();
     this.index = 0;
     this.mapError = false;
@@ -55,6 +63,8 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   }
 
   stopWatch() {
+    this.feedReady = false;
+    this.awaitingBaseline = false;
     this.watchToken = null;
     this.unwatch?.();
     this.unwatch = null;
@@ -95,6 +105,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   }
 
   historyUpdate(event) {
+    this.feedReady = event.type === 'baseline' || event.type === 'changed';
     if (event.type === 'denied') {
       this.browser.reset();
       this.browser.error = 'denied';
@@ -105,6 +116,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       // Retire in-flight pages while the same watcher waits for a fresh baseline.
       this.browser.clearPage();
       this.browser.awaitApply = true;
+      this.awaitingBaseline = true;
       this.clearRoutes();
     }
     if (['retrying', 'unavailable', 'unsupported'].includes(event.type)) {
@@ -114,6 +126,15 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     }
     this.feedStatus = null;
     if (!this.browser.page) {
+      if (this.browser.awaitApply && !this.awaitingBaseline) {
+        if (event.type === 'changed') {
+          this.pendingUpdates = true;
+          for (const track of this.tracks.tracks.values()) track.stale = true;
+        }
+        this.render();
+        return;
+      }
+      this.awaitingBaseline = false;
       this.browser.error = null;
       void this.browser.read();
       return;
@@ -123,12 +144,16 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     if (event.type === 'changed' || changed) {
       this.pendingUpdates = true;
       for (const track of this.tracks.tracks.values()) track.stale = true;
-      if (changed) this.browser.page.next_cursor = null;
+      this.browser.forgetPages(true);
     }
     this.render();
   }
 
   async refreshLocal() {
+    if (this.browser.awaitApply && !this.pendingUpdates && !this.awaitingBaseline) {
+      await this.browser.read();
+      return;
+    }
     this.stopPlayback();
     this.stopWatch();
     this.pendingUpdates = false;
@@ -233,6 +258,18 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     if (this.playback) clearInterval(this.playback);
     this.playback = null;
     this.view?.updatePlayback();
+  }
+
+  toggleFollow() {
+    this.follow = !this.follow;
+    this.view.updatePlayback();
+    if (this.follow) this.routeMap.followPoint(true);
+  }
+
+  fitRoutes() {
+    this.follow = false;
+    this.view.updatePlayback();
+    this.routeMap.fit();
   }
 
   playOrPause() {

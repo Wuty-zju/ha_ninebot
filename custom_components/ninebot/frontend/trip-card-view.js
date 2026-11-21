@@ -49,9 +49,12 @@ export class TripCardView {
     const player = element('section', 'player');
     const mapFrame = element('div', 'map-frame');
     const placeholder = element('p', 'map-placeholder');
-    const fit = iconButton('mdi:fit-to-screen-outline', '⌖', () => card.routeMap.fit(), 'fit', 'map-tool');
+    const mapTools = element('div', 'map-tools glass');
+    const fit = iconButton('mdi:fit-to-screen-outline', '⌖', () => card.fitRoutes(), 'fit', 'map-tool');
+    const follow = iconButton('mdi:crosshairs-gps', '◎', () => card.toggleFollow(), 'follow', 'map-tool');
+    mapTools.append(fit, follow);
     card.routeMap.element.className = 'map-surface';
-    mapFrame.append(card.routeMap.element, placeholder, fit);
+    mapFrame.append(card.routeMap.element, placeholder, mapTools);
 
     const playback = element('section', 'playback');
     const chosen = element('h3', 'route-title');
@@ -65,7 +68,7 @@ export class TripCardView {
       metrics.append(metric);
       return { key, caption, value };
     });
-    const transport = element('div', 'transport');
+    const transport = element('div', 'transport glass');
     const play = iconButton('mdi:play', '▶', () => card.playOrPause(), 'play', 'play');
     const slider = element('input'), position = element('span', 'position');
     slider.type = 'range';
@@ -85,7 +88,8 @@ export class TripCardView {
     transport.append(play, seek, restart);
     const quality = element('p', 'route-note');
     const more = element('div', 'route-more');
-    playback.append(chosen, interval, compare, metrics, transport, quality, more);
+    mapFrame.append(transport);
+    playback.append(chosen, interval, compare, metrics, quality, more);
     player.append(mapFrame, playback);
 
     const library = element('section', 'library');
@@ -103,7 +107,7 @@ export class TripCardView {
     workspace.append(player, library);
     shell.append(header, workspace);
     card.shadowRoot.append(element('style', '', HISTORY_STYLE), shell);
-    this.ui = { title, messages, placeholder, fit, playback, chosen, interval, compare, readouts,
+    this.ui = { title, messages, placeholder, mapTools, fit, follow, playback, chosen, interval, compare, readouts,
       transport, play, slider, position, restart, quality, more, heading, coverage, filterText, dates,
       toolbar, items, pager };
   }
@@ -148,6 +152,10 @@ export class TripCardView {
     const { activeTrack: track, busy, playback } = this.card;
     const enabled = this.card.canReplay(track);
     transport.hidden = !enabled;
+    this.ui.follow.hidden = !enabled || this.card.routeMap.renderer?.canFollow === false;
+    this.ui.follow.disabled = busy;
+    nameControl(this.ui.follow, labels.follow_playback);
+    this.ui.follow.setAttribute('aria-pressed', String(Boolean(this.card.follow && enabled)));
     const playing = Boolean(playback);
     const symbol = play.firstElementChild;
     symbol.setAttribute('icon', playing ? 'mdi:pause' : 'mdi:play');
@@ -163,7 +171,7 @@ export class TripCardView {
     const point = enabled ? track.points[index] : null;
     position.textContent = point ? `${index + 1} / ${last + 1}` : '';
     slider.setAttribute('aria-valuetext', point ? `${labels.point_sequence} ${point.sequence}` : '');
-    this.card.routeMap.highlight(point);
+    this.card.routeMap.highlight(point, this.routeColor(this.card.selection.primary), this.card.follow);
   }
 
   renderFilters(labels) {
@@ -267,10 +275,12 @@ export class TripCardView {
     }));
     if (page && !rows.length) ui.items.append(element('p', 'note empty', labels.empty));
     ui.items.scrollTop = scroll;
+    const previous = button(labels.previous_page, () => card.browser.showPage(pageNumber - 1), 'previous');
+    previous.disabled = card.busy || !card.browser.pages.has(pageNumber - 1);
     const next = button(labels.next, () => void card.browser.read(page.next_cursor), 'next');
     next.disabled = card.busy || !page?.next_cursor;
     ui.pager.replaceChildren(...(page && (page.next_cursor || pageNumber > 1) ?
-      [element('span', 'note', `${labels.page} ${pageNumber}`), next] : []));
+      [previous, element('span', 'note', `${labels.page} ${pageNumber}`), next] : []));
   }
 
   routeColor(key) {
@@ -284,7 +294,7 @@ export class TripCardView {
       .filter(item => item?.points.length);
     const visible = tracks.length > 0 && !card.mapError;
     card.routeMap.element.hidden = !visible;
-    ui.fit.hidden = !visible;
+    ui.mapTools.hidden = !visible;
     ui.placeholder.hidden = visible;
     ui.placeholder.textContent = card.mapError ? labels.map_error : track && !track.points.length ?
       labels.saved_without_points : ride?.detail_saved === false ? labels.detail_missing :
@@ -343,6 +353,7 @@ export class TripCardView {
     const slots = rendered.map(item => card.selection.slots.get(item.key));
     const notesText = ui.quality.textContent;
     void card.routeMap.update(rendered, card.browser.hass, labels, slots).then(() => {
+      this.updatePlayback();
       if (visible && card.routeMap.renderer?.simplified && ui.quality.textContent === notesText && !track?.capped) {
         ui.quality.textContent = `${notesText} · ${labels.display_limit}`;
       }

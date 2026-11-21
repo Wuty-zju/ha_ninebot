@@ -44,6 +44,11 @@ test('global recent merge retains unconsumed vehicle rows across pages without e
   assert.deepEqual(browser.page.rides.map(ride => Number(ride.ride_id.split('-').at(-1))), [6, 5, 2, 1]);
   assert.equal(calls.length, 3); assert.equal(browser.page.next_cursor, null);
   const current = browser.page;
+  browser.showPage(1);
+  assert.equal(browser.pageNumber, 1);
+  await browser.read(browser.page.next_cursor);
+  assert.equal(browser.page, current);
+  assert.equal(calls.length, 3, 'cached navigation never reuses the consumed server cursor');
   await browser.read(stale); assert.equal(browser.page, current);
 });
 

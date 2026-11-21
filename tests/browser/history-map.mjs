@@ -170,6 +170,23 @@ try {
   assert.equal(emptyAfterLatePage, true);
   await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.routeMap.renderer);
 
+  // Date filters browse the library independently of the live authorized comparison.
+  const retained = await page.evaluate(async () => {
+    const key = fixtureCard.selection.primary, track = fixtureCard.activeTrack;
+    const before = fixtureRequests.filter(call => call.service === 'get_trip_detail').length;
+    fixtureCard.browser.dates('2026-08-01', '2026-08-31');
+    fixtureCard.historyUpdate({ type: 'baseline', vehicles: ['synthetic-a', 'synthetic-b'].map(device_id =>
+      ({ device_id, selection_version: 'a'.repeat(32) + ':1' })) });
+    const editing = fixtureCard.browser.awaitApply && !fixtureCard.browser.busy;
+    await fixtureCard.refreshLocal();
+    return editing && fixtureCard.selection.primary === key && fixtureCard.activeTrack === track &&
+      fixtureRequests.filter(call => call.service === 'get_trip_detail').length === before;
+  });
+  assert.equal(retained, true);
+  await page.locator('.ride .overlay').first().click();
+  await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.activeRide.query_month === '202608');
+  assert.deepEqual(await page.evaluate(() =>
+    [...fixtureCard.selection.selected.values()].map(ride => ride.query_month)), ['202609', '202608']);
   await page.evaluate(async () => {
     fixtureSaved = false;
     fixtureCard.browser.reset();
@@ -200,6 +217,16 @@ try {
   await page.getByRole('slider').press('ArrowRight');
   assert.equal(await native.evaluate(map => map.paths === savedPaths), true);
   assert.equal(await native.evaluate(map => map.editableLocations[0].location[0]), 30.0001);
+  assert.equal(await native.evaluate(map => map.scaleRuler), true);
+  const historyReads = await page.evaluate(() => fixtureRequests.length);
+  const follow = page.getByRole('button', { name: '跟随回放', exact: true });
+  await follow.click();
+  assert.equal(await follow.getAttribute('aria-pressed'), 'true');
+  await page.getByRole('slider').press('ArrowRight');
+  assert.deepEqual(await native.evaluate(map => [map.center, map.zoom]), [[30.0002, 120 + Math.sin(2 / 8) * .001], 14]);
+  await page.getByRole('button', { name: '显示全部轨迹', exact: true }).click();
+  assert.equal(await follow.getAttribute('aria-pressed'), 'false');
+  assert.equal(await page.evaluate(() => fixtureRequests.length), historyReads);
   await page.locator('.ride .choose').last().click();
   await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.activeTrack?.label === 'Synthetic B');
   assert.equal(await native.evaluate(map => map === savedNativeMap), true);

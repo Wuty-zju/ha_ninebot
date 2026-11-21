@@ -16,8 +16,11 @@ if (params.has('native')) {
   class SyntheticMap extends HTMLElement {
     paths = [];
     editableLocations = [];
-    getView() { return this.view; }
-    fitBounds(bounds) { this.view = bounds; }
+    scaleRuler = false;
+    getView() { return { zoom: 14, center: this.center }; }
+    containsLocation() { return false; }
+    setView(center, zoom) { this.center = center; this.zoom = zoom; }
+    fitBounds(bounds) { this.bounds = bounds; }
   }
   // Exercise lazy loading through the same helper the real dashboard supplies.
   window.loadCardHelpers = async () => ({
@@ -50,17 +53,20 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: 
     if (request.type === 'config/entity_registry/get') return { device_id: 'synthetic-a' };
     if (window.fixtureDeny) throw { code: 'unauthorized' };
     const data = request.service_data;
+    const ride = data.start_date?.startsWith('2026-08') || data.query_month === '202608'
+      ? { ...row, ride_id: 'synthetic-august', query_month: '202608',
+        start_time: '2026-08-03T08:00:00Z', end_time: '2026-08-03T08:10:00Z' } : row;
     if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive', sort: 'desc', selection_version: 'a'.repeat(32) + ':1',
-      rides: [{ ...row, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
+      rides: [{ ...ride, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
     if (request.service !== 'get_trip_detail') throw new Error('Only history reads are allowed');
     const shift = data.device_id === 'synthetic-b' ? 0.002 : 0;
     const pointCount = endpointsOnly ? 2 : 60;
     const all = Array.from({ length: pointCount }, (_, sequence) => ({ sequence,
       latitude: 30 + sequence * .0001 + shift, longitude: 120 + Math.sin(sequence / 8) * .001 + shift,
       speed_raw: 25 + Math.sin(sequence / 4) * 12, distance_delta_raw: 40 + Math.cos(sequence / 5) * 9 })).filter(point => ![15, 16].includes(point.sequence));
-    return { response: { source_mode: 'ride_archive', query_month: '202609', received_at: row.end_time,
-      detail_context: { source_mode: 'ride_archive', archive_revision: 1, scalar_revision: 1, geometry_received_at: row.end_time },
-      ride: { ...row, detail_saved: true, track: data.include_track ? all.slice(data.point_offset, data.point_offset + data.max_points) : [],
+    return { response: { source_mode: 'ride_archive', query_month: ride.query_month, received_at: ride.end_time,
+      detail_context: { source_mode: 'ride_archive', archive_revision: 1, scalar_revision: 1, geometry_received_at: ride.end_time },
+      ride: { ...ride, detail_saved: true, track: data.include_track ? all.slice(data.point_offset, data.point_offset + data.max_points) : [],
         track_summary: { total_known: pointCount, offset: data.point_offset, limit: data.max_points,
           server_window_days: endpointsOnly ? 180 : null, next_offset: null,
           geometry_kind: endpointsOnly ? 'server_simplified' : 'sampled_unverified' } } } };

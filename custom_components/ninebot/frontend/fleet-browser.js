@@ -49,8 +49,11 @@ export function compareRides(a, b) {
 }
 
 export class FleetBrowser extends TripBrowser {
-  constructor(changed = () => {}, cleared = () => {}) {
-    super(changed); this.cleared = cleared;
+  constructor(changed = () => {}, cleared = () => {}, keepDateSelection = () => false) {
+    super(changed);
+    this.cleared = cleared;
+    this.keepDateSelection = keepDateSelection;
+    this.pages = new Map();
   }
   configure(config) {
     this.targets = vehicleTargets(config);
@@ -58,7 +61,35 @@ export class FleetBrowser extends TripBrowser {
     this.selected = new Set(this.targets.map((_, index) => index));
     super.configure({ ...config, ...this.targets[0] });
   }
-  clearPage() { this.streams = []; super.clearPage(); }
+  clearPage() {
+    this.pages.clear();
+    this.streams = [];
+    super.clearPage();
+  }
+  dates(start, end) {
+    if (!this.keepDateSelection()) return super.dates(start, end);
+    this.start = start;
+    this.end = end;
+    this.clearPage();
+    this.awaitApply = true;
+    this.changed();
+  }
+  forgetPages(retireRead = false) {
+    if (retireRead && this.busy) {
+      this.epoch++;
+      this.busy = false;
+    }
+    this.pages.clear();
+    this.streams = [];
+    if (this.page) this.page.next_cursor = null;
+  }
+  showPage(number) {
+    const page = this.pages.get(number);
+    if (this.busy || !this.active || !page) return;
+    this.page = page;
+    this.pageNumber = number;
+    this.changed();
+  }
   reset() { this.resolved = new Map(); super.reset(); }
   select(index, enabled) {
     if (this.busy || !Number.isInteger(index) || !this.targets[index]) return;
@@ -69,6 +100,10 @@ export class FleetBrowser extends TripBrowser {
     if (!this.active || this.busy || !this.config || !this.hass?.user?.id ||
         this.hass.connected === false || !this.selected?.size ||
         (cursor && cursor !== this.page?.next_cursor)) return;
+    if (cursor && this.pages.has(this.pageNumber + 1)) {
+      this.showPage(this.pageNumber + 1);
+      return;
+    }
     const epoch = this.epoch;
     let failed = false;
     // Stage buffers atomically: failure must not consume half of a fleet page.
@@ -145,11 +180,16 @@ export class FleetBrowser extends TripBrowser {
         .map(stream => [stream.device, stream.cursor ?? true]));
       this.streams = streams;
       this.page = { rides, coverage, next_cursor: Object.keys(continuation).length ? continuation : null };
-      this.details.clear(); this.pageNumber = cursor ? this.pageNumber + 1 : 1;
+      this.details.clear();
+      this.pageNumber = cursor ? this.pageNumber + 1 : 1;
+      if (!cursor) this.pages.clear();
+      this.pages.set(this.pageNumber, this.page);
+      // Only the frontier owns live stream buffers and consumable cursors.
+      if (this.pages.size > 5) this.pages.delete(this.pages.keys().next().value);
     } catch (error) {
       failed = true;
       if (this.current(epoch)) {
-        this.cleared?.(); this.details.clear(); this.streams = [];
+        this.cleared?.(); this.details.clear(); this.forgetPages();
         this.error = error?.code === 'unauthorized' ? 'denied' :
           error?.translation_key === 'history_cursor' ? 'cursor_error' : 'read_error';
         if (cursor && this.page && this.error === 'cursor_error') this.page.next_cursor = null;
@@ -178,7 +218,7 @@ export class FleetBrowser extends TripBrowser {
       if (this.current(epoch)) {
         this.cleared?.(); this.details.clear();
         this.error = error?.code === 'unauthorized' ? 'denied' : 'detail_error';
-        if (this.error === 'denied') { this.page = null; this.streams = []; }
+        if (this.error === 'denied') { this.forgetPages(); this.page = null; }
       }
     } finally { if (this.current(epoch)) { this.busy = false; this.changed(); } }
   }
