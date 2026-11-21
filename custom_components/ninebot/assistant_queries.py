@@ -184,7 +184,9 @@ SPECS = (
     ToolSpec(
         "get_sync_health",
         "Read history synchronization health",
-        "Read local history coverage and scheduling for the selected vehicle. "
+        "Read all saved trip and detail counts, confirmed simplified routes, and the "
+        "separate synchronization plan's coverage and scheduling for the selected vehicle. "
+        "A simplified route has saved detail. Unsaved detail and unverified months are separate. "
         "Explain reported states and evidence without inventing a failure cause. "
         "The account budget paces requests; do not infer an exact hourly remaining count. "
         "Does not start or resume work or change request budgets.",

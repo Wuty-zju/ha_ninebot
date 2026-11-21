@@ -27,6 +27,8 @@ PROMPT = (
     "past trips. "
     "To investigate a specific unknown statistic, use explain_statistics with the selected "
     "vehicle, period and metric for the bounded local check and cited checklist. "
+    "For saved trip totals, limited routes, or progress, use get_sync_health. "
+    "Distinguish all saved trips from the discovered trips in the synchronization plan. "
     "Capabilities report local cache/archive readiness, not hardware support, measurements "
     "or proof of recorded trips. A false cached_status means no successful local status receipt. "
     "Null/missing is unknown, "

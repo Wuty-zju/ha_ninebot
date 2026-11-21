@@ -105,6 +105,8 @@ Start with the failing boundary. The [user guide](assistant.md) owns the tool co
 
 Read-only tools run without cloud refresh. Recorded-list cursors bind the account, vehicle, date range and archive revision. Every page is authorized independently. Multi-vehicle queries need an explicit selection. A model host can phrase a reply differently from its inputs. Keep evidence fidelity and free-form answer quality as separate review decisions.
 
+Sync health projects whole-vehicle counts from the same local snapshot used by the diagnostic entities. The current history plan provides its own discovery denominator. Pass both scopes through the native tool and retain them in the rendered answer. An unavailable archive projection leaves the whole-archive counts unknown.
+
 ### Local task preview
 
 The account archive examines up to 31 business days and selects at most 20 missing details. The preview counts saved rows, missing mappings and uncertain identities separately. Each selected ride keeps its verified source month and a fingerprint. The executor rechecks these facts before claiming work. Empty, ambiguous and already-saved selections consume no cloud budget.
@@ -121,7 +123,7 @@ See [native review](#native-task-review-panel) and [task notices](#task-notices)
 
 ### Versioned public help
 
-The shipped catalog contains 19 bilingual topics and 10 advisory checklists. Each entry carries an applicability interval, a pinned source commit and anchor, and a content digest. When changing the manifest, exercise common searches against **that manifest version**, including the upper boundary and a query with no applicable match. Expand a version interval only after verifying the referenced guide still describes the behavior.
+The shipped catalog contains 20 bilingual topics and 10 advisory checklists. Each entry carries an applicability interval, a pinned source commit and anchor, and a content digest. When changing the manifest, exercise common searches against **that manifest version**, including the upper boundary and a query with no applicable match. Expand a version interval only after verifying the referenced guide still describes the behavior.
 
 ```sh
 python -m scripts.check_assistant_knowledge --verify-sources

@@ -596,7 +596,15 @@ def test_partial_workflow_reports_timed_out_step_and_omits_invalid_sync_state(tu
 def test_statistics_workflow_uses_selected_metric_and_preserves_help_citation(turn):
     stats = {"tool": "ninebot__get_statistics", "error": False, "result": _partial_statistics()}
     help_receipt = _help_receipt("unknown missing zero")
-    sync_receipt = {"data": {"state": "waiting_budget"}}
+    sync_receipt = {
+        "data": {"state": "waiting_budget"},
+        "evidence": {
+            "source_kind": "account_archive",
+            "operation": "sync_status",
+            "adapter_contract": "ninebot-assistant-v1",
+            "access_mode": "local_only",
+        },
+    }
     receipt = {
         "schema_version": 1,
         "request_id": "c" * 32,

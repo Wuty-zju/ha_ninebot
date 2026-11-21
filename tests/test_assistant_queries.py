@@ -729,7 +729,28 @@ async def test_sync_health_is_read_only_and_reports_the_local_state(hass, assist
     assert not error
     assert result["data"]["background_enabled"] is False
     assert result["evidence"]["operation"] == "sync_status"
+    assert result["evidence"]["archive_counts_scope"] == "all_saved_vehicle_trips"
+    assert result["evidence"]["details_scope"] == "discovered_history_plan"
+    assert result["data"]["archive_counts"] == {
+        "total": 2,
+        "saved_details": 0,
+        "simplified": 0,
+        "details_pending_classification": 0,
+    }
     assert result["quality"]["upstream_history_complete"] == "unverified"
+    # Supply a smaller discovered plan to exercise the two independent denominators.
+    result["data"].update(verified_months=1, total_months=2, details={"discovered": 1, "saved": 0})
+    row = {"tool": "ninebot__get_sync_health", "result": result, "error": False}
+    answer = render_evidence_answer([row])
+    assert answer is not None and answer["request_ids"] == [result["request_id"]]
+    assert "Whole archive: 2 saved trips, 0 with details" in answer["text"]
+    assert "Trips with only a summary: 2" in answer["text"]
+    assert "Synchronization plan: 1/2 verified months" in answer["text"]
+    assert "Details in that plan: 0/1 discovered trips saved" in answer["text"]
+    assert "Cloud history coverage remains unverified" in answer["text"]
+    result["data"]["archive_counts"]["simplified"] = 3
+    answer = render_evidence_answer([row])
+    assert answer is not None and "Whole-archive counts are unavailable" in answer["text"]
 
 
 @pytest.mark.parametrize(
