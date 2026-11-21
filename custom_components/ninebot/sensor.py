@@ -567,6 +567,16 @@ class NinebotSensor(NinebotEntity, SensorEntity):
     @property
     def native_value(self) -> str | float | datetime | None:
         snapshot, _ = self._presentation()
+        if (
+            snapshot
+            and snapshot.travel
+            and self.entity_description.key == "month_list_coverage"
+            and isinstance(self.coordinator.statistics, ArchiveStatistics)
+            and self.coordinator.statistics.month_enumeration_complete(
+                self.sn, snapshot.travel.month
+            )
+        ):
+            return 100
         return self.entity_description.value(snapshot) if snapshot else None
 
     @property
