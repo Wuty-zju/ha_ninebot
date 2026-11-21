@@ -51,7 +51,7 @@ ha-icon { --mdc-icon-size: 20px; vertical-align: middle; }
   .glass { background: var(--replay-glass); -webkit-backdrop-filter: blur(18px) saturate(125%);
     backdrop-filter: blur(18px) saturate(125%); }
 }
-.map-tools { display: flex; padding: 2px; inset-inline-end: 10px; inset-block-start: 10px; }
+.map-tools { display: flex; padding: 2px; right: 10px; inset-block-start: 10px; }
 .map-tool, .transport button {
   border: 0; border-radius: 50%; padding: 0; background: transparent;
 }

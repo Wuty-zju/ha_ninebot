@@ -68,7 +68,6 @@ class NativeRouteMap {
     this.cursor.style.cssText = 'width:18px;height:18px;border:3px solid white;border-radius:100%;background:#168af9;box-shadow:0 1px 6px #0008';
     map.style.cssText = 'display:block;width:100%;height:100%';
     map.autoFit = false;
-    map.zoomPosition = 'bottomright';
     if ('scaleRuler' in map) map.scaleRuler = true;
     host.append(map);
   }
@@ -89,8 +88,10 @@ class NativeRouteMap {
     this.map.editableLocations = point ? [{ id: 'ninebot-replay', location: location(point),
       element: this.cursor, elementSize: [18, 18], locationEditable: false, fit: false }] : [];
   }
-  fit() {
-    if (this.bounds?.length) this.map.fitBounds(this.bounds, { zoom: 16, pad: 0.16 });
+  fit(bottomInset) {
+    if (this.bounds?.length) this.map.fitBounds(this.bounds, {
+      zoom: 16, pad: 0.16, padding: bottomInset ? { bottom: bottomInset } : undefined,
+    });
   }
   destroy() {
     this.map.paths = [];
@@ -157,9 +158,11 @@ class OfflineRouteMap {
         fillColor: color, radius: 8, weight: 3, fillOpacity: 1, interactive: false }).addTo(this.map);
     }
   }
-  fit() {
-    if (this.bounds?.length) this.map.fitBounds(this.bounds,
-      { padding: [22, 22], maxZoom: 16, animate: false });
+  fit(bottomInset) {
+    if (this.bounds?.length) this.map.fitBounds(this.bounds, {
+      paddingTopLeft: [22, 22], paddingBottomRight: [22, Math.max(22, bottomInset)],
+      maxZoom: 16, animate: false,
+    });
   }
   destroy() {
     this.resize.disconnect();
@@ -173,7 +176,8 @@ class OfflineRouteMap {
 }
 
 export class RouteMap {
-  constructor(error = () => {}) {
+  constructor(error = () => {}, playbackInset = () => 0) {
+    this.playbackInset = playbackInset;
     this.error = error;
     this.element = document.createElement('div');
     this.root = this.element.attachShadow({ mode: 'open' });
@@ -265,6 +269,6 @@ export class RouteMap {
   }
   fit() {
     this.fitting = !this.renderer;
-    this.renderer?.fit();
+    this.renderer?.fit(this.playbackInset());
   }
 }

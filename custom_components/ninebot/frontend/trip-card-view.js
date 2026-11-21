@@ -146,6 +146,11 @@ export class TripCardView {
     ];
   }
 
+  playbackInset() {
+    const dock = this.ui.transport;
+    return dock.offsetHeight ? dock.parentElement.clientHeight - dock.offsetTop + 8 : 0;
+  }
+
   updatePlayback(labels = this.card.labels()) {
     if (this.card.resetting) return;
     const { transport, play, restart, slider, position } = this.ui;
