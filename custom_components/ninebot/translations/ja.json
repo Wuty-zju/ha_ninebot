@@ -554,6 +554,7 @@
           "verifying": "記録を検証中",
           "incremental": "差分同期中",
           "with_gaps": "一部不足で完了",
+          "tracks_limited": "同期済み、一部の走行軌跡に制限あり",
           "synced": "ローカル同期完了",
           "vehicle_not_present": "アカウントの車両一覧にありません"
         }

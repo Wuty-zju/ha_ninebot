@@ -554,6 +554,7 @@
           "verifying": "Records controleren",
           "incremental": "Incrementele synchronisatie",
           "with_gaps": "Voltooid met hiaten",
+          "tracks_limited": "Gesynchroniseerd, sommige routes zijn beperkt",
           "synced": "Lokaal gesynchroniseerd",
           "vehicle_not_present": "Voertuig ontbreekt in de accountlijst"
         }

@@ -139,3 +139,65 @@ async def test_action_returns_chart_from_same_cached_month_without_new_queries(
     app_client.async_get_travel.assert_not_awaited()
     app_client.async_get_trip_detail.assert_not_awaited()
     app_client.async_control.assert_not_awaited()
+
+
+async def test_month_coverage_tracks_only_the_verified_archive_receipt(
+    hass, entry, app_client, freezer, enable_custom_integrations
+):
+    from datetime import UTC, datetime, timedelta
+
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.ninebot.history_plan import HistoryPlan
+    from custom_components.ninebot.raw import Endpoint, build_record
+    from custom_components.ninebot.ride_archive import vehicle_key
+
+    sn, month = "SyntheticSN", "202611"
+    now = datetime(2026, 11, 17, 12, tzinfo=UTC)
+    freezer.move_to(now)
+    app_client.async_get_travel.return_value = {"times": 2, "list": [{"travel_id": "part-one"}]}
+    hass.config_entries.async_update_entry(entry, options={**entry.options, "debug_mode": True})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    statistics = entry.runtime_data.coordinator.statistics
+    archive = statistics.archive
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "sensor", "ninebot", f"{sn}_month_list_coverage"
+    )
+    assert float(hass.states.get(entity_id).state) == 50
+    plan = HistoryPlan.create("a" * 32, vehicle_key(sn), month, month, now.isoformat())
+    await archive.async_set_history_plan(sn, plan, None, guard=lambda: True)
+    app_client.reset_mock()
+    for name in ("part-one", "part-two"):
+        now += timedelta(seconds=1)
+        freezer.move_to(now)
+        payload = {"times": 2, "list": [{"travel_id": name}]}
+        raw = build_record(
+            Endpoint.TRAVEL,
+            payload,
+            now,
+            month,
+            backend_version="0.1.7",
+            endpoint_version=plan.provider,
+        )
+        receipt = await archive.async_accept_history_page(sn, plan, raw, guard=lambda: True)
+        plan = receipt.root
+        await statistics.async_history_page_committed(sn, lambda: True)
+    state = hass.states.get(entity_id)
+    assert float(state.state) == 100
+    assert state.attributes["coverage_basis"] == "verified_pages"
+    assert state.attributes["returned_coverage"] == 50
+    assert state.attributes["returned_rides"] == 1 and state.attributes["list_complete"] is False
+    assert state.attributes["verified_pages"] == state.attributes["verified_rides"] == 2
+
+    # The same content can be observed again without a facts revision.
+    # That newer observation has no matching verified page chain.
+    now += timedelta(seconds=1)
+    freezer.move_to(now)
+    await statistics.async_record(sn, adapters.travel(payload, month), now, "0.1.7")
+    state = hass.states.get(entity_id)
+    assert float(state.state) == 50
+    assert state.attributes["coverage_basis"] == "returned_list"
+    assert state.attributes["verified_pages"] is None
+    app_client.async_get_travel.assert_not_awaited()
+    app_client.async_get_trip_detail.assert_not_awaited()

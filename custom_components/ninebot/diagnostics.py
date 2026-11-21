@@ -12,6 +12,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from . import adapters
+from .archive_runtime import ArchiveStatistics
 from .battery import battery_summary
 from .capabilities import CONTROL_ACTIONS
 from .compat import child_registry_api_available
@@ -19,6 +20,7 @@ from .exceptions import NinebotError
 from .history_entities import HISTORY_STATES
 from .history_plan import HistoryPlan, month_count
 from .models import TravelMonth
+from .month_enumeration import RecordedEnumeration
 from .month_summary import MonthSummary
 from .native_control import ControlRoute
 from .parsing import integer, number, previous_month
@@ -51,6 +53,7 @@ def _month_evidence(
     travel: TravelMonth | None,
     succeeded_at: datetime | None,
     stored: StoredMonth | None,
+    enumeration: RecordedEnumeration | None = None,
 ) -> dict[str, Any]:
     """Project two bounded cache owners off-loop; never return raw values or IDs."""
     summary: MonthSummary | None = travel.summary if travel and travel.month == month else None
@@ -125,7 +128,18 @@ def _month_evidence(
             server_count=integer(stored.ride_count),
             list_complete=stored.list_complete,
         )
-    return {"month": month, "summary": counts, "raw_list": raw_list}
+    return {
+        "month": month,
+        "summary": counts,
+        "raw_list": raw_list,
+        "recorded_enumeration": {
+            "pages": enumeration.pages,
+            "rides": enumeration.rides,
+            "received_at": enumeration.received_at.isoformat(),
+        }
+        if enumeration
+        else None,
+    }
 
 
 def _scan_scope(plan: HistoryPlan | None) -> dict[str, Any]:
@@ -171,6 +185,8 @@ def _history_evidence(preservation: "HistoryPreservation", sn: str) -> dict[str,
         "unmapped",
         "quality_pending",
         "simplified",
+        "single_point",
+        "unavailable_track",
         "active_months",
         "multi_page_months",
         "reference_issues",
@@ -228,6 +244,7 @@ async def async_get_config_entry_diagnostics(
         if snapshot.present:
             business_line_counts[business_lines[sn]] += 1
     query_failure = getattr(coordinator, "query_failure", None)
+    statistics = coordinator.statistics
     vehicles = []
     for vehicle_index, snapshot in enumerate(snapshots, start=1):
         sn = snapshot.profile.sn
@@ -240,7 +257,10 @@ async def async_get_config_entry_diagnostics(
                     coordinator.raw.get(Endpoint.TRAVEL, sn, month, now=now),
                     snapshot.travel,
                     snapshot.travel_freshness.succeeded_at,
-                    coordinator.statistics.month(sn, month),
+                    statistics.month(sn, month),
+                    statistics.month_enumeration(sn, month)
+                    if isinstance(statistics, ArchiveStatistics)
+                    else None,
                 )
             )
         groups = {}

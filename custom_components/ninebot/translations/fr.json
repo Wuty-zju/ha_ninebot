@@ -554,6 +554,7 @@
           "verifying": "Vérification des données",
           "incremental": "Synchronisation incrémentale",
           "with_gaps": "Terminée avec des lacunes",
+          "tracks_limited": "Synchronisé, certains tracés sont limités",
           "synced": "Synchronisée localement",
           "vehicle_not_present": "Véhicule absent de la liste du compte"
         }

@@ -20,6 +20,7 @@ from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
 from .exceptions import ErrorKind, FailurePhase, NinebotError
 from .models import TravelMonth, VehicleProfile
+from .month_enumeration import RecordedEnumeration
 from .parsing import previous_month
 from .period_statistics import DaySummary, DaySummaryCache
 from .raw import RawRecord
@@ -65,7 +66,9 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._day_summaries = DaySummaryCache()
         self._projection_month = ""
         self._latest: dict[str, ArchivedRide | None] = {}
-        self._month_snapshots: dict[tuple[str, str], tuple[TravelMonth, datetime]] = {}
+        self._month_snapshots: dict[
+            tuple[str, str], tuple[TravelMonth, datetime, RecordedEnumeration | None]
+        ] = {}
         self._day_projection_tokens: dict[str, object] = {}
         self._projection_revisions: dict[str, int] = {}
         self.persistence_enabled = False
@@ -213,7 +216,13 @@ class ArchiveStatistics(TravelStatisticsStore):
 
     def month_snapshot(self, sn: str, month: str) -> tuple[TravelMonth, datetime] | None:
         """Read the atomic archive projection without renewing cloud freshness."""
-        return self._month_snapshots.get((sn, month)) if self.archive_ready else None
+        saved = self._month_snapshots.get((sn, month)) if self.archive_ready else None
+        return (saved[0], saved[1]) if saved is not None else None
+
+    def month_enumeration(self, sn: str, month: str) -> RecordedEnumeration | None:
+        """Return verified pagination for the projected receipt, if available."""
+        saved = self._month_snapshots.get((sn, month)) if self.archive_ready else None
+        return saved[2] if saved is not None else None
 
     async def async_view(self, sn: str, months: tuple[str, ...]) -> StatisticsReader:
         if not self.archive_ready:
@@ -242,7 +251,9 @@ class ArchiveStatistics(TravelStatisticsStore):
             blocked_metrics = dict(self._projection.blocked_metrics)
             bases = dict(self._projection.completeness_bases)
             latest = dict(self._latest)
-            month_snapshots = dict(self._month_snapshots)
+            month_snapshots = {
+                key: saved for key, saved in self._month_snapshots.items() if key[0] != vehicle
+            }
             tokens = dict(self._day_projection_tokens)
             revisions = dict(self._projection_revisions)
             vehicles = (vehicle,)
@@ -257,8 +268,16 @@ class ArchiveStatistics(TravelStatisticsStore):
             view = await self.hass.async_add_executor_job(
                 ArchiveStatisticsView.from_months, sn, snapshot.months
             )
+            enumerations = dict(snapshot.enumerations)
             month_snapshots.update(
-                {(sn, row.travel.month): (row.travel, row.received_at) for row in snapshot.months}
+                {
+                    (sn, row.travel.month): (
+                        row.travel,
+                        row.received_at,
+                        enumerations.get(row.travel.month),
+                    )
+                    for row in snapshot.months
+                }
             )
             records.update(view.records)
             selections.update(view.selections)
@@ -335,6 +354,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             if guard is not None and not guard():
                 return
             try:
+                previous_enumeration = self.month_enumeration(sn, travel.month)
                 changed = await self.archive.async_record_month(
                     sn,
                     travel,
@@ -348,6 +368,7 @@ class ArchiveStatistics(TravelStatisticsStore):
                     return
                 self._vehicles.add(sn)
                 await self._project(guard, vehicle=sn)
+                changed |= previous_enumeration != self.month_enumeration(sn, travel.month)
                 self._archive_success()
             except ArchiveError as err:
                 if err.kind is ArchiveFailure.MONTH_CONFLICT:

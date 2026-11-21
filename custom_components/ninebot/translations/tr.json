@@ -554,6 +554,7 @@
           "verifying": "Kayıtlar doğrulanıyor",
           "incremental": "Artımlı eşitleme",
           "with_gaps": "Eksiklerle tamamlandı",
+          "tracks_limited": "Eşitlendi, bazı rotalar sınırlı",
           "synced": "Yerel eşitleme tamamlandı",
           "vehicle_not_present": "Araç hesap listesinde yok"
         }

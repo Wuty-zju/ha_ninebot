@@ -40,6 +40,7 @@ from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
 from .history_entities import HISTORY_SENSORS, HistoryProgressSensor
 from .models import LastRide, TravelMonth, VehicleSnapshot
+from .month_enumeration import RecordedEnumeration
 from .observations import ENTITY_FIELDS, RawField
 from .parsing import boolean, display_scalar, integer, number
 from .period_statistics import DayMetric, DaySummary, day_summary
@@ -564,9 +565,30 @@ class NinebotSensor(NinebotEntity, SensorEntity):
             return self.coordinator.local_vehicle_available(self.sn)
         return super().available
 
+    def _list_enumeration(
+        self, snapshot: VehicleSnapshot, received: datetime | None
+    ) -> RecordedEnumeration | None:
+        statistics = self.coordinator.statistics
+        if (
+            self.entity_description.key == "month_list_coverage"
+            and snapshot.travel is not None
+            and isinstance(statistics, ArchiveStatistics)
+            and (proof := statistics.month_enumeration(self.sn, snapshot.travel.month)) is not None
+            and proof.received_at == received
+        ):
+            return proof
+        return None
+
     @property
     def native_value(self) -> str | float | datetime | None:
-        snapshot, _ = self._presentation()
+        if self.entity_description.key == "month_list_coverage":
+            snapshot, cached_at = self._month_presentation()
+            if snapshot is not None and self._list_enumeration(
+                snapshot, cached_at or snapshot.travel_freshness.succeeded_at
+            ):
+                return 100
+        else:
+            snapshot, _ = self._presentation()
         return self.entity_description.value(snapshot) if snapshot else None
 
     @property
@@ -634,6 +656,14 @@ class NinebotSensor(NinebotEntity, SensorEntity):
                 query_month=snapshot.travel.month if snapshot.travel else None,
                 received_at=received.isoformat() if received else None,
             )
+            if self.entity_description.key == "month_list_coverage":
+                proof = self._list_enumeration(snapshot, received)
+                attributes.update(
+                    coverage_basis="verified_pages" if proof else "returned_list",
+                    verified_pages=proof.pages if proof else None,
+                    verified_rides=proof.rides if proof else None,
+                    returned_coverage=self.entity_description.value(snapshot),
+                )
             if self.entity_description.key.startswith("last_"):
                 last = snapshot.travel.last_ride if snapshot.travel else None
                 ride = last.ride if last else None

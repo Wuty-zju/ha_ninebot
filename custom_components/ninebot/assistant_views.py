@@ -365,6 +365,7 @@ def sync_view(response: dict[str, Any]) -> AssistantView:
         "storage_error",
         "complete",
         "with_gaps",
+        "tracks_limited",
         "reconciled",
         "idle",
         "querying",
