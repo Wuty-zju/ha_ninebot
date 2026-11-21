@@ -56,13 +56,17 @@ async def test_vehicle_type_and_archive_counts_are_enabled_without_debug(hass, e
     month = "202608"
     await co.statistics.async_record(
         SN,
-        travel({"times": 1, "list": [{"travel_id": "ride", "id": "detail"}]}, month),
+        travel({"times": 1, "list": [{"travel_id": "ride"}]}, month),
         NOW,
     )
     await hass.async_block_till_done()
     assert hass.states.get(total_id).state == "1"
     assert hass.states.get(simplified_id).state == "0"
-    body = {"travel_id": "ride", "trail": "120,30;120.1,30.1", "is_show_simple_point": True}
+    body = {
+        "travel_id": "ride",
+        "trail": "120,30,0,0;120.1,30.1,0,0",
+        "is_show_simple_point": True,
+    }
     raw = build_record(Endpoint.TRIP_DETAIL, body, NOW, month)
     ride = parse_ride(body, month, source=Endpoint.TRIP_DETAIL)
     await co.statistics.async_record_detail(SN, ride, NOW, lambda: True, raw)
