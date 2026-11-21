@@ -406,9 +406,13 @@ async def test_best_geometry_retention_and_local_quality_backfill_need_no_cloud(
     await save_track(store, "ride-one", "120,30,0,0", simplified=True)
     health = await store.async_history_health(SN, root.plan_id)
     assert health.latest_degraded == 1 and health.simplified == 0
+    saved_counts = (await store.async_projection(SN, ("202610",), NOW)).counts
+    assert (saved_counts.total, saved_counts.simplified) == (2, 0)
     with closing(sqlite3.connect(store.path)) as db, db:
         db.execute("DELETE FROM meta WHERE key LIKE 'detail_health:%'")
     assert (await store.async_history_health(SN, root.plan_id)).quality_pending == 2
+    pending_counts = (await store.async_projection(SN, ("202610",), NOW)).counts
+    assert pending_counts.details_pending_classification == 2
     assert (
         await store.async_backfill_detail_health(SN, root.plan_id, guard=lambda: True, limit=1) == 1
     )
@@ -419,6 +423,7 @@ async def test_best_geometry_retention_and_local_quality_backfill_need_no_cloud(
     assert (
         await store.async_backfill_detail_health(SN, root.plan_id, guard=lambda: True, limit=1) == 0
     )
+    assert (await store.async_projection(SN, ("202610",), NOW)).counts == saved_counts
     finished = await store.async_finish_history_baseline(
         SN, root, NOW + timedelta(seconds=10), guard=lambda: True
     )

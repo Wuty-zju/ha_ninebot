@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "AI 推定航続距離"
       },
+      "vehicle_type": {
+        "name": "車両の種類",
+        "state": {
+          "ebike": "電動自転車",
+          "motor": "電動オートバイ"
+        }
+      },
+      "saved_trip_count": {
+        "name": "走行記録数"
+      },
+      "simplified_trip_count": {
+        "name": "簡略化された走行記録数"
+      },
       "history_sync_state": {
         "name": "履歴同期状態",
         "state": {

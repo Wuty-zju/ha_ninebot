@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "ระยะทางคงเหลือที่ AI ประเมิน"
       },
+      "vehicle_type": {
+        "name": "ประเภทยานพาหนะ",
+        "state": {
+          "ebike": "จักรยานไฟฟ้า",
+          "motor": "รถจักรยานยนต์ไฟฟ้า"
+        }
+      },
+      "saved_trip_count": {
+        "name": "จำนวนการเดินทาง"
+      },
+      "simplified_trip_count": {
+        "name": "จำนวนการเดินทางแบบย่อ"
+      },
       "history_sync_state": {
         "name": "สถานะการซิงค์ประวัติ",
         "state": {

@@ -98,7 +98,8 @@ class HistoryBootstrap:
                     raise
             owns = self.guard(sn)
             try:
-                await archive.async_backfill_detail_health(sn, plan.plan_id, guard=owns)
+                if await archive.async_backfill_detail_health(sn, plan.plan_id, guard=owns):
+                    await self.co.statistics.async_reconstruction_committed(sn, owns)
                 if plan.state in {HistoryState.PRESERVE, HistoryState.VERIFY}:
                     plan = await archive.async_finish_history_baseline(sn, plan, now, guard=owns)
                 if owns():
@@ -127,7 +128,10 @@ class HistoryBootstrap:
                 for run in runs:
                     if run.discovery_complete:
                         try:
-                            await archive.async_backfill_detail_health(sn, run.plan_id, guard=owns)
+                            if await archive.async_backfill_detail_health(
+                                sn, run.plan_id, guard=owns
+                            ):
+                                await co.statistics.async_reconstruction_committed(sn, owns)
                         except ArchiveError as err:
                             if err.kind is not ArchiveFailure.OBJECT:
                                 raise

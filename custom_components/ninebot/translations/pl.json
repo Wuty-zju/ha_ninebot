@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "Zasięg szacowany przez AI"
       },
+      "vehicle_type": {
+        "name": "Typ pojazdu",
+        "state": {
+          "ebike": "Rower elektryczny",
+          "motor": "Motocykl elektryczny"
+        }
+      },
+      "saved_trip_count": {
+        "name": "Liczba przejazdów"
+      },
+      "simplified_trip_count": {
+        "name": "Liczba uproszczonych przejazdów"
+      },
       "history_sync_state": {
         "name": "Stan synchronizacji historii",
         "state": {

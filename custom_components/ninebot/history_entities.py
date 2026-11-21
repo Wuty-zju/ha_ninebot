@@ -38,6 +38,48 @@ HISTORY_SENSORS = (
     "history_detail_progress",
     "history_sync_last_success",
 )
+ARCHIVE_COUNT_SENSORS = ("saved_trip_count", "simplified_trip_count")
+
+
+class ArchiveCountSensor(NinebotEntity, SensorEntity):
+    """Account archive counts updated after the corresponding SQLite transaction."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, entry: NinebotConfigEntry, sn: str, key: str) -> None:
+        super().__init__(entry, sn, key, "sensor", "profile")
+        self.key = key
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.statistics.async_add_archive_listener(
+                self.sn, self.async_write_ha_state
+            )
+        )
+
+    @property
+    def available(self) -> bool:
+        return (
+            not self._identity_blocked
+            and self.coordinator.local_vehicle_available(self.sn)
+            and self.coordinator.statistics.ride_counts(self.sn) is not None
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        counts = self.coordinator.statistics.ride_counts(self.sn)
+        if counts is None:
+            return None
+        return counts.total if self.key == "saved_trip_count" else counts.simplified
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int]:
+        counts = self.coordinator.statistics.ride_counts(self.sn)
+        if self.key == "simplified_trip_count" and counts is not None:
+            return {"details_pending_classification": counts.details_pending_classification}
+        return {}
 
 
 class HistoryProgressSensor(NinebotEntity, SensorEntity):

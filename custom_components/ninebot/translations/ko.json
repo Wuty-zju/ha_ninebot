@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "AI 예상 주행 가능 거리"
       },
+      "vehicle_type": {
+        "name": "차량 유형",
+        "state": {
+          "ebike": "전기 자전거",
+          "motor": "전기 오토바이"
+        }
+      },
+      "saved_trip_count": {
+        "name": "주행 기록 수"
+      },
+      "simplified_trip_count": {
+        "name": "간소화된 주행 기록 수"
+      },
       "history_sync_state": {
         "name": "기록 동기화 상태",
         "state": {

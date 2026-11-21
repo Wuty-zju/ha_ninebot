@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "KI-geschätzte Reichweite"
       },
+      "vehicle_type": {
+        "name": "Fahrzeugtyp",
+        "state": {
+          "ebike": "Elektrofahrrad",
+          "motor": "Elektromotorrad"
+        }
+      },
+      "saved_trip_count": {
+        "name": "Anzahl der Fahrten"
+      },
+      "simplified_trip_count": {
+        "name": "Anzahl vereinfachter Fahrten"
+      },
       "history_sync_state": {
         "name": "Status der Verlaufssynchronisierung",
         "state": {

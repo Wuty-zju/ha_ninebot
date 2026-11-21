@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "Yapay zekâ tahmini menzil"
       },
+      "vehicle_type": {
+        "name": "Araç türü",
+        "state": {
+          "ebike": "Elektrikli bisiklet",
+          "motor": "Elektrikli motosiklet"
+        }
+      },
+      "saved_trip_count": {
+        "name": "Sürüş sayısı"
+      },
+      "simplified_trip_count": {
+        "name": "Basitleştirilmiş sürüş sayısı"
+      },
       "history_sync_state": {
         "name": "Geçmiş eşitleme durumu",
         "state": {

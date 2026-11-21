@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "AI-geschat rijbereik"
       },
+      "vehicle_type": {
+        "name": "Voertuigtype",
+        "state": {
+          "ebike": "Elektrische fiets",
+          "motor": "Elektrische motorfiets"
+        }
+      },
+      "saved_trip_count": {
+        "name": "Aantal ritten"
+      },
+      "simplified_trip_count": {
+        "name": "Aantal vereenvoudigde ritten"
+      },
       "history_sync_state": {
         "name": "Status van historieksynchronisatie",
         "state": {

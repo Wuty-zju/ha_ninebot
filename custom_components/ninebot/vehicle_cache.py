@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 from collections.abc import Callable
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from typing import Any
 from .async_utils import async_drain
 from .const import MAX_RESPONSE_BYTES
 from .exceptions import ErrorKind, NinebotError
+from .parsing import JsonScalar, raw_scalar
 
 
 class BusinessLine(StrEnum):
@@ -20,6 +22,12 @@ class BusinessLine(StrEnum):
     UNOBSERVED = "unobserved"
     AMBIGUOUS = "ambiguous"
     UNSUPPORTED = "unsupported"
+
+
+@dataclass(frozen=True)
+class BusinessLineObservation:
+    line: BusinessLine
+    raw: JsonScalar = None
 
 
 def observed_business_line(client: object, sn: str) -> BusinessLine:
@@ -96,13 +104,13 @@ def native_rows(data: bytes | None) -> list[dict[str, Any]]:
     return values
 
 
-def cache_business_lines(directory: Path) -> dict[str, BusinessLine]:
-    """Publish only bounded, recognized observations from the accepted cache."""
+def cache_business_lines(directory: Path) -> dict[str, BusinessLineObservation]:
+    """Keep the observed display value alongside the reviewed routing classification."""
     try:
         rows = _cache_rows(read_cache(directory))
     except (OSError, NinebotError):
         return {}
-    lines: dict[str, BusinessLine] = {}
+    lines: dict[str, BusinessLineObservation] = {}
     for row in rows:
         sn, value = row["wnumber"], row.get("business_line")
         match value:
@@ -114,12 +122,18 @@ def cache_business_lines(directory: Path) -> dict[str, BusinessLine]:
                 line = BusinessLine.UNOBSERVED
             case _:
                 line = BusinessLine.UNSUPPORTED
-        lines[sn] = line if lines.get(sn, line) == line else BusinessLine.AMBIGUOUS
+        observed = BusinessLineObservation(line, raw_scalar(value))
+        previous = lines.get(sn, observed)
+        lines[sn] = (
+            observed
+            if previous == observed and type(previous.raw) is type(observed.raw)
+            else BusinessLineObservation(BusinessLine.AMBIGUOUS)
+        )
     return lines
 
 
 def merge_partial_cache(directory: Path, previous: bytes | None) -> None:
-    """Merge native rows by identity; never invent a business-line mapping."""
+    """Merge reviewed partial rows with identities from the accepted cache."""
     current = read_cache(directory)
 
     new = native_rows(current)
@@ -127,7 +141,7 @@ def merge_partial_cache(directory: Path, previous: bytes | None) -> None:
         raise NinebotError(ErrorKind.SERVICE)
     identities = {row["wnumber"] for row in new}
     merged = {
-        "vehicles": new + [row for row in native_rows(previous) if row["wnumber"] not in identities]
+        "vehicles": new + [row for row in _cache_rows(previous) if row["wnumber"] not in identities]
     }
     data = json.dumps(merged, ensure_ascii=False).encode()
     if len(data) > MAX_RESPONSE_BYTES:
@@ -139,7 +153,7 @@ def reconcile_cache(
     directory: Path, previous: bytes | None, observed: frozenset[str], complete: bool
 ) -> bool:
     """Retain known native routes on silent omissions; never infer new routes."""
-    missing = {row["wnumber"] for row in native_rows(previous)} - observed
+    missing = {row["wnumber"] for row in _cache_rows(previous)} - observed
     if not observed and (missing or not complete):
         restore_cache(directory, previous)
     elif missing or not complete:

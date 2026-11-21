@@ -115,6 +115,19 @@
       "range_ai": {
         "default": "mdi:map-marker-distance"
       },
+      "vehicle_type": {
+        "default": "mdi:information-outline",
+        "state": {
+          "ebike": "mdi:bicycle-electric",
+          "motor": "mdi:motorbike-electric"
+        }
+      },
+      "saved_trip_count": {
+        "default": "mdi:format-list-numbered"
+      },
+      "simplified_trip_count": {
+        "default": "mdi:map-marker-path"
+      },
       "history_sync_state": {
         "default": "mdi:sync"
       },

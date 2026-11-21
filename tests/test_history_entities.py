@@ -5,15 +5,73 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity import EntityCategory
 
+from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.detail_health import HistoryHealth
-from custom_components.ninebot.history_entities import HISTORY_SENSORS, HistoryProgressSensor
+from custom_components.ninebot.history_entities import (
+    ARCHIVE_COUNT_SENSORS,
+    HISTORY_SENSORS,
+    HistoryProgressSensor,
+)
 from custom_components.ninebot.history_plan import HistoryPlan
 from custom_components.ninebot.history_progress import HistoryEvidence, project_progress
+from custom_components.ninebot.raw import Endpoint, build_record
+from custom_components.ninebot.travel import parse_ride
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 SN = "SyntheticSN"
 NOW = datetime(2026, 10, 14, tzinfo=UTC)
+
+
+async def test_vehicle_type_and_archive_counts_are_enabled_without_debug(hass, entry, app_client):
+    app_client.vehicle_business_line_values = {SN: "ebike"}
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = entry.runtime_data.coordinator
+    registry = er.async_get(hass)
+    entities = {}
+    for key in ("vehicle_type", *ARCHIVE_COUNT_SENSORS):
+        eid = registry.async_get_entity_id("sensor", "ninebot", f"{SN}_{key}")
+        row = registry.async_get(eid)
+        assert row.disabled_by is None
+        assert row.entity_category is EntityCategory.DIAGNOSTIC
+        entities[key] = eid
+    type_id = entities["vehicle_type"]
+    assert hass.states.get(type_id).state == "ebike"
+    for raw, state in (("motor", "motor"), ("future-product", "future-product"), (7, "7")):
+        app_client.vehicle_business_line_values[SN] = raw
+        co.async_set_updated_data(co.data)
+        await hass.async_block_till_done()
+        displayed = hass.states.get(type_id)
+        assert displayed.state == state and displayed.attributes["business_line"] == raw
+    app_client.vehicle_business_line_values.clear()
+    co.async_set_updated_data(co.data)
+    await hass.async_block_till_done()
+    assert hass.states.get(type_id).state == "unknown"
+    total_id = entities["saved_trip_count"]
+    simplified_id = entities["simplified_trip_count"]
+    assert hass.states.get(total_id).state == hass.states.get(simplified_id).state == "0"
+
+    month = "202608"
+    await co.statistics.async_record(
+        SN,
+        travel({"times": 1, "list": [{"travel_id": "ride"}]}, month),
+        NOW,
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(total_id).state == "1"
+    assert hass.states.get(simplified_id).state == "0"
+    body = {
+        "travel_id": "ride",
+        "trail": "120,30,0,0;120.1,30.1,0,0",
+        "is_show_simple_point": True,
+    }
+    raw = build_record(Endpoint.TRIP_DETAIL, body, NOW, month)
+    ride = parse_ride(body, month, source=Endpoint.TRIP_DETAIL)
+    await co.statistics.async_record_detail(SN, ride, NOW, lambda: True, raw)
+    await hass.async_block_till_done()
+    assert hass.states.get(total_id).state == hass.states.get(simplified_id).state == "1"
 
 
 async def test_history_sensors_are_enabled_local_and_do_not_claim_full_completion(

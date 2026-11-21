@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.2.5
+
+- Show the discovered vehicle type in device diagnostics. Electric bicycles and electric motorcycles have localized names and icons. Other reported types retain their scalar value.
+- Show the total saved trip count and the number of trips with a confirmed simplified route for each vehicle. Both use the local archive across all months, including imported history.
+- Integrate the original monthly coverage contribution from [#289](https://github.com/Wuty-zju/ha_ninebot/pull/289) into the mainline with the vehicle, month and receipt checks. Thanks to [@yang605256182](https://github.com/yang605256182).
+
 ## 2.2.4
 
 - Show verified pagination or local reconciliation in the current-month list diagnostic when the archive supports the displayed observation. Keep the individual response's coverage visible. Thanks to [@yang605256182](https://github.com/yang605256182) for identifying the issue in [#289](https://github.com/Wuty-zju/ha_ninebot/pull/289).

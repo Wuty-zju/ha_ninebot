@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "AI अनुमानित शेष दूरी"
       },
+      "vehicle_type": {
+        "name": "वाहन का प्रकार",
+        "state": {
+          "ebike": "इलेक्ट्रिक साइकिल",
+          "motor": "इलेक्ट्रिक मोटरसाइकिल"
+        }
+      },
+      "saved_trip_count": {
+        "name": "यात्राओं की संख्या"
+      },
+      "simplified_trip_count": {
+        "name": "सरलीकृत यात्राओं की संख्या"
+      },
       "history_sync_state": {
         "name": "इतिहास सिंक स्थिति",
         "state": {

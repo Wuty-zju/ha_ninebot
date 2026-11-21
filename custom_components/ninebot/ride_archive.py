@@ -67,7 +67,7 @@ from .detail_codec import (
     scoped_ride,
     unpacked,
 )
-from .detail_health import HistoryHealth
+from .detail_health import ArchiveRideCounts, HistoryHealth, archive_ride_counts
 from .exceptions import NinebotError
 from .history_budget import request_interval, valid_budget
 from .history_plan import HistoryPlan
@@ -164,11 +164,12 @@ class ArchivePage:
 
 @dataclass(frozen=True)
 class ArchiveProjection:
-    """One vehicle's month facts and latest ride from a single actor read."""
+    """One vehicle's month facts, latest ride and counts from a single actor read."""
 
     months: tuple[ArchiveMonth, ...]
     latest: ArchivedRide | None
     revision: int
+    counts: ArchiveRideCounts
     latest_limited: bool = False
     enumerations: tuple[tuple[str, RecordedEnumeration], ...] = ()
 
@@ -2357,7 +2358,12 @@ class RideArchive:
             except TimelineLimitError:
                 latest, limited = None, True  # Never substitute an arbitrary older ride.
             return ArchiveProjection(
-                records, latest, self._revision(), limited, tuple(enumerations)
+                records,
+                latest,
+                self._revision(),
+                archive_ride_counts(db, vehicle),
+                limited,
+                tuple(enumerations),
             )
 
         return await self._run(read)
