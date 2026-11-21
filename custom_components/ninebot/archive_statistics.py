@@ -129,6 +129,7 @@ class ArchiveStatisticsView:
 
     blocked_metrics: dict[tuple[str, str], tuple[str, ...]] = field(default_factory=dict)
     completeness_bases: dict[tuple[str, str], str] = field(default_factory=dict)
+    enumerated_months: frozenset[tuple[str, str]] = field(default_factory=frozenset)
 
     def month(self, sn: str, month: str) -> StoredMonth | None:
         return self.records.get((vehicle_key(sn), month))
@@ -142,8 +143,16 @@ class ArchiveStatisticsView:
     def month_completeness_basis(self, sn: str, month: str) -> str:
         return self.completeness_bases.get((vehicle_key(sn), month), "incomplete")
 
+    def month_enumeration_complete(self, sn: str, month: str) -> bool:
+        return (vehicle_key(sn), month) in self.enumerated_months
+
     @classmethod
-    def from_months(cls, sn: str, months: tuple[ArchiveMonth, ...]) -> "ArchiveStatisticsView":
+    def from_months(
+        cls,
+        sn: str,
+        months: tuple[ArchiveMonth, ...],
+        enumerated_months: tuple[str, ...] = (),
+    ) -> "ArchiveStatisticsView":
         records, selections, blocked_metrics, bases = {}, {}, {}, {}
         for archived in months:
             travel = archived.travel
@@ -185,4 +194,7 @@ class ArchiveStatisticsView:
             selections=selections,
             blocked_metrics=blocked_metrics,
             completeness_bases=bases,
+            enumerated_months=frozenset(
+                (vehicle_key(sn), month) for month in enumerated_months
+            ),
         )
