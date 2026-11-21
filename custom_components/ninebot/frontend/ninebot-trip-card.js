@@ -18,7 +18,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.routeMap = new RouteMap(() => {
       this.mapError = true;
       this.render();
-    });
+    }, () => this.view?.playbackInset() ?? 0);
     this.tracks = new LocalTracks((service, data) => this.browser.invoke(service, data), () => this.render());
     this.browser = new FleetBrowser(() => this.historyChanged(), () => this.clearPrivate(), () => {
       if (!this.feedReady || this.busy) return false;
