@@ -10,7 +10,9 @@ const row = { ride_id: 'synthetic-ride', detail_id: 'synthetic-detail', query_mo
   duration_s: 600, duration_h: 1/6, max_speed_m_s: 10, average_speed_m_s: 2, energy_wh: 90,
   precision: { mileages: 1 }, source: 'trip_detail', energy_intensity_wh_per_km: 75 };
 window.fixtureRequests = [];
-if (new URL(location.href).searchParams.has('native')) {
+const params = new URL(location.href).searchParams;
+const endpointsOnly = params.has('endpoints');
+if (params.has('native')) {
   class SyntheticMap extends HTMLElement {
     paths = [];
     editableLocations = [];
@@ -52,14 +54,16 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: 
       rides: [{ ...row, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
     if (request.service !== 'get_trip_detail') throw new Error('Only history reads are allowed');
     const shift = data.device_id === 'synthetic-b' ? 0.002 : 0;
-    const all = Array.from({ length: 60 }, (_, sequence) => ({ sequence,
+    const pointCount = endpointsOnly ? 2 : 60;
+    const all = Array.from({ length: pointCount }, (_, sequence) => ({ sequence,
       latitude: 30 + sequence * .0001 + shift, longitude: 120 + Math.sin(sequence / 8) * .001 + shift,
       speed_raw: 25 + Math.sin(sequence / 4) * 12, distance_delta_raw: 40 + Math.cos(sequence / 5) * 9 })).filter(point => ![15, 16].includes(point.sequence));
     return { response: { source_mode: 'ride_archive', query_month: '202609', received_at: row.end_time,
       detail_context: { source_mode: 'ride_archive', archive_revision: 1, scalar_revision: 1, geometry_received_at: row.end_time },
       ride: { ...row, detail_saved: true, track: data.include_track ? all.slice(data.point_offset, data.point_offset + data.max_points) : [],
-        track_summary: { total_known: 60, offset: data.point_offset, limit: data.max_points,
-          next_offset: null, geometry_kind: 'sampled_unverified' } } } };
+        track_summary: { total_known: pointCount, offset: data.point_offset, limit: data.max_points,
+          server_window_days: endpointsOnly ? 180 : null, next_offset: null,
+          geometry_kind: endpointsOnly ? 'server_simplified' : 'sampled_unverified' } } } };
   } };
 window.fixtureCard = document.createElement('ninebot-trip-card');
 window.fixtureConfig = { type: 'custom:ninebot-trip-card', vehicles: [

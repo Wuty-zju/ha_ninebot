@@ -336,7 +336,7 @@ def select_geometry(previous: Ride, candidate: Ride) -> tuple[bool, str]:
         return bool(candidate.track_points) or new.field_state is FieldState.EMPTY, "initial"
     if not candidate.track_points:
         return False, "retained_previous_missing_geometry"
-    if new.server_simplified is True and old.server_simplified is not True:
+    if new.server_simplified is True and old.kind is GeometryKind.SAMPLED_UNVERIFIED:
         return False, "retained_previous_server_simplified"
     if new.scan_complete and (
         (new.invalid_point_count or 0) > (old.invalid_point_count or 0)
@@ -348,7 +348,10 @@ def select_geometry(previous: Ride, candidate: Ride) -> tuple[bool, str]:
         and new.scan_complete
         and (
             (new.valid_point_count or 0) < (old.valid_point_count or 0)
-            and old.server_simplified is not True
+            and (
+                old.kind is GeometryKind.SAMPLED_UNVERIFIED
+                or new.kind is not GeometryKind.SAMPLED_UNVERIFIED
+            )
         )
     ):
         return False, "retained_previous_unverified_reduction"

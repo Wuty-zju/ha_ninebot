@@ -46,13 +46,20 @@ function checkedChunk(response, ride, offset) {
       speed_raw: Number.isFinite(point.speed_raw) ? point.speed_raw : null,
       distance_delta_raw: Number.isFinite(point.distance_delta_raw) ? point.distance_delta_raw : null };
   });
+  const days = summary.server_window_days;
   return { points, next, total, kind: summary.geometry_kind,
+    windowDays: Number.isInteger(days) && days > 0 && days <= 36500 ? days : null,
     partial: context.local_integrity?.partial === true,
     fingerprint: JSON.stringify([context.geometry_version ?? [context.archive_revision, context.scalar_revision,
       context.geometry_received_at], total, summary.geometry_kind,
       context.local_integrity?.geometry_evidence_source ?? 'selected_geometry',
       context.local_integrity?.latest_payload_available ?? true,
       context.local_integrity?.selected_geometry_available ?? true]) };
+}
+
+export function hasEndpoints(track) {
+  return track?.kind === 'server_simplified' && track.complete &&
+    track.total === 2 && track.points.length === 2;
 }
 
 /** Gaps remain separate: never draw a road across rejected/missing source rows. */
@@ -115,11 +122,15 @@ export class LocalTracks {
         });
         const points = [...item.points, ...annotated];
         const step = Math.max(1, Math.ceil(points.length / (MAX_POINTS - 2)));
+        const summary = safeRide(response.ride);
         item = { ...item, fingerprint: chunk.fingerprint, total: chunk.total, kind: chunk.kind,
+          windowDays: chunk.windowDays,
           points: step === 1 ? points : points.filter((_, i) => i === 0 || i === points.length - 1 || i % step === 0),
           next: chunk.next, complete: chunk.next === null, bounds,
           partial: item.partial || chunk.partial, stale: false,
-          summary: { ...safeRide(response.ride), received_at: response.received_at,
+          summary: { ...summary, received_at: response.received_at,
+            start_time: summary.start_time ?? ride.start_time,
+            end_time: summary.end_time ?? ride.end_time,
             device_id: device, vehicle_label: ride.vehicle_label ?? device },
           valid_read: item.valid_read + chunk.points.length, capped: item.capped || step > 1 };
         if (item.complete) break;

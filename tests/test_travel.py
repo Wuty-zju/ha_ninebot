@@ -384,6 +384,33 @@ def test_geometry_protection_does_not_freeze_mutable_scalars():
     assert merge_detail(previous, grown).track_quality.valid_point_count == 4
 
 
+def test_retains_the_most_informative_geometry_for_older_rides():
+    def detail(points, simplified, energy):
+        return parse_ride(
+            {
+                "travel_id": "older-ride",
+                "trail": points,
+                "is_show_simple_point": simplified,
+                "show_simple_point_days": 180,
+                "ec": energy,
+            },
+            "202503",
+            source=Endpoint.TRIP_DETAIL,
+        )
+
+    lone = detail("120,30,1,4", False, 10)
+    endpoints = detail("120,30,1,4;121,31,2,5", True, 20)
+    assert merge_detail(lone, endpoints).track_points == endpoints.track_points
+    for simple in (False, True):
+        newer = merge_detail(endpoints, detail("121,31,2,5", simple, 30))
+        assert newer.track_points == endpoints.track_points
+        assert newer.track_quality.server_window_days == 180 and newer.energy_raw == 30
+
+    full = detail("120,30,1,4;120.5,30.5,3,8;121,31,2,5", False, 40)
+    assert merge_detail(endpoints, full).track_points == full.track_points
+    assert merge_detail(full, endpoints).track_points == full.track_points
+
+
 def test_track_chunk_offsets_keep_full_quality_and_raw_sequence():
     ride = parse_ride(
         {"trail": "bad;120,30,1,1;bad;121,31,2,2;122,32,3,3"},

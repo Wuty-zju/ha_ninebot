@@ -2,7 +2,7 @@
   "schema_version": 1,
   "purpose": "Synthetic local documentation preview",
   "fixture": "tests/frontend/map-fixture.html",
-  "fixture_sha256": "3c36e671de84696b9bb3f9184176bf25054ce2e46eeaf0f698d305b202d9bf8d",
+  "fixture_sha256": "02796684c86d2c16290d139c0ad0df7eee1b0ec662265c53243ce2371a8a810a",
   "preview_script": "scripts/docs_preview.py",
   "assets": []
 }

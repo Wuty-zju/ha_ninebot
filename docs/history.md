@@ -95,7 +95,9 @@ limit: 40
 - **Local records updated · Read latest** refreshes the page and the active track on request. A refresh pauses playback. Reconnection reopens the local archive.
 - If a track has yet to be saved, use background detail sync or run `ninebot.get_trip_detail` for that ride in **Developer tools → Actions**. Check the response's persistence result before reloading the list. The card itself reads the local archive.
 
-Each read advances through up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains up to 4,096 samples per ride and may simplify lines for drawing. The archive preserves the original points. Simplified positions remain visible on the map. Replay requires a sequence of recorded samples.
+Each read advances through up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains up to 4,096 samples per ride and may simplify lines for drawing. The archive preserves the original points.
+
+For a server-simplified detail with two usable points, the map shows separate start and end markers. Single usable positions remain visible, and rides without usable positions retain their summaries. The reported detail window, typically 180 days in observed samples, appears when the server includes it. Previously saved sampled routes remain available for playback at any age.
 
 ### Map privacy and units
 
