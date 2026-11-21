@@ -554,6 +554,7 @@
           "verifying": "正在校驗記錄",
           "incremental": "增量同步中",
           "with_gaps": "已完成，有缺口",
+          "tracks_limited": "已同步，部分軌跡受限",
           "synced": "本地同步完成",
           "vehicle_not_present": "帳號車輛清單未包含此車"
         }

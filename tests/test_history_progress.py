@@ -109,6 +109,27 @@ def test_progress_exposes_local_deadlines_phase_and_completed_separately():
     )
 
 
+def test_completed_scan_and_saved_details_distinguish_limited_tracks_from_missing_months():
+    complete = replace(
+        PLAN,
+        state=HistoryState.WITH_GAPS,
+        discovery_complete=True,
+        next_month=None,
+        scanned_months=2,
+        verified_months=2,
+    )
+    limited = replace(HEALTH, single_point=1, unavailable_track=1)
+    result = view(HistoryEvidence(complete, limited))
+    assert result.scan_percent == result.detail_percent == 100
+    assert result.state == "tracks_limited" and result.gap_months == 0
+    assert result.single_point == result.unavailable_track == 1
+
+    missing_month = replace(complete, verified_months=1, gap_months=1)
+    result = view(HistoryEvidence(missing_month, limited))
+    assert result.state == "with_gaps" and result.scan_percent == 50
+    assert view(HistoryEvidence(complete, replace(limited, missing=1))).state == "preserving"
+
+
 def test_active_request_is_visible_instead_of_its_reserved_future_budget():
     value = project_progress(
         HistoryEvidence(PLAN, HEALTH, budget_at=NOW + timedelta(seconds=60)),

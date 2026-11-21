@@ -29,6 +29,7 @@ HISTORY_STATES = (
     "verifying",
     "incremental",
     "with_gaps",
+    "tracks_limited",
     "synced",
 )
 HISTORY_SENSORS = (
@@ -151,6 +152,8 @@ class HistoryProgressSensor(NinebotEntity, SensorEntity):
             "quality_pending": value.quality_pending,
             "reference_issues": value.reference_issues,
             "simplified_tracks": value.simplified,
+            "single_point_tracks": value.single_point,
+            "unavailable_tracks": value.unavailable_track,
             "discovery_complete": value.discovery_complete,
             "active_months": value.active_months,
             "next_request_at": value.next_request_at.isoformat() if value.next_request_at else None,

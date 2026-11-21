@@ -187,9 +187,31 @@ try {
   await page.evaluate(() => fixtureCard.remove());
   assert.equal(await page.evaluate(() => fixtureFeeds.size), 0);
   assert.equal(await page.evaluate(() => [...fixtureConnectionListeners.values()].some(set => set.size)), false);
+
+  for (const nativeMode of [true, false]) {
+    await page.goto(`${origin}/?endpoints=1${nativeMode ? '&native=1' : ''}`);
+    await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.routeMap.renderer &&
+      fixtureCard.activeTrack?.kind === 'server_simplified');
+    assert.equal(await page.getByRole('slider').count(), 0);
+    assert.match(await page.evaluate(() => fixtureCard.ui.quality.textContent), /仅显示起点和终点.*180 天/);
+    if (nativeMode) {
+      assert.deepEqual(await native.evaluate(map => map.paths.map(path => ({
+        name: path.name, points: path.points.length, time: path.points[0].timestamp.toISOString(),
+      }))), [
+        { name: '起点', points: 1, time: '2026-09-03T08:00:00.000Z' },
+        { name: '终点', points: 1, time: '2026-09-03T08:10:00.000Z' },
+      ]);
+    } else {
+      assert.deepEqual(await page.locator('.leaflet-tooltip').allTextContents(), ['起点', '终点']);
+      assert.equal(await page.evaluate(() => fixtureCard.routeMap.renderer.routes.getLayers()
+        .every(layer => !layer.getLatLngs)), true);
+    }
+    assert.equal(await page.evaluate(() => fixtureRequests.filter(call =>
+      call.service === 'get_trip_detail' && call.service_data.local_only).length), 1);
+  }
   assert.equal(external.length, 0);
   assert.deepEqual(errors, []);
-  console.log('Synthetic replay passed: one map, local reads, sample gaps, stable viewport, desktop/mobile, and scope cleanup.');
+  console.log('Synthetic replay passed: one map, local reads, sample gaps, stable viewport, endpoint-only tracks and scope cleanup.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

@@ -333,7 +333,7 @@ async def test_fully_enumerated_recovery_keeps_server_degradation_visible(contex
     value = co.preservation.progress[SN]
     assert value.resolved_gap_months == 1 and value.gap_months == 0
     assert value.scan_percent == value.detail_percent == 100
-    assert value.state == "with_gaps" and value.simplified == 2
+    assert value.state == "tracks_limited" and value.simplified == 2
 
 
 async def test_multiple_gap_months_rotate_and_keep_retry_schedule_after_restart(context):

@@ -554,6 +554,7 @@
           "verifying": "Verifying records",
           "incremental": "Incremental sync",
           "with_gaps": "Completed with gaps",
+          "tracks_limited": "Synced with limited tracks",
           "synced": "Synced locally",
           "vehicle_not_present": "Vehicle missing from account list"
         }

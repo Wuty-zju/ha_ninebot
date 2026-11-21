@@ -48,6 +48,8 @@ class HistoryProgress:
     reference_issues: int = 0
     initial_gap_months: int | None = None
     resolved_gap_months: int = 0
+    single_point: int | None = None
+    unavailable_track: int | None = None
 
     @property
     def scan_percent(self) -> int | None:
@@ -143,17 +145,14 @@ def project_progress(
         state = "incremental"
     elif health and (health.missing or health.unmapped or health.quality_pending):
         state = "preserving"
+    elif unresolved:
+        state = "with_gaps"
+    elif health and health.archive_has_gaps:
+        state = "tracks_limited"
+    elif current.state is HistoryState.WITH_GAPS and evidence.gaps is None:
+        state = "with_gaps"
     else:
-        state = (
-            "with_gaps"
-            if (
-                unresolved
-                or (health is not None and health.archive_has_gaps)
-                or current.state is HistoryState.WITH_GAPS
-                and evidence.gaps is None
-            )
-            else "synced"
-        )
+        state = "synced"
     return HistoryProgress(
         state=state,
         scanned_months=plan.scanned_months if plan else None,
@@ -179,4 +178,6 @@ def project_progress(
         reference_issues=health.reference_issues if health else 0,
         initial_gap_months=plan.gap_months if plan else None,
         resolved_gap_months=recovered,
+        single_point=health.single_point if health else None,
+        unavailable_track=health.unavailable_track if health else None,
     )

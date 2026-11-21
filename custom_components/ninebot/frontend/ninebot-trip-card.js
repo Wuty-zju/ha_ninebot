@@ -4,7 +4,7 @@ import { formatRideDuration, formatRideInterval, formatEntityLabel } from './tri
 import { watchHistory } from './history-network.js';
 import { digits } from './trip-browser.js';
 import { FleetBrowser } from './fleet-browser.js';
-import { LocalTracks, trackKey } from './local-tracks.js';
+import { hasEndpoints, LocalTracks, trackKey } from './local-tracks.js';
 import { RouteMap, ROUTE_COLORS } from './route-map.js';
 import { HistorySelection } from './history-selection.js';
 import { HISTORY_STYLE } from './trip-card-style.js';
@@ -484,7 +484,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     ui.fit.hidden = !showMap;
     ui.placeholder.hidden = showMap;
     ui.placeholder.textContent = this.mapError ? labels.map_error : track && !track.points.length ?
-      labels.track_error : active?.detail_saved === false ? labels.detail_missing :
+      labels.saved_without_points : active?.detail_saved === false ? labels.detail_missing :
         this.busy ? labels.loading : labels.map_placeholder;
     this.nameControl(ui.fit, labels.fit_routes);
     ui.name.textContent = active?.vehicle_label ?? '';
@@ -508,7 +508,15 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     const notes = [];
     if (track) {
       notes.push(`${labels.track_points} ${track.valid_read}/${track.total ?? '—'}`);
-      if (track.kind === 'server_simplified' || track.kind === 'single_point') notes.push(labels.simplified);
+      if (hasEndpoints(track)) {
+        notes.push(labels.endpoints_only);
+      } else if (track.kind === 'server_simplified' || track.kind === 'single_point') {
+        notes.push(labels.simplified);
+      }
+      if (track.kind === 'server_simplified' && track.windowDays) {
+        const days = this.number(track.windowDays, 0);
+        notes.push(labels.detail_window.replace('{days}', days));
+      }
       if (track.partial) notes.push(labels.partial_archive);
       if (track.capped) notes.push(labels.display_limit);
       if (this.canReplay(track)) notes.push(labels.playback_note);
@@ -526,13 +534,13 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     }
     if (showMap) {
       const content = ui.quality.textContent;
-      void this.routeMap.update(tracks, this.browser.hass, labels.start).then(() => {
+      void this.routeMap.update(tracks, this.browser.hass, labels).then(() => {
         if (this.routeMap.renderer?.simplified && ui.quality.textContent === content && !track?.capped) {
           ui.quality.textContent += ` · ${labels.display_limit}`;
         }
       });
     } else {
-      void this.routeMap.update([], this.browser.hass, labels.start);
+      void this.routeMap.update([], this.browser.hass, labels);
     }
     this.updateTransport();
   }

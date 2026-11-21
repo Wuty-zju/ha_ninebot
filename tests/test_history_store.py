@@ -135,6 +135,12 @@ async def test_incomplete_pages_leave_explicit_gap_and_continue_other_months(
     assert bad.stop == reason and bad.finished and not bad.verified
     assert bad.root.gap_months == 1 and bad.root.next_month == "202609"
     assert bad.root.state is HistoryState.DISCOVER
+    month = await store.async_month(SN, "202610")
+    assert month is not None and month.received_at == NOW
+    assert month.travel.summary.ride_count == 2
+    if ids == ("ride-two",):
+        selected = await store.async_statistics_months(SN, ("202610",))
+        assert {ride.ride_id for ride in selected[0].statistics_rides} == {"ride-one", "ride-two"}
 
 
 async def test_schema2_migration_preserves_original_and_creates_no_fake_baseline(tmp_path):

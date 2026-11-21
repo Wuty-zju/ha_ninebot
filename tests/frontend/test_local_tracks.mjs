@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { LocalTracks, trackKey, trackSegments }
+import { hasEndpoints, LocalTracks, trackKey, trackSegments }
   from '../../custom_components/ninebot/frontend/local-tracks.js';
 
 const ride = { ride_id: 'synthetic-ride', query_month: '202609' };
@@ -59,6 +59,25 @@ test('invalid-only source chunks advance and gaps/simplified points never connec
   const points = [0, 1, 4, 5].map(sequence => ({ sequence }));
   assert.deepEqual(trackSegments(points, 'sampled_unverified').map(s => s.length), [2, 2]);
   assert.deepEqual(trackSegments(points, 'server_simplified').map(s => s.length), [1, 1, 1, 1]);
+});
+
+test('endpoint display requires two usable server-simplified source points', async () => {
+  for (const [kind, drop, endpoints] of [
+    ['server_simplified', false, true], ['server_simplified', true, false],
+    ['sampled_unverified', false, false],
+  ]) {
+    const reader = new LocalTracks(async () => {
+      const response = chunk(0, 2);
+      response.ride.track_summary.geometry_kind = kind;
+      response.ride.track_summary.server_window_days = 180;
+      if (drop) response.ride.track.pop();
+      return response;
+    });
+    await reader.read('device-a', ride);
+    const track = reader.tracks.get(trackKey('device-a', ride));
+    assert.equal(track.windowDays, 180);
+    assert.equal(hasEndpoints(track), endpoints);
+  }
 });
 
 test('mixed revision, malformed scope and invalid geometry discard the selected track', async () => {

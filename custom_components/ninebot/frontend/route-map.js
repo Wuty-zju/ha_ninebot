@@ -1,5 +1,5 @@
 /** One map surface, with a native basemap where HA supplies the tile service. */
-import { trackSegments } from './local-tracks.js';
+import { hasEndpoints, trackSegments } from './local-tracks.js';
 import { createRouteRenderer } from './route-renderer.js';
 
 export const ROUTE_COLORS = ['#168af9', '#e67723', '#9968df', '#1a9b7b', '#de567a'];
@@ -16,19 +16,34 @@ function spaced(items, limit) {
     items[Math.round(index * (items.length - 1) / (limit - 1))]);
 }
 
-function nativePaths(track, startLabel) {
-  // ha-map gives each marker a date tooltip. Use the known ride start, labelled
-  // as such, since the archive does not establish timestamps for source points.
-  const started = new Date(track.summary.start_time ?? NaN);
-  if (!Number.isFinite(started.getTime())) return [];
-  const paths = spaced(routePaths(track), 24);
+function displayedPaths(track, labels) {
+  const paths = routePaths(track);
+  const started = track.summary.start_time;
+  if (!hasEndpoints(track)) {
+    return paths.map(points => ({ points, name: labels.start, time: started }));
+  }
+  const [start, end] = paths;
+  const startLabel = labels.track_start, endLabel = labels.end;
+  if (start[0][0] === end[0][0] && start[0][1] === end[0][1]) {
+    return [{ points: start, name: `${startLabel} / ${endLabel}`, time: started }];
+  }
+  return [
+    { points: start, name: startLabel, time: started },
+    { points: end, name: endLabel, time: track.summary.end_time },
+  ];
+}
+
+function nativePaths(track, labels) {
+  // HA path markers display the trip start or end time. Ordinary samples
+  // share the labelled trip start because their timestamps are unknown.
+  const paths = spaced(displayedPaths(track, labels), 24);
   const pointsPerPath = Math.max(2, Math.floor(720 / Math.max(1, paths.length)));
-  return paths.map(segment => ({
-    name: startLabel,
-    color: track.color,
-    fullDatetime: true,
-    points: spaced(segment, pointsPerPath).map(point => ({ point, timestamp: started })),
-  }));
+  return paths.flatMap(path => {
+    const time = new Date(path.time ?? NaN);
+    if (!Number.isFinite(time.getTime())) return [];
+    return [{ name: path.name, color: track.color, fullDatetime: true,
+      points: spaced(path.points, pointsPerPath).map(point => ({ point, timestamp: time })) }];
+  });
 }
 
 async function loadNativeMap(hass) {
@@ -55,8 +70,8 @@ class NativeRouteMap {
     map.zoomPosition = 'bottomright';
     host.append(map);
   }
-  setRoutes(tracks, startLabel) {
-    this.map.paths = tracks.flatMap(track => nativePaths(track, startLabel));
+  setRoutes(tracks, labels) {
+    this.map.paths = tracks.flatMap(track => nativePaths(track, labels));
     this.bounds = tracks.flatMap(trackBounds);
     this.simplified = this.map.paths.reduce((total, path) => total + path.points.length, 0) <
       tracks.reduce((total, track) => total + track.points.length, 0);
@@ -97,15 +112,20 @@ class OfflineRouteMap {
     this.resize = new ResizeObserver(() => this.map.invalidateSize({ pan: false, debounceMoveend: true }));
     this.resize.observe(this.container);
   }
-  setRoutes(tracks) {
+  setRoutes(tracks, labels) {
     this.routes.clearLayers();
     this.bounds = tracks.flatMap(trackBounds);
     for (const track of tracks) {
-      for (const path of routePaths(track)) {
-        const layer = path.length > 1 ?
-          this.library.polyline(path, { color: track.color, weight: 4, interactive: false }) :
-          this.library.circleMarker(path[0], { color: track.color, radius: 4, fillOpacity: 0.85,
+      for (const { points, name } of displayedPaths(track, labels)) {
+        const layer = points.length > 1 ?
+          this.library.polyline(points, { color: track.color, weight: 4, interactive: false }) :
+          this.library.circleMarker(points[0], { color: track.color, radius: 4, fillOpacity: 0.85,
             interactive: false });
+        if (hasEndpoints(track)) {
+          const title = document.createElement('span');
+          title.textContent = name;
+          layer.bindTooltip(title, { permanent: true, direction: 'top' });
+        }
         layer.addTo(this.routes);
       }
     }
@@ -178,15 +198,15 @@ export class RouteMap {
     this.pending = null;
     this.root.replaceChildren();
     this.tracks = null;
-    this.startLabel = null;
+    this.labels = null;
     this.point = null;
     this.fitting = false;
   }
-  async update(tracks, hass, startLabel) {
-    if (this.startLabel === startLabel && this.tracks?.length === tracks.length &&
+  async update(tracks, hass, labels) {
+    if (this.labels === labels && this.tracks?.length === tracks.length &&
         tracks.every((track, index) => this.tracks[index] === track)) return this.pending;
     this.tracks = tracks;
-    this.startLabel = startLabel;
+    this.labels = labels;
     if (this.renderer) this.draw();
     else if (tracks.length) {
       this.pending ??= this.initialize(hass, this.serial);
@@ -211,7 +231,7 @@ export class RouteMap {
   draw() {
     this.renderer.setRoutes(this.tracks.map((track, index) => ({
       ...track, color: ROUTE_COLORS[index],
-    })), this.startLabel);
+    })), this.labels);
     this.renderer.highlight(this.point);
     if (this.fitting) this.fit();
   }

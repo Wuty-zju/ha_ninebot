@@ -554,6 +554,7 @@
           "verifying": "Memverifikasi catatan",
           "incremental": "Sinkronisasi inkremental",
           "with_gaps": "Selesai dengan kekurangan",
+          "tracks_limited": "Tersinkron, beberapa jejak terbatas",
           "synced": "Tersinkron secara lokal",
           "vehicle_not_present": "Kendaraan tidak ada di daftar akun"
         }
