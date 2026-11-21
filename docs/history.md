@@ -49,7 +49,7 @@ Existing `start`/`continue`/`status`/`cancel` range jobs remain supported (up to
 - **Month-scan progress** separates processed, verified and gapped months. Page totals, membership and references must agree. A conflicting or invalid month in a response keeps that response out of statistics. History scans retain the captured page as evidence of the gap.
 - **Saved-detail progress** covers discovered ride IDs. 100% does not mean all cloud rides were discovered or that every saved route has a full geometry.
 - **Last successful sync** records accepted page/detail progress; task completion is separately identified by `last_completed`. A historical completion time is not erased merely because current verification is pending.
-- **Monthly list coverage** describes the latest list response, not accumulated archive completeness. A 20/37 response is different from an archive that has reconciled all 37 IDs.
+- **Month trip list completeness** uses verified pagination when the saved page chain matches the displayed observation for that vehicle and month. Local reconciliation can also establish coverage when retained rides agree with that observation's count and total distance and meet the time checks. Otherwise the value is the fraction of rides returned in that response. See `coverage_basis`, `returned_coverage` and `verified_pages`.
 
 Missing/foreign vehicles are not queried through stale ownership. Saved evidence remains, and a positive rediscovery can resume the checkpoint; absence from one accepted list does not prove physical unbinding.
 
@@ -119,7 +119,7 @@ The default-on **Enable vehicle events (Beta)** option controls both entities. U
 
 Durations retain native seconds and suggest hours with **four decimals**, including the history-calendar descriptions. The initial display migration applies once; subsequent user unit/precision changes are retained. Compact workbench views still render original seconds, such as **45 sec**, **31 min 46 sec** or **1 hr 2 min 3 sec**.
 
-**Month trip list completeness** is a debug diagnostic: unique valid returned ride IDs divided by the server's reported month count. It is separate from **History scan progress** (verified months) and **Saved-detail progress** (saved details for discovered IDs). None alone proves a complete historical GPS archive. Debug classification and the absence of a statistics state class do not exclude ordinary Recorder states; use explicit Recorder filters when required. Full raw export is not provided by the parsed debug view or sanitized diagnostics.
+Diagnostic entities can appear in Recorder. Use explicit Recorder filters to exclude them. See [coverage and statistics](#coverage-and-statistics) for how monthly and daily totals are validated.
 
 ## Query Actions
 

@@ -75,6 +75,7 @@ from .history_progress import HistoryEvidence
 from .history_store import PageReceipt
 from .local_reconstruction import Reconstruction
 from .models import TravelMonth, VehicleProfile
+from .month_enumeration import RecordedEnumeration, recorded_enumeration
 from .object_checks import ObjectSummary
 from .parsing import previous_month
 from .raw import Endpoint, RawRecord, version_metadata
@@ -168,6 +169,7 @@ class ArchiveProjection:
     latest: ArchivedRide | None
     revision: int
     latest_limited: bool = False
+    enumerations: tuple[tuple[str, RecordedEnumeration], ...] = ()
 
 
 def vehicle_key(sn: str) -> str:
@@ -2329,13 +2331,27 @@ class RideArchive:
         vehicle, as_of = vehicle_key(sn), utc_string(now)
 
         def read() -> ArchiveProjection:
+            db = self._db()
             records = self._statistics_months(vehicle, months)
+            enumerations = []
+            for row in records:
+                summary = row.travel.summary
+                if summary is None or summary.list_complete is not False:
+                    continue
+                month = row.travel.month
+                proof = recorded_enumeration(
+                    db, vehicle, month, utc_string(row.received_at), summary.ride_count, as_of
+                )
+                if proof is not None:
+                    enumerations.append((month, proof))
             limited = False
             try:
-                latest = latest_query(self._db(), vehicle, as_of)
+                latest = latest_query(db, vehicle, as_of)
             except TimelineLimitError:
                 latest, limited = None, True  # Never substitute an arbitrary older ride.
-            return ArchiveProjection(records, latest, self._revision(), limited)
+            return ArchiveProjection(
+                records, latest, self._revision(), limited, tuple(enumerations)
+            )
 
         return await self._run(read)
 
@@ -3429,7 +3445,9 @@ class RideArchive:
                             "SELECT observed FROM months WHERE vehicle=? AND month=?",
                             (expected.vehicle, raw.query_month),
                         ).fetchone()
-                        if latest and latest[0] > observed:
+                        if latest and (latest[0] > observed or receipt.stop is not None):
+                            # Keep valid ride facts from a stopped run without replacing
+                            # the accepted monthly summary or its receipt time.
                             changed = False
                             for ride in normalized.rides:
                                 restored_ride(decoded(encoded(ride_data(ride))))
