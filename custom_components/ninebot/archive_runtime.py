@@ -18,6 +18,7 @@ from .archive_statistics import ArchiveStatisticsView, StatisticsReader
 from .archive_timeline import ArchivedRide
 from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
+from .exceptions import ErrorKind, FailurePhase, NinebotError
 from .models import TravelMonth, VehicleProfile
 from .parsing import previous_month
 from .period_statistics import DaySummary, DaySummaryCache
@@ -185,6 +186,9 @@ class ArchiveStatistics(TravelStatisticsStore):
             return self._projection.month_rides(sn, month)
         return super().month_rides(sn, month)
 
+    def month_enumeration_complete(self, sn: str, month: str) -> bool:
+        return self.archive_ready and self._projection.month_enumeration_complete(sn, month)
+
     def month_metric_complete(self, sn: str, month: str, metric: str) -> bool:
         if self.archive_ready:
             return self._projection.month_metric_complete(sn, month, metric)
@@ -240,6 +244,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             selections = dict(self._projection.selections)
             blocked_metrics = dict(self._projection.blocked_metrics)
             bases = dict(self._projection.completeness_bases)
+            enumerated = set(self._projection.enumerated_months)
             latest = dict(self._latest)
             month_snapshots = dict(self._month_snapshots)
             tokens = dict(self._day_projection_tokens)
@@ -247,6 +252,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             vehicles = (vehicle,)
         else:
             records, selections, blocked_metrics, bases = {}, {}, {}, {}
+            enumerated = set()
             latest, tokens, revisions, month_snapshots = {}, {}, {}, {}
             vehicles = tuple(sorted(self._vehicles))
         for sn in vehicles:
@@ -254,7 +260,10 @@ class ArchiveStatistics(TravelStatisticsStore):
                 sn, (previous_month(month), month), local
             )
             view = await self.hass.async_add_executor_job(
-                ArchiveStatisticsView.from_months, sn, snapshot.months
+                ArchiveStatisticsView.from_months,
+                sn,
+                snapshot.months,
+                snapshot.enumerated_months,
             )
             month_snapshots.update(
                 {(sn, row.travel.month): (row.travel, row.received_at) for row in snapshot.months}
@@ -263,6 +272,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             selections.update(view.selections)
             blocked_metrics.update(view.blocked_metrics)
             bases.update(view.completeness_bases)
+            enumerated.update(view.enumerated_months)
             latest[sn] = snapshot.latest
             tokens[sn] = object()
             revisions[sn] = snapshot.revision
@@ -273,6 +283,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             selections=selections,
             blocked_metrics=blocked_metrics,
             completeness_bases=bases,
+            enumerated_months=frozenset(enumerated),
         )
         partial = vehicle is not None and self._projection_month == month
         months = dict(self.months) if partial else {}
@@ -349,6 +360,10 @@ class ArchiveStatistics(TravelStatisticsStore):
                 await self._project(guard, vehicle=sn)
                 self._archive_success()
             except ArchiveError as err:
+                if err.kind is ArchiveFailure.MONTH_CONFLICT:
+                    conflict = NinebotError(ErrorKind.PROTOCOL, retryable=True)
+                    conflict.at_phase(FailurePhase.MONTH_RECONCILIATION)
+                    raise conflict from None
                 self.record_error(err)
         if changed:
             self._notify_change(sn, guard)
