@@ -110,6 +110,7 @@ class ArchiveFailure(StrEnum):
     CURSOR = "cursor"
     BUDGET = "budget"
     OBJECT = "corrupt_object"
+    MONTH_CONFLICT = "month_conflict"
 
 
 class ArchiveError(Exception):
@@ -167,6 +168,7 @@ class ArchiveProjection:
     months: tuple[ArchiveMonth, ...]
     latest: ArchivedRide | None
     revision: int
+    enumerated_months: tuple[str, ...] = ()
     latest_limited: bool = False
 
 
@@ -1073,6 +1075,12 @@ class RideArchive:
             ).fetchone()
             if before and (before[1] > observed or (before[1] == observed and not ordered)):
                 return False
+            if ordered and before and not travel.summary.has_activity:
+                old = restored_month(decoded(before[0])).summary
+                if old is not None and old.has_activity:
+                    # An ordered cloud receipt cannot withdraw known activity
+                    # from an empty snapshot. Explicit local corrections can.
+                    raise ArchiveError(ArchiveFailure.MONTH_CONFLICT)
             changed = not before or (before[0], before[3], before[4]) != (data, backend, ids_data)
             db.execute("INSERT OR IGNORE INTO vehicles VALUES (?,NULL,?,0)", (vehicle, observed))
             revision = (before[2] if before else 0) + int(changed)
@@ -2329,13 +2337,23 @@ class RideArchive:
         vehicle, as_of = vehicle_key(sn), utc_string(now)
 
         def read() -> ArchiveProjection:
+            db = self._db()
             records = self._statistics_months(vehicle, months)
             limited = False
             try:
-                latest = latest_query(self._db(), vehicle, as_of)
+                latest = latest_query(db, vehicle, as_of)
             except TimelineLimitError:
                 latest, limited = None, True  # Never substitute an arbitrary older ride.
-            return ArchiveProjection(records, latest, self._revision(), limited)
+            placeholders = ",".join("?" for _ in months)
+            enumerated = tuple(
+                row[0]
+                for row in db.execute(
+                    "SELECT DISTINCT month FROM history_months "
+                    f"WHERE vehicle=? AND month IN ({placeholders}) AND verified=1",
+                    (vehicle, *months),
+                )
+            )
+            return ArchiveProjection(records, latest, self._revision(), enumerated, limited)
 
         return await self._run(read)
 
@@ -3305,9 +3323,10 @@ class RideArchive:
         await self._run(commit, guard=guard)
 
     async def async_reuse_history_month(
-        self, sn: str, now: datetime, *, guard: Callable[[], bool]
+        self, sn: str, now: datetime, *, guard: Callable[[], bool], provider: str | None = None
     ) -> bool:
         from .history_reuse import reuse
+        from .native_history import CONTRACT
 
         utc_string(now)
 
@@ -3316,9 +3335,23 @@ class RideArchive:
             with db:
                 if self._history_paused(vehicle_key(sn)):
                     return False
-                return reuse(db, vehicle_key(sn), now)
+                return reuse(db, vehicle_key(sn), now, provider=provider or CONTRACT)
 
         return await self._run(commit, guard=guard)
+
+    async def async_history_page_contract(self, sn: str, expected: HistoryPlan) -> str:
+        from .history_store import page_contract
+        from .native_history import PAGE_CONTRACTS
+
+        if expected.vehicle != vehicle_key(sn) or expected.next_month is None:
+            raise ValueError("Invalid history page scope")
+        month = expected.next_month
+        result = await self._run(
+            lambda: page_contract(self._db(), expected.vehicle, expected.plan_id, month)
+        )
+        if result is None or result not in PAGE_CONTRACTS:
+            raise ArchiveError(ArchiveFailure.OBJECT)
+        return result
 
     async def async_claim_history_page(
         self,
@@ -3424,6 +3457,14 @@ class RideArchive:
 
                         assert raw.query_month is not None
                         normalized = parse_month(raw.payload(), raw.query_month)
+                        if (
+                            receipt.stop
+                            and normalized.summary
+                            and not normalized.summary.has_activity
+                        ):
+                            return (
+                                receipt  # Keep the gap and its page evidence, not empty statistics.
+                            )
                         observed = utc_string(raw.received_at)
                         latest = db.execute(
                             "SELECT observed FROM months WHERE vehicle=? AND month=?",
