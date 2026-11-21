@@ -99,6 +99,7 @@ class ArchiveRideCounts:
     total: int
     simplified: int
     details_pending_classification: int
+    saved_details: int
 
 
 def archive_ride_counts(db: sqlite3.Connection, vehicle: str) -> ArchiveRideCounts:
@@ -112,7 +113,7 @@ def archive_ride_counts(db: sqlite3.Connection, vehicle: str) -> ArchiveRideCoun
         " WHERE d.vehicle=?)"
         " SELECT (SELECT count(*) FROM rides WHERE vehicle=?),"
         " count(*) FILTER (WHERE kind='server_simplified'),"
-        " count(*) FILTER (WHERE kind IS NULL) FROM selected",
+        " count(*) FILTER (WHERE kind IS NULL),count(*) FROM selected",
         (vehicle, vehicle),
     ).fetchone()
     return ArchiveRideCounts(*row)

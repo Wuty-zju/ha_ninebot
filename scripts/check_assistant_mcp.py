@@ -48,7 +48,7 @@ async def check(
     from homeassistant.components.mcp_server import http as native_http
     from homeassistant.components.mcp_server.server import META_DEVICE_ID
     from homeassistant.config_entries import ConfigEntryState
-    from homeassistant.core import HomeAssistant
+    from homeassistant.core import HomeAssistant, SupportsResponse
     from homeassistant.helpers import llm
     from homeassistant.helpers.http import KEY_AUTHENTICATED
     from homeassistant.util import dt as dt_util
@@ -315,6 +315,37 @@ async def check(
                     "120.12345",
                 )
             )
+
+            async def fixture_sync_status(call):
+                assert call.context is contexts[-1]
+                assert dict(call.data) == {"device_id": vehicle_ref, "operation": "sync_status"}
+                return {
+                    "sync_state": "tracks_limited",
+                    "archive_counts": {
+                        "total": 12,
+                        "saved_details": 9,
+                        "simplified": 2,
+                        "details_pending_classification": 1,
+                    },
+                    "details": {"discovered": 8, "saved": 8},
+                }
+
+            hass.services.async_register(
+                "ninebot",
+                "sync_history",
+                fixture_sync_status,
+                supports_response=SupportsResponse.ONLY,
+            )
+            try:
+                status, body = await rpc("tools/call", {**call, "name": "ninebot__get_sync_health"})
+                assert status == 200 and not body["result"].get("isError", False)
+                sync = json.loads(body["result"]["content"][0]["text"])
+                assert sync["data"]["archive_counts"]["total"] == 12
+                assert sync["data"]["details"]["discovered"] == 8
+                assert sync["evidence"]["archive_counts_scope"] == "all_saved_vehicle_trips"
+                assert sync["evidence"]["details_scope"] == "discovered_history_plan"
+            finally:
+                hass.services.async_remove("ninebot", "sync_history")
             # Client-origin device metadata must neither select nor authorize a vehicle.
             hidden_sn, hidden_ref = "synthetic-unexposed-vehicle", "synthetic-unexposed-device"
             co.data[hidden_sn] = VehicleSnapshot(

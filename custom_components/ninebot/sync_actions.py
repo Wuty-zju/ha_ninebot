@@ -156,14 +156,16 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
     paused = await archive.async_history_paused(sn)
     plan = await archive.async_history_plan(sn)
     health = await archive.async_history_health(sn, plan.plan_id) if plan else None
+    requested = await archive.async_history_requested(sn)
     view = co.preservation.progress.get(sn)
+    counts = co.statistics.ride_counts(sn)
     return {
         "schema_version": 1,
         "operation": operation,
         "paused": paused,
         "background_enabled": entry.options.get(CONF_PRESERVE) is True,
         "automatic_sync_enabled": runner.enabled(),
-        "manual_sync_requested": await archive.async_history_requested(sn),
+        "manual_sync_requested": requested,
         "sync_state": view.state if view else None,
         "scan_progress": view.scan_percent if view else None,
         "detail_progress": view.detail_percent if view else None,
@@ -184,6 +186,7 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
         "resolved_gap_months": view.resolved_gap_months if view else 0,
         "discovery_complete": plan.discovery_complete if plan else False,
         "details": asdict(health) if health else None,
+        "archive_counts": asdict(counts) if counts else None,
         "pagination_basis": "client_page_evidence",
         "real_cloud_pagination_verified": None,
     }

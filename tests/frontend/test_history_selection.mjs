@@ -14,9 +14,18 @@ test('single and multi-car selections share one primary and retain only reviewed
   session.activate(a); assert.equal(session.primary, a);
   assert.ok(!JSON.stringify([...session.selected]).includes('private-raw'));
   assert.ok(!JSON.stringify([...session.selected]).includes('secret'));
-  session.select(ride('b')); assert.deepEqual([...session.selected.keys()], [b]);
+  const originalSlot = session.slots.get(b);
+  session.select(ride('b')); assert.deepEqual([...session.selected.keys()], [a, b]);
+  assert.equal(session.primary, b);
+  session.remove(a);
+  assert.equal(session.slots.get(b), originalSlot);
+  session.select(ride('c'), true);
+  assert.notEqual(session.slots.get(trackKey('c', ride('c'))), originalSlot);
+  session.select(ride('d'));
+  assert.deepEqual([...session.selected.keys()], [trackKey('d', ride('d'))]);
   for (let i = 0; i < 10; i++) session.select(ride(`car-${i}`), true);
   assert.equal(session.selected.size, 5);
+  assert.equal(new Set(session.slots.values()).size, 5);
 });
 
 test('refresh updates selected summaries without changing the focused ride', () => {

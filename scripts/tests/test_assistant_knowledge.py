@@ -68,9 +68,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 19)
-        self.assertEqual(catalog["corpus_version"], "1.2.11")
-        self.assertEqual(catalog["source_version"], "2.1.26")
+        self.assertEqual(len(catalog["entries"]), 20)
+        self.assertEqual(catalog["corpus_version"], "1.2.12")
+        self.assertEqual(catalog["source_version"], "2.2.5")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -87,6 +87,24 @@ class KnowledgeTests(unittest.TestCase):
                 result = k.search_help(query, language, version, include_procedures=True)
                 self.assertEqual(result["matches"][0]["source_id"], "sync_budget")
                 self.assertIn("SK06", {step["id"] for step in result["procedures"]})
+
+    def test_archive_count_help_is_cited_and_versioned(self):
+        for language, query in (
+            ("en", "ninebot__get_sync_health"),
+            ("en", "Why does history only show start and end points?"),
+            ("zh-Hans", "行程数量和简化行程数量有什么区别"),
+        ):
+            with self.subTest(query=query):
+                current = k.search_help(query, language, "2.2.6")
+                first = current["matches"][0]
+                self.assertEqual(first["source_id"], "history_archive_counts")
+                self.assertEqual(first["procedure_id"], "SK06")
+                self.assertIn("docs/history.md#read-progress-correctly", first["citation"])
+                for version in ("2.2.4", "2.3.0"):
+                    older = k.search_help(query, language, version)
+                    self.assertNotIn(
+                        "history_archive_counts", [m["source_id"] for m in older["matches"]]
+                    )
 
     def test_support_topics_retrieve_natural_questions_in_both_languages(self):
         cases = (
@@ -150,7 +168,8 @@ class KnowledgeTests(unittest.TestCase):
                 result = k.search_help(query, language, "2.1.24")
                 match = next(row for row in result["matches"] if row["source_id"] == entry["id"])
                 self.assertEqual(
-                    match["citation"], f"[Source]({entry['source']['url']}) (KB 1.2.11)"
+                    match["citation"],
+                    f"[Source]({entry['source']['url']}) (KB {result['corpus_version']})",
                 )
                 for version in ("2.1.0", "2.1.22", "2.1.23", "2.3.0"):
                     old = k.search_help(query, language, version, include_procedures=True)
@@ -223,7 +242,7 @@ class KnowledgeTests(unittest.TestCase):
                     "url": url,
                 },
             )
-            self.assertEqual(match["citation"], f"[Source]({url}) (KB 1.2.11)")
+            self.assertEqual(match["citation"], f"[Source]({url}) (KB {result['corpus_version']})")
             for version in ("2.1.25", "2.3.0"):
                 with self.subTest(version=version, language=language):
                     self.assertEqual(
@@ -381,7 +400,8 @@ class KnowledgeTests(unittest.TestCase):
                         )
                         self.assertEqual([p["id"] for p in result["procedures"]], ["SK04"])
                         self.assertEqual(
-                            result["matches"][0]["citation"], f"[Source]({url}) (KB 1.2.11)"
+                            result["matches"][0]["citation"],
+                            f"[Source]({url}) (KB {result['corpus_version']})",
                         )
                         self.assertEqual(
                             k.search_help(prefix + name, language, "2.3.0")["matches"], []

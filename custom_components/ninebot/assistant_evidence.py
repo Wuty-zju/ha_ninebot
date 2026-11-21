@@ -8,7 +8,7 @@ from html import escape
 from typing import Any
 
 from .archive_timeline import SELECTION_BASIS
-from .assistant_views import RIDE_UNITS, numeric
+from .assistant_views import RIDE_UNITS, archive_counts_view, numeric
 from .const import BUSINESS_TIMEZONE
 from .travel import opaque_id
 
@@ -352,6 +352,46 @@ def _error(row: dict[str, Any]) -> Any:
     )
 
 
+def _history_health(payload: dict[str, Any]) -> str:
+    data = _object(payload.get("data"))
+    evidence = _object(payload.get("evidence"))
+    state = data.get("state")
+    if not _local_archive(evidence) or evidence.get("operation") != "sync_status":
+        return ""
+    lines = ["**Local history for the selected vehicle**"]
+    if _matches(CODE, state):
+        lines.append(f"- Local synchronization reported the state `{state}`.")
+    if evidence.get("archive_counts_scope") == "all_saved_vehicle_trips":
+        if (counts := archive_counts_view(data.get("archive_counts"))) is None:
+            lines.append("- Whole-archive counts are unavailable.")
+        else:
+            lines.append(
+                f"- Whole archive: {counts['total']} saved trips, {counts['saved_details']} "
+                f"with details, {counts['simplified']} with a confirmed simplified route."
+            )
+            lines.append(
+                f"- Trips with only a summary: {counts['total'] - counts['saved_details']}. "
+                f"Saved details with unverified route classification: "
+                f"{counts['details_pending_classification']}."
+            )
+    verified, months = data.get("verified_months"), data.get("total_months")
+    if type(verified) is int and type(months) is int and 0 <= verified <= months:
+        lines.append(f"- Synchronization plan: {verified}/{months} verified months.")
+    details = _object(data.get("details"))
+    saved, discovered = details.get("saved"), details.get("discovered")
+    if (
+        evidence.get("details_scope") == "discovered_history_plan"
+        and type(saved) is int
+        and type(discovered) is int
+        and 0 <= saved <= discovered
+    ):
+        lines.append(f"- Details in that plan: {saved}/{discovered} discovered trips saved.")
+    if len(lines) == 1:
+        return ""
+    lines.append("- Source: local account archive. Cloud history coverage remains unverified.")
+    return "\n".join(lines)
+
+
 def _workflow(payload: dict[str, Any]) -> str:
     data = _object(payload.get("data"))
     steps, metric = data.get("steps"), data.get("metric")
@@ -375,9 +415,8 @@ def _workflow(payload: dict[str, Any]) -> str:
         elif step.get("error") is False and tool == "ninebot__search_help":
             sections.append(_help(result))
         elif step.get("error") is False and tool == "ninebot__get_sync_health":
-            state = _object(result.get("data")).get("state")
-            if _matches(CODE, state):
-                sections.append(f"Local synchronization reported the state `{state}`.")
+            if section := _history_health(result):
+                sections.append(section)
     if _object(payload.get("quality")).get("partial") is True:
         sections.append("The local statistics check returned incomplete evidence.")
     if sections:
@@ -421,6 +460,8 @@ def render_evidence_answer(
             text = _recorded_trips(payload)
         elif tool == "ninebot__get_trip_detail":
             text = _saved_detail(payload)
+        elif tool == "ninebot__get_sync_health":
+            text = _history_health(payload)
         elif tool == "ninebot__explain_statistics":
             text = _workflow(payload)
         else:

@@ -198,14 +198,17 @@ export class RouteMap {
     this.pending = null;
     this.root.replaceChildren();
     this.tracks = null;
+    this.slots = [];
     this.labels = null;
     this.point = null;
     this.fitting = false;
   }
-  async update(tracks, hass, labels) {
+  async update(tracks, hass, labels, slots = []) {
     if (this.labels === labels && this.tracks?.length === tracks.length &&
+        this.slots?.length === slots.length && slots.every((slot, index) => this.slots[index] === slot) &&
         tracks.every((track, index) => this.tracks[index] === track)) return this.pending;
     this.tracks = tracks;
+    this.slots = slots;
     this.labels = labels;
     if (this.renderer) this.draw();
     else if (tracks.length) {
@@ -230,7 +233,7 @@ export class RouteMap {
   }
   draw() {
     this.renderer.setRoutes(this.tracks.map((track, index) => ({
-      ...track, color: ROUTE_COLORS[index],
+      ...track, color: ROUTE_COLORS[this.slots[index] ?? index],
     })), this.labels);
     this.renderer.highlight(this.point);
     if (this.fitting) this.fit();

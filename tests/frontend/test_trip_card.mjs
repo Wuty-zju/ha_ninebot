@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { TripBrowser, safeRide, digits, businessDates, samplePolyline, NinebotTripCard }
   from '../../custom_components/ninebot/frontend/ninebot-trip-card.js';
 import { LABELS } from '../../custom_components/ninebot/frontend/labels.js';
+import { TripCardView } from '../../custom_components/ninebot/frontend/trip-card-view.js';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const row = (id = 'synthetic-ride') => ({ ride_id: id, detail_id: id, query_month: '202609',
@@ -138,13 +139,15 @@ test('all 21 locale labels populated, date/time and metric precision valid', () 
     assert.deepEqual(Object.keys(labels).sort(), Object.keys(LABELS.en).sort());
     assert.ok(Object.values(labels).every(value => typeof value === 'string' && value));
   }
-  const format = NinebotTripCard.prototype;
-  const fake = { browser: { hass: { language: 'en', config: { time_zone: 'Asia/Shanghai' } } } };
-  assert.equal(format.timestamp.call(fake, 'invalid'), '—');
-  assert.equal(format.timestamp.call(fake, null), '—');
-  assert.equal(format.number.call(fake, null, 2, 'km'), '—');
-  assert.equal(format.number.call(fake, 1.2, 2, 'km'), '1.20 km');
-  assert.equal(format.number.call(fake, 0, 0, 'Wh'), '0 Wh');
+  const view = Object.create(TripCardView.prototype);
+  view.card = { browser: { hass: { language: 'en', config: { time_zone: 'Asia/Shanghai' } } } };
+  assert.equal(view.timestamp('invalid'), '');
+  assert.equal(view.timestamp(null), '');
+  assert.equal(view.number(null, 2, 'km'), '—');
+  assert.equal(view.number(1.2, 2, 'km'), '1.20 km');
+  assert.equal(view.number(0, 0, 'Wh'), '0 Wh');
+  assert.deepEqual(view.readings({ ...row(), distance_m: null, energy_wh: null }),
+    ['—', '10 min', '—']);
 });
 
 test('configuration does not silently choose an account or ignore bad page bounds', () => {

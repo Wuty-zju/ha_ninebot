@@ -347,6 +347,22 @@ def detail_view(response: dict[str, Any]) -> AssistantView:
     )
 
 
+def archive_counts_view(value: object) -> dict[str, int] | None:
+    """Validate the aggregate and its subsets together before exposing it."""
+    row = mapping(value)
+    fields = ("total", "saved_details", "simplified", "details_pending_classification")
+    counts: dict[str, int] = {}
+    for name in fields:
+        count = row.get(name)
+        if type(count) is not int or not 0 <= count < 2**63:
+            return None
+        counts[name] = count
+    simplified_or_pending = counts["simplified"] + counts["details_pending_classification"]
+    if not simplified_or_pending <= counts["saved_details"] <= counts["total"]:
+        return None
+    return counts
+
+
 def sync_view(response: dict[str, Any]) -> AssistantView:
     # These are the public states emitted by HistoryProgress/HistoryState.
     states = {
@@ -360,6 +376,7 @@ def sync_view(response: dict[str, Any]) -> AssistantView:
         "waiting_budget",
         "waiting_retry",
         "waiting_connection",
+        "vehicle_not_present",
         "needs_login",
         "storage_full",
         "storage_error",
@@ -414,9 +431,15 @@ def sync_view(response: dict[str, Any]) -> AssistantView:
                     "reference_issues",
                 )
             },
+            "archive_counts": archive_counts_view(response.get("archive_counts")),
             "discovery_complete": flag(response.get("discovery_complete")),
         },
         quality={"upstream_history_complete": "unverified"},
-        evidence={"source_kind": "account_archive", "operation": "sync_status"},
+        evidence={
+            "source_kind": "account_archive",
+            "operation": "sync_status",
+            "archive_counts_scope": "all_saved_vehicle_trips",
+            "details_scope": "discovered_history_plan",
+        },
         warnings=["budget_wait_is_local_scheduling_not_api_permission"],
     )

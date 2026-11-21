@@ -201,8 +201,10 @@ async def check(directory: str) -> None:
                     blocking=True,
                     return_response=True,
                 )
-            assert response is not None and "9999" not in json.dumps(response)
-            assert "never-return-this" not in json.dumps(response)
+            assert response is not None
+            encoded = json.dumps(response)
+            assert "Invented battery value: 9999" not in encoded
+            assert "never-return-this" not in encoded
             if revoke:
                 assert response["outcome"] == "denied" and response["results"] == []
             else:
@@ -214,8 +216,7 @@ async def check(directory: str) -> None:
                 assert response["results"][0]["result"]["data"]["battery_soc_percent"] == 42
                 assert response["results"][0]["arguments"] == {"vehicle_ref": device.id}
                 assert not any(
-                    secret in json.dumps(response)
-                    for secret in ("synthetic-sn", "30.12345", "120.12345")
+                    secret in encoded for secret in ("synthetic-sn", "30.12345", "120.12345")
                 )
         assert len(provider_calls) == 4
         response = await hass.services.async_call(

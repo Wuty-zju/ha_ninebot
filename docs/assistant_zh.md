@@ -59,7 +59,7 @@ response_variable: ninebot_answer
 
 从 **2.2.3** 起，行程列表答复显示业务日期、当前页条数和是否还有下一页，同时列出分页选取的截止时间、各条行程与各月列表的档案观测时间。空页会显示本页返回 0 条，整个周期的总数仍待核实。已保存详情的答复显示档案中的测量值、观测时间和档案是否报告数据不完整。行程引用和下一页游标可从 `results` 获取。
 
-可选的 `answer` 使用 `contract: ninebot-evidence-answer-v1`，`request_ids` 列出所用的外层回执标识。它覆盖匹配到的帮助、统计、本地统计检查、行程列表页、已保存详情和已支持的读取失败。帮助保留检索返回的语言。测量与访问提示使用英文。完整的任务清单等细节仍在 `results` 中。展示文字与回执合计超限时，优先保留完整回执。原生 MCP／Conversation 工具仍将结构化回执传给各自客户端。客户端可以直接展示 `matches[].citation` 中的完整引文。
+可选的 `answer` 使用 `contract: ninebot-evidence-answer-v1`，`request_ids` 列出所用的外层回执标识。它覆盖匹配到的帮助、统计、本地统计检查、行程列表页、已保存详情、同步健康和已支持的读取失败。帮助保留检索返回的语言。测量与访问提示使用英文。完整的任务清单等细节仍在 `results` 中。展示文字与回执合计超限时，优先保留完整回执。原生 MCP／Conversation 工具仍将结构化回执传给各自客户端。客户端可以直接展示 `matches[].citation` 中的完整引文。
 
 上例的自动化可用 `{{ ninebot_answer.get('answer', {}).get('text', '') }}` 读取展示文本。若为空，按 `outcome` 和 `results` 处理。需要可核对出处的帮助时，直接展示该文本可避免对话模型在转述中漏掉链接。
 
@@ -88,7 +88,7 @@ Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选�
 | `ninebot__get_statistics` | `vehicle_ref`、`period` | 本地 `today`、`yesterday`、`this_month`、`last_month` 或单个明确业务日期／月份的统计及逐指标覆盖情况。 |
 | `ninebot__get_recorded_trips` | `vehicle_ref`、`start_date`、`end_date`；可选 `limit`、`cursor` | 一页按时间倒序排列的本地行程。日期格式 `YYYY-MM-DD`，含首尾最多31天；默认10条，最多20条。 |
 | `ninebot__get_trip_detail` | `vehicle_ref`、`ride_id`、`query_month` | 对应车辆及月份中已验证行程的本地标量详情。使用列表返回的行程 ID 和 `YYYYMM` 月份。 |
-| `ninebot__get_sync_health` | `vehicle_ref` | 本地覆盖、进度、额度和调度状态，不启动或恢复同步。 |
+| `ninebot__get_sync_health` | `vehicle_ref` | 只读查询全档案行程计数、扫描和详情保存进度，以及当前请求节奏。 |
 | `ninebot__explain_statistics` | `vehicle_ref`、`period`、`metric`；可选 `language` | 三个本地步骤：周期统计、同步健康、附引用的帮助与统计排查清单。 |
 
 全部工具均读取本地信息。缺失详情需要通过正常的[历史功能](history_zh.md)采集；AI 只读调用不会触发云请求。列表游标可能被消费，应继续使用返回的下一页游标，不反复重放上一游标。一页记录数量不代表整个时间段的行程总数。
@@ -119,6 +119,8 @@ Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选�
 
 同步健康返回配置的请求速率与最小间隔。账号预算用于控制历史请求间隔，不能据此推算自然小时内还剩多少次。应依据`next_request_at`与`retry_at`解释当前调度；配置为0仅取消配额节流，仍保留串行与上游退避。
 
+从 2.2.6 起，`archive_counts` 覆盖选中车辆的全部本地行程，含导入记录和仅有摘要的行程，同时列出已保存详情、已确认简化轨迹和仍待判定轨迹质量的数量。`details` 对应当前扫描与保存计划。`ninebot.ask` 分别显示两组统计。参见[正确理解进度](history_zh.md#正确理解进度)。
+
 2.1.24起，缓存状态可附带小型`quality.groups.<group>.failure_context`，仅包含当前已审阅的错误类别、本地请求／规范化／归档阶段、端点模板、代理HTTP／受控码、尝试时间和可重试性，不含原始响应、日志正文或身份。代理指本地backend的响应，不能据此认定云端地区、硬件故障或云端根因；恢复成功后清除。此投影与状态值使用相同的车辆同意和查询鉴权。
 
 ## 版本化帮助
@@ -127,7 +129,7 @@ Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选�
 
 可以询问统计未知、请求额度、覆盖率、缺失详情、过期数值、单位、认证、保留规则或Assistant权限。`ninebot__search_help`搜索随包提供的双语主题，不访问网站、不索引私有档案。问题最多240字符；结果包含固定来源提交、来源及内容摘要、语言、适用版本和语料版本。帮助解释文档契约，当前车辆事实仍须通过相应数据工具查询。
 
-语料 1.2.11 包含 19 个双语主题和 10 项辅助任务清单。直接搜索 `get_recorded_trips` 或 `get_trip_detail`，包括带 `ninebot__` 前缀的工具全名，可获取已保存行程指南及其固定引文。`control_diagnostics` 适用于 2.1.26 起的版本，引用固定的 2.1.26 排障指南，解释 `control_routing`、`confirmation_deadline_reached`、`upstream_code` 和 `backend_error`。解读代理 502 时应先明确具体操作。命令响应、本地确认窗口和所选路径分别提供该次操作的不同证据。
+语料 1.2.12 包含 20 个双语主题和 10 项辅助任务清单。搜索 `get_recorded_trips`、`get_trip_detail` 或 `get_sync_health`（可带 `ninebot__` 前缀），可获取相应指南及其固定引文。`control_diagnostics` 适用于 2.1.26 起的版本，引用固定的 2.1.26 排障指南，解释 `control_routing`、`confirmation_deadline_reached`、`upstream_code` 和 `backend_error`。解读代理 502 时应先明确具体操作。命令响应、本地确认窗口和所选路径分别提供该次操作的不同证据。
 
 数据缺失、控制回执和电池循环支持主题适用于 2.1.24 起的版本，引用固定的 2.1.23 指南。`sample_units` 解释未验证采样，`measurement_units` 解释最高速度、总平均速度和电池评分的含义。登录帮助涵盖 2.0.0 和 2.0.1 新增的支持记录。`mcp_configuration` 解释主地址和独立地址设置，并识别准确的配置键。检索优先匹配主题关键词，按各主题自身的版本范围和来源返回结果。每条命中返回固定 `citation` 和实际语料版本。原生工具回执把引文放在摘录前，客户端可以直接展示。原生 API 提示模型先给出完整引文，再简述回执支持的事实和核查步骤。采用自由生成答复的客户端仍负责其生成和展示。
 
