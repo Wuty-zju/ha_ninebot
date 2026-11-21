@@ -2,6 +2,11 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.2.7
+
+- Compare rides from different date ranges on one map while the archive subscription is active. Revisit the last five list pages from memory. Playback controls sit over the map, with a scale ruler and optional camera follow at the current zoom.
+- Bind an explicitly selected Assistant vehicle directly to the HA Action, including vehicles outside the first discovery page. Scoped discovery and public help validate only the required vehicles. Assist and MCP can look up the cited dashboard replay guide in English or Chinese.
+
 ## 2.2.6
 
 - Rebuild the ride history card with a shared Home Assistant map, date and vehicle filters, a ride library and playback controls. Comparing rides keeps each route's color and the map view as focus changes. The layout adapts to dashboard width and theme.
