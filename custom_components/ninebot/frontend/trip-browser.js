@@ -82,9 +82,13 @@ export class TripBrowser {
   constructor(changed = () => {}) {
     this.changed = changed; this.epoch = 0; this.active = false; this.details = new Map();
   }
-  reset() {
+  clearPage() {
     this.epoch++; this.busy = false; this.page = null; this.details.clear(); this.error = null;
-    this.device = null; this.pageNumber = 0; this.awaitApply = false; this.cleared?.(); this.changed();
+    this.pageNumber = 0;
+  }
+  reset() {
+    this.clearPage();
+    this.device = null; this.awaitApply = false; this.cleared?.(); this.changed();
   }
   configure(config) {
     if (!config || (!!config.entity === !!config.device_id) ||

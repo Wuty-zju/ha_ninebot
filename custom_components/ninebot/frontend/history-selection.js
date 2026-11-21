@@ -2,14 +2,18 @@
 import { safeRide } from './trip-browser.js';
 import { trackKey } from './local-tracks.js';
 
+export const MAX_SELECTED_ROUTES = 5;
+
 export class HistorySelection {
   constructor(changed = () => {}) {
     this.changed = changed;
     this.selected = new Map();
+    this.slots = new Map();
     this.primary = null;
   }
   clear() {
     this.selected.clear();
+    this.slots.clear();
     this.primary = null;
     this.changed();
   }
@@ -17,9 +21,18 @@ export class HistorySelection {
     if (typeof ride?.ride_id !== 'string' || !ride.ride_id || !/^20\d{4}$/.test(ride.query_month) ||
         typeof ride.device_id !== 'string' || !ride.device_id.trim()) return false;
     const key = trackKey(ride.device_id, ride);
-    if (compare && !this.selected.has(key) && this.selected.size >= 5) return false;
-    if (!compare) this.selected.clear();
-    this.selected.set(key, null);
+    if (!this.selected.has(key)) {
+      if (compare && this.selected.size >= MAX_SELECTED_ROUTES) return false;
+      if (!compare) {
+        this.selected.clear();
+        this.slots.clear();
+      }
+      const occupied = new Set(this.slots.values());
+      const slot = Array.from({ length: MAX_SELECTED_ROUTES }, (_, index) => index)
+        .find(index => !occupied.has(index));
+      this.slots.set(key, slot);
+      this.selected.set(key, null);
+    }
     this.update(ride);
     this.primary = key;
     this.changed();
@@ -39,6 +52,7 @@ export class HistorySelection {
   }
   remove(key) {
     if (!this.selected.delete(key)) return;
+    this.slots.delete(key);
     if (this.primary === key) this.primary = this.selected.keys().next().value ?? null;
     this.changed();
   }

@@ -25,6 +25,24 @@ test('different user/connection/parameters never join local private reads', asyn
   assert.equal(calls, 4);
 });
 
+test('a fresh archive view waits for a retired in-flight detail without reusing it', async () => {
+  let calls = 0, visible = true, release;
+  const held = new Promise(resolve => { release = resolve; });
+  const hass = { user: { id: 'u' }, connection: {}, callWS: async () => {
+    const request = ++calls;
+    if (request === 1) await held;
+    return { response: request };
+  } };
+  const old = invokeHistory(hass, 'get_trip_detail', data, () => visible);
+  await tick();
+  visible = false;
+  const fresh = invokeHistory(hass, 'get_trip_detail', data);
+  assert.equal(calls, 1);
+  release();
+  assert.equal(await old, 1);
+  assert.equal(await fresh, 2);
+});
+
 test('shared subscriptions validate metadata, count references and cancel late acknowledgements', async () => {
   let callback, calls = 0, stopped = 0, ack;
   const connection = { subscribeMessage(fn) { calls++; callback = fn; return new Promise(resolve => { ack = () => resolve(() => { stopped++; }); }); } };

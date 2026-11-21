@@ -58,7 +58,8 @@ export class FleetBrowser extends TripBrowser {
     this.selected = new Set(this.targets.map((_, index) => index));
     super.configure({ ...config, ...this.targets[0] });
   }
-  reset() { this.resolved = new Map(); this.streams = []; super.reset(); }
+  clearPage() { this.streams = []; super.clearPage(); }
+  reset() { this.resolved = new Map(); super.reset(); }
   select(index, enabled) {
     if (this.busy || !Number.isInteger(index) || !this.targets[index]) return;
     if (enabled) this.selected.add(index); else this.selected.delete(index);

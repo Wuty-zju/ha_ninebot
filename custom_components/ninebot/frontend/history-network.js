@@ -11,7 +11,18 @@ export function invokeHistory(hass, service, data, current = () => true) {
   let active = reads.get(hass.connection);
   if (!active) { active = new Map(); reads.set(hass.connection, active); }
   const key = JSON.stringify([hass.user.id, service, Object.entries(data).sort(([a], [b]) => a.localeCompare(b))]);
-  if (active.has(key)) { const record = active.get(key); record.guards.add(current); return record.promise; }
+  const previous = active.get(key);
+  if (previous) {
+    if ([...previous.guards].some(check => check())) {
+      previous.guards.add(current);
+      return previous.promise;
+    }
+    // Wait for the retired request to settle before sharing another result.
+    return previous.promise.catch(() => {}).then(() => {
+      if (!current()) throw { code: 'cancelled' };
+      return invokeHistory(hass, service, data, current);
+    });
+  }
   if (active.size >= 64) return Promise.reject({ code: 'busy' });
   const record = { guards: new Set([current]), promise: null };
   const promise = Promise.resolve().then(async () => {

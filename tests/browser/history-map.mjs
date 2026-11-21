@@ -93,15 +93,19 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'light' });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  const mapBox = await page.locator('.map-frame').boundingBox(), listBox = await page.locator('.rides').boundingBox();
+  const mapBox = await page.locator('.map-frame').boundingBox(), listBox = await page.locator('.library').boundingBox();
   assert.ok(listBox.y >= mapBox.y + mapBox.height);
+  assert.ok((await page.getByRole('button', { name: '按点播放', exact: true }).boundingBox()).height >= 44);
+  assert.deepEqual(await page.locator('.metrics dt').allTextContents(), ['里程', '时长', '能耗']);
   if (output) await page.screenshot({ path: join(output, 'replay-mobile-light.png'), fullPage: true });
   await page.setViewportSize({ width: 1080, height: 900 });
 
   await page.locator('.ride .choose').last().click();
   assert.equal(await page.evaluate(() => fixtureCard.routeMap.renderer === savedRenderer), true);
+  assert.equal(await page.evaluate(() => fixtureCard.selection.selected.size), 2);
   await page.locator('.ride .choose').last().press('ArrowUp');
-  assert.equal(await page.evaluate(() => fixtureCard.shadowRoot.activeElement.dataset.control), 'ride:0');
+  assert.equal(await page.evaluate(() =>
+    fixtureCard.shadowRoot.activeElement === fixtureCard.shadowRoot.querySelector('.ride .choose')), true);
   assert.equal(await page.evaluate(() => fixtureRequests.length), requests);
 
   await page.evaluate(async () => {
@@ -141,6 +145,29 @@ try {
   await page.waitForFunction(() => !fixtureCard.routeMap.renderer && fixtureCard.tracks.tracks.size === 0);
   assert.equal(await page.locator('.leaflet-container').count(), 0);
   await page.evaluate(() => fixtureHass.connection.fire('ready'));
+  await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.routeMap.renderer);
+
+  const emptyAfterLatePage = await page.evaluate(async () => {
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    const original = fixtureHass.callWS;
+    fixtureHass.callWS = async message => {
+      if (message.service === 'get_recorded_trips') await held;
+      return original(message);
+    };
+    const late = fixtureCard.browser.read();
+    fixtureCard.historyUpdate({ type: 'retrying', reason: 'unloaded' });
+    release();
+    await late;
+    fixtureHass.callWS = original;
+    const empty = !fixtureCard.browser.page && !fixtureCard.tracks.tracks.size &&
+      !fixtureCard.routeMap.renderer && !fixtureCard.busy;
+    for (const callback of fixtureFeeds) callback({ schema_version: 1, type: 'baseline',
+      vehicles: ['synthetic-a', 'synthetic-b'].map(device_id =>
+        ({ device_id, selection_version: 'a'.repeat(32) + ':1' })) });
+    return empty;
+  });
+  assert.equal(emptyAfterLatePage, true);
   await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.routeMap.renderer);
 
   await page.evaluate(async () => {
@@ -193,7 +220,7 @@ try {
     await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.routeMap.renderer &&
       fixtureCard.activeTrack?.kind === 'server_simplified');
     assert.equal(await page.getByRole('slider').count(), 0);
-    assert.match(await page.evaluate(() => fixtureCard.ui.quality.textContent), /仅显示起点和终点.*180 天/);
+    assert.match(await page.evaluate(() => fixtureCard.view.ui.quality.textContent), /仅显示起点和终点.*180 天/);
     if (nativeMode) {
       assert.deepEqual(await native.evaluate(map => map.paths.map(path => ({
         name: path.name, points: path.points.length, time: path.points[0].timestamp.toISOString(),

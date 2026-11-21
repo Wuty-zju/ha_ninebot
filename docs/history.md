@@ -72,6 +72,8 @@ limit: 20
 
 The resource and visual editor are bundled; no additional card repository is required. The integration registers a fixed static path, **not** dashboard resources/cards automatically. For `Custom element not found: ninebot-trip-card`, check that the resource loaded as a module, that the integration is loaded, then hard-reload the browser/app frontend. Find the installed integration version on its integration page.
 
+The 2.2.6 layout places the ride library next to the shared map on wide cards and below it in narrower columns. Distance, duration and energy follow the focused ride. The existing resource URL and card YAML work with the new layout.
+
 Use `device_id: REPLACE_WITH_VEHICLE_DEVICE_ID` instead of `entity` if the calendar feature is off. For multiple vehicles (up to five, including different loaded accounts):
 
 ```yaml
@@ -92,7 +94,7 @@ limit: 40
 ### Replay saved routes
 
 - Choose **Recent rides (up to 5 years)**, **Last 7/30 days**, previous/next month, or custom dates. Choose older dates to browse earlier saved records.
-- Select a ride to load its saved track. Use **+** to overlay up to five rides from the same or different vehicles, then choose a ride chip to switch playback. **Show all routes** fits the visible tracks. Switching the active overlay or scrubbing keeps the current view.
+- Select a ride to load its saved track. Use **+** to overlay up to five rides from the same or different vehicles. Select an existing overlay from the list or its chip to focus it. Each visible route keeps its color when focus changes or another route is removed. **Show all routes** fits the visible tracks.
 - Play, pause, restart, or scrub the saved samples in order. The cursor follows stored coordinates and skips gaps. The summary shows the actual ride duration. The player advances at a preview pace. Playback does not make history requests.
 - **Local records updated · Read latest** refreshes the page and the active track on request. A refresh pauses playback. Reconnection reopens the local archive.
 - If a track has yet to be saved, use background detail sync or run `ninebot.get_trip_detail` for that ride in **Developer tools → Actions**. Check the response's persistence result before reloading the list. The card itself reads the local archive.

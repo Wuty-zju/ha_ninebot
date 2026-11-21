@@ -1,0 +1,366 @@
+/** Map-first ride library. The card controller owns all reads and playback. */
+import { formatEntityLabel, formatRideDuration, formatRideInterval } from './trip-format.js';
+import { digits } from './trip-browser.js';
+import { hasEndpoints, trackKey } from './local-tracks.js';
+import { ROUTE_COLORS } from './route-map.js';
+import { MAX_SELECTED_ROUTES } from './history-selection.js';
+import { HISTORY_STYLE } from './trip-card-style.js';
+
+function element(tag, className = '', text = '') {
+  const node = document.createElement(tag);
+  node.className = className;
+  node.textContent = text;
+  return node;
+}
+
+function button(text, action, control, className = '') {
+  const node = element('button', className, text);
+  node.type = 'button';
+  node.dataset.control = control;
+  node.addEventListener('click', action);
+  return node;
+}
+
+function nameControl(node, name) {
+  node.title = name;
+  node.setAttribute('aria-label', name);
+}
+
+function iconButton(icon, glyph, action, control, className) {
+  const node = button('', action, control, className);
+  const symbol = element('ha-icon', '', glyph);
+  symbol.setAttribute('icon', icon);
+  symbol.setAttribute('aria-hidden', 'true');
+  node.append(symbol);
+  return node;
+}
+
+export class TripCardView {
+  constructor(card) {
+    this.card = card;
+    const shell = element('ha-card');
+    const header = element('header', 'card-heading');
+    const title = element('h2');
+    const messages = element('div', 'messages');
+    messages.setAttribute('role', 'status');
+    header.append(title, messages);
+
+    const workspace = element('div', 'workspace');
+    const player = element('section', 'player');
+    const mapFrame = element('div', 'map-frame');
+    const placeholder = element('p', 'map-placeholder');
+    const fit = iconButton('mdi:fit-to-screen-outline', '⌖', () => card.routeMap.fit(), 'fit', 'map-tool');
+    card.routeMap.element.className = 'map-surface';
+    mapFrame.append(card.routeMap.element, placeholder, fit);
+
+    const playback = element('section', 'playback');
+    const chosen = element('h3', 'route-title');
+    const interval = element('p', 'interval');
+    const compare = element('div', 'compare-list');
+    const metrics = element('dl', 'metrics');
+    const readouts = ['distance', 'duration', 'energy'].map(key => {
+      const metric = element('div');
+      const caption = element('dt'), value = element('dd');
+      metric.append(caption, value);
+      metrics.append(metric);
+      return { key, caption, value };
+    });
+    const transport = element('div', 'transport');
+    const play = iconButton('mdi:play', '▶', () => card.playOrPause(), 'play', 'play');
+    const slider = element('input'), position = element('span', 'position');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.step = '1';
+    slider.dataset.control = 'scrub';
+    slider.addEventListener('input', () => {
+      card.index = Number(slider.value);
+      card.stopPlayback();
+    });
+    const seek = element('div', 'seek');
+    seek.append(slider, position);
+    const restart = iconButton('mdi:rewind', '↶', () => {
+      card.index = 0;
+      card.stopPlayback();
+    }, 'restart', 'restart');
+    transport.append(play, seek, restart);
+    const quality = element('p', 'route-note');
+    const more = element('div', 'route-more');
+    playback.append(chosen, interval, compare, metrics, transport, quality, more);
+    player.append(mapFrame, playback);
+
+    const library = element('section', 'library');
+    const heading = element('h3');
+    const coverage = element('p', 'note');
+    const filters = element('details', 'filters');
+    const range = element('summary');
+    const filterText = element('strong'), dates = element('span');
+    range.append(filterText, dates);
+    const toolbar = element('div', 'toolbar');
+    filters.append(range, toolbar);
+    const items = element('div', 'items');
+    const pager = element('footer', 'pager');
+    library.append(heading, filters, coverage, items, pager);
+    workspace.append(player, library);
+    shell.append(header, workspace);
+    card.shadowRoot.append(element('style', '', HISTORY_STYLE), shell);
+    this.ui = { title, messages, placeholder, fit, playback, chosen, interval, compare, readouts,
+      transport, play, slider, position, restart, quality, more, heading, coverage, filterText, dates,
+      toolbar, items, pager };
+  }
+
+  get language() {
+    return this.card.browser.hass?.locale?.language ?? this.card.browser.hass?.language ?? 'en';
+  }
+
+  get timeZone() {
+    return this.card.browser.hass?.config?.time_zone ?? 'Asia/Shanghai';
+  }
+
+  number(value, precision, unit = '') {
+    if (!Number.isFinite(value)) return '—';
+    const places = value === 0 ? 0 : digits(precision);
+    const number = new Intl.NumberFormat(this.language, {
+      minimumFractionDigits: places, maximumFractionDigits: places,
+    }).format(value);
+    return unit ? `${number} ${unit}` : number;
+  }
+
+  timestamp(value) {
+    if (!value || !Number.isFinite(Date.parse(value))) return '';
+    return new Intl.DateTimeFormat(this.language, {
+      timeZone: this.timeZone, dateStyle: 'medium', timeStyle: 'short',
+    }).format(new Date(value));
+  }
+
+  readings(ride) {
+    return [
+      Number.isFinite(ride.distance_m) ?
+        this.number(ride.distance_m / 1000, ride.precision.mileages, 'km') : '—',
+      Number.isFinite(ride.duration_s) || Number.isFinite(ride.duration_h) ?
+        formatRideDuration(ride.duration_s, ride.duration_h, this.language) : '—',
+      this.number(ride.energy_wh, ride.precision.ec, 'Wh'),
+    ];
+  }
+
+  updatePlayback(labels = this.card.labels()) {
+    if (this.card.resetting) return;
+    const { transport, play, restart, slider, position } = this.ui;
+    const { activeTrack: track, busy, playback } = this.card;
+    const enabled = this.card.canReplay(track);
+    transport.hidden = !enabled;
+    const playing = Boolean(playback);
+    const symbol = play.firstElementChild;
+    symbol.setAttribute('icon', playing ? 'mdi:pause' : 'mdi:play');
+    symbol.textContent = playing ? '⏸' : '▶';
+    nameControl(play, playing ? labels.pause_points : labels.play_points);
+    nameControl(restart, labels.replay_restart);
+    play.disabled = restart.disabled = slider.disabled = busy;
+    const last = Math.max(0, (track?.points.length ?? 1) - 1);
+    const index = Math.max(0, Math.min(this.card.index, last));
+    slider.max = String(last);
+    slider.value = String(index);
+    slider.setAttribute('aria-label', labels.point_sequence);
+    const point = enabled ? track.points[index] : null;
+    position.textContent = point ? `${index + 1} / ${last + 1}` : '';
+    slider.setAttribute('aria-valuetext', point ? `${labels.point_sequence} ${point.sequence}` : '');
+    this.card.routeMap.highlight(point);
+  }
+
+  renderFilters(labels) {
+    const { ui, card } = this, { browser, busy } = card;
+    ui.filterText.textContent = labels.filters;
+    ui.dates.textContent = `${browser.start} – ${browser.end}`;
+    const fragment = document.createDocumentFragment();
+    if (browser.targets.length > 1) {
+      const vehicles = element('div', 'vehicle-filters');
+      browser.targets.forEach((target, index) => {
+        const label = element('label', 'vehicle-filter', target.name ?? formatEntityLabel(browser.hass,
+          browser.hass?.states?.[target.entity], target.entity ?? target.device_id));
+        const input = element('input');
+        input.type = 'checkbox';
+        input.checked = browser.selected.has(index);
+        input.disabled = busy;
+        input.dataset.control = `vehicle:${index}`;
+        input.addEventListener('change', () => browser.select(index, input.checked));
+        label.prepend(input);
+        vehicles.append(label);
+      });
+      fragment.append(vehicles);
+    }
+    const dates = element('div', 'date-fields');
+    for (const [key, title] of [['start', labels.start_date], ['end', labels.end_date]]) {
+      const label = element('label', '', title), input = element('input');
+      input.type = 'date';
+      input.value = browser[key];
+      input.required = true;
+      input.disabled = busy;
+      input.dataset.control = key;
+      input.addEventListener('change', () => {
+        if (input.value) browser.dates(key === 'start' ? input.value : browser.start,
+          key === 'end' ? input.value : browser.end);
+      });
+      label.append(input);
+      dates.append(label);
+    }
+    const quick = element('div', 'quick');
+    for (const kind of ['last_7', 'last_30', 'previous_month', 'next_month', 'recent']) {
+      const control = button(labels[kind], () => browser.range(kind), kind);
+      control.disabled = busy;
+      quick.append(control);
+    }
+    const refresh = button(labels.refresh, () => void card.refreshLocal(), 'refresh', 'apply');
+    refresh.disabled = busy || browser.start > browser.end || !browser.selected.size;
+    ui.toolbar.replaceChildren(fragment, dates, quick, refresh);
+  }
+
+  renderMessages(labels) {
+    const { card, ui } = this;
+    const states = [];
+    const error = card.browser.error || card.tracks.error;
+    if (error) states.push(element('p', 'error', labels[error] ?? labels.track_error));
+    if (card.busy) states.push(element('p', 'note', labels.loading));
+    if (card.pendingUpdates) {
+      const refresh = button(labels.history_updated, () => void card.refreshLocal(), 'latest', 'apply');
+      refresh.disabled = card.busy;
+      states.push(refresh);
+    }
+    if (card.feedStatus) states.push(element('p', 'note', labels[card.feedStatus]));
+    ui.messages.replaceChildren(...states);
+  }
+
+  renderLibrary(labels) {
+    const { card, ui } = this;
+    const { page, pageNumber } = card.browser;
+    ui.heading.textContent = labels.title;
+    ui.coverage.textContent = page ? [
+      [labels.enumerated, page.coverage.enumerated_months],
+      [labels.partial, page.coverage.partial_months],
+      [labels.missing, page.coverage.missing_months],
+      [labels.unknown, page.coverage.unknown_months],
+    ].filter(([, rows]) => rows?.length).map(([label, rows]) => `${label} ${rows.length}`).join(' · ') : '';
+    const rows = page?.rides ?? [];
+    const scroll = ui.items.scrollTop;
+    ui.items.replaceChildren(...rows.map((ride, index) => {
+      const key = trackKey(ride.device_id, ride), row = element('article', 'ride');
+      const selected = card.selection.selected.has(key);
+      const choose = button('', () => card.choose(ride), `ride:${key}`, 'choose');
+      const time = this.timestamp(ride.start_time);
+      choose.append(element('strong', '', time || ride.vehicle_label), element('small', '',
+        [time && ride.vehicle_label, ...this.readings(ride).filter(value => value !== '—')].filter(Boolean).join(' · ')));
+      choose.disabled = card.busy;
+      choose.setAttribute('aria-pressed', String(key === card.selection.primary));
+      choose.addEventListener('keydown', event => {
+        const next = index + (event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0);
+        if (next === index || !rows[next]) return;
+        event.preventDefault();
+        ui.items.querySelectorAll('.choose')[next]?.focus();
+      });
+      const overlay = button(selected ? '−' : '+',
+        () => selected ? card.removeRide(key) : card.choose(ride, true), `overlay:${key}`, 'overlay');
+      nameControl(overlay, [selected ? labels.remove_track : labels.compare, ride.vehicle_label, time]
+        .filter(Boolean).join(' · '));
+      overlay.setAttribute('aria-pressed', String(selected));
+      if (selected) overlay.style.setProperty('--route-color', this.routeColor(key));
+      overlay.disabled = card.busy || (!selected && card.selection.selected.size >= MAX_SELECTED_ROUTES);
+      row.append(choose, overlay);
+      return row;
+    }));
+    if (page && !rows.length) ui.items.append(element('p', 'note empty', labels.empty));
+    ui.items.scrollTop = scroll;
+    const next = button(labels.next, () => void card.browser.read(page.next_cursor), 'next');
+    next.disabled = card.busy || !page?.next_cursor;
+    ui.pager.replaceChildren(...(page && (page.next_cursor || pageNumber > 1) ?
+      [element('span', 'note', `${labels.page} ${pageNumber}`), next] : []));
+  }
+
+  routeColor(key) {
+    return ROUTE_COLORS[this.card.selection.slots.get(key)];
+  }
+
+  renderMap(labels) {
+    const { card, ui } = this;
+    const { activeRide: ride, activeTrack: track } = card;
+    const tracks = [...card.selection.selected.keys()].map(key => card.tracks.tracks.get(key))
+      .filter(item => item?.points.length);
+    const visible = tracks.length > 0 && !card.mapError;
+    card.routeMap.element.hidden = !visible;
+    ui.fit.hidden = !visible;
+    ui.placeholder.hidden = visible;
+    ui.placeholder.textContent = card.mapError ? labels.map_error : track && !track.points.length ?
+      labels.saved_without_points : ride?.detail_saved === false ? labels.detail_missing :
+        card.busy ? labels.loading : labels.map_placeholder;
+    nameControl(ui.fit, labels.fit_routes);
+    ui.playback.hidden = !ride;
+    ui.chosen.textContent = ride?.vehicle_label ?? '';
+    ui.interval.textContent = ride ?
+      formatRideInterval(ride.start_time, ride.end_time, this.language, this.timeZone) : '';
+    const values = ride ? this.readings(track?.summary ?? ride) : [];
+    ui.readouts.forEach(({ key, caption, value }, index) => {
+      caption.textContent = labels[key];
+      value.textContent = values[index] ?? '—';
+    });
+    ui.compare.setAttribute('role', 'group');
+    ui.compare.setAttribute('aria-label', labels.map);
+    ui.compare.replaceChildren(...[...card.selection.selected].map(([key, selected]) => {
+      const chip = element('div', 'route-chip');
+      chip.style.setProperty('--route-color', this.routeColor(key));
+      const time = this.timestamp(selected.start_time);
+      const focus = button('', () => card.activate(key), `focus:${key}`, 'focus-track');
+      const text = element('span', 'chip-text', selected.vehicle_label);
+      if (time) text.append(element('small', '', time));
+      focus.append(element('span', 'swatch'), text);
+      nameControl(focus, [selected.vehicle_label, time].filter(Boolean).join(' · '));
+      focus.setAttribute('aria-pressed', String(key === card.selection.primary));
+      const remove = button('×', () => card.removeRide(key), `remove:${key}`, 'remove-track');
+      nameControl(remove, `${labels.remove_track} · ${focus.title}`);
+      focus.disabled = remove.disabled = card.busy;
+      chip.append(focus, remove);
+      return chip;
+    }));
+    const notes = [];
+    if (track) {
+      notes.push(`${labels.track_points} ${track.valid_read}/${track.total ?? '—'}`);
+      if (hasEndpoints(track)) notes.push(labels.endpoints_only);
+      else if (track.kind === 'server_simplified' || track.kind === 'single_point') notes.push(labels.simplified);
+      if (track.kind === 'server_simplified' && track.windowDays) {
+        notes.push(labels.detail_window.replace('{days}', this.number(track.windowDays, 0)));
+      }
+      if (track.partial) notes.push(labels.partial_archive);
+      if (track.capped) notes.push(labels.display_limit);
+      if (card.canReplay(track)) notes.push(labels.playback_note);
+    }
+    if (visible) notes.push(labels.coordinate_note);
+    ui.quality.textContent = notes.join(' · ');
+    if (ride && ride.detail_saved !== false && (!track?.complete || track.stale || card.mapError)) {
+      const more = button(track && !track.complete && !track.stale ? labels.more_track : labels.show_track,
+        () => void card.readRoute(ride, Boolean(track && !track.stale)), 'route');
+      more.disabled = card.busy;
+      ui.more.replaceChildren(more);
+    } else {
+      ui.more.replaceChildren();
+    }
+    const rendered = visible ? tracks : [];
+    const slots = rendered.map(item => card.selection.slots.get(item.key));
+    const notesText = ui.quality.textContent;
+    void card.routeMap.update(rendered, card.browser.hass, labels, slots).then(() => {
+      if (visible && card.routeMap.renderer?.simplified && ui.quality.textContent === notesText && !track?.capped) {
+        ui.quality.textContent = `${notesText} · ${labels.display_limit}`;
+      }
+    });
+    this.updatePlayback(labels);
+  }
+
+  render(labels) {
+    const { card, ui } = this;
+    const active = card.shadowRoot.activeElement?.dataset.control;
+    ui.title.textContent = card.browser.config.title ?? labels.map_title;
+    this.renderFilters(labels);
+    this.renderMessages(labels);
+    this.renderLibrary(labels);
+    this.renderMap(labels);
+    if (active && card.shadowRoot.activeElement?.dataset.control !== active) {
+      [...card.shadowRoot.querySelectorAll('[data-control]')].find(node =>
+        node.dataset.control === active)?.focus({ preventScroll: true });
+    }
+  }
+}

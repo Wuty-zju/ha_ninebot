@@ -1,5 +1,9 @@
 export const LABELS = {
   "en": {
+    "map_title": "Ride replay",
+    "distance": "Distance",
+    "duration": "Duration",
+    "energy": "Energy used",
     "title": "Ride history",
     "refresh": "Read locally",
     "empty": "No recorded rides in this range",
@@ -65,6 +69,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "zh-Hans": {
+    "map_title": "行程回放",
+    "distance": "里程",
+    "duration": "时长",
+    "energy": "能耗",
     "title": "行程历史",
     "refresh": "本地读取",
     "empty": "此范围内没有已记录行程",
@@ -130,6 +138,10 @@ export const LABELS = {
     "feed_unsupported": "此版本不支持更新通知，仍可手动读取。"
   },
   "zh-Hant": {
+    "map_title": "行程回放",
+    "distance": "里程",
+    "duration": "時長",
+    "energy": "用電量",
     "title": "行程歷史",
     "refresh": "本機讀取",
     "empty": "此範圍內沒有已記錄行程",
@@ -195,6 +207,10 @@ export const LABELS = {
     "feed_unsupported": "此版本不支援更新通知，仍可手動讀取。"
   },
   "de": {
+    "map_title": "Fahrtenwiedergabe",
+    "distance": "Strecke",
+    "duration": "Dauer",
+    "energy": "Energieverbrauch",
     "title": "Fahrtenhistorie",
     "refresh": "Lokal lesen",
     "empty": "Keine gespeicherten Fahrten in diesem Zeitraum",
@@ -260,6 +276,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "fr": {
+    "map_title": "Relecture de trajet",
+    "distance": "Distance",
+    "duration": "Durée",
+    "energy": "Énergie consommée",
     "title": "Historique des trajets",
     "refresh": "Lire localement",
     "empty": "Aucun trajet enregistré dans cette période",
@@ -325,6 +345,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "es": {
+    "map_title": "Reproducción de trayectos",
+    "distance": "Distancia",
+    "duration": "Duración",
+    "energy": "Energía consumida",
     "title": "Historial de viajes",
     "refresh": "Leer localmente",
     "empty": "No hay viajes guardados en este intervalo",
@@ -390,6 +414,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "it": {
+    "map_title": "Riproduzione dei percorsi",
+    "distance": "Distanza",
+    "duration": "Durata",
+    "energy": "Energia consumata",
     "title": "Cronologia viaggi",
     "refresh": "Leggi localmente",
     "empty": "Nessun viaggio registrato in questo intervallo",
@@ -455,6 +483,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "pt": {
+    "map_title": "Reprodução de trajetos",
+    "distance": "Distância",
+    "duration": "Duração",
+    "energy": "Energia consumida",
     "title": "Histórico de viagens",
     "refresh": "Ler localmente",
     "empty": "Sem viagens guardadas neste intervalo",
@@ -520,6 +552,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "pt-BR": {
+    "map_title": "Reprodução de trajetos",
+    "distance": "Distância",
+    "duration": "Duração",
+    "energy": "Energia consumida",
     "title": "Histórico de viagens",
     "refresh": "Ler localmente",
     "empty": "Nenhuma viagem salva neste intervalo",
@@ -585,6 +621,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "ru": {
+    "map_title": "Воспроизведение поездок",
+    "distance": "Расстояние",
+    "duration": "Длительность",
+    "energy": "Расход энергии",
     "title": "История поездок",
     "refresh": "Прочитать локально",
     "empty": "В этом диапазоне нет сохранённых поездок",
@@ -650,6 +690,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "ja": {
+    "map_title": "走行リプレイ",
+    "distance": "距離",
+    "duration": "走行時間",
+    "energy": "消費電力量",
     "title": "走行履歴",
     "refresh": "ローカル読取",
     "empty": "この期間に記録済みの走行はありません",
@@ -715,6 +759,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "ko": {
+    "map_title": "주행 다시 보기",
+    "distance": "거리",
+    "duration": "소요 시간",
+    "energy": "사용 에너지",
     "title": "주행 기록",
     "refresh": "로컬 읽기",
     "empty": "이 기간에 저장된 주행이 없습니다",
@@ -780,6 +828,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "nl": {
+    "map_title": "Ritten afspelen",
+    "distance": "Afstand",
+    "duration": "Duur",
+    "energy": "Energieverbruik",
     "title": "Ritgeschiedenis",
     "refresh": "Lokaal lezen",
     "empty": "Geen opgeslagen ritten in deze periode",
@@ -845,6 +897,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "pl": {
+    "map_title": "Odtwarzanie przejazdów",
+    "distance": "Dystans",
+    "duration": "Czas trwania",
+    "energy": "Zużycie energii",
     "title": "Historia przejazdów",
     "refresh": "Odczytaj lokalnie",
     "empty": "Brak zapisanych przejazdów w tym zakresie",
@@ -910,6 +966,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "uk": {
+    "map_title": "Відтворення поїздок",
+    "distance": "Відстань",
+    "duration": "Тривалість",
+    "energy": "Спожита енергія",
     "title": "Історія поїздок",
     "refresh": "Прочитати локально",
     "empty": "У цьому діапазоні немає збережених поїздок",
@@ -975,6 +1035,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "tr": {
+    "map_title": "Sürüşleri tekrar oynat",
+    "distance": "Mesafe",
+    "duration": "Süre",
+    "energy": "Enerji tüketimi",
     "title": "Sürüş geçmişi",
     "refresh": "Yerel oku",
     "empty": "Bu aralıkta kayıtlı sürüş yok",
@@ -1040,6 +1104,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "hi": {
+    "map_title": "यात्रा फिर से देखें",
+    "distance": "दूरी",
+    "duration": "अवधि",
+    "energy": "ऊर्जा खपत",
     "title": "यात्रा इतिहास",
     "refresh": "स्थानीय पढ़ें",
     "empty": "इस अवधि में सहेजी गई यात्रा नहीं",
@@ -1105,6 +1173,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "id": {
+    "map_title": "Putar ulang perjalanan",
+    "distance": "Jarak",
+    "duration": "Durasi",
+    "energy": "Energi terpakai",
     "title": "Riwayat perjalanan",
     "refresh": "Baca lokal",
     "empty": "Tidak ada perjalanan tersimpan dalam rentang ini",
@@ -1170,6 +1242,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "th": {
+    "map_title": "เล่นเส้นทางย้อนหลัง",
+    "distance": "ระยะทาง",
+    "duration": "ระยะเวลา",
+    "energy": "พลังงานที่ใช้",
     "title": "ประวัติการเดินทาง",
     "refresh": "อ่านในเครื่อง",
     "empty": "ไม่มีการเดินทางที่บันทึกในช่วงนี้",
@@ -1235,6 +1311,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "vi": {
+    "map_title": "Phát lại chuyến đi",
+    "distance": "Quãng đường",
+    "duration": "Thời lượng",
+    "energy": "Năng lượng tiêu thụ",
     "title": "Lịch sử chuyến đi",
     "refresh": "Đọc cục bộ",
     "empty": "Không có chuyến đi đã lưu trong khoảng này",
@@ -1300,6 +1380,10 @@ export const LABELS = {
     "feed_unsupported": "This version has no update notifications. You can read locally."
   },
   "ar": {
+    "map_title": "إعادة عرض الرحلات",
+    "distance": "المسافة",
+    "duration": "المدة",
+    "energy": "الطاقة المستهلكة",
     "title": "سجل الرحلات",
     "refresh": "قراءة محلية",
     "empty": "لا توجد رحلات محفوظة في هذه الفترة",
