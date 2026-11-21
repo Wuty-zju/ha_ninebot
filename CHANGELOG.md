@@ -2,6 +2,12 @@
 
 Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
 
+## 2.2.6
+
+- Rebuild the ride history card with a shared Home Assistant map, date and vehicle filters, a ride library and playback controls. Comparing rides keeps each route's color and the map view as focus changes. The layout adapts to dashboard width and theme.
+- Discard pending history pages and routes when the archive session becomes unavailable. Read the active selection again after the local notification feed reconnects.
+- Report whole-archive counts alongside the active synchronization plan in native Ninebot Assistant tools and rendered Action replies. Add cited English and Chinese help for saved trips, simplified tracks and coverage.
+
 ## 2.2.5
 
 - Show the discovered vehicle type in device diagnostics. Electric bicycles and electric motorcycles have localized names and icons. Other reported types retain their scalar value.
