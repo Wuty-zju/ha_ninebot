@@ -124,6 +124,9 @@ async def test_same_identity_in_two_months_and_sparse_valid_facts(hass, freezer)
         await store.async_record(SN, full, NOW)
         sparse = travel({"times": 1, "list": [{"travel_id": "r-0"}]}, "202610")
         await store.async_record(SN, sparse, NOW + timedelta(seconds=1))
+        await store.async_record("other", many_rides(2), NOW)
+        assert store.ride_counts(SN).total == 1
+        assert store.ride_counts("other").total == 2
         view = await store.async_view(SN, ("202609", "202610"))
         for month in ("202609", "202610"):
             rows, complete = view.month_rides(SN, month)

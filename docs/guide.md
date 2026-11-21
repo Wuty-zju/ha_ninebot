@@ -166,6 +166,7 @@ History sync and pause appear in device diagnostics. Sync also resumes a paused 
 | Integration missing after download | Confirm the directory/domain, restart as prompted, and use a release compatible with your host architecture. |
 | First upgrade stays at initializing | Legacy archives are validated and consolidated before setup completes. Several databases can take a few minutes. Check the latest log time and allow the migration to finish. Repeated failures require the traceback and diagnostics. |
 | Authentication fails | Check the official App/account region; use reauth. Do not publish credentials or token files. |
+| Check the vehicle type | Open the device's **Diagnostics → Vehicle type**. The name is localized for electric bicycles and electric motorcycles. The `business_line` attribute shows the reported value. |
 | Rated-parameter form rejects a vehicle | Close and reopen the form after the updated integration is actually loaded. Choose a currently discovered vehicle. |
 | Today/yesterday values unknown | Setup and midnight schedule a prompt refresh; incomplete lists or missing metrics still need evidence. Same-period verified values survive short outages. See [coverage and statistics](history.md#coverage-and-statistics). |
 | Ride/vehicle event unknown | Events wait for a new/revised trip report, stable completion or known status transition after their baseline. History imports and reconnection do not replay events. See [event semantics](history.md#ride-summaries-and-vehicle-events). |

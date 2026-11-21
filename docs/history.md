@@ -56,6 +56,8 @@ Missing/foreign vehicles are not queried through stale ownership. Saved evidence
 
 Synchronization progress sensors and controls appear in device diagnostics. Sync state and last-success entities additionally require debug mode; the calendar follows its own option. A diagnostic category does not change Recorder retention.
 
+Each vehicle also has two archive counters in **Diagnostics**. **Trip count** counts distinct trips saved locally across all months, including trips with a summary only. **Simplified trip count** counts trips whose best saved route is marked as simplified by the server. A retained detailed route continues to count as detailed after the server starts returning only start and end points. Missing details and unclassified routes are excluded from the simplified count. The `details_pending_classification` attribute reports saved details whose quality metadata still needs to be checked. The counters work with background sync and debug mode off.
+
 ## Add the history map
 
 1. Install/load the integration. Review location/history options above.

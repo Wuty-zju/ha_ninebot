@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "AI 預估續航"
       },
+      "vehicle_type": {
+        "name": "車輛類型",
+        "state": {
+          "ebike": "電動自行車",
+          "motor": "電動機車"
+        }
+      },
+      "saved_trip_count": {
+        "name": "行程數量"
+      },
+      "simplified_trip_count": {
+        "name": "簡化行程數量"
+      },
       "history_sync_state": {
         "name": "歷史同步狀態",
         "state": {

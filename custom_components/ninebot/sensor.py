@@ -38,15 +38,21 @@ from .const import BUSINESS_TIMEZONE, CONF_DEBUG, CONF_ESTIMATION
 from .debug_entities import DEBUG_SENSOR_KEYS
 from .debug_view import DEBUG_ATTRIBUTES, DEBUG_STATES, debug_view
 from .entity import NinebotEntity, async_setup_dynamic, legacy_rows
-from .history_entities import HISTORY_SENSORS, HistoryProgressSensor
+from .history_entities import (
+    ARCHIVE_COUNT_SENSORS,
+    HISTORY_SENSORS,
+    ArchiveCountSensor,
+    HistoryProgressSensor,
+)
 from .models import LastRide, TravelMonth, VehicleSnapshot
 from .month_enumeration import RecordedEnumeration
 from .observations import ENTITY_FIELDS, RawField
-from .parsing import boolean, display_scalar, integer, number
+from .parsing import JsonScalar, boolean, display_scalar, integer, number
 from .period_statistics import DayMetric, DaySummary, day_summary
 from .ride_models import Ride
 from .runtime import NinebotConfigEntry
 from .travel_statistics import energy_statistics
+from .vehicle_cache import BusinessLine
 
 # The account broker owns wire admission; command observers remain replaceable.
 PARALLEL_UPDATES = 0
@@ -388,6 +394,41 @@ SENSORS = (
     ),
     *(raw_description(field) for field in ENTITY_FIELDS if field.key != "seat_lock_raw"),
 )
+
+
+class VehicleTypeSensor(NinebotEntity, SensorEntity):
+    """Display the discovery business line without inferring a control route."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, entry: NinebotConfigEntry, sn: str) -> None:
+        super().__init__(entry, sn, "vehicle_type", "sensor", "profile")
+
+    @property
+    def available(self) -> bool:
+        return not self._identity_blocked and self.coordinator.local_vehicle_available(self.sn)
+
+    @property
+    def _raw(self) -> JsonScalar:
+        values = getattr(self.coordinator.client, "vehicle_business_line_values", None)
+        return values.get(self.sn) if isinstance(values, dict) else None
+
+    @property
+    def native_value(self) -> str | None:
+        value = display_scalar(self._raw)
+        return str(value) if value is not None else None
+
+    @property
+    def options(self) -> list[str]:
+        options = [BusinessLine.EBIKE.value, BusinessLine.MOTOR.value]
+        if (value := self.native_value) is not None and value not in options:
+            options.append(value)
+        return options
+
+    @property
+    def extra_state_attributes(self) -> dict[str, JsonScalar]:
+        return {"business_line": raw} if (raw := self._raw) is not None else {}
 
 
 class ControlAvailabilitySensor(NinebotEntity, SensorEntity):
@@ -981,9 +1022,11 @@ async def async_setup_entry(
         yield from (
             NinebotSensor(entry, sn, d) for d in (*SENSORS, *battery_descriptions(snapshot))
         )
+        yield VehicleTypeSensor(entry, sn)
         yield ControlAvailabilitySensor(entry, sn)
         yield RawDataSummarySensor(entry, sn)
         yield from (HistoryProgressSensor(entry, sn, key) for key in HISTORY_SENSORS)
+        yield from (ArchiveCountSensor(entry, sn, key) for key in ARCHIVE_COUNT_SENSORS)
         yield from (DayStatisticsSensor(entry, sn, key) for key in DAY_FIELDS)
         if entry.options.get(CONF_ESTIMATION):
             yield RatedEnergySensor(entry, sn)

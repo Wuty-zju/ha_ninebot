@@ -28,6 +28,7 @@ from .exceptions import Endpoint, ErrorKind, FailurePhase, NinebotAuthError, Nin
 from .http_policy import rate_limit_delay
 from .http_policy import retry_after_seconds as retry_after_seconds
 from .native_control import COMMANDS, MAX_ROUTES, ControlRoute, control_failure, control_route
+from .parsing import JsonScalar
 from .vehicle_cache import (
     BusinessLine,
     cache_business_lines,
@@ -115,6 +116,7 @@ class NinecliClient:
         self._request_ready = False
         self.vehicle_discovery_complete = False
         self.vehicle_business_lines: dict[str, BusinessLine] = {}
+        self.vehicle_business_line_values: dict[str, JsonScalar] = {}
         self.control_routing: dict[str, ControlRoute] = {}
 
     @staticmethod
@@ -255,6 +257,7 @@ class NinecliClient:
             self._bearer = ""
             self.control_routing.clear()
             self.vehicle_business_lines.clear()
+            self.vehicle_business_line_values.clear()
 
     async def _finish_close(self) -> None:
         try:
@@ -521,7 +524,12 @@ class NinecliClient:
                     if self._closed:
                         raise NinebotError(ErrorKind.CLOSED)
                     self.vehicle_discovery_complete = complete
-                    self.vehicle_business_lines = business_lines
+                    self.vehicle_business_lines = {
+                        sn: reading.line for sn, reading in business_lines.items()
+                    }
+                    self.vehicle_business_line_values = {
+                        sn: reading.raw for sn, reading in business_lines.items()
+                    }
                     accepted = True
                     return raw
             except (TimeoutError, OSError) as transport_error:

@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "Autonomia estimada por IA"
       },
+      "vehicle_type": {
+        "name": "Tipo de veículo",
+        "state": {
+          "ebike": "Bicicleta elétrica",
+          "motor": "Motociclo elétrico"
+        }
+      },
+      "saved_trip_count": {
+        "name": "Número de viagens"
+      },
+      "simplified_trip_count": {
+        "name": "Número de viagens simplificadas"
+      },
       "history_sync_state": {
         "name": "Estado da sincronização do histórico",
         "state": {

@@ -18,6 +18,7 @@ from .archive_statistics import ArchiveStatisticsView, StatisticsReader
 from .archive_timeline import ArchivedRide
 from .backup import register_archive, unregister_archive
 from .const import BUSINESS_TIMEZONE, DOMAIN
+from .detail_health import ArchiveRideCounts
 from .exceptions import ErrorKind, FailurePhase, NinebotError
 from .models import TravelMonth, VehicleProfile
 from .month_enumeration import RecordedEnumeration
@@ -66,6 +67,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._day_summaries = DaySummaryCache()
         self._projection_month = ""
         self._latest: dict[str, ArchivedRide | None] = {}
+        self._ride_counts: dict[str, ArchiveRideCounts] = {}
         self._month_snapshots: dict[
             tuple[str, str], tuple[TravelMonth, datetime, RecordedEnumeration | None]
         ] = {}
@@ -89,6 +91,9 @@ class ArchiveStatistics(TravelStatisticsStore):
     def _notify_change(self, sn: str, guard: Callable[[], bool] | None) -> None:
         if guard is None or guard():
             async_dispatcher_send(self.hass, self._signal(sn))
+
+    def ride_counts(self, sn: str) -> ArchiveRideCounts | None:
+        return self._ride_counts.get(sn)
 
     async def async_load(self) -> None:
         await super().async_load()
@@ -251,6 +256,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             blocked_metrics = dict(self._projection.blocked_metrics)
             bases = dict(self._projection.completeness_bases)
             latest = dict(self._latest)
+            counts = dict(self._ride_counts)
             month_snapshots = {
                 key: saved for key, saved in self._month_snapshots.items() if key[0] != vehicle
             }
@@ -260,6 +266,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         else:
             records, selections, blocked_metrics, bases = {}, {}, {}, {}
             latest, tokens, revisions, month_snapshots = {}, {}, {}, {}
+            counts = {}
             vehicles = tuple(sorted(self._vehicles))
         for sn in vehicles:
             snapshot = await self.archive.async_projection(
@@ -284,6 +291,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             blocked_metrics.update(view.blocked_metrics)
             bases.update(view.completeness_bases)
             latest[sn] = snapshot.latest
+            counts[sn] = snapshot.counts
             tokens[sn] = object()
             revisions[sn] = snapshot.revision
         if guard is not None and not guard():
@@ -314,6 +322,7 @@ class ArchiveStatistics(TravelStatisticsStore):
         self._projection_month = month
         self.months, self.rides = months, rides
         self._latest = latest
+        self._ride_counts = counts
         self._month_snapshots = month_snapshots
         self._day_projection_tokens = tokens
         self._projection_revisions = revisions
@@ -459,12 +468,14 @@ class ArchiveStatistics(TravelStatisticsStore):
             if not guard():
                 return
             try:
+                counts = self.ride_counts(sn)
                 changed = await self.archive.async_record_detail(
                     sn, ride, received, guard=guard, ordered=True, raw=raw
                 )
                 if not guard():
                     return
                 await self._project(guard, vehicle=sn)
+                changed = changed or counts != self.ride_counts(sn)
                 self._archive_success()
             except ArchiveError as err:
                 self.record_error(err)
@@ -484,6 +495,7 @@ class ArchiveStatistics(TravelStatisticsStore):
             unregister_archive(self.hass, self.archive)
             self.archive_ready = False
             self._latest.clear()
+            self._ride_counts.clear()
             self._month_snapshots.clear()
             self._day_projection_tokens.clear()
             self._projection_revisions.clear()

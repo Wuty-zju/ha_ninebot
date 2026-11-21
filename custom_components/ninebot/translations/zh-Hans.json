@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "AI 预估续航"
       },
+      "vehicle_type": {
+        "name": "车辆类型",
+        "state": {
+          "ebike": "电动自行车",
+          "motor": "电动摩托车"
+        }
+      },
+      "saved_trip_count": {
+        "name": "行程数量"
+      },
+      "simplified_trip_count": {
+        "name": "简化行程数量"
+      },
       "history_sync_state": {
         "name": "历史同步状态",
         "state": {

@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "Perkiraan jarak tempuh AI"
       },
+      "vehicle_type": {
+        "name": "Jenis kendaraan",
+        "state": {
+          "ebike": "Sepeda listrik",
+          "motor": "Sepeda motor listrik"
+        }
+      },
+      "saved_trip_count": {
+        "name": "Jumlah perjalanan"
+      },
+      "simplified_trip_count": {
+        "name": "Jumlah perjalanan yang disederhanakan"
+      },
       "history_sync_state": {
         "name": "Status sinkronisasi riwayat",
         "state": {

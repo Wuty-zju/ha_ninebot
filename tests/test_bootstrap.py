@@ -38,6 +38,7 @@ async def context(tmp_path, monkeypatch):
             archive=archive,
             writable=True,
             async_history_page_committed=AsyncMock(),
+            async_reconstruction_committed=AsyncMock(),
             record_error=Mock(),
             _notify_change=Mock(),
         ),

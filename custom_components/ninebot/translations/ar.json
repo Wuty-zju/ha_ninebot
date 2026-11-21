@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "مدى السير المقدر بالذكاء الاصطناعي"
       },
+      "vehicle_type": {
+        "name": "نوع المركبة",
+        "state": {
+          "ebike": "دراجة كهربائية",
+          "motor": "دراجة نارية كهربائية"
+        }
+      },
+      "saved_trip_count": {
+        "name": "عدد الرحلات"
+      },
+      "simplified_trip_count": {
+        "name": "عدد الرحلات المبسطة"
+      },
       "history_sync_state": {
         "name": "حالة مزامنة السجل",
         "state": {

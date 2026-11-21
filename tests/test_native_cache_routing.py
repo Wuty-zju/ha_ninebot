@@ -10,7 +10,13 @@ from aiohttp import web
 
 from custom_components.ninebot.client import NinecliClient
 from custom_components.ninebot.exceptions import ErrorKind, NinebotError
-from custom_components.ninebot.vehicle_cache import BusinessLine, cache_business_lines
+from custom_components.ninebot.vehicle_cache import (
+    BusinessLine,
+    BusinessLineObservation,
+    cache_business_lines,
+    native_rows,
+    reconcile_cache,
+)
 
 pytestmark = pytest.mark.usefixtures("socket_enabled")
 
@@ -22,18 +28,38 @@ def test_discovery_cache_classifies_only_unambiguous_reviewed_business_lines(tmp
         {"wnumber": "conflict", "business_line": "ebike"},
         {"wnumber": "conflict", "business_line": "motor"},
         {"wnumber": "other", "business_line": "future-product"},
+        {"wnumber": "numeric", "business_line": 7},
+        {"wnumber": "unknown-conflict", "business_line": "future-product"},
+        {"wnumber": "unknown-conflict", "business_line": "another-product"},
         {"wnumber": "unreported"},
     ]
     path = tmp_path / "vehicles.json"
     path.write_text(json.dumps({"vehicles": rows}))
     expected = {
-        "bike": BusinessLine.EBIKE,
-        "motor": BusinessLine.MOTOR,
-        "conflict": BusinessLine.AMBIGUOUS,
-        "other": BusinessLine.UNSUPPORTED,
-        "unreported": BusinessLine.UNOBSERVED,
+        "bike": BusinessLineObservation(BusinessLine.EBIKE, "ebike"),
+        "motor": BusinessLineObservation(BusinessLine.MOTOR, "motor"),
+        "conflict": BusinessLineObservation(BusinessLine.AMBIGUOUS),
+        "other": BusinessLineObservation(BusinessLine.UNSUPPORTED, "future-product"),
+        "numeric": BusinessLineObservation(BusinessLine.UNSUPPORTED, 7),
+        "unknown-conflict": BusinessLineObservation(BusinessLine.AMBIGUOUS),
+        "unreported": BusinessLineObservation(BusinessLine.UNOBSERVED),
     }
     assert cache_business_lines(tmp_path) == expected
+
+
+def test_reconciliation_keeps_unknown_vehicle_types_without_authorizing_a_route(tmp_path):
+    path = tmp_path / "vehicles.json"
+    path.write_text(
+        '{"vehicles":[{"wnumber":"bike","business_line":"ebike"},'
+        '{"wnumber":"other","business_line":"future-product"}]}'
+    )
+    previous = path.read_bytes()
+    assert reconcile_cache(tmp_path, previous, frozenset({"bike", "other"}), True)
+    path.write_text('{"vehicles":[{"wnumber":"bike","business_line":"ebike"}]}')
+    assert not reconcile_cache(tmp_path, previous, frozenset({"bike"}), True)
+    assert cache_business_lines(tmp_path)["other"].raw == "future-product"
+    with pytest.raises(NinebotError):
+        native_rows(path.read_bytes())
 
 
 async def test_native_discovery_business_failures_are_not_successful_unbinding(

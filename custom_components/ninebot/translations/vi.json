@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "Phạm vi di chuyển ước tính bằng AI"
       },
+      "vehicle_type": {
+        "name": "Loại xe",
+        "state": {
+          "ebike": "Xe đạp điện",
+          "motor": "Xe mô tô điện"
+        }
+      },
+      "saved_trip_count": {
+        "name": "Số chuyến đi"
+      },
+      "simplified_trip_count": {
+        "name": "Số chuyến đi rút gọn"
+      },
       "history_sync_state": {
         "name": "Trạng thái đồng bộ lịch sử",
         "state": {

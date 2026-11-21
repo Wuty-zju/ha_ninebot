@@ -95,6 +95,30 @@ def put(
 
 
 @dataclass(frozen=True)
+class ArchiveRideCounts:
+    total: int
+    simplified: int
+    details_pending_classification: int
+
+
+def archive_ride_counts(db: sqlite3.Connection, vehicle: str) -> ArchiveRideCounts:
+    """Count distinct local rides and their selected geometry without opening payloads."""
+    row = db.execute(
+        "WITH selected AS (SELECT"
+        " CASE WHEN json_extract(m.value,'$.latest_hash')=d.latest_hash"
+        " AND json_extract(m.value,'$.geometry_hash')=d.geometry_hash"
+        " THEN json_extract(m.value,'$.geometry_kind') END AS kind"
+        " FROM details d LEFT JOIN meta m ON m.key='detail_health:'||d.vehicle||':'||d.ride"
+        " WHERE d.vehicle=?)"
+        " SELECT (SELECT count(*) FROM rides WHERE vehicle=?),"
+        " count(*) FILTER (WHERE kind='server_simplified'),"
+        " count(*) FILTER (WHERE kind IS NULL) FROM selected",
+        (vehicle, vehicle),
+    ).fetchone()
+    return ArchiveRideCounts(*row)
+
+
+@dataclass(frozen=True)
 class HistoryHealth:
     discovered: int
     saved: int

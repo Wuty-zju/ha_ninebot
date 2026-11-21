@@ -537,6 +537,19 @@
       "range_ai": {
         "name": "AI estimated range"
       },
+      "vehicle_type": {
+        "name": "Vehicle type",
+        "state": {
+          "ebike": "Electric bicycle",
+          "motor": "Electric motorcycle"
+        }
+      },
+      "saved_trip_count": {
+        "name": "Trip count"
+      },
+      "simplified_trip_count": {
+        "name": "Simplified trip count"
+      },
       "history_sync_state": {
         "name": "History sync status",
         "state": {
