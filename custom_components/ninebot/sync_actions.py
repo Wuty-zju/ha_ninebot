@@ -157,7 +157,6 @@ async def async_history_control(hass: HomeAssistant, call: ServiceCall) -> dict[
     plan = await archive.async_history_plan(sn)
     health = await archive.async_history_health(sn, plan.plan_id) if plan else None
     requested = await archive.async_history_requested(sn)
-    assert_query_scope(hass, call.data["device_id"], entry.entry_id, sn, False, require_live=False)
     view = co.preservation.progress.get(sn)
     counts = co.statistics.ride_counts(sn)
     return {

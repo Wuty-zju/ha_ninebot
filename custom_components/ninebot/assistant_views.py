@@ -351,13 +351,16 @@ def archive_counts_view(value: object) -> dict[str, int] | None:
     """Validate the aggregate and its subsets together before exposing it."""
     row = mapping(value)
     fields = ("total", "saved_details", "simplified", "details_pending_classification")
-    counts = [row.get(field) for field in fields]
-    if any(type(count) is not int or not 0 <= count < 2**63 for count in counts):
+    counts: dict[str, int] = {}
+    for name in fields:
+        count = row.get(name)
+        if type(count) is not int or not 0 <= count < 2**63:
+            return None
+        counts[name] = count
+    simplified_or_pending = counts["simplified"] + counts["details_pending_classification"]
+    if not simplified_or_pending <= counts["saved_details"] <= counts["total"]:
         return None
-    total, saved, simplified, pending = counts
-    if not simplified + pending <= saved <= total:
-        return None
-    return {field: row[field] for field in fields}
+    return counts
 
 
 def sync_view(response: dict[str, Any]) -> AssistantView:
