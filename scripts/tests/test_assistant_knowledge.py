@@ -68,9 +68,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 20)
-        self.assertEqual(catalog["corpus_version"], "1.2.12")
-        self.assertEqual(catalog["source_version"], "2.2.5")
+        self.assertEqual(len(catalog["entries"]), 21)
+        self.assertEqual(catalog["corpus_version"], "1.2.13")
+        self.assertEqual(catalog["source_version"], "2.2.6")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -87,6 +87,15 @@ class KnowledgeTests(unittest.TestCase):
                 result = k.search_help(query, language, version, include_procedures=True)
                 self.assertEqual(result["matches"][0]["source_id"], "sync_budget")
                 self.assertIn("SK06", {step["id"] for step in result["procedures"]})
+
+    def test_map_replay_help_points_to_the_dashboard(self):
+        for language, query in (
+            ("en", "How do I replay a ride on the map?"),
+            ("zh-Hans", "地图上如何进行轨迹回放？"),
+        ):
+            match = k.search_help(query, language, "2.2.7")["matches"][0]
+            self.assertEqual(match["source_id"], "ride_map_replay")
+            self.assertIn("#replay-saved-routes", match["citation"])
 
     def test_archive_count_help_is_cited_and_versioned(self):
         for language, query in (

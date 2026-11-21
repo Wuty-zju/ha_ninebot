@@ -88,7 +88,11 @@ async def test_native_action_tools_are_bound_to_the_request_and_selected_vehicle
             )
         assert not result.error and result.data["data"]["vehicle_locked"] is False
         read.assert_awaited_once_with(
-            hass, "get_vehicle_status", {"vehicle_ref": "selected"}, turn.call.context
+            hass,
+            "get_vehicle_status",
+            {"vehicle_ref": "selected"},
+            turn.call.context,
+            _selected_vehicle="selected",
         )
         assert turn.results[0]["arguments"] == {"vehicle_ref": "selected"}
 

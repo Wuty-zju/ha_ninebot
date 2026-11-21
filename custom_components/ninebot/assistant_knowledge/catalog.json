@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.12",
-  "source_version": "2.2.5",
+  "corpus_version": "1.2.13",
+  "source_version": "2.2.6",
   "entries": [
     {
       "id": "statistics_missing",
@@ -275,6 +275,52 @@
       },
       "content_sha256": "d8c20ac73605d5970b3e2d71087b6783387737422d7cc015656abb9e6a57fdc0",
       "procedure_id": "SK04"
+    },
+    {
+      "id": "ride_map_replay",
+      "applicable_versions": {
+        "min_inclusive": "2.2.6",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-22",
+      "supersedes": [],
+      "source": {
+        "path": "docs/history.md",
+        "commit": "31be387c31d908e0bd568edef13438b3f1f65b07",
+        "sha256": "d7ce0a2b9d4b21875f0e1e944ccc4ba5e5c8e16c36767cab1f79c3fdf11ab11b",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/31be387c31d908e0bd568edef13438b3f1f65b07/docs/history.md#replay-saved-routes"
+      },
+      "translations": {
+        "en": {
+          "title": "Replay saved rides on the map",
+          "text": "Open the Ninebot ride history card on your dashboard. Choose the dates and a saved ride, then use + to compare up to five routes. With vehicle location enabled, sampled routes support playback and scrubbing. A saved endpoint pair shows the start and end.",
+          "keywords": [
+            "replay",
+            "ride map",
+            "route map",
+            "map card",
+            "compare routes",
+            "scrub",
+            "ninebot-trip-card"
+          ]
+        },
+        "zh-Hans": {
+          "title": "在地图上回放已保存的行程",
+          "text": "在仪表盘打开 Ninebot 行程历史卡片，选择日期和行程，用 + 可在同一张地图上比较最多五条路线。启用显示车辆位置后，有连续采样的路线可播放和拖动进度。只存有起终点的行程会标出这两个位置。",
+          "keywords": [
+            "行程回放",
+            "地图回放",
+            "轨迹回放",
+            "轨迹重放",
+            "地图卡片",
+            "比较路线",
+            "ninebot-trip-card"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "a1f4a863bcfaae6ad951f61a8e69cc9929c655fc69a8236db36c6242733817b9"
     },
     {
       "id": "status_freshness",
