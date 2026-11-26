@@ -2,6 +2,8 @@
 
 [简体中文](assistant_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md).
+
 Connect a compatible conversation host to your saved vehicle data, cited local help and optional reviewed history tasks. The native Home Assistant LLM API and MCP Server preserve the signed-in user throughout each tool call.
 
 <a id="ninebot-assistant--21-preview"></a>
@@ -28,42 +30,34 @@ These rules describe the MCP routes; they do not inspect or change your configur
 
 ## Choose a host and model
 
-Ninebot Assistant uses Home Assistant's native LLM API and MCP tools. Configure the model in your chosen Home Assistant conversation agent or MCP client. A compatible host must support tool calling, the Ninebot collection and authenticated user context. The integration has no required model vendor, local inference engine or model weights.
+Choose a host that implements HA tool calls. The model can be local or hosted.
 
-The host handles conversation and model access. Ninebot supplies authorized local queries, versioned help, task checklists and the separate human-reviewed task API. Model choice and response presentation belong to the host; the same tool schemas and permission checks apply to every model.
+| Entry point | Configure | What the caller receives |
+|---|---|---|
+| Assist / Conversation | Select **Ninebot** in a tool-capable conversation agent. | The host uses the returned data to compose its own reply. |
+| External MCP client | Connect to HA’s authenticated MCP Server and select the read collection. | The same tool schemas and local results under the signed-in HA user. |
+| Automation | Pass an existing tool-capable `ai_task` entity to `ninebot.ask`. | Verified tool results and, where supported, a formatted evidence answer. |
 
-Start with one agent that can select tools, ask for a missing vehicle or date, and retain the returned units, coverage, observation time and sources. The bundled help provides task checklists inside that same tool loop. You do not need a separate RAG service, Skill engine or multi-agent framework.
-
-The [evaluation guide](development.md#small-model-baseline) distinguishes native API checks from measured model behavior. Developer test hosts and fixed model baselines are separate from user installation and model configuration.
+For historical sync applications, enable the independent **Ninebot tasks** option for the relevant vehicles. Approval stays in the HA review panel. [HA LLM APIs](https://contributors.home-assistant.io/core/internals/llm-api/) · [Native MCP Server](https://www.home-assistant.io/integrations/mcp_server/) · [AI Task](https://www.home-assistant.io/integrations/ai_task/)
 
 ## Query through an existing AI task
 
-From **2.1.15**, **Developer tools → Actions → Ninebot: Ask Ninebot Assistant** offers a bounded local query without an additional MCP client. Enable Assistant for the account and select its vehicles first. Choose an existing **AI task** entity that supports native tool calling and per-task LLM APIs, enter the question, and select the vehicle when more than one is allowed. The Action requires an authenticated active administrator. Model configuration remains in the selected provider.
+In **Developer tools → Actions** or an automation, select the model entity and the HA vehicle. The Action passes the original user context to both. One selected vehicle can be reached directly, even beyond the first 20 vehicles in the account’s discovery results.
 
 ```yaml
 action: ninebot.ask
 data:
   ai_task_entity_id: ai_task.your_model
   device_id: your_ninebot_device_id
-  question: How many trips did this vehicle make yesterday?
+  question: What is the latest reported main battery charge?
 response_variable: ninebot_answer
 ```
 
-The response uses `answer_mode: verified_tool_results`. Its `results` contain the actual tool names, arguments, data, quality and evidence. `outcome: evidence` means a data/help result was obtained; check the returned period and coverage before interpreting a total. It does not certify that a model understood every part of the question. Discovery alone or no data tool produces `needs_input`; provide a vehicle, date or more specific question. A stopped query with usable evidence reports `partial`. Failed or denied reads never become zero trips.
+Read `outcome` first. With `evidence`, inspect `results` or display `{{ ninebot_answer.get('answer', {}).get('text', '') }}`. For one supported scalar metric the 2.2.8 preview includes its value, unit, source group, observation time and freshness. A stopped request can return `partial` with revalidated results. Access withdrawal clears private results. When a choice is necessary, `needs_input` can return `next_step.type: select_vehicle`. Supply a vehicle before retrying.
 
-If the provider fails after a successful data or help read, the response retains the revalidated tool results with `outcome: partial` and `stop_reason: model_task_failed`. An unsuccessful read or vehicle discovery alone remains a failure. Permission withdrawal removes the results.
+The Action builds the display from tool receipts. Help preserves the source link and corpus version. Dates, counts, units and coverage come from business code. The optional display uses `ninebot-evidence-answer-v1` with contributing request IDs. Complete structured results take precedence within the 32 KiB limit. A model-hosted conversation has its own presentation rules.
 
-The model selects among the eight local tools. From **2.1.21**, the Action binds vehicle queries to its authenticated selection; the model supplies dates and other query parameters without copying `vehicle_ref`. An additional target parameter is rejected. With several vehicles and no selection, the Action still requires the user to choose one. The public MCP/Conversation tools keep their explicit vehicle references.
-
-When the results support it, `answer.text` is ready-to-display Markdown built from the verified receipts. It preserves the returned help excerpts and their complete pinned links, including the corpus version. A statistics answer uses the returned dates, units, observation time and coverage. A missing value remains unknown, and the observed reason for a gap can leave its underlying cause unverified. A denied query displays a fixed access message and withdraws all results.
-
-The optional `answer` uses `contract: ninebot-evidence-answer-v1` and lists the contributing top-level `request_ids`. It covers matched help, statistics, the local statistics check and supported read errors. Help uses the language returned by retrieval. Statistics and access messages are in English. Keep the original `results` for details, including checklists and unsupported result types. When the display and full receipts do not fit together, the Action keeps the receipts. Native MCP and Conversation tools return the same structured receipts to their clients. For a complete citation there, display the returned `matches[].citation` directly.
-
-In the automation above, use `{{ ninebot_answer.get('answer', {}).get('text', '') }}` for the display. If it is empty, handle `outcome` and `results`. Display the text directly when a support reply needs a traceable citation. A conversation model can omit the link when it paraphrases the result.
-
-The Action discards the model's free-form final text. General help can be queried without selecting a vehicle. Requests have a 180-second deadline, at most four tool calls, one active query across this integration and a 32 KiB response limit. They do not refresh the cloud, submit history jobs or control vehicles. The same user Context is passed to the model task and business reads, with consent/ownership checked again before returning data.
-
-Use Core with `ai_task.async_generate_data(..., llm_api=...)` support and a compatible configured provider. An unsupported task API returns `unsupported_capability`; no new provider or listener is installed. Ordinary native MCP/Conversation tools remain available independently. This response Action is not added to the dedicated Ninebot LLM tool collection.
+The deadline is 180 seconds, with up to four tool calls and one active Action turn. This requires a provider and HA Core supporting `ai_task.async_generate_data(..., llm_api=...)`. Other installations can use the native read collection independently.
 
 ## Ask about local data
 
@@ -82,11 +76,11 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 |---|---|---|
 | `ninebot__search_help` | `query`; optional `language` (`en` or `zh-Hans`), `include_procedures` (default `false`) | Up to three cited public help topics; explicitly request task checklists when guiding a task. |
 | `ninebot__get_vehicles` | None | AI-authorized vehicle references, display labels and local-data capabilities. |
-| `ninebot__get_vehicle_status` | `vehicle_ref` | Cached status/BMS values and per-group observation quality; no refresh or coordinates. |
+| `ninebot__get_vehicle_status` | `vehicle_ref`, optional `metric` (2.2.8) | One cached reading and its observation group, or the full cached status and BMS overview when omitted. |
 | `ninebot__get_statistics` | `vehicle_ref`, `period` | Local `today`, `yesterday`, `this_month`, `last_month` or one explicit business date/month, with per-metric coverage. |
 | `ninebot__get_recorded_trips` | `vehicle_ref`, `start_date`, `end_date`; optional `limit`, `cursor` | One descending local page. Dates use `YYYY-MM-DD`, up to 31 inclusive days; default 10, maximum 20 records. |
 | `ninebot__get_trip_detail` | `vehicle_ref`, `ride_id`, `query_month` | Saved scalar detail for a verified trip from that vehicle/month. Use the list's ID and `YYYYMM` month. |
-| `ninebot__get_sync_health` | `vehicle_ref` | Local coverage, progress, budget and scheduling state. Does not start or resume work. |
+| `ninebot__get_sync_health` | `vehicle_ref` | Whole-archive trip counts, discovery and detail progress, and current request pacing. Read-only. |
 | `ninebot__explain_statistics` | `vehicle_ref`, `period`, `metric`; optional `language` | Three local steps: period statistics, synchronization health and cited help with the unknown-statistic checklist. |
 
 All tools read local information. Missing details remain missing until acquired through the normal [history features](history.md); an AI read never starts a cloud fetch. List cursors can be consumed: follow the returned next cursor rather than replaying the previous one. A page count is not the period's total.
@@ -100,6 +94,8 @@ To investigate a particular value, call `ninebot__explain_statistics` with a sel
 From **2.1.9**, recorded-trip pages retain each ride's `received_at` and up to three month observations in `quality.months`, including on an empty page. `query.as_of` is the current tool-call time; `quality.page_as_of` is the selection cutoff retained across cursor pages. These are distinct from the archive's observation times. A fixed cutoff does not freeze the entire database or prove cloud completeness. Missing observation metadata stays `null`.
 
 ## Read the evidence
+
+**Single reading example.** The synthetic result `battery_soc_percent: 0` with `quality.metrics.battery_soc_percent.status: available` means the vehicle reported zero. The same reading marked `stale` is an older observation. A missing group or a null value stays unknown. Boolean readings retain their reported `false`. See the group’s `received_at` for the observation time.
 
 Results include a business date range, observation times, units, metric quality, source evidence and warnings. Business dates use **Asia/Shanghai**, matching the integration's current archive contract, independently of browser timezone. This field describes the archive, not the browser setting. The tools do not regroup daily/monthly totals into another timezone. A UI may display timestamps locally while the statistics retain their documented business-date boundaries.
 
@@ -117,6 +113,8 @@ Errors include a fixed explanation. `not_authorized` reports an access failure; 
 
 Synchronization health includes the configured request rate and minimum interval. This account-wide budget paces history requests; it does not report an exact number remaining in a wall-clock hour. Follow `next_request_at` and `retry_at` for the observed scheduling state. A configured rate of zero removes quota pacing; ordinary serialization and upstream backoff still apply.
 
+From 2.2.6, `archive_counts` covers all saved trips for the selected vehicle, including imported trips and summary-only records. It reports the counts of saved details, confirmed simplified routes and details whose route classification is pending. `details` continues to cover the current discovery and preservation plan. `ninebot.ask` displays both scopes when available. See [reading sync progress](history.md#read-progress-correctly).
+
 From 2.1.24, cached status can include a small `quality.groups.<group>.failure_context`: the current reviewed error kind, local request/normalization/archive stage, endpoint template, proxy HTTP/code, attempt time and retryability. It contains no raw response, log text or identity. The proxy describes the local backend response; it cannot establish a cloud region, hardware fault or cloud-side cause. Successful recovery clears this context. It uses the same vehicle consent and query authorization as the status values.
 
 ## Versioned help
@@ -125,7 +123,7 @@ Public help and task checklists are available from **2.1.1**.
 
 Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches bundled bilingual topics (thirteen in 2.1.2) without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
 
-Corpus 1.2.10 contains nineteen bilingual topics and ten advisory task checklists. For installations from 2.1.26, `control_diagnostics` uses the pinned 2.1.26 troubleshooting guide to explain `control_routing`, `confirmation_deadline_reached`, `upstream_code` and `backend_error`. The operation matters when interpreting a proxy 502. A command response, the local confirmation window and the selected route each provide different evidence about the original attempt.
+Corpus 1.2.14 contains 21 bilingual topics and ten advisory task checklists. Ask how to replay a saved route for a link to the dashboard guide. General help checks consent without reading vehicle measurements or coordinates. Search for `get_recorded_trips`, `get_trip_detail` or `get_sync_health`, with or without the `ninebot__` prefix, to find the corresponding pinned guide. For installations from 2.1.26, `control_diagnostics` uses the pinned 2.1.26 troubleshooting guide to explain `control_routing`, `confirmation_deadline_reached`, `upstream_code` and `backend_error`. The operation matters when interpreting a proxy 502. A command response, the local confirmation window and the selected route each provide different evidence about the original attempt.
 
 Topics on missing vehicle data, control receipts and battery cycle support apply from 2.1.24 and cite the pinned 2.1.23 guide. `sample_units` covers unverified raw samples. `measurement_units` covers maximum and overall-average speed and battery-score semantics. Login guidance covers 2.0.0 and the support records introduced in 2.0.1. `mcp_configuration` explains main and individual URL settings and recognizes exact configuration keys. Retrieval favors matching topic keywords and applies each topic's own version bounds and source.
 

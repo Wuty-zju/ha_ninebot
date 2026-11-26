@@ -2,6 +2,8 @@
 
 [English](assistant.md) · [文档](README.md) · [历史行程与地图](history_zh.md)
 
+本文覆盖至 2.2.8 预览版。使用正式版时，可查阅 [v2.2.0 随版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)。
+
 通过 Home Assistant 原生 LLM API 和 MCP Server，兼容的对话宿主可以读取授权车辆的本地数据、查询带来源的帮助，并申请补齐行程。只读查询和需人工审批的任务分别授权。
 
 <a id="ninebot-assistant--21-预览"></a>
@@ -28,42 +30,34 @@ HA 2026.11+ 的主 `/api/mcp` 地址优先使用“暴露全部AI工具”（`al
 
 ## 选择宿主和模型
 
-Ninebot Assistant 使用 Home Assistant 原生 LLM API 和 MCP 工具。在选用的 HA 对话代理或 MCP 客户端中配置模型；宿主需要支持工具调用、Ninebot 集合并保留已认证用户上下文。集成不要求指定模型厂商、本机推理引擎或模型权重。
+选择支持 HA 工具调用的宿主。模型可以本地运行，也可以来自云服务。
 
-宿主负责对话与模型访问，Ninebot 提供获准的本地查询、版本化帮助、任务清单及独立的人类审核任务 API。模型选择和回答展示由宿主负责，所有模型使用相同的工具参数及权限检查。
+| 入口 | 如何配置 | 使用方获得什么 |
+|---|---|---|
+| Assist / Conversation | 在支持工具调用的对话代理中选择 **Ninebot**。 | 宿主读取工具结果，自行组织回答。 |
+| 外部 MCP 客户端 | 通过 HA 身份认证连接原生 MCP Server，选择只读工具集。 | 使用当前 HA 用户身份的同一套工具与本地数据。 |
+| 自动化 | 把已有的、支持工具调用的 `ai_task` 实体传给 `ninebot.ask`。 | 经核验的工具结果，以及能够生成时附上的格式化答案。 |
 
-先使用一个能够选择工具、追问缺失车辆或日期，并保留单位、覆盖情况、观测时间和来源的Agent。随包帮助在同一工具循环中提供任务清单，无需另建RAG服务、Skill引擎或多Agent框架。
-
-[验证指南](development.md#small-model-baseline)分别说明原生API检查和实际模型行为评测。固定模型和参考宿主仅用于开发评测，与用户安装和模型配置分开维护。
+需要申请历史补同步时，另行启用 **Ninebot tasks** 并选择车辆。审批在 HA 审核面板进行。[HA LLM API](https://contributors.home-assistant.io/core/internals/llm-api/) · [原生 MCP Server](https://www.home-assistant.io/integrations/mcp_server/) · [AI Task](https://www.home-assistant.io/integrations/ai_task/)
 
 ## 通过已有AI任务查询
 
-从 **2.1.15** 起，可在 **开发者工具 → 动作 → Ninebot：询问 Ninebot Assistant** 发起有界本地查询。先在账号选项中启用Assistant并选择车辆，再选择支持原生工具调用和逐次LLM API的已有 **AI任务** 实体。填写问题；允许多辆车时明确选择车辆。调用需要当前有效管理员身份，模型仍在所选供应商集成中配置。
+在**开发者工具 → 动作**或自动化里，选定模型实体和 HA 车辆。Action 将原调用用户的身份传入模型任务与业务查询。即使一辆已获授权的车超出了发现列表的前 20 辆，也可直接指定该车。
 
 ```yaml
 action: ninebot.ask
 data:
   ai_task_entity_id: ai_task.your_model
   device_id: your_ninebot_device_id
-  question: 这辆车昨天骑了几趟？
+  question: 这辆车最近上报的主电池电量是多少？
 response_variable: ninebot_answer
 ```
 
-响应的`answer_mode`为`verified_tool_results`，`results`保留实际工具名、参数、数据、质量和来源。`outcome: evidence`表示获得了数据或帮助结果；解读总量前仍需核对实际周期与覆盖情况，不代表模型理解了问题的全部内容。只有车辆列表或没有有效数据结果时为`needs_input`，请补充车辆、日期或更明确的问题；提前停止但已有证据时为`partial`。失败和拒绝访问不会变成零行程。
+先读 `outcome`。取得 `evidence` 后，读取 `results`，或显示 `{{ ninebot_answer.get('answer', {}).get('text', '') }}`。2.2.8 预览版可以针对单项车况返回数值、单位、来源组、观测时间和新鲜度。中途中断可返回 `partial` 和已重新验权的结果。撤销授权会撤回私有结果。需要选择车辆时，`needs_input` 可同时给出 `next_step.type: select_vehicle`，选定车辆后再查询。
 
-模型供应商在成功读取数据或帮助之后失败时，响应会保留重新核验过的工具结果，标记为`outcome: partial`和`stop_reason: model_task_failed`。只有失败读取或车辆列表时仍返回失败；权限撤销后不返回这些结果。
+Action 根据工具回执编排回复。帮助节选保留完整来源链接和知识库版本，日期、数量、单位和覆盖范围来自业务代码。可选格式化结果使用 `ninebot-evidence-answer-v1` 并列出引用的请求 ID。32 KiB 的响应空间优先保留完整结构化数据。对话宿主可以自行展示工具结果。
 
-模型从八个本地工具中选择调用。从 **2.1.21** 起，Action 将车辆查询绑定到已经鉴权的选择，模型只需提供日期等参数，无需重复复制 `vehicle_ref`；额外的目标参数会被拒绝。多车且未选择时，仍要求用户选车。公共 MCP／Conversation 工具继续使用显式车辆引用。
-
-有可展示的证据时，`answer.text` 提供从已核验回执生成的 Markdown。帮助摘录保留完整的固定来源链接及语料版本。统计答复沿用回执中的日期、单位、观测时间及覆盖情况。缺失值仍为未知，已记录的缺失原因可能不足以判定根因。拒绝访问时显示固定提示，并撤回本次所有结果。
-
-可选的 `answer` 使用 `contract: ninebot-evidence-answer-v1`，`request_ids` 列出所用的外层回执标识。它覆盖匹配到的帮助、统计、本地统计检查和已支持的读取失败。帮助保留检索返回的语言；统计与访问提示使用英文。完整的任务清单等细节仍在 `results` 中。展示文字与回执合计超限时，优先保留完整回执。原生 MCP／Conversation 工具仍将结构化回执传给各自客户端。客户端可以直接展示 `matches[].citation` 中的完整引文。
-
-上例的自动化可用 `{{ ninebot_answer.get('answer', {}).get('text', '') }}` 读取展示文本。若为空，按 `outcome` 和 `results` 处理。需要可核对出处的帮助时，直接展示该文本可避免对话模型在转述中漏掉链接。
-
-Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选择。单次上限180秒、四次工具调用、32 KiB响应，集成同一时间接受一个此类查询。不会刷新云端、申请历史任务或控制车辆。模型任务和业务读取沿用原调用身份，结果返回前重新校验同意、归属与权限。
-
-需要Core支持`ai_task.async_generate_data(..., llm_api=...)`并已有兼容供应商；不支持时返回`unsupported_capability`，不会自动安装模型或另开端口。原生MCP／Conversation八工具仍可独立使用，此动作不加入专属LLM工具集合。
+一次 Action 最长运行 180 秒，最多调用四次工具，同一集成同时运行一个 Action 问答。需要支持 `ai_task.async_generate_data(..., llm_api=...)` 的 HA 版本与模型宿主，原生只读工具集亦可单独使用。
 
 ## 查询本地数据
 
@@ -82,11 +76,11 @@ Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选�
 |---|---|---|
 | `ninebot__search_help` | `query`；可选 `language`（`en` 或 `zh-Hans`）、`include_procedures`（默认 `false`） | 最多三条附引用的公开帮助；指导具体任务时显式请求任务清单。 |
 | `ninebot__get_vehicles` | 无 | 已向 AI 授权的车辆引用、显示名称及本地数据能力。 |
-| `ninebot__get_vehicle_status` | `vehicle_ref` | 缓存状态/BMS 数值及分组观测质量，不刷新、不返回坐标。 |
+| `ninebot__get_vehicle_status` | `vehicle_ref`，可选 `metric`（2.2.8） | 读取一项缓存值及其观测组。省略指标则返回车况和 BMS 概览。 |
 | `ninebot__get_statistics` | `vehicle_ref`、`period` | 本地 `today`、`yesterday`、`this_month`、`last_month` 或单个明确业务日期／月份的统计及逐指标覆盖情况。 |
 | `ninebot__get_recorded_trips` | `vehicle_ref`、`start_date`、`end_date`；可选 `limit`、`cursor` | 一页按时间倒序排列的本地行程。日期格式 `YYYY-MM-DD`，含首尾最多31天；默认10条，最多20条。 |
 | `ninebot__get_trip_detail` | `vehicle_ref`、`ride_id`、`query_month` | 对应车辆及月份中已验证行程的本地标量详情。使用列表返回的行程 ID 和 `YYYYMM` 月份。 |
-| `ninebot__get_sync_health` | `vehicle_ref` | 本地覆盖、进度、额度和调度状态，不启动或恢复同步。 |
+| `ninebot__get_sync_health` | `vehicle_ref` | 只读查询全档案行程计数、扫描和详情保存进度，以及当前请求节奏。 |
 | `ninebot__explain_statistics` | `vehicle_ref`、`period`、`metric`；可选 `language` | 三个本地步骤：周期统计、同步健康、附引用的帮助与统计排查清单。 |
 
 全部工具均读取本地信息。缺失详情需要通过正常的[历史功能](history_zh.md)采集；AI 只读调用不会触发云请求。列表游标可能被消费，应继续使用返回的下一页游标，不反复重放上一游标。一页记录数量不代表整个时间段的行程总数。
@@ -100,6 +94,8 @@ Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选�
 从 **2.1.9** 起，行程分页保留每条记录的 `received_at`，并在 `quality.months` 返回最多三个月份的观测摘要，空页也保留这些信息。`query.as_of` 表示本次工具调用时间，`quality.page_as_of` 表示游标各页沿用的选取截止时点，均与档案的实际观测时间区分。固定截止时点不等于冻结整个数据库，也不能证明云端完整性；缺失的观测信息保持 `null`。
 
 ## 理解数据依据
+
+**单项读数示例。** 合成样例 `battery_soc_percent: 0` 配合 `quality.metrics.battery_soc_percent.status: available` 表示上报了零电量。相同读数若注明 `stale`，表示较早的观测。缺失或空值保留未知，布尔读数的 `false` 保留原义。该观测组的 `received_at` 给出采集时间。
 
 结果包含业务日期范围、观测时间、单位、指标质量、来源证据及提示。业务日期沿用当前档案契约的 **Asia/Shanghai**，不随浏览器时区变化。 此字段描述档案规则，不能据此推断浏览器设置。工具不按另一时区重新划分日／月统计；界面可将时间戳显示为本地时间，统计仍使用其业务日期边界。
 
@@ -117,6 +113,8 @@ Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选�
 
 同步健康返回配置的请求速率与最小间隔。账号预算用于控制历史请求间隔，不能据此推算自然小时内还剩多少次。应依据`next_request_at`与`retry_at`解释当前调度；配置为0仅取消配额节流，仍保留串行与上游退避。
 
+从 2.2.6 起，`archive_counts` 覆盖选中车辆的全部本地行程，含导入记录和仅有摘要的行程，同时列出已保存详情、已确认简化轨迹和仍待判定轨迹质量的数量。`details` 对应当前扫描与保存计划。`ninebot.ask` 分别显示两组统计。参见[正确理解进度](history_zh.md#正确理解进度)。
+
 2.1.24起，缓存状态可附带小型`quality.groups.<group>.failure_context`，仅包含当前已审阅的错误类别、本地请求／规范化／归档阶段、端点模板、代理HTTP／受控码、尝试时间和可重试性，不含原始响应、日志正文或身份。代理指本地backend的响应，不能据此认定云端地区、硬件故障或云端根因；恢复成功后清除。此投影与状态值使用相同的车辆同意和查询鉴权。
 
 ## 版本化帮助
@@ -125,7 +123,7 @@ Action 舍弃模型自由生成的最终文字。一般帮助不要求车辆选�
 
 可以询问统计未知、请求额度、覆盖率、缺失详情、过期数值、单位、认证、保留规则或Assistant权限。`ninebot__search_help`搜索随包提供的双语主题，不访问网站、不索引私有档案。问题最多240字符；结果包含固定来源提交、来源及内容摘要、语言、适用版本和语料版本。帮助解释文档契约，当前车辆事实仍须通过相应数据工具查询。
 
-语料 1.2.10 包含 19 个双语主题和 10 项辅助任务清单。`control_diagnostics` 适用于 2.1.26 起的版本，引用固定的 2.1.26 排障指南，解释 `control_routing`、`confirmation_deadline_reached`、`upstream_code` 和 `backend_error`。解读代理 502 时应先明确具体操作。命令响应、本地确认窗口和所选路径分别提供该次操作的不同证据。
+语料 1.2.14 包含 21 个双语主题和 10 项辅助任务清单。询问如何回放历史轨迹，可以得到仪表盘指南的引用。通用帮助只核对授权，不读取车辆测量值或坐标。搜索 `get_recorded_trips`、`get_trip_detail` 或 `get_sync_health`（可带 `ninebot__` 前缀），可获取相应指南及其固定引文。`control_diagnostics` 适用于 2.1.26 起的版本，引用固定的 2.1.26 排障指南，解释 `control_routing`、`confirmation_deadline_reached`、`upstream_code` 和 `backend_error`。解读代理 502 时应先明确具体操作。命令响应、本地确认窗口和所选路径分别提供该次操作的不同证据。
 
 数据缺失、控制回执和电池循环支持主题适用于 2.1.24 起的版本，引用固定的 2.1.23 指南。`sample_units` 解释未验证采样，`measurement_units` 解释最高速度、总平均速度和电池评分的含义。登录帮助涵盖 2.0.0 和 2.0.1 新增的支持记录。`mcp_configuration` 解释主地址和独立地址设置，并识别准确的配置键。检索优先匹配主题关键词，按各主题自身的版本范围和来源返回结果。每条命中返回固定 `citation` 和实际语料版本。原生工具回执把引文放在摘录前，客户端可以直接展示。原生 API 提示模型先给出完整引文，再简述回执支持的事实和核查步骤。采用自由生成答复的客户端仍负责其生成和展示。
 

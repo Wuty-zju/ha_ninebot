@@ -40,7 +40,15 @@ class DocumentationChecks(unittest.TestCase):
 
     def test_architecture_themes_preserve_labels_and_accessibility(self):
         images = outputs()
-        self.assertEqual(len(images), 16)
+        self.assertEqual(
+            set(images),
+            {
+                f"{name}-{language}{theme}.svg"
+                for name in ("overview", "assistant", "history", "controls", "archive")
+                for language in ("en", "zh")
+                for theme in ("", "-dark")
+            },
+        )
         for name, source in images.items():
             element = ET.fromstring(source)
             self.assertEqual(element.attrib["role"], "img")

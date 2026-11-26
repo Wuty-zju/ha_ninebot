@@ -27,6 +27,8 @@ Feature PRs do not each require a release. Publish useful preview increments fro
 
 ## Documentation and examples
 
+Choose the document by the reader’s task. Installation and defaults belong in the everyday guide, archive contracts in history, and tool permissions and evidence in the Assistant guide. Put tag-specific changes in the changelog. The README links readers to these contracts. [Document index](docs/README.md)
+
 English is the maintenance source; README, setup/history/migration guides have corresponding Simplified Chinese pages. Architecture/development have Chinese summaries. Keep meaning, units, defaults and limits aligned; a matching outline alone is not a translation review.
 
 Maintain `strings.json` and `translations/en.json` together inside the integration directory. Edit locale resources directly, preserving reviewed wording and format placeholders. New messages may use English fallback until translated. Run the translation resource checks after edits and review meaning separately from structure.
@@ -41,6 +43,8 @@ python3 -m unittest discover -s scripts/tests -p 'test_docs.py'
 These standard-library checks do not log in, call cloud APIs, inspect HA configuration or download dependencies. For actual rendering changes, use the [synthetic preview](docs/development.md#documentation-assets-and-preview), not a production account.
 
 ## Parallel coding agents
+
+For work spanning Assistant and the map, agree on the shared source of truth first. Permission tests belong with the query, sample-order tests with the route reader, and pointer/keyboard tests with the rendered card. This split lets independent patches converge without duplicating a second API or map renderer.
 
 Use parallel agents only when explicitly authorized. Assign each a fixed base, contract, owner/file scope and separate branch/worktree. One integrator owns shared contracts, manifest/version, aggregate translations, docs navigation and release decisions. Handoffs include commit/dirty state, affected behavior, checks/skips and remaining evidence; do not duplicate entire manuals in prompts.
 
