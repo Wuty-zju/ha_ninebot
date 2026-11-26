@@ -60,6 +60,8 @@ Each vehicle also has two archive counters in **Diagnostics**. **Trip count** co
 
 ## Add the history map
 
+The current-position Map card draws tracker history recorded by HA. The bundled Ninebot card draws the archive’s saved geometry on the same HA map component and offers ride selection and replay. A calendar entity or a Ninebot device ID supplies the target.
+
 1. Install/load the integration. Review location/history options above.
 2. In **Dashboard → Resources** (enable advanced mode if needed), add `/ninebot-static/ninebot-trip-card.js` as **JavaScript module**.
 3. Add a manual card and choose your vehicle's actual calendar entity or HA device ID:
@@ -93,17 +95,17 @@ limit: 40
 
 ### Replay saved routes
 
-- Choose **Recent rides (up to 5 years)**, **Last 7/30 days**, previous/next month, or custom dates. Choose older dates to browse earlier saved records.
-- Select a ride to load its saved track. Use **+** to overlay up to five rides from the same or different vehicles. Select an existing overlay from the list or its chip to focus it. Each visible route keeps its color when focus changes or another route is removed. **Show all routes** fits the visible tracks.
-- With local archive notifications connected, change dates and use **+** to compare a ride from another month. **Previous page** revisits any of the last five list pages. Moving forward across those pages also reuses the local copy.
-- Select **Follow replay** to center the current point. When it leaves the visible map the camera follows at the same zoom. **Show all routes** returns to the overview.
-- Play, pause, restart, or scrub the saved samples in order. The cursor follows stored coordinates and skips gaps. The summary shows the actual ride duration. The player advances at a preview pace. Playback does not make history requests.
-- **Local records updated · Read latest** refreshes the page and the active track on request. A refresh pauses playback. Reconnection reopens the local archive.
-- If a track has yet to be saved, use background detail sync or run `ninebot.get_trip_detail` for that ride in **Developer tools → Actions**. Check the response's persistence result before reloading the list. The card itself reads the local archive.
+1. Choose vehicles and a business-date range in **Filters**. A row opens one ride. **+** adds it to the comparison and **×** removes it. Compare up to five authorized rides across vehicles, accounts or months. With the local archive connection active, existing selections survive a date change. The last five list pages are reusable.
+2. In the **2.2.8 preview**, each compared route with saved geometry gets a numbered marker on the same map. Click or keyboard-activate its marker or choose the corresponding numbered chip. Focus switches the summary, point cursor and playback to that ride. Camera position and previously read geometry are reused. The chips also work when markers overlap.
+3. Read distance, duration and energy beneath the active route. Expand **Selected rides total** for the same quantities across the selection. These totals cover the selected list records only. A quantity with any missing contributing measurement shows a dash. A confirmed zero remains zero.
+4. Use **Play**, pause, restart or drag the sample slider. The cursor advances through saved points in sequence at a preview pace. Gaps break the drawn line. Point timestamps and a measured speed for each segment are unavailable. The live vehicle position comes from the separate device tracker.
+5. **Follow replay** centers the current point and follows it at your zoom level when it leaves the view. **Show all routes** fits the routes above the playback controls. **Local records updated · Read latest** reloads the selection after the archive changes.
 
-Each read advances through up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains up to 4,096 samples per ride and may simplify lines for drawing. The archive preserves the original points.
+Each detail read uses up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains at most 4,096 samples per ride. The card can simplify lines for drawing while the archive keeps its original geometry.
 
-For a server-simplified detail with two usable points, the map shows separate start and end markers. Single usable positions remain visible, and rides without usable positions retain their summaries. The reported detail window, typically 180 days in observed samples, appears when the server includes it. Previously saved sampled routes remain available for playback at any age.
+A server-simplified ride may have two usable positions. The map marks the start and end individually. One position gets one marker. A ride without positions still has a summary. The server may report a detailed-track window of 180 days. Previously saved higher-quality routes remain available locally beyond that window.
+
+If the local archive lacks a detail, enable background detail sync or fetch that ride once using `ninebot.get_trip_detail` in **Developer tools → Actions**. Check the persistence result, then read the local records again. [HA Map](https://www.home-assistant.io/dashboards/map/) · [Home Assistant Map Tiles](https://www.home-assistant.io/integrations/map_tiles/)
 
 ### Map privacy and units
 
