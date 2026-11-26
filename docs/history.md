@@ -2,6 +2,8 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
+
 > **Map and cards: early alpha.** Navigation and linked views are under active development. The instructions below cover the current implementation; synchronization, storage and Actions work independently.
 
 ## Choose the right view
@@ -9,7 +11,7 @@
 | What you want | Use | Data source |
 |---|---|---|
 | Current vehicle position | Device location tracker / HA Map | Fresh cloud telemetry; Recorder can retain observations. |
-| A ride or several routes with linked metrics | Bundled history map card | Saved account archive; cloud detail only when explicitly requested. |
+| A ride or several routes with linked metrics | Bundled history map card | Saved account archive. |
 | Rides on dates | Native Calendar | Local recorded rides; no GPS or implicit cloud fill. |
 | Day/month trends | `get_statistics` and explicit `import_statistics` | Verified aggregates; native statistics-graph after import. |
 | Automations or a custom dashboard | Response Actions | Bounded lists, detail chunks, provenance and coverage. |
@@ -48,6 +50,7 @@ Existing `start`/`continue`/`status`/`cancel` range jobs remain supported (up to
 - **Sync state** describes the current acquisition phase. Waiting for request budget is local scheduling, not an application for Ninebot permission. Inspect `next_request_at`, `retry_at`, `sync_phase` and errors before intervening.
 - **Month-scan progress** separates processed, verified and gapped months. Page totals, membership and references must agree. A conflicting or invalid month in a response keeps that response out of statistics. History scans retain the captured page as evidence of the gap.
 - **Saved-detail progress** covers discovered ride IDs. 100% does not mean all cloud rides were discovered or that every saved route has a full geometry.
+- **Synced with limited tracks** means the baseline scan and detail saving have completed. Some saved routes are simplified, consist of a single point, or have missing, invalid or incompletely verified geometry. See `simplified_tracks`, `single_point_tracks` and `unavailable_tracks`. These counts can overlap. **Completed with gaps** covers unresolved month scans.
 - **Last successful sync** records accepted page/detail progress; task completion is separately identified by `last_completed`. A historical completion time is not erased merely because current verification is pending.
 - **Month trip list completeness** uses verified pagination when the saved page chain matches the displayed observation for that vehicle and month. Local reconciliation can also establish coverage when retained rides agree with that observation's count and total distance and meet the time checks. Otherwise the value is the fraction of rides returned in that response. See `coverage_basis`, `returned_coverage` and `verified_pages`.
 
@@ -55,7 +58,11 @@ Missing/foreign vehicles are not queried through stale ownership. Saved evidence
 
 Synchronization progress sensors and controls appear in device diagnostics. Sync state and last-success entities additionally require debug mode; the calendar follows its own option. A diagnostic category does not change Recorder retention.
 
+Each vehicle also has two archive counters in **Diagnostics**. **Trip count** counts distinct trips saved locally across all months, including trips with a summary only. **Simplified trip count** counts trips whose best saved route is marked as simplified by the server. A retained detailed route continues to count as detailed after the server starts returning only start and end points. Missing details and unclassified routes are excluded from the simplified count. The `details_pending_classification` attribute reports saved details whose quality metadata still needs to be checked. The counters work with background sync and debug mode off.
+
 ## Add the history map
+
+The current-position Map card draws tracker history recorded by HA. The bundled Ninebot card draws the archive’s saved geometry on the same HA map component and offers ride selection and replay. A calendar entity or a Ninebot device ID supplies the target.
 
 1. Install/load the integration. Review location/history options above.
 2. In **Dashboard → Resources** (enable advanced mode if needed), add `/ninebot-static/ninebot-trip-card.js` as **JavaScript module**.
@@ -68,6 +75,8 @@ limit: 20
 ```
 
 The resource and visual editor are bundled; no additional card repository is required. The integration registers a fixed static path, **not** dashboard resources/cards automatically. For `Custom element not found: ninebot-trip-card`, check that the resource loaded as a module, that the integration is loaded, then hard-reload the browser/app frontend. Find the installed integration version on its integration page.
+
+The card places the ride library next to the shared map on wide cards and below it in narrower columns. Distance, duration and energy follow the focused ride. The player sits over the map; the scale ruler helps put a route in context.
 
 Use `device_id: REPLACE_WITH_VEHICLE_DEVICE_ID` instead of `entity` if the calendar feature is off. For multiple vehicles (up to five, including different loaded accounts):
 
@@ -86,30 +95,35 @@ limit: 40
 
 `limit` is the **total** page size (1–100), including sizes smaller than the vehicle count. Lists merge genuinely newest-first; each vehicle has a bounded source buffer, and an empty vehicle does not restart. Date/vehicle changes require a local read; ordinary HA telemetry updates do not requery history.
 
-### Map, list and curves work together
+### Replay saved routes
 
-- Choose **Recent rides (up to 5 years)**, **Last 7/30 days**, previous/next month, or explicit dates. Older saved records remain accessible through an older range; this is not a five-year deletion policy.
-- Selecting a ride links its map, summary and curves. Already-saved detail can load locally; a missing detail never triggers a cloud download automatically.
-- Compare up to **five rides**, including different vehicles. Chips switch focus; totals cover selected records, not every ride matching the filter.
-- Route clicks, curve hover, point slider, drag selection and sequence playback share one focus marker/range. They make no API requests. **Show all routes** fits the map; ordinary focus and telemetry updates preserve the manual viewport.
-- **Local records updated · Read latest** is an authenticated metadata-only notification. Reading latest refreshes local lists/focused saved detail while preserving the selection and map view. Playback pauses during the refresh. Reconnection clears old cursors; it does not start a cloud scan.
-- The visual editor supports vehicles, title, dates and page size; advanced options remain YAML-editable. Narrow/mobile cards stack the map, list and detail.
+1. Choose vehicles and a business-date range in **Filters**. A row opens one ride. **+** adds it to the comparison and **×** removes it. Compare up to five authorized rides across vehicles, accounts or months. With the local archive connection active, existing selections survive a date change. The last five list pages are reusable.
+2. In the **2.2.8 preview**, each compared route with saved geometry gets a numbered marker on the same map. Click or keyboard-activate its marker or choose the corresponding numbered chip. Focus switches the summary, point cursor and playback to that ride. Camera position and previously read geometry are reused. The chips also work when markers overlap.
+3. Read distance, duration and energy beneath the active route. Expand **Selected rides total** for the same quantities across the selection. These totals cover the selected list records only. A quantity with any missing contributing measurement shows a dash. A confirmed zero remains zero.
+4. Use **Play**, pause, restart or drag the sample slider. The cursor advances through saved points in sequence at a preview pace. Gaps break the drawn line. Point timestamps and a measured speed for each segment are unavailable. The live vehicle position comes from the separate device tracker.
+5. **Follow replay** centers the current point and follows it at your zoom level when it leaves the view. **Show all routes** fits the routes above the playback controls. **Local records updated · Read latest** reloads the selection after the archive changes.
 
-**Fetch cloud detail** explicitly requests one selected ride/month and can save its business payload. **Show saved route** uses local-only detail with coordinate permissions. Missing saved detail needs the explicit cloud step, or background acquisition, then a local refresh. The detail response reports whether persistence succeeded; a cloud response alone is not a storage guarantee.
+Each detail read uses up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains at most 4,096 samples per ride. The card can simplify lines for drawing while the archive keeps its original geometry.
 
-Each interaction loads at most four 512-source-row chunks before **Read more saved points** continues. Per-route browser storage is bounded to 4,096 displayed points with thinning, while archived raw remains intact. First/last points, source sequence and scanned bounds survive; invalid-only chunks still advance. Completion means reading the saved response, not proving a complete physical route. Geometry gaps remain gaps; server-simplified points are previews, not roads.
+A server-simplified ride may have two usable positions. The map marks the start and end individually. One position gets one marker. A ride without positions still has a summary. The server may report a detailed-track window of 180 days. Previously saved higher-quality routes remain available locally beyond that window.
+
+If the local archive lacks a detail, enable background detail sync or fetch that ride once using `ninebot.get_trip_detail` in **Developer tools → Actions**. Check the persistence result, then read the local records again. [HA Map](https://www.home-assistant.io/dashboards/map/) · [Home Assistant Map Tiles](https://www.home-assistant.io/integrations/map_tiles/)
 
 ### Map privacy and units
 
-Leaflet **1.9.4** and its license/assets are bundled locally. Tiles are **off by default**. Enabling the OpenStreetMap basemap sends requests revealing the visible map area and network information to that provider. Attribution remains visible. No external JavaScript CDN is required.
+When Home Assistant supplies its Map Tiles integration and compatible map frontend, the card uses the default HA basemap and its light/dark styling. Tile requests follow Home Assistant's normal map service. On older frontends, a bundled [Leaflet](../custom_components/ninebot/frontend/vendor/leaflet/LICENSE) view shows and replays the routes without a basemap. [Home Assistant Map Tiles](https://www.home-assistant.io/integrations/map_tiles/)
 
-Coordinates are plotted as received: CRS is unverified, with no automatic WGS/GCJ conversion or road matching. Point speed units remain unverified. The fourth trail column is preserved as `distance_delta_raw`; its meaning and unit are unverified, so the card labels it by source column rather than treating it as a point-to-point distance. Curves use **source sequence**, not elapsed time; 0.5-second playback steps are display timing, not riding speed/time. Server maximum speed and the calculated overall `distance / duration` average stay distinct; sample means cannot replace them.
+Enable **Show vehicle location** to display saved coordinates. The card plots them in their original coordinate system, which has yet to be verified. Per-point speed and the fourth trail column (`distance_delta_raw`) remain available through the detail Action with their raw values and unverified units.
 
-Private projections are cleared on user/connection/date/vehicle scope change, revoked access and card removal. Full trails/raw do not enter HA entity attributes, Recorder, diagnostics or localStorage. Explicit GPS Action responses can still be recorded in automation traces; protect them.
+The card clears private tracks on a user, connection or vehicle-filter change, loss of archive access, or removal from the dashboard. A date edit keeps selected routes only while the local archive subscription is active. List pages expire when the archive changes. Track geometry stays in browser memory for the open card. GPS returned by an explicit Action can also appear in automation traces.
+
+Place native calendar or statistics cards next to the replay card for longer-term views. Earlier YAML with `statistics_entities` still loads. Configure the corresponding statistics graph as a separate card.
 
 ## Ride summaries and vehicle events
 
 Numeric day/month/latest-trip sensors retain their meaningful identities, units and history. Use **average consumption** for Wh/km; today/yesterday averages divide energy by distance from the same complete ride set, never mix a chart distance with partial-list energy. No rides or zero distance yields no average. Monthly/today/yesterday keep distance, trip count, duration, energy and average consumption. Latest trip is one record, with distance, duration, energy, average consumption and maximum/average speed; it does not need a redundant count-of-one sensor.
+
+An empty response that conflicts with activity already observed for the same month leaves the saved values and their original observation time in place. The coordinator retries through its normal schedule. For vehicles identified on the motor business line, paging uses the same route as the monthly query. A resumed history run completes a partially saved month on that month's original route.
 
 **Vehicle trip event** replaces the two standalone latest-start/end timestamp sensors. Read `latest_start_time`, `latest_end_time` or the small GPS-free `latest_ride` object from the existing event entity. Event identity stays unchanged; update automations that referenced the retired sensors. The event timestamp is when HA observed an event, not the ride's physical start/end. `reported` means a new recent cloud record, `updated` a revised report, `completed` a stable completion, and `late_reported` a late completion report. Power-on is not inferred to be a ride start. Historical imports update the latest-data attributes without replaying ride events.
 
@@ -117,7 +131,7 @@ Numeric day/month/latest-trip sensors retain their meaningful identities, units 
 
 The default-on **Enable vehicle events (Beta)** option controls both entities. User-disabled entities remain disabled. Startup, re-enabling, reconnection, invalid values and observation gaps establish silent baselines. Completion keeps its durable deduplication; live report/update notifications use a bounded runtime cursor and are not a physical push stream. No extra cloud polling is created.
 
-Durations retain native seconds and suggest hours with **four decimals**, including the history-calendar descriptions. The initial display migration applies once; subsequent user unit/precision changes are retained. Compact workbench views still render original seconds, such as **45 sec**, **31 min 46 sec** or **1 hr 2 min 3 sec**.
+Duration sensors keep seconds internally and suggest hours with **four decimals** for display. The initial migration runs once. Later changes to units and precision follow user settings. The replay card formats duration from seconds, for example **45 sec**, **31 min 46 sec** or **1 hr 2 min 3 sec**.
 
 Diagnostic entities can appear in Recorder. Use explicit Recorder filters to exclude them. See [coverage and statistics](#coverage-and-statistics) for how monthly and daily totals are validated.
 
@@ -216,7 +230,7 @@ entities:
     name: Distance
 ```
 
-Enable HA's History integration (normally part of `default_config`) for statistics cards. Use `period: month` for month series, separate units into cards, and never treat hourly views as actual ride timing. Older imported data remains; adjust the display window to see it. Card `statistics_entities` accepts up to 20 existing cumulative SUM sensor/`ninebot:` IDs, without importing data. Native calendar/graph navigation is independent of trip-card dates; exact ranges use `get_statistics(refresh: false)`.
+Enable HA's History integration for statistics cards. It normally loads through `default_config`. Use `period: month` for monthly series and a separate card for each unit. Native graphs and calendars have their own date controls. Adjust the display window to see older imports, or call `get_statistics(refresh: false)` for a specific range.
 
 ### Calendar and events
 
@@ -230,7 +244,7 @@ The read-only calendar shows valid past ride times/metrics from local storage. I
 
 Trip Event state is the timestamp of the most recent report/update/completion event, not last-ride end. Completion requires at least two independent successful travel observations with the relevant ride facts unchanged for at least ten minutes; startup/re-enable sets a baseline and does not replay historical rides. IDs are durably deduplicated; later corrections can emit a report-update event, but never repeat the completion event. Unknown before the first new event is expected. Restored event timestamps never trigger automations; rides during downtime can be missed.
 
-Native `type: map` with the location tracker and `hours_to_show: 24` shows only positions Recorder actually observed. It cannot reconstruct downloaded historical trail arrays; use the bundled workbench for a saved ride.
+A native `type: map` card with the location tracker and `hours_to_show: 24` displays positions recorded by Home Assistant. Open the bundled history map to play a trip saved in the account archive.
 
 An interrupted historical month read may already have a complete verified page on disk. Once its claim or retry delay expires, the scheduler checks local page evidence first. A matching page advances discovery even when the hourly budget is exhausted. Active claims and future retry deadlines still take precedence.
 

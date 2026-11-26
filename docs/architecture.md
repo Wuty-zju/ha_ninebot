@@ -2,6 +2,8 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+
 This is a Home Assistant integration with a cloud adapter and a private historical archive. Current-state entities, large historical queries and control acknowledgements have separate responsibilities. The runtime is entirely inside `custom_components/ninebot`; docs/tests/scripts are not runtime dependencies.
 
 <picture>
@@ -26,6 +28,11 @@ For a vehicle with an unambiguous `motor` discovery-cache entry, monthly trip re
 The pinned 0.1.7 REST proxy sends controls to the ebike gateway even for a cached motor vehicle; the native CLI honors that cache entry. From 2.1.26, an unambiguous `motor` entry selects one managed native control command before dispatch. It shares the existing lock, session directory, deadline, output bounds and child cleanup; the REST child is stopped before the native writer and restarts on the next live query. Other controls retain the existing REST route. This narrow control exception neither changes telemetry transport nor retries a failed command through a second route. No upstream host is configurable by the user.
 
 ## Realtime scheduling and controls
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/controls-en-dark.svg">
+  <img src="assets/architecture/controls-en.svg" width="960" alt="One command followed by bounded per-vehicle status readback">
+</picture>
 
 `coordinator.py`, `demand.py` and `query_broker.py` track per-vehicle/per-group demand, freshness, partial failures and backoff. Identical in-flight reads share their result/error without renewing source receipt times. A discovery result retains the completeness flag captured with its own payload, including during metadata lookup. A closed broker rejects a receipt that is still waiting for final consumer authorization. Status has bounded priority; background work and other vehicles receive turns. An account has one wire transaction; the shared gate allows two across accounts. Admission is bounded (12 reads + 4 commands, 64 readers overall, 32 on one shared read).
 
@@ -85,11 +92,13 @@ Local reconstruction has durable jobs/recovery points, captured search bounds an
 
 ## Local query and frontend contracts
 
+The map card owns selection and sample position, the archive reader owns local pagination, and the renderer owns the HA map surface. Each route retains a slot throughout a comparison. Map markers and list buttons resolve the same selection. An active ride drives playback and individual metrics. Group totals use the selected summaries, require each contributing value, and perform no additional reads. Saved start/end markers describe only the known endpoints. [Map interaction contract](history.md#replay-saved-routes)
+
 `recorded_actions.py`/`archive_browse.py` expose bounded date pages. Older asc callers retain account revision behavior; desc pages use transactional connection-local vehicle catalog versions and single-use successful continuations. `geometry_version` binds selected evidence and parser/shape/integrity roles. These are fences against managed writes, not persistent MVCC across requests or protection from arbitrary external database edits.
 
 `history_websocket.py` provides authenticated metadata-only subscriptions for 1–5 device IDs, at most eight per connection and 64 active/pending total. It checks read permission/ownership before delivery and debounces commit bursts. No raw/GPS is pushed. Browser network/session modules share identical local-detail in-flight promises and cancel timers/listeners on unload, reconnection or revocation; cloud operations and consumed page tokens are not shared/replayed.
 
-The bundled workbench uses reviewed local-only detail chunks, sequence-based focus/brush/playback and bounded comparison caches. Leaflet's Canvas redraw scheduling is adapted locally in `route-renderer.js`; upgrading the pinned vendor requires checking its private-method dependency. Basemap tiles are optional external requests, not a bundled/offline map database.
+The replay card uses local-only detail chunks and keeps one map mounted across ride changes. Current Home Assistant frontends draw route segments through `ha-map.paths` and move a static cursor through the map location interface. A scrubber follows saved sample order. Older frontends use bundled Leaflet with no tile layer. When upgrading Leaflet, recheck the Canvas redraw hook in `route-renderer.js`.
 
 ## Diagnostics and Repairs
 
@@ -102,12 +111,12 @@ Repairs cover actionable identity/migration/storage/schema conditions. A tempora
 - Runtime protocol client: **`ninecli==0.1.7`**, fixed in [manifest.json](../custom_components/ninebot/manifest.json). HA installs the declared dependency; users do not manually install an unrelated daemon. Never change this to an unreviewed `>=`/latest range.
 - Its [PyPI metadata](https://pypi.org/project/ninecli/0.1.7/) declares MIT. The audited wheel did not include standalone license text or complete Go source; source availability, reproducible builds and transitive Go licensing remain audit limitations. The integration's MIT license does not relicense the dependency/vendor APIs.
 - Reviewed native history crypto/API behavior derives from MIT [kxn/ninebot-recon](https://github.com/kxn/ninebot-recon). Runtime attribution/source pins are packaged in [licenses/SOURCES.json](../custom_components/ninebot/licenses/SOURCES.json) and [MIT notice](../custom_components/ninebot/licenses/ninebot-recon-MIT.txt). Test conformance attribution is in [tests/ninebot_recon_license.txt](../tests/ninebot_recon_license.txt).
-- Leaflet 1.9.4 is bundled under its [BSD-2-Clause license](../custom_components/ninebot/frontend/vendor/leaflet/LICENSE). OpenStreetMap tiles/attribution apply when explicitly enabled.
+- Leaflet 1.9.4 is bundled under its [BSD-2-Clause license](../custom_components/ninebot/frontend/vendor/leaflet/LICENSE). The native basemap uses [Home Assistant Map Tiles](https://www.home-assistant.io/integrations/map_tiles/).
 - Ninebot/Segway trademarks and vehicle images belong to their owners. This independent project is not affiliated with or supported by them. See [NOTICE](../NOTICE) and [LICENSE](../LICENSE).
 
 Future backends should preserve these field, ownership, scheduling and lifecycle contracts. Reference applications supply protocol evidence, with attribution and license review before reuse.
 
-简体中文摘要：实时状态、历史采集、私有归档和 HA 展示分层；账号、权限、预算与生命周期隔离。原件、派生值、覆盖和完整性各自有证据范围；不猜单位/坐标，不为演示改业务。依赖精确固定并保留许可/源码可用性限制，地图底图为用户显式外部请求。
+实时状态、历史采集、本地档案和 HA 展示分层维护。各账号独立管理权限、预算和数据生命周期。字段解释、覆盖范围与完整性均以各自来源为准。底图使用 HA 地图服务，旧版前端由本地组件绘制轨迹。
 
 
 ## Connection recovery and retained availability
@@ -168,6 +177,21 @@ Today mileage declares the DAY dependency used by daily-index repair. History pr
 <a id="optional-assistant-boundary--21-preview"></a>
 
 ## Optional Assistant boundary
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/assistant-en-dark.svg">
+  <img src="assets/architecture/assistant-en.svg" width="960" alt="Authorized local measurements and retrieved guidance reach Assist, MCP and the AI Task Action">
+</picture>
+
+| Layer | Contract |
+|---|---|
+| Native host | Assist/MCP choose their model. A `ninebot.ask` Action can bind its selected HA device to the turn. |
+| Policy | Require an active administrator. Resolve entry, device, consent and ownership. Revalidate before materializing returned private results. |
+| Data | A selected status metric reads its own group snapshot. Trip, sync and statistics tools use deterministic local projections. |
+| Knowledge | Search the packaged, versioned bilingual corpus. A checklist names the next check. Human approval remains independent. |
+| Presentation | Tools return structured receipts. The Action can render a supported measurement or a pinned citation. Host-generated prose is outside this contract. |
+
+[Native LLM API](https://contributors.home-assistant.io/core/internals/llm-api/) · [Tool and task contracts](assistant.md)
 
 A compatible AI host selects the native Ninebot API through HA’s LLM registry or MCP Server. The adapter preserves the authenticated Context, applies separate account/vehicle consent and read admission, then reuses cached snapshots or existing local history Actions. Safe result projections carry units, freshness and coverage; ownership and consent are checked again before return. The adapter does not add a model provider, listener, archive or collection scheduler.
 

@@ -2,7 +2,7 @@
 
 [English overview](../README.md) · [中文首页](../README_zh.md)
 
-User and developer guides for **2.2.0**. Start with the task below. The [stable release summary](../CHANGELOG.md#220) traces the changes since 2.0.0. Select your installed tag on GitHub for earlier documentation.
+Start with the row that matches your task. These pages describe the 2.2 stable foundation and label additions in the 2.2 previews. For an older installation, select its tag on GitHub. [Stable changes](../CHANGELOG.md#220) · [Latest preview changes](../CHANGELOG.md#228)
 
 | Task | English | 简体中文 |
 |---|---|---|
@@ -15,6 +15,8 @@ User and developer guides for **2.2.0**. Start with the task below. The [stable 
 | 2.0 beta, RC and stable milestones and design decisions | [Development overview](releases/2.0.md) | 同页折叠简中 |
 | Delivered capabilities and future directions | [Roadmap](roadmap.md) | 同页双语 |
 
+For archive playback, start with the [map setup](history.md#add-the-history-map). For spoken or typed questions, start with [host selection](assistant.md#choose-a-host-and-model). The current-position tracker and the archived playback cursor have separate sources.
+
 New coding agents start with [AGENTS](../AGENTS.md), the relevant guide and the task table in [Development](development.md). The task table links directly to the relevant modules and offline tests.
 
 [Contribute](../CONTRIBUTING.md) · [Security/privacy reporting](../SECURITY.md) · [Synthetic asset provenance](assets/manifest.json)
@@ -24,6 +26,9 @@ Maintainers preparing distribution: [HACS and brand checklist](development.md#ha
 ## Earlier documentation links
 
 The previous long behavior page was consolidated by topic. These anchors preserve existing bookmarks and map each former section to its current home. Some headings describe an older beta; current guides supersede intermediate defaults. The complete original remains available at the [fixed b94 commit](https://github.com/Wuty-zju/ha_ninebot/blob/fa3a7ec04dacc7f791bfd79d8ee469538ac95878/docs/README.md).
+
+<details>
+<summary>Find an earlier section by name</summary>
 
 | Previous section | Current home |
 |---|---|
@@ -65,3 +70,5 @@ The previous long behavior page was consolidated by topic. These anchors preserv
 | <a id="scoped-local-continuation-versions-b92"></a>Scoped local continuation versions (b92) | [Read current contract](history.md#enable-preservation-and-synchronization) |
 | <a id="local-update-notifications-and-in-flight-sharing-b93"></a>Local update notifications and in-flight sharing (b93) | [Read current contract](history.md) |
 | <a id="synthetic-archive-profiling"></a>Synthetic archive profiling | [Read current contract](development.md) |
+
+</details>

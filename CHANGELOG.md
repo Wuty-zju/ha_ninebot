@@ -1,10 +1,51 @@
 # Changelog
 
-Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
+Select a tag for changes shipped in that version. The [2.0 development history](docs/releases/2.0.md) covers the archive and entity refactor. [2.2.0](#220) brings the Assistant and the maintained vehicle integration into the stable release line. For installation and current defaults, use the [guides](docs/README.md).
 
-## Unreleased
+## 2.2.8
 
-- Read monthly trip totals and the latest ride on the motor vehicle business line when confirmed by discovery. [#283](https://github.com/Wuty-zju/ha_ninebot/pull/283)
+- Select a compared ride from its numbered map marker or matching route chip. Switching a previously loaded route updates the playback and summary in place. The comparison shows distance, duration and energy totals independently, retaining unknowns when some rides lack a reading.
+- Read a single cached vehicle metric through the native Ninebot tools. The AI Task Action can return that reading with its unit, observation group, time and freshness. An ambiguous multi-vehicle request can explicitly ask for a vehicle selection.
+- Refresh the English and Chinese user guides and add an Assistant architecture diagram. Cited replay help explains the difference between the sample cursor and the latest device-tracker position.
+
+## 2.2.7
+
+- Compare rides from different date ranges on one map while the archive subscription is active. Revisit the last five list pages from memory. Playback controls sit over the map, with a scale ruler and optional camera follow at the current zoom.
+- Bind an explicitly selected Assistant vehicle directly to the HA Action, including vehicles outside the first discovery page. Scoped discovery and public help validate only the required vehicles. Assist and MCP can look up the cited dashboard replay guide in English or Chinese.
+
+## 2.2.6
+
+- Rebuild the ride history card with a shared Home Assistant map, date and vehicle filters, a ride library and playback controls. Comparing rides keeps each route's color and the map view as focus changes. The layout adapts to dashboard width and theme.
+- Discard pending history pages and routes when the archive session becomes unavailable. Read the active selection again after the local notification feed reconnects.
+- Report whole-archive counts alongside the active synchronization plan in native Ninebot Assistant tools and rendered Action replies. Add cited English and Chinese help for saved trips, simplified tracks and coverage.
+
+## 2.2.5
+
+- Show the discovered vehicle type in device diagnostics. Electric bicycles and electric motorcycles have localized names and icons. Other reported types retain their scalar value.
+- Show the total saved trip count and the number of trips with a confirmed simplified route for each vehicle. Both use the local archive across all months, including imported history.
+- Integrate the original monthly coverage contribution from [#289](https://github.com/Wuty-zju/ha_ninebot/pull/289) into the mainline with the vehicle, month and receipt checks. Thanks to [@yang605256182](https://github.com/yang605256182).
+
+## 2.2.4
+
+- Show verified pagination or local reconciliation in the current-month list diagnostic when the archive supports the displayed observation. Keep the individual response's coverage visible. Thanks to [@yang605256182](https://github.com/yang605256182) for identifying the issue in [#289](https://github.com/Wuty-zju/ha_ninebot/pull/289).
+- Distinguish a completed sync with limited tracks from unverified months. Show counts for simplified, single-point and unusable tracks in diagnostics.
+- Preserve the accepted month totals and observation time when a later page stops a history run. Retain the page and its usable ride records for recovery.
+- Show start and end markers for saved two-point tracks that the server marked as simplified. Retain the best available geometry and the trip summary as older cloud records provide fewer points.
+
+## 2.2.3
+
+- Rebuild the local ride card around one Home Assistant map. Overlay rides across vehicles and play, pause or scrub saved samples. Older frontends use the bundled route view.
+- Display recorded trip pages and saved detail in `ninebot.ask`, including page bounds, archive observation times, reviewed units and explicit unknowns. The bundled help index also recognizes exact trip tool names.
+- Document how to pair the replay card with native calendar and statistics cards. Cloud detail acquisition remains available through the existing Action and background sync.
+
+## 2.2.2
+
+- Use the confirmed motor route for trip pagination as well as the first monthly read. Saved page chains keep their original route when resumed. Daily statistics can reuse a recent verified first page.
+- Keep the last observed month and its original timestamp when an empty reply conflicts with verified activity. Report an unknown trip count when a zero count conflicts with the reply's own totals or rides. See [#224](https://github.com/Wuty-zju/ha_ninebot/issues/224).
+
+## 2.2.1
+
+- Correct monthly trip and latest ride reads for vehicles discovered on the motor business line. Thanks to [@yang605256182](https://github.com/yang605256182) for the contribution in [#283](https://github.com/Wuty-zju/ha_ninebot/pull/283).
 - Include the observed business line in vehicle diagnostics and aggregate counts for the account.
 
 ## 2.2.0
