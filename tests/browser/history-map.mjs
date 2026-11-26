@@ -62,7 +62,7 @@ try {
   const totals = page.locator('.selection-totals');
   await totals.locator('summary').click();
   assert.equal(await totals.locator('dd').count(), 3);
-  const routePin = page.locator('.ninebot-route-pin').first();
+  const routePin = page.getByRole('button', { name: /1 · Synthetic A/ }).and(page.locator('.ninebot-route-pin'));
   await routePin.press('Enter');
   assert.equal(await page.evaluate(() => fixtureCard.activeTrack.label), 'Synthetic A');
   assert.deepEqual(await page.evaluate(() => {

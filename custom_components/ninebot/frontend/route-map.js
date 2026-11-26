@@ -169,8 +169,16 @@ class OfflineRouteMap {
         const pin = routePin(track);
         const icon = this.library.divIcon({ html: pin.element, iconSize: pin.elementSize,
           className: 'ninebot-route-pin' });
-        this.library.marker(pin.location, { icon, title: pin.title, alt: pin.title,
-          keyboard: true, autoPanOnFocus: false }).on('click', () => this.select(track.key)).addTo(this.routes);
+        const marker = this.library.marker(pin.location, { icon, title: pin.title, alt: pin.title,
+          keyboard: true, autoPanOnFocus: false });
+        marker.on('click', () => this.select(track.key));
+        marker.on('keydown', ({ originalEvent: event }) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (!event.repeat) this.select(track.key);
+        });
+        marker.addTo(this.routes);
       }
     }
     this.focus?.bringToFront();
