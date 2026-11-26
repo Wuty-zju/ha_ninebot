@@ -61,7 +61,7 @@ try {
   });
   const totals = page.locator('.selection-totals');
   await totals.locator('summary').click();
-  assert.equal(await totals.locator('dd').count(), 3);
+  assert.deepEqual(await totals.locator('dt').allTextContents(), ['里程', '时长', '能耗']);
   const routePin = page.getByRole('button', { name: /1 · Synthetic A/ }).and(page.locator('.ninebot-route-pin'));
   await routePin.press('Enter');
   assert.equal(await page.evaluate(() => fixtureCard.activeTrack.label), 'Synthetic A');
@@ -101,7 +101,7 @@ try {
   const mapBox = await page.locator('.map-frame').boundingBox(), listBox = await page.locator('.library').boundingBox();
   assert.ok(listBox.y >= mapBox.y + mapBox.height);
   assert.ok((await page.getByRole('button', { name: '按点播放', exact: true }).boundingBox()).height >= 44);
-  assert.deepEqual(await page.locator('.metrics dt').allTextContents(), ['里程', '时长', '能耗']);
+  assert.deepEqual(await page.locator('.playback > .metrics dt').allTextContents(), ['里程', '时长', '能耗']);
   if (output) await page.screenshot({ path: join(output, 'replay-mobile-light.png'), fullPage: true });
   await page.setViewportSize({ width: 1080, height: 900 });
 

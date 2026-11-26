@@ -2,6 +2,8 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
+
 > **Map and cards: early alpha.** Navigation and linked views are under active development. The instructions below cover the current implementation; synchronization, storage and Actions work independently.
 
 ## Choose the right view

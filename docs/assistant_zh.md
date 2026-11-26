@@ -2,6 +2,8 @@
 
 [English](assistant.md) · [文档](README.md) · [历史行程与地图](history_zh.md)
 
+本文覆盖至 2.2.8 预览版。使用正式版时，可查阅 [v2.2.0 随版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)。
+
 通过 Home Assistant 原生 LLM API 和 MCP Server，兼容的对话宿主可以读取授权车辆的本地数据、查询带来源的帮助，并申请补齐行程。只读查询和需人工审批的任务分别授权。
 
 <a id="ninebot-assistant--21-预览"></a>

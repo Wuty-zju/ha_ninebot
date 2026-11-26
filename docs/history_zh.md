@@ -2,6 +2,8 @@
 
 [English](history.md) · [安装与选项](guide_zh.md) · [文档入口](README.md)
 
+本文覆盖至 2.2.8 预览版。使用正式版时，可查阅 [v2.2.0 随版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history_zh.md)。
+
 > **地图与卡片：早期 alpha。** 导航与联动视图仍在持续开发，下方说明适用于当前实现。历史同步、存储和 Action 可独立使用。
 
 ## 选择展示方式

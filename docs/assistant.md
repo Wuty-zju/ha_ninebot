@@ -2,6 +2,8 @@
 
 [简体中文](assistant_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md).
+
 Connect a compatible conversation host to your saved vehicle data, cited local help and optional reviewed history tasks. The native Home Assistant LLM API and MCP Server preserve the signed-in user throughout each tool call.
 
 <a id="ninebot-assistant--21-preview"></a>

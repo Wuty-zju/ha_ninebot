@@ -2,6 +2,8 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/migration.md).
+
 
 ## Move between 2.2 releases
 

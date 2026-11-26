@@ -2,6 +2,8 @@
 
 [Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
+
 ## Start with a task, not the whole repository
 
 Start with [AGENTS](../AGENTS.md), inspect the checkout, then read the relevant guide and source boundary below. Current behavior is documented by topic; [CHANGELOG](../CHANGELOG.md) records its evolution.

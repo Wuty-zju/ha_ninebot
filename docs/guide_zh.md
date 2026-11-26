@@ -2,6 +2,8 @@
 
 [English](guide.md) · [文档入口](README.md) · [历史与地图](history_zh.md)
 
+本文覆盖至 2.2.8 预览版。使用正式版时，可查阅 [v2.2.0 随版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide_zh.md)。
+
 ## 环境要求
 
 - Home Assistant **2026.1.0 及以上**，能够访问九号云服务。

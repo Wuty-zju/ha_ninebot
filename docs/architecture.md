@@ -2,6 +2,8 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+
 This is a Home Assistant integration with a cloud adapter and a private historical archive. Current-state entities, large historical queries and control acknowledgements have separate responsibilities. The runtime is entirely inside `custom_components/ninebot`; docs/tests/scripts are not runtime dependencies.
 
 <picture>

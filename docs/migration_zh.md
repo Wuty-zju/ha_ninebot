@@ -2,6 +2,8 @@
 
 [English](migration.md) · [文档入口](README.md)
 
+本文覆盖至 2.2.8 预览版。使用正式版时，可查阅 [v2.2.0 随版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/migration_zh.md)。
+
 
 ## 在 2.2 各版本之间更新
 
