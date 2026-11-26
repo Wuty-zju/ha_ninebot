@@ -23,6 +23,7 @@ from .assistant_limits import ReadLimitExceeded, read_slot
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .assistant_views import (
     METRIC_UNITS,
+    STATUS_READINGS,
     AssistantView,
     detail_view,
     mapping,
@@ -120,7 +121,8 @@ SPECS = (
     ToolSpec(
         "get_vehicle_status",
         "Read cached vehicle status",
-        "Read cached status for the user's selected vehicle. Include group observation times "
+        "Read cached status for the user's selected vehicle. For one reading, select its metric. "
+        "Omit metric for a status overview. Include group observation times "
         "from quality.groups.<group>.received_at and each group's freshness in the answer. "
         "Null means unknown. vehicle_locked=true means locked. "
         "acc_active reports accessory/ignition power, not movement or a ride in progress. "
@@ -129,7 +131,7 @@ SPECS = (
         "Failure context describes the observed local query stage and proxy response; "
         "it does not establish a cloud region, hardware fault or cloud-side cause. "
         "Does not refresh the cloud or return GPS.",
-        vol.Schema(VEHICLE),
+        vol.Schema({**VEHICLE, vol.Optional("metric"): vol.In(tuple(STATUS_READINGS))}),
     ),
     ToolSpec(
         "get_statistics",
@@ -375,13 +377,16 @@ async def _vehicle_query(
     if key == "get_vehicle_status":
         co = scope.runtime.coordinator
         failure = getattr(co, "query_failure", None)
+        metric = args.get("metric")
+        groups = (
+            ("profile", "status", "battery") if metric is None else (STATUS_READINGS[metric][2],)
+        )
         return status_view(
             co.data[scope.sn],
-            {group: co.fresh(scope.sn, group) for group in ("profile", "status", "battery")},
-            {group: failure(scope.sn, group) for group in ("profile", "status", "battery")}
-            if callable(failure)
-            else None,
-        ), query
+            {group: co.fresh(scope.sn, group) for group in groups},
+            {group: failure(scope.sn, group) for group in groups} if callable(failure) else None,
+            metric=metric,
+        ), {"metric": metric} if metric is not None else query
     if key == "get_statistics":
         start, end = period_dates(args["period"], period_now or now)
         daily = args["period"] not in {"this_month", "last_month"} and len(args["period"]) != 7

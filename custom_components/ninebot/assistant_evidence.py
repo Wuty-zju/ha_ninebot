@@ -8,7 +8,7 @@ from html import escape
 from typing import Any
 
 from .archive_timeline import SELECTION_BASIS
-from .assistant_views import RIDE_UNITS, archive_counts_view, numeric
+from .assistant_views import RIDE_UNITS, STATUS_READINGS, archive_counts_view, numeric
 from .const import BUSINESS_TIMEZONE
 from .travel import opaque_id
 
@@ -130,6 +130,40 @@ def _observation(value: Any) -> str:
     return "unrecorded"
 
 
+def _status_reading(payload: dict[str, Any]) -> str:
+    metric = _object(payload.get("query")).get("metric")
+    if not isinstance(metric, str) or metric not in STATUS_READINGS:
+        return ""
+    name, unit, group = STATUS_READINGS[metric]
+    data, quality = _object(payload.get("data")), _object(payload.get("quality"))
+    group_info = _object(_object(quality.get("groups")).get(group))
+    state = _object(_object(quality.get("metrics")).get(metric)).get("status")
+    if (
+        _object(payload.get("evidence")).get("source_kind") != "runtime_snapshot"
+        or metric not in data
+        or metric not in _object(data.get("units"))
+        or data["units"][metric] != unit
+        or state not in ("available", "stale", "missing")
+        or group_info.get("status") not in ("available", "stale", "missing")
+    ):
+        return ""
+    value = data[metric]
+    if state == "missing":
+        display = "unknown"
+    elif state != group_info["status"]:
+        return ""
+    elif unit is None and type(value) is bool:
+        display = "yes" if value else "no"
+    elif unit is not None and numeric(value) is not None:
+        display = f"{value} {unit}"
+    else:
+        return ""
+    return (
+        f"{name}: {display} ({state}). "
+        f"Local {group} snapshot observed at {_observation(group_info.get('received_at'))}."
+    )
+
+
 def _statistics(payload: dict[str, Any], selected_metric: str | None = None) -> str:
     query = _object(payload.get("query"))
     data, quality = _object(payload.get("data")), _object(payload.get("quality"))
@@ -166,7 +200,8 @@ def _statistics(payload: dict[str, Any], selected_metric: str | None = None) -> 
             or status not in STATUS
             or not _matches(CODE, reason)
             or metric not in data
-            or _object(data.get("units")).get(metric, "") != unit
+            or metric not in _object(data.get("units"))
+            or data["units"][metric] != unit
             or (value is None) != (status == "missing")
             or (value is not None and type(value) not in (int, float))
             or (type(value) is float and not math.isfinite(value))
@@ -454,6 +489,8 @@ def render_evidence_answer(
             continue
         elif tool == "ninebot__search_help":
             text = _help(payload)
+        elif tool == "ninebot__get_vehicle_status":
+            text = _status_reading(payload)
         elif tool == "ninebot__get_statistics":
             text = _statistics(payload)
         elif tool == "ninebot__get_recorded_trips":

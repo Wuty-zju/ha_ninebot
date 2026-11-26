@@ -249,13 +249,17 @@ def search_help(
     retired = {old for entry in applicable for old in entry["supersedes"]}
     ranked: list[tuple[int, str, dict[str, Any]]] = []
     keyword_matches: list[tuple[int, str, dict[str, Any]]] = []
+    matched_terms: dict[str, set[str]] = {}
     for entry in applicable:
         if entry["id"] in retired:
             continue
         texts = entry["translations"].values()
         keywords = terms(" ".join(word for text in texts for word in text["keywords"]))
         prose = terms(" ".join(text["title"] + " " + text["text"] for text in texts))
-        keyword_hits = len(query_terms & keywords)
+        hits = query_terms & keywords
+        keyword_hits = len(hits)
+        if hits:
+            matched_terms[entry["id"]] = hits
         score = 3 * keyword_hits + len(query_terms & prose)
         if score:
             target = keyword_matches if keyword_hits else ranked
@@ -264,6 +268,15 @@ def search_help(
     # Keep prose-only discovery when no applicable topic has a keyword match.
     ranked = keyword_matches or ranked
     ranked.sort(key=lambda row: (-row[0], row[1]))
+    if keyword_matches:
+        # An incidental word such as “location” adds no second intent when the
+        # leading topic already matches that word and the requested activity.
+        leading = matched_terms[ranked[0][1]]
+        ranked = [
+            row
+            for row in ranked
+            if not (len(matched_terms[row[1]]) == 1 and matched_terms[row[1]] < leading)
+        ]
     result: dict[str, Any] = {
         "corpus_version": catalog["corpus_version"],
         "corpus_sha256": hashlib.sha256(

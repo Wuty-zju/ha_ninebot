@@ -4,6 +4,20 @@ import { trackKey } from './local-tracks.js';
 
 export const MAX_SELECTED_ROUTES = 5;
 
+export function selectionTotals(rides) {
+  function sum(read) {
+    const values = rides.map(read);
+    return values.length && values.every(Number.isFinite) ? values.reduce((a, b) => a + b, 0) : null;
+  }
+  return {
+    distance_m: sum(ride => ride.distance_m),
+    duration_s: sum(ride => ride.duration_s ?? (Number.isFinite(ride.duration_h) ? ride.duration_h * 3600 : null)),
+    energy_wh: sum(ride => ride.energy_wh),
+    precision: { mileages: Math.max(0, ...rides.map(ride => ride.precision.mileages)),
+      ec: Math.max(0, ...rides.map(ride => ride.precision.ec)) },
+  };
+}
+
 export class HistorySelection {
   constructor(changed = () => {}) {
     this.changed = changed;

@@ -2,6 +2,8 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+
 This is a Home Assistant integration with a cloud adapter and a private historical archive. Current-state entities, large historical queries and control acknowledgements have separate responsibilities. The runtime is entirely inside `custom_components/ninebot`; docs/tests/scripts are not runtime dependencies.
 
 <picture>
@@ -26,6 +28,11 @@ For a vehicle with an unambiguous `motor` discovery-cache entry, monthly trip re
 The pinned 0.1.7 REST proxy sends controls to the ebike gateway even for a cached motor vehicle; the native CLI honors that cache entry. From 2.1.26, an unambiguous `motor` entry selects one managed native control command before dispatch. It shares the existing lock, session directory, deadline, output bounds and child cleanup; the REST child is stopped before the native writer and restarts on the next live query. Other controls retain the existing REST route. This narrow control exception neither changes telemetry transport nor retries a failed command through a second route. No upstream host is configurable by the user.
 
 ## Realtime scheduling and controls
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/controls-en-dark.svg">
+  <img src="assets/architecture/controls-en.svg" width="960" alt="One command followed by bounded per-vehicle status readback">
+</picture>
 
 `coordinator.py`, `demand.py` and `query_broker.py` track per-vehicle/per-group demand, freshness, partial failures and backoff. Identical in-flight reads share their result/error without renewing source receipt times. A discovery result retains the completeness flag captured with its own payload, including during metadata lookup. A closed broker rejects a receipt that is still waiting for final consumer authorization. Status has bounded priority; background work and other vehicles receive turns. An account has one wire transaction; the shared gate allows two across accounts. Admission is bounded (12 reads + 4 commands, 64 readers overall, 32 on one shared read).
 
@@ -84,6 +91,8 @@ Verification uses bounded compressed/decoded-byte admission, per-object work and
 Local reconstruction has durable jobs/recovery points, captured search bounds and exact source/digest checks. It can fix supported scalar/quality/reference defects or restore exact bytes from managed copies, preserving newer trustworthy scalars and independent geometry roles. It cannot infer missing data, bypass identity conflicts, certify all cloud history or treat a recovery copy as automatically valid. Pending/partially repaired/with-gaps/blocked results and unresolved Repairs remain explicit. The [history guide](history.md#verification-and-recovery) lists operations and rollback cautions.
 
 ## Local query and frontend contracts
+
+The map card owns selection and sample position, the archive reader owns local pagination, and the renderer owns the HA map surface. Each route retains a slot throughout a comparison. Map markers and list buttons resolve the same selection. An active ride drives playback and individual metrics. Group totals use the selected summaries, require each contributing value, and perform no additional reads. Saved start/end markers describe only the known endpoints. [Map interaction contract](history.md#replay-saved-routes)
 
 `recorded_actions.py`/`archive_browse.py` expose bounded date pages. Older asc callers retain account revision behavior; desc pages use transactional connection-local vehicle catalog versions and single-use successful continuations. `geometry_version` binds selected evidence and parser/shape/integrity roles. These are fences against managed writes, not persistent MVCC across requests or protection from arbitrary external database edits.
 
@@ -168,6 +177,21 @@ Today mileage declares the DAY dependency used by daily-index repair. History pr
 <a id="optional-assistant-boundary--21-preview"></a>
 
 ## Optional Assistant boundary
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/assistant-en-dark.svg">
+  <img src="assets/architecture/assistant-en.svg" width="960" alt="Authorized local measurements and retrieved guidance reach Assist, MCP and the AI Task Action">
+</picture>
+
+| Layer | Contract |
+|---|---|
+| Native host | Assist/MCP choose their model. A `ninebot.ask` Action can bind its selected HA device to the turn. |
+| Policy | Require an active administrator. Resolve entry, device, consent and ownership. Revalidate before materializing returned private results. |
+| Data | A selected status metric reads its own group snapshot. Trip, sync and statistics tools use deterministic local projections. |
+| Knowledge | Search the packaged, versioned bilingual corpus. A checklist names the next check. Human approval remains independent. |
+| Presentation | Tools return structured receipts. The Action can render a supported measurement or a pinned citation. Host-generated prose is outside this contract. |
+
+[Native LLM API](https://contributors.home-assistant.io/core/internals/llm-api/) · [Tool and task contracts](assistant.md)
 
 A compatible AI host selects the native Ninebot API through HA’s LLM registry or MCP Server. The adapter preserves the authenticated Context, applies separate account/vehicle consent and read admission, then reuses cached snapshots or existing local history Actions. Safe result projections carry units, freshness and coverage; ownership and consent are checked again before return. The adapter does not add a model provider, listener, archive or collection scheduler.
 

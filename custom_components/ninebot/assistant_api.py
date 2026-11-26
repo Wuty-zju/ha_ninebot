@@ -25,6 +25,7 @@ PROMPT = (
     "Ask for an authorized selection instead of reading another vehicle. "
     "For a specified past period, query statistics directly; current status cannot establish "
     "past trips. "
+    "For one current reading pass its metric to get_vehicle_status. "
     "To investigate a specific unknown statistic, use explain_statistics with the selected "
     "vehicle, period and metric for the bounded local check and cited checklist. "
     "For saved trip totals, limited routes, or progress, use get_sync_health. "

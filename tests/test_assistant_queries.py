@@ -252,6 +252,20 @@ async def test_cached_status_keeps_zero_false_stale_and_excludes_private_fields(
     assert stale["quality"]["metrics"]["battery_soc_percent"]["status"] == "stale"
     assert stale["quality"]["groups"]["status"]["received_at"] == NOW.isoformat()
 
+    for metric, expected in (("battery_soc_percent", "0 %"), ("charging", "no")):
+        narrowed, error = await query(hass, assistant, "get_vehicle_status", metric=metric)
+        assert not error
+        assert set(narrowed["data"]) == {metric, "units"}
+        assert set(narrowed["quality"]["groups"]) == {"status"}
+        assert narrowed["query"]["metric"] == metric
+        receipt = {"tool": "ninebot__get_vehicle_status", "error": False, "result": narrowed}
+        answer = render_evidence_answer([receipt])
+        assert (
+            answer is not None and expected in answer["text"] and NOW.isoformat() in answer["text"]
+        )
+        narrowed["data"]["units"][metric] = "unreviewed"
+        assert render_evidence_answer([receipt]) is None
+
 
 async def test_cached_status_preserves_reviewed_failure_scope_without_logs_or_raw(hass, assistant):
     snapshot = assistant.co.data[SN]

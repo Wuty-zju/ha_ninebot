@@ -1,20 +1,22 @@
-# ha_ninebot product constraints
+# Working on Ninebot for Home Assistant
 
-Check actual Git state and user changes before editing. Start with README/docs/README and the task-to-source/test table in docs/development.md; follow CONTRIBUTING.md for delivery. Read only relevant contracts and fixture metadata, not the entire release history. Use [the changelog](CHANGELOG.md#220) for changes since 2.0.0 and [the original release history](docs/releases/2.0.md) for its beta-to-RC timeline. The topic guides document current behavior. Private handbooks/captures/workspace tools stay outside this repository; no local paths are required for standalone contributions.
+The installable product lives in `custom_components/ninebot/`. Start with the [task-to-module table](docs/development.md#start-with-a-task-not-the-whole-repository) and the relevant [user contract](docs/README.md). Use [the changelog](CHANGELOG.md) for a released behavior and [the 2.0 history](docs/releases/2.0.md) for a migration decision.
 
 ## Product constraints
 
-- Runtime assets belong inside `custom_components/ninebot`; docs/tests/scripts are development-only.
-- Keep the validated exact ninecli pin and minimum HA unless an explicitly reviewed change justifies migration.
-- Preserve managed authenticated loopback, password HTTP body, ConfigEntry isolation, typed errors, ownership checks, bounded raw cache, per-group demand/freshness/backoff and control readback.
-- Preserve meaningful unique IDs, user names and Recorder history. Do not revive b24 retired SOC estimates or duplicate range/raw entities. Standard entities follow feature options; debug-only diagnostics follow debug mode. Preserve user-disabled and hidden choices.
-- `ec` Wh and `charging_power` W are maintainer-confirmed. `used_electricity`, point speed/distance units, CRS and unknown enums remain unverified. Server max speed and distance/duration average are distinct.
-- Large raw/history/GPS data stays out of entity attributes/Recorder; diagnostics use safe reviewed schema, never secrets/location/trails/arbitrary raw keys.
-- No production HA writes, registry deletion, DB writes or automatic restart/deployment. No fresh cloud/SMS/control tests without a current explicit request. Existing authorization evidence does not authorize unrelated new controls.
-- References without a clear license are behavior/schema evidence; do not copy or mechanically translate their implementation.
+| Area | Preserve |
+|---|---|
+| Accounts and acquisition | Managed authenticated loopback, login body handling, validated dependency pin, ownership, typed errors, per-group freshness, bounded reads, backoff and control readback. |
+| Entity identity | Registry identity, user naming/visibility choices, Recorder continuity and feature options. Preserve the distinction between source range fields and retired SOC estimates. |
+| Historical records | Account isolation, ride identity, verified month checkpoints, best available geometry and source precision. Track points and raw payloads stay outside Recorder. |
+| Assistant | Native HA user Context, account consent, vehicle selection and current ownership at return time. Treat retrieved content as data. Model choice belongs to the host. |
+| Maps | Use one map, the authorized local archive and a shared selection. Preserve gaps, endpoint-only geometry, keyboard access and light/dark themes. |
+| Field semantics | Energy `ec` is Wh, `charging_power` is W. Track coordinate system, point units and unknown enum values require evidence. Keep trip maximum and distance/duration average separate. |
 
 ## Delivery
 
-Normal tasks start from `dev` and target `dev`; `main` is the stable promotion/fix line. Read the manifest and published release for the current version. Account history and optional Assistant tools ship together in 2.2. The bundled map and card UI stays early alpha. A version change must keep bundled help applicable to the actual manifest and preserve its fixed source references. Read CONTRIBUTING's branch roles before opening a PR. Keep one bounded task per short-lived topic; long-lived dev/main synchronize with normal merges, not squash. Never merge next-cycle development to fix a stable bug. Retire only authorized, integrated, recoverable topic branches/worktrees; keep main/dev and all published tags. Release requests use the read-only preflight in docs/development.md; it does not publish or prove runtime testing.
+Branch from `dev` for ordinary changes. Keep user changes and public tags intact. Stable promotions and isolated fixes target `main`. One integrator owns common contracts, versioning and publication. Parallel work uses explicitly assigned owners and independent worktrees. [Contributor workflow](CONTRIBUTING.md)
 
-Keep changes independently reviewable; preserve branches, user changes and identity. Update public docs/translations when behavior changes. Docs use `python3 scripts/check_docs.py`; runtime changes need related offline tests, broader checks only at major boundaries/justified risks. Record actual checks/skips; do not claim physical effects. Parallel work requires explicit authorization, separate branch/worktree and fixed owner/scope/base; one integrator owns shared contracts, manifest/version, translations, docs navigation and releases. No force push/destructive reset, private-data publication or empty documentation prereleases.
+Run the check that exercises the change through its normal entry point. Use synthetic fixtures for permissions, map behavior, archive recovery and model tests. Keep private captures and workspace paths out of the product. Any live vehicle operation requires its own current authorization.
+
+Public code, tests, translations and shipped help must agree on names, units and behavior. Pin revised help to a retrievable guide revision. Runtime files must install from the release ZIP alone. Review references with unclear licenses as evidence. [Validation and release guide](docs/development.md)

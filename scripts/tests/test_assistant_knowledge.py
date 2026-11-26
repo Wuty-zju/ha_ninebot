@@ -69,8 +69,8 @@ class KnowledgeTests(unittest.TestCase):
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
         self.assertEqual(len(catalog["entries"]), 21)
-        self.assertEqual(catalog["corpus_version"], "1.2.13")
-        self.assertEqual(catalog["source_version"], "2.2.6")
+        self.assertEqual(catalog["corpus_version"], "1.2.14")
+        self.assertEqual(catalog["source_version"], "2.2.8")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -96,6 +96,13 @@ class KnowledgeTests(unittest.TestCase):
             match = k.search_help(query, language, "2.2.7")["matches"][0]
             self.assertEqual(match["source_id"], "ride_map_replay")
             self.assertIn("#replay-saved-routes", match["citation"])
+            self.assertIn("preview pace" if language == "en" else "预览节奏", match["text"])
+
+    def test_replay_and_live_location_do_not_add_an_unrequested_permission_checklist(self):
+        matches = k.search_help("仪表盘回放的标记是实时位置吗？按什么推进？", "zh-Hans", "2.2.8")[
+            "matches"
+        ]
+        self.assertEqual([match["source_id"] for match in matches], ["ride_map_replay"])
 
     def test_archive_count_help_is_cited_and_versioned(self):
         for language, query in (

@@ -2,6 +2,17 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
+This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/migration.md).
+
+
+## Move between 2.2 releases
+
+Use the existing account entry when installing a preview or returning to the stable release. The 2.2.8 map and Assistant changes use the existing archive format and vehicle IDs. Saved dashboards continue to use the same card type and resource URL.
+
+1. Make an HA backup. Export the account archive separately if you also need a portable copy.
+2. Install the intended packaged version and follow HA’s restart prompt. Check the running integration version on the device page.
+3. For a card update, refresh the dashboard browser. Check that one saved ride opens. For Assistant, check one authorized vehicle and confirm the chosen read tool collection.
+4. When switching back to a version with an older storage schema, restore the matching backup. [Archive recovery](history.md#verification-and-recovery)
 
 ## Upgrade to 2.2.0
 

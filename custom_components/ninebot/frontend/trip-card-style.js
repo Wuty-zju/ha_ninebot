@@ -71,14 +71,19 @@ ha-icon { --mdc-icon-size: 20px; vertical-align: middle; }
 .focus-track[aria-pressed=true] { font-weight: 650; }
 .chip-text small { display: block; color: var(--replay-muted); font-weight: 400; }
 .swatch {
-  flex: none; width: 9px; height: 9px; border-radius: 50%;
-  background: var(--route-color, var(--replay-accent));
+  flex: none; display: grid; place-items: center; font: 650 12px/1 system-ui;
+  width: 24px; height: 24px; border: 3px solid var(--route-color); border-radius: 50%;
+  color: var(--primary-text-color, CanvasText); background: var(--replay-card);
 }
 .remove-track { padding: 0; font-size: 19px; color: var(--replay-muted); }
 .metrics {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   border-radius: 14px; background: var(--replay-surface); margin-block: 12px;
 }
+.selection-totals { border-block-start: 1px solid var(--replay-line); }
+.selection-totals summary { padding-block: 12px; cursor: pointer; font: inherit; font-weight: 550; }
+.selection-totals summary:focus-visible { outline: 2px solid var(--replay-accent); outline-offset: -2px; }
+.selection-totals .metrics { margin-block-start: 0; }
 .metrics > div { min-width: 0; padding: 10px 11px; }
 .metrics > div + div { border-inline-start: 1px solid var(--replay-line); }
 .metrics dt { color: var(--replay-muted); font-size: 12px; overflow-wrap: anywhere; }

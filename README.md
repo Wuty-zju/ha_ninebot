@@ -2,33 +2,34 @@
 
 # Ninebot for Home Assistant
 
-**Vehicle telemetry, ride history and local queries for your Ninebot vehicles.**
+**Vehicle telemetry, local ride history and Home Assistant automations.**
 
 English · [简体中文](README_zh.md)
 
 <!-- ha-marketplace:exclude-start -->
-[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%2Flatest&query=%24.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases/latest) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Package downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Package%20downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
+[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot%2Freleases%2Flatest&query=%24.tag_name&label=release&color=0ea5e9)](https://github.com/Wuty-zju/ha_ninebot/releases/latest) [![Checks](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml/badge.svg?branch=main)](https://github.com/Wuty-zju/ha_ninebot/actions/workflows/checks.yaml) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FWuty-zju%2Fha_ninebot&query=%24.stargazers_count&label=Stars&color=f5b301)](https://github.com/Wuty-zju/ha_ninebot/stargazers) [![Downloads](https://img.shields.io/github/downloads/Wuty-zju/ha_ninebot/ninebot.zip?label=Downloads&displayAssetName=false&color=22c55e)](https://github.com/Wuty-zju/ha_ninebot/releases)
 <!-- ha-marketplace:exclude-end -->
 
-[Installation](#installation) · [Ride history](#ride-history-and-track-synchronization) · [Ninebot Assistant](#ninebot-assistant) · [Architecture](#how-it-works) · [Documentation](docs/README.md)
+[Install](#installation) · [Ride history](#ride-history-and-track-synchronization) · [Assistant](#ninebot-assistant) · [Guides](docs/README.md)
 
 </div>
 
-Connect an account to see battery charge, range, location and vehicle state in Home Assistant. Save rides and detailed routes to a private local archive, then use calendars, statistics or automations to explore them. Ninebot Assistant can query the same records through your chosen AI host.
+Bring a Ninebot vehicle into Home Assistant for battery and range readings, vehicle controls, ride statistics and a private route archive. Each account has its own vehicles, update schedule and SQLite database. Your dashboard, automations and optional Assistant can read the same saved rides.
 
-**[Stable release · v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0)** brings the improvements from the 2.0 maintenance and 2.1 preview series into one release. Existing accounts keep their settings, entity identities and ride archives. [Changes since 2.0.0](CHANGELOG.md#220) · [Upgrade guide](docs/migration.md)
+Install the [stable release](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. The [2.2.8 preview](CHANGELOG.md#228) adds direct route selection on the map, totals for a selection and focused Assistant status readings. [All releases](https://github.com/Wuty-zju/ha_ninebot/releases)
 
 ## What you can do
 
-| In Home Assistant | Information and actions |
+| Open | What you can do |
 |---|---|
-| **Vehicle device page** | Main and communication battery charge, measured voltage, temperature, supported cycle data and charging power. Precise, estimated and AI range follow separate source fields. |
-| **Map and controls** | Show the vehicle's reported location. Lock or unlock a supported vehicle, release the seat latch or ring the bell. A fresh observation confirms a state change. |
-| **Ride summaries** | View day and month totals and the latest ride. Compare the reported maximum speed with the average calculated from distance and elapsed time. |
-| **Local history** | Browse saved rides, calendar entries and route details. Import daily or monthly aggregates into Home Assistant's long-term statistics. |
-| **Automations and Assist** | React to trip or vehicle events, query structured Action responses, or ask a compatible Assistant host about a vehicle you have selected. |
+| Vehicle device page | Check main and communication battery charge, range, BMS readings and the last confirmed lock state. Available measurements depend on the vehicle. |
+| Map and automations | Find the latest reported location, react to vehicle and ride events, and operate supported controls with state readback. |
+| Ride archive | Look up yesterday’s rides, compare a month’s energy usage or recover a saved route. Keep data when removing and adding the same account. |
+| Ride history card · early alpha | Filter by vehicle and date. Compare up to five routes on one map and replay recorded samples. |
+| Ninebot Assistant · opt-in | Ask how far a vehicle travelled or why its history is incomplete. Read the value, its observation time, coverage and the supporting local record or public guide. |
 
-Vehicles report different measurements. A missing reading stays unknown, and a reported zero keeps its own meaning. The [entity guide](docs/guide.md#entities-and-data) covers battery support, units and availability.
+<a id="installation-and-account"></a>
+<a id="upgrade-and-development"></a>
 
 ## Installation
 
@@ -36,7 +37,7 @@ Vehicles report different measurements. A missing reading stays unknown, and a r
 
 Home Assistant **2026.1.0 or newer**, a supported 64-bit runtime, and an account with vehicles visible in the Ninebot app. Authentication and live data require internet access. Saved rides can be read locally. The optional native Assistant tools require a compatible HA API and host. [Platform and account requirements](docs/guide.md#requirements)
 
-Sign-in and vehicle discovery are verified with the mainland China Ninebot app service. Availability in other service regions is unverified.
+Service-region and platform coverage are listed in the user guide.
 
 <!-- ha-marketplace:exclude-start -->
 <a id="marketplace--home-assistant-202611"></a>
@@ -71,151 +72,97 @@ Back up the Home Assistant configuration and private storage first. The 2.0 refa
 
 ## Add your accounts
 
-Sign in with the account and password used in the Ninebot app. Each account gets its own integration entry, session and archive. Open **Configure** after sign-in to choose what runs for that account.
+Use **Settings → Devices & services → Add integration → Ninebot**. Sign in, then open **Configure** for the account. The Balanced preset, location and eligible vehicle controls are enabled on a new account. A vehicle must also be selected before control is available.
 
-### Choose what runs
+Enable the calendar and background history scan/detail acquisition when you want them. Enter rated battery values only if you know them. Account removal retains the local database by default. [All defaults and options](docs/guide.md#options)
 
-| Option on a new account | Default |
+<a id="your-ride-history-on-a-map"></a>
+
+<a id="history-events-and-controls"></a>
+<a id="history-is-acquired-once-then-reused-locally"></a>
+<a id="history-progress-and-local-rate-limiting"></a>
+<a id="how-synchronization-progresses"></a>
+<a id="live-state-and-history-have-separate-lifecycles"></a>
+<a id="recent-ride-follow-up"></a>
+<a id="reusing-verified-history-months"></a>
+<a id="what-is-saved"></a>
+
+## Ride history and track synchronization
+
+A ride’s summary and its best known geometry are saved separately. A later correction can update the distance without replacing a detailed route with an endpoint pair. Verified month pages, shared account budgets and durable checkpoints let an interrupted scan pick up where it stopped. Browsing recorded rides reads the local archive.
+
+| To see | Use |
 |---|---|
-| Update speed | **Balanced**, with separate schedules for each vehicle and data group |
-| Location, vehicle controls, vehicle/trip events (Beta) | **On**. Controls initially select vehicles verified during sign-in |
-| Retain the local ride database on account removal (Beta) | **On** |
-| Ride calendar, automatic history scan and detail synchronization (Beta) | **Off** |
-| Ninebot Assistant and Assistant history tasks (Beta) | **Off**, with separate account consent and vehicle selection |
-| Diagnostic entities | **Off** |
+| Today, yesterday, this month and the last ride | Native sensors. Use the optional calendar for dated entries and Statistics cards for imported aggregates. |
+| Cross-month history for one or more vehicles | The dashboard ride library and its vehicle/date filters. Add rides with **+**, then choose the active vehicle and route from the map or its list. |
+| A replay or a route comparison | **Play** or drag the sample slider. In 2.2.8, numbered map markers switch rides and **Selected rides total** combines the selected distance, duration and energy. |
+| Detailed records for an automation | Use `ninebot.get_recorded_trips` and `ninebot.get_trip_detail` with the device and saved ride identity. |
 
-Explicit choices survive updates. Battery specifications can be left blank. [Polling profiles, options and limits](docs/guide.md#options)
+A sampled route plays in saved point order. Older server details may contain only the start and end. Those points remain separate on the map. [Add the card, query history and interpret coverage](docs/history.md)
 
 <a id="optional-assistant--21-preview"></a>
 
 ## Ninebot Assistant
 
-Enable Assistant for an account, select its vehicles and choose the **Ninebot** API in a compatible native Conversation or MCP host. You can ask “How far did I ride yesterday?” or “Why is detail synchronization waiting?” The eight read tools use local observations, archive statistics and versioned public help. Your host selects the model.
-
-For automations, `ninebot.ask` can use an existing Home Assistant AI Task. Display its optional `answer.text` for a cited help excerpt or a measured result with coverage. Read `results` for the underlying tool responses. An external host controls its own wording.
-
-A separate **Ninebot tasks** option lets a client prepare a request to fill missing details. An administrator reviews the selected scope and cloud-request allowance before the history scheduler can run it. [Assistant setup, examples and privacy](docs/assistant.md)
-
-<a id="your-ride-history-on-a-map"></a>
-
-## Ride history and track synchronization
-
-### What is saved
-
-The archive retains ride identity, timestamps, distance, duration, energy and supported speed readings. Detailed responses can include GPS points and sample curves. Summary values and the best available track are stored separately, so a corrected distance can coexist with an earlier, more detailed route.
-
-### How synchronization progresses
-
-Turn on **Automatically scan trip history** and **Automatically sync trip details** in account options for background acquisition. Discovery verifies month pages and ride identities. Incremental work fetches missing or due details, records a checkpoint and shares an account budget with month requests. Local verification, browsing and calendar views use the saved records.
-
-The default budget is **60 logical requests per account per hour**. The storage allowance starts at **100 MiB per account**. Reaching it pauses writes while saved data remains readable. Open the device diagnostics to compare discovered months, saved details and outstanding gaps. [Synchronization, coverage and recovery](docs/history.md)
-
-### Use the recorded information
-
-| Goal | Entry point |
-|---|---|
-| Replay saved routes with a shared map and timeline | [History map card](docs/history.md#add-the-history-map) |
-| Query saved rides and coordinates from an automation | `ninebot.get_recorded_trips` and `ninebot.get_trip_detail` in local mode |
-| Calculate period totals | `ninebot.get_statistics` |
-| Chart daily or monthly aggregates | `ninebot.import_statistics` and a native statistics chart |
-| Browse by date or react to a new ride | Vehicle ride calendar or vehicle trip Event entity |
-| Resume background acquisition | History synchronization controls or `ninebot.sync_history` |
-
-Route lists are paginated and track points are read in chunks. The bundled map and custom cards remain **early alpha**. [Historical Action examples and map setup](docs/history.md)
-
-<a id="whats-new-in-20"></a>
-
-## What changed in 2.2
-
-| Since the previous stable cycle | What carries forward |
-|---|---|
-| **Installation and support** | Packaged installation, Marketplace metadata and brand assets, reviewed diagnostics and sign-in troubleshooting. |
-| **Local archive** | More precise coverage reporting, less repeated work after interrupted discovery, and recovery of better tracks when the same ride is indexed in two months. |
-| **Vehicle control feedback** | Model-aware command routing, separate command and observation results, and preservation of the last completed readback at the confirmation deadline. |
-| **Optional Assistant** | Scoped native tools, bilingual versioned help, bounded statistics checks, human-reviewed history tasks and evidence-backed Action responses. |
-
-[All version changes](CHANGELOG.md) · [How the original 2.0 refactor evolved](docs/releases/2.0.md)
-
-## Your local ride database
-
-Each account owns one private schema 7 SQLite archive. Months, rides, memberships and compressed source records are stored together. Transactions pair a saved page with its checkpoint. During import, the archive verifies account ownership and ride identity before merging records. Two overlapping backups can preserve newer measurements and the best verified route independently.
+Enable **Ninebot Assistant** for an account and select the vehicles it may read. Choose the **Ninebot** tool collection in a compatible Assist conversation host or the native MCP Server. Automations can call `ninebot.ask` with an existing Home Assistant AI Task. The host chooses the model.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/archive-en-dark.svg">
-  <img src="docs/assets/architecture/archive-en.svg" alt="Account history survives entry removal and supports validated export, import and consolidation" width="960">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/assistant-en-dark.svg">
+  <img src="docs/assets/architecture/assistant-en.svg" alt="Assist, MCP and AI Task share the same vehicle permission check, local data readers and cited help" width="960">
 </picture>
 
-Account removal retains history by default. Signing back into the same account reconnects its archive. An administrator can export selected vehicles or accounts, import validated backups, or use Home Assistant's backup integration. Exported files may include precise routes. [Export, import and retention](docs/guide.md#export-and-import-history-databases)
+| Ask | What supplies the answer |
+|---|---|
+| “What is this vehicle’s battery charge?” | One selected cached reading, its unit and observation time. |
+| “How many rides did I take yesterday?” | The vehicle’s local business-day statistics and their coverage. |
+| “Why is my monthly total unknown?” | A fixed sequence checks the statistic, archive progress and applicable help. Unknown causes remain open. |
+| “How does map replay work?” | The versioned English or Chinese guide with a permanent source link. |
+
+Eight read tools work with cached vehicle data and local history. The separate **Ninebot tasks** collection can propose a bounded detail sync. An administrator reviews its scope and cloud budget before the existing scheduler runs it. Precise coordinates and credentials are excluded from Assistant responses. [Set up a host, view receipts and review tasks](docs/assistant.md)
+
+<a id="controls-confirm-state-through-fresh-observations"></a>
 
 ## How it works
 
-### Live state and history have separate lifecycles
-
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/overview-en-dark.svg">
-  <img src="docs/assets/architecture/overview-en.svg" alt="Account-isolated cloud adapter feeding realtime HA entities and a private history archive" width="960">
+  <img src="docs/assets/architecture/overview-en.svg" alt="One coordinator shares live reads while a separate scheduler preserves history in an account archive" width="960">
 </picture>
 
-The coordinator shares reads among entities on each vehicle. On the Balanced profile, parked status and BMS data target 60 seconds each. Charging uses 15 and 30 seconds respectively, and active ACC uses 10 and 30 seconds. Current-month trip reads ordinarily target 600 seconds while parked and 120 seconds during activity. Vehicle discovery has its own recovery schedule. [Update profiles](docs/guide.md#update-speed)
+Vehicle state, BMS data, current-month travel and vehicle discovery have separate deadlines. On Balanced, a parked vehicle targets 60 seconds for both status and battery. Charging targets 15 and 30 seconds respectively. Active ACC targets 10 and 30 seconds. A control starts a short observation window. Concurrent entities share the same results. [Update profiles](docs/guide.md#update-speed) · [Control readback](docs/architecture.md#realtime-scheduling-and-controls)
 
-### History is acquired once, then reused locally
+<a id="privacy-and-data-meaning"></a>
+<a id="privacy-and-limitations"></a>
+
+## Your local ride database
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/history-en-dark.svg">
-  <img src="docs/assets/architecture/history-en.svg" alt="Validated month pages feed incremental details and SQLite; local Actions, calendars and aggregate imports read the archive" width="960">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/archive-en-dark.svg">
+  <img src="docs/assets/architecture/archive-en.svg" alt="Account-owned SQLite, retained history and validated scoped backup transfers" width="960">
 </picture>
 
-Discovery records the source month, observation time and completeness of each page. SQLite runs on an account-owned worker. Calendars, archive Actions and Assistant use the same local data and coverage rules. Reopening an installation resumes outstanding work from committed checkpoints.
+Each account has a SQLite archive with rides, month membership, compressed source evidence and the best verified tracks. A page and its checkpoint commit together. The default budget is 60 logical history requests per account per hour, with 100 MiB of local storage. Local browsing leaves that request budget available for synchronization.
 
-### Controls confirm state through fresh observations
+Export selected vehicles or accounts, or restore the same account after reinstalling. Import verifies ownership and merges overlapping records. Archive exports and HA backups can contain precise positions. [Export and recovery](docs/guide.md#export-and-import-history-databases) · [Storage contracts](docs/architecture.md#storage-and-integrity)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/controls-en-dark.svg">
-  <img src="docs/assets/architecture/controls-en.svg" alt="Enabled, allowlisted commands are sent once, followed by bounded status checks" width="960">
-</picture>
-
-A command is sent once. Status reads then check the vehicle for up to 15 seconds. A reported seat unlock remains visible for at least five seconds. The latch reading describes the lock mechanism. The cloud can accept a command before it reports the requested state. [Controls and feedback](docs/guide.md#controls-and-confirmation)
-
-## Privacy and data meaning
-
-- Archived tracks and HA backups can contain precise locations. Location exposure and optional external basemap tiles are configurable.
-- Dedicated Assistant reads omit account credentials, raw payloads and precise GPS. The chosen host's data policy applies to the selected local information that reaches it.
-- The health score, rated battery capacity and measured voltage describe different properties. The coordinate system and some point-level units remain unverified.
-<!-- ha-marketplace:exclude-start -->
-- The README package badge sums downloads of the `ninebot.zip` assets across published releases, including updates and repeat downloads. The Marketplace uses the selected version’s package count. HACS 2.0.5 uses the first asset of that version. [Download accounting](docs/development.md#package-download-audit)
-<!-- ha-marketplace:exclude-end -->
-
-## Next steps
-
-Current maintenance focuses on reliable history acquisition, archive recovery and clear evidence for Assistant answers. Map and card interaction remains an experimental development area. [Roadmap](docs/roadmap.md)
+<a id="choose-what-runs"></a>
+<a id="current-data-and-options"></a>
+<a id="current-month-source-checks"></a>
+<a id="missing-local-detail-originals"></a>
+<a id="next-steps"></a>
+<a id="support-and-contribute"></a>
+<a id="use-the-recorded-information"></a>
+<a id="what-changed-in-22"></a>
+<a id="whats-new-in-20"></a>
 
 ## Documentation and contribution
 
-| Reader | Guide |
-|---|---|
-| Installing or configuring | [User guide](docs/guide.md) · [Migration](docs/migration.md) |
-| Working with rides or automations | [Ride history](docs/history.md) · [Ninebot Assistant](docs/assistant.md) |
-| Developing or reviewing a patch | [Architecture](docs/architecture.md) · [Development and validation](docs/development.md) · [Contributor guidelines](CONTRIBUTING.md) · [Agent instructions](AGENTS.md) |
+[Everyday guide](docs/guide.md) · [Ride archive and maps](docs/history.md) · [Assistant tools and permissions](docs/assistant.md) · [Upgrades and entity IDs](docs/migration.md)
 
-For reproducible problems, include your integration and HA versions with the relevant redacted diagnostic excerpt. [Issues](https://github.com/Wuty-zju/ha_ninebot/issues) · [Security reporting](SECURITY.md)
+For development, start with the source map and the narrowest relevant validation. The roadmap separates shipped behavior from proposals. [Architecture](docs/architecture.md) · [Development](docs/development.md) · [Contributor guide](CONTRIBUTING.md) · [Agent guide](AGENTS.md) · [Roadmap](docs/roadmap.md)
+
+The Downloads badge counts downloads of the published `ninebot.zip` assets across releases. It includes repeat downloads and updates. [Download accounting](docs/development.md#package-download-audit)
 
 ## License and acknowledgements
 
-The integration is distributed under the [MIT License](LICENSE). Ninebot and Segway names and vehicle images belong to their respective owners. This is an independently maintained project. [Dependencies and attributions](NOTICE)
-
-<details>
-<summary>Earlier README links</summary>
-
-- <a id="installation-and-account"></a>[Installation and account](docs/guide.md)
-- <a id="current-data-and-options"></a>[Current data and options](docs/guide.md)
-- <a id="history-events-and-controls"></a>[History, events and controls](docs/history.md)
-- <a id="upgrade-and-development"></a>[Upgrade and development](docs/migration.md)
-- <a id="missing-local-detail-originals"></a>[Missing local detail originals](docs/history.md)
-- <a id="recent-ride-follow-up"></a>[Recent ride follow-up](docs/history.md)
-- <a id="history-progress-and-local-rate-limiting"></a>[History progress and local rate limiting](docs/history.md)
-- <a id="reusing-verified-history-months"></a>[Reusing verified history months](docs/history.md)
-- <a id="current-month-source-checks"></a>[Current-month source checks](docs/history.md)
-- <a id="support-and-contribute"></a>[Support and contribute](#documentation-and-contribution)
-- <a id="privacy-and-limitations"></a>[Privacy and limitations](#privacy-and-data-meaning)
-
-</details>
+Independently maintained under the MIT license. Ninebot and Segway names and imagery belong to their owners. [License](LICENSE) · [Acknowledgements](NOTICE) · [Security reports](SECURITY.md)

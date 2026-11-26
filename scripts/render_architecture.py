@@ -143,6 +143,75 @@ CONTENT = {
             "实体共享查询结果；浏览已保存历史使用本地档案。",
         ),
     ),
+    "assistant": (
+        ("How Ninebot Assistant answers a question", "Ninebot Assistant 如何回答问题"),
+        (
+            "One signed-in user, an authorized vehicle and a traceable source",
+            "从当前用户与所选车辆，追溯到答案的依据",
+        ),
+        [
+            [
+                (
+                    "Assist or MCP",
+                    "Assist 或 MCP",
+                    "The host selects its model",
+                    "在宿主选择模型",
+                    "Enable the Ninebot read tools",
+                    "选择 Ninebot 只读工具集",
+                ),
+                (
+                    "An automation",
+                    "自动化",
+                    "ninebot.ask uses an existing HA AI Task",
+                    "ninebot.ask 调用现有 HA AI Task",
+                    "The Action can bind a vehicle",
+                    "Action 可预先选定车辆",
+                ),
+            ],
+            [
+                (
+                    "Home Assistant user context",
+                    "Home Assistant 用户身份",
+                    "Check administrator, account consent, vehicle selection and ownership",
+                    "核对管理员、账号授权、所选车辆及归属",
+                    "Recheck access before returning private results",
+                    "返回私有结果前再次核对权限",
+                ),
+            ],
+            [
+                (
+                    "Read vehicle data",
+                    "查询车辆数据",
+                    "Coordinator snapshots and local SQLite",
+                    "协调器快照与本地 SQLite",
+                    "Value, unit, observation time, coverage",
+                    "数值、单位、观测时间与覆盖情况",
+                ),
+                (
+                    "Retrieve a guide",
+                    "检索使用指南",
+                    "Versioned bilingual help and checklists",
+                    "按版本检索双语帮助和操作清单",
+                    "Excerpt and permanent source link",
+                    "返回原文节选和固定来源链接",
+                ),
+            ],
+            [
+                (
+                    "Use the result",
+                    "使用结果",
+                    "Assist and MCP receive structured tool data",
+                    "Assist 与 MCP 获得结构化工具结果",
+                    "The Action can also render a verified answer",
+                    "Action 还可将核验后的结果整理成答案",
+                ),
+            ],
+        ],
+        (
+            "History task approval uses a separate API and the existing scheduler.",
+            "历史补同步任务使用独立 API，经人工批准后交由现有调度器执行。",
+        ),
+    ),
     "history": (
         ("Incremental ride preservation", "行程增量保全"),
         (

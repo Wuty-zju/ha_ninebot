@@ -1,5 +1,6 @@
 export const LABELS = {
   "en": {
+    "selection_totals": "Selected rides total",
     "map_title": "Ride replay",
     "distance": "Distance",
     "duration": "Duration",
@@ -71,6 +72,7 @@ export const LABELS = {
     "previous_page": "Previous page"
   },
   "zh-Hans": {
+    "selection_totals": "所选行程合计",
     "map_title": "行程回放",
     "distance": "里程",
     "duration": "时长",
@@ -142,6 +144,7 @@ export const LABELS = {
     "previous_page": "上一页"
   },
   "zh-Hant": {
+    "selection_totals": "所選行程合計",
     "map_title": "行程回放",
     "distance": "里程",
     "duration": "時長",
@@ -213,6 +216,7 @@ export const LABELS = {
     "previous_page": "上一頁"
   },
   "de": {
+    "selection_totals": "Summe der gewählten Fahrten",
     "map_title": "Fahrtenwiedergabe",
     "distance": "Strecke",
     "duration": "Dauer",
@@ -284,6 +288,7 @@ export const LABELS = {
     "previous_page": "Vorherige Seite"
   },
   "fr": {
+    "selection_totals": "Total des trajets sélectionnés",
     "map_title": "Relecture de trajet",
     "distance": "Distance",
     "duration": "Durée",
@@ -355,6 +360,7 @@ export const LABELS = {
     "previous_page": "Page précédente"
   },
   "es": {
+    "selection_totals": "Total de los trayectos seleccionados",
     "map_title": "Reproducción de trayectos",
     "distance": "Distancia",
     "duration": "Duración",
@@ -426,6 +432,7 @@ export const LABELS = {
     "previous_page": "Página anterior"
   },
   "it": {
+    "selection_totals": "Totale dei viaggi selezionati",
     "map_title": "Riproduzione dei percorsi",
     "distance": "Distanza",
     "duration": "Durata",
@@ -497,6 +504,7 @@ export const LABELS = {
     "previous_page": "Pagina precedente"
   },
   "pt": {
+    "selection_totals": "Total das viagens selecionadas",
     "map_title": "Reprodução de trajetos",
     "distance": "Distância",
     "duration": "Duração",
@@ -568,6 +576,7 @@ export const LABELS = {
     "previous_page": "Página anterior"
   },
   "pt-BR": {
+    "selection_totals": "Total das viagens selecionadas",
     "map_title": "Reprodução de trajetos",
     "distance": "Distância",
     "duration": "Duração",
@@ -639,6 +648,7 @@ export const LABELS = {
     "previous_page": "Página anterior"
   },
   "ru": {
+    "selection_totals": "Итого по выбранным поездкам",
     "map_title": "Воспроизведение поездок",
     "distance": "Расстояние",
     "duration": "Длительность",
@@ -710,6 +720,7 @@ export const LABELS = {
     "previous_page": "Предыдущая страница"
   },
   "ja": {
+    "selection_totals": "選択した走行の合計",
     "map_title": "走行リプレイ",
     "distance": "距離",
     "duration": "走行時間",
@@ -781,6 +792,7 @@ export const LABELS = {
     "previous_page": "前のページ"
   },
   "ko": {
+    "selection_totals": "선택한 주행 합계",
     "map_title": "주행 다시 보기",
     "distance": "거리",
     "duration": "소요 시간",
@@ -852,6 +864,7 @@ export const LABELS = {
     "previous_page": "이전 페이지"
   },
   "nl": {
+    "selection_totals": "Totaal geselecteerde ritten",
     "map_title": "Ritten afspelen",
     "distance": "Afstand",
     "duration": "Duur",
@@ -923,6 +936,7 @@ export const LABELS = {
     "previous_page": "Vorige pagina"
   },
   "pl": {
+    "selection_totals": "Suma wybranych przejazdów",
     "map_title": "Odtwarzanie przejazdów",
     "distance": "Dystans",
     "duration": "Czas trwania",
@@ -994,6 +1008,7 @@ export const LABELS = {
     "previous_page": "Poprzednia strona"
   },
   "uk": {
+    "selection_totals": "Підсумок вибраних поїздок",
     "map_title": "Відтворення поїздок",
     "distance": "Відстань",
     "duration": "Тривалість",
@@ -1065,6 +1080,7 @@ export const LABELS = {
     "previous_page": "Попередня сторінка"
   },
   "tr": {
+    "selection_totals": "Seçilen yolculukların toplamı",
     "map_title": "Sürüşleri tekrar oynat",
     "distance": "Mesafe",
     "duration": "Süre",
@@ -1136,6 +1152,7 @@ export const LABELS = {
     "previous_page": "Önceki sayfa"
   },
   "hi": {
+    "selection_totals": "चुनी गई यात्राओं का कुल",
     "map_title": "यात्रा फिर से देखें",
     "distance": "दूरी",
     "duration": "अवधि",
@@ -1207,6 +1224,7 @@ export const LABELS = {
     "previous_page": "पिछला पृष्ठ"
   },
   "id": {
+    "selection_totals": "Total perjalanan terpilih",
     "map_title": "Putar ulang perjalanan",
     "distance": "Jarak",
     "duration": "Durasi",
@@ -1278,6 +1296,7 @@ export const LABELS = {
     "previous_page": "Halaman sebelumnya"
   },
   "th": {
+    "selection_totals": "ยอดรวมการเดินทางที่เลือก",
     "map_title": "เล่นเส้นทางย้อนหลัง",
     "distance": "ระยะทาง",
     "duration": "ระยะเวลา",
@@ -1349,6 +1368,7 @@ export const LABELS = {
     "previous_page": "หน้าก่อนหน้า"
   },
   "vi": {
+    "selection_totals": "Tổng các chuyến đã chọn",
     "map_title": "Phát lại chuyến đi",
     "distance": "Quãng đường",
     "duration": "Thời lượng",
@@ -1420,6 +1440,7 @@ export const LABELS = {
     "previous_page": "Trang trước"
   },
   "ar": {
+    "selection_totals": "إجمالي الرحلات المحددة",
     "map_title": "إعادة عرض الرحلات",
     "distance": "المسافة",
     "duration": "المدة",
