@@ -22,6 +22,20 @@ METRIC_UNITS = {
     "energy_wh": "Wh",
     "energy_intensity_wh_per_km": "Wh/km",
 }
+# Label, native unit and observation group for a single cached reading.
+STATUS_READINGS = {
+    "battery_soc_percent": ("Main battery charge", "%", "status"),
+    "charging": ("Charging", None, "status"),
+    "powered": ("Power on", None, "status"),
+    "vehicle_locked": ("Vehicle locked", None, "status"),
+    "seat_locked": ("Seat latch locked", None, "status"),
+    "acc_active": ("Accessory power on", None, "status"),
+    "precise_range_km": ("Precise range", "km", "status"),
+    "estimated_range_km": ("Estimated range", "km", "status"),
+    "ai_range_km": ("AI estimated range", "km", "status"),
+    "emergency_soc_percent": ("Communication battery charge", "%", "battery"),
+    "charging_power_w": ("Charging power", "W", "battery"),
+}
 RIDE_UNITS = {
     "distance_m": "m",
     "duration_s": "s",
@@ -124,6 +138,8 @@ def status_view(
     snapshot: VehicleSnapshot,
     fresh: dict[str, bool],
     failures: dict[str, Any] | None = None,
+    *,
+    metric: str | None = None,
 ) -> AssistantView:
     status, battery = snapshot.status, snapshot.battery
     seat = boolean(status.observations.get("seat_lock_raw"))
@@ -137,9 +153,11 @@ def status_view(
         "precise_range_km": numeric(status.range_precise),
         "estimated_range_km": numeric(status.range_estimated),
         "ai_range_km": numeric(status.range_ai),
+        "emergency_soc_percent": numeric(battery.emergency_soc),
+        "charging_power_w": numeric(battery.charging_power_raw),
     }
     groups = {}
-    for group in ("profile", "status", "battery"):
+    for group in fresh:
         stamp = getattr(snapshot, f"{group}_freshness")
         groups[group] = {
             "status": "available" if fresh[group] else "stale" if stamp.succeeded_at else "missing",
@@ -148,35 +166,29 @@ def status_view(
             "error_kind": stamp.error.value if stamp.error else None,
             "failure_context": query_failure_view(failures.get(group)) if failures else None,
         }
+    readings = values if metric is None else {metric: values[metric]}
     metrics = {
-        key: {"status": "missing" if value is None else groups["status"]["status"]}
-        for key, value in values.items()
+        key: {"status": "missing" if value is None else groups[STATUS_READINGS[key][2]]["status"]}
+        for key, value in readings.items()
     }
-    metrics.update(
-        {
-            name: {"status": "missing" if value is None else groups["battery"]["status"]}
-            for name, value in (
-                ("emergency_soc_percent", numeric(battery.emergency_soc)),
-                ("charging_power_w", numeric(battery.charging_power_raw)),
-            )
-        }
-    )
+    if metric is not None:
+        return AssistantView(
+            data={**readings, "units": {metric: STATUS_READINGS[metric][1]}},
+            quality={"groups": groups, "metrics": metrics},
+            evidence={"source_kind": "runtime_snapshot"},
+            warnings=["cached_values_are_not_a_cloud_refresh"]
+            + (["acc_does_not_prove_motion"] if metric == "acc_active" else [])
+            + (["seat_state_is_latch_only"] if metric == "seat_locked" else []),
+        )
     return AssistantView(
         data={
             **values,
             "units": {
-                "battery_soc_percent": "%",
-                "precise_range_km": "km",
-                "estimated_range_km": "km",
-                "ai_range_km": "km",
-                "emergency_soc_percent": "%",
-                "charging_power_w": "W",
+                **{key: unit for key, (_, unit, _) in STATUS_READINGS.items() if unit},
                 "voltage_v": "V",
                 "temperature_c": "°C",
                 "cycles": None,
             },
-            "emergency_soc_percent": numeric(battery.emergency_soc),
-            "charging_power_w": numeric(battery.charging_power_raw),
             "cached_pack_count": len(battery.batteries),
             "packs": [
                 {

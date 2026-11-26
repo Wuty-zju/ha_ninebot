@@ -82,6 +82,14 @@ Daily statistics can repair a capped current-month ride index even with historic
 
 ## Dashboard organization
 
+| Purpose | HA view | Data source |
+|---|---|---|
+| Find a vehicle now | A Map card with its device tracker | Latest allowed vehicle coordinates |
+| Compare saved rides | Ninebot ride history card with one or more device IDs | Private archive, route selection and sample replay |
+| Follow longer trends | Statistics graph or calendar | Imported daily/monthly aggregates or dated trips |
+
+Turn on **Show vehicle location** for maps. The archive card can target a device directly while its calendar is disabled. [Card setup](history.md#add-the-history-map)
+
 Create a **Sections** dashboard view and group entities by purpose. Numeric entities retain their sensor type and statistics. On HA 2026.11+, **Automatic section → Device / Entities** can generate a section for a vehicle or a selected set of entities; earlier versions can use manual sections and native cards.
 
 | Section | Suggested content | Native presentation |

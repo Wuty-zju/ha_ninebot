@@ -159,6 +159,15 @@ class EvidenceTurn:
         if not has_evidence and any(row["error"] for row in self.results):
             response["outcome"] = "failed"
         if (
+            self.selected is None
+            and len(self.scopes) > 1
+            and (
+                self.stop == "vehicle_selection_required"
+                or (response["outcome"] == "needs_input" and self.results)
+            )
+        ):
+            response["next_step"] = {"type": "select_vehicle", "parameter": "device_id"}
+        if (
             len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
             > MAX_RESPONSE_BYTES
         ):

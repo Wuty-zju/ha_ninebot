@@ -1,6 +1,12 @@
 # Changelog
 
-Entries describe each version at release time. See the [current guides](docs/README.md) for supported behavior and defaults.
+Select a tag for changes shipped in that version. The [2.0 development history](docs/releases/2.0.md) covers the archive and entity refactor. [2.2.0](#220) brings the Assistant and the maintained vehicle integration into the stable release line. For installation and current defaults, use the [guides](docs/README.md).
+
+## 2.2.8
+
+- Select a compared ride from its numbered map marker or matching route chip. Switching a previously loaded route updates the playback and summary in place. The comparison shows distance, duration and energy totals independently, retaining unknowns when some rides lack a reading.
+- Read a single cached vehicle metric through the native Ninebot tools. The AI Task Action can return that reading with its unit, observation group, time and freshness. An ambiguous multi-vehicle request can explicitly ask for a vehicle selection.
+- Refresh the English and Chinese user guides and add an Assistant architecture diagram. Cited replay help explains the difference between the sample cursor and the latest device-tracker position.
 
 ## 2.2.7
 

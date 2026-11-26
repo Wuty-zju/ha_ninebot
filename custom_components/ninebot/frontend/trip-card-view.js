@@ -3,7 +3,7 @@ import { formatEntityLabel, formatRideDuration, formatRideInterval } from './tri
 import { digits } from './trip-browser.js';
 import { hasEndpoints, trackKey } from './local-tracks.js';
 import { ROUTE_COLORS } from './route-map.js';
-import { MAX_SELECTED_ROUTES } from './history-selection.js';
+import { MAX_SELECTED_ROUTES, selectionTotals } from './history-selection.js';
 import { HISTORY_STYLE } from './trip-card-style.js';
 
 function element(tag, className = '', text = '') {
@@ -35,6 +35,22 @@ function iconButton(icon, glyph, action, control, className) {
   return node;
 }
 
+function metricStrip() {
+  const node = element('dl', 'metrics');
+  const readouts = ['distance', 'duration', 'energy'].map(key => {
+    const cell = element('div'), caption = element('dt'), value = element('dd');
+    cell.append(caption, value);
+    node.append(cell);
+    return { key, caption, value };
+  });
+  return { node, update(labels, values) {
+    readouts.forEach(({ key, caption, value }, index) => {
+      caption.textContent = labels[key];
+      value.textContent = values[index] ?? '—';
+    });
+  } };
+}
+
 export class TripCardView {
   constructor(card) {
     this.card = card;
@@ -60,14 +76,10 @@ export class TripCardView {
     const chosen = element('h3', 'route-title');
     const interval = element('p', 'interval');
     const compare = element('div', 'compare-list');
-    const metrics = element('dl', 'metrics');
-    const readouts = ['distance', 'duration', 'energy'].map(key => {
-      const metric = element('div');
-      const caption = element('dt'), value = element('dd');
-      metric.append(caption, value);
-      metrics.append(metric);
-      return { key, caption, value };
-    });
+    const metrics = metricStrip(), totals = metricStrip();
+    const selection = element('details', 'selection-totals');
+    const selectionLabel = element('summary');
+    selection.append(selectionLabel, totals.node);
     const transport = element('div', 'transport glass');
     const play = iconButton('mdi:play', '▶', () => card.playOrPause(), 'play', 'play');
     const slider = element('input'), position = element('span', 'position');
@@ -89,7 +101,7 @@ export class TripCardView {
     const quality = element('p', 'route-note');
     const more = element('div', 'route-more');
     mapFrame.append(transport);
-    playback.append(chosen, interval, compare, metrics, quality, more);
+    playback.append(chosen, interval, compare, metrics.node, selection, quality, more);
     player.append(mapFrame, playback);
 
     const library = element('section', 'library');
@@ -107,7 +119,7 @@ export class TripCardView {
     workspace.append(player, library);
     shell.append(header, workspace);
     card.shadowRoot.append(element('style', '', HISTORY_STYLE), shell);
-    this.ui = { title, messages, placeholder, mapTools, fit, follow, playback, chosen, interval, compare, readouts,
+    this.ui = { title, messages, placeholder, mapTools, fit, follow, playback, chosen, interval, compare, metrics, totals, selection, selectionLabel,
       transport, play, slider, position, restart, quality, more, heading, coverage, filterText, dates,
       toolbar, items, pager };
   }
@@ -309,11 +321,17 @@ export class TripCardView {
     ui.chosen.textContent = ride?.vehicle_label ?? '';
     ui.interval.textContent = ride ?
       formatRideInterval(ride.start_time, ride.end_time, this.language, this.timeZone) : '';
-    const values = ride ? this.readings(track?.summary ?? ride) : [];
-    ui.readouts.forEach(({ key, caption, value }, index) => {
-      caption.textContent = labels[key];
-      value.textContent = values[index] ?? '—';
-    });
+    ui.metrics.update(labels, ride ? this.readings(track?.summary ?? ride) : []);
+    const rides = [...card.selection.selected.values()];
+    ui.selection.hidden = rides.length < 2;
+    ui.selectionLabel.textContent = `${labels.selection_totals} (${rides.length})`;
+    if (ui.selection.hidden) ui.selection.open = false;
+    else ui.totals.update(labels, this.readings(selectionTotals(rides)));
+    const routeTitle = key => {
+      const selected = card.selection.selected.get(key);
+      return [card.selection.slots.get(key) + 1, selected.vehicle_label,
+        this.timestamp(selected.start_time)].filter(Boolean).join(' · ');
+    };
     ui.compare.setAttribute('role', 'group');
     ui.compare.setAttribute('aria-label', labels.map);
     ui.compare.replaceChildren(...[...card.selection.selected].map(([key, selected]) => {
@@ -323,8 +341,8 @@ export class TripCardView {
       const focus = button('', () => card.activate(key), `focus:${key}`, 'focus-track');
       const text = element('span', 'chip-text', selected.vehicle_label);
       if (time) text.append(element('small', '', time));
-      focus.append(element('span', 'swatch'), text);
-      nameControl(focus, [selected.vehicle_label, time].filter(Boolean).join(' · '));
+      focus.append(element('span', 'swatch', String(card.selection.slots.get(key) + 1)), text);
+      nameControl(focus, routeTitle(key));
       focus.setAttribute('aria-pressed', String(key === card.selection.primary));
       const remove = button('×', () => card.removeRide(key), `remove:${key}`, 'remove-track');
       nameControl(remove, `${labels.remove_track} · ${focus.title}`);
@@ -357,7 +375,7 @@ export class TripCardView {
     const rendered = visible ? tracks : [];
     const slots = rendered.map(item => card.selection.slots.get(item.key));
     const notesText = ui.quality.textContent;
-    void card.routeMap.update(rendered, card.browser.hass, labels, slots).then(() => {
+    void card.routeMap.update(rendered, card.browser.hass, labels, slots, rendered.map(item => routeTitle(item.key))).then(() => {
       this.updatePlayback();
       if (visible && card.routeMap.renderer?.simplified && ui.quality.textContent === notesText && !track?.capped) {
         ui.quality.textContent = `${notesText} · ${labels.display_limit}`;

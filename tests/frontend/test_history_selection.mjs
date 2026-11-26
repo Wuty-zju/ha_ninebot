@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { HistorySelection } from '../../custom_components/ninebot/frontend/history-selection.js';
+import { HistorySelection, selectionTotals } from '../../custom_components/ninebot/frontend/history-selection.js';
 import { trackKey } from '../../custom_components/ninebot/frontend/local-tracks.js';
 
 const ride = device_id => ({ device_id, ride_id: 'shared-id', query_month: '202610',
@@ -54,4 +54,13 @@ test('removing a ride or leaving a scope drops its private selection', () => {
   session.clear();
   assert.equal(session.selected.size, 0);
   assert.equal(session.primary, null);
+});
+
+test('selection totals keep exact seconds, reported zero and incomplete metrics distinct', () => {
+  const first = { distance_m: 0, duration_s: 61, energy_wh: 0, precision: { mileages: 1, ec: 0 } };
+  const second = { distance_m: 1250, duration_h: .25, energy_wh: null, precision: { mileages: 2, ec: 1 } };
+  assert.deepEqual(selectionTotals([first, second]), { distance_m: 1250, duration_s: 961, energy_wh: null,
+    precision: { mileages: 2, ec: 1 } });
+  assert.equal(selectionTotals([first]).energy_wh, 0);
+  assert.equal(selectionTotals([]).distance_m, null);
 });

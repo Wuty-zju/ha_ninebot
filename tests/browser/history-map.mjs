@@ -59,7 +59,12 @@ try {
     window.savedRenderer = renderer;
     window.savedLayers = renderer.routes.getLayers();
   });
-  await page.locator('.compare-list button').filter({ hasText: 'Synthetic A' }).click();
+  const totals = page.locator('.selection-totals');
+  await totals.locator('summary').click();
+  assert.equal(await totals.locator('dd').count(), 3);
+  const routePin = page.locator('.ninebot-route-pin').first();
+  await routePin.press('Enter');
+  assert.equal(await page.evaluate(() => fixtureCard.activeTrack.label), 'Synthetic A');
   assert.deepEqual(await page.evaluate(() => {
     const map = fixtureCard.routeMap.renderer.map;
     return [map.getCenter().lat, map.getCenter().lng, map.getZoom()];
@@ -227,9 +232,18 @@ try {
   await page.getByRole('button', { name: '显示全部轨迹', exact: true }).click();
   assert.equal(await follow.getAttribute('aria-pressed'), 'false');
   assert.equal(await page.evaluate(() => fixtureRequests.length), historyReads);
-  await page.locator('.ride .choose').last().click();
+  await page.locator('.ride .overlay').last().click();
   await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.activeTrack?.label === 'Synthetic B');
+  const beforeFocus = await page.evaluate(() => fixtureRequests.length);
+  const pin = await native.evaluate(map => {
+    const marker = map.editableLocations.find(item => item.activatable);
+    map.dispatchEvent(new CustomEvent('editable-location-clicked', { detail: { id: marker.id } }));
+    return marker.title;
+  });
+  assert.ok(pin.includes('Synthetic A'));
+  assert.equal(await page.evaluate(() => fixtureCard.activeTrack?.label), 'Synthetic A');
   assert.equal(await native.evaluate(map => map === savedNativeMap), true);
+  assert.equal(await page.evaluate(() => fixtureRequests.length), beforeFocus);
   await page.evaluate(() => {
     window.fixtureDeny = true;
     fixtureCard.hass = { ...fixtureHass, user: { id: 'another-synthetic-reader' } };

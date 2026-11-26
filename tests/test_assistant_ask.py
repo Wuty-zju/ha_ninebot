@@ -153,6 +153,7 @@ async def test_provider_formatting_cannot_mutate_business_or_recorded_evidence(h
 
 async def test_multi_vehicle_requires_selection_before_read(turn):
     turn.selected = None
+    turn.scopes["second"] = turn.scopes["selected"]
     base = SimpleNamespace(async_call=AsyncMock())
     with patch.object(ask.EvidenceTurn, "async_validate", new=AsyncMock()):
         with pytest.raises(ask.TurnStopped):
@@ -163,6 +164,7 @@ async def test_multi_vehicle_requires_selection_before_read(turn):
             )
     base.async_call.assert_not_awaited()
     assert turn.stop == "vehicle_selection_required"
+    assert turn.response()["next_step"] == {"type": "select_vehicle", "parameter": "device_id"}
 
 
 async def test_wrong_vehicle_and_context_never_dispatch(turn):

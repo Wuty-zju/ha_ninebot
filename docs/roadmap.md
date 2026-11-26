@@ -38,15 +38,16 @@ The product uses the model configured in a compatible HA conversation agent or M
 
 ## Early alpha: visualization and cards
 
-Map visualization, UI interactions and custom cards are **early alpha**. Next work centers on a shared vehicle/date/ride selection, linked map/list/summary/chart views and clearer synchronization feedback. The interaction model may change as these workflows mature.
+The 2.2.8 preview has one Home Assistant map, up to five selected routes, numbered focus markers, sample playback and per-selection summaries. The same archive powers all views. Better source timestamps or verified point units would be needed for clock-accurate replay or a calibrated speed legend. [Ride guide](history.md#replay-saved-routes)
 
-地图可视化、UI 交互和自定义卡片为**早期 alpha**。后续围绕共享车辆／日期／行程选择、地图／列表／摘要／图表联动及同步反馈完善交互，界面结构会随之调整。
+2.2.8 预览版在一张 HA 地图中完成跨车选程、点位回放及所选合计。后续优先验证真实 HA 地图在手机、键盘及高对比度模式的交互。按真实时钟回放、按实测速度着色仍需可信的逐点时间与单位。[中文行程指南](history_zh.md#重放已保存的轨迹)
 
 ## Next candidates
 
 | Direction | Value | Gate |
 |---|---|---|
-| More intuitive history workspace | Clearer coverage/sync feedback; optional linked map/list/summary/chart cards | Shared selection and permissions without duplicate cloud reads or private-cache leaks. |
+| Map accessibility and coverage | Overlapping routes, narrow layouts and endpoint-only rides remain understandable. | Verify the same selected ride, map camera, archive reads and permissions in both renderers. |
+| Assistant answer quality | Improve focused status answers and cited support across model hosts. | Replay anonymized or synthetic questions and compare actual tool choices, evidence and source links. |
 | More vehicle and battery fields | Useful native HA representation across models/packs | Reviewed fixtures, units/enums, stable identity and meaningful state semantics. |
 | Archive/read efficiency | Migration progress, faster startup, clearer whole-archive/baseline coverage and bounded reads | Reproducible measurements; preserve integrity, better geometry and rollback. |
 | Statistics continuity | Account-owned external statistic identity across removal/re-addition | Explicit metadata migration, duplicate-series checks and historical continuity. |
