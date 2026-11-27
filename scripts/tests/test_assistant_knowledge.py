@@ -68,9 +68,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 21)
-        self.assertEqual(catalog["corpus_version"], "1.2.14")
-        self.assertEqual(catalog["source_version"], "2.2.8")
+        self.assertEqual(len(catalog["entries"]), 24)
+        self.assertEqual(catalog["corpus_version"], "1.2.15")
+        self.assertEqual(catalog["source_version"], "2.2.9")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -388,6 +388,40 @@ class KnowledgeTests(unittest.TestCase):
                 result = k.search_help(query, "zh-Hans", "2.1.22", include_procedures=True)
                 self.assertEqual(result["matches"][0]["source_id"], expected)
 
+    def test_mcp_cutover_help_preserves_legacy_settings_and_explains_the_new_url(self):
+        for language, migration_query in (
+            ("en", "old ninebot_tasks endpoint returns 404"),
+            ("zh-Hans", "旧 ninebot_tasks 入口返回 404 怎么办"),
+        ):
+            with self.subTest(language=language):
+                previous = k.search_help("all_llm_apis", language, "2.2.8")["matches"][0]
+                self.assertEqual(previous["source_id"], "mcp_configuration")
+                self.assertNotIn("404", previous["text"])
+                for query in ("all_llm_apis", migration_query):
+                    current = k.search_help(query, language, "2.2.9")["matches"][0]
+                    self.assertEqual(current["source_id"], "mcp_single_api")
+                    for text in ("/api/mcp/ninebot", "404", "Ninebot tasks", "read_only"):
+                        self.assertIn(text, current["text"])
+                    self.assertIn(
+                        "per-vehicle permissions" if language == "en" else "逐车验权",
+                        current["text"],
+                    )
+                    self.assertIn("#check-mcp-api-selection", current["citation"])
+                    self.assertNotEqual(previous["source"]["commit"], current["source"]["commit"])
+
+    def test_current_access_help_explains_per_vehicle_reads_and_task_levels(self):
+        cases = (
+            ("en", "per-vehicle access", ("summary statistics", "Preview only", "Allow requests")),
+            ("zh-Hans", "怎么配置逐车权限", ("汇总统计", "仅预览", "允许申请")),
+        )
+        for language, query, terms in cases:
+            with self.subTest(language=language):
+                match = k.search_help(query, language, "2.2.9")["matches"][0]
+                self.assertEqual(match["source_id"], "assistant_vehicle_access")
+                for term in terms:
+                    self.assertIn(term, match["text"])
+                self.assertIn("#enable-it", match["citation"])
+
     def test_exact_error_terms_and_chinese_bigrams(self):
         for query, target in (
             ("not_authorized", "assistant_access"),
@@ -462,6 +496,24 @@ class KnowledgeTests(unittest.TestCase):
                         result["matches"][0]["text"],
                     )
                     self.assertEqual(k.search_help(query, language, "2.1.1")["matches"], [])
+                    current = k.search_help(query, language, "2.2.9", include_procedures=True)
+                    self.assertEqual(
+                        [m["source_id"] for m in current["matches"]],
+                        ["task_application_per_vehicle"],
+                    )
+                    match = current["matches"][0]
+                    self.assertIn(
+                        "Allow requests" if language == "en" else "允许申请", match["text"]
+                    )
+                    self.assertNotIn("/api/mcp/ninebot_tasks", match["text"])
+                    self.assertEqual([p["id"] for p in current["procedures"]], ["SK09"])
+                    self.assertIn(
+                        "if allowed to preview only" if language == "en" else "若只有预览权限",
+                        current["procedures"][0]["steps"][0].lower(),
+                    )
+                    self.assertLessEqual(
+                        len(json.dumps(current, ensure_ascii=False).encode()), k.MAX_HELP_BYTES
+                    )
 
     def test_login_keywords_do_not_return_incidental_log_privacy_prose(self):
         for query, language in (
