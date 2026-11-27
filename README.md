@@ -16,7 +16,7 @@ English · [简体中文](README_zh.md)
 
 Bring a Ninebot vehicle into Home Assistant for battery and range readings, vehicle controls, ride statistics and a private route archive. Each account has its own vehicles, update schedule and SQLite database. Your dashboard, automations and optional Assistant can read the same saved rides.
 
-Install the [stable release](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. The [2.2.10 preview](CHANGELOG.md#2210) distinguishes vehicles with the same name and keeps relative dates tied to the start of an Assistant query. If your host uses **Ninebot tasks**, check the [upgrade instructions](docs/assistant.md#upgrade-to-the-single-ninebot-api) before updating. [All releases](https://github.com/Wuty-zju/ha_ninebot/releases)
+Install the [stable release](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. In the [2.2.11 preview](CHANGELOG.md#2211), tap overlapping map markers to choose a ride. The replay slider identifies the vehicle and the current saved point. If your host uses **Ninebot tasks**, check the [upgrade instructions](docs/assistant.md#upgrade-to-the-single-ninebot-api) before updating. [All releases](https://github.com/Wuty-zju/ha_ninebot/releases)
 
 ## What you can do
 

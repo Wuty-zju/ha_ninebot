@@ -258,6 +258,35 @@ try {
     assert.equal(await page.evaluate(() => fixtureRequests.filter(call =>
       call.service === 'get_trip_detail' && call.service_data.local_only).length), 1);
   }
+  // Real markers and the HA component contract must agree when two vehicles share a route.
+  for (const nativeMode of [false, true]) {
+    await page.goto(origin + '/?overlap&english' + (nativeMode ? '&native' : ''));
+    await page.waitForFunction(() => fixtureCard.routeMap.renderer && !fixtureCard.busy);
+    await page.locator('.overlay').last().click();
+    await page.waitForFunction(() => fixtureCard.activeTrack?.label === 'Synthetic B' && !fixtureCard.busy);
+    const beforePicking = await page.evaluate(() => fixtureRequests.length);
+    const showPicker = async () => {
+      if (nativeMode) {
+        await native.evaluate(map => map.dispatchEvent(new CustomEvent('editable-location-clicked',
+          { detail: { id: 'route-2' } })));
+      } else await page.locator('.ninebot-route-pin').last().click();
+    };
+    await showPicker();
+    const picker = page.getByRole('dialog', { name: 'Choose a ride at this spot' });
+    await picker.getByRole('button', { name: /1 · Synthetic A/ }).click();
+    await page.waitForFunction(() => fixtureCard.shadowRoot.activeElement?.className === 'focus-track');
+    assert.deepEqual(await page.locator('.playback > .metrics dd').allTextContents(),
+      ['1.2 km', '10 min', '90 Wh']);
+    const nativeSlider = page.getByRole('slider', { name: /1 · Synthetic A/ });
+    await nativeSlider.press('Home');
+    for (let step = 0; step < 15; step++) await nativeSlider.press('ArrowRight');
+    assert.equal(await nativeSlider.getAttribute('aria-valuetext'), 'Point 16 of 58 · Source point sequence 17');
+    assert.equal(await page.evaluate(() => fixtureRequests.length), beforePicking);
+    await showPicker();
+    await page.evaluate(() => fixtureHass.connection.fire('disconnected'));
+    assert.equal(await picker.count(), 0);
+    assert.equal(await page.locator('.pin-choices button').count(), 0);
+  }
   assert.equal(external.length, 0);
   assert.deepEqual(errors, []);
   console.log('Synthetic replay passed: one map, local reads, sample gaps, stable viewport, endpoint-only tracks and scope cleanup.');
