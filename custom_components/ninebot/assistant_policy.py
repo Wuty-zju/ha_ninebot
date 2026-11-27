@@ -5,19 +5,14 @@ from dataclasses import dataclass
 from homeassistant.core import Context, HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
 
-from .assistant import CONF_ASSISTANT, CONF_ASSISTANT_TASKS, CONF_ASSISTANT_VEHICLES
+from .assistant import current_access
+from .assistant_access import AssistantAccess
+from .assistant_catalog import BY_KEY
+from .assistant_errors import AssistantError as AssistantError
 from .backup import backup_active
 from .const import DOMAIN
 from .runtime import NinebotConfigEntry, RuntimeData
 from .services import async_check_history_access, resolve_vehicle
-
-
-class AssistantError(Exception):
-    """Only a fixed, reviewed error code may cross the model boundary."""
-
-    def __init__(self, code: str) -> None:
-        self.code = code
-        super().__init__(code)
 
 
 async def async_require_admin(hass: HomeAssistant, context: Context | None) -> str:
@@ -33,11 +28,19 @@ async def async_require_admin(hass: HomeAssistant, context: Context | None) -> s
     return context.user_id
 
 
-def _consented(entry: NinebotConfigEntry, sn: str) -> bool:
-    vehicles = entry.options.get(CONF_ASSISTANT_VEHICLES)
-    return (
-        entry.options.get(CONF_ASSISTANT) is True and isinstance(vehicles, list) and sn in vehicles
-    )
+# Internal access to existing tickets under their original, durable grant.
+REVIEW_TASKS = "review_existing_tasks"
+
+
+def operation_allowed(access: AssistantAccess, sn: str, operation: str | None) -> bool:
+    if not access.enabled or (grant := access.vehicles.get(sn)) is None:
+        return False
+    if operation == REVIEW_TASKS:
+        return sn in access.durable_task_vehicles
+    if operation is None:
+        return bool(grant.reads) or grant.tasks != "off" or sn in access.durable_task_vehicles
+    spec = BY_KEY.get(operation)
+    return spec is not None and spec.operation.allowed(grant)
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,8 @@ class AssistantScope:
     runtime: RuntimeData
     generation: int
     ownership: int
+    revision: int = 0
+    operation: str | None = None
 
     def assert_current(self, hass: HomeAssistant) -> None:
         try:
@@ -62,7 +67,11 @@ class AssistantScope:
             entry is not self.entry
             or sn != self.sn
             or entry.runtime_data is not self.runtime
-            or not _consented(entry, sn)
+            or (
+                self.operation != REVIEW_TASKS
+                and self.runtime.assistant_policy_revision != self.revision
+            )
+            or not operation_allowed(current_access(entry), sn, self.operation)
             or co._generation != self.generation
             or co._ownership.get(sn, 0) != self.ownership
         ):
@@ -70,8 +79,14 @@ class AssistantScope:
 
     def assert_task_current(self, hass: HomeAssistant) -> None:
         self.assert_current(hass)
+        # Public read/submit scopes were checked above. Internal review and
+        # execution require the still-valid authority for this vehicle's tickets.
+        spec = BY_KEY.get(self.operation or "")
         if (
-            self.entry.options.get(CONF_ASSISTANT_TASKS) is not True
+            (
+                (spec is None or not spec.task)
+                and self.sn not in current_access(self.entry).durable_task_vehicles
+            )
             or self.runtime.assistant_task_blocks
             or self.runtime.coordinator._stopping
             or backup_active(hass)
@@ -100,7 +115,7 @@ class AssistantScope:
 
 
 async def async_authorize(
-    hass: HomeAssistant, context: Context | None, vehicle_ref: str
+    hass: HomeAssistant, context: Context | None, vehicle_ref: str, *, operation: str | None = None
 ) -> AssistantScope:
     """Resolve the authenticated target without exposing account identifiers."""
     try:
@@ -108,7 +123,7 @@ async def async_authorize(
         entry, sn = resolve_vehicle(hass, vehicle_ref, require_live=False)
     except HomeAssistantError as err:
         raise AssistantError("not_authorized") from err
-    if context is None or not _consented(entry, sn):
+    if context is None or not operation_allowed(current_access(entry), sn, operation):
         raise AssistantError("not_authorized")
     runtime = entry.runtime_data
     scope = AssistantScope(
@@ -119,6 +134,8 @@ async def async_authorize(
         runtime,
         runtime.coordinator._generation,
         runtime.coordinator._ownership.get(sn, 0),
+        runtime.assistant_policy_revision,
+        operation,
     )
     await scope.async_validate(hass)
     return scope

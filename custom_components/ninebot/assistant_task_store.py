@@ -17,9 +17,9 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .assistant import (
-    CONF_ASSISTANT,
-    CONF_ASSISTANT_TASKS,
     TASK_POLICY_EPOCH,
+    current_access,
+    has_task_access,
     valid_policy_epoch,
 )
 from .assistant_approval import (
@@ -31,7 +31,8 @@ from .assistant_approval import (
     async_approve_ticket,
     async_plan_scope,
 )
-from .assistant_policy import AssistantError, AssistantScope, async_require_admin
+from .assistant_catalog import REQUEST_TOOL
+from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .async_utils import async_drain
 from .preservation import DetailBudget, DetailBudgetUnavailable, DetailScope
 from .ride_archive import ArchiveError
@@ -313,8 +314,7 @@ class ApprovalStore:
             and runtime.assistant_tasks is self
             and not runtime.assistant_task_blocks
             and not runtime.coordinator._stopping
-            and entry.options.get(CONF_ASSISTANT) is True
-            and entry.options.get(CONF_ASSISTANT_TASKS) is True
+            and has_task_access(current_access(entry))
         )
 
     async def _async_notify(
@@ -343,11 +343,20 @@ class ApprovalStore:
             raise AssistantError("not_authorized")
         return scope
 
-    async def async_request(self, plan: DetailPlan, context: Context | None) -> ApprovalTicket:
+    async def async_request(
+        self, plan: DetailPlan, context: Context | None, *, caller: AssistantScope | None = None
+    ) -> ApprovalTicket:
+        submission = await async_authorize(
+            self.hass, context, plan.vehicle_ref, operation=REQUEST_TOOL
+        )
+        submission.assert_task_current(self.hass)
         await self._scope(plan, context)
         async with self._lock:
             records = await self._read()
             scope = await self._scope(plan, context)
+            submission.assert_task_current(self.hass)
+            if caller is not None:
+                caller.assert_task_current(self.hass)
             now = dt_util.utcnow()
             if not plan.created_at <= now < plan.created_at + APPROVAL_TTL:
                 raise AssistantError("approval_expired")

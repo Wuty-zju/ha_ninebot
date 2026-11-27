@@ -103,7 +103,7 @@ async def async_detail_proposal(
     end_date: str,
 ) -> DetailProposal:
     """Retain original caller/ownership across a bounded local read; never create a job."""
-    scope = await async_authorize(hass, context, vehicle_ref)
+    scope = await async_authorize(hass, context, vehicle_ref, operation="preview_detail_sync")
     try:
         first, last = (date.fromisoformat(business_date(value)) for value in (start_date, end_date))
     except (ValueError, vol.Invalid):

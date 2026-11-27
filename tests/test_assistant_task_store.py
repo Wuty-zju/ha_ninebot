@@ -16,6 +16,12 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
+from custom_components.ninebot.assistant_access import (
+    ALL_READS,
+    AssistantAccess,
+    VehicleAccess,
+    with_assistant_access,
+)
 from custom_components.ninebot.assistant_approval import DetailPlan
 from custom_components.ninebot.assistant_execution import AssistantExecution
 from custom_components.ninebot.assistant_policy import AssistantError
@@ -55,12 +61,10 @@ async def task_store(hass, entry, app_client, tmp_path, request):
         co.realtime.stop()
         hass.config_entries.async_update_entry(
             entry,
-            options={
-                **entry.options,
-                "enable_assistant": True,
-                "enable_assistant_tasks": True,
-                "assistant_vehicles": ["SyntheticSN"],
-            },
+            options=with_assistant_access(
+                entry.options,
+                AssistantAccess(True, {"SyntheticSN": VehicleAccess(ALL_READS, "request")}),
+            ),
         )
         await hass.async_block_till_done()
         device = next(
@@ -109,6 +113,42 @@ async def test_pending_request_has_no_nonce_and_reopen_rejects_replay(hass, task
     reopened = ApprovalStore(hass, s.entry_id, s.account_key)
     with pytest.raises(AssistantError, match="^approval_used$"):
         await reopened.async_approve(prepared.task_id, c, nonce, p.digest)
+
+
+async def test_existing_ticket_survives_legacy_cutover_without_new_submissions(
+    hass, entry, task_store
+):
+    from custom_components.ninebot.assistant import TASK_POLICY_EPOCH
+    from custom_components.ninebot.assistant_access import CONF_ASSISTANT_ACCESS
+    from custom_components.ninebot.assistant_approval import async_plan_scope
+    from custom_components.ninebot.assistant_review import async_register
+    from custom_components.ninebot.assistant_task_queries import async_task_query
+
+    store, plan, context = task_store.store, task_store.plan, task_store.context
+    confirmed = dict(entry.options)
+    legacy = {k: v for k, v in confirmed.items() if k != CONF_ASSISTANT_ACCESS}
+    epoch = entry.data[TASK_POLICY_EPOCH]
+    original = await store.async_request(plan, context)
+    hass.config_entries.async_update_entry(entry, options=legacy)
+    await hass.async_block_till_done()
+    async_register(hass)
+    assert entry.data[TASK_POLICY_EPOCH] == epoch
+    result, failed = await async_task_query(hass, "task_vehicles", {}, context)
+    assert failed and result["error"]["code"] == "not_authorized"
+    roster, failed = await async_task_query(hass, "task_vehicles", {}, context, _review_list=True)
+    assert not failed and [r["vehicle_ref"] for r in roster["data"]["vehicles"]] == [
+        plan.vehicle_ref
+    ]
+    with pytest.raises(AssistantError, match="not_authorized"):
+        await store.async_request(plan, context)
+    internal = await async_plan_scope(hass, plan, context)
+    ready, nonce = await store.async_prepare(original.task_id, context)
+    hass.config_entries.async_update_entry(entry, options=confirmed)
+    await hass.async_block_till_done()
+    internal.assert_task_current(hass)
+    assert entry.data[TASK_POLICY_EPOCH] == epoch
+    approved = await store.async_approve(ready.task_id, context, nonce, plan.digest)
+    assert approved.task_id == original.task_id and approved.approved_at is not None
 
 
 async def test_competing_approvals_consume_one_confirmation(task_store):

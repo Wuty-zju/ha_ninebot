@@ -11,7 +11,7 @@ from uuid import uuid4
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .assistant_policy import AssistantError, AssistantScope, async_authorize
+from .assistant_policy import REVIEW_TASKS, AssistantError, AssistantScope, async_authorize
 from .const import BUSINESS_TIMEZONE
 from .preservation import DetailScope
 
@@ -250,7 +250,7 @@ async def async_plan_scope(
     hass: HomeAssistant, plan: DetailPlan, context: Context | None
 ) -> AssistantScope:
     """Reauthorize a private plan against the current account and original requester."""
-    scope = await async_authorize(hass, context, plan.vehicle_ref)
+    scope = await async_authorize(hass, context, plan.vehicle_ref, operation=REVIEW_TASKS)
     if (
         scope.context.user_id != plan.user_id
         or scope.runtime.coordinator.statistics.archive.owner != plan.account_key

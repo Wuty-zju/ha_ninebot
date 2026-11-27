@@ -13,16 +13,24 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.importlib import async_import_module
 
+from .assistant_access import (
+    CONF_ASSISTANT,
+    CONF_ASSISTANT_ACCESS,
+    CONF_ASSISTANT_TASKS,
+    CONF_ASSISTANT_VEHICLES,
+    AssistantAccess,
+    parse_assistant_access,
+)
 from .const import DOMAIN
 
 if TYPE_CHECKING:
     from .runtime import NinebotConfigEntry
 
-CONF_ASSISTANT = "enable_assistant"
-CONF_ASSISTANT_VEHICLES = "assistant_vehicles"
-CONF_ASSISTANT_TASKS = "enable_assistant_tasks"
 TASK_POLICY_EPOCH = "assistant_policy_epoch"
-ASSISTANT_OPTIONS = frozenset({CONF_ASSISTANT, CONF_ASSISTANT_VEHICLES, CONF_ASSISTANT_TASKS})
+REVIEW_REGISTERED = "ninebot_assistant_review_registered"
+ASSISTANT_OPTIONS = frozenset(
+    {CONF_ASSISTANT_ACCESS, CONF_ASSISTANT, CONF_ASSISTANT_VEHICLES, CONF_ASSISTANT_TASKS}
+)
 API_ID = "ninebot"
 DATA_KEY = f"{DOMAIN}_assistant"
 _LOGGER = logging.getLogger(__name__)
@@ -46,30 +54,39 @@ def async_revoke_task_policy(
         hass.config_entries.async_update_entry(entry, data={**entry.data, TASK_POLICY_EPOCH: epoch})
 
 
+def current_access(entry: "NinebotConfigEntry") -> AssistantAccess:
+    """Reuse parsed grants only while the immutable HA options object is current."""
+    runtime = getattr(entry, "runtime_data", None)
+    if runtime and getattr(runtime, "assistant_options_source", None) is entry.options:
+        if (cached := runtime.assistant_policy_options) is not None:
+            return cached
+    return parse_assistant_access(entry.options)
+
+
+def has_task_access(access: AssistantAccess) -> bool:
+    return access.enabled and (
+        bool(access.durable_task_vehicles)
+        or any(g.tasks == "preview" for g in access.vehicles.values())
+    )
+
+
 @callback
 def async_sync_task_policy(hass: HomeAssistant, entry: "NinebotConfigEntry") -> None:
-    """Observe every consent change before listener scheduling can coalesce transitions."""
+    """Fence in-flight reads and withdrawn execution grants before scheduling awaits."""
     runtime = getattr(entry, "runtime_data", None)
     if runtime is None:
         return
-    snapshot = {
-        key: list(value) if isinstance(value := entry.options.get(key), list) else value
-        for key in ASSISTANT_OPTIONS
-    }
     previous = runtime.assistant_policy_options
-    runtime.assistant_policy_options = snapshot  # Before updating data and reentering the listener.
-    epoch = entry.data.get(TASK_POLICY_EPOCH)
+    snapshot = current_access(entry)
+    runtime.assistant_options_source = entry.options
+    runtime.assistant_policy_options = snapshot
+    if previous is not None and previous != snapshot:
+        runtime.assistant_policy_revision += 1
+    # A narrower durable grant invalidates old tickets even after a rapid re-grant.
+    # Moving the endpoint or enabling new vehicles preserves existing authority.
     if (
-        previous is not None
-        and previous != snapshot
-        and (
-            valid_policy_epoch(epoch)
-            or previous.get(CONF_ASSISTANT_TASKS) is True
-            or snapshot[CONF_ASSISTANT_TASKS] is True
-        )
-    ):
-        async_revoke_task_policy(hass, entry)
-    elif snapshot[CONF_ASSISTANT_TASKS] is True and not valid_policy_epoch(epoch):
+        previous is not None and previous.durable_task_vehicles - snapshot.durable_task_vehicles
+    ) or (has_task_access(snapshot) and not valid_policy_epoch(entry.data.get(TASK_POLICY_EPOCH))):
         async_revoke_task_policy(hass, entry)
 
 
@@ -89,20 +106,17 @@ def native_api_supported() -> bool:
 class AssistantRegistration:
     lock: Lock = field(default_factory=Lock)
     unregister: Callable[[], None] | None = None
-    unregister_tasks: Callable[[], None] | None = None
     unregister_panel: Callable[[], None] | None = None
     panel_error: str | None = None
     error: str | None = None
     review_error: str | None = None
-    task_error: str | None = None
 
 
 def _enabled(hass: HomeAssistant, *, tasks: bool = False) -> bool:
     return any(
-        entry.options.get(CONF_ASSISTANT) is True
-        and (not tasks or entry.options.get(CONF_ASSISTANT_TASKS) is True)
-        and isinstance(vehicles := entry.options.get(CONF_ASSISTANT_VEHICLES), list)
-        and any(isinstance(vehicle, str) and vehicle for vehicle in vehicles)
+        (access := current_access(entry)).enabled
+        and bool(access.vehicles)
+        and (not tasks or has_task_access(access))
         and entry.state in {ConfigEntryState.LOADED, ConfigEntryState.SETUP_IN_PROGRESS}
         and (runtime := getattr(entry, "runtime_data", None)) is not None
         and not runtime.coordinator._stopping
@@ -121,10 +135,7 @@ async def async_update_assistant_api(hass: HomeAssistant) -> None:
                 state.unregister_panel()
                 state.unregister_panel = None
             state.panel_error = None
-            if state.unregister_tasks is not None:
-                state.unregister_tasks()
-                state.unregister_tasks = None
-            state.task_error = state.review_error = None
+            state.review_error = None
             if state.unregister is not None:
                 state.unregister()
                 state.unregister = None
@@ -162,23 +173,17 @@ async def _async_update_tasks(hass: HomeAssistant, state: AssistantRegistration)
             if state.review_error is None:
                 _LOGGER.warning("Ninebot task review is unavailable")
             state.review_error = "review_unavailable"
-    if not enabled or state.review_error is not None or not native_api_supported():
-        if state.unregister_tasks is not None:
-            state.unregister_tasks()
-            state.unregister_tasks = None
-        if not enabled:
-            state.task_error = state.review_error = None
-        return
-    if state.unregister_tasks is not None:
-        return
-    try:
-        adapter = await async_import_module(hass, f"{__package__}.assistant_task_api")
-        state.unregister_tasks = adapter.async_register(hass)
-        state.task_error = None
-    except (ImportError, AttributeError, HomeAssistantError):
-        if state.task_error is None:
-            _LOGGER.warning("Ninebot task tools are unavailable")
-        state.task_error = "task_api_unavailable"
+    else:
+        state.review_error = None
+
+
+def tasks_ready(hass: HomeAssistant) -> bool:
+    state = hass.data.get(DATA_KEY)
+    return (
+        hass.data.get(REVIEW_REGISTERED) is True
+        and (state is None or state.review_error is None)
+        and _enabled(hass, tasks=True)
+    )
 
 
 async def _async_update_panel(
@@ -225,11 +230,7 @@ async def async_close_task_owner(
 
 async def async_resume_task_execution(hass: HomeAssistant, entry: "NinebotConfigEntry") -> None:
     """No task implementation or scheduler for accounts which have not opted in."""
-    if (
-        entry.options.get(CONF_ASSISTANT) is not True
-        or entry.options.get(CONF_ASSISTANT_TASKS) is not True
-        or not entry.options.get(CONF_ASSISTANT_VEHICLES)
-    ):
+    if not current_access(entry).durable_task_vehicles:
         return
     from .assistant_execution import async_resume
     from .assistant_policy import AssistantError

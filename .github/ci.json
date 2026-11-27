@@ -343,6 +343,7 @@
       ],
       "tests": [
         "tests/test_archive_lifecycle.py",
+        "tests/test_assistant_access.py",
         "tests/test_assistant_lifecycle.py",
         "tests/test_assistant_policy.py",
         "tests/test_assistant_queries.py",

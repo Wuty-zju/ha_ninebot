@@ -1,117 +1,52 @@
 """Local task tools: preview, apply and inspect, with no approval or cloud execution."""
 
 import asyncio
-import json
-from functools import partial
 from typing import Any
 from uuid import uuid4
 
 from homeassistant.core import Context, HomeAssistant
-from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.util import dt as dt_util
 
-from .assistant import DATA_KEY, _enabled
-from .assistant_errors import error_data
-from .assistant_limits import ReadLimitExceeded, read_slot
+from .assistant import tasks_ready
+from .assistant_catalog import REQUEST_TOOL, TASK_SPECS
+from .assistant_errors import TOOL_ERRORS, TOOL_TIMEOUT, checked_result, tool_failure
+from .assistant_limits import read_slot
 from .assistant_plans import async_detail_proposal
-from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
+from .assistant_policy import (
+    REVIEW_TASKS,
+    AssistantError,
+    AssistantScope,
+    async_authorize,
+    async_require_admin,
+)
 from .assistant_queries import (
-    MAX_RESPONSE_BYTES,
     MAX_VEHICLES,
-    VEHICLE,
-    ToolSpec,
     async_vehicle_scopes,
-    task_reference,
     vehicle_list_view,
 )
-from .assistant_review import REGISTERED
 from .assistant_task_store import ApprovalStore, TaskStoreUnavailable
 from .assistant_task_views import ticket_view
 from .assistant_tasks import assert_task_owner, async_request_details, task_owner
-from .compat import validation as vol
 from .const import BUSINESS_TIMEZONE
-from .recorded_actions import business_date
 from .ride_archive import ArchiveError
-from .services import bounded_integer
 
-DATES = {
-    **VEHICLE,
-    vol.Required("start_date"): business_date,
-    vol.Required("end_date"): business_date,
-}
-SPECS = (
-    ToolSpec(
-        "task_vehicles",
-        "List task-enabled Ninebot vehicles",
-        "List vehicles allowed for task applications. Ask which vehicle when ambiguous; "
-        "never select the first. Does not query the cloud.",
-        vol.Schema({}),
-    ),
-    ToolSpec(
-        "preview_detail_sync",
-        "Preview missing local details",
-        "Preview at most 31 business days and twenty locally mapped missing details. "
-        "Unobserved history is not zero. task_created=false means no application was filed. "
-        "On explicit intent to apply, follow the preview with request_detail_sync_approval. "
-        "Does not create a task or query the cloud.",
-        vol.Schema(DATES),
-    ),
-    ToolSpec(
-        "request_detail_sync_approval",
-        "Request human review of missing details",
-        "Use only when the user asks to apply for detail synchronization. Writes a bounded "
-        "local application from the selected vehicle/dates. Human review is separate. "
-        "Never approves, queues, completes or queries the cloud. Ask the original requester to "
-        "review in HA's Ninebot Assistant sidebar using the same HA user. Do not ask for a token.",
-        vol.Schema(DATES),
-        idempotent=False,
-    ),
-    ToolSpec(
-        "get_tasks",
-        "List your vehicle tasks",
-        "Read a page of the original user's local task metadata. Approved does not mean queued "
-        "or completed. No confirmation secrets, ride identities or cloud requests.",
-        vol.Schema(
-            {
-                **VEHICLE,
-                vol.Optional("page", default=1): partial(bounded_integer, maximum=24),
-                vol.Optional("limit", default=10): partial(bounded_integer, maximum=10),
-            }
-        ),
-    ),
-    ToolSpec(
-        "get_task",
-        "Read one local task",
-        "Read one task ID from your task list for the selected vehicle. Missing is not "
-        "completed. No approval, cancellation, cloud requests or private ride data. "
-        "To cancel, the original requester opens Ninebot Assistant in HA's sidebar "
-        "(/ninebot-assistant) as the same HA user and selects Cancel task. "
-        "Expiry or a new application does not cancel the selected task.",
-        vol.Schema({**VEHICLE, vol.Required("task_id"): task_reference}),
-    ),
-)
-SPEC_BY_KEY = {spec.key: spec for spec in SPECS}
-REQUEST_TOOL = "request_detail_sync_approval"
-
-
-def available(hass: HomeAssistant) -> bool:
-    state = hass.data.get(DATA_KEY)
-    return (
-        _enabled(hass, tasks=True)
-        and hass.data.get(REGISTERED) is True
-        and (state is None or (state.review_error is None and state.task_error is None))
-    )
+SPEC_BY_KEY = {spec.key: spec for spec in TASK_SPECS}
 
 
 async def async_task_query(
-    hass: HomeAssistant, key: str, arguments: dict[str, Any], context: Context | None
+    hass: HomeAssistant,
+    key: str,
+    arguments: dict[str, Any],
+    context: Context | None,
+    *,
+    _review_list: bool = False,
 ) -> tuple[dict[str, Any], bool]:
-    request_id, retry_after = uuid4().hex, None
+    request_id = uuid4().hex
     now = dt_util.utcnow()
     try:
-        async with asyncio.timeout(10):
+        async with asyncio.timeout(TOOL_TIMEOUT):
             user_id = await async_require_admin(hass, context)
-            if not available(hass):
+            if not tasks_ready(hass):
                 raise AssistantError("not_authorized")
             if key not in SPEC_BY_KEY:
                 raise AssistantError("invalid_arguments")
@@ -122,12 +57,15 @@ async def async_task_query(
                 warnings: list[str] = []
                 if key == "task_vehicles":
                     scopes = await async_vehicle_scopes(
-                        hass, context, limit=MAX_VEHICLES + 1, tasks=True
+                        hass,
+                        context,
+                        limit=MAX_VEHICLES + 1,
+                        operation=REVIEW_TASKS if _review_list else key,
                     )
                     view = vehicle_list_view(hass, scopes)
                     data, evidence, warnings = view.data, view.evidence, view.warnings
                 else:
-                    scope = await async_authorize(hass, context, args["vehicle_ref"])
+                    scope = await async_authorize(hass, context, args["vehicle_ref"], operation=key)
                     scope.assert_task_current(hass)
                     scopes = [scope]
                     if key == "preview_detail_sync":
@@ -191,28 +129,8 @@ async def async_task_query(
                     },
                 }
                 response["warnings"] = warnings
-                if (
-                    len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
-                    > MAX_RESPONSE_BYTES
-                ):
-                    raise AssistantError("response_too_large")
-                return response, False
-    except ReadLimitExceeded as err:
-        code, retry_after = "retry_later", err.retry_after
-    except Unauthorized:
-        code = "not_authorized"
-    except vol.Invalid:
-        code = "invalid_arguments"
-    except AssistantError as err:
-        code = err.code
-    except TimeoutError:
-        code = "timeout"
+                return checked_result(response)
     except (TaskStoreUnavailable, ArchiveError):
-        code = "retry_later"
-    except HomeAssistantError:
-        code = "unsupported_capability"
-    return {
-        "schema_version": 1,
-        "request_id": request_id,
-        "error": error_data(code, retry_after),
-    }, True
+        return tool_failure(request_id, "retry_later")
+    except TOOL_ERRORS as err:
+        return tool_failure(request_id, err)
