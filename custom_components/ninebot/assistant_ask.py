@@ -14,9 +14,10 @@ from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import llm
 from homeassistant.helpers.importlib import async_import_module
 
+from .assistant_catalog import QUERY_SPECS, ToolSpec
 from .assistant_evidence import MAX_RECEIPTS, render_evidence_answer
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
-from .assistant_queries import MAX_VEHICLES, async_vehicle_scopes
+from .assistant_queries import MAX_VEHICLES, async_vehicle_scopes, async_visible_keys
 from .compat import validation as vol
 from .const import DOMAIN
 
@@ -79,11 +80,15 @@ class EvidenceTurn:
 
     async def async_prepare(self) -> None:
         if self.selected is not None:
-            scope = await async_authorize(self.hass, self.call.context, self.selected)
+            scope = await async_authorize(
+                self.hass, self.call.context, self.selected, operation="get_vehicles"
+            )
             self.scopes = {scope.vehicle_ref: scope}
             return
         await async_require_admin(self.hass, self.call.context)
-        scopes = await async_vehicle_scopes(self.hass, self.call.context, limit=MAX_VEHICLES + 1)
+        scopes = await async_vehicle_scopes(
+            self.hass, self.call.context, limit=MAX_VEHICLES + 1, operation="get_vehicles"
+        )
         self.scopes = {scope.vehicle_ref: scope for scope in scopes}
         if len(scopes) == 1:
             self.selected = scopes[0].vehicle_ref
@@ -199,7 +204,6 @@ def failed(code: str) -> dict[str, Any]:
 def turn_api(turn: EvidenceTurn) -> llm.API:
     """A fresh native collection per task; no registry entry or model provider."""
     from .assistant_api import PROMPT, NinebotTool, tool_serializer
-    from .assistant_queries import SPECS, ToolSpec
 
     class EvidenceTool(NinebotTool):
         def __init__(self, spec: ToolSpec) -> None:
@@ -229,7 +233,13 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
         async def async_get_api_instance(self, llm_context: llm.LLMContext) -> llm.APIInstance:
             if llm_context.context is not turn.call.context:
                 raise AssistantError("not_authorized")
+            visible = await async_visible_keys(
+                turn.hass, turn.call.context, vehicle_ref=turn.selected, queries_only=True
+            )
             await turn.async_validate()
+            tools = [EvidenceTool(spec) for spec in QUERY_SPECS if spec.key in visible]
+            if not tools:
+                turn.deny()
             return llm.APIInstance(
                 api=self,
                 api_prompt=PROMPT
@@ -241,7 +251,7 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                     else ""
                 ),
                 llm_context=llm_context,
-                tools=[EvidenceTool(spec) for spec in SPECS],
+                tools=tools,
                 custom_serializer=tool_serializer,
             )
 
