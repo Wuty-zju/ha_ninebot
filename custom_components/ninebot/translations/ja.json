@@ -107,9 +107,7 @@
           "history_storage_mib": "履歴保存上限（MiB） (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Ninebot Assistantを有効にする（ベータ）",
-          "assistant_vehicles": "Assistantに公開する車両",
-          "enable_assistant_tasks": "確認が必要な履歴タスクを許可（ベータ）",
+          "configure_assistant": "Ninebot Assistantを設定",
           "debug_mode": "診断エンティティを表示"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "現在の状態／バッテリー／走行の間隔：{polling_setting}。充電と車両の活動に応じて調整します。",
-          "enable_assistant": "選択したAIホストに、対象車両の名前、ローカルの値、時刻、データ品質の読み取りを許可します。アカウント、認証情報、正確な位置、未加工の応答は含みません。クラウドの更新や車両操作は行いません。",
-          "assistant_vehicles": "遠隔操作の対象とは別に車両を選択します。Assistantを無効にしても選択は保持されます。",
-          "enable_assistant_tasks": "保存後、クラウドへのリクエストを開始する前に、[Ninebot Assistant](/ninebot-assistant)で対象範囲を確認し、走行詳細の同期リクエストを承認してください。既定ではオフです。",
+          "configure_assistant": "アシスタントがアクセスできる車両、データ、履歴タスクを選択します。",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "アシスタントのアクセス権限",
+        "data": {
+          "assistant_enabled": "このアカウントでアシスタントを有効にする",
+          "assistant_vehicle": "車両",
+          "review_assistant_tasks": "現在のタスク権限を確認"
+        },
+        "data_description": {
+          "assistant_enabled": "オフにすると、このアカウントへのアクセス権限が取り消されます。保存済みの車両設定は保持されます。"
+        }
+      },
+      "assistant_vehicle": {
+        "title": "車両のアクセス権限",
+        "description": "アシスタントが {vehicle} でアクセスできるデータやタスクを選択します。",
+        "data": {
+          "assistant_reads": "読み取りを許可",
+          "assistant_task_access": "履歴タスク",
+          "edit_another_assistant_vehicle": "別の車両を編集"
+        },
+        "data_description": {
+          "assistant_task_access": "プレビューでは自分のリクエストも確認できます。同期を開始する前に、[Ninebot Assistant](/ninebot-assistant) パネルで新しいリクエストを承認してください。"
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "履歴タスクのアクセス権限を確認",
+        "description": "選択したタスク設定を適用するか選択します。確認するまでは既存のリクエストに元の権限が適用されます。タスク権限を縮小すると、既存のリクエストが無効になる場合があります。",
+        "data": {
+          "assistant_confirmation": "タスク設定"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "このバージョンのNinebotでは保存済みのアシスタント設定を編集できません。",
+      "assistant_access_changed": "このページを開いている間にアシスタント設定が変更されました。Ninebotのオプションを開き直して、最新の設定を確認してください。",
+      "assistant_vehicle_unavailable": "このアカウントの車両を選択してください。"
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "遠隔操作を許可する車両を1台以上選択してください。",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "このアカウントからAssistantに公開する車両を1台以上選択してください。"
+      "assistant_vehicle_unavailable": "このアカウントの車両を選択してください。"
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "バランス",
         "slower": "遅い",
         "very_slow": "非常に遅い"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "車両の状態",
+        "statistics": "集計統計",
+        "trips": "個別の走行履歴",
+        "sync": "同期状態"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "オフ",
+        "preview": "プレビューのみ",
+        "request": "リクエストを許可"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "確認を保留",
+        "apply": "車両ごとのタスク権限を適用"
       }
     }
   }

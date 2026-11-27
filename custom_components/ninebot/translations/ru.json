@@ -107,9 +107,7 @@
           "history_storage_mib": "Лимит хранилища истории (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Включить Ninebot Assistant (бета)",
-          "assistant_vehicles": "Транспорт, доступный Assistant",
-          "enable_assistant_tasks": "Разрешить задачи истории поездок с подтверждением (бета)",
+          "configure_assistant": "Настроить Ninebot Assistant",
           "debug_mode": "Показывать диагностические сущности"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Интервалы состояния/батареи/поездок: {polling_setting}. Учитываются зарядка и активность.",
-          "enable_assistant": "Разрешить выбранной системе ИИ читать названия выбранных транспортных средств, локальные значения, время и качество данных. Учётные записи, данные входа, точные координаты и исходные ответы исключены. Без обновления из облака и управления транспортом.",
-          "assistant_vehicles": "Выберите транспорт отдельно от дистанционного управления. Отключение Assistant сохраняет выбор.",
-          "enable_assistant_tasks": "После сохранения проверьте охват и подтвердите предложения синхронизации деталей поездок в [Ninebot Assistant](/ninebot-assistant) до начала запросов к облаку. По умолчанию отключено.",
+          "configure_assistant": "Выберите транспорт, данные и задачи истории, к которым получит доступ помощник.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "Доступ помощника",
+        "data": {
+          "assistant_enabled": "Включить помощника для этого аккаунта",
+          "assistant_vehicle": "Транспорт",
+          "review_assistant_tasks": "Проверить действующие разрешения на задачи"
+        },
+        "data_description": {
+          "assistant_enabled": "Отключение отзывает доступ к аккаунту и сохраняет настройки транспорта."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "Доступ к транспорту",
+        "description": "Выберите, какие данные и задачи помощник может использовать для {vehicle}.",
+        "data": {
+          "assistant_reads": "Разрешённые данные",
+          "assistant_task_access": "Задачи истории",
+          "edit_another_assistant_vehicle": "Настроить другое транспортное средство"
+        },
+        "data_description": {
+          "assistant_task_access": "В режиме предварительного просмотра видны и ваши заявки. Одобрите новые заявки на панели [Ninebot Assistant](/ninebot-assistant) до начала синхронизации."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "Подтвердить доступ к задачам истории",
+        "description": "Решите, применять ли выбранные настройки. До подтверждения действующие заявки сохраняют исходные разрешения. Ограничение доступа может сделать действующие заявки недействительными.",
+        "data": {
+          "assistant_confirmation": "Настройки задач"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Эта версия Ninebot не может изменить сохранённые настройки помощника.",
+      "assistant_access_changed": "Настройки помощника изменились, пока эта страница была открыта. Снова откройте параметры Ninebot, чтобы увидеть актуальные настройки.",
+      "assistant_vehicle_unavailable": "Выберите транспортное средство этого аккаунта."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "Выберите хотя бы один автомобиль для дистанционного управления.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Выберите хотя бы одно транспортное средство этой учётной записи для Assistant."
+      "assistant_vehicle_unavailable": "Выберите транспортное средство этого аккаунта."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "Сбалансированно",
         "slower": "Медленнее",
         "very_slow": "Очень медленно"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "Состояние транспорта",
+        "statistics": "Сводная статистика",
+        "trips": "Отдельные поездки",
+        "sync": "Состояние синхронизации"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "Выключено",
+        "preview": "Только предварительный просмотр",
+        "request": "Разрешить заявки"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "Отложить подтверждение",
+        "apply": "Применить разрешения отдельно для каждого транспорта"
       }
     }
   }

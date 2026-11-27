@@ -107,9 +107,7 @@
           "history_storage_mib": "History storage limit (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Enable Ninebot Assistant (Beta)",
-          "assistant_vehicles": "Vehicles available to the Assistant",
-          "enable_assistant_tasks": "Allow reviewable history tasks (Beta)",
+          "configure_assistant": "Configure Ninebot Assistant",
           "debug_mode": "Show diagnostic entities"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Current status/battery/travel targets: {polling_setting}. Vehicles adjust to charging and activity.",
-          "enable_assistant": "Allow the selected AI host to read selected vehicle labels, local values, times and data quality. Accounts, credentials, precise locations and raw responses are excluded. No cloud refresh or vehicle controls.",
-          "assistant_vehicles": "Choose vehicles separately from remote controls. Disabling the Assistant keeps this selection.",
-          "enable_assistant_tasks": "After saving, review the scope and approve history-detail proposals in [Ninebot Assistant](/ninebot-assistant) before cloud requests begin. Off by default.",
+          "configure_assistant": "Choose which vehicles, data and history tasks the Assistant can access.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "Assistant access",
+        "data": {
+          "assistant_enabled": "Enable Assistant for this account",
+          "assistant_vehicle": "Vehicle",
+          "review_assistant_tasks": "Review existing task access"
+        },
+        "data_description": {
+          "assistant_enabled": "Turning this off withdraws access to this account and keeps your saved vehicle settings."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "Vehicle access",
+        "description": "Choose what the Assistant can access for {vehicle}.",
+        "data": {
+          "assistant_reads": "Allowed reads",
+          "assistant_task_access": "History tasks",
+          "edit_another_assistant_vehicle": "Edit another vehicle"
+        },
+        "data_description": {
+          "assistant_task_access": "Preview includes viewing your own requests. Approve new requests in the [Ninebot Assistant](/ninebot-assistant) panel before synchronization starts."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "Confirm history task access",
+        "description": "Choose whether to apply the task settings you selected. Existing requests keep their original permissions while confirmation is pending. Applying reduced task access can invalidate existing requests.",
+        "data": {
+          "assistant_confirmation": "Task settings"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "This version of Ninebot cannot edit the saved Assistant settings.",
+      "assistant_access_changed": "Assistant settings changed while this page was open. Reopen Ninebot options to see the latest settings.",
+      "assistant_vehicle_unavailable": "Choose a vehicle from this account."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "Select at least one vehicle for remote control.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Select at least one vehicle from this account for the Assistant."
+      "assistant_vehicle_unavailable": "Choose a vehicle from this account."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "Balanced",
         "slower": "Slower",
         "very_slow": "Very slow"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "Vehicle status",
+        "statistics": "Summary statistics",
+        "trips": "Individual trips",
+        "sync": "Sync health"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "Off",
+        "preview": "Preview only",
+        "request": "Allow requests"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "Keep confirmation pending",
+        "apply": "Apply per-vehicle task access"
       }
     }
   }

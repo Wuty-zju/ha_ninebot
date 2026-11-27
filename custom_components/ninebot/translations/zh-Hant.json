@@ -107,9 +107,7 @@
           "history_storage_mib": "歷史儲存額度（MiB）（Beta）",
           "retain_history_database": "保留本機歷史行程資料庫（Beta）",
           "manage_archive": "匯出或匯入歷史資料庫（Beta）",
-          "enable_assistant": "啟用 Ninebot Assistant（Beta）",
-          "assistant_vehicles": "Assistant 可存取的車輛",
-          "enable_assistant_tasks": "允許審核歷史同步任務（Beta）",
+          "configure_assistant": "設定 Ninebot 助理",
           "debug_mode": "顯示診斷實體"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "刪除帳號時保留歷史與軌跡；重新新增同一帳號後自動恢復。取消後，下次刪除帳號會刪除受管檔案與復原副本。",
           "manage_archive": "選擇帳號與車輛匯出，或上傳檔案套件進行校驗與合併。檔案包含私人位置與軌跡，請妥善保管。",
           "polling_profile": "目前狀態／電池／行程目標週期：{polling_setting}。依充電和車輛活動自動調整。",
-          "enable_assistant": "允許所選 AI 服務讀取選中車輛的名稱、本機數值、時間與資料品質。不提供帳號、憑證、精確位置或原始回應，不重新整理雲端或控制車輛。",
-          "assistant_vehicles": "此選擇獨立於車輛控制。關閉 Assistant 會保留所選車輛。",
-          "enable_assistant_tasks": "儲存後，在 [Ninebot Assistant](/ninebot-assistant) 核對範圍並批准歷史詳情同步，再開始雲端請求。預設關閉。",
+          "configure_assistant": "選擇助理可以存取的車輛、資料與歷史任務。",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "助理存取權限",
+        "data": {
+          "assistant_enabled": "為此帳號啟用助理",
+          "assistant_vehicle": "車輛",
+          "review_assistant_tasks": "審查現有任務權限"
+        },
+        "data_description": {
+          "assistant_enabled": "關閉後會撤銷對此帳號的存取權限，並保留已儲存的各車設定。"
+        }
+      },
+      "assistant_vehicle": {
+        "title": "車輛存取權限",
+        "description": "選擇助理可以存取 {vehicle} 的哪些資料與任務。",
+        "data": {
+          "assistant_reads": "允許讀取",
+          "assistant_task_access": "歷史任務",
+          "edit_another_assistant_vehicle": "編輯另一輛車"
+        },
+        "data_description": {
+          "assistant_task_access": "預覽權限包含查看自己的申請。新申請須在 [Ninebot Assistant](/ninebot-assistant) 面板核准後才會開始同步。"
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "確認歷史任務權限",
+        "description": "選擇是否套用所選的任務權限。確認前，現有申請仍按原權限處理。降低任務權限可能使現有申請失效。",
+        "data": {
+          "assistant_confirmation": "任務權限"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "僅 Home Assistant 管理員可匯入或匯出歷史資料庫。",
-      "archive_busy": "檔案下載數量已達上限，請稍後重試。"
+      "archive_busy": "檔案下載數量已達上限，請稍後重試。",
+      "assistant_access_version": "此版本的 Ninebot 無法編輯已儲存的助理設定。",
+      "assistant_access_changed": "助理設定已在此頁面開啟期間變更。請重新開啟 Ninebot 選項以查看最新設定。",
+      "assistant_vehicle_unavailable": "請選擇此帳號下的車輛。"
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "請至少選擇一輛允許控制的車輛。",
       "archive_invalid": "無法完成檔案操作。請核對帳號、檔案格式、完整性、容量與車輛身分。已完成的帳號會保留，可安全重試；原始檔案不會被替換。",
       "archive_busy": "正在備份，請稍後重試。",
-      "assistant_vehicles_required": "請為 Assistant 選擇此帳號的至少一輛車。"
+      "assistant_vehicle_unavailable": "請選擇此帳號下的車輛。"
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "均衡",
         "slower": "更慢",
         "very_slow": "極慢"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "車況",
+        "statistics": "彙總統計",
+        "trips": "個別行程",
+        "sync": "同步狀態"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "關閉",
+        "preview": "僅預覽",
+        "request": "允許申請"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "暫緩確認",
+        "apply": "套用各車的任務權限"
       }
     }
   }
