@@ -42,6 +42,8 @@ PROMPT = (
     "Null/missing is unknown, "
     "not zero; report a zero only when the tool returned a verified zero. "
     "Preserve units, business dates, per-metric coverage, group observation times and freshness. "
+    "For further reads in the same question, reuse the first receipt's resolved business "
+    "date or month. Resolve relative dates afresh for a new question. "
     "Business dates use the archive's Asia/Shanghai timezone. This is not evidence of the "
     "browser timezone. These tools cannot regroup statistics into browser-time day boundaries. "
     "Keep the answer brief. For measurements, include the requested value or unknown, the "
