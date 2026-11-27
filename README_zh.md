@@ -16,7 +16,7 @@
 
 将九号车辆接入 Home Assistant，查看电量和续航、操作车辆、统计行程，并在本地长期保存路线。每个账号有独立的车辆、更新调度和 SQLite 档案。仪表盘、自动化和可选 Assistant 都能使用这些记录。
 
-日常使用请选择[最新正式版](https://github.com/Wuty-zju/ha_ninebot/releases/latest)。[2.2.8 预览版](CHANGELOG.md#228)支持在地图上点选轨迹、查看所选行程合计，并让 Assistant 单独读取一项车况。[全部版本](https://github.com/Wuty-zju/ha_ninebot/releases)
+日常使用请选择[最新正式版](https://github.com/Wuty-zju/ha_ninebot/releases/latest)。[2.2.9 预览版](CHANGELOG.md#229)支持逐车设置助手权限，并将工具统一到 **Ninebot** 集合。使用 **Ninebot tasks** 的宿主请先查看[升级步骤](docs/assistant_zh.md#升级至统一的-ninebot-api)。[全部版本](https://github.com/Wuty-zju/ha_ninebot/releases)
 
 ## 可以做什么
 
@@ -107,7 +107,7 @@
 
 ## Ninebot Assistant
 
-为一个账号开启 **Ninebot Assistant** 并选择允许读取的车辆。在兼容的 Assist 对话代理或原生 MCP Server 中选择 **Ninebot** 工具集。自动化也可以用已有的 HA AI Task 调用 `ninebot.ask`。模型由宿主选择。
+为账号开启 **Ninebot Assistant** 后，按车辆选择可读取的数据。在兼容的 Assist 对话代理或原生 MCP Server 中选择 **Ninebot**，MCP 客户端也可以直连 `/api/mcp/ninebot`。自动化可通过已有的 HA AI Task 调用 `ninebot.ask` 查询指定车辆。模型由宿主选择。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/assistant-zh-dark.svg">
@@ -121,7 +121,7 @@
 | “为什么本月统计未知？” | 依次核对统计值、档案进度和适用指南。证据不足时会保留未知原因。 |
 | “地图回放按什么顺序播放？” | 当前版本的中英文公开指南与固定来源链接。 |
 
-八个只读工具使用已有车况和本地档案。独立的 **Ninebot tasks** 工具集可提出限定范围的补同步请求，管理员核对车辆、范围和请求预算后才交给现有调度器。Assistant 的回复不含精确坐标和账号凭据。[配置宿主、查看依据与审核任务](docs/assistant_zh.md)
+八项查询工具使用已有车况、本地档案和版本帮助。车辆获准后，同一集合还可预览历史缺口或申请限定范围的补同步。原申请人在 HA 面板核对范围和请求额度后批准。Assistant 的回复不含精确坐标和账号凭据。[配置访问与审核任务](docs/assistant_zh.md)
 
 <a id="控制通过新状态确认"></a>
 

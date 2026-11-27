@@ -9,12 +9,12 @@
 <text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / A</text>
 <text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">Assist 或 MCP</text>
 <text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">在宿主选择模型</text>
-<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">选择 Ninebot 只读工具集</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">选择统一的 Ninebot API</text>
 <rect x="492" y="112" width="428" height="137" rx="12" fill="#15263b" stroke="#475569"/>
 <text x="516" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / B</text>
 <text x="516" y="166" font-size="21" font-weight="650" fill="#e6edf3">自动化</text>
 <text x="516" y="197" font-size="17" font-weight="400" fill="#aebdce">ninebot.ask 调用现有 HA AI Task</text>
-<text x="516" y="222" font-size="17" font-weight="400" fill="#aebdce">Action 可预先选定车辆</text>
+<text x="516" y="222" font-size="17" font-weight="400" fill="#aebdce">查询所选车辆</text>
 <path d="M254 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M706 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
@@ -22,7 +22,7 @@
 <rect x="40" y="297" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02</text>
 <text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">Home Assistant 用户身份</text>
-<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">核对管理员、账号授权、所选车辆及归属</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">核对管理员、车辆归属及所请求操作的权限</text>
 <text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">返回私有结果前再次核对权限</text>
 <path d="M480 434 V453 H254 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M250 466 L254 472 L258 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
@@ -47,5 +47,5 @@
 <text x="64" y="721" font-size="21" font-weight="650" fill="#e6edf3">使用结果</text>
 <text x="64" y="752" font-size="17" font-weight="400" fill="#aebdce">Assist 与 MCP 获得结构化工具结果</text>
 <text x="64" y="777" font-size="17" font-weight="400" fill="#aebdce">Action 还可将核验后的结果整理成答案</text>
-<text x="40" y="845" font-size="16" font-weight="400" fill="#aebdce">历史补同步任务使用独立 API，经人工批准后交由现有调度器执行。</text>
+<text x="40" y="845" font-size="16" font-weight="400" fill="#aebdce">获准的车辆可通过 Ninebot 预览或申请历史补同步，申请由用户在 HA 面板批准。</text>
 </svg>

@@ -2,6 +2,13 @@
 
 Select a tag for changes shipped in that version. The [2.0 development history](docs/releases/2.0.md) covers the archive and entity refactor. [2.2.0](#220) brings the Assistant and the maintained vehicle integration into the stable release line. For installation and current defaults, use the [guides](docs/README.md).
 
+## 2.2.9
+
+- **Assistant upgrade:** `/api/mcp/ninebot` is the single dedicated endpoint. The old `ninebot_tasks` API and `/api/mcp/ninebot_tasks` URL are removed. Update clients using the old URL. In MCP Server or a conversation host with an explicit tool selection, deselect **Ninebot tasks** and keep **Ninebot** and your other selections. If the old collection was your only Ninebot selection, review permissions before opting into **Ninebot**. [Upgrade instructions](docs/assistant.md#upgrade-to-the-single-ninebot-api)
+- Configure status, summary statistics, individual rides, sync health and task access per vehicle. With full query access, **Ninebot** offers eight query tools. When review is ready, preview access raises the total to twelve and request access to thirteen. `ninebot.ask` continues to use at most the eight query tools for the selected vehicle.
+- Previously task-enabled accounts with selected vehicles confirm task access once. Existing pending or approved requests can continue under their original permissions while confirmation is pending. New requests require the vehicle's request permission and still need the original requester to approve them in Home Assistant.
+- Update the English and Chinese guides, diagrams and cited Assistant help to match the single collection and vehicle task permissions.
+
 ## 2.2.8
 
 - Select a compared ride from its numbered map marker or matching route chip. Switching a previously loaded route updates the playback and summary in place. The comparison shows distance, duration and energy totals independently, retaining unknowns when some rides lack a reading.
