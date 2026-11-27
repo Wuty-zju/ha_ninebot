@@ -2,7 +2,7 @@
 
 [English overview](../README.md) · [中文首页](../README_zh.md)
 
-Start with the row that matches your task. These pages describe the 2.2 stable foundation and label additions in the 2.2 previews. For an older installation, select its tag on GitHub. [Stable changes](../CHANGELOG.md#220) · [Latest preview changes](../CHANGELOG.md#228)
+Start with the row that matches your task. These pages describe the 2.2 stable foundation and label additions in the 2.2 previews. For an older installation, select its tag on GitHub. [Stable changes](../CHANGELOG.md#220) · [Latest preview changes](../CHANGELOG.md#2210)
 
 | Task | English | 简体中文 |
 |---|---|---|

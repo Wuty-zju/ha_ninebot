@@ -210,6 +210,7 @@ def vehicle_list_view(hass: HomeAssistant, scopes: list[AssistantScope]) -> Assi
                     device.name_by_user or snapshot.profile.name,
                     *private_ids,
                 ),
+                "allowed_reads": sorted(grant.reads),
                 "capabilities": capabilities,
             }
         )
@@ -249,9 +250,6 @@ async def _vehicle_query(
     if key == "get_statistics":
         start, end = period_dates(args["period"], period_now or now)
         daily = args["period"] not in {"this_month", "last_month"} and len(args["period"]) != 7
-        if period_now is not None and not daily and period_dates(args["period"], now)[1] != end:
-            # A month summary cannot certify a shorter window across midnight.
-            raise AssistantError("retry_later")
         query = {
             "period": args["period"],
             "start_date": start.isoformat(),
@@ -278,8 +276,13 @@ async def _vehicle_query(
         row = next(
             (row for row in rows if isinstance(row, dict) and row.get(target_key) == target), {}
         )
-        return statistics_view(row, daily=daily, now=now), {
+        if not daily and period_dates(start.strftime("%Y-%m"), dt_util.utcnow())[1] != end:
+            # The summary for this particular month now covers a longer window.
+            raise AssistantError("retry_later")
+        metric = args.get("metric")
+        return statistics_view(row, daily=daily, now=now, metric=metric), {
             **query,
+            **({"metric": metric} if metric is not None else {}),
             "local_action_attempts": attempts,
         }
     if key == "get_recorded_trips":
@@ -486,7 +489,7 @@ async def async_query(
                     args = TOOL_SPECS[key].parameters(arguments)
                     scope = await async_authorize(hass, context, args["vehicle_ref"], operation=key)
                 # Child reads acquire their own slots; never nest active admissions.
-                view, query = await _explain_statistics(hass, scope, args, now)
+                view, query = await _explain_statistics(hass, scope, args, _period_now or now)
                 return await _response(hass, [scope], args, view, query, request_id, now)
             with read_slot(hass, user_id):
                 if key not in TOOL_SPECS:

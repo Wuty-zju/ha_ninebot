@@ -184,6 +184,12 @@ def _statistics(payload: dict[str, Any], selected_metric: str | None = None) -> 
         return ""
     label = f"{start}" if start == end else f"{start} through {end}"
     lines = [f"**Local statistics for {label} (Asia/Shanghai)**"]
+    if selected_metric is None:
+        selected_metric = query.get("metric")
+    if selected_metric is not None and (
+        not isinstance(selected_metric, str) or selected_metric not in METRIC_LABELS
+    ):
+        return ""
     metrics = [selected_metric] if selected_metric is not None else list(METRIC_LABELS)
     complete_period = quality.get("period_closed") is True and (
         quality.get("ride_window_complete") is True
@@ -214,6 +220,11 @@ def _statistics(payload: dict[str, Any], selected_metric: str | None = None) -> 
         lines.append(f"- {name}: {displayed} ({status}, recorded reason `{reason}`).")
         qualified_metric |= status != "available"
     lines.append(f"- Local source `{source}` with coverage basis `{coverage}`.")
+    if evidence.get("ride_date_assignment") == "whole_ride_end_business_date":
+        if any(metric != "distance_km" for metric in metrics):
+            lines.append("- Ride-based metrics count the entire ride on its ending business date.")
+        if "distance_km" in metrics and evidence.get("distance_basis") == "server_daily_chart":
+            lines.append("- Distance comes from the server's daily mileage chart.")
     lines.append(f"- Observation time: {_observation(quality.get('received_at'))}.")
     if (basis := quality.get("completeness_basis")) in (
         "upstream_complete",
@@ -223,6 +234,14 @@ def _statistics(payload: dict[str, Any], selected_metric: str | None = None) -> 
         "server_month_summary",
     ):
         lines.append(f"- Reported completeness basis `{basis}`.")
+    if quality.get("period_closed") is True:
+        lines.append("- The requested business period has closed.")
+    elif quality.get("period_closed") is False:
+        lines.append("- The requested business period is still open.")
+    if source == "account_archive" and quality.get("ride_window_complete") is True:
+        lines.append("- The local archive reports a complete ride window.")
+    if source == "account_archive" and (adjacent := quality.get("adjacent_received_at")):
+        lines.append(f"- Adjacent month observation: {_observation(adjacent)}.")
     if not complete_period:
         lines.append("- Reported coverage leaves the complete period total unverified.")
     if not complete_period or qualified_metric:
@@ -504,6 +523,13 @@ def render_evidence_answer(
         else:
             continue
         if text:
+            ref = payload.get("vehicle_ref")
+            if (
+                tool != "ninebot__search_help"
+                and isinstance(ref, str)
+                and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", ref)
+            ):
+                text = f"Home Assistant vehicle `{ref}`\n\n{text}"
             sections.append(text)
             request_ids.append(request_id)
     if not sections:

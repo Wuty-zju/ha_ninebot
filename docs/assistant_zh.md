@@ -2,7 +2,7 @@
 
 [English](assistant.md) · [文档](README.md) · [历史行程与地图](history_zh.md)
 
-本文适用于 **2.2.9 预览版**。其他版本请查阅 [v2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)或 [v2.2.8 预览版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.8/docs/assistant_zh.md)。
+本文适用于 **2.2.10 预览版**。其他版本请查阅 [v2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)或 [v2.2.9 预览版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.9/docs/assistant_zh.md)。
 
 通过 Home Assistant 原生 LLM API 和 MCP Server，兼容的对话宿主可以读取授权车辆的本地数据、查询带来源的帮助，并申请补齐行程。只读查询和需人工审批的任务分别授权。
 
@@ -22,7 +22,7 @@
 
 ## 开启方式
 
-1. 从 Marketplace、HACS 或[发行包](https://github.com/Wuty-zju/ha_ninebot/releases)安装 **2.2.9 预览版**，进入需要授权的账号。
+1. 从 Marketplace、HACS 或[发行包](https://github.com/Wuty-zju/ha_ninebot/releases)安装 **2.2.10 预览版**，进入需要授权的账号。
 2. 原生 Assistant API 使用 **Home Assistant 2026.11+**。普通车辆功能仍维持 **2026.1.0** 最低版本；缺少所需原生 API 时不显示 Assistant 选项。
 3. 打开需要授权账号的 **设置 → 设备与服务 → Ninebot → 选项**，勾选**配置 Ninebot 助手**并提交。在**助手访问权限**中选择**为此账号启用助手**及要设置的车辆。助手默认关闭，新发现的车辆也默认无助手权限。远程控制权限单独设置。
 4. 在原生 **MCP Server** 集成中，关闭访问全部 LLM API，仅选择 **Ninebot**，保留管理员要求并开启只读模式。按 Home Assistant 支持的认证方式，将 MCP 客户端连接到 `/api/mcp`。
@@ -67,6 +67,10 @@ response_variable: ninebot_answer
 
 先读 `outcome`。取得 `evidence` 后，读取 `results`，或显示 `{{ ninebot_answer.get('answer', {}).get('text', '') }}`。2.2.8 预览版可以针对单项车况返回数值、单位、来源组、观测时间和新鲜度。中途中断可返回 `partial` 和已重新验权的结果。撤销授权会撤回私有结果。需要选择车辆时，`needs_input` 可同时给出 `next_step.type: select_vehicle`，选定车辆后再查询。
 
+同名车辆会在 `next_step.choices` 中分别列出。选中对应的 HA 设备后，带上它的 `device_id` 再次提问。有多辆车可选时，选车前仅提供车辆列表和通用帮助。每辆车的 `allowed_reads` 显示它自己的读权限。只开放统计的车辆可以查昨天骑了几趟，并给出覆盖情况；选中只开放车况的车辆查询行程时，Action 可返回 `needs_input`，并在 `selection` 中列出已授权范围和本轮业务日期。管理员可在 Ninebot 的**选项 → Assistant 访问权限**中调整授权。
+
+一次 Action 中的相对日期以提问时的上海业务日为准。11 月 6 日 23:59 问“昨天骑了几趟”，即使工具在午夜后执行，仍查询 11 月 5 日。跨午夜的行程整体计入结束当天。只查次数时，`get_statistics` 可传 `metric: ride_count`，回执包含车辆、业务日期、覆盖情况、来源及观测时间。
+
 Action 根据工具回执编排回复。帮助节选保留完整来源链接和知识库版本，日期、数量、单位和覆盖范围来自业务代码。可选格式化结果使用 `ninebot-evidence-answer-v1` 并列出引用的请求 ID。32 KiB 的响应空间优先保留完整结构化数据。对话宿主可以自行展示工具结果。
 
 一次 Action 最长运行 180 秒，最多调用四次工具，同一集成同时运行一个 Action 问答。需要支持 `ai_task.async_generate_data(..., llm_api=...)` 的 HA 版本与模型宿主。原生 **Ninebot** 集合可独立使用。
@@ -89,7 +93,7 @@ Action 根据工具回执编排回复。帮助节选保留完整来源链接和�
 | `ninebot__search_help` | `query`；可选 `language`（`en` 或 `zh-Hans`）、`include_procedures`（默认 `false`） | 最多三条附引用的公开帮助；指导具体任务时显式请求任务清单。 |
 | `ninebot__get_vehicles` | 无 | 已向 AI 授权的车辆引用、显示名称及本地数据能力。 |
 | `ninebot__get_vehicle_status` | `vehicle_ref`，可选 `metric`（2.2.8） | 读取一项缓存值及其观测组。省略指标则返回车况和 BMS 概览。 |
-| `ninebot__get_statistics` | `vehicle_ref`、`period` | 本地 `today`、`yesterday`、`this_month`、`last_month` 或单个明确业务日期／月份的统计及逐指标覆盖情况。 |
+| `ninebot__get_statistics` | `vehicle_ref`、`period`，可选 `metric` | 本地 `today`、`yesterday`、`this_month`、`last_month` 或单个明确业务日期／月份的统计及逐指标覆盖情况。 |
 | `ninebot__get_recorded_trips` | `vehicle_ref`、`start_date`、`end_date`；可选 `limit`、`cursor` | 一页按时间倒序排列的本地行程。日期格式 `YYYY-MM-DD`，含首尾最多31天；默认10条，最多20条。 |
 | `ninebot__get_trip_detail` | `vehicle_ref`、`ride_id`、`query_month` | 对应车辆及月份中已验证行程的本地标量详情。使用列表返回的行程 ID 和 `YYYYMM` 月份。 |
 | `ninebot__get_sync_health` | `vehicle_ref` | 只读查询全档案行程计数、扫描和详情保存进度，以及当前请求节奏。 |

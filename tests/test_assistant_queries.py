@@ -240,6 +240,27 @@ async def test_composite_tool_cannot_join_permissions_across_cars(hass, assistan
 
     hass.config_entries.async_update_entry(entry, options=grants(["statistics"], ["sync"]))
     await hass.async_block_till_done()
+    roster, error = await async_query(hass, "get_vehicles", {}, assistant.context)
+    assert not error
+    cars = roster["data"]["vehicles"]
+    assert len({car["label"] for car in cars}) == 1
+    assert {car["vehicle_ref"]: car["allowed_reads"] for car in cars} == {
+        assistant.device: ["statistics"],
+        other.id: ["sync"],
+    }
+    turn = EvidenceTurn(hass, ServiceCall(hass, "ninebot", "ask", {}, context=assistant.context))
+    await turn.async_prepare()
+    await turn.async_validate()
+    for reason in (None, "vehicle_selection_required"):
+        turn.stop = reason
+        response = turn.response()
+        assert response["outcome"] == "needs_input" and response["results"] == []
+        assert response["next_step"] == {
+            "type": "select_vehicle",
+            "parameter": "device_id",
+            "choices": [{"device_id": car["vehicle_ref"], "label": car["label"]} for car in cars],
+            "more_available": False,
+        }
     keys = await async_visible_keys(hass, assistant.context)
     assert {"get_statistics", "get_sync_health"} <= keys and "explain_statistics" not in keys
     for vehicle_ref in (assistant.device, other.id):
@@ -1249,6 +1270,61 @@ async def test_statistics_check_uses_real_local_statistics_health_and_cited_chec
     assert action.await_count == 2
     assert len(hass.data[LIMITS_KEY].calls[assistant.context.user_id]) == 4
     assert hass.data[LIMITS_KEY].active == 0
+
+
+@pytest.mark.parametrize("key", ["get_statistics", "explain_statistics"])
+async def test_action_yesterday_keeps_turn_date_and_original_observation(hass, assistant, key):
+    before = datetime(2026, 10, 7, 15, 59, 59, tzinfo=UTC)
+    after = before + timedelta(seconds=2)
+    args = {"vehicle_ref": assistant.device, "period": "yesterday", "metric": "ride_count"}
+    with patch("custom_components.ninebot.assistant_queries.dt_util.utcnow", return_value=after):
+        receipt, error = await async_query(
+            hass,
+            key,
+            args,
+            assistant.context,
+            _period_now=before,
+            _selected_vehicle=assistant.device,
+        )
+    assert not error
+    assert receipt["query"]["start_date"] == receipt["query"]["end_date"] == "2026-10-06"
+    assert receipt["query"]["as_of"] == after.isoformat()
+    if key == "get_statistics":
+        assert receipt["data"] == {"ride_count": 2, "units": {"ride_count": None}}
+        assert set(receipt["quality"]["metrics"]) == {"ride_count"}
+        answer = render_evidence_answer(
+            [{"tool": "ninebot__get_statistics", "error": False, "result": receipt}]
+        )
+        assert answer and answer["request_ids"] == [receipt["request_id"]]
+        for fact in (
+            assistant.device,
+            "2026-10-06",
+            "Asia/Shanghai",
+            "Ride count: 2",
+            "ending business date",
+            "account_archive",
+            receipt["quality"]["received_at"],
+        ):
+            assert fact in answer["text"]
+    else:
+        assert receipt["data"]["steps"][0]["result"]["query"]["end_date"] == "2026-10-06"
+
+
+async def test_finished_month_is_addressed_by_its_identity_after_rollover(hass, assistant):
+    before = datetime(2026, 10, 31, 15, 59, 59, tzinfo=UTC)
+    with patch(
+        "custom_components.ninebot.assistant_queries.dt_util.utcnow",
+        return_value=before + timedelta(seconds=2),
+    ):
+        receipt, error = await async_query(
+            hass,
+            "get_statistics",
+            {"vehicle_ref": assistant.device, "period": "last_month"},
+            assistant.context,
+            _period_now=before,
+        )
+    assert not error and receipt["query"]["start_date"] == "2026-09-01"
+    assert receipt["query"]["end_date"] == "2026-09-30"
 
 
 async def test_statistics_check_fixes_business_period_before_month_rollover(hass, assistant):

@@ -2,7 +2,7 @@
 
 [简体中文](assistant_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
-This guide describes the **2.2.9 preview**. Use the matching guide for [v2.2.0 stable](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) or the [v2.2.8 preview](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.8/docs/assistant.md).
+This guide describes the **2.2.10 preview**. Use the matching guide for [v2.2.0 stable](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) or the [v2.2.9 preview](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.9/docs/assistant.md).
 
 Connect a compatible conversation host to your saved vehicle data, cited local help and optional reviewed history tasks. The native Home Assistant LLM API and MCP Server preserve the signed-in user throughout each tool call.
 
@@ -22,7 +22,7 @@ Accounts keep their previously selected vehicles' read permissions. If you enabl
 
 ## Enable it
 
-1. Install the **2.2.9 preview** through Marketplace, HACS or a [packaged release](https://github.com/Wuty-zju/ha_ninebot/releases). Open the account you want to use.
+1. Install the **2.2.10 preview** through Marketplace, HACS or a [packaged release](https://github.com/Wuty-zju/ha_ninebot/releases). Open the account you want to use.
 2. Use Home Assistant **2026.11+** for the native Assistant API. On earlier versions, ordinary Ninebot features retain the integration's **2026.1.0** minimum; the Assistant option is unavailable without the required native API.
 3. Open **Settings → Devices & services → Ninebot → Options** for each account you want to expose. Check **Configure Ninebot Assistant** and submit. In **Assistant access**, select **Enable Assistant for this account** and choose a vehicle. Assistant is off by default, and each newly discovered vehicle starts with no Assistant permissions. Remote-control access is managed separately.
 4. In the native **MCP Server** integration, turn off access to all LLM APIs and select **Ninebot**. Keep administrator access required and read-only mode enabled. Connect your MCP client to `/api/mcp` using Home Assistant's supported authentication.
@@ -67,6 +67,10 @@ response_variable: ninebot_answer
 
 Read `outcome` first. With `evidence`, inspect `results` or display `{{ ninebot_answer.get('answer', {}).get('text', '') }}`. For one supported scalar metric the 2.2.8 preview includes its value, unit, source group, observation time and freshness. A stopped request can return `partial` with revalidated results. Access withdrawal clears private results. When a choice is necessary, `needs_input` can return `next_step.type: select_vehicle`. Supply a vehicle before retrying.
 
+If two vehicles share a name, use the distinct Home Assistant `device_id` in `next_step.choices` and repeat the question with that device. Only discovery and public help are available before you select a vehicle from several. Each discovered vehicle lists its own `allowed_reads`. With statistics access alone, the Assistant can report yesterday's ride count and its coverage. When a selected vehicle has only status access, the Action can return `needs_input` with its `selection.allowed_reads` and reference business date. An administrator can change those grants in Ninebot’s **Options → Assistant access**.
+
+Relative dates in an Action turn use the Asia/Shanghai date when the question started. A question started at 23:59 on November 6 still resolves “yesterday” to November 5 if the tools run after midnight. A ride ending after midnight counts on its ending business date. For a focused count, use `get_statistics` with `metric: ride_count`. The receipt identifies the vehicle, day, coverage, source and observation time.
+
 The Action builds the display from tool receipts. Help preserves the source link and corpus version. Dates, counts, units and coverage come from business code. The optional display uses `ninebot-evidence-answer-v1` with contributing request IDs. Complete structured results take precedence within the 32 KiB limit. A model-hosted conversation has its own presentation rules.
 
 The deadline is 180 seconds, with up to four tool calls and one active Action turn. This requires a provider and HA Core supporting `ai_task.async_generate_data(..., llm_api=...)`. The native **Ninebot** collection is available independently of the Action.
@@ -89,7 +93,7 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 | `ninebot__search_help` | `query`; optional `language` (`en` or `zh-Hans`), `include_procedures` (default `false`) | Up to three cited public help topics; explicitly request task checklists when guiding a task. |
 | `ninebot__get_vehicles` | None | AI-authorized vehicle references, display labels and local-data capabilities. |
 | `ninebot__get_vehicle_status` | `vehicle_ref`, optional `metric` (2.2.8) | One cached reading and its observation group, or the full cached status and BMS overview when omitted. |
-| `ninebot__get_statistics` | `vehicle_ref`, `period` | Local `today`, `yesterday`, `this_month`, `last_month` or one explicit business date/month, with per-metric coverage. |
+| `ninebot__get_statistics` | `vehicle_ref`, `period`, optional `metric` | Local `today`, `yesterday`, `this_month`, `last_month` or one explicit business date/month, with per-metric coverage. |
 | `ninebot__get_recorded_trips` | `vehicle_ref`, `start_date`, `end_date`; optional `limit`, `cursor` | One descending local page. Dates use `YYYY-MM-DD`, up to 31 inclusive days; default 10, maximum 20 records. |
 | `ninebot__get_trip_detail` | `vehicle_ref`, `ride_id`, `query_month` | Saved scalar detail for a verified trip from that vehicle/month. Use the list's ID and `YYYYMM` month. |
 | `ninebot__get_sync_health` | `vehicle_ref` | Whole-archive trip counts, discovery and detail progress, and current request pacing. Read-only. |

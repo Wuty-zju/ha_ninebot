@@ -128,6 +128,7 @@ QUERY_SPECS = (
         "List Ninebot vehicles",
         "List vehicles explicitly allowed for AI. If the user has not selected one of several "
         "vehicles, ask which vehicle before reading measurements; never choose the first. "
+        "Use each row's allowed_reads to choose tools for that vehicle. Labels may be identical. "
         "Capabilities report local readiness: cached_status means a successful local status "
         "receipt exists; local_history means the account archive is ready. False does not "
         "mean unsupported hardware. These flags are not measurements or trip counts.",
@@ -161,6 +162,7 @@ QUERY_SPECS = (
         "The current month ends at today's business date. "
         "This is the archive timezone, not the browser timezone; "
         "no alternate timezone is accepted. "
+        "For one requested measure, supply metric; omit it for a summary or multiple measures. "
         "Missing metrics are unknown. Use the returned values, units, exact dates, "
         "per-metric quality, observation time and source. Partial coverage leaves a full "
         "total unverified. Report recorded reasons for gaps without guessing their cause.",
@@ -168,6 +170,7 @@ QUERY_SPECS = (
             {
                 **VEHICLE,
                 vol.Required("period"): PERIOD,
+                vol.Optional("metric"): vol.In(tuple(METRIC_UNITS)),
             }
         ),
         operation=Operation.STATISTICS,

@@ -104,6 +104,7 @@ async def test_native_action_tools_are_bound_to_the_request_and_selected_vehicle
             {"vehicle_ref": "selected"},
             turn.call.context,
             _selected_vehicle="selected",
+            _period_now=turn.started_at,
         )
         assert turn.results[0]["arguments"] == {"vehicle_ref": "selected"}
 
@@ -175,7 +176,6 @@ async def test_multi_vehicle_requires_selection_before_read(turn):
             )
     base.async_call.assert_not_awaited()
     assert turn.stop == "vehicle_selection_required"
-    assert turn.response()["next_step"] == {"type": "select_vehicle", "parameter": "device_id"}
 
 
 async def test_wrong_vehicle_and_context_never_dispatch(turn):
