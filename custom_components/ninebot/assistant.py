@@ -82,11 +82,15 @@ def async_sync_task_policy(hass: HomeAssistant, entry: "NinebotConfigEntry") -> 
     runtime.assistant_policy_options = snapshot
     if previous is not None and previous != snapshot:
         runtime.assistant_policy_revision += 1
-    # A narrower durable grant invalidates old tickets even after a rapid re-grant.
-    # Moving the endpoint or enabling new vehicles preserves existing authority.
+    before = previous.durable_task_vehicles if previous is not None else frozenset()
+    after = snapshot.durable_task_vehicles
+    # Starting after a withdrawal gets a new grant, even before queued listeners run.
+    # An equivalent migration or adding a vehicle to an active grant preserves tickets.
     if (
-        previous is not None and previous.durable_task_vehicles - snapshot.durable_task_vehicles
-    ) or (has_task_access(snapshot) and not valid_policy_epoch(entry.data.get(TASK_POLICY_EPOCH))):
+        before - after
+        or (previous is not None and not before and after)
+        or (has_task_access(snapshot) and not valid_policy_epoch(entry.data.get(TASK_POLICY_EPOCH)))
+    ):
         async_revoke_task_policy(hass, entry)
 
 
