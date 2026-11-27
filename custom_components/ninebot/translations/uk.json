@@ -107,9 +107,7 @@
           "history_storage_mib": "Ліміт сховища історії (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Увімкнути Ninebot Assistant (бета)",
-          "assistant_vehicles": "Транспорт, доступний Assistant",
-          "enable_assistant_tasks": "Дозволити завдання історії поїздок із підтвердженням (бета)",
+          "configure_assistant": "Налаштувати Ninebot Assistant",
           "debug_mode": "Показувати діагностичні сутності"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Інтервали стану/батареї/поїздок: {polling_setting}. Враховуються заряджання й активність.",
-          "enable_assistant": "Дозвольте вибраній системі ШІ читати назви вибраного транспорту, локальні значення, час і якість даних. Облікові записи, дані входу, точні координати й необроблені відповіді виключено. Без оновлення з хмари та керування транспортом.",
-          "assistant_vehicles": "Вибирайте транспорт окремо від дистанційного керування. Вимкнення Assistant зберігає вибір.",
-          "enable_assistant_tasks": "Після збереження перевірте обсяг і підтвердьте пропозиції синхронізації деталей поїздок у [Ninebot Assistant](/ninebot-assistant), перш ніж почнуться запити до хмари. Типово вимкнено.",
+          "configure_assistant": "Виберіть транспорт, дані й завдання історії, до яких помічник матиме доступ.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "Доступ помічника",
+        "data": {
+          "assistant_enabled": "Увімкнути помічник для цього облікового запису",
+          "assistant_vehicle": "Транспорт",
+          "review_assistant_tasks": "Перевірити наявні дозволи на завдання"
+        },
+        "data_description": {
+          "assistant_enabled": "Вимкнення відкликає доступ до облікового запису й зберігає налаштування транспорту."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "Доступ до транспорту",
+        "description": "Виберіть, до яких даних і завдань для {vehicle} помічник матиме доступ.",
+        "data": {
+          "assistant_reads": "Дозволені для читання дані",
+          "assistant_task_access": "Завдання історії",
+          "edit_another_assistant_vehicle": "Налаштувати інший транспортний засіб"
+        },
+        "data_description": {
+          "assistant_task_access": "У попередньому перегляді доступні й ваші запити. Схваліть нові запити на панелі [Ninebot Assistant](/ninebot-assistant) перед початком синхронізації."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "Підтвердити доступ до завдань історії",
+        "description": "Виберіть, чи застосувати вибрані налаштування завдань. Наявні запити зберігають початкові дозволи до підтвердження. Обмеження доступу може зробити наявні запити недійсними.",
+        "data": {
+          "assistant_confirmation": "Налаштування завдань"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Ця версія Ninebot не може змінити збережені налаштування помічника.",
+      "assistant_access_changed": "Налаштування помічника змінилися, поки ця сторінка була відкрита. Знову відкрийте параметри Ninebot, щоб переглянути поточні налаштування.",
+      "assistant_vehicle_unavailable": "Виберіть транспортний засіб цього облікового запису."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "Виберіть хоча б один транспортний засіб для дистанційного керування.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Виберіть хоча б один транспортний засіб цього облікового запису для Assistant."
+      "assistant_vehicle_unavailable": "Виберіть транспортний засіб цього облікового запису."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "Збалансовано",
         "slower": "Повільніше",
         "very_slow": "Дуже повільно"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "Стан транспорту",
+        "statistics": "Зведена статистика",
+        "trips": "Окремі поїздки",
+        "sync": "Стан синхронізації"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "Вимкнено",
+        "preview": "Лише попередній перегляд",
+        "request": "Дозволити запити"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "Відкласти підтвердження",
+        "apply": "Застосувати дозволи для кожного транспортного засобу"
       }
     }
   }

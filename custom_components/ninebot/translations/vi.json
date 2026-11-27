@@ -107,9 +107,7 @@
           "history_storage_mib": "Giới hạn lưu trữ lịch sử (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Bật Ninebot Assistant (Beta)",
-          "assistant_vehicles": "Xe mà Assistant được phép truy cập",
-          "enable_assistant_tasks": "Cho phép tác vụ lịch sử cần phê duyệt (Beta)",
+          "configure_assistant": "Cấu hình Ninebot Assistant",
           "debug_mode": "Hiển thị thực thể chẩn đoán"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Chu kỳ trạng thái/pin/chuyến đi: {polling_setting}. Điều chỉnh theo sạc và hoạt động.",
-          "enable_assistant": "Cho phép hệ thống AI đã chọn đọc tên các xe được chọn, giá trị cục bộ, thời gian và chất lượng dữ liệu. Không bao gồm tài khoản, thông tin xác thực, vị trí chính xác và phản hồi thô. Không làm mới đám mây hoặc điều khiển xe.",
-          "assistant_vehicles": "Chọn xe độc lập với quyền điều khiển từ xa. Tắt Assistant vẫn giữ lựa chọn.",
-          "enable_assistant_tasks": "Sau khi lưu, hãy kiểm tra phạm vi và phê duyệt đề xuất đồng bộ chi tiết chuyến đi trong [Ninebot Assistant](/ninebot-assistant) trước khi bắt đầu yêu cầu đám mây. Mặc định tắt.",
+          "configure_assistant": "Chọn phương tiện, dữ liệu và tác vụ lịch sử mà trợ lý có thể truy cập.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "Quyền truy cập của trợ lý",
+        "data": {
+          "assistant_enabled": "Bật trợ lý cho tài khoản này",
+          "assistant_vehicle": "Xe",
+          "review_assistant_tasks": "Xem lại quyền đối với tác vụ hiện có"
+        },
+        "data_description": {
+          "assistant_enabled": "Khi tắt, quyền truy cập vào tài khoản này sẽ bị thu hồi và cài đặt phương tiện đã lưu vẫn được giữ."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "Quyền truy cập phương tiện",
+        "description": "Chọn những gì trợ lý có thể truy cập cho {vehicle}.",
+        "data": {
+          "assistant_reads": "Dữ liệu được phép đọc",
+          "assistant_task_access": "Tác vụ lịch sử",
+          "edit_another_assistant_vehicle": "Chỉnh sửa phương tiện khác"
+        },
+        "data_description": {
+          "assistant_task_access": "Bạn cũng có thể xem yêu cầu của mình ở chế độ xem trước. Hãy phê duyệt yêu cầu mới trong bảng điều khiển [Ninebot Assistant](/ninebot-assistant) trước khi bắt đầu đồng bộ."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "Xác nhận quyền truy cập tác vụ lịch sử",
+        "description": "Chọn có áp dụng cài đặt tác vụ đã chọn hay không. Các yêu cầu hiện có vẫn dùng quyền ban đầu trong khi chờ xác nhận. Việc giảm quyền có thể làm yêu cầu hiện có mất hiệu lực.",
+        "data": {
+          "assistant_confirmation": "Cài đặt tác vụ"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Phiên bản Ninebot này không thể chỉnh sửa cài đặt trợ lý đã lưu.",
+      "assistant_access_changed": "Cài đặt trợ lý đã thay đổi khi trang này đang mở. Hãy mở lại tùy chọn Ninebot để xem cài đặt hiện tại.",
+      "assistant_vehicle_unavailable": "Chọn phương tiện thuộc tài khoản này."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "Chọn ít nhất một xe để điều khiển từ xa.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Chọn ít nhất một xe từ tài khoản này cho Assistant."
+      "assistant_vehicle_unavailable": "Chọn phương tiện thuộc tài khoản này."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "Cân bằng",
         "slower": "Chậm hơn",
         "very_slow": "Rất chậm"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "Trạng thái phương tiện",
+        "statistics": "Thống kê tổng hợp",
+        "trips": "Từng chuyến đi",
+        "sync": "Trạng thái đồng bộ"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "Tắt",
+        "preview": "Chỉ xem trước",
+        "request": "Cho phép gửi yêu cầu"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "Xác nhận sau",
+        "apply": "Áp dụng quyền tác vụ theo từng phương tiện"
       }
     }
   }

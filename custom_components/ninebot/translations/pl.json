@@ -107,9 +107,7 @@
           "history_storage_mib": "Limit pamięci historii (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Włącz Ninebot Assistant (Beta)",
-          "assistant_vehicles": "Pojazdy dostępne dla Asystenta",
-          "enable_assistant_tasks": "Zezwalaj na zadania historii wymagające zatwierdzenia (Beta)",
+          "configure_assistant": "Skonfiguruj Ninebot Assistant",
           "debug_mode": "Pokaż encje diagnostyczne"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Interwały stanu/baterii/przejazdów: {polling_setting}. Dostosowują się do ładowania i aktywności.",
-          "enable_assistant": "Zezwól wybranemu systemowi AI na odczyt nazw wybranych pojazdów, wartości lokalnych, czasu i jakości danych. Bez kont, danych logowania, dokładnej lokalizacji i surowych odpowiedzi. Bez odświeżania w chmurze i sterowania pojazdem.",
-          "assistant_vehicles": "Wybierz pojazdy niezależnie od zdalnego sterowania. Wyłączenie Asystenta zachowuje wybór.",
-          "enable_assistant_tasks": "Po zapisaniu sprawdź zakres i zatwierdź propozycje synchronizacji szczegółów przejazdów w [Ninebot Assistant](/ninebot-assistant), zanim rozpoczną się żądania do chmury. Domyślnie wyłączone.",
+          "configure_assistant": "Wybierz pojazdy, dane i zadania historii dostępne dla asystenta.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "Dostęp asystenta",
+        "data": {
+          "assistant_enabled": "Włącz asystenta dla tego konta",
+          "assistant_vehicle": "Pojazd",
+          "review_assistant_tasks": "Sprawdź istniejące uprawnienia do zadań"
+        },
+        "data_description": {
+          "assistant_enabled": "Wyłączenie odbiera dostęp do tego konta i zachowuje zapisane ustawienia pojazdów."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "Dostęp do pojazdu",
+        "description": "Wybierz, do których danych i zadań dotyczących {vehicle} asystent ma mieć dostęp.",
+        "data": {
+          "assistant_reads": "Dozwolony odczyt",
+          "assistant_task_access": "Zadania historii",
+          "edit_another_assistant_vehicle": "Edytuj inny pojazd"
+        },
+        "data_description": {
+          "assistant_task_access": "Podgląd obejmuje również Twoje wnioski. Zatwierdź nowe wnioski w panelu [Ninebot Assistant](/ninebot-assistant), zanim rozpocznie się synchronizacja."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "Potwierdź dostęp do zadań historii",
+        "description": "Zdecyduj, czy zastosować wybrane ustawienia zadań. Istniejące wnioski zachowują dotychczasowe uprawnienia do czasu potwierdzenia. Ograniczenie dostępu może unieważnić istniejące wnioski.",
+        "data": {
+          "assistant_confirmation": "Ustawienia zadań"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Ta wersja Ninebot nie może edytować zapisanych ustawień asystenta.",
+      "assistant_access_changed": "Ustawienia asystenta zmieniły się, gdy ta strona była otwarta. Ponownie otwórz opcje Ninebot, aby zobaczyć aktualne ustawienia.",
+      "assistant_vehicle_unavailable": "Wybierz pojazd z tego konta."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "Wybierz co najmniej jeden pojazd do zdalnego sterowania.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Wybierz co najmniej jeden pojazd z tego konta dla Asystenta."
+      "assistant_vehicle_unavailable": "Wybierz pojazd z tego konta."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "Zrównoważone",
         "slower": "Wolniejsze",
         "very_slow": "Bardzo wolne"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "Stan pojazdu",
+        "statistics": "Statystyki zbiorcze",
+        "trips": "Poszczególne przejazdy",
+        "sync": "Stan synchronizacji"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "Wyłączone",
+        "preview": "Tylko podgląd",
+        "request": "Zezwalaj na składanie wniosków"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "Odłóż potwierdzenie",
+        "apply": "Zastosuj uprawnienia osobno dla pojazdów"
       }
     }
   }

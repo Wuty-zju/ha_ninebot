@@ -1,11 +1,24 @@
 import asyncio
 import json
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_RECONFIGURE, SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 
+from custom_components.ninebot.assistant_access import (
+    ALL_READS,
+    CONF_ASSISTANT,
+    CONF_ASSISTANT_ACCESS,
+    CONF_ASSISTANT_TASKS,
+    CONF_ASSISTANT_VEHICLES,
+    READ_STATUS,
+    TASK_OFF,
+    TASK_PREVIEW,
+    TASK_REQUEST,
+    parse_assistant_access,
+)
 from custom_components.ninebot.config_flow import ERRORS
 from custom_components.ninebot.exceptions import ErrorKind, NinebotError
 from custom_components.ninebot.session import Candidate, session_uid
@@ -699,3 +712,180 @@ async def test_hidden_option_omission_keeps_saved_choices_and_explicit_disable(h
     assert entry.options["preserve_history"] is False
     for key in previous.keys() - {"enable_controls", "preserve_history"}:
         assert entry.options[key] == previous[key]
+
+
+@pytest.fixture
+def assistant_options_available():
+    with patch("custom_components.ninebot.config_flow.native_api_supported", return_value=True):
+        yield
+
+
+@pytest.fixture
+def legacy_assistant_options(hass, entry, assistant_options_available):
+    options = {
+        CONF_ASSISTANT: True,
+        CONF_ASSISTANT_VEHICLES: ["VehicleA", "VehicleB"],
+        CONF_ASSISTANT_TASKS: True,
+        "enable_coordinates": False,
+    }
+    hass.config_entries.async_update_entry(entry, options=options)
+    return options
+
+
+def options_fields(form):
+    return {key.schema: value for key, value in form["data_schema"].schema.items()}
+
+
+async def test_ordinary_options_save_preserves_offline_vehicles_and_pending_task_consent(
+    hass, entry, legacy_assistant_options
+):
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    assert "configure_assistant" in options_fields(form)
+    assert not {CONF_ASSISTANT, CONF_ASSISTANT_TASKS, CONF_ASSISTANT_VEHICLES}.intersection(
+        options_fields(form)
+    )
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {"polling_profile": "slower"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["polling_profile"] == "slower"
+    assert entry.options["enable_coordinates"] is False
+    access = parse_assistant_access(entry.options)
+    assert access == parse_assistant_access(legacy_assistant_options)
+    assert CONF_ASSISTANT_ACCESS in entry.options
+    assert entry.options[CONF_ASSISTANT_TASKS] is False
+
+
+@pytest.mark.parametrize("confirm", [False, True])
+async def test_assistant_options_stage_each_vehicle_before_an_explicit_confirmation(
+    hass, entry, legacy_assistant_options, confirm
+):
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    flow_id = form["flow_id"]
+    form = await hass.config_entries.options.async_configure(
+        flow_id, {"configure_assistant": True, "polling_profile": "slower"}
+    )
+    assert form["step_id"] == "assistant_access"
+    choices = options_fields(form)["assistant_vehicle"].config["options"]
+    assert {choice["value"] for choice in choices} == {"VehicleA", "VehicleB"}
+    form = await hass.config_entries.options.async_configure(
+        flow_id, {"assistant_vehicle": "VehicleA"}
+    )
+    assert form["step_id"] == "assistant_vehicle"
+    fields = options_fields(form)
+    assert fields["assistant_reads"].config["options"] == ["status", "statistics", "trips", "sync"]
+    assert fields["assistant_reads"].config["multiple"] is True
+    assert fields["assistant_task_access"].config["options"] == ["off", "preview", "request"]
+    assert form["data_schema"]({})["assistant_task_access"] == "off"
+
+    form = await hass.config_entries.options.async_configure(
+        flow_id,
+        {
+            "assistant_reads": ["status"],
+            "assistant_task_access": "request",
+            "edit_another_assistant_vehicle": True,
+        },
+    )
+    assert form["step_id"] == "assistant_access"
+    form = await hass.config_entries.options.async_configure(
+        flow_id, {"assistant_vehicle": "VehicleB"}
+    )
+    assert form["step_id"] == "assistant_vehicle"
+    form = await hass.config_entries.options.async_configure(
+        flow_id, {"assistant_task_access": "preview"}
+    )
+    assert form["step_id"] == "assistant_confirm_tasks"
+    assert form["data_schema"]({})["assistant_confirmation"] == "later"
+    assert entry.options == legacy_assistant_options
+
+    result = await hass.config_entries.options.async_configure(
+        flow_id, {"assistant_confirmation": "apply"} if confirm else {}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    access = parse_assistant_access(entry.options)
+    assert access.pending_confirmation is not confirm
+    assert access.vehicles["VehicleA"].reads == {READ_STATUS}
+    assert access.vehicles["VehicleB"].reads == ALL_READS
+    assert access.vehicles["VehicleA"].tasks == (TASK_REQUEST if confirm else TASK_OFF)
+    assert access.vehicles["VehicleB"].tasks == (TASK_PREVIEW if confirm else TASK_OFF)
+    assert access.durable_task_vehicles == ({"VehicleA"} if confirm else {"VehicleA", "VehicleB"})
+    assert entry.options[CONF_ASSISTANT_VEHICLES] == ["VehicleB"]
+    assert entry.options[CONF_ASSISTANT_TASKS] is False
+    assert entry.options["polling_profile"] == "slower"
+    assert "configure_assistant" not in entry.options
+
+
+async def test_confirming_without_task_grants_withdraws_legacy_task_access(
+    hass, entry, legacy_assistant_options
+):
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    flow_id = form["flow_id"]
+    await hass.config_entries.options.async_configure(flow_id, {"configure_assistant": True})
+    form = await hass.config_entries.options.async_configure(
+        flow_id, {"review_assistant_tasks": True}
+    )
+    assert form["step_id"] == "assistant_confirm_tasks"
+    result = await hass.config_entries.options.async_configure(
+        flow_id, {"assistant_confirmation": "apply"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    access = parse_assistant_access(entry.options)
+    assert not access.pending_confirmation
+    assert not access.durable_task_vehicles
+    assert all(vehicle.reads == ALL_READS for vehicle in access.vehicles.values())
+
+
+async def test_assistant_new_vehicle_starts_without_read_or_task_grants(
+    hass, entry, assistant_options_available
+):
+    entry.runtime_data = SimpleNamespace(
+        coordinator=SimpleNamespace(
+            data={
+                "NewVehicle": SimpleNamespace(
+                    present=True, profile=SimpleNamespace(name="Scooter")
+                ),
+                "Unavailable": SimpleNamespace(present=False),
+            }
+        )
+    )
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    flow_id = form["flow_id"]
+    form = await hass.config_entries.options.async_configure(flow_id, {"configure_assistant": True})
+    assert form["data_schema"]({})["assistant_enabled"] is False
+    assert options_fields(form)["assistant_vehicle"].config["options"] == [
+        {"value": "NewVehicle", "label": "Scooter · ehicle"}
+    ]
+    form = await hass.config_entries.options.async_configure(
+        flow_id, {"assistant_enabled": True, "assistant_vehicle": "NewVehicle"}
+    )
+    defaults = form["data_schema"]({})
+    assert defaults["assistant_reads"] == []
+    assert defaults["assistant_task_access"] == "off"
+    result = await hass.config_entries.options.async_configure(
+        flow_id, {"assistant_reads": ["sync"], "assistant_task_access": "preview"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    access = parse_assistant_access(entry.options)
+    assert access.vehicles["NewVehicle"].reads == {"sync"}
+    assert access.vehicles["NewVehicle"].tasks == TASK_PREVIEW
+    assert not access.durable_task_vehicles
+
+
+async def test_assistant_edit_cannot_override_consent_changed_in_another_flow(
+    hass, entry, legacy_assistant_options
+):
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    flow_id = form["flow_id"]
+    await hass.config_entries.options.async_configure(flow_id, {"configure_assistant": True})
+    form = await hass.config_entries.options.async_configure(
+        flow_id, {"review_assistant_tasks": True}
+    )
+    assert form["step_id"] == "assistant_confirm_tasks"
+    withdrawn = {**legacy_assistant_options, CONF_ASSISTANT: False}
+    hass.config_entries.async_update_entry(entry, options=withdrawn)
+    result = await hass.config_entries.options.async_configure(
+        flow_id, {"assistant_confirmation": "apply"}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "assistant_access_changed"
+    assert entry.options == withdrawn

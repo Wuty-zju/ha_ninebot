@@ -107,9 +107,7 @@
           "history_storage_mib": "Opslaglimiet historiek (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Ninebot Assistant inschakelen (bèta)",
-          "assistant_vehicles": "Voertuigen beschikbaar voor de Assistant",
-          "enable_assistant_tasks": "Taken voor ritgeschiedenis met goedkeuring toestaan (bèta)",
+          "configure_assistant": "Ninebot Assistant configureren",
           "debug_mode": "Diagnostische entiteiten tonen"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Intervallen status/accu/ritten: {polling_setting}. Laden en activiteit passen ze aan.",
-          "enable_assistant": "Geef de gekozen AI-host toegang tot namen van geselecteerde voertuigen, lokale waarden, tijden en gegevenskwaliteit. Accounts, inloggegevens, exacte locaties en ruwe antwoorden zijn uitgesloten. Geen cloudverversing of voertuigbediening.",
-          "assistant_vehicles": "Kies voertuigen los van de afstandsbediening. Uitschakelen van de Assistant bewaart de selectie.",
-          "enable_assistant_tasks": "Controleer na het opslaan het bereik en keur voorstellen voor het synchroniseren van ritdetails goed in [Ninebot Assistant](/ninebot-assistant), voordat cloudverzoeken beginnen. Standaard uitgeschakeld.",
+          "configure_assistant": "Kies tot welke voertuigen, gegevens en geschiedenistaken de assistent toegang heeft.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "Toegang voor assistent",
+        "data": {
+          "assistant_enabled": "Assistent inschakelen voor dit account",
+          "assistant_vehicle": "Voertuig",
+          "review_assistant_tasks": "Bestaande taakrechten controleren"
+        },
+        "data_description": {
+          "assistant_enabled": "Uitschakelen trekt toegang tot dit account in en bewaart de opgeslagen voertuiginstellingen."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "Voertuigtoegang",
+        "description": "Kies waar de assistent voor {vehicle} toegang toe heeft.",
+        "data": {
+          "assistant_reads": "Leesrechten",
+          "assistant_task_access": "Geschiedenistaken",
+          "edit_another_assistant_vehicle": "Een ander voertuig bewerken"
+        },
+        "data_description": {
+          "assistant_task_access": "De voorvertoning toont ook je eigen aanvragen. Keur nieuwe aanvragen goed in het paneel [Ninebot Assistant](/ninebot-assistant) voordat de synchronisatie begint."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "Toegang tot geschiedenistaken bevestigen",
+        "description": "Kies of je de geselecteerde taakinstellingen wilt toepassen. Bestaande aanvragen houden hun oorspronkelijke rechten totdat je bevestigt. Minder taakrechten kunnen bestaande aanvragen ongeldig maken.",
+        "data": {
+          "assistant_confirmation": "Taakinstellingen"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Deze versie van Ninebot kan de opgeslagen assistentinstellingen niet bewerken.",
+      "assistant_access_changed": "De assistentinstellingen zijn gewijzigd terwijl deze pagina openstond. Open de Ninebot-opties opnieuw om de actuele instellingen te zien.",
+      "assistant_vehicle_unavailable": "Kies een voertuig uit dit account."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "Selecteer minstens één voertuig voor bediening op afstand.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Selecteer ten minste één voertuig van dit account voor de Assistant."
+      "assistant_vehicle_unavailable": "Kies een voertuig uit dit account."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "Gebalanceerd",
         "slower": "Langzamer",
         "very_slow": "Zeer langzaam"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "Voertuigstatus",
+        "statistics": "Samenvattende statistieken",
+        "trips": "Afzonderlijke ritten",
+        "sync": "Synchronisatiestatus"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "Uit",
+        "preview": "Alleen voorvertoning",
+        "request": "Aanvragen toestaan"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "Bevestiging uitstellen",
+        "apply": "Taakrechten per voertuig toepassen"
       }
     }
   }
