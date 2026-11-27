@@ -89,7 +89,6 @@ jobs:
       - name: Select overlapping routes, inspect accessible controls and drag to a saved point
         env:
           PLATFORM: ${{ matrix.platform }}
-          PROBE_VOICEOVER: ${{ matrix.platform == 'macOS' && '1' || '0' }}
         run: |
           sudo safaridriver --enable
           safaridriver -p 4444 &

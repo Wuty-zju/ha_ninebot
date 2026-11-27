@@ -1,6 +1,5 @@
 /** Run on Apple Safari using safaridriver; all ride data comes from the local fixture. */
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { serveReplay } from './replay-server.mjs';
 
@@ -62,33 +61,6 @@ async function click(expression) {
   await request('DELETE', '/actions');
 }
 
-async function voiceOverPhrases() {
-  // Opt-in only on the disposable macOS runner. Read VoiceOver's own last utterance.
-  const command = (file, args) => execFileSync(file, args,
-    { encoding: 'utf8', timeout: 4500, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  const heard = {};
-  let unavailable;
-  try {
-    command('defaults', ['write', 'com.apple.VoiceOver4/default', 'SCREnableAppleScript', '-bool', 'true']);
-    command('open', ['-g', '-a', 'VoiceOver']);
-    await delay(10000);
-    for (const [name, control] of [['choice', 'initialChip'], ['sample', ui + 'slider']]) {
-      await js(control + '.focus()');
-      for (let attempt = 0; attempt < 6; attempt++) {
-        await delay(550);
-        const phrase = command('osascript', ['-e', 'tell application "VoiceOver" to get content of last phrase']);
-        if (name === 'choice' ? phrase.includes('Synthetic A') : /Point \d+ of 58/i.test(phrase)) {
-          heard[name] = phrase;
-          break;
-        }
-      }
-    }
-  } catch (error) { unavailable = error.code || error.status || 'unavailable'; }
-  console.log('VoiceOver utterances:', JSON.stringify({ heard, unavailable }));
-  if (!heard.choice || !heard.sample) {
-    console.log('::notice::VoiceOver speech was not confirmed for both controls. Browser accessibility checks are reported separately.');
-  }
-}
 const { server, origin } = await serveReplay();
 try {
   const opened = await request('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
@@ -165,8 +137,6 @@ try {
   assert.equal(state.requests, readCount);
   assert.deepEqual(await metrics(), active);
   console.log(JSON.stringify({ platform, role, label, options, metrics: active, ...state }));
-  if (platform === 'macOS' && process.env.PROBE_VOICEOVER === '1' &&
-      process.env.RUNNER_ENVIRONMENT === 'github-hosted') await voiceOverPhrases();
 } finally {
   try { if (session) await request('DELETE', ''); }
   finally { await new Promise(resolve => server.close(resolve)); }

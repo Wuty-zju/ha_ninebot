@@ -273,6 +273,21 @@ try {
     };
     await showPicker();
     const picker = page.getByRole('dialog', { name: 'Choose a ride at this spot' });
+    if (!nativeMode) {
+      const stillOpen = await picker.getByRole('button', { name: /1 · Synthetic A/ }).evaluate(option => {
+        function send(type, y) {
+          const finger = new Touch({ target: option, identifier: 1, clientX: 60, clientY: y });
+          option.dispatchEvent(new TouchEvent(type, {
+            bubbles: true, cancelable: true, changedTouches: [finger],
+            touches: type === 'touchend' || type === 'touchcancel' ? [] : [finger],
+          }));
+        }
+        send('touchstart', 80); send('touchmove', 43); send('touchend', 43);
+        send('touchstart', 80); send('touchcancel', 80); send('touchend', 80);
+        return option.closest('dialog').open && fixtureCard.activeTrack.label === 'Synthetic B';
+      });
+      assert.ok(stillOpen, 'Scrolling or cancelling leaves the choice open');
+    }
     await picker.getByRole('button', { name: /1 · Synthetic A/ }).click();
     await page.waitForFunction(() => fixtureCard.shadowRoot.activeElement?.className === 'focus-track');
     assert.deepEqual(await page.locator('.playback > .metrics dd').allTextContents(),
