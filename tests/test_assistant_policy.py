@@ -7,6 +7,17 @@ import pytest
 from homeassistant.core import Context
 from homeassistant.helpers import device_registry as dr
 
+from custom_components.ninebot.assistant_access import (
+    ALL_READS,
+    READ_STATUS,
+    TASK_OFF,
+    TASK_PREVIEW,
+    TASK_REQUEST,
+    AssistantAccess,
+    VehicleAccess,
+    parse_assistant_access,
+    with_assistant_access,
+)
 from custom_components.ninebot.assistant_policy import AssistantError, async_authorize
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -18,24 +29,27 @@ async def assistant_device(hass, entry, app_client):
 
 
 @pytest.fixture
+async def approval_device(hass, entry, app_client):
+    return await setup_assistant_device(hass, entry, tasks=TASK_REQUEST)
+
+
+@pytest.fixture
 async def proposal_device(hass, entry, app_client, freezer):
     # Establish the clock before setup; later receipts must supersede setup's month.
     freezer.move_to("2026-11-06T23:59:59+00:00")
-    return await setup_assistant_device(hass, entry)
+    return await setup_assistant_device(hass, entry, tasks=TASK_PREVIEW)
 
 
-async def setup_assistant_device(hass, entry):
+async def setup_assistant_device(hass, entry, *, tasks=TASK_OFF):
     # Registration is isolated from this authorization test on every Core.
     with patch("custom_components.ninebot.async_update_assistant_api", new=AsyncMock()):
         assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     hass.config_entries.async_update_entry(
         entry,
-        options={
-            **entry.options,
-            "enable_assistant": True,
-            "assistant_vehicles": ["SyntheticSN"],
-        },
+        options=with_assistant_access(
+            entry.options, AssistantAccess(True, {"SyntheticSN": VehicleAccess(ALL_READS, tasks)})
+        ),
     )
     await hass.async_block_till_done()
     return next(
@@ -154,11 +168,15 @@ async def test_options_default_off_empty_scope_and_existing_features_unchanged(
     await hass.async_block_till_done()
     with patch("custom_components.ninebot.config_flow.native_api_supported", return_value=True):
         form = await hass.config_entries.options.async_init(entry.entry_id)
-    fields = {key.schema: key for key in form["data_schema"].schema}
-    assert fields["enable_assistant"].default() is False
-    assert fields["assistant_vehicles"].default() == []
-    assert list(fields)[-1] == "debug_mode"
-    assert "enable_assistant" not in entry.options
+        fields = {key.schema: key for key in form["data_schema"].schema}
+        assert fields["configure_assistant"].default() is False
+        assert list(fields)[-1] == "debug_mode"
+        form = await hass.config_entries.options.async_configure(
+            form["flow_id"], {"configure_assistant": True}
+        )
+    assert form["step_id"] == "assistant_access"
+    assert form["data_schema"]({})["assistant_enabled"] is False
+    assert not parse_assistant_access(entry.options).vehicles
 
 
 async def test_legacy_options_do_not_offer_an_unavailable_assistant(hass, entry, app_client):
@@ -166,37 +184,49 @@ async def test_legacy_options_do_not_offer_an_unavailable_assistant(hass, entry,
     await hass.async_block_till_done()
     with patch("custom_components.ninebot.config_flow.native_api_supported", return_value=False):
         form = await hass.config_entries.options.async_init(entry.entry_id)
-    assert "enable_assistant" not in {key.schema for key in form["data_schema"].schema}
+    assert "configure_assistant" not in {key.schema for key in form["data_schema"].schema}
 
 
-async def test_options_require_scope_then_preserve_it_when_disabled(hass, entry, app_client):
+async def test_assistant_options_preserve_vehicle_permissions_when_disabled(
+    hass, entry, app_client
+):
     with patch("custom_components.ninebot.async_update_assistant_api", new=AsyncMock()):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         with patch("custom_components.ninebot.config_flow.native_api_supported", return_value=True):
             form = await hass.config_entries.options.async_init(entry.entry_id)
-            result = await hass.config_entries.options.async_configure(
-                form["flow_id"], {"enable_assistant": True}
+            flow_id = form["flow_id"]
+            await hass.config_entries.options.async_configure(
+                flow_id, {"configure_assistant": True}
             )
-            assert result["errors"] == {"assistant_vehicles": "assistant_vehicles_required"}
+            await hass.config_entries.options.async_configure(
+                flow_id, {"assistant_enabled": True, "assistant_vehicle": "SyntheticSN"}
+            )
             result = await hass.config_entries.options.async_configure(
-                form["flow_id"],
-                {"enable_assistant": True, "assistant_vehicles": ["SyntheticSN"]},
+                flow_id, {"assistant_reads": ["status"], "assistant_task_access": "request"}
             )
             assert result["type"].value == "create_entry"
             await hass.async_block_till_done()
             form = await hass.config_entries.options.async_init(entry.entry_id)
+            flow_id = form["flow_id"]
+            await hass.config_entries.options.async_configure(
+                flow_id, {"configure_assistant": True}
+            )
             result = await hass.config_entries.options.async_configure(
-                form["flow_id"], {"enable_assistant": False}
+                flow_id, {"assistant_enabled": False}
             )
             assert result["type"].value == "create_entry"
-            assert result["data"]["assistant_vehicles"] == ["SyntheticSN"]
-            assert result["data"]["enable_assistant"] is False
+            access = parse_assistant_access(result["data"])
+            assert not access.enabled
+            assert access.vehicles == {
+                "SyntheticSN": VehicleAccess(frozenset({READ_STATUS}), TASK_REQUEST)
+            }
+            assert not access.durable_task_vehicles
 
 
 @pytest.mark.parametrize("actor", ["synthetic", "another-admin", None])
 async def test_approval_uses_original_authenticated_requester(
-    hass, entry, assistant_device, actor, freezer
+    hass, entry, approval_device, actor, freezer
 ):
     from datetime import UTC, date, datetime
 
@@ -207,16 +237,12 @@ async def test_approval_uses_original_authenticated_requester(
     )
     from custom_components.ninebot.preservation import DetailScope
 
-    hass.config_entries.async_update_entry(
-        entry, options={**entry.options, "enable_assistant_tasks": True}
-    )
-    await hass.async_block_till_done()
     now = datetime(2026, 11, 7, tzinfo=UTC)
     freezer.move_to(now)
     plan = DetailPlan(
         "synthetic",
         entry.runtime_data.coordinator.statistics.archive.owner,
-        assistant_device,
+        approval_device,
         "SyntheticSN",
         date(2026, 11, 5),
         date(2026, 11, 6),
@@ -239,7 +265,7 @@ async def test_approval_uses_original_authenticated_requester(
     "change,code", [("consent", "not_authorized"), ("expiry", "approval_expired")]
 )
 async def test_approval_rechecks_consent_after_awaited_permissions(
-    hass, entry, assistant_device, freezer, change, code
+    hass, entry, approval_device, freezer, change, code
 ):
     from datetime import UTC, date, datetime
 
@@ -251,16 +277,12 @@ async def test_approval_rechecks_consent_after_awaited_permissions(
     from custom_components.ninebot.assistant_policy import AssistantScope
     from custom_components.ninebot.preservation import DetailScope
 
-    hass.config_entries.async_update_entry(
-        entry, options={**entry.options, "enable_assistant_tasks": True}
-    )
-    await hass.async_block_till_done()
     now = datetime(2026, 11, 7, tzinfo=UTC)
     freezer.move_to(now)
     plan = DetailPlan(
         "synthetic",
         entry.runtime_data.coordinator.statistics.archive.owner,
-        assistant_device,
+        approval_device,
         "SyntheticSN",
         date(2026, 11, 5),
         date(2026, 11, 6),

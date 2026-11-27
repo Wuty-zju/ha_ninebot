@@ -59,13 +59,20 @@ def main() -> None:
         "history_requests_per_hour": 0,
         "history_storage_mib": 128,
     }
-    flow = SimpleNamespace(
-        config_entry=SimpleNamespace(options=saved),
-        _pending_options={},
-        async_show_form=lambda **fields: fields,
-        async_create_entry=lambda **fields: fields,
-    )
-    form = asyncio.run(NinebotOptionsFlow.async_step_init(flow))
+
+    class OptionsProbe(NinebotOptionsFlow):
+        config_entry = SimpleNamespace(options=saved)
+
+        @staticmethod
+        def async_show_form(**fields):
+            return fields
+
+        @staticmethod
+        def async_create_entry(**fields):
+            return fields
+
+    flow = OptionsProbe()
+    form = asyncio.run(flow.async_step_init())
     schema = form["data_schema"]
     fields = [{"name": key.schema} for key in schema.schema]
     data_entry_flow.add_visible_conditions_to_serialized_schema(schema, fields)
@@ -75,7 +82,7 @@ def main() -> None:
     stripped, submitted = data_entry_flow._strip_hidden_fields(
         schema, {"enable_controls": False, "preserve_history": False}
     )
-    result = asyncio.run(NinebotOptionsFlow.async_step_init(flow, stripped(submitted)))
+    result = asyncio.run(flow.async_step_init(stripped(submitted)))
     assert result["data"]["enable_controls"] is False
     assert result["data"]["preserve_history"] is False
     assert result["data"]["control_vehicles"] == saved["control_vehicles"]

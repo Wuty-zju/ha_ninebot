@@ -25,6 +25,7 @@ from .assistant import (
     async_sync_task_policy,
     async_update_assistant_api,
 )
+from .assistant_access import normalize_assistant_options
 from .async_utils import async_drain
 from .backup import backup_active, defer_removal
 from .client import NinecliClient
@@ -94,9 +95,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
     if backup_active(hass):
         raise ConfigEntryNotReady("Ninebot archive backup is in progress")
     profile = PollingPolicy.from_options(entry.options).name
-    if entry.options.get(CONF_POLLING_PROFILE) != profile:
-        options = {**entry.options, CONF_POLLING_PROFILE: profile}
+    options = dict(entry.options)
+    if ASSISTANT_OPTIONS.intersection(options):
+        options = normalize_assistant_options(options)
+    if options.get(CONF_POLLING_PROFILE) != profile:
+        options[CONF_POLLING_PROFILE] = profile
         options.pop("poll_interval", None)
+    if options != entry.options:
         hass.config_entries.async_update_entry(entry, options=options)
     manager = manager_for(hass)
     key = entry.data[CONF_SESSION_KEY]
@@ -253,8 +258,9 @@ async def async_update_options(hass: HomeAssistant, entry: NinebotConfigEntry) -
         if same_data and changed <= POLLING_OPTIONS | ASSISTANT_OPTIONS:
             if changed & POLLING_OPTIONS:
                 await runtime.coordinator.async_reconfigure_polling(options)
-            if changed & ASSISTANT_OPTIONS or policy_changed:
+            if policy_changed:
                 await async_close_task_owner(hass, entry, remove=True, revoke_policy=False)
+            if changed & ASSISTANT_OPTIONS or policy_changed:
                 await async_update_assistant_api(hass)
                 await async_resume_task_execution(hass, entry)
             runtime.applied_options = options

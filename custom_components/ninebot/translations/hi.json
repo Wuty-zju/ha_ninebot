@@ -107,9 +107,7 @@
           "history_storage_mib": "इतिहास भंडारण सीमा (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Ninebot Assistant सक्षम करें (बीटा)",
-          "assistant_vehicles": "Assistant के लिए उपलब्ध वाहन",
-          "enable_assistant_tasks": "समीक्षा योग्य यात्रा इतिहास कार्यों की अनुमति दें (बीटा)",
+          "configure_assistant": "Ninebot Assistant कॉन्फ़िगर करें",
           "debug_mode": "निदान एंटिटी दिखाएँ"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "स्थिति/बैटरी/यात्रा अंतराल: {polling_setting}। चार्जिंग और गतिविधि के अनुसार बदलते हैं।",
-          "enable_assistant": "चुने गए AI होस्ट को चयनित वाहनों के नाम, स्थानीय मान, समय और डेटा की गुणवत्ता पढ़ने दें। खाते, लॉगिन जानकारी, सटीक स्थान और मूल प्रतिक्रियाएँ शामिल नहीं हैं। क्लाउड रीफ़्रेश या वाहन नियंत्रण नहीं।",
-          "assistant_vehicles": "रिमोट नियंत्रण से अलग वाहन चुनें। Assistant बंद करने पर चयन सुरक्षित रहता है।",
-          "enable_assistant_tasks": "सहेजने के बाद, क्लाउड अनुरोध शुरू होने से पहले [Ninebot Assistant](/ninebot-assistant) में दायरा जाँचें और यात्रा विवरण सिंक करने के प्रस्तावों को स्वीकृति दें। डिफ़ॉल्ट रूप से बंद है।",
+          "configure_assistant": "चुनें कि असिस्टेंट किन वाहनों, डेटा और इतिहास के कार्यों तक पहुँच सकता है।",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "असिस्टेंट की पहुँच",
+        "data": {
+          "assistant_enabled": "इस खाते के लिए असिस्टेंट चालू करें",
+          "assistant_vehicle": "वाहन",
+          "review_assistant_tasks": "कार्य की मौजूदा अनुमतियों की समीक्षा करें"
+        },
+        "data_description": {
+          "assistant_enabled": "इसे बंद करने से इस खाते की पहुँच वापस ले ली जाएगी और वाहनों की सहेजी गई सेटिंग बनी रहेंगी।"
+        }
+      },
+      "assistant_vehicle": {
+        "title": "वाहन की पहुँच",
+        "description": "चुनें कि असिस्टेंट {vehicle} की कौन-सी जानकारी पढ़ सकता है और कौन-से कार्य कर सकता है।",
+        "data": {
+          "assistant_reads": "पढ़ने के लिए अनुमत डेटा",
+          "assistant_task_access": "इतिहास के कार्य",
+          "edit_another_assistant_vehicle": "दूसरे वाहन की सेटिंग बदलें"
+        },
+        "data_description": {
+          "assistant_task_access": "पूर्वावलोकन में आप अपने अनुरोध भी देख सकते हैं। सिंक शुरू होने से पहले [Ninebot Assistant](/ninebot-assistant) पैनल में नए अनुरोधों को मंज़ूरी दें।"
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "इतिहास के कार्यों की पहुँच की पुष्टि करें",
+        "description": "चुनें कि कार्यों की चुनी गई सेटिंग लागू करनी हैं या नहीं। पुष्टि लंबित रहने तक मौजूदा अनुरोधों की मूल अनुमतियाँ बनी रहती हैं। अनुमतियाँ घटाने से मौजूदा अनुरोध अमान्य हो सकते हैं।",
+        "data": {
+          "assistant_confirmation": "कार्य सेटिंग"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Ninebot का यह संस्करण असिस्टेंट की सहेजी गई सेटिंग नहीं बदल सकता।",
+      "assistant_access_changed": "यह पेज खुला होने के दौरान असिस्टेंट की सेटिंग बदल गईं। मौजूदा सेटिंग देखने के लिए Ninebot के विकल्प फिर से खोलें।",
+      "assistant_vehicle_unavailable": "इस खाते का कोई वाहन चुनें।"
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "रिमोट नियंत्रण के लिए कम से कम एक वाहन चुनें।",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Assistant के लिए इस खाते का कम से कम एक वाहन चुनें।"
+      "assistant_vehicle_unavailable": "इस खाते का कोई वाहन चुनें।"
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "संतुलित",
         "slower": "धीमी",
         "very_slow": "बहुत धीमी"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "वाहन की स्थिति",
+        "statistics": "सारांश आँकड़े",
+        "trips": "अलग-अलग यात्राएँ",
+        "sync": "सिंक की स्थिति"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "बंद",
+        "preview": "केवल पूर्वावलोकन",
+        "request": "अनुरोधों की अनुमति दें"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "पुष्टि बाद में करें",
+        "apply": "हर वाहन के लिए कार्य अनुमतियाँ लागू करें"
       }
     }
   }

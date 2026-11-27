@@ -1,7 +1,7 @@
 """Typed per-entry runtime, separate from durable configuration."""
 
 from asyncio import Lock
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -15,6 +15,7 @@ from .session import SessionManager
 from .storage import ModelStorage
 
 if TYPE_CHECKING:
+    from .assistant_access import AssistantAccess
     from .assistant_task_store import ApprovalStore
 
 
@@ -36,7 +37,9 @@ class RuntimeData:
     assistant_tasks: "ApprovalStore | None" = None
     assistant_task_blocks: int = 0
     assistant_task_stop: Callable[[], None] | None = None
-    assistant_policy_options: dict[str, Any] | None = None
+    assistant_policy_options: "AssistantAccess | None" = None
+    assistant_policy_revision: int = 0
+    assistant_options_source: Mapping[str, Any] | None = None
     applied_options: dict[str, Any] | None = None
     applied_data: dict[str, Any] | None = None
 

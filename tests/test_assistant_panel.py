@@ -63,7 +63,7 @@ async def test_concurrent_accounts_share_panel_and_last_task_opt_out_removes_it(
         state=ConfigEntryState.LOADED,
         runtime_data=SimpleNamespace(coordinator=SimpleNamespace(_stopping=False)),
     )
-    remove_panel, remove_read, remove_tasks = Mock(), Mock(), Mock()
+    remove_panel, remove_read = Mock(), Mock()
     panel = AsyncMock(return_value=remove_panel)
 
     async def imported(_hass, name):
@@ -71,11 +71,8 @@ async def test_concurrent_accounts_share_panel_and_last_task_opt_out_removes_it(
             return SimpleNamespace(async_register=panel)
         if name.endswith("assistant_review"):
             return SimpleNamespace(async_register=Mock())
-        return SimpleNamespace(
-            async_register=Mock(
-                return_value=remove_tasks if name.endswith("assistant_task_api") else remove_read
-            )
-        )
+        assert name.endswith("assistant_api")
+        return SimpleNamespace(async_register=Mock(return_value=remove_read))
 
     hass.config.components.add("frontend")
     with (
@@ -88,7 +85,6 @@ async def test_concurrent_accounts_share_panel_and_last_task_opt_out_removes_it(
         entry.options["enable_assistant_tasks"] = False
         await async_update_assistant_api(hass)
         remove_panel.assert_called_once()
-        remove_tasks.assert_called_once()
         remove_read.assert_not_called()
         assert hass.data[DATA_KEY].unregister_panel is None
 
@@ -111,28 +107,25 @@ async def test_panel_collision_is_optional_and_never_logs_exception_payload(hass
     assert "PRIVATE PATH" not in caplog.text
 
 
-async def test_task_option_defaults_off_and_preserves_an_explicit_choice(hass, entry, app_client):
+async def test_query_only_accounts_do_not_load_the_review_panel(hass, entry, app_client):
     with (
-        patch("custom_components.ninebot.async_update_assistant_api", new=AsyncMock()),
-        patch("custom_components.ninebot.config_flow.native_api_supported", return_value=True),
+        patch("custom_components.ninebot.assistant.native_api_supported", return_value=True),
+        patch("custom_components.ninebot.assistant.async_import_module") as imported,
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        for enabled in (False, True):
-            if enabled:
-                hass.config_entries.async_update_entry(
-                    entry,
-                    options={
-                        **entry.options,
-                        "enable_assistant": True,
-                        "assistant_vehicles": ["SyntheticSN"],
-                        "enable_assistant_tasks": True,
-                    },
-                )
-                await hass.async_block_till_done()
-            form = await hass.config_entries.options.async_init(entry.entry_id)
-            field = next(
-                key for key in form["data_schema"].schema if key == "enable_assistant_tasks"
-            )
-            assert field.default() is enabled
-            assert list(form["data_schema"].schema)[-1] == "debug_mode"
+        hass.config.components.add("frontend")
+        hass.config_entries.async_update_entry(
+            entry,
+            options={
+                **entry.options,
+                "enable_assistant": True,
+                "assistant_vehicles": ["SyntheticSN"],
+            },
+        )
+        await hass.async_block_till_done()
+        assert hass.data[DATA_KEY].unregister_panel is None
+        assert all(
+            not call.args[1].endswith(("assistant_panel", "assistant_review"))
+            for call in imported.await_args_list
+        )

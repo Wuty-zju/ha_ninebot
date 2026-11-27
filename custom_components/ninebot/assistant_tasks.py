@@ -9,13 +9,10 @@ from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.importlib import async_import_module
 
-from .assistant import (
-    CONF_ASSISTANT,
-    CONF_ASSISTANT_TASKS,
-    CONF_ASSISTANT_VEHICLES,
-    async_revoke_task_policy,
-)
+from .assistant import async_revoke_task_policy, current_access, has_task_access
+from .assistant_access import parse_assistant_access
 from .assistant_approval import APPROVAL_TTL
+from .assistant_catalog import REQUEST_TOOL
 from .assistant_plans import async_detail_proposal
 from .assistant_policy import AssistantError, AssistantScope, async_authorize
 from .assistant_task_store import ApprovalStore, TaskStoreUnavailable, async_remove_task_data
@@ -34,10 +31,7 @@ def entry_task_owner(hass: HomeAssistant, entry: NinebotConfigEntry) -> Approval
     """Trusted startup/scheduler entry; tool callers must authorize their scope first."""
     runtime = entry.runtime_data
     if (
-        entry.options.get(CONF_ASSISTANT) is not True
-        or entry.options.get(CONF_ASSISTANT_TASKS) is not True
-        or not isinstance(entry.options.get(CONF_ASSISTANT_VEHICLES), list)
-        or not entry.options.get(CONF_ASSISTANT_VEHICLES)
+        not has_task_access(current_access(entry))
         or runtime.assistant_task_blocks
         or runtime.coordinator._stopping
     ):
@@ -72,7 +66,7 @@ async def async_request_details(
     end_date: str,
 ) -> dict[str, Any]:
     """Explicit local write; every private binding is derived by the server."""
-    scope = await async_authorize(hass, context, vehicle_ref)
+    scope = await async_authorize(hass, context, vehicle_ref, operation=REQUEST_TOOL)
     scope.assert_task_current(hass)
     proposal = await async_detail_proposal(hass, context, vehicle_ref, start_date, end_date)
     await scope.async_validate(hass)
@@ -82,7 +76,7 @@ async def async_request_details(
     if proposal.plan is None:
         return {**response, "task_recorded": False, "task": None}
     store = task_owner(hass, scope)
-    ticket = await store.async_request(proposal.plan, context)
+    ticket = await store.async_request(proposal.plan, context, caller=scope)
     await scope.async_validate(hass)
     scope.assert_task_current(hass)
     assert_task_owner(hass, scope, store)
@@ -106,8 +100,8 @@ async def _async_dismiss_notice(hass: HomeAssistant, entry: NinebotConfigEntry) 
     runtime = getattr(entry, "runtime_data", None)
     applied = getattr(runtime, "applied_options", None) or {}
     if not (
-        entry.options.get(CONF_ASSISTANT_TASKS) is True
-        or applied.get(CONF_ASSISTANT_TASKS) is True
+        has_task_access(current_access(entry))
+        or has_task_access(parse_assistant_access(applied))
         or getattr(runtime, "assistant_tasks", None) is not None
     ):
         return

@@ -107,9 +107,7 @@
           "history_storage_mib": "기록 저장 한도 (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Ninebot Assistant 사용 (베타)",
-          "assistant_vehicles": "Assistant에 공개할 차량",
-          "enable_assistant_tasks": "검토가 필요한 주행 기록 작업 허용(베타)",
+          "configure_assistant": "Ninebot Assistant 구성",
           "debug_mode": "진단 엔티티 표시"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "현재 상태/배터리/주행 간격: {polling_setting}. 충전 및 차량 활동에 따라 조정합니다.",
-          "enable_assistant": "선택한 AI 호스트가 선택된 차량의 이름, 로컬 값, 시간 및 데이터 품질을 읽도록 허용합니다. 계정, 인증 정보, 정확한 위치 및 원본 응답은 제외됩니다. 클라우드 새로 고침이나 차량 제어는 수행하지 않습니다.",
-          "assistant_vehicles": "원격 제어와 별도로 차량을 선택하세요. Assistant를 비활성화해도 선택은 유지됩니다.",
-          "enable_assistant_tasks": "저장한 뒤 클라우드 요청이 시작되기 전에 [Ninebot Assistant](/ninebot-assistant)에서 범위를 검토하고 주행 상세 정보 동기화 제안을 승인하세요. 기본값은 꺼짐입니다.",
+          "configure_assistant": "어시스턴트가 접근할 수 있는 차량, 데이터, 기록 작업을 선택하세요.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "어시스턴트 접근 권한",
+        "data": {
+          "assistant_enabled": "이 계정의 어시스턴트 활성화",
+          "assistant_vehicle": "차량",
+          "review_assistant_tasks": "기존 작업 권한 검토"
+        },
+        "data_description": {
+          "assistant_enabled": "끄면 이 계정에 대한 접근 권한이 해제됩니다. 저장된 차량 설정은 유지됩니다."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "차량 접근 권한",
+        "description": "어시스턴트가 {vehicle}에서 접근할 수 있는 데이터를 선택하세요.",
+        "data": {
+          "assistant_reads": "읽기 허용",
+          "assistant_task_access": "기록 작업",
+          "edit_another_assistant_vehicle": "다른 차량 편집"
+        },
+        "data_description": {
+          "assistant_task_access": "미리 보기에서 본인의 요청도 볼 수 있습니다. 동기화하려면 먼저 [Ninebot Assistant](/ninebot-assistant) 패널에서 새 요청을 승인하세요."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "기록 작업 권한 확인",
+        "description": "선택한 작업 설정을 적용할지 결정하세요. 확인 전까지 기존 요청에는 원래 권한이 적용됩니다. 작업 권한을 줄이면 기존 요청이 무효가 될 수 있습니다.",
+        "data": {
+          "assistant_confirmation": "작업 설정"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "이 버전의 Ninebot에서는 저장된 어시스턴트 설정을 편집할 수 없습니다.",
+      "assistant_access_changed": "이 페이지를 연 동안 어시스턴트 설정이 변경되었습니다. Ninebot 옵션을 다시 열어 최신 설정을 확인하세요.",
+      "assistant_vehicle_unavailable": "이 계정의 차량을 선택하세요."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "원격 제어할 차량을 하나 이상 선택하세요.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "이 계정에서 Assistant에 공개할 차량을 하나 이상 선택하세요."
+      "assistant_vehicle_unavailable": "이 계정의 차량을 선택하세요."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "균형",
         "slower": "느리게",
         "very_slow": "매우 느리게"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "차량 상태",
+        "statistics": "요약 통계",
+        "trips": "개별 주행 기록",
+        "sync": "동기화 상태"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "꺼짐",
+        "preview": "미리 보기만 허용",
+        "request": "요청 허용"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "확인 보류",
+        "apply": "차량별 작업 권한 적용"
       }
     }
   }

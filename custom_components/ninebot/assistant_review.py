@@ -8,8 +8,9 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import Unauthorized
 
+from .assistant import REVIEW_REGISTERED as REGISTERED
 from .assistant_limits import ReadLimitExceeded, read_slot
-from .assistant_policy import AssistantError, async_authorize
+from .assistant_policy import REVIEW_TASKS, AssistantError, async_authorize
 from .assistant_task_store import TaskStoreUnavailable
 from .assistant_task_views import ticket_view
 from .assistant_tasks import assert_task_owner, task_owner
@@ -17,7 +18,6 @@ from .compat import validation as vol
 from .ride_archive import ArchiveError
 
 COMMAND = "ninebot/assistant/review"
-REGISTERED = "ninebot_assistant_review_registered"
 MAX_REVIEW_BYTES = 32 * 1024
 ERRORS = {
     "not_authorized": "Task review access denied.",
@@ -49,7 +49,7 @@ async def async_review(
     try:
         if context.user_id != connection.user.id:
             raise AssistantError("not_authorized")
-        scope = await async_authorize(hass, context, message["vehicle_ref"])
+        scope = await async_authorize(hass, context, message["vehicle_ref"], operation=REVIEW_TASKS)
         if scope.runtime.assistant_task_blocks:
             raise AssistantError("retry_later")
         scope.assert_task_current(hass)
@@ -129,7 +129,7 @@ async def async_review_vehicles(
     if context.user_id != connection.user.id:
         connection.send_error(message["id"], "not_authorized", ERRORS["not_authorized"])
         return
-    result, failed = await async_task_query(hass, "task_vehicles", {}, context)
+    result, failed = await async_task_query(hass, "task_vehicles", {}, context, _review_list=True)
     if failed:
         error = result["error"]
         connection.send_error(message["id"], error["code"], error["message"])

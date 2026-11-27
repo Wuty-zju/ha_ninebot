@@ -18,8 +18,14 @@ def check_task_evaluation_catalog(api_id: str, names: set[str]) -> None:
     root = Path(__file__).resolve().parents[1]
     catalog = json.loads((root / "tests/fixtures/assistant/evaluation-tasks.json").read_text())
     contract = catalog["task_execution_contract"]
-    assert catalog["contract_revision"] == "task-boundaries-v2"
+    assert catalog["contract_revision"] == "task-boundaries-v3"
     assert contract["api_id"] == api_id and contract["tool_namespace"] == "ninebot__"
+    assert contract["full_scope_tool_counts"] == {
+        "queries": 8,
+        "preview": 12,
+        "apply": 13,
+        "ask_maximum": 8,
+    }
     assert contract["model_cloud_call_limit"] == 0
     assert contract["approval_channel"] == contract["cancellation_channel"] == "native_human_review"
     cases = [case for case in catalog["cases"] if case["group"] == "task"]
@@ -54,7 +60,7 @@ async def check(config_dir: str) -> None:
     from homeassistant.helpers import llm
 
     from custom_components.ninebot.assistant_api import async_register, native_result
-    from custom_components.ninebot.assistant_queries import SPECS
+    from custom_components.ninebot.assistant_catalog import QUERY_SPECS
     from custom_components.ninebot.compat import validation
 
     context = llm.LLMContext(
@@ -70,9 +76,14 @@ async def check(config_dir: str) -> None:
     )
     unregister = async_register(hass)
     assert [api.id for api in llm.async_get_apis(hass)] == ["ninebot"]
-    api = await llm.async_get_api(hass, "ninebot", context)
+    with patch(
+        "custom_components.ninebot.assistant_api.async_visible_keys",
+        new=AsyncMock(return_value=frozenset(spec.key for spec in QUERY_SPECS)),
+    ) as discover:
+        api = await llm.async_get_api(hass, "ninebot", context)
+    discover.assert_awaited_once_with(hass, context.context)
     assert api.api.requires_admin and api.llm_context is context
-    assert [tool.name for tool in api.tools] == [f"ninebot__{spec.key}" for spec in SPECS]
+    assert [tool.name for tool in api.tools] == [f"ninebot__{spec.key}" for spec in QUERY_SPECS]
     for tool in api.tools:
         formatted = _format_tool(tool, api.custom_serializer)
         assert formatted.annotations.read_only_hint and not formatted.annotations.open_world_hint
@@ -220,26 +231,44 @@ def check_review_schema(hass, api) -> None:
 
 
 async def check_task_collection(hass, context) -> None:
-    """Actual native API and MCP read-only filtering; no cloud or private data."""
+    """Native rendering and read-only filtering for one shared tool collection."""
     from homeassistant.components.mcp_server.server import _format_tool, async_get_api_instance
+    from homeassistant.exceptions import HomeAssistantError
     from homeassistant.helpers import llm
 
-    from custom_components.ninebot.assistant_task_api import API_ID, async_register
+    from custom_components.ninebot.assistant import API_ID
+    from custom_components.ninebot.assistant_api import async_register
+    from custom_components.ninebot.assistant_catalog import SPECS, TASK_SPECS
+
+    names = {f"ninebot__{spec.key}" for spec in TASK_SPECS}
+    assert names == {
+        "ninebot__task_vehicles",
+        "ninebot__preview_detail_sync",
+        "ninebot__request_detail_sync_approval",
+        "ninebot__get_tasks",
+        "ninebot__get_task",
+    }
+    check_task_evaluation_catalog(API_ID, names)
 
     remove = async_register(hass)
     try:
-        with patch("custom_components.ninebot.assistant_task_queries._enabled", return_value=True):
+        assert [api.id for api in llm.async_get_apis(hass)] == ["ninebot"]
+        all_keys = frozenset(spec.key for spec in SPECS)
+        request_key = "request_detail_sync_approval"
+        with patch(
+            "custom_components.ninebot.assistant_api.async_visible_keys",
+            new=AsyncMock(return_value=all_keys - {request_key}),
+        ) as discover:
+            preview = await llm.async_get_api(hass, API_ID, context)
+            assert len(preview.tools) == 12
+            assert "task_vehicles" in preview.api_prompt
+            assert request_key not in preview.api_prompt
+            assert all(request_key not in tool.description for tool in preview.tools)
+            discover.return_value = all_keys
             instance = await llm.async_get_api(hass, API_ID, context)
             assert instance.api.requires_admin
-            names = {tool.name for tool in instance.tools}
-            assert names == {
-                "ninebot__task_vehicles",
-                "ninebot__preview_detail_sync",
-                "ninebot__request_detail_sync_approval",
-                "ninebot__get_tasks",
-                "ninebot__get_task",
-            }
-            check_task_evaluation_catalog(API_ID, names)
+            assert request_key in instance.api_prompt
+            assert len(instance.tools) == 13
             formatted = {
                 tool.name: _format_tool(tool, instance.custom_serializer) for tool in instance.tools
             }
@@ -247,52 +276,25 @@ async def check_task_collection(hass, context) -> None:
             assert request.annotations.read_only_hint is False
             assert request.annotations.idempotent_hint is False
             readonly = await async_get_api_instance(hass, API_ID, context, True)
-            assert {tool.name for tool in readonly.tools} == names - {request.name}
+            assert {tool.name for tool in readonly.tools} == set(formatted) - {request.name}
             fields = formatted["ninebot__get_task"].input_schema["properties"]
             assert fields["task_id"]["pattern"] == "^[a-f0-9]{32}$"
             assert not {"nonce", "token", "user_id", "account", "confirmed"} & set(fields)
-            from custom_components.ninebot.assistant_api import async_register as register_read
-            from custom_components.ninebot.assistant_queries import SPECS
-
-            remove_read = register_read(hass)
-            try:
-                for order in (["ninebot", API_ID], [API_ID, "ninebot"]):
-                    merged = await llm.async_get_api(hass, order, context)
-                    combined = {
-                        tool.name: _format_tool(tool, merged.custom_serializer)
-                        for tool in merged.tools
-                    }
-                    assert set(combined) == names | {f"ninebot__{spec.key}" for spec in SPECS}
-                    for name, original in formatted.items():
-                        assert combined[name].input_schema == original.input_schema
-                    assert (
-                        combined["ninebot__get_recorded_trips"].input_schema["properties"][
-                            "start_date"
-                        ]["format"]
-                        == "date"
-                    )
-            finally:
-                remove_read()
             pages = formatted["ninebot__get_tasks"].input_schema["properties"]
             assert pages["page"]["minimum"] == 1 and pages["page"]["maximum"] == 24
             assert pages["limit"]["minimum"] == 1 and pages["limit"]["maximum"] == 10
-            invalid = await instance.async_call_tool(
-                llm.ToolInput(
-                    tool_name="ninebot__request_detail_sync_approval",
-                    tool_args={
-                        "vehicle_ref": "synthetic",
-                        "start_date": "2026-11-06",
-                        "end_date": "2026-11-06",
-                        "confirmed": True,
-                    },
-                )
-            )
-            assert invalid.error and invalid.data["error"]["code"] == "invalid_arguments"
+        for ids in ("ninebot_tasks", ["ninebot", "ninebot_tasks"]):
+            try:
+                await llm.async_get_api(hass, ids, context)
+            except HomeAssistantError as err:
+                assert str(err) == "API ninebot_tasks not found"
+            else:
+                raise AssertionError("The old API ID must be absent from the native registry")
     finally:
         remove()
     assert llm.async_get_apis(hass) == []
     print(
-        "Task API: separate registry, nonce-free schema, Context and native MCP read-only filter OK"
+        "Native tools: one API, 12/13 tools, scoped prompts, nonce-free schema and read-only filter"
     )
 
 

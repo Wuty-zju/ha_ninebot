@@ -107,9 +107,7 @@
           "history_storage_mib": "حد تخزين السجل (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "تفعيل Ninebot Assistant (تجريبي)",
-          "assistant_vehicles": "المركبات المتاحة للمساعد",
-          "enable_assistant_tasks": "السماح بمهام سجل الرحلات التي تتطلب الموافقة (تجريبي)",
+          "configure_assistant": "إعداد Ninebot Assistant",
           "debug_mode": "عرض كيانات التشخيص"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "فترات الحالة/البطارية/الرحلات: {polling_setting}. تتكيف مع الشحن والنشاط.",
-          "enable_assistant": "السماح لمضيف الذكاء الاصطناعي المحدد بقراءة أسماء المركبات المحددة وقيمها المحلية وأوقاتها وجودة بياناتها. لا يشمل الحسابات أو بيانات الاعتماد أو المواقع الدقيقة أو الاستجابات الأصلية. لا تحديث سحابي ولا تحكم بالمركبات.",
-          "assistant_vehicles": "اختر المركبات بشكل مستقل عن التحكم عن بُعد. يبقى الاختيار محفوظًا عند تعطيل المساعد.",
-          "enable_assistant_tasks": "بعد الحفظ، راجع النطاق ووافق على مقترحات مزامنة تفاصيل الرحلات في [Ninebot Assistant](/ninebot-assistant) قبل بدء طلبات السحابة. معطّل افتراضيًا.",
+          "configure_assistant": "اختر المركبات والبيانات ومهام السجل التي يمكن للمساعد الوصول إليها.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "وصول المساعد",
+        "data": {
+          "assistant_enabled": "تفعيل المساعد لهذا الحساب",
+          "assistant_vehicle": "المركبة",
+          "review_assistant_tasks": "مراجعة أذونات المهام الحالية"
+        },
+        "data_description": {
+          "assistant_enabled": "يؤدي إيقاف المساعد إلى إلغاء الوصول إلى الحساب مع الاحتفاظ بإعدادات المركبات المحفوظة."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "الوصول إلى المركبة",
+        "description": "اختر ما يمكن للمساعد الوصول إليه في {vehicle}.",
+        "data": {
+          "assistant_reads": "البيانات المسموح بقراءتها",
+          "assistant_task_access": "مهام السجل",
+          "edit_another_assistant_vehicle": "تعديل مركبة أخرى"
+        },
+        "data_description": {
+          "assistant_task_access": "تتيح المعاينة الاطلاع على طلباتك. وافق على الطلبات الجديدة في لوحة [Ninebot Assistant](/ninebot-assistant) قبل بدء المزامنة."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "تأكيد الوصول إلى مهام السجل",
+        "description": "اختر ما إذا كنت تريد تطبيق إعدادات المهام المحددة. تحتفظ الطلبات الحالية بأذوناتها الأصلية حتى التأكيد. قد يؤدي تقليل الأذونات إلى إبطال بعض الطلبات الحالية.",
+        "data": {
+          "assistant_confirmation": "إعدادات المهام"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "لا يمكن لهذا الإصدار من Ninebot تعديل إعدادات المساعد المحفوظة.",
+      "assistant_access_changed": "تغيّرت إعدادات المساعد أثناء فتح هذه الصفحة. أعد فتح خيارات Ninebot للاطلاع على الإعدادات الحالية.",
+      "assistant_vehicle_unavailable": "اختر مركبة من هذا الحساب."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "اختر مركبة واحدة على الأقل للتحكم عن بُعد.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "اختر مركبة واحدة على الأقل من هذا الحساب للمساعد."
+      "assistant_vehicle_unavailable": "اختر مركبة من هذا الحساب."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "متوازنة",
         "slower": "أبطأ",
         "very_slow": "بطيئة جدًا"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "حالة المركبة",
+        "statistics": "إحصاءات موجزة",
+        "trips": "الرحلات الفردية",
+        "sync": "حالة المزامنة"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "إيقاف",
+        "preview": "معاينة فقط",
+        "request": "السماح بالطلبات"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "تأجيل التأكيد",
+        "apply": "تطبيق أذونات المهام لكل مركبة"
       }
     }
   }

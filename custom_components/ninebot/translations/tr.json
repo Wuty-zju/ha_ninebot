@@ -107,9 +107,7 @@
           "history_storage_mib": "Geçmiş depolama sınırı (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Ninebot Assistant’ı etkinleştir (Beta)",
-          "assistant_vehicles": "Assistant’ın erişebileceği araçlar",
-          "enable_assistant_tasks": "Onay gerektiren geçmiş görevlerine izin ver (Beta)",
+          "configure_assistant": "Ninebot Assistant’ı yapılandır",
           "debug_mode": "Tanılama varlıklarını göster"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Durum/batarya/yolculuk aralıkları: {polling_setting}. Şarj ve etkinliğe göre ayarlanır.",
-          "enable_assistant": "Seçilen yapay zekâ sisteminin seçili araç adlarını, yerel değerleri, zamanları ve veri kalitesini okumasına izin verin. Hesaplar, kimlik bilgileri, kesin konumlar ve ham yanıtlar hariçtir. Bulut yenilemesi veya araç kontrolü yapılmaz.",
-          "assistant_vehicles": "Araçları uzaktan kontrolden ayrı seçin. Assistant’ı kapatmak seçimi korur.",
-          "enable_assistant_tasks": "Kaydettikten sonra bulut istekleri başlamadan önce [Ninebot Assistant](/ninebot-assistant) üzerinden kapsamı inceleyin ve yolculuk ayrıntılarını eşitleme önerilerini onaylayın. Varsayılan olarak kapalıdır.",
+          "configure_assistant": "Asistanın erişebileceği araçları, verileri ve geçmiş görevlerini seçin.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "Asistan erişimi",
+        "data": {
+          "assistant_enabled": "Bu hesap için asistanı etkinleştir",
+          "assistant_vehicle": "Araç",
+          "review_assistant_tasks": "Mevcut görev izinlerini gözden geçir"
+        },
+        "data_description": {
+          "assistant_enabled": "Kapatıldığında bu hesaba erişim iptal edilir ve kayıtlı araç ayarları korunur."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "Araç erişimi",
+        "description": "Asistanın {vehicle} için hangi verilere ve görevlere erişebileceğini seçin.",
+        "data": {
+          "assistant_reads": "Okunabilecek veriler",
+          "assistant_task_access": "Geçmiş görevleri",
+          "edit_another_assistant_vehicle": "Başka bir aracı düzenle"
+        },
+        "data_description": {
+          "assistant_task_access": "Önizlemede kendi taleplerinizi de görebilirsiniz. Eşitleme başlamadan önce yeni talepleri [Ninebot Assistant](/ninebot-assistant) panelinde onaylayın."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "Geçmiş görevlerine erişimi onayla",
+        "description": "Seçilen görev ayarlarının uygulanıp uygulanmayacağını belirleyin. Onay beklerken mevcut talepler önceki izinlerini korur. Görev erişimini azaltmak mevcut talepleri geçersiz kılabilir.",
+        "data": {
+          "assistant_confirmation": "Görev ayarları"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Bu Ninebot sürümü kayıtlı asistan ayarlarını düzenleyemez.",
+      "assistant_access_changed": "Bu sayfa açıkken asistan ayarları değişti. Güncel ayarları görmek için Ninebot seçeneklerini yeniden açın.",
+      "assistant_vehicle_unavailable": "Bu hesaptan bir araç seçin."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "Uzaktan kontrol için en az bir araç seçin.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Assistant için bu hesaptan en az bir araç seçin."
+      "assistant_vehicle_unavailable": "Bu hesaptan bir araç seçin."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "Dengeli",
         "slower": "Daha yavaş",
         "very_slow": "Çok yavaş"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "Araç durumu",
+        "statistics": "Özet istatistikler",
+        "trips": "Tek tek sürüşler",
+        "sync": "Eşitleme durumu"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "Kapalı",
+        "preview": "Yalnızca önizleme",
+        "request": "Taleplere izin ver"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "Onayı ertele",
+        "apply": "Görev izinlerini araç bazında uygula"
       }
     }
   }

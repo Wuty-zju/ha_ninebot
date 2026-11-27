@@ -107,9 +107,7 @@
           "history_storage_mib": "Limite de stockage historique (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "Activer Ninebot Assistant (Bêta)",
-          "assistant_vehicles": "Véhicules accessibles à l’assistant",
-          "enable_assistant_tasks": "Autoriser les tâches d’historique à approuver (bêta)",
+          "configure_assistant": "Configurer Ninebot Assistant",
           "debug_mode": "Afficher les entités de diagnostic"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "Intervalles état/batterie/trajets : {polling_setting}. Ils suivent la charge et l’activité.",
-          "enable_assistant": "Autorise le système d’IA choisi à lire les noms des véhicules sélectionnés, les valeurs locales, les horaires et la qualité des données. Comptes, identifiants, positions précises et réponses brutes exclus. Aucune actualisation cloud ni commande du véhicule.",
-          "assistant_vehicles": "Sélectionnez les véhicules indépendamment de la commande à distance. La sélection est conservée si l’assistant est désactivé.",
-          "enable_assistant_tasks": "Après l’enregistrement, vérifiez le périmètre et approuvez les propositions de synchronisation des détails de trajet dans [Ninebot Assistant](/ninebot-assistant) avant toute requête cloud. Désactivé par défaut.",
+          "configure_assistant": "Choisissez les véhicules, les données et les tâches liées à l’historique auxquels l’assistant peut accéder.",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "Accès de l’assistant",
+        "data": {
+          "assistant_enabled": "Activer l’assistant pour ce compte",
+          "assistant_vehicle": "Véhicule",
+          "review_assistant_tasks": "Vérifier les autorisations de tâches existantes"
+        },
+        "data_description": {
+          "assistant_enabled": "La désactivation révoque l’accès à ce compte et conserve les réglages enregistrés pour les véhicules."
+        }
+      },
+      "assistant_vehicle": {
+        "title": "Accès au véhicule",
+        "description": "Choisissez les éléments de {vehicle} auxquels l’assistant peut accéder.",
+        "data": {
+          "assistant_reads": "Données accessibles en lecture",
+          "assistant_task_access": "Tâches liées à l’historique",
+          "edit_another_assistant_vehicle": "Modifier un autre véhicule"
+        },
+        "data_description": {
+          "assistant_task_access": "L’aperçu permet aussi de consulter vos demandes. Approuvez les nouvelles demandes dans le panneau [Ninebot Assistant](/ninebot-assistant) avant le début de la synchronisation."
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "Confirmer l’accès aux tâches liées à l’historique",
+        "description": "Choisissez si vous souhaitez appliquer les réglages sélectionnés. Les demandes existantes conservent leurs autorisations tant que la confirmation est en attente. Une réduction des droits peut invalider des demandes existantes.",
+        "data": {
+          "assistant_confirmation": "Réglages des tâches"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Cette version de Ninebot ne peut pas modifier les réglages de l’assistant enregistrés.",
+      "assistant_access_changed": "Les réglages ont changé pendant que cette page était ouverte. Rouvrez les options de Ninebot pour voir les réglages actuels.",
+      "assistant_vehicle_unavailable": "Choisissez un véhicule de ce compte."
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "Sélectionnez au moins un véhicule à contrôler à distance.",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "Sélectionnez au moins un véhicule de ce compte pour l’assistant."
+      "assistant_vehicle_unavailable": "Choisissez un véhicule de ce compte."
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "Équilibrée",
         "slower": "Plus lente",
         "very_slow": "Très lente"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "État du véhicule",
+        "statistics": "Statistiques récapitulatives",
+        "trips": "Trajets individuels",
+        "sync": "État de la synchronisation"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "Désactivé",
+        "preview": "Aperçu uniquement",
+        "request": "Autoriser les demandes"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "Reporter la confirmation",
+        "apply": "Appliquer les droits de chaque véhicule"
       }
     }
   }

@@ -107,9 +107,7 @@
           "history_storage_mib": "ขีดจำกัดพื้นที่เก็บประวัติ (MiB) (Beta)",
           "retain_history_database": "Keep local trip history database (Beta)",
           "manage_archive": "Export or import history database (Beta)",
-          "enable_assistant": "เปิดใช้ Ninebot Assistant (เบต้า)",
-          "assistant_vehicles": "ยานพาหนะที่ Assistant เข้าถึงได้",
-          "enable_assistant_tasks": "อนุญาตงานประวัติการเดินทางที่ต้องตรวจสอบ (เบต้า)",
+          "configure_assistant": "ตั้งค่า Ninebot Assistant",
           "debug_mode": "แสดงเอนทิตีการวินิจฉัย"
         },
         "data_description": {
@@ -125,10 +123,38 @@
           "retain_history_database": "Keep trips and tracks when removing this account; adding the same account restores them. If unchecked, the next account removal deletes its managed archive and recovery copies.",
           "manage_archive": "Select accounts and vehicles to export, or upload a package to validate and merge. Files contain private locations and tracks; keep them secure.",
           "polling_profile": "ช่วงสถานะ/แบตเตอรี่/การเดินทาง: {polling_setting} ปรับตามการชาร์จและกิจกรรม",
-          "enable_assistant": "อนุญาตให้โฮสต์ AI ที่เลือกอ่านชื่อยานพาหนะที่เลือก ค่าในเครื่อง เวลา และคุณภาพข้อมูล ไม่รวมบัญชี ข้อมูลรับรอง ตำแหน่งที่แม่นยำ และการตอบกลับดิบ ไม่มีการรีเฟรชคลาวด์หรือควบคุมยานพาหนะ",
-          "assistant_vehicles": "เลือกยานพาหนะแยกจากการควบคุมระยะไกล การปิด Assistant จะคงตัวเลือกไว้",
-          "enable_assistant_tasks": "หลังบันทึก ให้ตรวจสอบขอบเขตและอนุมัติข้อเสนอการซิงค์รายละเอียดการเดินทางใน [Ninebot Assistant](/ninebot-assistant) ก่อนเริ่มส่งคำขอไปยังคลาวด์ ปิดใช้งานตามค่าเริ่มต้น",
+          "configure_assistant": "เลือกยานพาหนะ ข้อมูล และงานเกี่ยวกับประวัติที่ผู้ช่วยเข้าถึงได้",
           "debug_mode": "Show a bounded parsed view of current data. Use the integration menu to enable debug logging and download logs and diagnostics."
+        }
+      },
+      "assistant_access": {
+        "title": "สิทธิ์การเข้าถึงของผู้ช่วย",
+        "data": {
+          "assistant_enabled": "เปิดใช้ผู้ช่วยสำหรับบัญชีนี้",
+          "assistant_vehicle": "รถ",
+          "review_assistant_tasks": "ตรวจสอบสิทธิ์สำหรับงานที่มีอยู่"
+        },
+        "data_description": {
+          "assistant_enabled": "การปิดจะเพิกถอนสิทธิ์เข้าถึงบัญชีนี้และเก็บการตั้งค่ายานพาหนะที่บันทึกไว้"
+        }
+      },
+      "assistant_vehicle": {
+        "title": "สิทธิ์เข้าถึงยานพาหนะ",
+        "description": "เลือกสิ่งที่ผู้ช่วยสามารถเข้าถึงสำหรับ {vehicle}",
+        "data": {
+          "assistant_reads": "ข้อมูลที่อนุญาตให้อ่าน",
+          "assistant_task_access": "งานเกี่ยวกับประวัติ",
+          "edit_another_assistant_vehicle": "แก้ไขยานพาหนะคันอื่น"
+        },
+        "data_description": {
+          "assistant_task_access": "การดูตัวอย่างรวมถึงคำขอของคุณเอง อนุมัติคำขอใหม่ในแผง [Ninebot Assistant](/ninebot-assistant) ก่อนเริ่มซิงค์"
+        }
+      },
+      "assistant_confirm_tasks": {
+        "title": "ยืนยันสิทธิ์สำหรับงานเกี่ยวกับประวัติ",
+        "description": "เลือกว่าจะใช้การตั้งค่างานที่เลือกหรือไม่ คำขอเดิมจะยังใช้สิทธิ์เดิมระหว่างรอยืนยัน การลดสิทธิ์อาจทำให้คำขอเดิมใช้ไม่ได้",
+        "data": {
+          "assistant_confirmation": "การตั้งค่างาน"
         }
       },
       "model_vehicle": {
@@ -186,7 +212,10 @@
     "abort": {
       "model_unavailable": "Load the integration and choose a current vehicle before configuring rated parameters.",
       "archive_admin_required": "Only Home Assistant administrators can import or export history databases.",
-      "archive_busy": "The archive download limit has been reached. Try again later."
+      "archive_busy": "The archive download limit has been reached. Try again later.",
+      "assistant_access_version": "Ninebot รุ่นนี้ไม่สามารถแก้ไขการตั้งค่าผู้ช่วยที่บันทึกไว้ได้",
+      "assistant_access_changed": "การตั้งค่าผู้ช่วยเปลี่ยนแปลงขณะที่เปิดหน้านี้อยู่ ให้เปิดตัวเลือก Ninebot อีกครั้งเพื่อดูการตั้งค่าปัจจุบัน",
+      "assistant_vehicle_unavailable": "เลือกยานพาหนะจากบัญชีนี้"
     },
     "error": {
       "model_unavailable": "Choose a current vehicle belonging to this integration account.",
@@ -194,7 +223,7 @@
       "control_vehicles_required": "เลือกยานพาหนะอย่างน้อยหนึ่งคันสำหรับการควบคุมระยะไกล",
       "archive_invalid": "The archive operation could not finish. Check accounts, format, integrity, capacity and vehicle identities. Completed accounts are retained and may be retried; original files are not replaced.",
       "archive_busy": "A backup is in progress. Try again later.",
-      "assistant_vehicles_required": "เลือกยานพาหนะอย่างน้อยหนึ่งคันจากบัญชีนี้สำหรับ Assistant"
+      "assistant_vehicle_unavailable": "เลือกยานพาหนะจากบัญชีนี้"
     }
   },
   "entity": {
@@ -1280,6 +1309,27 @@
         "balanced": "สมดุล",
         "slower": "ช้าลง",
         "very_slow": "ช้ามาก"
+      }
+    },
+    "assistant_reads": {
+      "options": {
+        "status": "สถานะยานพาหนะ",
+        "statistics": "สถิติสรุป",
+        "trips": "การเดินทางแต่ละครั้ง",
+        "sync": "สถานะการซิงค์"
+      }
+    },
+    "assistant_task_access": {
+      "options": {
+        "off": "ปิด",
+        "preview": "ดูตัวอย่างเท่านั้น",
+        "request": "อนุญาตให้ส่งคำขอ"
+      }
+    },
+    "assistant_confirmation": {
+      "options": {
+        "later": "ยืนยันภายหลัง",
+        "apply": "ใช้สิทธิ์สำหรับงานแยกตามยานพาหนะ"
       }
     }
   }

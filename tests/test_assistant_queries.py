@@ -15,15 +15,15 @@ from homeassistant.helpers import device_registry as dr
 
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.assistant_ask import EvidenceTurn
+from custom_components.ninebot.assistant_catalog import QUERY_SPECS as SPECS
+from custom_components.ninebot.assistant_catalog import parameter_schema
 from custom_components.ninebot.assistant_errors import error_data
 from custom_components.ninebot.assistant_evidence import render_evidence_answer
 from custom_components.ninebot.assistant_knowledge import READ_TOOLS, KnowledgeUnavailable
 from custom_components.ninebot.assistant_limits import DATA_KEY as LIMITS_KEY
 from custom_components.ninebot.assistant_policy import AssistantError, async_require_admin
 from custom_components.ninebot.assistant_queries import (
-    SPECS,
     async_query,
-    parameter_schema,
     period_dates,
 )
 from custom_components.ninebot.assistant_task_queries import SPEC_BY_KEY as TASK_SPECS
@@ -207,6 +207,58 @@ async def test_anonymous_or_revoked_user_is_not_an_automation(hass, assistant):
     assistant.principal.is_active = False
     result, error = await async_query(hass, "get_vehicles", {}, assistant.context)
     assert error and result["error"]["code"] == "not_authorized"
+
+
+async def test_composite_tool_cannot_join_permissions_across_cars(hass, assistant):
+    from custom_components.ninebot.assistant_access import (
+        AssistantAccess,
+        VehicleAccess,
+        with_assistant_access,
+    )
+    from custom_components.ninebot.assistant_policy import async_authorize
+    from custom_components.ninebot.assistant_queries import async_visible_keys
+    from custom_components.ninebot.identity import account_scope
+
+    entry = assistant.entry
+    other_sn = "SecondFixture"
+    other = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={("ninebot", f"account:{account_scope(entry)}:{other_sn}")},
+    )
+    snapshot = assistant.co.data[SN]
+    assistant.co.data[other_sn] = replace(snapshot, profile=replace(snapshot.profile, sn=other_sn))
+    options = dict(entry.options)
+
+    def grants(first, second):
+        return with_assistant_access(
+            options,
+            AssistantAccess(
+                True,
+                {SN: VehicleAccess(frozenset(first)), other_sn: VehicleAccess(frozenset(second))},
+            ),
+        )
+
+    hass.config_entries.async_update_entry(entry, options=grants(["statistics"], ["sync"]))
+    await hass.async_block_till_done()
+    keys = await async_visible_keys(hass, assistant.context)
+    assert {"get_statistics", "get_sync_health"} <= keys and "explain_statistics" not in keys
+    for vehicle_ref in (assistant.device, other.id):
+        with pytest.raises(AssistantError, match="not_authorized"):
+            await async_authorize(
+                hass, assistant.context, vehicle_ref, operation="explain_statistics"
+            )
+    captured = await async_authorize(
+        hass, assistant.context, assistant.device, operation="get_statistics"
+    )
+    hass.config_entries.async_update_entry(entry, options=grants(["sync"], ["sync"]))
+    await hass.async_block_till_done()
+    hass.config_entries.async_update_entry(entry, options=grants(["statistics", "sync"], ["sync"]))
+    await hass.async_block_till_done()
+    with pytest.raises(AssistantError, match="not_authorized"):
+        captured.assert_current(hass)
+    assert "explain_statistics" in await async_visible_keys(
+        hass, assistant.context, vehicle_ref=assistant.device
+    )
 
 
 async def test_cached_status_keeps_zero_false_stale_and_excludes_private_fields(hass, assistant):
