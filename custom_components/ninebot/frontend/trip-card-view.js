@@ -61,6 +61,7 @@ export class TripCardView {
     messages.setAttribute('role', 'status');
     const activeRoute = element('span', 'sr-only');
     activeRoute.setAttribute('role', 'status');
+    activeRoute.setAttribute('aria-live', 'polite');
     activeRoute.setAttribute('aria-atomic', 'true');
     header.append(title, messages, activeRoute);
 
@@ -338,7 +339,6 @@ export class TripCardView {
     if (ui.picker.open) return;
     const options = keys.filter(key => card.selection.selected.has(key)).map(key => {
       const option = button(this.routeTitle(key), () => {
-        this.returnToChoice = true;
         ui.picker.close();
         card.activate(key);
       }, `pick:${key}`);
@@ -346,9 +346,10 @@ export class TripCardView {
       return option;
     });
     if (!options.length) return;
+    this.returnToChoice = true;
+    (options.find(node => node.getAttribute('aria-pressed') === 'true') ?? options[0]).autofocus = true;
     ui.choices.replaceChildren(...options);
     ui.picker.showModal();
-    (options.find(node => node.getAttribute('aria-pressed') === 'true') ?? options[0]).focus();
   }
 
   dismissRouteChoices() {
@@ -421,6 +422,7 @@ export class TripCardView {
     const title = ride ? this.routeTitle(card.selection.primary) : '';
     const announcement = title ? `${labels.active_route} · ${title}` : '';
     if (ui.activeRoute.textContent !== announcement) ui.activeRoute.textContent = announcement;
+    ui.metrics.node.setAttribute('aria-label', announcement);
     ui.slider.setAttribute('aria-label', [labels.map_title, title].filter(Boolean).join(' · '));
     ui.pickerTitle.textContent = labels.choose_route;
     ui.cancel.textContent = labels.cancel;

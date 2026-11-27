@@ -48,7 +48,7 @@ const connection = {
   },
 };
 window.fixtureConnectionListeners = connectionListeners;
-window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: true, language: params.has('english') ? 'en' : 'zh-Hans',
+window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: true, language: 'zh-Hans',
   config: { time_zone: 'Asia/Shanghai',
     components: location.search.includes('native') ? ['map_tiles'] : [] }, states: {}, callWS: async request => {
     window.fixtureRequests.push(request);
@@ -77,6 +77,7 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: 
           server_window_days: endpointsOnly ? 180 : null, next_offset: null,
           geometry_kind: endpointsOnly ? 'server_simplified' : 'sampled_unverified' } } } };
   } };
+if (params.has('english')) fixtureHass.language = document.documentElement.lang = 'en';
 window.fixtureCard = document.createElement('ninebot-trip-card');
 window.fixtureConfig = { type: 'custom:ninebot-trip-card', vehicles: [
   { device_id: 'synthetic-a', name: 'Synthetic A' }, { device_id: 'synthetic-b', name: 'Synthetic B' }],

@@ -61,14 +61,20 @@ jobs:
 
   safari:
     if: github.event_name == 'workflow_dispatch' && inputs.apple_replay
+    name: Safari (${{ matrix.platform }})
     runs-on: macos-15
     timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macOS, iOS]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-      - name: Start an isolated iPhone simulator and enable the runner's Safari driver
+      - name: Boot a disposable iPhone
+        if: matrix.platform == 'iOS'
         run: |
           phone=$(xcrun simctl list devices available -j | python3 -c '
           import json, sys
@@ -77,20 +83,16 @@ jobs:
           print(next(d["udid"] for k in runtimes for d in devices[k] if d["name"].startswith("iPhone")))')
           echo "SIMULATOR_UDID=$phone" >> "$GITHUB_ENV"
           xcrun simctl boot "$phone"
+          xcrun simctl bootstatus "$phone" -b
+          xcrun simctl spawn "$phone" defaults write com.apple.webinspectord RemoteAutomationEnabled -bool true
+          xcrun simctl spawn "$phone" defaults write com.apple.mobilesafari AllowRemoteAutomation -bool true
+      - name: Select overlapping routes, inspect accessible controls and drag to a saved point
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          PROBE_VOICEOVER: ${{ matrix.platform == 'macOS' && '1' || '0' }}
+        run: |
           sudo safaridriver --enable
-      - name: macOS Safari
-        run: |
           safaridriver -p 4444 &
           trap 'kill $! || true' EXIT
-          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:4444/status
-          node tests/browser/safari-replay.mjs macOS
-      - name: iPhone Safari
-        if: ${{ !cancelled() && env.SIMULATOR_UDID != '' }}
-        run: |
-          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
-          xcrun simctl spawn "$SIMULATOR_UDID" defaults write com.apple.webinspectord RemoteAutomationEnabled -bool true
-          xcrun simctl spawn "$SIMULATOR_UDID" defaults write com.apple.mobilesafari AllowRemoteAutomation -bool true
-          safaridriver -p 4444 &
-          trap 'kill $! || true' EXIT
-          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:4444/status
-          node tests/browser/safari-replay.mjs iOS
+          curl --retry 60 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:4444/status
+          node tests/browser/safari-replay.mjs "$PLATFORM"

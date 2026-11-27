@@ -1,5 +1,6 @@
 /** Run on Apple Safari using safaridriver; all ride data comes from the local fixture. */
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { serveReplay } from './replay-server.mjs';
 
@@ -32,11 +33,44 @@ async function waitFor(expression) {
     if (await js('return Boolean(' + expression + ')')) return;
     await delay(150);
   }
-  throw new Error('Timed out: ' + expression);
+  const snapshot = await js('const c=window.fixtureCard;return {ride:c?.activeRide?.vehicle_label,'
+    + 'busy:c?.busy,events:window.userEvents,picker:c?.view?.ui.picker.open}');
+  throw new Error('Timed out: ' + expression + ' ' + JSON.stringify(snapshot));
 }
 const dom = 'fixtureCard.shadowRoot';
 const ui = 'fixtureCard.view.ui.';
-const click = async expression => request('POST', await element(expression) + '/click', {});
+async function click(expression) {
+  // On iPhone the library and map occupy different screens. Finish scrolling before the tap.
+  await js(expression + '.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"})');
+  await request('POST', '/execute/async', { script:
+    'const done=arguments[0];requestAnimationFrame(()=>requestAnimationFrame(()=>done(null)))', args: [] });
+  const control = await element(expression);
+  await request('POST', control + '/click', {});
+}
+
+async function voiceOverPhrases() {
+  // Opt-in only on the disposable macOS runner. Read VoiceOver's own last utterance.
+  const command = (file, args) => execFileSync(file, args,
+    { encoding: 'utf8', timeout: 4500, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  const heard = {};
+  try {
+    command('defaults', ['write', 'com.apple.VoiceOver4/default', 'SCREnableAppleScript', '-bool', 'true']);
+    command('open', ['-g', '-a', 'VoiceOver']);
+    await delay(10000);
+    for (const [name, control] of [['choice', 'initialChip'], ['sample', ui + 'slider']]) {
+      await js(control + '.focus()');
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await delay(550);
+        const phrase = command('osascript', ['-e', 'tell application "VoiceOver" to get content of last phrase']);
+        if (phrase.includes('Synthetic A') || /Point \d+ of 58/i.test(phrase)) {
+          heard[name] = phrase;
+          if (name === 'choice' || /of 58/i.test(phrase)) break;
+        }
+      }
+    }
+  } catch { /* Report exactly what the running screen reader supplied. */ }
+  console.log('VoiceOver utterances:', JSON.stringify(heard));
+}
 const { server, origin } = await serveReplay();
 try {
   const opened = await request('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
@@ -45,6 +79,9 @@ try {
     opened.capabilities['safari:platformVersion']);
   await request('POST', '/url', { url: origin + '/?overlap&english' });
   await waitFor('window.fixtureCard?.routeMap.renderer && !fixtureCard.busy');
+  await js('window.userEvents=[]; for(const type of ["pointerdown","pointerup","click","change"])' +
+    'document.addEventListener(type,e=>{const n=e.composedPath()[0];userEvents.push([type,n.dataset?.control||n.tagName]);' +
+    'if(userEvents.length>12)userEvents.shift()},true)');
   await click(dom + '.querySelectorAll(".overlay")[1]');
   await waitFor('fixtureCard.activeTrack?.label === "Synthetic B" && !fixtureCard.busy');
   const readCount = await js('return fixtureRequests.length');
@@ -108,6 +145,8 @@ try {
   assert.equal(state.requests, readCount);
   assert.deepEqual(await metrics(), active);
   console.log(JSON.stringify({ platform, role, label, options, metrics: active, ...state }));
+  if (platform === 'macOS' && process.env.PROBE_VOICEOVER === '1' &&
+      process.env.RUNNER_ENVIRONMENT === 'github-hosted') await voiceOverPhrases();
 } finally {
   try { if (session) await request('DELETE', ''); }
   finally { await new Promise(resolve => server.close(resolve)); }
