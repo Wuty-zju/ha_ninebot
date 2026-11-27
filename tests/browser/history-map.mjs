@@ -1,31 +1,12 @@
 /** Isolated synthetic browser smoke: no existing user browser or HA instance. */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { createServer } from 'node:http';
-import { readFile, mkdir } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import { resolve, sep, join } from 'node:path';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { serveReplay } from './replay-server.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require(join(process.env.BROWSER_TEST_DEPS, 'node_modules/playwright'));
-const root = fileURLToPath(new URL('../../', import.meta.url));
-const assets = resolve(root, 'custom_components/ninebot/frontend');
-const server = createServer(async (request, response) => {
-  try {
-    const url = new URL(request.url, 'http://localhost');
-    let path;
-    if (url.pathname === '/') path = resolve(root, 'tests/frontend/map-fixture.html');
-    else if (url.pathname.startsWith('/ninebot-static/')) {
-      path = resolve(assets, url.pathname.slice('/ninebot-static/'.length));
-      if (!path.startsWith(assets + sep)) throw new Error('Not an asset');
-    } else throw new Error('Not a fixture');
-    const bytes = await readFile(path);
-    const type = path.endsWith('.js') ? 'application/javascript' : path.endsWith('.css') ? 'text/css' :
-      path.endsWith('.png') ? 'image/png' : 'text/html';
-    response.writeHead(200, { 'Content-Type': type }); response.end(bytes);
-  } catch { response.writeHead(404); response.end(); }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const origin = `http://127.0.0.1:${server.address().port}`;
+const { server, origin } = await serveReplay();
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 900 }, colorScheme: 'dark' });
@@ -276,6 +257,53 @@ try {
     }
     assert.equal(await page.evaluate(() => fixtureRequests.filter(call =>
       call.service === 'get_trip_detail' && call.service_data.local_only).length), 1);
+  }
+  // Real markers and the HA component contract must agree when two vehicles share a route.
+  for (const nativeMode of [false, true]) {
+    await page.goto(origin + '/?overlap&english' + (nativeMode ? '&native' : ''));
+    await page.waitForFunction(() => fixtureCard.routeMap.renderer && !fixtureCard.busy);
+    await page.locator('.overlay').last().click();
+    await page.waitForFunction(() => fixtureCard.activeTrack?.label === 'Synthetic B' && !fixtureCard.busy);
+    const beforePicking = await page.evaluate(() => fixtureRequests.length);
+    const showPicker = async () => {
+      if (nativeMode) {
+        await native.evaluate(map => map.dispatchEvent(new CustomEvent('editable-location-clicked',
+          { detail: { id: 'route-2' } })));
+      } else await page.locator('.ninebot-route-pin').last().click();
+    };
+    await showPicker();
+    const picker = page.getByRole('dialog', { name: 'Choose a ride at this spot' });
+    if (!nativeMode) {
+      const stillOpen = await picker.getByRole('button', { name: /1 · Synthetic A/ }).evaluate(option => {
+        function send(type, y) {
+          const finger = new Touch({ target: option, identifier: 1, clientX: 60, clientY: y });
+          option.dispatchEvent(new TouchEvent(type, {
+            bubbles: true, cancelable: true, changedTouches: [finger],
+            touches: type === 'touchend' || type === 'touchcancel' ? [] : [finger],
+          }));
+        }
+        send('touchstart', 80); send('touchmove', 43); send('touchend', 43);
+        send('touchstart', 80); send('touchcancel', 80); send('touchend', 80);
+        return option.closest('dialog').open && fixtureCard.activeTrack.label === 'Synthetic B';
+      });
+      assert.ok(stillOpen, 'Scrolling or cancelling leaves the choice open');
+    }
+    await picker.getByRole('button', { name: /1 · Synthetic A/ }).click();
+    await page.waitForFunction(() => fixtureCard.shadowRoot.activeElement?.className === 'focus-track');
+    assert.deepEqual(await page.locator('.playback > .metrics dd').allTextContents(),
+      ['1.2 km', '10 min', '90 Wh']);
+    const selectedTotals = page.locator('.selection-totals');
+    await selectedTotals.locator('summary').click();
+    assert.deepEqual(await selectedTotals.locator('dd').allTextContents(), ['3.6 km', '25 min', '270 Wh']);
+    const nativeSlider = page.getByRole('slider', { name: /1 · Synthetic A/ });
+    await nativeSlider.press('Home');
+    for (let step = 0; step < 15; step++) await nativeSlider.press('ArrowRight');
+    assert.equal(await nativeSlider.getAttribute('aria-valuetext'), 'Point 16 of 58 · Source point sequence 17');
+    assert.equal(await page.evaluate(() => fixtureRequests.length), beforePicking);
+    await showPicker();
+    await page.evaluate(() => fixtureHass.connection.fire('disconnected'));
+    assert.equal(await picker.count(), 0);
+    assert.equal(await page.locator('.pin-choices button').count(), 0);
   }
   assert.equal(external.length, 0);
   assert.deepEqual(errors, []);

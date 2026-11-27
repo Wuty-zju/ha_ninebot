@@ -2,6 +2,11 @@
 
 Select a tag for changes shipped in that version. The [2.0 development history](docs/releases/2.0.md) covers the archive and entity refactor. [2.2.0](#220) brings the Assistant and the maintained vehicle integration into the stable release line. For installation and current defaults, use the [guides](docs/README.md).
 
+## 2.2.11
+
+- Tap overlapping route markers to choose a ride by number, vehicle and start time. The active ride, its totals and the replay cursor change together on the same map.
+- Dragging the slider pauses playback immediately. The slider’s accessible name identifies the ride. Its value includes the position among saved points and the original point number, including gaps in the archive. [Ride replay](docs/history.md#replay-saved-routes)
+
 ## 2.2.10
 
 - When multiple vehicles are eligible, `ninebot.ask` returns a labelled device choice for each one. Two vehicles can share a name. Select the device before reading trip or status data. Discovery also reports the read permissions for each vehicle.

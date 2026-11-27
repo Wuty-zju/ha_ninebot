@@ -18,7 +18,11 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.routeMap = new RouteMap(() => {
       this.mapError = true;
       this.render();
-    }, () => this.view?.playbackInset() ?? 0, key => this.activate(key));
+    }, () => this.view?.playbackInset() ?? 0, keys => {
+      if (this.busy) return;
+      if (keys.length === 1) this.activate(keys[0]);
+      else if (keys.length) this.view.chooseRoute(keys);
+    });
     this.tracks = new LocalTracks((service, data) => this.browser.invoke(service, data), () => this.render());
     this.browser = new FleetBrowser(() => this.historyChanged(), () => this.clearPrivate(), () => {
       if (!this.feedReady || this.busy) return false;
@@ -43,6 +47,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   clearRoutes() {
     this.pendingUpdates = false;
     this.resetting = true;
+    this.view?.dismissRouteChoices();
     this.follow = false;
     this.stopPlayback();
     this.index = 0;

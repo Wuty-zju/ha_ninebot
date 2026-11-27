@@ -1,6 +1,11 @@
 name: History browser
 on:
   workflow_dispatch:
+    inputs:
+      apple_replay:
+        description: Exercise overlapping routes and scrubbing in Apple Safari and an iPhone simulator
+        type: boolean
+        default: false
   pull_request:
     paths:
       - 'custom_components/ninebot/frontend/**'
@@ -13,6 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   frontend:
+    if: ${{ !inputs.apple_replay }}
     # Playwright 1.55.1 supports Ubuntu 24.04; keep browser/OS versions paired.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -52,3 +58,40 @@ jobs:
           path: ${{ runner.temp }}/ninebot-assistant-review
           if-no-files-found: warn
           retention-days: 7
+
+  safari:
+    if: github.event_name == 'workflow_dispatch' && inputs.apple_replay
+    name: Safari (${{ matrix.platform }})
+    runs-on: macos-15
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macOS, iOS]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Boot a disposable iPhone
+        if: matrix.platform == 'iOS'
+        run: |
+          phone=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          runtimes = sorted((k for k in devices if ".iOS-" in k), key=lambda k: tuple(map(int,k.split(".iOS-")[-1].split("-"))), reverse=True)
+          print(next(d["udid"] for k in runtimes for d in devices[k] if d["name"].startswith("iPhone")))')
+          echo "SIMULATOR_UDID=$phone" >> "$GITHUB_ENV"
+          xcrun simctl boot "$phone"
+          xcrun simctl bootstatus "$phone" -b
+          xcrun simctl spawn "$phone" defaults write com.apple.webinspectord RemoteAutomationEnabled -bool true
+          xcrun simctl spawn "$phone" defaults write com.apple.mobilesafari AllowRemoteAutomation -bool true
+      - name: Select overlapping routes, inspect accessible controls and drag to a saved point
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          sudo safaridriver --enable
+          safaridriver -p 4444 &
+          trap 'kill $! || true' EXIT
+          curl --retry 60 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:4444/status
+          node tests/browser/safari-replay.mjs "$PLATFORM"

@@ -26,6 +26,29 @@ function nameControl(node, name) {
   node.setAttribute('aria-label', name);
 }
 
+function enableTouchChoice(choices) {
+  // Mobile Safari can deliver a complete tap to a dialog button without synthesizing click.
+  // Leave swipes to the browser and keep the button's normal keyboard/VoiceOver activation.
+  let tap;
+  choices.addEventListener('touchstart', event => {
+    const finger = event.touches[0], button = event.target.closest('button');
+    tap = event.touches.length === 1 && button ? { button, finger } : null;
+  }, { passive: true });
+  const moved = other => !other || other.identifier !== tap.finger.identifier ||
+    Math.hypot(other.clientX - tap.finger.clientX, other.clientY - tap.finger.clientY) > 10;
+  choices.addEventListener('touchmove', event => {
+    if (tap && moved(event.touches[0])) tap = null;
+  }, { passive: true });
+  choices.addEventListener('touchcancel', () => { tap = null; });
+  choices.addEventListener('touchend', event => {
+    const choice = tap && !event.touches.length && !moved(event.changedTouches[0]) && tap.button;
+    tap = null;
+    if (!choice || !event.cancelable || !choices.contains(choice)) return;
+    event.preventDefault();
+    choice.click();
+  }, { passive: false });
+}
+
 function iconButton(icon, glyph, action, control, className) {
   const node = button('', action, control, className);
   const symbol = element('ha-icon', '', glyph);
@@ -59,7 +82,11 @@ export class TripCardView {
     const title = element('h2');
     const messages = element('div', 'messages');
     messages.setAttribute('role', 'status');
-    header.append(title, messages);
+    const activeRoute = element('span', 'sr-only');
+    activeRoute.setAttribute('role', 'status');
+    activeRoute.setAttribute('aria-live', 'polite');
+    activeRoute.setAttribute('aria-atomic', 'true');
+    header.append(title, messages, activeRoute);
 
     const workspace = element('div', 'workspace');
     const player = element('section', 'player');
@@ -76,6 +103,21 @@ export class TripCardView {
     const chosen = element('h3', 'route-title');
     const interval = element('p', 'interval');
     const compare = element('div', 'compare-list');
+    const picker = element('dialog', 'route-picker');
+    const pickerTitle = element('h3');
+    pickerTitle.id = 'route-picker-title';
+    picker.setAttribute('aria-labelledby', pickerTitle.id);
+    const choices = element('div', 'pin-choices');
+    enableTouchChoice(choices);
+    const cancel = button('', () => picker.close(), 'dismiss-picker');
+    picker.append(pickerTitle, choices, cancel);
+    picker.addEventListener('close', () => {
+      if (picker.open) return;
+      choices.replaceChildren();
+      if (this.returnToChoice) this.chips.get(card.selection.primary)?.focus.focus({ preventScroll: true });
+      this.returnToChoice = false;
+    });
+    this.chips = new Map();
     const metrics = metricStrip(), totals = metricStrip();
     const selection = element('details', 'selection-totals');
     const selectionLabel = element('summary');
@@ -87,10 +129,15 @@ export class TripCardView {
     slider.min = '0';
     slider.step = '1';
     slider.dataset.control = 'scrub';
-    slider.addEventListener('input', () => {
+    slider.addEventListener('pointerdown', () => {
+      if (card.playback) card.stopPlayback();
+    });
+    const seekPoint = () => {
       card.index = Number(slider.value);
       card.stopPlayback();
-    });
+    };
+    slider.addEventListener('input', seekPoint);
+    slider.addEventListener('change', seekPoint);
     const seek = element('div', 'seek');
     seek.append(slider, position);
     const restart = iconButton('mdi:rewind', '↶', () => {
@@ -117,9 +164,9 @@ export class TripCardView {
     const pager = element('footer', 'pager');
     library.append(heading, filters, coverage, items, pager);
     workspace.append(player, library);
-    shell.append(header, workspace);
+    shell.append(header, workspace, picker);
     card.shadowRoot.append(element('style', '', HISTORY_STYLE), shell);
-    this.ui = { title, messages, placeholder, mapTools, fit, follow, playback, chosen, interval, compare, metrics, totals, selection, selectionLabel,
+    this.ui = { title, messages, activeRoute, picker, pickerTitle, choices, cancel, placeholder, mapTools, fit, follow, playback, chosen, interval, compare, metrics, totals, selection, selectionLabel,
       transport, play, slider, position, restart, quality, more, heading, coverage, filterText, dates,
       toolbar, items, pager };
   }
@@ -184,10 +231,10 @@ export class TripCardView {
     const index = Math.max(0, Math.min(this.card.index, last));
     slider.max = String(last);
     slider.value = String(index);
-    slider.setAttribute('aria-label', labels.point_sequence);
     const point = enabled ? track.points[index] : null;
     position.textContent = point ? `${index + 1} / ${last + 1}` : '';
-    slider.setAttribute('aria-valuetext', point ? `${labels.point_sequence} ${point.sequence}` : '');
+    slider.setAttribute('aria-valuetext', point ?
+      `${labels.sample_position.replace('{n}', index + 1).replace('{total}', last + 1)} · ${labels.point_sequence} ${point.sequence}` : '');
     this.card.routeMap.highlight(point, this.routeColor(this.card.selection.primary), this.card.follow);
   }
 
@@ -304,6 +351,75 @@ export class TripCardView {
     return ROUTE_COLORS[this.card.selection.slots.get(key)];
   }
 
+  routeTitle(key) {
+    const { selection } = this.card;
+    const ride = selection.selected.get(key);
+    return [selection.slots.get(key) + 1, ride.vehicle_label, this.timestamp(ride.start_time)]
+      .filter(Boolean).join(' · ');
+  }
+
+  chooseRoute(keys) {
+    const { card, ui } = this;
+    if (ui.picker.open) return;
+    const options = keys.filter(key => card.selection.selected.has(key)).map(key => {
+      const option = button(this.routeTitle(key), () => {
+        ui.picker.close();
+        card.activate(key);
+      }, `pick:${key}`);
+      option.setAttribute('aria-pressed', String(key === card.selection.primary));
+      return option;
+    });
+    if (!options.length) return;
+    this.returnToChoice = true;
+    (options.find(node => node.getAttribute('aria-pressed') === 'true') ?? options[0]).autofocus = true;
+    ui.choices.replaceChildren(...options);
+    ui.picker.showModal();
+  }
+
+  dismissRouteChoices() {
+    this.returnToChoice = false;
+    if (this.ui.picker.open) this.ui.picker.close();
+    this.ui.choices.replaceChildren();
+  }
+
+  renderRouteChips(labels) {
+    const { card, ui } = this;
+    const selected = card.selection.selected;
+    for (const [key, chip] of this.chips) {
+      if (!selected.has(key)) {
+        chip.node.remove();
+        this.chips.delete(key);
+      }
+    }
+    for (const [key, ride] of selected) {
+      let chip = this.chips.get(key);
+      if (!chip) {
+        const node = element('div', 'route-chip');
+        const focus = button('', () => card.activate(key), `focus:${key}`, 'focus-track');
+        const badge = element('span', 'swatch');
+        const text = element('span', 'chip-text');
+        focus.append(badge, text);
+        const remove = button('×', () => card.removeRide(key), `remove:${key}`, 'remove-track');
+        node.append(focus, remove);
+        chip = { node, focus, badge, text, remove };
+        this.chips.set(key, chip);
+        ui.compare.append(node);
+      }
+      const title = this.routeTitle(key);
+      if (chip.focus.title !== title) {
+        chip.node.style.setProperty('--route-color', this.routeColor(key));
+        chip.badge.textContent = String(card.selection.slots.get(key) + 1);
+        chip.text.textContent = ride.vehicle_label;
+        const time = this.timestamp(ride.start_time);
+        if (time) chip.text.append(element('small', '', time));
+        nameControl(chip.focus, title);
+      }
+      nameControl(chip.remove, `${labels.remove_track} · ${title}`);
+      chip.focus.setAttribute('aria-pressed', String(key === card.selection.primary));
+      chip.focus.disabled = chip.remove.disabled = card.busy;
+    }
+  }
+
   renderMap(labels) {
     const { card, ui } = this;
     const { activeRide: ride, activeTrack: track } = card;
@@ -327,29 +443,16 @@ export class TripCardView {
     ui.selectionLabel.textContent = `${labels.selection_totals} (${rides.length})`;
     if (ui.selection.hidden) ui.selection.open = false;
     else ui.totals.update(labels, this.readings(selectionTotals(rides)));
-    const routeTitle = key => {
-      const selected = card.selection.selected.get(key);
-      return [card.selection.slots.get(key) + 1, selected.vehicle_label,
-        this.timestamp(selected.start_time)].filter(Boolean).join(' · ');
-    };
+    const title = ride ? this.routeTitle(card.selection.primary) : '';
+    const announcement = title ? `${labels.active_route} · ${title}` : '';
+    if (ui.activeRoute.textContent !== announcement) ui.activeRoute.textContent = announcement;
+    ui.metrics.node.setAttribute('aria-label', announcement);
+    ui.slider.setAttribute('aria-label', [labels.map_title, title].filter(Boolean).join(' · '));
+    ui.pickerTitle.textContent = labels.choose_route;
+    ui.cancel.textContent = labels.cancel;
     ui.compare.setAttribute('role', 'group');
     ui.compare.setAttribute('aria-label', labels.map);
-    ui.compare.replaceChildren(...[...card.selection.selected].map(([key, selected]) => {
-      const chip = element('div', 'route-chip');
-      chip.style.setProperty('--route-color', this.routeColor(key));
-      const time = this.timestamp(selected.start_time);
-      const focus = button('', () => card.activate(key), `focus:${key}`, 'focus-track');
-      const text = element('span', 'chip-text', selected.vehicle_label);
-      if (time) text.append(element('small', '', time));
-      focus.append(element('span', 'swatch', String(card.selection.slots.get(key) + 1)), text);
-      nameControl(focus, routeTitle(key));
-      focus.setAttribute('aria-pressed', String(key === card.selection.primary));
-      const remove = button('×', () => card.removeRide(key), `remove:${key}`, 'remove-track');
-      nameControl(remove, `${labels.remove_track} · ${focus.title}`);
-      focus.disabled = remove.disabled = card.busy;
-      chip.append(focus, remove);
-      return chip;
-    }));
+    this.renderRouteChips(labels);
     const notes = [];
     if (track) {
       notes.push(`${labels.track_points} ${track.valid_read}/${track.total ?? '—'}`);
@@ -375,7 +478,7 @@ export class TripCardView {
     const rendered = visible ? tracks : [];
     const slots = rendered.map(item => card.selection.slots.get(item.key));
     const notesText = ui.quality.textContent;
-    void card.routeMap.update(rendered, card.browser.hass, labels, slots, rendered.map(item => routeTitle(item.key))).then(() => {
+    void card.routeMap.update(rendered, card.browser.hass, labels, slots, rendered.map(item => this.routeTitle(item.key))).then(() => {
       this.updatePlayback();
       if (visible && card.routeMap.renderer?.simplified && ui.quality.textContent === notesText && !track?.capped) {
         ui.quality.textContent = `${notesText} · ${labels.display_limit}`;
