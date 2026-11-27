@@ -1,6 +1,11 @@
 name: History browser
 on:
   workflow_dispatch:
+    inputs:
+      apple_replay:
+        description: Exercise overlapping routes and scrubbing in Apple Safari and an iPhone simulator
+        type: boolean
+        default: false
   pull_request:
     paths:
       - 'custom_components/ninebot/frontend/**'
@@ -13,6 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   frontend:
+    if: ${{ !inputs.apple_replay }}
     # Playwright 1.55.1 supports Ubuntu 24.04; keep browser/OS versions paired.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -52,3 +58,39 @@ jobs:
           path: ${{ runner.temp }}/ninebot-assistant-review
           if-no-files-found: warn
           retention-days: 7
+
+  safari:
+    if: github.event_name == 'workflow_dispatch' && inputs.apple_replay
+    runs-on: macos-15
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Start an isolated iPhone simulator and enable the runner's Safari driver
+        run: |
+          phone=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          runtimes = sorted((k for k in devices if ".iOS-" in k), key=lambda k: tuple(map(int,k.split(".iOS-")[-1].split("-"))), reverse=True)
+          print(next(d["udid"] for k in runtimes for d in devices[k] if d["name"].startswith("iPhone")))')
+          echo "SIMULATOR_UDID=$phone" >> "$GITHUB_ENV"
+          xcrun simctl boot "$phone"
+          sudo safaridriver --enable
+      - name: macOS Safari
+        run: |
+          safaridriver -p 4444 &
+          trap 'kill $! || true' EXIT
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:4444/status
+          node tests/browser/safari-replay.mjs macOS
+      - name: iPhone Safari
+        if: ${{ !cancelled() && env.SIMULATOR_UDID != '' }}
+        run: |
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write com.apple.webinspectord RemoteAutomationEnabled -bool true
+          xcrun simctl spawn "$SIMULATOR_UDID" defaults write com.apple.mobilesafari AllowRemoteAutomation -bool true
+          safaridriver -p 4444 &
+          trap 'kill $! || true' EXIT
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:4444/status
+          node tests/browser/safari-replay.mjs iOS

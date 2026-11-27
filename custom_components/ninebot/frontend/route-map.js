@@ -17,8 +17,18 @@ function routePin(track) {
   badge.style.cssText = 'width:26px;height:26px;box-sizing:border-box;display:grid;place-items:center;border-radius:50%;border:3px solid;background:#18202a;color:#fff;font:600 13px system-ui;box-shadow:0 0 0 1px white,0 1px 4px #0006';
   badge.style.borderColor = track.color;
   element.append(badge);
-  return { id: `route-${track.slot + 1}`, element, location: location(point),
+  return { id: `route-${track.slot + 1}`, key: track.key, element, location: location(point),
     title: track.title, elementSize: [44, 44], locationEditable: false, activatable: true, fit: false };
+}
+
+function pinChoices(pins, hit) {
+  const rect = hit.element.getBoundingClientRect();
+  return pins.filter(pin => {
+    if (pin.location[0] === hit.location[0] && pin.location[1] === hit.location[1]) return true;
+    const other = pin.element.getBoundingClientRect();
+    return rect.width > 0 && other.width > 0 && rect.left < other.right && other.left < rect.right &&
+      rect.top < other.bottom && other.top < rect.bottom;
+  }).map(pin => pin.key);
 }
 
 export function routePaths(track) {
@@ -80,8 +90,8 @@ class NativeRouteMap {
     this.map = map;
     this.pins = [];
     this.selectPin = event => {
-      const key = this.pinKeys?.get(event.detail?.id);
-      if (key !== undefined) select(key);
+      const pin = this.pins.find(item => item.id === event.detail?.id);
+      if (pin) select(pinChoices(this.pins, pin));
     };
     map.addEventListener('editable-location-clicked', this.selectPin);
     this.canFollow = typeof map.setView === 'function' && typeof map.containsLocation === 'function';
@@ -94,7 +104,6 @@ class NativeRouteMap {
   }
   setRoutes(tracks, labels) {
     this.pins = tracks.length > 1 ? tracks.map(routePin) : [];
-    this.pinKeys = new Map(this.pins.map((pin, i) => [pin.id, tracks[i].key]));
     this.map.paths = tracks.flatMap(track => nativePaths(track, labels));
     this.bounds = tracks.flatMap(trackBounds);
     this.simplified = this.map.paths.reduce((total, path) => total + path.points.length, 0) <
@@ -119,7 +128,6 @@ class NativeRouteMap {
   destroy() {
     this.map.removeEventListener('editable-location-clicked', this.selectPin);
     this.pins = [];
-    this.pinKeys?.clear();
     this.map.paths = [];
     this.map.editableLocations = [];
     this.map.remove();
@@ -152,8 +160,9 @@ class OfflineRouteMap {
   }
   setRoutes(tracks, labels) {
     this.routes.clearLayers();
+    const pins = tracks.length > 1 ? tracks.map(routePin) : [];
     this.bounds = tracks.flatMap(trackBounds);
-    for (const track of tracks) {
+    for (const [index, track] of tracks.entries()) {
       for (const { points, name } of displayedPaths(track, labels)) {
         const layer = points.length > 1 ?
           this.library.polyline(points, { color: track.color, weight: 4, interactive: false }) :
@@ -166,18 +175,18 @@ class OfflineRouteMap {
         }
         layer.addTo(this.routes);
       }
-      if (tracks.length > 1) {
-        const pin = routePin(track);
+      const pin = pins[index];
+      if (pin) {
         const icon = this.library.divIcon({ html: pin.element, iconSize: pin.elementSize,
           className: 'ninebot-route-pin' });
         const marker = this.library.marker(pin.location, { icon, title: pin.title, alt: pin.title,
           keyboard: true, autoPanOnFocus: false });
-        marker.on('click', () => this.select(track.key));
+        marker.on('click', () => this.select(pinChoices(pins, pin)));
         marker.on('keydown', ({ originalEvent: event }) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           event.stopPropagation();
-          if (!event.repeat) this.select(track.key);
+          if (!event.repeat) this.select([track.key]);
         });
         marker.addTo(this.routes);
         marker.getElement().setAttribute('aria-label', pin.title);

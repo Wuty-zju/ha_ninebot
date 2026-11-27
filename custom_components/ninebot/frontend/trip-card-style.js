@@ -61,6 +61,13 @@ ha-icon { --mdc-icon-size: 20px; vertical-align: middle; }
 .interval { margin-top: 4px; color: var(--replay-muted); font-size: 13px; }
 .interval:empty, .compare-list:empty { display: none; }
 .compare-list { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 10px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.route-picker { width: min(24rem, calc(100% - 32px)); max-height: 80svh; overflow: auto;
+  color: inherit; border: 1px solid var(--replay-line); border-radius: 16px; background: var(--replay-card); padding: 16px; }
+.route-picker::backdrop { background: rgb(0 0 0 / 40%); }
+.pin-choices { display: grid; gap: 6px; margin-block: 12px; }
+.pin-choices button { text-align: start; overflow-wrap: anywhere; }
+.pin-choices [aria-pressed=true] { border-color: var(--replay-accent); background: var(--replay-selection); }
 .route-chip {
   display: flex; align-items: center; max-width: 100%; border-radius: 24px;
   background: var(--replay-surface); border: 1px solid var(--replay-line);
@@ -96,7 +103,7 @@ ha-icon { --mdc-icon-size: 20px; vertical-align: middle; }
 .transport button { flex: none; border-radius: 50%; padding: 0; }
 .transport .play { background: var(--replay-selection); }
 .seek { flex: 1; min-width: 0; display: grid; }
-.seek input { width: 100%; height: 26px; margin: 0; touch-action: pan-y; }
+.seek input { width: 100%; height: 44px; margin: 0; touch-action: pan-y; }
 .position { color: var(--replay-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .route-more { margin-top: 8px; }
 .library {

@@ -1,4 +1,5 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ninebot synthetic history map fixture</title>
 <style>body{margin:20px auto;max-width:850px;padding:0 16px;background:#121b22;color:#eee;font:16px system-ui;--primary-text-color:#eee;--secondary-text-color:#aab7c5;--primary-color:#03a9f4;--divider-color:#40505c;--card-background-color:#18232b;--secondary-background-color:#1d2731;--error-color:#ff5252}ha-card{display:block;border:1px solid #40505c;border-radius:16px}pre{white-space:pre-wrap} @media(prefers-color-scheme:light){body{background:#edf1f5;color:#222;--primary-text-color:#222;--secondary-text-color:#525964;--primary-color:#1c6bce;--divider-color:#ccd3de;--card-background-color:#fff;--secondary-background-color:#edf1f5}}</style>
 <h1>Synthetic vehicles · offline fixture</h1>
@@ -12,6 +13,7 @@ const row = { ride_id: 'synthetic-ride', detail_id: 'synthetic-detail', query_mo
 window.fixtureRequests = [];
 const params = new URL(location.href).searchParams;
 const endpointsOnly = params.has('endpoints');
+const overlap = params.has('overlap');
 if (params.has('native')) {
   class SyntheticMap extends HTMLElement {
     paths = [];
@@ -46,24 +48,28 @@ const connection = {
   },
 };
 window.fixtureConnectionListeners = connectionListeners;
-window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: true, language: 'zh-Hans',
+window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: true, language: params.has('english') ? 'en' : 'zh-Hans',
   config: { time_zone: 'Asia/Shanghai',
     components: location.search.includes('native') ? ['map_tiles'] : [] }, states: {}, callWS: async request => {
     window.fixtureRequests.push(request);
     if (request.type === 'config/entity_registry/get') return { device_id: 'synthetic-a' };
     if (window.fixtureDeny) throw { code: 'unauthorized' };
     const data = request.service_data;
-    const ride = data.start_date?.startsWith('2026-08') || data.query_month === '202608'
+    const dated = data.start_date?.startsWith('2026-08') || data.query_month === '202608'
       ? { ...row, ride_id: 'synthetic-august', query_month: '202608',
         start_time: '2026-08-03T08:00:00Z', end_time: '2026-08-03T08:10:00Z' } : row;
+    const second = data.device_id === 'synthetic-b';
+    const ride = second && overlap ? { ...dated, distance_m: 2400, duration_s: 900, duration_h: .25,
+      end_time: dated.end_time.replace('08:10:', '08:15:'), energy_wh: 180 } : dated;
     if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive', sort: 'desc', selection_version: 'a'.repeat(32) + ':1',
       rides: [{ ...ride, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
     if (request.service !== 'get_trip_detail') throw new Error('Only history reads are allowed');
-    const shift = data.device_id === 'synthetic-b' ? 0.002 : 0;
     const pointCount = endpointsOnly ? 2 : 60;
-    const all = Array.from({ length: pointCount }, (_, sequence) => ({ sequence,
-      latitude: 30 + sequence * .0001 + shift, longitude: 120 + Math.sin(sequence / 8) * .001 + shift,
-      speed_raw: 25 + Math.sin(sequence / 4) * 12, distance_delta_raw: 40 + Math.cos(sequence / 5) * 9 })).filter(point => ![15, 16].includes(point.sequence));
+    const all = Array.from({ length: pointCount }, (_, sequence) => {
+      const shift = second && !(overlap && sequence >= 20 && sequence <= 40) ? 0.002 : 0;
+      return { sequence, latitude: 30 + sequence * .0001 + shift, longitude: 120 + Math.sin(sequence / 8) * .001 + shift,
+        speed_raw: 25 + Math.sin(sequence / 4) * 12, distance_delta_raw: 40 + Math.cos(sequence / 5) * 9 };
+    }).filter(point => ![15, 16].includes(point.sequence));
     return { response: { source_mode: 'ride_archive', query_month: ride.query_month, received_at: ride.end_time,
       detail_context: { source_mode: 'ride_archive', archive_revision: 1, scalar_revision: 1, geometry_received_at: ride.end_time },
       ride: { ...ride, detail_saved: true, track: data.include_track ? all.slice(data.point_offset, data.point_offset + data.max_points) : [],

@@ -1,31 +1,12 @@
 /** Isolated synthetic browser smoke: no existing user browser or HA instance. */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { createServer } from 'node:http';
-import { readFile, mkdir } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import { resolve, sep, join } from 'node:path';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { serveReplay } from './replay-server.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require(join(process.env.BROWSER_TEST_DEPS, 'node_modules/playwright'));
-const root = fileURLToPath(new URL('../../', import.meta.url));
-const assets = resolve(root, 'custom_components/ninebot/frontend');
-const server = createServer(async (request, response) => {
-  try {
-    const url = new URL(request.url, 'http://localhost');
-    let path;
-    if (url.pathname === '/') path = resolve(root, 'tests/frontend/map-fixture.html');
-    else if (url.pathname.startsWith('/ninebot-static/')) {
-      path = resolve(assets, url.pathname.slice('/ninebot-static/'.length));
-      if (!path.startsWith(assets + sep)) throw new Error('Not an asset');
-    } else throw new Error('Not a fixture');
-    const bytes = await readFile(path);
-    const type = path.endsWith('.js') ? 'application/javascript' : path.endsWith('.css') ? 'text/css' :
-      path.endsWith('.png') ? 'image/png' : 'text/html';
-    response.writeHead(200, { 'Content-Type': type }); response.end(bytes);
-  } catch { response.writeHead(404); response.end(); }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const origin = `http://127.0.0.1:${server.address().port}`;
+const { server, origin } = await serveReplay();
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 900 }, colorScheme: 'dark' });
