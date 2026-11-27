@@ -50,7 +50,7 @@ Choose a host that implements HA tool calls. The model can be local or hosted.
 | External MCP client | Connect to HA’s authenticated MCP Server. Select **Ninebot** on `/api/mcp`, or connect directly to `/api/mcp/ninebot`. | The same tool schemas and results under the signed-in HA user. |
 | Automation | Pass an existing tool-capable `ai_task` entity to `ninebot.ask`. | Verified tool results and, where supported, a formatted evidence answer. |
 
-Native conversation and MCP use the same **Ninebot** collection. With all read permissions and history tasks disabled, the collection has eight tools. Preview access adds four tools for a total of twelve. Application access adds a thirteenth tool when the review service is ready and the host permits writes. Per-vehicle permissions may further limit discovery and calls. [HA LLM APIs](https://contributors.home-assistant.io/core/internals/llm-api/) · [Native MCP Server](https://www.home-assistant.io/integrations/mcp_server/) · [AI Task](https://www.home-assistant.io/integrations/ai_task/)
+Native conversation and MCP use the same **Ninebot** collection. With all read permissions and history tasks disabled, the collection has eight tools. With the review service ready, preview access adds four tools for a total of twelve. Request access adds a thirteenth tool when the host permits writes. Per-vehicle permissions may further limit discovery and calls. [HA LLM APIs](https://contributors.home-assistant.io/core/internals/llm-api/) · [Native MCP Server](https://www.home-assistant.io/integrations/mcp_server/) · [AI Task](https://www.home-assistant.io/integrations/ai_task/)
 
 ## Query through an existing AI task
 
@@ -161,7 +161,7 @@ The host follows the checklist within its existing tool loop. Checklists are adv
 
 With Assistant enabled, set the **History tasks** level for each vehicle and save it. The default is **Off**. **Preview only** permits local gap previews and reading the original requester's saved tasks. **Allow requests** also permits saving a local request for review. Use the **Ninebot Assistant** panel in the administrator sidebar to approve or cancel existing work.
 
-Select **Ninebot** in the host to use these tools. When `/api/mcp` is read-only, the native server filters out the write tool. Discovery can include an application tool for one vehicle while another vehicle still allows previews or queries only. The server checks the requested vehicle on every call.
+Select **Ninebot** in the host to use these tools. If the review service is unavailable, the authorized query tools remain available. When `/api/mcp` is read-only, the native server filters out the write tool. Discovery can include an application tool for one vehicle while another vehicle still allows previews or queries only. The server checks the requested vehicle on every call.
 
 | Task tool | Required task level | Result |
 |---|---|---|

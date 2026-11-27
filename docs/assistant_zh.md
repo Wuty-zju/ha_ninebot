@@ -50,7 +50,7 @@ HA 2026.11+ 的主 `/api/mcp` 地址优先使用“暴露全部AI工具”（`al
 | 外部 MCP 客户端 | 通过 HA 身份认证连接原生 MCP Server，在 `/api/mcp` 选择 **Ninebot**，或直连 `/api/mcp/ninebot`。 | 使用当前 HA 用户身份的同一套工具与结果。 |
 | 自动化 | 把已有的、支持工具调用的 `ai_task` 实体传给 `ninebot.ask`。 | 经核验的工具结果，以及能够生成时附上的格式化答案。 |
 
-原生对话和 MCP 共用 **Ninebot** 集合。读权限完整且历史任务关闭时共有 8 项工具。开放预览后增加 4 项，共 12 项。允许申请、审核服务可用且宿主允许写入时，共 13 项。实际发现和调用仍取决于逐车权限。[HA LLM API](https://contributors.home-assistant.io/core/internals/llm-api/) · [原生 MCP Server](https://www.home-assistant.io/integrations/mcp_server/) · [AI Task](https://www.home-assistant.io/integrations/ai_task/)
+原生对话和 MCP 共用 **Ninebot** 集合。读权限完整且历史任务关闭时共有 8 项工具。审核服务可用时，开放预览可增加 4 项，共 12 项；允许申请且宿主允许写入时，共 13 项。实际发现和调用仍取决于逐车权限。[HA LLM API](https://contributors.home-assistant.io/core/internals/llm-api/) · [原生 MCP Server](https://www.home-assistant.io/integrations/mcp_server/) · [AI Task](https://www.home-assistant.io/integrations/ai_task/)
 
 ## 通过已有AI任务查询
 
@@ -159,7 +159,7 @@ Action 根据工具回执编排回复。帮助节选保留完整来源链接和�
 
 开启助手后，在逐车设置中选择并保存**历史任务**权限。默认**关闭**。**仅预览**可查看本地缺口及本人已有任务。**允许申请**还可保存本地待审申请。管理员侧边栏的 **Ninebot Assistant** 面板供人审核或取消已有工作。
 
-在宿主中选择 **Ninebot**。主地址 `/api/mcp` 启用只读时，原生服务器会过滤申请工具。发现列表可能为一辆车显示申请工具，而另一辆车只允许预览或查询。每次调用都按所请求的车辆验权。
+在宿主中选择 **Ninebot**。审核服务不可用时，已获准的查询工具仍可使用。主地址 `/api/mcp` 启用只读时，原生服务器会过滤申请工具。发现列表可能为一辆车显示申请工具，而另一辆车只允许预览或查询。每次调用都按所请求的车辆验权。
 
 | 任务工具 | 所需任务权限 | 返回内容 |
 |---|---|---|
