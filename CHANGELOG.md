@@ -2,6 +2,12 @@
 
 Select a tag for changes shipped in that version. The [2.0 development history](docs/releases/2.0.md) covers the archive and entity refactor. [2.2.0](#220) brings the Assistant and the maintained vehicle integration into the stable release line. For installation and current defaults, use the [guides](docs/README.md).
 
+## 2.2.10
+
+- When multiple vehicles are eligible, `ninebot.ask` returns a labelled device choice for each one. Two vehicles can share a name. Select the device before reading trip or status data. Discovery also reports the read permissions for each vehicle.
+- The Action resolves relative periods in Asia/Shanghai at the start of the question. Queries completed after midnight retain that date. A month summary that has already expanded beyond the requested window returns a retry result.
+- Request one statistic with the optional `metric` argument or omit it for the summary. The answer identifies the vehicle, observation time, source and coverage. Daily ride metrics include the rule for assigning an overnight ride to its ending date. [Assistant guide](docs/assistant.md#query-through-an-existing-ai-task)
+
 ## 2.2.9
 
 - **Assistant upgrade:** `/api/mcp/ninebot` is the single dedicated endpoint. The old `ninebot_tasks` API and `/api/mcp/ninebot_tasks` URL are removed. Update clients using the old URL. In MCP Server or a conversation host with an explicit tool selection, deselect **Ninebot tasks** and keep **Ninebot** and your other selections. If the old collection was your only Ninebot selection, review permissions before opting into **Ninebot**. [Upgrade instructions](docs/assistant.md#upgrade-to-the-single-ninebot-api)
