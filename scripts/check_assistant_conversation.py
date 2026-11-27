@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 
 async def check(fixture: SimpleNamespace) -> None:
-    from homeassistant.components.conversation import ChatLog, ConversationInput
+    from homeassistant.components.conversation import ChatLog, ConversationInput, ConverseError
     from homeassistant.components.conversation.chat_log import (
         SystemContent,
         ToolResultContent,
@@ -28,6 +28,7 @@ async def check(fixture: SimpleNamespace) -> None:
     from custom_components.ninebot import assistant_policy, assistant_queries
     from custom_components.ninebot.archive_statistics import ArchiveStatisticsView
     from custom_components.ninebot.assistant_api import PROMPT
+    from custom_components.ninebot.assistant_catalog import QUERY_SPECS
     from custom_components.ninebot.assistant_limits import DATA_KEY
     from custom_components.ninebot.statistics_actions import months_between, statistics_response
 
@@ -43,6 +44,7 @@ async def check(fixture: SimpleNamespace) -> None:
         *,
         prompt: str = "Answer the user's question using the selected tools.",
         extra_system_prompt: str | None = None,
+        selected_api: str | list[str] = "ninebot",
     ) -> None:
         nonlocal current_context
         current_context = Context(user_id="synthetic-admin")
@@ -59,19 +61,19 @@ async def check(fixture: SimpleNamespace) -> None:
         log.async_add_user_content(UserContent(text))
         await log.async_provide_llm_data(
             user_input.as_llm_context("synthetic_provider"),
-            "ninebot",
+            selected_api,
             prompt,
             user_input.extra_system_prompt,
         )
         assert log.llm_api is not None
         assert log.llm_api.llm_context.context is current_context
 
-    async def authorize(actual_hass, context, target):
+    async def authorize(actual_hass, context, target, **kwargs):
         assert actual_hass is hass and context is current_context
         authorized_contexts.append(context)
         # Use the real policy; only the canary's MCP-specific Context assertion
         # is replaced while the native Conversation path is under test.
-        return await assistant_policy.async_authorize(actual_hass, context, target)
+        return await assistant_policy.async_authorize(actual_hass, context, target, **kwargs)
 
     async def stream_call(name: str, arguments: dict) -> ToolResultContent:
         nonlocal sequence
@@ -110,9 +112,8 @@ async def check(fixture: SimpleNamespace) -> None:
         await turn("Which vehicle can I ask about?")
         assert PROMPT in log.content[0].content
         instance = log.llm_api
-        assert {tool.name for tool in instance.tools} == {
-            f"ninebot__{spec.key}" for spec in assistant_queries.SPECS
-        }
+        queries = {f"ninebot__{spec.key}" for spec in QUERY_SPECS}
+        assert {tool.name for tool in instance.tools} == queries
         roster = await stream_call("ninebot__get_vehicles", {})
         assert not roster.result.error
         assert len(roster.result.data["data"]["vehicles"]) == 2
@@ -252,6 +253,20 @@ async def check(fixture: SimpleNamespace) -> None:
         finally:
             user.is_active = True
 
+        first, last = fixture.companion_ids
+        for stale in ([first, "ninebot", "ninebot_tasks", last], ["ninebot_tasks"]):
+            try:
+                await turn("Prepare the saved tool selection.", selected_api=stale)
+            except ConverseError as err:
+                assert str(err.__cause__) == "API ninebot_tasks not found"
+            else:
+                raise AssertionError("Conversation unexpectedly accepted the retired API ID")
+        await turn("Prepare the revised selection.", selected_api=[first, "ninebot", last])
+        assert {tool.name for tool in log.llm_api.tools} == queries | {
+            f"{first}__probe",
+            f"{last}__probe",
+        }
+
     serialized = json_dumps([item.as_dict() for item in log.content])
     assert not any(
         value in serialized
@@ -267,5 +282,5 @@ async def check(fixture: SimpleNamespace) -> None:
     assert hass.data[DATA_KEY].active == 0
     print(
         "Native Conversation: eight tools, clarification, turn Context/view updates, quality, "
-        "Action response, tool-I/O cancellation and cached-API revocation OK (scripted; no model)"
+        "Action response, tool-I/O cancellation, cached-API revocation and saved selection OK"
     )

@@ -75,9 +75,20 @@ async def test_native_action_tools_are_bound_to_the_request_and_selected_vehicle
         assistant="conversation",
         device_id=None,
     )
-    with patch.object(ask, "async_require_admin", new=AsyncMock()):
+    with (
+        patch.object(ask, "async_require_admin", new=AsyncMock()),
+        patch.object(
+            ask,
+            "async_visible_keys",
+            new=AsyncMock(return_value=frozenset({"get_vehicle_status", "get_tasks"})),
+        ) as discover,
+    ):
         instance = await api.async_get_api_instance(context)
-        status = next(tool for tool in instance.tools if tool.name == "ninebot__get_vehicle_status")
+        discover.assert_awaited_once_with(
+            hass, turn.call.context, vehicle_ref="selected", queries_only=True
+        )
+        assert [tool.name for tool in instance.tools] == ["ninebot__get_vehicle_status"]
+        status = instance.tools[0]
         assert "vehicle_ref" not in {key.schema for key in status.parameters.schema}
         with patch(
             "custom_components.ninebot.assistant_api.async_query",

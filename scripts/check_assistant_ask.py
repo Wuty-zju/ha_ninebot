@@ -26,9 +26,20 @@ async def check(directory: str) -> None:
     from homeassistant.util import dt as dt_util
     from probatio import to_openapi
 
+    from custom_components.ninebot.assistant import async_sync_task_policy
+    from custom_components.ninebot.assistant_access import (
+        READ_STATISTICS,
+        READ_STATUS,
+        READ_SYNC,
+        READ_TRIPS,
+        TASK_REQUEST,
+        AssistantAccess,
+        VehicleAccess,
+        with_assistant_access,
+    )
     from custom_components.ninebot.assistant_api import NinebotTool, async_register
     from custom_components.ninebot.assistant_ask import failed
-    from custom_components.ninebot.assistant_queries import SPECS
+    from custom_components.ninebot.assistant_catalog import QUERY_SPECS
     from custom_components.ninebot.models import (
         Freshness,
         VehicleProfile,
@@ -90,7 +101,9 @@ async def check(directory: str) -> None:
         local_vehicle_available=lambda sn: sn in co.data,
         fresh=lambda sn, group: True,
     )
-    entry.runtime_data = SimpleNamespace(coordinator=co)
+    entry.runtime_data = SimpleNamespace(
+        coordinator=co, assistant_policy_options=None, assistant_policy_revision=0
+    )
     hass.data[dr.DATA_REGISTRY] = dr.DeviceRegistry(hass)
     await dr.async_load(hass)
     device = dr.async_get(hass).async_get_or_create(
@@ -104,6 +117,21 @@ async def check(directory: str) -> None:
     hass.data[DATA_PREFERENCES] = preferences
     current = {}
     provider_calls = []
+    all_reads = frozenset({READ_STATUS, READ_STATISTICS, READ_TRIPS, READ_SYNC})
+    all_queries = {f"ninebot__{spec.key}" for spec in QUERY_SPECS}
+
+    def configure(reads):
+        hass.config_entries.async_update_entry(
+            entry,
+            options=with_assistant_access(
+                entry.options,
+                AssistantAccess(
+                    enabled=True,
+                    vehicles={"synthetic-sn": VehicleAccess(reads=reads, tasks=TASK_REQUEST)},
+                ),
+            ),
+        )
+        async_sync_task_policy(hass, entry)
 
     class SyntheticTask(ai_task.AITaskEntity):
         _attr_supported_features = ai_task.AITaskEntityFeature.GENERATE_DATA
@@ -120,8 +148,8 @@ async def check(directory: str) -> None:
             provider_calls.append(current["context"])
             assert task.llm_api is not None and chat_log.llm_api is not None
             assert chat_log.llm_api.llm_context.context is current["context"]
-            assert len(chat_log.llm_api.tools) == 8
-            assert all(tool.name.startswith("ninebot__") for tool in chat_log.llm_api.tools)
+            assert {tool.name for tool in chat_log.llm_api.tools} == current["visible_queries"]
+            assert "request_detail_sync_approval" not in chat_log.llm_api.api_prompt
             for tool in chat_log.llm_api.tools:
                 schema = to_openapi(
                     tool.parameters,
@@ -130,7 +158,7 @@ async def check(directory: str) -> None:
                 )
                 assert "vehicle_ref" not in schema.get("properties", {})
             public_tool = NinebotTool(
-                next(spec for spec in SPECS if spec.key == "get_vehicle_status")
+                next(spec for spec in QUERY_SPECS if spec.key == "get_vehicle_status")
             )
             public_schema = to_openapi(
                 public_tool.parameters,
@@ -145,6 +173,9 @@ async def check(directory: str) -> None:
             value.data["data"]["battery_soc_percent"] = 9999  # Provider-side formatting.
             if current.get("revoke"):
                 principal.is_active = False
+            if current.get("regrant"):
+                configure(frozenset({READ_STATISTICS}))
+                configure(all_reads)
             if current.get("provider_failure"):
                 raise HomeAssistantError("private provider detail: never-return-this")
             return ai_task.GenDataTaskResult(
@@ -158,19 +189,31 @@ async def check(directory: str) -> None:
         await component.async_add_entities([entity])
         assert component.get_entity(entity_id) is entity
         remove = async_register(hass)
-        for provider_failure, revoke in (
-            (False, False),
-            (True, False),
-            (True, True),
-            (False, True),
-        ):
+        cases = (
+            (False, False, False, False),
+            (True, False, False, False),
+            (True, True, False, False),
+            (False, True, False, False),
+            (False, False, True, False),
+            (False, False, False, True),
+        )
+        for provider_failure, revoke, narrowed, regrant in cases:
             principal.is_active = True
+            configure(frozenset({READ_STATUS}) if narrowed else all_reads)
             context = Context(user_id=principal.id)
             current.update(
                 context=context,
                 revoke=revoke,
+                regrant=regrant,
                 provider_failure=provider_failure,
                 provider_exception=None,
+                visible_queries={
+                    "ninebot__get_vehicles",
+                    "ninebot__search_help",
+                    "ninebot__get_vehicle_status",
+                }
+                if narrowed
+                else all_queries,
             )
 
             def observed_failure(code):
@@ -205,7 +248,7 @@ async def check(directory: str) -> None:
             encoded = json.dumps(response)
             assert "Invented battery value: 9999" not in encoded
             assert "never-return-this" not in encoded
-            if revoke:
+            if revoke or regrant:
                 assert response["outcome"] == "denied" and response["results"] == []
             else:
                 assert response["outcome"] == ("partial" if provider_failure else "evidence"), (
@@ -218,7 +261,17 @@ async def check(directory: str) -> None:
                 assert not any(
                     secret in encoded for secret in ("synthetic-sn", "30.12345", "120.12345")
                 )
-        assert len(provider_calls) == 4
+        assert len(provider_calls) == len(cases)
+        configure(frozenset())
+        response = await hass.services.async_call(
+            "ninebot",
+            "ask",
+            {"question": "Battery?", "device_id": device.id, "ai_task_entity_id": entity_id},
+            context=Context(user_id=principal.id),
+            blocking=True,
+            return_response=True,
+        )
+        assert response["outcome"] == "denied" and len(provider_calls) == len(cases)
         response = await hass.services.async_call(
             "ninebot",
             "ask",
@@ -226,8 +279,10 @@ async def check(directory: str) -> None:
             blocking=True,
             return_response=True,
         )
-        assert response["outcome"] == "denied" and len(provider_calls) == 4
-        print("Native query: Context, eight tools, partial evidence and withdrawal passed")
+        assert response["outcome"] == "denied" and len(provider_calls) == len(cases)
+        print(
+            "Native query: Context, eight or three query tools, partial evidence and withdrawal OK"
+        )
     finally:
         if remove is not None:
             remove()
