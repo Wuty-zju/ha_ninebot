@@ -44,6 +44,7 @@ from .compat import validation as vol
 from .const import BUSINESS_TIMEZONE, CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN
 from .history_actions import cursor_value
 from .history_budget import configured_budget, request_interval
+from .identity import device_sn
 from .recorded_actions import business_date
 
 MAX_RIDE_BYTES = 2 * 1024
@@ -110,23 +111,24 @@ async def _action(
     return response, attempt
 
 
-def _vehicle_refs(hass: HomeAssistant) -> Iterator[str]:
+def _vehicle_refs(hass: HomeAssistant, operation: str | None = None) -> Iterator[str]:
     registry = dr.async_get(hass)
     for entry in hass.config_entries.async_entries(DOMAIN):
         access = current_access(entry)
-        if access.enabled and access.vehicles:
-            for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
-                if any(
-                    domain == DOMAIN and sn in access.vehicles for domain, sn in device.identifiers
-                ):
-                    yield device.id
+        if not access.enabled or not access.vehicles:
+            continue
+        for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
+            if (sn := device_sn(entry, device)) is not None and operation_allowed(
+                access, sn, operation
+            ):
+                yield device.id
 
 
 async def async_vehicle_scopes(
     hass: HomeAssistant, context: Context | None, *, limit: int, operation: str = "get_vehicles"
 ) -> list[AssistantScope]:
     """Use stable ordering for paged discovery; help needs only one witness."""
-    candidates: Iterable[str] = _vehicle_refs(hass)
+    candidates: Iterable[str] = _vehicle_refs(hass, operation)
     if limit > 1:
         candidates = sorted(set(candidates))
     scopes: list[AssistantScope] = []

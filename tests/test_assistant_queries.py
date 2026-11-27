@@ -217,13 +217,16 @@ async def test_composite_tool_cannot_join_permissions_across_cars(hass, assistan
     )
     from custom_components.ninebot.assistant_policy import async_authorize
     from custom_components.ninebot.assistant_queries import async_visible_keys
+    from custom_components.ninebot.identity import account_scope
 
     entry = assistant.entry
     other_sn = "SecondFixture"
     other = dr.async_get(hass).async_get_or_create(
-        config_entry_id=entry.entry_id, identifiers={("ninebot", other_sn)}
+        config_entry_id=entry.entry_id,
+        identifiers={("ninebot", f"account:{account_scope(entry)}:{other_sn}")},
     )
-    assistant.co.data[other_sn] = assistant.co.data[SN]
+    snapshot = assistant.co.data[SN]
+    assistant.co.data[other_sn] = replace(snapshot, profile=replace(snapshot.profile, sn=other_sn))
     options = dict(entry.options)
 
     def grants(first, second):
