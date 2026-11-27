@@ -2,19 +2,33 @@
 
 [简体中文](assistant_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
-This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md).
+This guide describes the **2.2.9 preview**. Use the matching guide for [v2.2.0 stable](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) or the [v2.2.8 preview](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.8/docs/assistant.md).
 
 Connect a compatible conversation host to your saved vehicle data, cited local help and optional reviewed history tasks. The native Home Assistant LLM API and MCP Server preserve the signed-in user throughout each tool call.
+
+## Upgrade to the single Ninebot API
+
+The 2.2.9 preview removes **Ninebot tasks** (`ninebot_tasks`). Sign in as an administrator when checking the old `/api/mcp/ninebot_tasks` URL. It now returns 404 with no redirect.
+
+| How your host connects | What to do |
+|---|---|
+| Dedicated `/api/mcp/ninebot`, or `/api/mcp` with **Expose all AI tools** | Keep the URL. Open a new session to discover the current tools. |
+| MCP Server or a conversation host with an explicit **AI tools** selection | Open the host's settings, clear **Ninebot tasks**, keep **Ninebot** and your other selections, and save. If you selected only the old collection, review the data and task permissions before selecting **Ninebot**. A saved missing ID can prevent the entire tool selection from loading. |
+| Client connected directly to `/api/mcp/ninebot_tasks` | Point it to `/api/mcp/ninebot` after reviewing the data and task permissions. |
+
+Accounts keep their previously selected vehicles' read permissions. If you enabled Assistant and history tasks and had selected vehicles, open **Review existing task access** in the Ninebot Assistant options. Choose the vehicles that may submit applications, select **Allow requests** for each and then **Apply per-vehicle task access**. Applying with all task levels set to **Off** withdraws the old task grant. Until you confirm, task tools stay hidden and existing requests retain their original review and execution rules. Revoking existing request access invalidates outstanding requests under the account's old grant. See [history tasks](#reviewable-history-tasks-beta) and [rollback](migration.md#move-between-22-releases).
 
 <a id="ninebot-assistant--21-preview"></a>
 
 ## Enable it
 
-1. Install **2.2.0** through Marketplace, HACS or the [packaged release](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0). Open the account you want to use.
+1. Install the **2.2.9 preview** through Marketplace, HACS or a [packaged release](https://github.com/Wuty-zju/ha_ninebot/releases). Open the account you want to use.
 2. Use Home Assistant **2026.11+** for the native Assistant API. On earlier versions, ordinary Ninebot features retain the integration's **2026.1.0** minimum; the Assistant option is unavailable without the required native API.
-3. Open **Settings → Devices & services → Ninebot → Configure** for each account you want to expose. Enable **Ninebot Assistant (Beta)** and select its vehicles. The default is off with no vehicles selected. This selection is separate from the remote-control allowlist.
+3. Open **Settings → Devices & services → Ninebot → Options** for each account you want to expose. Check **Configure Ninebot Assistant** and submit. In **Assistant access**, select **Enable Assistant for this account** and choose a vehicle. Assistant is off by default, and each newly discovered vehicle starts with no Assistant permissions. Remote-control access is managed separately.
 4. In the native **MCP Server** integration, turn off access to all LLM APIs and select **Ninebot**. Keep administrator access required and read-only mode enabled. Connect your MCP client to `/api/mcp` using Home Assistant's supported authentication.
-5. Use an active administrator identity. Every tool call checks that user, the account's Assistant setting and the vehicle selection again. Calls without a user identity are rejected.
+5. Use an active administrator identity. Each call rechecks the user, the account's Assistant setting, current vehicle ownership and the requested operation's permission.
+
+For each vehicle, select **Allowed reads** from **Vehicle status**, **Summary statistics**, **Individual trips** (including saved details) and **Sync health**. General help requires an authorized vehicle. The combined statistics explanation requires statistics, sync health and help access. A vehicle with summary statistics alone can still use `get_statistics`. Check **Edit another vehicle** to configure more vehicles before saving.
 
 For a native Conversation/Assist host, select the **Ninebot** API if the host supports custom LLM APIs and preserves an authenticated user Context. Available selectors and tool support depend on that host. Ninebot does not configure a model, an API key or a separate listener. A generic Action tool or access to exposed entities is a separate capability; registering Ninebot Actions alone does not enable these dedicated tools.
 
@@ -24,9 +38,7 @@ MCP clients that support prompts can retrieve the **Ninebot** prompt through `pr
 
 On HA 2026.11+, the main `/api/mcp` URL uses **Expose all AI tools** (`all_llm_apis`) first. When enabled, it selects every registered API, including APIs added later; a saved **AI tools** selection (`llm_hass_api`) does not restrict that list. Turn it off to use the selected collections. **Read-only** (`read_only`) filters tools on this main URL.
 
-An individual `/api/mcp/<api_id>` URL selects that registered API directly and ignores the main URL's API selection and read-only options. For `/api/mcp/ninebot_tasks`, a request application can therefore remain available while the main URL is read-only. Account task consent and the original user's separate human approval still govern Ninebot work. The ordinary `/api/mcp/ninebot` collection contains only local read tools.
-
-These rules describe the MCP routes; they do not inspect or change your configuration. See the [native MCP configuration options](https://www.home-assistant.io/integrations/mcp_server/#configuration-options).
+The individual `/api/mcp/ninebot` URL selects the registered `ninebot` API directly. It ignores the main URL's API selection and read-only settings. Set task access to **Off** or **Preview only** for a vehicle when that vehicle should be unable to accept applications through the dedicated URL or a conversation host. The original requester must approve every new application separately in Home Assistant. [Native MCP configuration options](https://www.home-assistant.io/integrations/mcp_server/#configuration-options)
 
 ## Choose a host and model
 
@@ -35,14 +47,14 @@ Choose a host that implements HA tool calls. The model can be local or hosted.
 | Entry point | Configure | What the caller receives |
 |---|---|---|
 | Assist / Conversation | Select **Ninebot** in a tool-capable conversation agent. | The host uses the returned data to compose its own reply. |
-| External MCP client | Connect to HA’s authenticated MCP Server and select the read collection. | The same tool schemas and local results under the signed-in HA user. |
+| External MCP client | Connect to HA’s authenticated MCP Server. Select **Ninebot** on `/api/mcp`, or connect directly to `/api/mcp/ninebot`. | The same tool schemas and results under the signed-in HA user. |
 | Automation | Pass an existing tool-capable `ai_task` entity to `ninebot.ask`. | Verified tool results and, where supported, a formatted evidence answer. |
 
-For historical sync applications, enable the independent **Ninebot tasks** option for the relevant vehicles. Approval stays in the HA review panel. [HA LLM APIs](https://contributors.home-assistant.io/core/internals/llm-api/) · [Native MCP Server](https://www.home-assistant.io/integrations/mcp_server/) · [AI Task](https://www.home-assistant.io/integrations/ai_task/)
+Native conversation and MCP use the same **Ninebot** collection. With all read permissions and history tasks disabled, the collection has eight tools. With the review service ready, preview access adds four tools for a total of twelve. Request access adds a thirteenth tool when the host permits writes. Per-vehicle permissions may further limit discovery and calls. [HA LLM APIs](https://contributors.home-assistant.io/core/internals/llm-api/) · [Native MCP Server](https://www.home-assistant.io/integrations/mcp_server/) · [AI Task](https://www.home-assistant.io/integrations/ai_task/)
 
 ## Query through an existing AI task
 
-In **Developer tools → Actions** or an automation, select the model entity and the HA vehicle. The Action passes the original user context to both. One selected vehicle can be reached directly, even beyond the first 20 vehicles in the account’s discovery results.
+In **Developer tools → Actions** or an automation, select the model entity and the HA vehicle. The Action passes the original user context to both. It can use only the eight query tools, limited by the selected vehicle's data permissions. One selected vehicle can be reached directly, even beyond the first 20 vehicles in the account’s discovery results.
 
 ```yaml
 action: ninebot.ask
@@ -57,7 +69,7 @@ Read `outcome` first. With `evidence`, inspect `results` or display `{{ ninebot_
 
 The Action builds the display from tool receipts. Help preserves the source link and corpus version. Dates, counts, units and coverage come from business code. The optional display uses `ninebot-evidence-answer-v1` with contributing request IDs. Complete structured results take precedence within the 32 KiB limit. A model-hosted conversation has its own presentation rules.
 
-The deadline is 180 seconds, with up to four tool calls and one active Action turn. This requires a provider and HA Core supporting `ai_task.async_generate_data(..., llm_api=...)`. Other installations can use the native read collection independently.
+The deadline is 180 seconds, with up to four tool calls and one active Action turn. This requires a provider and HA Core supporting `ai_task.async_generate_data(..., llm_api=...)`. The native **Ninebot** collection is available independently of the Action.
 
 ## Ask about local data
 
@@ -83,7 +95,7 @@ With several vehicles, select a vehicle before asking for a measurement. The hos
 | `ninebot__get_sync_health` | `vehicle_ref` | Whole-archive trip counts, discovery and detail progress, and current request pacing. Read-only. |
 | `ninebot__explain_statistics` | `vehicle_ref`, `period`, `metric`; optional `language` | Three local steps: period statistics, synchronization health and cited help with the unknown-statistic checklist. |
 
-All tools read local information. Missing details remain missing until acquired through the normal [history features](history.md); an AI read never starts a cloud fetch. List cursors can be consumed: follow the returned next cursor rather than replaying the previous one. A page count is not the period's total.
+These eight tools read local information. Missing details remain missing until acquired through the normal [history features](history.md). An AI query never starts a cloud fetch. Follow the returned next cursor when requesting another page. A page count describes the rows on that page.
 
 From **2.1.10**, `get_statistics` also accepts a single `YYYY-MM-DD` value in `period`, such as `2026-11-05`. Dates use Asia/Shanghai, start at 2000 and cannot be in the future. This reads the existing local daily projection for that date. A verified empty day can return zero; an unobserved day remains unknown. The four relative periods continue to work.
 
@@ -123,9 +135,9 @@ Public help and task checklists are available from **2.1.1**.
 
 Ask about unknown statistics, request budgets, coverage, missing details, stale readings, units, authentication, retention or Assistant access. `ninebot__search_help` searches bundled bilingual topics (thirteen in 2.1.2) without contacting a website or indexing private archives. Questions are limited to 240 characters; results include a fixed source commit, source/content hashes, language, applicable versions and corpus version. A help result explains documented behavior; current vehicle facts still require the corresponding data tool.
 
-Corpus 1.2.14 contains 21 bilingual topics and ten advisory task checklists. Ask how to replay a saved route for a link to the dashboard guide. General help checks consent without reading vehicle measurements or coordinates. Search for `get_recorded_trips`, `get_trip_detail` or `get_sync_health`, with or without the `ninebot__` prefix, to find the corresponding pinned guide. For installations from 2.1.26, `control_diagnostics` uses the pinned 2.1.26 troubleshooting guide to explain `control_routing`, `confirmation_deadline_reached`, `upstream_code` and `backend_error`. The operation matters when interpreting a proxy 502. A command response, the local confirmation window and the selected route each provide different evidence about the original attempt.
+Corpus 1.2.15 provides 21 applicable bilingual topics and ten advisory checklists for the 2.2.9 preview. Ask how to replay a saved route for a link to the dashboard guide. General help checks consent without reading vehicle measurements or coordinates. Search for `get_recorded_trips`, `get_trip_detail` or `get_sync_health`, with or without the `ninebot__` prefix, to find the corresponding pinned guide. For installations from 2.1.26, `control_diagnostics` uses the pinned 2.1.26 troubleshooting guide to explain `control_routing`, `confirmation_deadline_reached`, `upstream_code` and `backend_error`. The operation matters when interpreting a proxy 502. A command response, the local confirmation window and the selected route each provide different evidence about the original attempt.
 
-Topics on missing vehicle data, control receipts and battery cycle support apply from 2.1.24 and cite the pinned 2.1.23 guide. `sample_units` covers unverified raw samples. `measurement_units` covers maximum and overall-average speed and battery-score semantics. Login guidance covers 2.0.0 and the support records introduced in 2.0.1. `mcp_configuration` explains main and individual URL settings and recognizes exact configuration keys. Retrieval favors matching topic keywords and applies each topic's own version bounds and source.
+Topics on missing vehicle data, control receipts and battery cycle support apply from 2.1.24 and cite the pinned 2.1.23 guide. `sample_units` covers unverified raw samples. `measurement_units` covers maximum and overall-average speed and battery-score semantics. Login guidance covers 2.0.0 and the support records introduced in 2.0.1. The MCP configuration topic explains main and individual URL settings and recognizes exact configuration keys. Retrieval favors matching topic keywords and applies each topic's own version bounds and source.
 
 From **2.1.13**, request-budget searches exclude generic task-application keywords. The exact `preview_detail_sync` and `request_detail_sync_approval` names retrieve their applicable task checklist. Approved tasks continue to share the account request budget.
 
@@ -143,15 +155,21 @@ From **2.1.6**, `search_help` accepts the optional Boolean `include_procedures`,
 
 An explicitly requested versioned checklist describes: when it applies, information to ask for, permitted read tools, a call budget, stopping conditions and a result check. These cover vehicle selection, current state, period statistics, saved trips, unknown statistics, synchronization gaps, authentication support and measurement semantics. For example, an unknown-statistic check reads the selected period’s quality, then synchronization health and matching help when needed; it does not fill a missing value with zero or start synchronization.
 
-The host follows the checklist within its existing tool loop. There is no separate Skill installer or execution framework. Checklists are advisory data and cannot grant permission; every call still uses the same program authorization. Missing inputs require clarification. Access denial stops the read, and unresolved cases end with the observed evidence and a specific next step. Use the separate task collection below for history requests and human approval.
+The host follows the checklist within its existing tool loop. Checklists are advisory, and every call still uses the program's permission checks. Missing inputs require clarification. Access denial stops the read, and unresolved cases end with the observed evidence and a specific next step. See the task workflow below for history applications and human approval.
 
 ## Reviewable history tasks (Beta)
 
-From **2.1.2**, a separate **Allow reviewable history tasks (Beta)** option is available. Enable Assistant and select its vehicles first, then enable this option and save. **Ninebot Assistant** appears in the administrator sidebar. Tasks remain off by default.
+With Assistant enabled, set the **History tasks** level for each vehicle and save it. The default is **Off**. **Preview only** permits local gap previews and reading the original requester's saved tasks. **Allow requests** also permits saving a local request for review. Use the **Ninebot Assistant** panel in the administrator sidebar to approve or cancel existing work.
 
-For an AI client to propose work, select the separate **Ninebot tasks** native API. Applications are local writes, so the global `/api/mcp` route hides that tool when the server's read-only option is enabled. Keep the ordinary **Ninebot** collection selected for local data and help. The task tools list permitted vehicles, preview missing details over up to 31 business days, request human review, and read task progress. They cannot approve a request.
+Select **Ninebot** in the host to use these tools. If the review service is unavailable, the authorized query tools remain available. When `/api/mcp` is read-only, the native server filters out the write tool. Discovery can include an application tool for one vehicle while another vehicle still allows previews or queries only. The server checks the requested vehicle on every call.
 
-For a host that supports several API selections, select **Ninebot** and **Ninebot tasks** together to use versioned help and task checklists during an application. From **2.1.11**, task identifier types and constraints are preserved in either selection order.
+| Task tool | Required task level | Result |
+|---|---|---|
+| `ninebot__task_vehicles` | Preview only or Allow requests | Authorized vehicles for history tasks. |
+| `ninebot__preview_detail_sync` | Preview only or Allow requests | Local gaps and request budget for up to 31 business days. |
+| `ninebot__get_tasks` | Preview only or Allow requests | The original requester's saved tasks for the vehicle. |
+| `ninebot__get_task` | Preview only or Allow requests | One local task checkpoint and result. |
+| `ninebot__request_detail_sync_approval` | Allow requests, with review available | Save a request for human review or return an existing matching request. |
 
 Previewing a range leaves the application unsubmitted. Submission is confirmed by `task_recorded: true` and a returned task ID. Human approval follows in the review panel; a promise to submit does not record a task.
 
@@ -163,9 +181,9 @@ The task view reports the last saved checkpoint, actual request consumption, ret
 
 Native notifications provide a review or result link, coalesced into one generic notice per account. They contain no account, vehicle, trip identity, location or confirmation credential. Waiting, retry counters and nonce rotation do not produce repeated notices. Notifications confer no approval and do not prove completion; use the saved task state in the panel. After a restart, open the panel directly to inspect retained tasks.
 
-From 2.1.2, public help adds two task checklists—bounded detail applications and saved-task results—for thirteen bilingual topics in total. Each requires the separate task API and allows at most four tool calls. Read checklists retain their original read tool sets. The application checklist confirms intent, vehicle and dates before preview and local application; the result checklist reads matching metadata, preserves unknown/zero/partial distinctions and respects retry timing. Neither provides an approval or cancellation tool.
+The two task checklists each allow up to four tool calls. The application checklist confirms intent, vehicle, dates and application permission before submission. The result checklist reads matching metadata with preview or application access, preserves unknown/zero/partial distinctions and respects retry timing. Approval and cancellation belong in the human review panel.
 
-If account consent changes while the panel or a task progress query is loading, that read ends. Reopen the panel or issue a new query after granting access again.
+If data or task access is withdrawn during a read, that read ends. Reopen the panel or issue a new query after granting access again. Explicitly withdrawing the required task permission invalidates protected requests from the previous grant.
 
 ## Privacy and limits
 
@@ -175,16 +193,16 @@ Enabling the option allows the chosen host to receive selected vehicle labels, s
 
 The dedicated API admits **20 calls per authenticated user per rolling minute**, with **two calls in flight across the API**, a **10-second** call deadline, a **16 KiB** result limit and a **2 KiB** limit per listed ride. Vehicle discovery returns at most 20 allowed vehicles and explicitly reports when more are available; narrow the account selections in that case. These local limits are separate from the cloud history-request budget. When the host propagates cancellation to a tool, that call releases its admission slot. The selected host controls model-generation deadlines and retries; the ten-second limit applies to each Ninebot tool call.
 
-Selecting broader administrator APIs alongside Ninebot can give a host capabilities outside this dedicated read contract. Use the dedicated collection and native read-only setting when you only want these queries. The read-only collection exposes no vehicle commands, archive import/deletion or synchronization requests. The separate task collection can request review; cloud work requires human approval in the panel.
-
-Explicit `/api/mcp/<api_id>` URLs select registered collections directly and do not inherit the global API selection or read-only setting. The `/api/mcp/ninebot` collection contains only read tools. The task collection still requires account task consent and human approval before cloud execution.
+The **Ninebot** collection excludes vehicle commands and archive import or deletion. Selecting other Home Assistant APIs grants their own capabilities. To prevent applications across all hosts, set the corresponding vehicle task level to **Off** or **Preview only**. Cloud work requires human approval in the review panel.
 
 ## Troubleshooting
 
 | Symptom | Check |
 |---|---|
 | Ninebot is missing from the API selector | Confirm the running integration supports Ninebot Assistant, Core supports the native API, and at least one loaded account has Assistant enabled with vehicles selected. |
+| `API ninebot_tasks not found` | Clear **Ninebot tasks** from the host's saved AI tools. Keep **Ninebot** and the other selections, then start a new session. |
 | No vehicles or `not_authorized` | Check the authenticated active administrator, account consent and selected vehicle ownership. Existing remote-control permissions do not grant AI access. |
+| The application tool is missing | Check that the selected vehicle allows applications, that the review service is available, and that the host allows the write tool. Complete the one-time permission confirmation if prompted. |
 | A trip detail is missing | Use the recorded-trip list to select its exact `ride_id` and `query_month`. Acquire missing details through normal history synchronization. |
 | Statistics are partial or unknown | Check the indicated source/coverage and history health. Read-only tools do not repair the archive automatically. |
 | Rate-limited or timed out | Respect the retry interval and reduce concurrent requests. The integration does not add another polling loop for AI. |

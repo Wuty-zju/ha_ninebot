@@ -2,7 +2,7 @@
 
 [简体中文](guide_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
-This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide.md).
+This guide covers releases through the 2.2.9 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide.md).
 
 ## Requirements
 
@@ -141,8 +141,7 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
 | Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. A failed save keeps the edit pending and reports a storage Repair; save again after resolving it. Retired low-confidence SOC estimators remain removed. |
-| Ninebot Assistant (Beta) | Off, no vehicles selected | Read selected vehicles through a compatible native host. [Setup and privacy](assistant.md) |
-| Assistant history tasks (Beta) | Off | Allow scoped requests to fill detail gaps. The original requester reviews and approves each request in the HA panel. |
+| Configure Ninebot Assistant | Off, no vehicle access | Enable Assistant for the account, then choose allowed reads and history task access for each vehicle. [Setup and privacy](assistant.md) |
 | Show diagnostic entities | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
 On HA 2026.11+, allowed vehicles appear when controls are enabled; automatic history scan, capacity and request-budget fields appear when automatic detail synchronization is enabled. Hidden settings retain their previously saved values. Earlier HA versions show the same fields directly. Archive management and retention remain available independently.

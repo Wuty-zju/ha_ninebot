@@ -16,7 +16,7 @@ English · [简体中文](README_zh.md)
 
 Bring a Ninebot vehicle into Home Assistant for battery and range readings, vehicle controls, ride statistics and a private route archive. Each account has its own vehicles, update schedule and SQLite database. Your dashboard, automations and optional Assistant can read the same saved rides.
 
-Install the [stable release](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. The [2.2.8 preview](CHANGELOG.md#228) adds direct route selection on the map, totals for a selection and focused Assistant status readings. [All releases](https://github.com/Wuty-zju/ha_ninebot/releases)
+Install the [stable release](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. The [2.2.9 preview](CHANGELOG.md#229) adds per-vehicle Assistant permissions and merges the Assistant tools into **Ninebot**. If your host uses **Ninebot tasks**, check the [upgrade instructions](docs/assistant.md#upgrade-to-the-single-ninebot-api) before updating. [All releases](https://github.com/Wuty-zju/ha_ninebot/releases)
 
 ## What you can do
 
@@ -104,7 +104,7 @@ A sampled route plays in saved point order. Older server details may contain onl
 
 ## Ninebot Assistant
 
-Enable **Ninebot Assistant** for an account and select the vehicles it may read. Choose the **Ninebot** tool collection in a compatible Assist conversation host or the native MCP Server. Automations can call `ninebot.ask` with an existing Home Assistant AI Task. The host chooses the model.
+Enable **Ninebot Assistant** for an account and select which data each vehicle may share. Choose the **Ninebot** collection in a compatible Assist conversation host or native MCP Server, or connect your MCP client to `/api/mcp/ninebot`. Automations can query the selected vehicle with `ninebot.ask` and an existing Home Assistant AI Task. The host chooses the model.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/assistant-en-dark.svg">
@@ -118,7 +118,7 @@ Enable **Ninebot Assistant** for an account and select the vehicles it may read.
 | “Why is my monthly total unknown?” | A fixed sequence checks the statistic, archive progress and applicable help. Unknown causes remain open. |
 | “How does map replay work?” | The versioned English or Chinese guide with a permanent source link. |
 
-Eight read tools work with cached vehicle data and local history. The separate **Ninebot tasks** collection can propose a bounded detail sync. An administrator reviews its scope and cloud budget before the existing scheduler runs it. Precise coordinates and credentials are excluded from Assistant responses. [Set up a host, view receipts and review tasks](docs/assistant.md)
+The eight query tools use cached vehicle data, local history and versioned help. The same collection can preview a history gap or request a bounded detail sync when the vehicle allows it. The original requester reviews the scope and request budget in the HA panel before approving the work. Assistant responses exclude precise coordinates and credentials. [Configure access and review tasks](docs/assistant.md)
 
 <a id="controls-confirm-state-through-fresh-observations"></a>
 
