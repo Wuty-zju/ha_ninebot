@@ -237,7 +237,9 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                 turn.hass, turn.call.context, vehicle_ref=turn.selected, queries_only=True
             )
             await turn.async_validate()
-            tools = [EvidenceTool(spec) for spec in QUERY_SPECS if spec.key in visible]
+            tools: list[llm.Tool] = [
+                EvidenceTool(spec) for spec in QUERY_SPECS if spec.key in visible
+            ]
             if not tools:
                 turn.deny()
             return llm.APIInstance(
