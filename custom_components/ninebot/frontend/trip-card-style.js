@@ -66,7 +66,7 @@ ha-icon { --mdc-icon-size: 20px; vertical-align: middle; }
   color: inherit; border: 1px solid var(--replay-line); border-radius: 16px; background: var(--replay-card); padding: 16px; }
 .route-picker::backdrop { background: rgb(0 0 0 / 40%); }
 .pin-choices { display: grid; gap: 6px; margin-block: 12px; }
-.pin-choices button { text-align: start; overflow-wrap: anywhere; }
+.pin-choices button { text-align: start; overflow-wrap: anywhere; touch-action: manipulation; }
 .pin-choices [aria-pressed=true] { border-color: var(--replay-accent); background: var(--replay-selection); }
 .route-chip {
   display: flex; align-items: center; max-width: 100%; border-radius: 24px;

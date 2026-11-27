@@ -97,7 +97,7 @@ try {
     opened.capabilities['safari:platformVersion']);
   await request('POST', '/url', { url: origin + '/?overlap&english&dashboard' });
   await waitFor('window.fixtureCard?.routeMap.renderer && !fixtureCard.busy');
-  await js('window.userEvents=[]; for(const type of ["pointerdown","pointerup","pointercancel","click","change"])' +
+  await js('window.userEvents=[]; for(const type of ["pointerdown","pointerup","pointercancel","touchstart","touchend","click","change"])' +
     'document.addEventListener(type,e=>{const n=e.composedPath()[0];userEvents.push([type,n.dataset?.control||n.tagName,n.className,e.clientX,e.clientY]);' +
     'if(userEvents.length>12)userEvents.shift()},true)');
   await click(dom + '.querySelectorAll(".overlay")[1]');
@@ -134,17 +134,19 @@ try {
   assert.match(announcement, /Current ride · 1 · Synthetic A/);
   await click(ui + 'play');
   await waitFor('fixtureCard.index > 0 && fixtureCard.playback');
-  const box = await js('const s = ' + ui + 'slider; s.scrollIntoView({block:"center"});' +
-    'const r = s.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]');
+  await js(ui + 'slider.scrollIntoView({block:"center",behavior:"instant"})');
+  const box = await js('const s = ' + ui + 'slider,r=s.getBoundingClientRect();' +
+    'return [r.left, r.top, r.width, r.height, Number(s.value)/Number(s.max)]');
   // WebDriver uses a single pointer on both platforms. Mobile Safari delivers a finger gesture.
   await js('window.replayInputs = []; for (const name of ["pointerdown","input","change"]) ' +
     ui + 'slider.addEventListener(name, e => replayInputs.push([e.type, e.isTrusted, e.pointerType]))');
-  const [left, top, width, height] = box;
+  const [left, top, width, height, fraction] = box;
   const move = (fraction, duration) => ({ type: 'pointerMove', duration,
     x: Math.round(left + width * fraction), y: Math.round(top + height / 2), origin: 'viewport' });
   await request('POST', '/actions', { actions: [{ type: 'pointer', id: 'reader',
     parameters: { pointerType: platform === 'iOS' ? 'touch' : 'mouse' },
-    actions: [move(.15, 0), { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 220 },
+    actions: [move((10 + (width - 20) * fraction) / width, 0),
+      { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 220 },
       move(.7, 300), { type: 'pointerUp', button: 0 }] }] });
   const state = await js('const c=fixtureCard,u=c.view.ui,i=c.index,p=c.activeTrack.points[i],'
     + 'xy=c.routeMap.renderer.focus.getLatLng();return {index:i,count:c.activeTrack.points.length,'

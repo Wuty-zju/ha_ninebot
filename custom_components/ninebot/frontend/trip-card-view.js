@@ -26,6 +26,29 @@ function nameControl(node, name) {
   node.setAttribute('aria-label', name);
 }
 
+function enableTouchChoice(choices) {
+  // Mobile Safari can deliver a complete tap to a dialog button without synthesizing click.
+  // Leave swipes to the browser and keep the button's normal keyboard/VoiceOver activation.
+  let tap;
+  choices.addEventListener('touchstart', event => {
+    const finger = event.touches[0], button = event.target.closest('button');
+    tap = event.touches.length === 1 && button ? { button, finger } : null;
+  }, { passive: true });
+  const moved = other => !other || other.identifier !== tap.finger.identifier ||
+    Math.hypot(other.clientX - tap.finger.clientX, other.clientY - tap.finger.clientY) > 10;
+  choices.addEventListener('touchmove', event => {
+    if (tap && moved(event.touches[0])) tap = null;
+  }, { passive: true });
+  choices.addEventListener('touchcancel', () => { tap = null; });
+  choices.addEventListener('touchend', event => {
+    const choice = tap && !event.touches.length && !moved(event.changedTouches[0]) && tap.button;
+    tap = null;
+    if (!choice || !event.cancelable || !choices.contains(choice)) return;
+    event.preventDefault();
+    choice.click();
+  }, { passive: false });
+}
+
 function iconButton(icon, glyph, action, control, className) {
   const node = button('', action, control, className);
   const symbol = element('ha-icon', '', glyph);
@@ -85,6 +108,7 @@ export class TripCardView {
     pickerTitle.id = 'route-picker-title';
     picker.setAttribute('aria-labelledby', pickerTitle.id);
     const choices = element('div', 'pin-choices');
+    enableTouchChoice(choices);
     const cancel = button('', () => picker.close(), 'dismiss-picker');
     picker.append(pickerTitle, choices, cancel);
     picker.addEventListener('close', () => {
