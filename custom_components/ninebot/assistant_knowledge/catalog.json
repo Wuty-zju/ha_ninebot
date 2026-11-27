@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.14",
-  "source_version": "2.2.8",
+  "corpus_version": "1.2.15",
+  "source_version": "2.2.9",
   "entries": [
     {
       "id": "statistics_missing",
@@ -550,7 +550,7 @@
       "id": "assistant_access",
       "applicable_versions": {
         "min_inclusive": "2.1.0",
-        "max_exclusive": "2.3.0"
+        "max_exclusive": "2.2.9"
       },
       "evidence_status": "first_party_contract",
       "reviewed_at": "2026-11-18",
@@ -586,7 +586,54 @@
           ]
         }
       },
-      "content_sha256": "243760bfc4e4e2d7a7d39b0a30bda49ba71ae0e055b17366a7b4f25eed9c1fdb",
+      "content_sha256": "8f53dcf799f12d4a49caa54c2157fbc5f220c150ddf1a6b9696aa12065428980",
+      "procedure_id": null
+    },
+    {
+      "id": "assistant_vehicle_access",
+      "applicable_versions": {
+        "min_inclusive": "2.2.9",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-27",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "dd47835ae28a6ca0c6d2fa99d2d5184a440f7926",
+        "sha256": "76a3b2b1b0c5a4913ce11d4851b774c755d3fff8ceec02e7bf6bbddda2acc16c",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/dd47835ae28a6ca0c6d2fa99d2d5184a440f7926/docs/assistant.md#enable-it"
+      },
+      "translations": {
+        "en": {
+          "title": "Assistant access is separate consent",
+          "text": "Assistant defaults off. In Configure Ninebot Assistant, choose allowed reads per vehicle: cached status, summary statistics, individual trips, and sync health. History tasks separately allow Off, Preview only (including the requester's own task results), or Allow requests. Every call checks the active administrator, account, vehicle ownership and operation. Stop on not_authorized and review access. Tools exclude credentials and precise coordinates.",
+          "keywords": [
+            "not_authorized",
+            "permission",
+            "privacy",
+            "access",
+            "consent",
+            "GPS",
+            "per-vehicle access",
+            "allowed reads"
+          ]
+        },
+        "zh-Hans": {
+          "title": "Assistant使用独立授权",
+          "text": "助手默认关闭。在「配置 Ninebot 助手」中为每辆车独立选择车况、汇总统计、逐次行程及同步健康。历史任务可选关闭、仅预览（含本人任务结果）或允许申请。每次调用复核管理员、账号、车辆归属与操作权限。遇到 not_authorized 时停止并检查授权。工具回执不含凭据或精确坐标。",
+          "keywords": [
+            "权限",
+            "隐私",
+            "授权",
+            "拒绝",
+            "精确位置",
+            "逐车权限",
+            "允许读取"
+          ]
+        }
+      },
+      "content_sha256": "bd90a6c94d0ee38bafaea8ffb5e8dc53c95fccfdc67588e05e55a98ba85f51ec",
       "procedure_id": null
     },
     {
@@ -673,12 +720,61 @@
       },
       "applicable_versions": {
         "min_inclusive": "2.1.2",
-        "max_exclusive": "2.3.0"
+        "max_exclusive": "2.2.9"
       },
       "evidence_status": "first_party_contract",
       "reviewed_at": "2026-11-18",
       "supersedes": [],
-      "content_sha256": "a8575ab637cb341f835d1a10a2427f560423d1699f56a4455309611d11f0b64e"
+      "content_sha256": "a1f8ec40f0aedbd4b989dc87bb705385707231f0798f9d1e7c67f56d1d00ba77"
+    },
+    {
+      "id": "task_application_per_vehicle",
+      "procedure_id": "SK09",
+      "translations": {
+        "en": {
+          "title": "Request review of missing trip details",
+          "text": "Choose Ninebot. Preview only permits local previews and reading your own tasks. Allow requests can also save an application if review is ready and the host permits it. Preview up to 31 business days and freeze up to 20 mapped missing details. The shared attempt cap is twice the selected count, at most 20. The original requester approves in the HA panel. The local application makes no cloud calls. The account request budget still applies.",
+          "keywords": [
+            "task",
+            "application",
+            "review",
+            "approval",
+            "confirm",
+            "missing details",
+            "request_detail_sync_approval",
+            "preview_detail_sync",
+            "ninebot__request_detail_sync_approval",
+            "ninebot__preview_detail_sync"
+          ]
+        },
+        "zh-Hans": {
+          "title": "申请审核缺失行程详情",
+          "text": "选择 Ninebot。仅预览可查看缺口及本人申请，允许申请且审核服务可用、宿主允许写入时才可提交。预览最多 31 个业务日，选中最多 20 条缺失详情；共用尝试上限为选中条数的两倍、最多 20 次。申请写入本地，原申请人须在 HA 面板批准；执行仍受账号请求额度约束。",
+          "keywords": [
+            "申请",
+            "人工审核",
+            "批准",
+            "确认",
+            "任务申请",
+            "缺失详情",
+            "任务工具"
+          ]
+        }
+      },
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "dd47835ae28a6ca0c6d2fa99d2d5184a440f7926",
+        "sha256": "76a3b2b1b0c5a4913ce11d4851b774c755d3fff8ceec02e7bf6bbddda2acc16c",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/dd47835ae28a6ca0c6d2fa99d2d5184a440f7926/docs/assistant.md#reviewable-history-tasks-beta"
+      },
+      "applicable_versions": {
+        "min_inclusive": "2.2.9",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-27",
+      "supersedes": [],
+      "content_sha256": "8ca2f33caf858ff6a59f5e28981667d81676a0f11d1fb5b4e82e61bb92ec68c4"
     },
     {
       "id": "task_progress",
@@ -695,7 +791,11 @@
             "cancel",
             "retry_at",
             "waiting",
-            "completed"
+            "completed",
+            "get_task",
+            "get_tasks",
+            "ninebot__get_task",
+            "ninebot__get_tasks"
           ]
         },
         "zh-Hans": {
@@ -725,13 +825,13 @@
       "evidence_status": "first_party_contract",
       "reviewed_at": "2026-11-18",
       "supersedes": [],
-      "content_sha256": "8fa19c9539141f29665ddd3c2d73ac219952212ad281632e7e0efb40dd36f795"
+      "content_sha256": "7fccd56a0ac862dfec290c6c2a39be48beb2c16e29228eb6b346b034fc3ae437"
     },
     {
       "id": "mcp_configuration",
       "applicable_versions": {
         "min_inclusive": "2.1.22",
-        "max_exclusive": "2.3.0"
+        "max_exclusive": "2.2.9"
       },
       "evidence_status": "first_party_contract",
       "reviewed_at": "2026-11-18",
@@ -768,7 +868,57 @@
           ]
         }
       },
-      "content_sha256": "e961da2edb30c0f96a1170742f2d239d9b61760a3ede1f83940fa423fb728e12",
+      "content_sha256": "5bc7ce518eeabf660feea1e982461786bcdb54bd410182096b148d516e457441",
+      "procedure_id": null
+    },
+    {
+      "id": "mcp_single_api",
+      "applicable_versions": {
+        "min_inclusive": "2.2.9",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-27",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "dd47835ae28a6ca0c6d2fa99d2d5184a440f7926",
+        "sha256": "76a3b2b1b0c5a4913ce11d4851b774c755d3fff8ceec02e7bf6bbddda2acc16c",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/dd47835ae28a6ca0c6d2fa99d2d5184a440f7926/docs/assistant.md#check-mcp-api-selection"
+      },
+      "translations": {
+        "en": {
+          "title": "Main and individual MCP API settings",
+          "text": "On HA 2026.11+, all_llm_apis=true selects all registered APIs for /api/mcp. With all_llm_apis=false, llm_hass_api limits the selection. read_only filters the application on the main URL. The dedicated /api/mcp/ninebot ignores those main settings and checks per-vehicle permissions. The original user approves in HA. The old ninebot_tasks URL returns 404 without a redirect. Update clients to /api/mcp/ninebot. In a saved host list, remove Ninebot tasks and keep Ninebot and other choices.",
+          "keywords": [
+            "all_llm_apis",
+            "llm_hass_api",
+            "read_only",
+            "API selection",
+            "expose all AI tools",
+            "main URL settings",
+            "ninebot_tasks",
+            "MCP migration",
+            "404"
+          ]
+        },
+        "zh-Hans": {
+          "title": "MCP主地址与独立地址的API设置",
+          "text": "HA 2026.11+ 的主地址 /api/mcp 在 all_llm_apis=true 时选择全部已注册 API；设为 all_llm_apis=false 才使用 llm_hass_api。read_only 在主地址过滤申请。独立 /api/mcp/ninebot 不继承主地址设置，逐车验权，原申请人仍须在 HA 批准。旧 ninebot_tasks 地址返回 404，不会跳转。直连客户端应改用 /api/mcp/ninebot；宿主若保存了旧集合，须取消 Ninebot tasks 并保留 Ninebot 和其他选择。",
+          "keywords": [
+            "all_llm_apis",
+            "llm_hass_api",
+            "read_only",
+            "API选择",
+            "全部AI工具",
+            "主地址设置",
+            "旧入口",
+            "MCP 迁移",
+            "ninebot_tasks"
+          ]
+        }
+      },
+      "content_sha256": "33a52e61b97116ce475671ee4b397e6b2623eb4f8a3cbe98ccda6b259f49dc46",
       "procedure_id": null
     },
     {
@@ -1370,13 +1520,13 @@
           "title": "Apply for a bounded detail task",
           "trigger": "User explicitly asks to apply for synchronization of missing trip details.",
           "required_inputs": [
-            "Ninebot tasks API exposed and account task consent enabled",
+            "Task preview access for the selected vehicle. Request access is required to submit.",
             "Selected authorized vehicle and explicit business dates"
           ],
           "steps": [
-            "If task tools are absent, explain enabling them and stop. Use task_vehicles; ask when several vehicles are ambiguous.",
+            "Use task_vehicles and ask when ambiguous. If allowed to preview only, present a requested preview and stop before application.",
             "Preview the selected dates. Report local coverage, missing selection, total attempt cap and expiry; missing history is not zero.",
-            "Only on explicit intent, apply for human review. A matching existing task can be returned; preserve its actual state. The application makes no cloud request.",
+            "Apply only on explicit intent with request permission. Keep the state of any existing matching task.",
             "If approval_required is true, ask the original requester to review in HA’s Ninebot Assistant panel with the same HA user. Never ask for a token; do not seek new approval for already approved work."
           ],
           "stop": "Stop for missing inputs, denied access, no executable local selection or scope/budget uncertainty; do not expand the range or poll.",
@@ -1386,13 +1536,13 @@
           "title": "申请有界详情同步任务",
           "trigger": "用户明确要求申请同步缺失的行程详情。",
           "required_inputs": [
-            "已暴露 Ninebot tasks API，且账号已开启任务功能",
+            "所选车辆允许预览。提交前还需申请权限。",
             "明确的获准车辆与业务日期范围"
           ],
           "steps": [
-            "缺少任务工具时说明开启方式并停止。用 task_vehicles 选车，多车歧义先询问。",
+            "用 task_vehicles 选车，多车歧义先询问。若只有预览权限，按需说明预览结果，不提交申请。",
             "预览指定日期，说明本地覆盖、待取条数、总尝试上限和有效期；缺历史不等于零。",
-            "仅在用户明确要求时申请人工审核；可能返回匹配的已有任务，应保留其真实状态，申请不查询云端。",
+            "只有用户明确要求且有该车的申请权限才提交。若返回匹配的已有任务，保留其实际状态。",
             "仅 approval_required 为 true 时，请原申请人用同一个 HA 用户去 Ninebot Assistant 面板审核；不能索要凭据或要求重复批准已获准工作。"
           ],
           "stop": "输入缺失、拒绝访问、没有可执行的本地选择或范围/额度不明时停止；不扩大范围或循环查询。",
@@ -1401,17 +1551,17 @@
       },
       "source": {
         "path": "docs/assistant.md",
-        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
-        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
-        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+        "commit": "dd47835ae28a6ca0c6d2fa99d2d5184a440f7926",
+        "sha256": "76a3b2b1b0c5a4913ce11d4851b774c755d3fff8ceec02e7bf6bbddda2acc16c",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/dd47835ae28a6ca0c6d2fa99d2d5184a440f7926/docs/assistant.md#reviewable-history-tasks-beta"
       },
       "applicable_versions": {
         "min_inclusive": "2.1.2",
         "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-18",
-      "content_sha256": "a42d67d7d20ea2812e455ada86cc8f9d4d537a571091a10388f85c4847eff584"
+      "reviewed_at": "2026-11-27",
+      "content_sha256": "4d4106c25e139c15de933678ed6aab889789e0cec6732f76ea1bd15580dc9d2c"
     },
     {
       "id": "SK10",
@@ -1427,7 +1577,7 @@
           "title": "Check a saved task result",
           "trigger": "User asks about an applied history task, its wait, result or cancellation.",
           "required_inputs": [
-            "Ninebot tasks API exposed",
+            "Task read tools available for the selected vehicle",
             "Original requester’s HA identity and selected authorized vehicle",
             "Task ID from a matching task list, or permission to list local tasks"
           ],
@@ -1444,7 +1594,7 @@
           "title": "核对已保存的任务结果",
           "trigger": "用户询问已申请任务的等待原因、结果或取消方式。",
           "required_inputs": [
-            "已暴露 Ninebot tasks API",
+            "所选车辆可读取历史任务",
             "原申请人的 HA 身份与选定的获准车辆",
             "匹配任务列表中的任务 ID，或允许读取本地列表"
           ],
@@ -1460,17 +1610,17 @@
       },
       "source": {
         "path": "docs/assistant.md",
-        "commit": "d493b0e2d210df11cbd6a7a0fa26a91632b85163",
-        "sha256": "b168943f14be038869b54d1aa0f4ed2302c9a99c799146ee3194a35b8a73254f",
-        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/d493b0e2d210df11cbd6a7a0fa26a91632b85163/docs/assistant.md#reviewable-history-tasks-development"
+        "commit": "dd47835ae28a6ca0c6d2fa99d2d5184a440f7926",
+        "sha256": "76a3b2b1b0c5a4913ce11d4851b774c755d3fff8ceec02e7bf6bbddda2acc16c",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/dd47835ae28a6ca0c6d2fa99d2d5184a440f7926/docs/assistant.md#reviewable-history-tasks-beta"
       },
       "applicable_versions": {
         "min_inclusive": "2.1.2",
         "max_exclusive": "2.3.0"
       },
       "evidence_status": "reviewed_procedure",
-      "reviewed_at": "2026-11-18",
-      "content_sha256": "e4fc67eb93c9593602994c58ef9fb593b4f87546a061778c0ef0224725fcc638"
+      "reviewed_at": "2026-11-27",
+      "content_sha256": "48fc01d35f86fba43913179c22dcb01335397af32a262fe5d824e09e9acf930c"
     }
   ]
 }
