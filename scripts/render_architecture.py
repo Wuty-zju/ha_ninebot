@@ -208,7 +208,8 @@ CONTENT = {
             ],
         ],
         (
-            "Ninebot can preview or request a history sync when permitted. Approve in the HA panel.",
+            "Ninebot can preview or request a history sync when permitted. "
+            "Approve in the HA panel.",
             "获准的车辆可通过 Ninebot 预览或申请历史补同步，申请由用户在 HA 面板批准。",
         ),
     ),

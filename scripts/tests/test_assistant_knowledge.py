@@ -502,7 +502,9 @@ class KnowledgeTests(unittest.TestCase):
                         ["task_application_per_vehicle"],
                     )
                     match = current["matches"][0]
-                    self.assertIn("Allow requests" if language == "en" else "允许申请", match["text"])
+                    self.assertIn(
+                        "Allow requests" if language == "en" else "允许申请", match["text"]
+                    )
                     self.assertNotIn("/api/mcp/ninebot_tasks", match["text"])
                     self.assertEqual([p["id"] for p in current["procedures"]], ["SK09"])
                     self.assertIn(
