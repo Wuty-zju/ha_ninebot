@@ -14,6 +14,11 @@ window.fixtureRequests = [];
 const params = new URL(location.href).searchParams;
 const endpointsOnly = params.has('endpoints');
 const overlap = params.has('overlap');
+if (params.has('dashboard')) {
+  // Lovelace scrolls its panel inside the viewport; the Safari toolbar sits outside it.
+  document.documentElement.style.overflow = 'hidden';
+  document.body.style.cssText = 'height:100dvh;box-sizing:border-box;overflow:auto;margin-block:0;padding-block:20px 50vh';
+}
 if (params.has('native')) {
   class SyntheticMap extends HTMLElement {
     paths = [];

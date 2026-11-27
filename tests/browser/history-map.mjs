@@ -277,6 +277,9 @@ try {
     await page.waitForFunction(() => fixtureCard.shadowRoot.activeElement?.className === 'focus-track');
     assert.deepEqual(await page.locator('.playback > .metrics dd').allTextContents(),
       ['1.2 km', '10 min', '90 Wh']);
+    const selectedTotals = page.locator('.selection-totals');
+    await selectedTotals.locator('summary').click();
+    assert.deepEqual(await selectedTotals.locator('dd').allTextContents(), ['3.6 km', '25 min', '270 Wh']);
     const nativeSlider = page.getByRole('slider', { name: /1 · Synthetic A/ });
     await nativeSlider.press('Home');
     for (let step = 0; step < 15; step++) await nativeSlider.press('ArrowRight');

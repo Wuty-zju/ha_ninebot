@@ -103,6 +103,8 @@ limit: 40
 4. Press **Play** or drag the slider to a saved point. Touching the slider pauses playback. Its screen-reader label identifies the active ride. For example, “Point 16 of 58 · Source point sequence 17” means two original rows are missing from this zero-based sequence. The map cursor moves to that point. Distance, duration and energy remain totals for the full ride. Gaps break the drawn line. Point timestamps and a measured speed for each segment are unavailable. The live vehicle position comes from the separate device tracker.
 5. **Follow replay** centers the current point and follows it at your zoom level when it leaves the view. **Show all routes** fits the routes above the playback controls. **Local records updated · Read latest** reloads the selection after the archive changes.
 
+With VoiceOver, move to a numbered route button and activate it. Its label gives the vehicle and departure time, and the active button has a pressed state. Move to the replay slider. On iPhone, swipe up or down to change the replay position. On a Mac, use the slider’s adjustment commands. [Apple’s VoiceOver gesture guide](https://support.apple.com/guide/iphone/iph3e2e2281/ios)
+
 Each detail read uses up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains at most 4,096 samples per ride. The card can simplify lines for drawing while the archive keeps its original geometry.
 
 A server-simplified ride may have two usable positions. The map marks the start and end individually. One position gets one marker. A ride without positions still has a summary. The server may report a detailed-track window of 180 days. Previously saved higher-quality routes remain available locally beyond that window.

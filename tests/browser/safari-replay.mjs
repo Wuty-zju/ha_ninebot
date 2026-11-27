@@ -44,8 +44,22 @@ async function click(expression) {
   await js(expression + '.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"})');
   await request('POST', '/execute/async', { script:
     'const done=arguments[0];requestAnimationFrame(()=>requestAnimationFrame(()=>done(null)))', args: [] });
-  const control = await element(expression);
-  await request('POST', control + '/click', {});
+  if (platform !== 'iOS') {
+    await request('POST', await element(expression) + '/click', {});
+    return;
+  }
+  await delay(400);
+  const target = await js('const e=' + expression + ',r=e.getBoundingClientRect();'
+    + 'const x=Math.round(r.left+r.width/2), y=Math.round(r.top+r.height/2);'
+    + 'const hit=e.getRootNode().elementFromPoint(x,y); return {x,y,hit:hit?.tagName,'
+    + 'matches:e===hit||e.contains(hit),width:innerWidth,height:innerHeight}');
+  assert.equal(target.matches, true, expression + ' ' + JSON.stringify(target));
+  await request('POST', '/actions', { actions: [{ type: 'pointer', id: 'finger',
+    parameters: { pointerType: 'touch' }, actions: [
+      { type: 'pointerMove', x: target.x, y: target.y, duration: 0, origin: 'viewport' },
+      { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 100 }, { type: 'pointerUp', button: 0 },
+    ] }] });
+  await request('DELETE', '/actions');
 }
 
 async function voiceOverPhrases() {
@@ -53,6 +67,7 @@ async function voiceOverPhrases() {
   const command = (file, args) => execFileSync(file, args,
     { encoding: 'utf8', timeout: 4500, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   const heard = {};
+  let unavailable;
   try {
     command('defaults', ['write', 'com.apple.VoiceOver4/default', 'SCREnableAppleScript', '-bool', 'true']);
     command('open', ['-g', '-a', 'VoiceOver']);
@@ -62,14 +77,17 @@ async function voiceOverPhrases() {
       for (let attempt = 0; attempt < 6; attempt++) {
         await delay(550);
         const phrase = command('osascript', ['-e', 'tell application "VoiceOver" to get content of last phrase']);
-        if (phrase.includes('Synthetic A') || /Point \d+ of 58/i.test(phrase)) {
+        if (name === 'choice' ? phrase.includes('Synthetic A') : /Point \d+ of 58/i.test(phrase)) {
           heard[name] = phrase;
-          if (name === 'choice' || /of 58/i.test(phrase)) break;
+          break;
         }
       }
     }
-  } catch { /* Report exactly what the running screen reader supplied. */ }
-  console.log('VoiceOver utterances:', JSON.stringify(heard));
+  } catch (error) { unavailable = error.code || error.status || 'unavailable'; }
+  console.log('VoiceOver utterances:', JSON.stringify({ heard, unavailable }));
+  if (!heard.choice || !heard.sample) {
+    console.log('::notice::VoiceOver speech was not confirmed for both controls. Browser accessibility checks are reported separately.');
+  }
 }
 const { server, origin } = await serveReplay();
 try {
@@ -77,10 +95,10 @@ try {
   session = '/session/' + opened.sessionId;
   console.log('Safari session:', opened.capabilities.browserVersion, opened.capabilities.platformName,
     opened.capabilities['safari:platformVersion']);
-  await request('POST', '/url', { url: origin + '/?overlap&english' });
+  await request('POST', '/url', { url: origin + '/?overlap&english&dashboard' });
   await waitFor('window.fixtureCard?.routeMap.renderer && !fixtureCard.busy');
-  await js('window.userEvents=[]; for(const type of ["pointerdown","pointerup","click","change"])' +
-    'document.addEventListener(type,e=>{const n=e.composedPath()[0];userEvents.push([type,n.dataset?.control||n.tagName]);' +
+  await js('window.userEvents=[]; for(const type of ["pointerdown","pointerup","pointercancel","click","change"])' +
+    'document.addEventListener(type,e=>{const n=e.composedPath()[0];userEvents.push([type,n.dataset?.control||n.tagName,n.className,e.clientX,e.clientY]);' +
     'if(userEvents.length>12)userEvents.shift()},true)');
   await click(dom + '.querySelectorAll(".overlay")[1]');
   await waitFor('fixtureCard.activeTrack?.label === "Synthetic B" && !fixtureCard.busy');
