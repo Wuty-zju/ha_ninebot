@@ -5,6 +5,7 @@ boundary: minimum Core does not define ToolResult or ToolAnnotations.
 """
 
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any, cast
 
 from homeassistant.core import HomeAssistant
@@ -18,9 +19,9 @@ from .assistant_task_queries import async_task_query
 
 PROMPT = (
     "Use the Ninebot tools for the vehicles and local data the user has allowed. "
-    "When several vehicles are available and none is explicitly selected, ask which one; "
-    "never choose the first vehicle. Reuse an explicit vehicle selection without listing "
-    "vehicles again to confirm it. Ask for unspecified statistical periods. "
+    "When several vehicles are available, ask which one the user wants. When labels match, "
+    "ask for the exact vehicle reference. Reuse an explicit selection without listing "
+    "vehicles again. Ask for unspecified statistical periods. "
     "Use references exactly as supplied by selection or discovery; never edit or guess them. "
     "An allowed selection does not substitute for a different or hidden target in the question. "
     "Ask for an authorized selection instead of reading another vehicle. "
@@ -28,7 +29,12 @@ PROMPT = (
     "past trips. "
     "For one current reading pass its metric to get_vehicle_status. "
     "To investigate a specific unknown statistic, use explain_statistics with the selected "
-    "vehicle, period and metric for the bounded local check and cited checklist. "
+    "vehicle, period and metric when it is available for that vehicle. With statistics-only "
+    "access, use get_statistics for that metric. Report its coverage and observation time; "
+    "leave the cause unverified. If the requested data is outside the selected vehicle's "
+    "allowed_reads, explain that limit. Other vehicles and public help cannot supply its value. "
+    "An administrator edits vehicle read grants in Settings > Devices & services > Ninebot > "
+    "Options > Assistant access. The query Action can select a device but cannot grant access. "
     "For saved trip totals, limited routes, or progress, use get_sync_health. "
     "Distinguish all saved trips from the discovered trips in the synchronization plan. "
     "Capabilities report local cache/archive readiness, not hardware support, measurements "
@@ -36,6 +42,8 @@ PROMPT = (
     "Null/missing is unknown, "
     "not zero; report a zero only when the tool returned a verified zero. "
     "Preserve units, business dates, per-metric coverage, group observation times and freshness. "
+    "For further reads in the same question, reuse the first receipt's resolved business "
+    "date or month. Resolve relative dates afresh for a new question. "
     "Business dates use the archive's Asia/Shanghai timezone. This is not evidence of the "
     "browser timezone. These tools cannot regroup statistics into browser-time day boundaries. "
     "Keep the answer brief. For measurements, include the requested value or unknown, the "
@@ -118,9 +126,16 @@ class NinebotTool(llm.Tool):
 
     integration = "ninebot"
 
-    def __init__(self, spec: ToolSpec, *, selected_vehicle: str | None = None) -> None:
+    def __init__(
+        self,
+        spec: ToolSpec,
+        *,
+        selected_vehicle: str | None = None,
+        period_now: datetime | None = None,
+    ) -> None:
         self.spec = spec
         self.selected_vehicle = selected_vehicle
+        self.period_now = period_now
         self.name, self.title = f"ninebot__{spec.key}", spec.title
         self.description, self.parameters = spec.description, spec.parameters
         self.annotations = cast(Any, llm).ToolAnnotations(
@@ -144,6 +159,7 @@ class NinebotTool(llm.Tool):
                 tool_input.tool_args,
                 llm_context.context,
                 _selected_vehicle=self.selected_vehicle,
+                _period_now=self.period_now,
             )
         return native_result(data, error=error)
 

@@ -13,13 +13,21 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import llm
 from homeassistant.helpers.importlib import async_import_module
+from homeassistant.util import dt as dt_util
 
+from .assistant import current_access
 from .assistant_catalog import QUERY_SPECS, ToolSpec
 from .assistant_evidence import MAX_RECEIPTS, render_evidence_answer
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
-from .assistant_queries import MAX_VEHICLES, async_vehicle_scopes, async_visible_keys
+from .assistant_queries import (
+    MAX_VEHICLES,
+    async_vehicle_scopes,
+    async_visible_keys,
+    period_dates,
+    vehicle_list_view,
+)
 from .compat import validation as vol
-from .const import DOMAIN
+from .const import BUSINESS_TIMEZONE, DOMAIN
 
 ACTION = "ask"
 MAX_TOOL_CALLS = MAX_RECEIPTS
@@ -53,8 +61,11 @@ class TurnStopped(Exception):
 class EvidenceTurn:
     def __init__(self, hass: HomeAssistant, call: ServiceCall) -> None:
         self.hass, self.call = hass, call
+        self.started_at = dt_util.utcnow()
+        self.business_date = period_dates("today", self.started_at)[0].isoformat()
         self.scopes: dict[str, AssistantScope] = {}
         self.selected: str | None = call.data.get("device_id")
+        self.selected_reads: list[str] = []
         self.results: list[dict[str, Any]] = []
         self.calls = 0
         self.stop: str | None = None
@@ -83,15 +94,18 @@ class EvidenceTurn:
             scope = await async_authorize(
                 self.hass, self.call.context, self.selected, operation="get_vehicles"
             )
-            self.scopes = {scope.vehicle_ref: scope}
-            return
-        await async_require_admin(self.hass, self.call.context)
-        scopes = await async_vehicle_scopes(
-            self.hass, self.call.context, limit=MAX_VEHICLES + 1, operation="get_vehicles"
-        )
+            scopes = [scope]
+        else:
+            await async_require_admin(self.hass, self.call.context)
+            scopes = await async_vehicle_scopes(
+                self.hass, self.call.context, limit=MAX_VEHICLES + 1, operation="get_vehicles"
+            )
         self.scopes = {scope.vehicle_ref: scope for scope in scopes}
         if len(scopes) == 1:
-            self.selected = scopes[0].vehicle_ref
+            scope = scopes[0]
+            self.selected = scope.vehicle_ref
+            scope.assert_current(self.hass)
+            self.selected_reads = sorted(current_access(scope.entry).vehicles[scope.sn].reads)
 
     async def async_call(
         self,
@@ -166,12 +180,25 @@ class EvidenceTurn:
         if (
             self.selected is None
             and len(self.scopes) > 1
-            and (
-                self.stop == "vehicle_selection_required"
-                or (response["outcome"] == "needs_input" and self.results)
-            )
+            and (self.stop == "vehicle_selection_required" or response["outcome"] == "needs_input")
         ):
-            response["next_step"] = {"type": "select_vehicle", "parameter": "device_id"}
+            roster = vehicle_list_view(self.hass, list(self.scopes.values())).data
+            response["next_step"] = {
+                "type": "select_vehicle",
+                "parameter": "device_id",
+                "choices": [
+                    {"device_id": row["vehicle_ref"], "label": row["label"]}
+                    for row in roster["vehicles"]
+                ],
+                "more_available": roster["more_available"],
+            }
+        elif response["outcome"] == "needs_input" and self.selected_reads:
+            response["selection"] = {
+                "device_id": self.selected,
+                "allowed_reads": self.selected_reads,
+                "business_date": self.business_date,
+                "business_timezone": BUSINESS_TIMEZONE,
+            }
         if (
             len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
             > MAX_RESPONSE_BYTES
@@ -207,7 +234,7 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
 
     class EvidenceTool(NinebotTool):
         def __init__(self, spec: ToolSpec) -> None:
-            super().__init__(spec, selected_vehicle=turn.selected)
+            super().__init__(spec, selected_vehicle=turn.selected, period_now=turn.started_at)
             parameters = {
                 key: value
                 for key, value in spec.parameters.schema.items()
@@ -237,6 +264,8 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                 turn.hass, turn.call.context, vehicle_ref=turn.selected, queries_only=True
             )
             await turn.async_validate()
+            if turn.selected is None:
+                visible = visible.intersection({"get_vehicles", "search_help"})
             tools: list[llm.Tool] = [
                 EvidenceTool(spec) for spec in QUERY_SPECS if spec.key in visible
             ]
@@ -245,12 +274,17 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
             return llm.APIInstance(
                 api=self,
                 api_prompt=PROMPT
+                + f" Use the Action's starting business date, {turn.business_date} "
+                f"({BUSINESS_TIMEZONE}), for relative periods. When the scope excludes a "
+                "requested read, report that limit without supplying a date or count."
                 + (
                     " This Action has already selected a vehicle. Its vehicle tools are bound "
                     "to that selection; call them directly without vehicle_ref. If the question "
                     "requires another vehicle, ask the user to select it in the Action."
                     if turn.selected is not None
-                    else ""
+                    else " Multiple vehicles are available. For a vehicle question, list the "
+                    "choices and ask the user to select the HA device. For general help, "
+                    "search the guide directly."
                 ),
                 llm_context=llm_context,
                 tools=tools,
@@ -282,10 +316,13 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
                     or "llm_api" not in inspect.signature(generate).parameters
                 ):
                     return failed("unsupported_capability")
-                selection = {
+                selection: dict[str, Any] = {
                     "vehicle_selected": turn.selected is not None,
-                    "business_timezone": "Asia/Shanghai",
+                    "business_timezone": BUSINESS_TIMEZONE,
+                    "business_date": turn.business_date,
                 }
+                if turn.selected_reads:
+                    selection["allowed_reads"] = turn.selected_reads
                 instructions = (
                     call.data["question"] + "\nUser selection (data): " + json.dumps(selection)
                 )

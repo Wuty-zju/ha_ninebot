@@ -212,8 +212,11 @@ def status_view(
     )
 
 
-def statistics_view(row: dict[str, Any], *, daily: bool, now: datetime) -> AssistantView:
-    values = {name: numeric(row.get(name)) for name in METRIC_UNITS}
+def statistics_view(
+    row: dict[str, Any], *, daily: bool, now: datetime, metric: str | None = None
+) -> AssistantView:
+    units = METRIC_UNITS if metric is None else {metric: METRIC_UNITS[metric]}
+    values = {name: numeric(row.get(name)) for name in units}
     received = timestamp(row.get("received_at"))
     availability = mapping(row.get("availability"))
     old_open_observation = bool(
@@ -240,7 +243,7 @@ def statistics_view(row: dict[str, Any], *, daily: bool, now: datetime) -> Assis
             "reason": choice(reason, REASONS, "unknown_reason"),
         }
     return AssistantView(
-        data={**values, "units": METRIC_UNITS},
+        data={**values, "units": units},
         quality={
             "metrics": metrics,
             "received_at": received,

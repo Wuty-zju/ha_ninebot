@@ -17,7 +17,7 @@ async def check(directory: str) -> None:
     from homeassistant.components import ai_task
     from homeassistant.components.ai_task.const import DATA_COMPONENT, DATA_PREFERENCES
     from homeassistant.config_entries import ConfigEntries, ConfigEntry, ConfigEntryState
-    from homeassistant.core import Context, HomeAssistant
+    from homeassistant.core import Context, HomeAssistant, ServiceCall
     from homeassistant.exceptions import HomeAssistantError
     from homeassistant.helpers import device_registry as dr
     from homeassistant.helpers import entity_registry as er
@@ -38,7 +38,7 @@ async def check(directory: str) -> None:
         with_assistant_access,
     )
     from custom_components.ninebot.assistant_api import NinebotTool, async_register
-    from custom_components.ninebot.assistant_ask import failed
+    from custom_components.ninebot.assistant_ask import EvidenceTurn, failed, turn_api
     from custom_components.ninebot.assistant_catalog import QUERY_SPECS
     from custom_components.ninebot.models import (
         Freshness,
@@ -262,6 +262,64 @@ async def check(directory: str) -> None:
                     secret in encoded for secret in ("synthetic-sn", "30.12345", "120.12345")
                 )
         assert len(provider_calls) == len(cases)
+        configure(all_reads)
+        other_sn = "second-synthetic-sn"
+        co.data[other_sn] = VehicleSnapshot(VehicleProfile(other_sn, "Vehicle A", "Synthetic"))
+        other = dr.async_get(hass).async_get_or_create(
+            config_entry_id=entry.entry_id, identifiers={("ninebot", other_sn)}, name="Vehicle A"
+        )
+        hass.config_entries.async_update_entry(
+            entry,
+            options=with_assistant_access(
+                entry.options,
+                AssistantAccess(
+                    True,
+                    {
+                        "synthetic-sn": VehicleAccess(frozenset({READ_STATISTICS})),
+                        other_sn: VehicleAccess(frozenset({READ_STATUS})),
+                    },
+                ),
+            ),
+        )
+        principal.is_active = True
+        context = Context(user_id=principal.id)
+        for target, expected in (
+            (None, set()),
+            (device.id, {"ninebot__get_statistics"}),
+            (other.id, {"ninebot__get_vehicle_status"}),
+        ):
+            call = ServiceCall(
+                hass, "ninebot", "ask", {"device_id": target} if target else {}, context=context
+            )
+            turn = EvidenceTurn(hass, call)
+            await turn.async_prepare()
+            instance = await turn_api(turn).async_get_api_instance(
+                llm.LLMContext(
+                    platform="ai_task",
+                    context=context,
+                    language="en",
+                    assistant="conversation",
+                    device_id=None,
+                )
+            )
+            assert turn.business_date in instance.api_prompt
+            assert {tool.name for tool in instance.tools} == expected | {
+                "ninebot__get_vehicles",
+                "ninebot__search_help",
+            }
+            reply = turn.response()
+            assert reply["outcome"] == "needs_input"
+            if target is None:
+                choices = reply["next_step"]["choices"]
+                assert {item["device_id"] for item in choices} == {device.id, other.id}
+                assert all(item["label"] == "Vehicle A" for item in choices)
+            else:
+                assert reply["selection"] == {
+                    "device_id": target,
+                    "allowed_reads": ["statistics" if target == device.id else "status"],
+                    "business_date": turn.business_date,
+                    "business_timezone": "Asia/Shanghai",
+                }
         configure(frozenset())
         response = await hass.services.async_call(
             "ninebot",
@@ -280,9 +338,7 @@ async def check(directory: str) -> None:
             return_response=True,
         )
         assert response["outcome"] == "denied" and len(provider_calls) == len(cases)
-        print(
-            "Native query: Context, eight or three query tools, partial evidence and withdrawal OK"
-        )
+        print("Native query: Context, same-name vehicle choices, scoped tools and withdrawal OK")
     finally:
         if remove is not None:
             remove()
