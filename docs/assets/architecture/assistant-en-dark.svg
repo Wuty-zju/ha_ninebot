@@ -9,12 +9,12 @@
 <text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / A</text>
 <text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">Assist or MCP</text>
 <text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">The host selects its model</text>
-<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">Enable the Ninebot read tools</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">Select the Ninebot API</text>
 <rect x="492" y="112" width="428" height="137" rx="12" fill="#15263b" stroke="#475569"/>
 <text x="516" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / B</text>
 <text x="516" y="166" font-size="21" font-weight="650" fill="#e6edf3">An automation</text>
 <text x="516" y="197" font-size="17" font-weight="400" fill="#aebdce">ninebot.ask uses an existing HA AI Task</text>
-<text x="516" y="222" font-size="17" font-weight="400" fill="#aebdce">The Action can bind a vehicle</text>
+<text x="516" y="222" font-size="17" font-weight="400" fill="#aebdce">Query the selected vehicle</text>
 <path d="M254 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M706 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
@@ -22,7 +22,7 @@
 <rect x="40" y="297" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02</text>
 <text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">Home Assistant user context</text>
-<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">Check administrator, account consent, vehicle selection and ownership</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">Check administrator, ownership and each vehicle&#x27;s operation permissions</text>
 <text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">Recheck access before returning private results</text>
 <path d="M480 434 V453 H254 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M250 466 L254 472 L258 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
@@ -49,5 +49,5 @@
 <text x="64" y="746" font-size="21" font-weight="650" fill="#e6edf3">Use the result</text>
 <text x="64" y="777" font-size="17" font-weight="400" fill="#aebdce">Assist and MCP receive structured tool data</text>
 <text x="64" y="802" font-size="17" font-weight="400" fill="#aebdce">The Action can also render a verified answer</text>
-<text x="40" y="870" font-size="16" font-weight="400" fill="#aebdce">History task approval uses a separate API and the existing scheduler.</text>
+<text x="40" y="870" font-size="16" font-weight="400" fill="#aebdce">Ninebot can preview or request a history sync when permitted. Approve in the HA panel.</text>
 </svg>

@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
-This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+This guide covers releases through the 2.2.9 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
 
 This is a Home Assistant integration with a cloud adapter and a private historical archive. Current-state entities, large historical queries and control acknowledgements have separate responsibilities. The runtime is entirely inside `custom_components/ninebot`; docs/tests/scripts are not runtime dependencies.
 
@@ -185,20 +185,21 @@ Today mileage declares the DAY dependency used by daily-index repair. History pr
 
 | Layer | Contract |
 |---|---|
-| Native host | Assist/MCP choose their model. A `ninebot.ask` Action can bind its selected HA device to the turn. |
-| Policy | Require an active administrator. Resolve entry, device, consent and ownership. Revalidate before materializing returned private results. |
+| Native host | Assist and MCP use the single `ninebot` API. A `ninebot.ask` turn binds to its selected HA device and uses the query tools. |
+| Policy | Require an active administrator. Resolve the account, vehicle, ownership and permission for the requested operation. Revalidate before returning private results. |
 | Data | A selected status metric reads its own group snapshot. Trip, sync and statistics tools use deterministic local projections. |
-| Knowledge | Search the packaged, versioned bilingual corpus. A checklist names the next check. Human approval remains independent. |
+| Knowledge | Search the packaged, versioned bilingual corpus. A checklist names the next check. |
+| History requests | Preview gaps locally, then record applications for eligible vehicles when the review service is ready. The requester approves in the native HA panel. |
 | Presentation | Tools return structured receipts. The Action can render a supported measurement or a pinned citation. Host-generated prose is outside this contract. |
 
 [Native LLM API](https://contributors.home-assistant.io/core/internals/llm-api/) · [Tool and task contracts](assistant.md)
 
-A compatible AI host selects the native Ninebot API through HA’s LLM registry or MCP Server. The adapter preserves the authenticated Context, applies separate account/vehicle consent and read admission, then reuses cached snapshots or existing local history Actions. Safe result projections carry units, freshness and coverage; ownership and consent are checked again before return. The adapter does not add a model provider, listener, archive or collection scheduler.
+A compatible AI host selects **Ninebot** in HA's LLM registry or MCP Server. The dedicated MCP URL is `/api/mcp/ninebot`. The adapter preserves the authenticated context and uses each vehicle's operation permissions for discovery, calls and result delivery. Queries reuse cached snapshots and existing local history Actions. Safe result projections carry units, freshness and coverage. Applications create local requests and the existing scheduler owns approved work.
 
 The feature is off by default. Its modern native API requirement is separate from the overall integration minimum. [Setup, tool schemas and data disclosure](assistant.md) describe the optional tools, and [development entry points](development.md#assistant-development) identify the implementation and isolated checks.
 
-The optional `ninebot.ask` response Action delegates tool selection to an existing native AI Task entity. Each turn supplies only the eight read tools, preserves the caller's Context and returns actual tool evidence rather than generated numeric prose. Scope snapshots, explicit multi-vehicle selection, four-call admission, a 180-second deadline and a 32 KiB response bound apply independently of the chosen model. Provider-facing tool results are independent copies of the recorded evidence, including nested fields. A late provider failure retains successful tool receipts as an explicit partial response after the same final permission checks. The Action shares the Assistant API's lifetime; it adds no model provider or scheduler.
+The optional `ninebot.ask` response Action delegates tool selection to an existing native AI Task entity. Each turn supplies up to eight query tools according to the selected vehicle's permissions, preserves the caller's context and returns actual tool evidence. Scope snapshots, explicit multi-vehicle selection, four-call admission, a 180-second deadline and a 32 KiB response bound apply independently of the chosen model. Provider-facing tool results are independent copies of the recorded evidence, including nested fields. A late provider failure retains successful tool receipts as an explicit partial response after the same final permission checks. The Action shares the Assistant API's lifetime.
 
 Approved tasks use the existing preservation scheduler. A restored driver rechecks its own and its Store's closure after reading durable tickets, before attaching to that scheduler; a late read cannot replace the active driver after detachment.
 
-Task progress and the human review panel bind each read to a specific account grant. They verify the same grant again after asynchronous work. Withdrawing and restoring consent invalidates the previous read even when the same account store remains open.
+Task progress and the human review panel bind reads to the current grant and verify it after asynchronous work. Withdrawing and restoring consent invalidates the previous read. API migration or equivalent permissions preserve the existing task grant. The one-time confirmation for eligible older accounts allows outstanding work to remain reviewable and executable under its original grant until the administrator confirms vehicle-specific access.

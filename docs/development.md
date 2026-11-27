@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
 
-This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
+This guide covers releases through the 2.2.9 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
 
 ## Start with a task, not the whole repository
 
@@ -103,13 +103,15 @@ Start with the failing boundary. The [user guide](assistant.md) owns the tool co
 
 | Boundary | Implementation | Contract to protect |
 |---|---|---|
-| Registration and reads | `assistant`, `assistant_api`, `assistant_policy`, `assistant_limits` | Preserve the authenticated HA Context. Check the active administrator, account, vehicle grant and runtime owner at admission and before returning a result. |
+| Registration and tools | `assistant`, `assistant_api`, `assistant_catalog`, `assistant_policy`, `assistant_limits` | Register one public API, `ninebot`. Preserve the authenticated HA context and check the per-vehicle operation grant and runtime owner at admission and before returning a result. |
 | Local measurements | `assistant_queries`, `assistant_views`, `assistant_evidence` | Reuse deterministic business queries. Preserve units, business dates, observation times, partial coverage and sources. Precise coordinates and raw vehicle responses stay private. |
-| Optional AI Task Action | `assistant_ask`, `assistant_plans` | Bind the selected vehicle to the task. Keep an independent copy of accepted tool evidence. Recheck access before returning partial results after a provider error. |
+| Optional AI Task Action | `assistant_ask`, `assistant_plans` | Bind the selected vehicle to the turn. Use only the query tool family. Keep an independent copy of accepted tool evidence and recheck access before delivering a result. |
 | Localized public help | `assistant_knowledge`, bundled corpus | Return applicable sources and the corpus version within the existing response budget. The display-ready Action answer is derived from the checked results. |
 | Human-reviewed acquisition | `assistant_tasks`, `assistant_task_store`, `assistant_execution` | Preview work locally, persist the scoped request, and require the original requester to approve it. Reuse the existing history worker and account budget. |
 
 Read-only tools run without cloud refresh. Recorded-list cursors bind the account, vehicle, date range and archive revision. Every page is authorized independently. Multi-vehicle queries need an explicit selection. A model host can phrase a reply differently from its inputs. Keep evidence fidelity and free-form answer quality as separate review decisions.
+
+The public catalog covers eight queries and five history-task operations. Tool discovery checks for at least one eligible vehicle. Execution checks the requested vehicle again, even when a host cached the list. Under full query permissions, expect eight tools with task access off, twelve with preview enabled and thirteen with requests allowed and review ready. The AI Task Action stays at a maximum of eight query tools. HA's main MCP URL can filter the request tool in read-only mode. The explicit `/api/mcp/ninebot` route selects the registered API directly.
 
 Sync health projects whole-vehicle counts from the same local snapshot used by the diagnostic entities. The current history plan provides its own discovery denominator. Pass both scopes through the native tool and retain them in the rendered answer. An unavailable archive projection leaves the whole-archive counts unknown.
 
@@ -122,21 +124,21 @@ The account archive examines up to 31 business days and selects at most 20 missi
 1. Freeze the requester, account, vehicle, dates, selected identities and attempt limit in the plan. A tool can submit the proposal for review.
 2. The original administrator opens the native review panel. A short-lived, one-use confirmation binds the reviewed plan and parameters. Cancellation removes only this task.
 3. The archive actor records actual claims and budget consumption together. A resumed driver rechecks the requester, grant, vehicle and saved scope. Completion verifies the selected saved details.
-4. Changing consent invalidates the old grant immediately. Progress and review reads check the same grant again before delivering data. A late or cancelled worker cannot revive an obsolete grant or close a replacement runtime.
+4. Withdrawing the relevant consent invalidates the old grant. Progress and review reads check the same grant before delivering data. Equivalent settings and API migration preserve outstanding tickets. An eligible account awaiting one-time confirmation retains its original review and execution grants for pending or approved records, with task tools hidden until confirmation.
 5. Portable account archives contain ride data. HA backup hooks exclude live approval material from a restored task. Retain the distinction between a plan, an approval, a request attempt and a verified saved result.
 
 See [native review](#native-task-review-panel) and [task notices](#task-notices) for frontend and notification ownership.
 
 ### Versioned public help
 
-The shipped catalog contains 20 bilingual topics and 10 advisory checklists. Each entry carries an applicability interval, a pinned source commit and anchor, and a content digest. When changing the manifest, exercise common searches against **that manifest version**, including the upper boundary and a query with no applicable match. Expand a version interval only after verifying the referenced guide still describes the behavior.
+The 2.2.9 catalog provides 21 applicable bilingual topics and 10 advisory checklists. Each entry carries an applicability interval, a pinned source commit and anchor, and a content digest. When behavior changes, keep the old topic's source and close its interval at the first new version. Check both versions and the upper boundary. Test common searches against the candidate manifest version and include a query with no applicable match.
 
 ```sh
 python -m scripts.check_assistant_knowledge --verify-sources
 python -m unittest scripts.tests.test_assistant_knowledge
 ```
 
-The source check reads Git objects and requires the referenced commits locally. `search_help` returns at most three matches within 4 KiB. Match citations precede excerpts. General help and checklists share the same bound. Checklists guide tool use and stopping conditions. Authorization resides in the program.
+Commit a revised guide before pinning its SHA in the catalog, then keep the cited commit reachable from the release. The source check reads Git objects and verifies the guide content hash and anchor. `search_help` returns at most three matches within 4 KiB. Match citations precede excerpts. Help and checklists share the response budget. Checklists guide tool use and stopping conditions. Authorization resides in the program.
 
 <a id="small-model-baseline"></a>
 <a id="synthetic-model-cases"></a>
@@ -149,13 +151,13 @@ The source check reads Git objects and requires the referenced commits locally. 
 | Change | Smallest useful check |
 |---|---|
 | Corpus or citations | Check immutable source links and both languages. Exercise the actual manifest and the display-ready evidence response. |
-| Native API, identity or disclosure | Use the native API, MCP and Conversation checks on Core 2026.11.0. Include a revoked scope and an explicit API URL. |
+| Native API, identity or disclosure | Use the native API, MCP and Conversation checks on supported Core. Cover configured discovery limits, revoked access, a vehicle denied an operation listed for another vehicle, and the dedicated URL. |
 | Task review or persistence | Exercise proposal, independent approval, cancellation, restart and saved-result verification. The milestone workflow includes a synthetic browser, native HA WebSocket and SQLite. |
 | Model-host behavior | Select the affected cases from the [synthetic evaluation set](../tests/fixtures/assistant/evaluation-tasks.json). Review the answer alongside the actual tool receipts. |
 
-`scripts/check_assistant_api.py`, `scripts/check_assistant_mcp.py`, `scripts/check_assistant_conversation.py` and `scripts/check_assistant_ask.py` exercise the native Core and Action boundaries. The global MCP endpoint and per-API URLs have different selection semantics. The [MCP settings contract](assistant.md#check-mcp-api-selection) covers both. Confirm that client-supplied device metadata cannot broaden the selected scope.
+`scripts/check_assistant_api.py`, `scripts/check_assistant_mcp.py`, `scripts/check_assistant_conversation.py` and `scripts/check_assistant_ask.py` exercise the native Core and Action boundaries. Check the dedicated and main MCP URLs separately, including main-URL read-only filtering, 404 on the retired URL and recovery of a saved selection after removing the old ID. Confirm that client-supplied device metadata cannot broaden the selected scope. [MCP settings](assistant.md#check-mcp-api-selection) · [Saved selection migration](assistant.md#upgrade-to-the-single-ninebot-api)
 
-Model evaluation is a separate, optional workflow dispatch. Select `assistant_evaluation=true` and the affected profile in **Actions → Checks**. Compare direct prompts with a bounded tool loop on the same synthetic input. Record the exact host, model revision, tool calls, final answer, citation, elapsed time and any missing evidence. Distinguish a completed workflow from a correctly answered task. Development-only reference hosts, including local Ollama and CPU experiments, add no installation dependency. [Earlier host protocols and recorded evaluation methods](https://github.com/Wuty-zju/ha_ninebot/blob/502aedbb4309fcac3d77ee8ceb61d77549c8ed7c/docs/development.md#assistant-validation)
+Model evaluation is a separate, optional workflow dispatch. Select `assistant_evaluation=true` and the affected profile in **Actions → Checks**. Compare direct prompts with a bounded tool loop on the same synthetic input. Record the exact host, model revision, tool calls, final answer, citation, elapsed time and any missing evidence. The task fixture's `task_execution_contract` specifies the single API and tool counts. Its named native tests should exercise actual synthetic task records and human review; the fixture itself records no execution or model measurements. [Earlier host protocols and recorded evaluation methods](https://github.com/Wuty-zju/ha_ninebot/blob/502aedbb4309fcac3d77ee8ceb61d77549c8ed7c/docs/development.md#assistant-validation)
 
 ## Fixtures and privacy
 
@@ -264,7 +266,7 @@ The counter is a standard-library maintenance tool: `python -m scripts.download_
 
 ### Native task review panel
 
-The task workflow adds a separate, off-by-default task option beneath Assistant consent. `assistant_panel` lazily registers a packaged administrator-only HA custom panel at `/ninebot-assistant`; it uses the existing static route and native HA WebSocket connection. Headless installations keep their API without loading a frontend. Panel registration is serialized with the API lifecycle and removed when the last task-enabled account opts out. A path collision is reported without overwriting another panel or breaking vehicle features.
+Task access starts off for each vehicle. `assistant_panel` lazily registers a packaged administrator-only HA custom panel at `/ninebot-assistant`. It uses the existing static route and native HA WebSocket connection. Panel registration follows the review lifecycle, including eligible prior grants awaiting confirmation. A path collision leaves local queries available. The application tool requires a ready review service.
 
 `ninebot/assistant/vehicles` is a narrow local discovery command which reuses the task query layer's original Context, consent, safe projection and admission limits. The review panel lists only that user's tasks for the selected authorized vehicle. Preparation displays the server's exact scope before a separate approval click; the nonce remains in memory and the redacted `token` message, never in DOM, URL or browser storage. Leaving the view or changing identity/vehicle clears it. Approval and cancellation are never automatically retried.
 
