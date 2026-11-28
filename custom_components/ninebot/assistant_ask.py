@@ -29,10 +29,12 @@ from .assistant_policy import AssistantError, AssistantScope, async_authorize, a
 from .assistant_queries import (
     MAX_VEHICLES,
     async_other_vehicle_choices,
+    async_query,
     async_vehicle_scopes,
     async_visible_keys,
+    other_vehicle_step,
     period_dates,
-    vehicle_list_view,
+    vehicle_selection_step,
 )
 from .assistant_views import METRIC_UNITS
 from .compat import validation as vol
@@ -64,6 +66,7 @@ def monthly_context(value: dict[str, str]) -> dict[str, str]:
 QUERY_SELECTION = {
     vol.Required("device_id"): vehicle_reference,
     vol.Required("metric"): vol.In(tuple(METRIC_UNITS)),
+    vol.Optional("selection"): vol.In(("other_vehicle",)),
 }
 QUERY_CONTEXT = vol.Any(
     vol.Schema({**QUERY_SELECTION, vol.Required("date"): business_date}),
@@ -104,7 +107,7 @@ class EvidenceTurn:
         self.selected: str | None = call.data.get("device_id") or (
             self.previous["device_id"] if self.previous else None
         )
-        self.other_choices: list[AssistantScope] | None = None
+        self.next_step: dict[str, Any] | None = None
         self.selected_reads: list[str] = []
         self.results: list[dict[str, Any]] = []
         self.calls = 0
@@ -149,6 +152,33 @@ class EvidenceTurn:
             self.selected = scope.vehicle_ref
             scope.assert_current(self.hass)
             self.selected_reads = sorted(current_access(scope.entry).vehicles[scope.sn].reads)
+
+    async def async_complete_choice(self, pending: dict[str, str]) -> dict[str, Any]:
+        """The user resolved the last unknown. Read once using this call's HA identity."""
+        chosen = self.call.data.get("device_id")
+        if not chosen:
+            return failed("invalid_arguments")
+        arguments = {
+            "vehicle_ref": pending["device_id"],
+            "selected_other_vehicle": chosen,
+            "period": pending.get("date") or pending["month"],
+            "metric": pending["metric"],
+            **({"through_date": pending["through_date"]} if "month" in pending else {}),
+        }
+        payload, error = await async_query(
+            self.hass, "get_statistics", arguments, self.call.context, _period_now=self.started_at
+        )
+        if error and payload["error"]["code"] == "not_authorized":
+            return failed("not_authorized")
+        self.results.append(
+            {
+                "tool": "ninebot__get_statistics",
+                "arguments": arguments,
+                "result": payload,
+                "error": error,
+            }
+        )
+        return self.response()
 
     async def async_call(
         self,
@@ -230,8 +260,17 @@ class EvidenceTurn:
             self.scopes.update((scope.vehicle_ref, scope) for scope in choices)
             await self.async_validate()
             if len(choices) != 1:
-                self.other_choices = choices
                 self.stop = "vehicle_selection_required" if choices else "no_other_vehicle"
+                try:
+                    self.next_step = (
+                        other_vehicle_step(self.hass, choices, anchor, args, self.started_at)
+                        if choices
+                        else {"type": "no_other_vehicle"}
+                    )
+                except AssistantError as err:
+                    if err.code not in {"period_changed", "invalid_arguments"}:
+                        raise
+                    self.stop = err.code
                 raise TurnStopped
             anchor = choices[0].vehicle_ref
             scope = await async_authorize(
@@ -249,7 +288,7 @@ class EvidenceTurn:
         )
         if (
             self.stop is not None
-            and self.stop in {"model_task_failed", "invalid_arguments"}
+            and self.stop in {"model_task_failed", "invalid_arguments", "period_changed"}
             and not has_evidence
         ):
             return failed(self.stop)
@@ -266,26 +305,14 @@ class EvidenceTurn:
         }
         if not has_evidence and any(row["error"] for row in self.results):
             response["outcome"] = "failed"
-        if self.other_choices == []:
-            response["next_step"] = {"type": "no_other_vehicle"}
-        elif self.other_choices is not None or (
+        if self.next_step is not None:
+            response["next_step"] = self.next_step
+        elif (
             self.selected is None
             and len(self.scopes) > 1
             and (self.stop == "vehicle_selection_required" or response["outcome"] == "needs_input")
         ):
-            options = (
-                self.other_choices if self.other_choices is not None else list(self.scopes.values())
-            )
-            roster = vehicle_list_view(self.hass, options).data
-            response["next_step"] = {
-                "type": "select_vehicle",
-                "parameter": "device_id",
-                "choices": [
-                    {"device_id": row["vehicle_ref"], "label": row["label"]}
-                    for row in roster["vehicles"]
-                ],
-                "more_available": roster["more_available"],
-            }
+            response["next_step"] = vehicle_selection_step(self.hass, list(self.scopes.values()))
         elif response["outcome"] == "needs_input" and self.selected_reads:
             response["selection"] = {
                 "device_id": self.selected,
@@ -355,7 +382,7 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                     key: value
                     for key, value in parameters.items()
                     if getattr(key, "schema", key)
-                    not in {"other_vehicle", "change", "through_date"}
+                    not in {"other_vehicle", "selected_other_vehicle", "change", "through_date"}
                 }
                 self.parameters = vol.Schema(parameters)
                 self.description = "Uses this Action's selected vehicle. " + spec.description
@@ -453,6 +480,8 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
         active.add(task)
         try:
             async with asyncio.timeout(MAX_SECONDS):
+                if turn.previous and turn.previous.get("selection") == "other_vehicle":
+                    return await turn.async_complete_choice(turn.previous)
                 await turn.async_prepare()
                 native = await async_import_module(hass, "homeassistant.components.ai_task")
                 generate = getattr(native, "async_generate_data", None)

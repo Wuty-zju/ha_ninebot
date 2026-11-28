@@ -18,6 +18,55 @@ if str(ROOT) not in sys.path:
 CONFIG = ROOT / ".github/ci.json"
 MIN_COVERAGE = 91
 KNOWLEDGE_TESTS = "scripts/tests/test_assistant_knowledge.py"
+MANIFEST = "custom_components/ninebot/manifest.json"
+
+
+def query_replay_preview(paths: list[str], branch: str, base: str, head: str) -> bool:
+    """Use the small read-only surface smoke only for a same-series patch preview."""
+    if not re.fullmatch(r"preview/[0-9]+\.[0-9]+\.[0-9]+", branch) or MANIFEST not in paths:
+        return False
+    allowed = [
+        "README*.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "docs/*.md",
+        MANIFEST,
+        "custom_components/ninebot/assistant_knowledge/catalog.json",
+        *(
+            "custom_components/ninebot/assistant_" + name + ".py"
+            for name in ("api", "ask", "catalog", "queries")
+        ),
+        "custom_components/ninebot/frontend/archive-replay*.js",
+        "custom_components/ninebot/frontend/fleet-browser.js",
+        "custom_components/ninebot/frontend/history-network.js",
+        "tests/browser/archive-replay.mjs",
+        "tests/frontend/archive-replay-fixture.html",
+        "tests/frontend/test_fleet_browser.mjs",
+        "tests/frontend/test_history_network.mjs",
+        "scripts/check_assistant_followups.py",
+        "scripts/tests/test_assistant_knowledge.py",
+        # The separate release-policy check exercises the workflow selector itself.
+        "scripts/ci.py",
+        "scripts/tests/test_ci.py",
+        ".github/workflows/runtime.yaml",
+        ".github/workflows/history-browser.yaml",
+    ]
+    if not all(matches(path, allowed) for path in paths):
+        return False
+    old, new = (
+        json.loads(subprocess.check_output(["git", "show", f"{rev}:{MANIFEST}"], cwd=ROOT))
+        for rev in (base, head)
+    )
+    before, after = old.pop("version"), new.pop("version")
+    series, _, patch = before.rpartition(".")
+    new_series, _, new_patch = after.rpartition(".")
+    return (
+        old == new
+        and branch == f"preview/{after}"
+        and series == new_series
+        and patch.isdecimal()
+        and int(new_patch) > int(patch)
+    )
 
 
 def matches(path: str, patterns: list[str]) -> bool:
@@ -239,7 +288,17 @@ def main() -> None:
     else:
         if not args.base or not args.head:
             parser.error("--plan requires --base and --head")
-        result = select(changed_paths(args.base, args.head), config, available)
+        paths = changed_paths(args.base, args.head)
+        result = select(paths, config, available)
+        if query_replay_preview(
+            paths, os.environ.get("CI_PREVIEW_BRANCH", ""), args.base, args.head
+        ):
+            result["tests"] = ["tests/test_assistant_ask.py"] if result["native_api"] else []
+            result["matrix"]["include"] = [
+                {"boundary": "minimum", **config["boundaries"]["minimum"]}
+            ]
+            result["reasons"].append("query-replay-preview")
+            result["query_replay_preview"] = True
         if os.environ.get("CI_REUSE_FULL_VALIDATION") == "true":
             from scripts.ci_evidence import find_full_run
             from scripts.publish_release import GitHub
@@ -259,6 +318,8 @@ def main() -> None:
             with open(output, "a") as stream:
                 stream.write(f"runtime={str(bool(result['tests'])).lower()}\n")
                 stream.write(f"frontend={str(result['frontend']).lower()}\n")
+                preview = str(result.get("query_replay_preview", False)).lower()
+                stream.write(f"query_replay_preview={preview}\n")
                 stream.write(f"matrix={json.dumps(result['matrix'])}\n")
                 stream.write(f"plan={json.dumps(result)}\n")
     text = json.dumps(result, indent=2) + "\n"

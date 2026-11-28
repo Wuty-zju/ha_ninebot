@@ -9,17 +9,44 @@ from unittest.mock import patch
 from scripts.ci import (
     CONFIG,
     KNOWLEDGE_TESTS,
+    MANIFEST,
     ROOT,
     changed_paths,
     check_coverage,
     install,
     native_requirements,
     pytest_command,
+    query_replay_preview,
     select,
 )
 
 
 class ScopeTests(unittest.TestCase):
+    def test_read_only_preview_uses_the_small_gate(self):
+        files = [MANIFEST, "custom_components/ninebot/assistant_queries.py"]
+        branch = "preview/2.2.16"
+        for previous, requirements, expected in (
+            ("2.2.15", [], True),
+            ("2.2.17", [], False),
+            ("2.1.15", [], False),
+            ("2.2.15", ["new_dependency"], False),
+        ):
+            manifests = [
+                dict(version=previous, requirements=[]),
+                dict(version="2.2.16", requirements=requirements),
+            ]
+            with (
+                self.subTest(previous=previous, requirements=requirements),
+                patch("scripts.ci.subprocess.check_output", side_effect=map(json.dumps, manifests)),
+            ):
+                self.assertEqual(query_replay_preview(files, branch, "base", "head"), expected)
+        self.assertFalse(query_replay_preview(files, "main", "base", "head"))
+        self.assertFalse(
+            query_replay_preview(
+                [*files, "custom_components/ninebot/storage.py"], branch, "base", "head"
+            )
+        )
+
     def test_native_manifest_dependencies_are_deduplicated_and_cycles_terminate(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)

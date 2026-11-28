@@ -25,6 +25,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CI_PREVIEW_BRANCH: ${{ github.base_ref == 'dev' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || '' }}
           GH_TOKEN: ${{ github.token }}
           CI_REUSE_FULL_VALIDATION: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: python3 scripts/ci.py --plan --base "$BASE_SHA" --head "$HEAD_SHA" --output ci-scope.json
@@ -90,8 +91,12 @@ jobs:
       - name: Install the published Core without a mismatched test plugin
         run: python scripts/ci.py --install-native
       - name: Check installed native API contracts without cloud requests
+        if: ${{ !fromJSON(needs.scope.outputs.plan).query_replay_preview }}
         run: |
           python -m scripts.check_ha_api
           python -m scripts.check_assistant_api
           python -m scripts.check_assistant_mcp
           python -m scripts.check_assistant_ask
+      - name: Check the preview's native statistics follow-up
+        if: ${{ fromJSON(needs.scope.outputs.plan).query_replay_preview }}
+        run: python -m scripts.check_assistant_ask

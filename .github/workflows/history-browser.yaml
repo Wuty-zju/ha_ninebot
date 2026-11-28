@@ -24,10 +24,23 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - id: scope
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'preview/')
+        env:
+          CI_PREVIEW_BRANCH: ${{ github.head_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/ci.py --plan --base "$BASE_SHA" --head "$HEAD_SHA"
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
       - run: node --test tests/frontend/*.mjs
+        if: steps.scope.outputs.query_replay_preview != 'true'
+      - name: Check archive paging and permission changes
+        if: steps.scope.outputs.query_replay_preview == 'true'
+        run: node --test tests/frontend/test_fleet_browser.mjs tests/frontend/test_history_network.mjs
       - name: Install isolated browser smoke tooling
         run: |
           npm install --prefix "$RUNNER_TEMP/ninebot-browser" --no-save --package-lock=false playwright@1.55.1
@@ -36,7 +49,13 @@ jobs:
         env:
           BROWSER_TEST_DEPS: ${{ runner.temp }}/ninebot-browser
           BROWSER_TEST_OUTPUT: ${{ runner.temp }}/ninebot-map-smoke
-        run: node tests/browser/history-map.mjs
+          PREVIEW_SMOKE: ${{ steps.scope.outputs.query_replay_preview }}
+        run: |
+          if [ "$PREVIEW_SMOKE" = true ]; then
+            node tests/browser/archive-replay.mjs
+          else
+            node tests/browser/history-map.mjs
+          fi
       - name: Keep synthetic render evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -46,12 +65,13 @@ jobs:
           retention-days: 7
 
       - name: Review and cancel synthetic tasks in both languages and themes
+        if: steps.scope.outputs.query_replay_preview != 'true'
         env:
           BROWSER_TEST_DEPS: ${{ runner.temp }}/ninebot-browser
           BROWSER_TEST_OUTPUT: ${{ runner.temp }}/ninebot-assistant-review
         run: node tests/browser/assistant-review.mjs
       - name: Keep synthetic task review evidence
-        if: always()
+        if: always() && steps.scope.outputs.query_replay_preview != 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: synthetic-assistant-review

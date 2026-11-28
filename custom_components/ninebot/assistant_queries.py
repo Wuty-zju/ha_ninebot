@@ -17,7 +17,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from .assistant import current_access, tasks_ready
-from .assistant_catalog import BY_KEY, QUERY_SPECS, TASK_SPECS, changed_statistic
+from .assistant_catalog import BY_KEY, QUERY_SPECS, RELATIVE_PERIODS, TASK_SPECS, changed_statistic
 from .assistant_errors import TOOL_ERRORS, TOOL_TIMEOUT, checked_result, tool_failure
 from .assistant_knowledge import KnowledgeUnavailable, search_help
 from .assistant_limits import ReadLimitExceeded, read_slot
@@ -77,6 +77,18 @@ def period_dates(period: str, now: datetime) -> tuple[date, date]:
     if selected > today:
         raise AssistantError("invalid_arguments")
     return selected, selected
+
+
+def _statistic_window(args: dict[str, Any], now: datetime) -> tuple[date, date, bool]:
+    period = args["period"]
+    start, end = period_dates(period, now)
+    monthly = period in {"this_month", "last_month"} or len(period) == 7
+    if "through_date" in args:
+        if not monthly:
+            raise AssistantError("invalid_arguments")
+        if args["through_date"] != end.isoformat():
+            raise AssistantError("period_changed")
+    return start, end, monthly
 
 
 async def _action(
@@ -235,6 +247,42 @@ def vehicle_list_view(hass: HomeAssistant, scopes: list[AssistantScope]) -> Assi
     )
 
 
+def vehicle_selection_step(hass: HomeAssistant, choices: list[AssistantScope]) -> dict[str, Any]:
+    roster = vehicle_list_view(hass, choices).data
+    return {
+        "type": "select_vehicle",
+        "parameter": "device_id",
+        "choices": [
+            {"device_id": row["vehicle_ref"], "label": row["label"]} for row in roster["vehicles"]
+        ],
+        "more_available": roster["more_available"],
+    }
+
+
+def other_vehicle_step(
+    hass: HomeAssistant,
+    choices: list[AssistantScope],
+    anchor: str,
+    args: dict[str, Any],
+    now: datetime,
+) -> dict[str, Any]:
+    """Freeze the user's requested statistic while waiting for a vehicle choice."""
+    step = vehicle_selection_step(hass, choices)
+    if "metric" in args:
+        start, end, monthly = _statistic_window(args, now)
+        step["query_context"] = {
+            "selection": "other_vehicle",
+            "device_id": anchor,
+            "metric": args["metric"],
+            **(
+                {"month": start.strftime("%Y-%m"), "through_date": end.isoformat()}
+                if monthly
+                else {"date": start.isoformat()}
+            ),
+        }
+    return step
+
+
 async def _vehicle_query(
     hass: HomeAssistant,
     scope: AssistantScope,
@@ -258,13 +306,8 @@ async def _vehicle_query(
             metric=metric,
         ), {"metric": metric} if metric is not None else query
     if key == "get_statistics":
-        start, end = period_dates(args["period"], period_now or now)
-        daily = args["period"] not in {"this_month", "last_month"} and len(args["period"]) != 7
-        if "through_date" in args:
-            if daily:
-                raise AssistantError("invalid_arguments")
-            if args["through_date"] != end.isoformat():
-                raise AssistantError("period_changed")
+        start, end, monthly = _statistic_window(args, period_now or now)
+        daily = not monthly
         query = {
             "period": args["period"],
             "resolved_period": start.isoformat() if daily else start.strftime("%Y-%m"),
@@ -462,6 +505,13 @@ async def _explain_statistics(
     }
 
 
+async def _validate_scopes(hass: HomeAssistant, scopes: list[AssistantScope]) -> None:
+    for scope in scopes:
+        await scope.async_validate(hass)
+    for scope in scopes:
+        scope.assert_current(hass)
+
+
 async def _response(
     hass: HomeAssistant,
     scopes: list[AssistantScope],
@@ -471,11 +521,7 @@ async def _response(
     request_id: str,
     now: datetime,
 ) -> tuple[dict[str, Any], bool]:
-    for scope in scopes:
-        await scope.async_validate(hass)
-    # No await between the complete scope fence and the returned projection.
-    for scope in scopes:
-        scope.assert_current(hass)
+    await _validate_scopes(hass, scopes)
     response = {
         "schema_version": 1,
         "request_id": request_id,
@@ -549,6 +595,15 @@ async def async_query(
                 if key not in TOOL_SPECS:
                     raise AssistantError("invalid_arguments")
                 args = TOOL_SPECS[key].parameters(arguments)
+                selected_other = args.get("selected_other_vehicle")
+                if selected_other is not None and (
+                    "change" in args
+                    or "other_vehicle" in args
+                    or "metric" not in args
+                    or args["period"] in RELATIVE_PERIODS
+                    or (len(args["period"]) == 7) != ("through_date" in args)
+                ):
+                    raise AssistantError("invalid_arguments")
                 if key == "get_statistics" and "change" in args:
                     args = changed_statistic(args)
                 if key in {"get_vehicles", "search_help"}:
@@ -588,22 +643,32 @@ async def async_query(
                 else:
                     scope = await async_authorize(hass, context, args["vehicle_ref"], operation=key)
                     scopes = [scope]
-                    if key == "get_statistics" and args.get("other_vehicle"):
+                    if key == "get_statistics" and (selected_other or args.get("other_vehicle")):
                         if _selected_vehicle is not None:
                             raise AssistantError("not_authorized")
-                        choices = await async_other_vehicle_choices(
-                            hass, context, scope.vehicle_ref
-                        )
-                        await scope.async_validate(hass)
-                        if len(choices) != 1:
-                            raise AssistantError(
-                                "vehicle_selection_required" if choices else "no_other_vehicle"
+                        if selected_other == scope.vehicle_ref:
+                            raise AssistantError("invalid_arguments")
+                        if selected_other is None:
+                            choices = await async_other_vehicle_choices(
+                                hass, context, scope.vehicle_ref
                             )
-                        scope = await async_authorize(
-                            hass, context, choices[0].vehicle_ref, operation=key
-                        )
-                        choices[0].assert_current(hass)
+                            await _validate_scopes(hass, [scope, *choices])
+                            if not choices:
+                                raise AssistantError("no_other_vehicle")
+                            if len(choices) > 1:
+                                pending, _ = tool_failure(request_id, "vehicle_selection_required")
+                                pending["next_step"] = other_vehicle_step(
+                                    hass, choices, scope.vehicle_ref, args, _period_now or now
+                                )
+                                checked_result(pending)
+                                return pending, True
+                            scopes.append(choices[0])
+                            selected_other = choices[0].vehicle_ref
+                        scope = await async_authorize(hass, context, selected_other, operation=key)
                         scopes.append(scope)
+                        # The anchor may have lost its grant while the target was being resolved.
+                        for captured in scopes:
+                            captured.assert_current(hass)
                         args = {**args, "vehicle_ref": scope.vehicle_ref}
                     view, query = await _vehicle_query(hass, scope, key, args, now, _period_now)
                 return await _response(hass, scopes, args, view, query, request_id, now)
