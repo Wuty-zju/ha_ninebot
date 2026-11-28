@@ -5,9 +5,9 @@
 | Channel | Delivered scope |
 |---|---|
 | **v2.2.0 stable** | Native Home Assistant entities, controls, an account-owned ride archive and optional Assistant. [Release](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0) |
-| **v2.2.16 preview** | Vehicle selection carries the original statistic and cutoff into the next turn. The local archive panel pages saved rides and rechecks access when resumed. [Assistant receipts](assistant.md#compound-statistics) · [Archive panel](history.md#local-archive-replay) |
+| **v2.2.17 preview** | Numbered vehicle selection carries the original statistic and cutoff into the next turn. The local archive panel pages saved rides and rechecks access when resumed. [Assistant receipts](assistant.md#vehicle-choice-follow-up) · [Archive panel](history.md#local-archive-replay) |
 
-正式版 **v2.2.0** 包含原生实体、车控、账号档案和可选 Assistant。**v2.2.16 预览版**支持从同名候选车辆中选车，接着查询原月份和指标。本地档案分页浏览，返回前台后重新授权回放。
+正式版 **v2.2.0** 包含原生实体、车控、账号档案和可选 Assistant。**v2.2.17 预览版**支持按原序号从同名候选车辆中选车，接着查询原月份和指标。本地档案分页浏览，返回前台后重新授权回放。
 
 <a id="added-in-200rc4"></a>
 <a id="available-in-200rc1"></a>
