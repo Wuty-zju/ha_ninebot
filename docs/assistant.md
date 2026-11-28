@@ -2,9 +2,19 @@
 
 [简体中文](assistant_zh.md) · [Setup](#enable-it) · [Tool reference](#ask-about-local-data) · [Permissions](#privacy-and-limits) · [History tasks](#reviewable-history-tasks-beta)
 
-**2.2.17 preview.** Ask about a vehicle’s latest reading, an archived ride or a statistic. Ninebot returns local evidence to the conversation host you already use. For earlier versions see the [stable 2.2.0 guide](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) and the [single-API upgrade](#upgrade-to-the-single-ninebot-api).
+**2.2.18 preview.** Ask about a vehicle’s latest reading, an archived ride or a statistic. Ninebot returns local evidence to the conversation host you already use. For earlier versions see the [stable 2.2.0 guide](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) and the [single-API upgrade](#upgrade-to-the-single-ninebot-api).
 
 <a id="ninebot-assistant--21-preview"></a>
+
+<a id="compare-saved-rides"></a>
+
+## Ask about two rides and open them on the map
+
+Ask “Compare my Monday and Friday commutes. Which used less electricity? Which used less per kilometre?” Identify the vehicles and dates if several rides match. The `compare_recorded_trips` tool accepts two to five local ride references in the order selected. Grant **Individual trips** on each vehicle. An AI Task pinned to one vehicle can compare rides on that vehicle. For different vehicles, use the Ninebot API or an unpinned task with access to each.
+
+A 1.2 km ride using 90 Wh consumes less energy in total than a 2.4 km ride using 120 Wh. The second ride is more efficient at 50 Wh/km versus 75 Wh/km. Together they use 210 Wh over 3.6 km, or 58.3 Wh/km. Missing energy gives a coverage count and an unknown combined result. A measured zero counts; a zero-length ride has no Wh/km.
+
+Choose the map link in the answer to replay that exact selection in Home Assistant. The link lasts ten minutes and is bound to the requesting HA user. Opening it requires current archive, tracker and location access on every selected vehicle. The text comparison can work with scalar access alone. Coordinates stay in the map client. [Using the replay controls](history.md#ride-keepsakes)
 
 ## Enable it
 
@@ -36,7 +46,7 @@ The model can run locally or with a provider. A host that offers MCP prompts can
 
 The main URL `/api/mcp` follows the native MCP Server options. Turn off **Expose all AI tools** to restrict it to the selected collections. **Read-only** on that URL filters out the application-writing tool. With **Expose all AI tools** enabled, newly registered collections also become available.
 
-The dedicated `/api/mcp/ninebot` URL selects the Ninebot API directly. It uses the per-vehicle permissions even when the main endpoint’s selection or read-only filter differs. Set a vehicle’s task level to **Off** or **Preview only** to prevent applications across all hosts. Up to eight query tools, four task preview/status tools and one application tool can be advertised. Discovery is the union of permitted operations. Calling a listed tool for another vehicle still requires that vehicle’s grant. [MCP configuration](https://www.home-assistant.io/integrations/mcp_server/#configuration-options)
+The dedicated `/api/mcp/ninebot` URL selects the Ninebot API directly. It uses the per-vehicle permissions even when the main endpoint’s selection or read-only filter differs. Set a vehicle’s task level to **Off** or **Preview only** to prevent applications across all hosts. Up to nine query tools, four task preview/status tools and one application tool can be advertised. Discovery is the union of permitted operations. Calling a listed tool for another vehicle still requires that vehicle’s grant. [MCP configuration](https://www.home-assistant.io/integrations/mcp_server/#configuration-options)
 
 ## Query through an existing AI task
 
@@ -100,6 +110,7 @@ The new receipt identifies the source, observation time and coverage. If access 
 | `get_statistics` | Vehicle, `period`, optional `metric`, `other_vehicle`, `through_date`, `change` | Business-day or monthly statistics. Use one metric for a numerical question. |
 | `explain_statistics` | Vehicle, `period`, `metric`, optional `language` | One metric, its quality and any further evidence justified for that vehicle. |
 | `get_recorded_trips` | Vehicle, `start_date`, `end_date`, optional `limit`, `cursor` | A descending page of rides overlapping up to 31 days. Default 10, maximum 20 per page. |
+| `compare_recorded_trips` | Two to five ordered `vehicle_ref`, `query_month`, `ride_id` selections | Per-ride Wh and Wh/km, weighted totals and metric coverage. A map link is supplied when every selected vehicle allows replay. |
 | `get_trip_detail` | Vehicle, `ride_id`, `query_month` | Locally saved scalar detail. Use the exact ID and `YYYYMM` month returned by the ride list. |
 | `get_sync_health` | Vehicle | Distinct saved rides, verified/simplified details, plan progress and request pacing. |
 | `search_help` | `query`, optional `language`, `include_procedures` | Versioned public help and, if requested, matching task checklists. |

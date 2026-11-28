@@ -2,6 +2,11 @@
 
 Choose a version to see what shipped. The [user guides](docs/README.md) cover setup and current behavior. For the original account, entity and archive redesign, read the [2.0 development history](docs/releases/2.0.md). The stable [2.2.0 release](#220) includes the optional Assistant.
 
+## 2.2.18
+
+- Ask which ride used less energy overall or per kilometre and open the exact selection on one [Home Assistant replay map](docs/assistant.md#compare-saved-rides). Compare saved samples in order, including overlapping routes on different vehicles.
+- Receive a [ride receipt](docs/history.md#ride-keepsakes) with a link back to the local archive. Select favourite rides for a monthly PNG postcard, with an optional route sketch. The standalone replay example can overlay a local GPX file.
+
 ## 2.2.17
 
 - Reply “the second one” to a [numbered vehicle choice](docs/assistant.md#vehicle-choice-follow-up). The Assistant keeps the displayed order, original dates and energy metric. Current access to both vehicles determines whether it can return a reading.
