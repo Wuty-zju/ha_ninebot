@@ -24,7 +24,11 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
         VehicleAccess,
         with_assistant_access,
     )
+    from custom_components.ninebot.identity import device_sn
     from custom_components.ninebot.models import VehicleProfile, VehicleSnapshot
+
+    primary_sn, other_sn = device_sn(entry, primary), device_sn(entry, other)
+    assert primary_sn and other_sn
 
     first_date = PERIODS["yesterday"]["start_date"]
     midnight = datetime.fromisoformat(first_date).replace(tzinfo=UTC, hour=16) + timedelta(days=1)
@@ -63,7 +67,7 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
     hass.services.async_register(
         "ninebot", "get_statistics", archive, supports_response=SupportsResponse.ONLY
     )
-    both = {"synthetic-sn": statistics, "second-synthetic-sn": statistics}
+    both = {primary_sn: statistics, other_sn: statistics}
     grants(**both)
     context = None
     summary = []
@@ -113,7 +117,7 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
         )
 
     # Yesterday's successful B read cannot be replayed after B loses its grant.
-    grants(**{**both, "second-synthetic-sn": status})
+    grants(**{**both, other_sn: status})
     denied = await ask("那昨天呢？", {}, {"query_context": context})
     assert denied["outcome"] == "denied" and denied["results"] == []
     assert "query_context" not in denied and "Ride count:" not in denied["answer"]["text"]
@@ -124,7 +128,7 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
     anchor = {**context, "device_id": primary.id}
     denied = await ask("另一辆呢？", {"change": "other_vehicle"}, {"query_context": anchor})
     assert denied["outcome"] == "denied" and denied["results"] == []
-    grants(**{"synthetic-sn": statistics})
+    grants(**{primary_sn: statistics})
     absent = await ask("另一辆呢？", {"change": "other_vehicle"}, {"query_context": anchor})
     assert absent["stop_reason"] == "no_other_vehicle"
     assert absent["next_step"] == {"type": "no_other_vehicle"} and absent["results"] == []
@@ -133,7 +137,7 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
     third = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id, identifiers={("ninebot", third_sn)}, name="Vehicle A"
     )
-    grants(**{**both, "second-synthetic-sn": status, third_sn: statistics})
+    grants(**{**both, other_sn: status, third_sn: statistics})
     ambiguous = await ask(
         "那另一辆车上个月耗电多少？",
         {"change": {"vehicle": "other", "period": "last_month", "metric": "energy_wh"}},
@@ -160,6 +164,10 @@ async def check_period_metrics(hass, entry, primary, other, ask, *, model_smoke=
         VehicleAccess,
         with_assistant_access,
     )
+    from custom_components.ninebot.identity import device_sn
+
+    primary_sn, other_sn = device_sn(entry, primary), device_sn(entry, other)
+    assert primary_sn and other_sn
 
     def grant(read):
         hass.config_entries.async_update_entry(
@@ -169,8 +177,8 @@ async def check_period_metrics(hass, entry, primary, other, ask, *, model_smoke=
                 AssistantAccess(
                     True,
                     {
-                        "synthetic-sn": VehicleAccess(frozenset({READ_STATISTICS})),
-                        "second-synthetic-sn": VehicleAccess(frozenset({read})),
+                        primary_sn: VehicleAccess(frozenset({READ_STATISTICS})),
+                        other_sn: VehicleAccess(frozenset({read})),
                     },
                 ),
             ),
