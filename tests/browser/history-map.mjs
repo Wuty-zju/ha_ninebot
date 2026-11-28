@@ -154,8 +154,9 @@ try {
     release();
     await late;
     fixtureHass.callWS = original;
+    const { routes, replay } = fixtureCard.selection.snapshot(fixtureCard.tracks.tracks);
     const empty = !fixtureCard.browser.page && !fixtureCard.tracks.tracks.size &&
-      !fixtureCard.routeMap.renderer && !fixtureCard.busy;
+      !fixtureCard.routeMap.renderer && !fixtureCard.busy && !routes.length && !replay.point;
     for (const callback of fixtureFeeds) callback({ schema_version: 1, type: 'baseline',
       vehicles: ['synthetic-a', 'synthetic-b'].map(device_id =>
         ({ device_id, selection_version: 'a'.repeat(32) + ':1' })) });
@@ -191,6 +192,74 @@ try {
   assert.equal(await page.getByRole('button', { name: '获取云端详情', exact: true }).count(), 0);
   assert.equal(await page.evaluate(() => fixtureRequests.some(call =>
     call.service === 'get_trip_detail' && !call.service_data.local_only)), false);
+
+  // Two vehicles share the upstream ride ID across buffered pages and archive months.
+  await page.goto(origin + '/?paged&english&overlap');
+  await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.routeMap.renderer && fixtureFeeds.size === 1);
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
+  await page.getByRole('button', { name: /Compare · Synthetic B/ }).click();
+  await page.waitForFunction(() => !fixtureCard.busy && fixtureCard.activeTrack?.label === 'Synthetic B');
+  assert.deepEqual(await page.evaluate(() => fixtureCard.selection.snapshot(fixtureCard.tracks.tracks)
+    .routes.map(({ ride }) => [ride.device_id, ride.ride_id, ride.query_month])), [
+    ['synthetic-a', 'synthetic-ride', '202609'], ['synthetic-b', 'synthetic-ride', '202608'],
+  ]);
+  await page.getByRole('button', { name: 'Previous page', exact: true }).click();
+  const crossMonth = page.getByRole('table', { name: 'Saved ride statistics' });
+  const crossMonthValues = await crossMonth.locator('td').allTextContents();
+  assert.deepEqual(crossMonthValues,
+    ['2.4 km', '3.6 km', '15 min', '25 min', '120 Wh', '210 Wh', '50.0 Wh/km', '58.3 Wh/km', '9.6 km/h', '8.6 km/h']);
+  const crossMonthSlider = page.getByRole('slider', { name: /2 · Synthetic B/ });
+  for (let step = 0; step < 15; step++) await crossMonthSlider.press('ArrowRight');
+  assert.equal(await crossMonthSlider.getAttribute('aria-valuetext'), 'Point 16 of 58 · Source point sequence 17');
+  const crossMonthLatitude = await page.evaluate(() => fixtureCard.routeMap.renderer.focus.getLatLng().lat);
+  assert.ok(Math.abs(crossMonthLatitude - 30.0037) < 1e-8);
+  assert.deepEqual(await crossMonth.locator('td').allTextContents(), crossMonthValues);
+  assert.deepEqual(await page.evaluate(() => fixtureRequests.filter(call => call.service).map(call => call.service)),
+    ['get_recorded_trips', 'get_recorded_trips', 'get_trip_detail', 'get_trip_detail']);
+
+  await page.getByRole('button', { name: 'Keep current ride', exact: true }).click();
+  assert.equal(await crossMonthSlider.getAttribute('aria-valuetext'), 'Point 16 of 58 · Source point sequence 17');
+  const afterRevocation = await page.evaluate(async () => {
+    const { selection, tracks } = fixtureCard;
+    const original = fixtureHass.callWS;
+    let start, release;
+    const started = new Promise(resolve => { start = resolve; });
+    const held = new Promise(resolve => { release = resolve; });
+    fixtureHass.callWS = async message => {
+      const response = await original(message);
+      start();
+      await held;
+      return response;
+    };
+    const projection = () => selection.snapshot(tracks.tracks);
+    const readsBefore = fixtureRequests.length;
+    try {
+      fixtureCard.activeTrack.stale = true;
+      const late = fixtureCard.readRoute(fixtureCard.activeRide, true);
+      await started;
+      const sourceSequence = projection().replay.point.sequence;
+      for (const callback of fixtureFeeds) callback({ type: 'closed', reason: 'denied' });
+      const cleared = projection();
+      release();
+      await late;
+      return { sourceSequence, cleared, settled: projection(), reads: fixtureRequests.length - readsBefore,
+        cachedTracks: tracks.tracks.size, page: fixtureCard.browser.page };
+    } finally {
+      release();
+      fixtureHass.callWS = original;
+    }
+  });
+  assert.equal(afterRevocation.sourceSequence, 17);
+  assert.equal(afterRevocation.reads, 1);
+  assert.equal(afterRevocation.cachedTracks, 0);
+  assert.equal(afterRevocation.page, null);
+  assert.deepEqual(afterRevocation.settled, afterRevocation.cleared);
+  assert.equal(afterRevocation.settled.primaryKey, null);
+  assert.deepEqual(afterRevocation.settled.routes, []);
+  assert.deepEqual(afterRevocation.settled.replay, { index: 0, count: 0, point: null });
+  assert.equal(afterRevocation.settled.statistics.current.distance.value, null);
+  assert.equal(await crossMonth.count(), 0);
+  assert.equal(await page.locator('.leaflet-container').count(), 0);
 
   // Native capability detection falls through to the one dashboard map.
   await page.goto(`${origin}/?native=1`);

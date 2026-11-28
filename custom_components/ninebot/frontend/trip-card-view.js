@@ -120,18 +120,12 @@ export class TripCardView {
     slider.addEventListener('pointerdown', () => {
       if (card.playback) card.stopPlayback();
     });
-    const seekPoint = () => {
-      card.index = Number(slider.value);
-      card.stopPlayback();
-    };
+    const seekPoint = () => card.seek(Number(slider.value));
     slider.addEventListener('input', seekPoint);
     slider.addEventListener('change', seekPoint);
     const seek = element('div', 'seek');
     seek.append(slider, position);
-    const restart = iconButton('mdi:rewind', '↶', () => {
-      card.index = 0;
-      card.stopPlayback();
-    }, 'restart', 'restart');
+    const restart = iconButton('mdi:rewind', '↶', () => card.seek(0), 'restart', 'restart');
     transport.append(play, seek, restart);
     const quality = element('p', 'route-note');
     const more = element('div', 'route-more');
@@ -191,11 +185,9 @@ export class TripCardView {
     return this.number(key === 'distance' ? value / 1000 : value, precision, METRIC_UNITS[key]);
   }
 
-  renderMetrics(labels, ride, rides) {
+  renderMetrics(labels, { current, selected }, rideCount) {
     const { metrics } = this.ui;
-    const comparing = rides.length > 1;
-    const current = rideInsights(ride ? [ride] : []);
-    const selection = comparing ? rideInsights(rides) : null;
+    const comparing = rideCount > 1;
     metrics.caption.textContent = labels.ride_statistics;
     metrics.metricColumn.textContent = labels.ride_metric;
     metrics.current.textContent = labels.active_route;
@@ -210,12 +202,12 @@ export class TripCardView {
         row.selected.replaceChildren();
         continue;
       }
-      const metric = selection[key];
+      const metric = selected[key];
       row.selected.textContent = this.reading(key, metric);
       if (metric.value === null) {
         const coverage = labels.metric_coverage
           .replace('{known}', this.number(metric.count, 0))
-          .replace('{total}', this.number(rides.length, 0));
+          .replace('{total}', this.number(rideCount, 0));
         row.selected.append(element('small', 'metric-coverage', coverage));
       }
     }
@@ -226,11 +218,12 @@ export class TripCardView {
     return dock.offsetHeight ? dock.parentElement.clientHeight - dock.offsetTop + 8 : 0;
   }
 
-  updatePlayback(labels = this.card.labels()) {
+  updatePlayback(labels = this.card.labels(), replay = this.card.replayPosition) {
     if (this.card.resetting) return;
     const { transport, play, restart, slider, position } = this.ui;
-    const { activeTrack: track, busy, playback } = this.card;
-    const enabled = this.card.canReplay(track);
+    const { busy, playback } = this.card;
+    const { index, count, point } = replay;
+    const enabled = count > 0;
     transport.hidden = !enabled;
     this.ui.follow.hidden = !enabled || this.card.routeMap.renderer?.canFollow === false;
     this.ui.follow.disabled = busy;
@@ -243,14 +236,11 @@ export class TripCardView {
     nameControl(play, playing ? labels.pause_points : labels.play_points);
     nameControl(restart, labels.replay_restart);
     play.disabled = restart.disabled = slider.disabled = busy;
-    const last = Math.max(0, (track?.points.length ?? 1) - 1);
-    const index = Math.max(0, Math.min(this.card.index, last));
-    slider.max = String(last);
+    slider.max = String(Math.max(0, count - 1));
     slider.value = String(index);
-    const point = enabled ? track.points[index] : null;
-    position.textContent = point ? `${index + 1} / ${last + 1}` : '';
+    position.textContent = point ? `${index + 1} / ${count}` : '';
     slider.setAttribute('aria-valuetext', point ?
-      `${labels.sample_position.replace('{n}', index + 1).replace('{total}', last + 1)} · ${labels.point_sequence} ${point.sequence}` : '');
+      `${labels.sample_position.replace('{n}', index + 1).replace('{total}', count)} · ${labels.point_sequence} ${point.sequence}` : '');
     this.card.routeMap.highlight(point, this.routeColor(this.card.selection.primary), this.card.follow);
   }
 
@@ -413,22 +403,21 @@ export class TripCardView {
     next.focus({ preventScroll: true });
   }
 
-  renderRouteChips(labels) {
+  renderRouteChips(labels, routes, primaryKey) {
     const { card, ui } = this;
-    const selected = card.selection.selected;
-    ui.selection.hidden = selected.size < 2;
+    ui.selection.hidden = routes.length < 2;
     ui.selectionLabel.textContent = labels.selection_count
-      .replace('{count}', this.number(selected.size, 0))
+      .replace('{count}', this.number(routes.length, 0))
       .replace('{limit}', this.number(MAX_SELECTED_ROUTES, 0));
     ui.keep.textContent = labels.keep_current_ride;
     ui.keep.disabled = card.busy;
     for (const [key, chip] of this.chips) {
-      if (!selected.has(key)) {
+      if (!card.selection.selected.has(key)) {
         chip.node.remove();
         this.chips.delete(key);
       }
     }
-    for (const [key, ride] of selected) {
+    for (const { key, ride, slot } of routes) {
       let chip = this.chips.get(key);
       if (!chip) {
         const node = element('div', 'route-chip');
@@ -444,25 +433,25 @@ export class TripCardView {
       }
       const title = this.routeTitle(key);
       if (chip.focus.title !== title) {
-        chip.node.style.setProperty('--route-color', this.routeColor(key));
-        chip.badge.textContent = String(card.selection.slots.get(key) + 1);
+        chip.node.style.setProperty('--route-color', ROUTE_COLORS[slot]);
+        chip.badge.textContent = String(slot + 1);
         chip.text.textContent = ride.vehicle_label;
         const time = this.timestamp(ride.start_time);
         if (time) chip.text.append(element('small', '', time));
         nameControl(chip.focus, title);
       }
       nameControl(chip.remove, `${labels.remove_track} · ${title}`);
-      chip.focus.setAttribute('aria-pressed', String(key === card.selection.primary));
+      chip.focus.setAttribute('aria-pressed', String(key === primaryKey));
       chip.focus.disabled = chip.remove.disabled = card.busy;
     }
   }
 
   renderMap(labels) {
     const { card, ui } = this;
-    const { activeRide: ride, activeTrack: track } = card;
-    const tracks = [...card.selection.selected.keys()].map(key => card.tracks.tracks.get(key))
-      .filter(item => item?.points.length);
-    const visible = tracks.length > 0 && !card.mapError;
+    const { primaryKey, routes, statistics, replay } = card.selection.snapshot(card.tracks.tracks);
+    const { ride, track } = routes.find(route => route.key === primaryKey) ?? {};
+    const mapped = routes.filter(route => route.track?.points.length);
+    const visible = mapped.length > 0 && !card.mapError;
     card.routeMap.element.hidden = !visible;
     ui.mapTools.hidden = !visible;
     ui.placeholder.hidden = visible;
@@ -474,8 +463,8 @@ export class TripCardView {
     ui.chosen.textContent = ride?.vehicle_label ?? '';
     ui.interval.textContent = ride ?
       formatRideInterval(ride.start_time, ride.end_time, this.language, this.timeZone) : '';
-    this.renderMetrics(labels, ride, [...card.selection.selected.values()]);
-    const title = ride ? this.routeTitle(card.selection.primary) : '';
+    this.renderMetrics(labels, statistics, routes.length);
+    const title = ride ? this.routeTitle(primaryKey) : '';
     const announcement = title ? `${labels.active_route} · ${title}` : '';
     if (ui.activeRoute.textContent !== announcement) ui.activeRoute.textContent = announcement;
     ui.slider.setAttribute('aria-label', [labels.map_title, title].filter(Boolean).join(' · '));
@@ -483,7 +472,7 @@ export class TripCardView {
     ui.cancel.textContent = labels.cancel;
     ui.compare.setAttribute('role', 'group');
     ui.compare.setAttribute('aria-label', labels.map);
-    this.renderRouteChips(labels);
+    this.renderRouteChips(labels, routes, primaryKey);
     const notes = [];
     if (track) {
       notes.push(`${labels.track_points} ${track.valid_read}/${track.total ?? '—'}`);
@@ -494,7 +483,7 @@ export class TripCardView {
       }
       if (track.partial) notes.push(labels.partial_archive);
       if (track.capped) notes.push(labels.display_limit);
-      if (card.canReplay(track)) notes.push(labels.playback_note);
+      if (replay.count) notes.push(labels.playback_note);
     }
     if (visible) notes.push(labels.coordinate_note);
     ui.quality.textContent = notes.join(' · ');
@@ -506,16 +495,17 @@ export class TripCardView {
     } else {
       ui.more.replaceChildren();
     }
-    const rendered = visible ? tracks : [];
-    const slots = rendered.map(item => card.selection.slots.get(item.key));
+    const rendered = visible ? mapped : [];
+    const slots = rendered.map(route => route.slot);
     const notesText = ui.quality.textContent;
-    void card.routeMap.update(rendered, card.browser.hass, labels, slots, rendered.map(item => this.routeTitle(item.key))).then(() => {
+    void card.routeMap.update(rendered.map(route => route.track), card.browser.hass, labels, slots,
+      rendered.map(route => this.routeTitle(route.key))).then(() => {
       this.updatePlayback();
       if (visible && card.routeMap.renderer?.simplified && ui.quality.textContent === notesText && !track?.capped) {
         ui.quality.textContent = `${notesText} · ${labels.display_limit}`;
       }
     });
-    this.updatePlayback(labels);
+    this.updatePlayback(labels, replay);
   }
 
   render(labels) {
