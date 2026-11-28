@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.20",
-  "source_version": "2.2.16",
+  "corpus_version": "1.2.21",
+  "source_version": "2.2.17",
   "entries": [
     {
       "id": "statistics_missing",
@@ -1336,6 +1336,51 @@
       },
       "procedure_id": null,
       "content_sha256": "50afc6cae8f3e618da70c6860947fae9a7718a9ca678c3909dadc4e06c2a6988"
+    },
+    {
+      "id": "numbered_vehicle_choice",
+      "applicable_versions": {
+        "min_inclusive": "2.2.17",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-28",
+      "supersedes": [
+        "confirmed_vehicle_choice",
+        "combined_vehicle_statistics"
+      ],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "8d3de9a14b1c02acb8324b29132e27c328c66f74",
+        "sha256": "a3f60ceccbbc4229b2bcd324385ef7804a02e6b8ea6fbf2d2d6df438f1a96f45",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/8d3de9a14b1c02acb8324b29132e27c328c66f74/docs/assistant.md#vehicle-choice-follow-up"
+      },
+      "translations": {
+        "en": {
+          "title": "Reply with the vehicle number",
+          "text": "Reply “the second one” to choose the second entry as it was displayed. The Ask action accepts the reply and its pending query context. Assist and MCP pass only the selected row’s choice to get_statistics. The local menu preserves both vehicles and the original dates, cutoff and metric for 15 minutes. A fresh read checks current statistics access for both vehicles.",
+          "keywords": [
+            "how much energy did the other vehicle use last month",
+            "compound statistics",
+            "change vehicle period metric",
+            "choose one of the same-name vehicles",
+            "the second one"
+          ]
+        },
+        "zh-Hans": {
+          "title": "回复“第二辆”查询原来的月份和指标",
+          "text": "选车清单按展示顺序编号。“第二辆”指刚才清单的第二项。使用 Ask 时一同提交清单的查询上下文。Assist 或 MCP 将该项的 choice 单独传给统计工具。原车、所选车辆、月份、截止日和耗电指标由本地菜单保留 15 分钟，取数时重新核对两辆车的权限。",
+          "keywords": [
+            "那另一辆车上个月耗电多少",
+            "同时换车换月份换指标",
+            "复合统计追问",
+            "同名车选定后",
+            "第二辆"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "61fa240e9754838e75d7571ef9c5c4838edb0268fe20a7eb1ba6d61d70a4e6bf"
     }
   ],
   "procedures": [

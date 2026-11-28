@@ -155,6 +155,12 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
     }
     assert reads == [primary.id, primary.id, other.id]
     assert {item["label"] for item in ambiguous["next_step"]["choices"]} == {"City"}
+    choices = ambiguous["next_step"]["choices"]
+    order = [row["device_id"] for row in choices]
+    assert [row["position"] for row in choices] == [1, 2]
+    assert ambiguous["answer"]["text"].splitlines() == [
+        f"{i}. City ({vehicle})" for i, vehicle in enumerate(order, 1)
+    ]
     pending = ambiguous["next_step"]["query_context"]
     assert pending == {
         "device_id": primary.id,
@@ -162,6 +168,7 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
         "through_date": "2026-10-31",
         "metric": "energy_wh",
         "selection": "other_vehicle",
+        "choice_ids": order,
     }
     assert "query_context" not in ambiguous
     with patch.object(dt_util, "utcnow", return_value=before_midnight):
@@ -177,15 +184,34 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
             Context(user_id="synthetic-admin"),
         )
     assert error and native["error"]["code"] == "vehicle_selection_required"
-    assert native["next_step"] == ambiguous["next_step"] and "data" not in native
+    assert native["next_step"]["query_context"] == pending and "data" not in native
+    native_choices = native["next_step"]["choices"]
+    assert [row["device_id"] for row in native_choices] == order
+    picked = {"choice": native_choices[1]["choice"]}
+    # The menu belongs to its requester, even when the other requester is also an admin.
+    with patch(
+        "custom_components.ninebot.assistant_queries.async_require_admin",
+        return_value="second-admin",
+    ):
+        hidden, error = await async_query(
+            hass, "get_statistics", picked, Context(user_id="second-admin")
+        )
+    assert (
+        error and hidden["error"]["code"] == "vehicle_selection_required" and "data" not in hidden
+    )
+
     monthly = PERIODS["last_month"]
+
+    target = order[1]
+    target_sn = other_sn if target == other.id else third_sn
+    grants(**{primary_sn: statistics, target_sn: statistics})
 
     async def selected_archive(call):
         assert call.context.user_id == "synthetic-admin"
-        assert call.data["device_id"] == third.id
+        assert call.data["device_id"] == target
         assert call.data["start_month"] == call.data["end_month"] == "202610"
         assert not call.data["refresh"] and not call.data["include_daily"]
-        reads.append(third.id)
+        reads.append(target)
         return {
             "months": [
                 {
@@ -200,12 +226,16 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
     hass.services.async_register(
         "ninebot", "get_statistics", selected_archive, supports_response=SupportsResponse.ONLY
     )
-    selected = {"device_id": third.id, "query_context": pending}
+    selected = {"query_context": pending}
     with patch.object(dt_util, "utcnow", return_value=before_midnight + timedelta(seconds=2)):
-        resumed = await ask("选这辆", {}, selected)
+        for invalid in ("第三辆", "第一辆还是第二辆"):
+            assert (await ask(invalid, {}, selected))["error"]["code"] == "invalid_arguments"
+        conflict = await ask("第二辆", {}, {**selected, "device_id": order[0]})
+        assert conflict["error"]["code"] == "invalid_arguments"
+        resumed = await ask("第二辆", {}, selected)
         assert resumed["outcome"] == "evidence", resumed
         assert resumed["query_context"] == {
-            "device_id": third.id,
+            "device_id": target,
             "month": "2026-10",
             "through_date": monthly["end_date"],
             "metric": "energy_wh",
@@ -216,14 +246,30 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
             "units": {"energy_wh": "Wh"},
         }
         assert resumed["answer"]["request_ids"] == [receipt["result"]["request_id"]]
-        grants(**{**both, third_sn: status})
-        denied = await ask("还是这辆", {}, selected)
+        receipt, error = await async_query(
+            hass, "get_statistics", picked, Context(user_id="synthetic-admin")
+        )
+        assert not error and receipt["query_context"] == resumed["query_context"]
+        # An older client can still send a selected HA device without an ordered menu.
+        legacy = {k: v for k, v in pending.items() if k != "choice_ids"}
+        assert (await ask("选这辆", {}, {"query_context": legacy, "device_id": target}))[
+            "outcome"
+        ] == "evidence"
+        grants(**{primary_sn: statistics, target_sn: status})
+        denied = await ask("第二辆", {}, selected)
         assert denied["outcome"] == "denied" and not denied["results"]
         assert (
             "query_context" not in denied
             and str(monthly["energy_wh"]) not in denied["answer"]["text"]
         )
-    assert reads == [primary.id, primary.id, other.id, third.id]
+    with patch("custom_components.ninebot.assistant_queries.monotonic", return_value=float("inf")):
+        expired, error = await async_query(
+            hass, "get_statistics", picked, Context(user_id="synthetic-admin")
+        )
+    assert (
+        error and expired["error"]["code"] == "vehicle_selection_required" and "data" not in expired
+    )
+    assert reads == [primary.id, primary.id, other.id, target, target, target]
     return summary
 
 
@@ -239,8 +285,11 @@ async def check_period_metrics(hass, entry, primary, other, ask, *, model_smoke=
         VehicleAccess,
         with_assistant_access,
     )
+    from custom_components.ninebot.assistant_limits import DATA_KEY as READ_LIMITS
     from custom_components.ninebot.identity import device_sn
 
+    # This separate simulated month starts with its own request budget.
+    hass.data.pop(READ_LIMITS, None)
     primary_sn, other_sn = device_sn(entry, primary), device_sn(entry, other)
     assert primary_sn and other_sn
 
