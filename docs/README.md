@@ -7,7 +7,7 @@
 | Release | Where to start |
 |---|---|
 | **v2.2.0 stable** | [Install the stable package](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0) · [English handbook](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/README.md) |
-| **v2.2.13 preview** | [Release notes and package](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.13) · [Compare saved rides](history.md#replay-saved-routes) · [Read statistics evidence](assistant.md#read-the-evidence) |
+| **v2.2.14 preview** | [Release notes and package](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.14) · [Compare saved rides](history.md#replay-saved-routes) · [Month and energy follow-ups](assistant.md#statistics-follow-ups) · [Standalone replay](history.md#standalone-replay) |
 
 Use the guides below for the current handbook. Stable users can open the matching tagged guide above. 正式版用户可查阅[随版中文安装指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide_zh.md)。预览版用户可直接查看下表。
 

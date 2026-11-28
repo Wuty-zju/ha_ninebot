@@ -5,9 +5,9 @@
 | Channel | Delivered scope |
 |---|---|
 | **v2.2.0 stable** | Native Home Assistant entities, controls, an account-owned ride archive and optional Assistant. [Release](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0) |
-| **v2.2.13 preview** | Daily follow-ups with renewed vehicle access checks and a reusable ride selection and playback model. [Ride comparison](history.md#replay-saved-routes) · [Assistant evidence](assistant.md#read-the-evidence) |
+| **v2.2.14 preview** | Day, month and energy follow-ups verified under current access. A standalone replay example shares the dashboard’s selection and statistics. [Ride comparison](history.md#replay-saved-routes) · [Month and energy follow-ups](assistant.md#statistics-follow-ups) |
 
-正式版 **v2.2.0** 包含原生实体、车控、账号档案和可选 Assistant。**v2.2.13 预览版**支持跨午夜及跨车追问，地图、回放和统计共用可复用的行程模型。以下阶段按可复现的场景及验收结果推进。
+正式版 **v2.2.0** 包含原生实体、车控、账号档案和可选 Assistant。**v2.2.14 预览版**支持切换车辆、月份和指标后按当前权限取数，独立回放示例与卡片共用行程选择及统计。以下阶段按可复现的场景及验收结果推进。
 
 <a id="added-in-200rc4"></a>
 <a id="available-in-200rc1"></a>
