@@ -2,7 +2,7 @@
 
 [English](assistant.md) · [启用](#开启方式) · [工具参考](#查询本地数据) · [数据授权](#隐私与限额) · [历史任务](#可审核的历史任务beta)
 
-**2.2.12 预览版。** 你可以询问某辆车最近一次上报的电量、找出一次已保存的行程，或核对昨天的骑行次数。Ninebot 将本地证据交给你选择的对话宿主。旧版本请查看 [2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)和[统一工具入口迁移说明](#升级至统一的-ninebot-api)。
+**2.2.13 预览版。** 你可以询问某辆车最近一次上报的电量、找出一次已保存的行程，或核对昨天的骑行次数。Ninebot 将本地证据交给你选择的对话宿主。旧版本请查看 [2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)和[统一工具入口迁移说明](#升级至统一的-ninebot-api)。
 
 <a id="ninebot-assistant--21-预览"></a>
 
@@ -53,13 +53,34 @@ response_variable: ninebot_answer
 
 多辆车匹配时，`needs_input` 可通过 `next_step.choices` 返回候选。带上目标车辆的 HA `device_id` 再次提问，即使两辆车同名也能选定。指定后整轮查询绑定该车。这个只读 Action 可直接指定发现列表前二十辆以外的车辆。查询遭拒时丢弃私有结果。
 
+<a id="daily-follow-ups"></a>
+
+## 追问某一天的统计
+
+问“那昨天呢？”会保留车辆和指标，按这次提问时的上海业务日期重新计算昨天。再问“另一辆呢？”会保留上一问已经确认的**具体日期**和指标。当前可见范围内恰有一辆其他车且允许读取统计时，助手才自动切换。还有多个候选时应选择 HA 设备，即使车辆同名也能区分。
+
+Assist 或 MCP 客户端可从单日、单指标的回执取得 `query_context`。切换车辆时，把上一辆车的引用、具体日期、指标和 `other_vehicle: true` 传给 `get_statistics`；新回执会标出实际读取的车辆。
+
+自动化可把上一轮返回的查询条件传给下一次 Action。希望助手切换车辆时省略 `device_id`；若明确指定设备，本轮固定查询该车。
+
+```yaml
+action: ninebot.ask
+data:
+  ai_task_entity_id: ai_task.your_model
+  question: 另一辆呢？
+  query_context: "{{ ninebot_answer.query_context }}"
+response_variable: next_answer
+```
+
+跨轮只传设备引用、日期和指标。每次都重新核对权限、读取本地档案，并在回执中列出车辆、业务日、观察时间、来源和覆盖情况。原车辆的统计权限已撤销时，可以重新指定有权限的设备发起查询。宿主负责管理已显示的对话记录。
+
 ## 查询本地数据
 
 | 原生工具（统一前缀 `ninebot__`） | 参数 | 读取内容 |
 |---|---|---|
 | `get_vehicles` | 无 | 已授权的 HA 车辆引用、名称、`allowed_reads` 和本地数据是否就绪。 |
 | `get_vehicle_status` | `vehicle_ref`，可选 `metric` | 单项读数或车况摘要，附来源分组、观测时间和新鲜度。 |
-| `get_statistics` | 车辆、`period`，可选 `metric` | 按业务日或月份统计。询问一个数值时指定单项指标。 |
+| `get_statistics` | 车辆、`period`，可选 `metric` 和 `other_vehicle` | 按业务日或月份统计。询问一个数值时指定单项指标。 |
 | `explain_statistics` | 车辆、`period`、`metric`，可选 `language` | 指定指标、质量，以及这辆车获准取得的进一步依据。 |
 | `get_recorded_trips` | 车辆、`start_date`、`end_date`，可选 `limit`、`cursor` | 按时间降序返回与日期范围重叠的一页行程。最多 31 天，默认每页 10 趟，上限 20 趟。 |
 | `get_trip_detail` | 车辆、`ride_id`、`query_month` | 本地已保存的详情标量。使用行程列表给出的原始标识和 `YYYYMM` 月份。 |

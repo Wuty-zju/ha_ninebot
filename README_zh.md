@@ -16,7 +16,7 @@
 
 把九号车辆接入 Home Assistant，查看实时车况，长期保存行程，并将数据用于日常自动化。每个账号分别管理车辆、授权和本地 SQLite 档案。
 
-**正式版** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest)，适合日常使用。**预览版** · [v2.2.12](CHANGELOG.md#2212)，支持同图行程比较和按车辆权限排查统计。之前在宿主中选过 **Ninebot tasks** 的用户可查看[统一入口迁移说明](docs/assistant_zh.md#升级至统一的-ninebot-api)。
+**正式版** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest)，适合日常使用。**预览版** · [v2.2.13](CHANGELOG.md#2213)，支持跨车追问日统计，地图、回放与统计共用同一份行程选择。之前在宿主中选过 **Ninebot tasks** 的用户可查看[统一入口迁移说明](docs/assistant_zh.md#升级至统一的-ninebot-api)。
 
 ## 可以做什么
 

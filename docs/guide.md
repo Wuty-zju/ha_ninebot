@@ -2,7 +2,7 @@
 
 [简体中文](guide_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
-This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide.md).
+This guide covers **v2.2.13 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide.md).
 
 ## Requirements
 
@@ -11,7 +11,7 @@ This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documenta
 | Home Assistant | **2026.1.0 or newer** on a compatible 64-bit host/container. Use Marketplace on HA 2026.11+ or HACS on earlier supported versions. |
 | Vehicle and account | Verify the vehicle appears in the official Ninebot App and you can sign in with a password. |
 | Network | The HA host needs internet access to Ninebot's cloud. The verified service is for the mainland China App. |
-| Release | Start with **v2.2.0 stable**. Select **v2.2.12** explicitly to try [updated ride comparison](history.md#replay-saved-routes) or [focused statistics guidance](assistant.md#read-the-evidence). |
+| Release | Start with **v2.2.0 stable**. Select **v2.2.13** explicitly to try [updated ride comparison](history.md#replay-saved-routes) or [focused statistics guidance](assistant.md#read-the-evidence). |
 
 Before updating an existing installation, back up HA configuration and private storage. [Upgrade checklist](migration.md#before-upgrading)
 
