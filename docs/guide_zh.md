@@ -2,18 +2,18 @@
 
 [English](guide.md) · [文档入口](README.md) · [历史与地图](history_zh.md)
 
-本文覆盖至 2.2.9 预览版。使用正式版时，可查阅 [v2.2.0 随版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide_zh.md)。
+本文说明至 **v2.2.12 预览版**。使用 **v2.2.0 正式版**时，请以[随版文档](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide_zh.md)为准。
 
 ## 环境要求
 
-- Home Assistant **2026.1.0 及以上**，能够访问九号云服务。
-- 官方 App 中可以看到车辆的九号账号。
-- 兼容固定运行依赖的 64 位主机或容器；不支持 ARMv7/32 位。
-- 可通过 Marketplace、HACS 自定义仓库或正式发行包安装。
+| 安装前检查 | 要求 |
+|---|---|
+| Home Assistant | **2026.1.0 及以上**，使用兼容的 64 位主机或容器。HA 2026.11+ 使用 Marketplace，较早的受支持版本可使用 HACS。 |
+| 车辆与账号 | 官方九号 App 中能看到车辆，且能用密码登录。 |
+| 网络 | HA 主机需能连接九号云服务。已验证中国大陆 App 服务。 |
+| 版本 | 首次使用可选 **v2.2.0 正式版**。要试用[行程对比](history_zh.md#重放已保存的轨迹)或[统计排查](assistant_zh.md#理解数据依据)更新，请明确选用 **v2.2.12 预览版**。 |
 
-当前连接已在中国区 App 服务验证；其他服务地区有待验证。
-
-正式版功能按 2.2.0 说明，预览版新增行为单独标出版本。升级前请备份 HA 配置和私有存储。
+已安装的用户请先备份 HA 配置和私有存储。[升级前检查](migration_zh.md#升级前)
 
 ### 刷新速度
 
@@ -31,35 +31,39 @@
 
 ## 通过 Marketplace 安装（HA 2026.11+）
 
-1. 使用管理员账号进入 **设置 → Marketplace**，阅读并确认商店提示。
-2. 当前从 **⋮ → 通过链接添加** 安装。按提示连接 GitHub，输入 `Wuty-zju/ha_ninebot`，类别选择 **集成**。
-3. 打开 **Ninebot**，选择正式版并安装。首次安装可直接进入添加账号流程。如果 HA 已经加载了此集成，请根据「修复」提示重启。
+1. 使用管理员账号进入**设置 → Marketplace**，打开 **⋮ → 通过链接添加**，按提示连接 GitHub。
+2. 输入 `Wuty-zju/ha_ninebot`，类别选择**集成**。
+3. 打开 **Ninebot**，安装正式版并按提示添加账号。HA 已加载 Ninebot 时，按**修复**提示重启。
 
-进入默认目录后，安装入口为 Marketplace 中搜索 **Ninebot**。目录收录后可直接安装，连接 GitHub 属于链接添加自定义仓库的步骤。[Marketplace 使用说明](https://www.home-assistant.io/integrations/marketplace/) · [默认目录](https://github.com/hacs/default/blob/master/integration)
+[Home Assistant Marketplace 使用说明](https://www.home-assistant.io/integrations/marketplace/) · [默认目录收录申请](https://github.com/hacs/default/pull/6217)
 
 ## 通过 HACS 安装
 
-在 Home Assistant 2026.11 之前的受支持版本中，进入 **HACS → ⋮ → 自定义仓库**。添加 `https://github.com/Wuty-zju/ha_ninebot`，类别选 **集成**。打开 **Ninebot**，下载正式版，按提示重启，再到 **设置 → 设备与服务 → 添加集成** 中选择 Ninebot。收录后可直接在 HACS 搜索；若设置了国家筛选，选择中国或「全部」。
+1. 进入 **HACS → ⋮ → 自定义仓库**，添加 `https://github.com/Wuty-zju/ha_ninebot`，类别选**集成**。如已启用国家筛选，选择中国或**全部**。
+2. 打开 **Ninebot**，下载正式版并按提示重启。
+3. 在**设置 → 设备与服务 → 添加集成**中选择 **Ninebot**。
 
-从旧 HACS 升级到 Home Assistant 2026.11 时，Marketplace 会自动接管已安装项目、自定义仓库和更新实体。[HACS 迁移说明](https://www.home-assistant.io/integrations/marketplace/#coming-from-hacs)
+升级到 HA 2026.11 时，Marketplace 会接管已安装项目、自定义仓库和更新实体。[HACS 迁移说明](https://www.home-assistant.io/integrations/marketplace/#coming-from-hacs)
 
 ## 手动安装
 
-从[发行页](https://github.com/Wuty-zju/ha_ninebot/releases/latest)下载正式版的 `ninebot.zip`，将内容解压至 `<config>/custom_components/ninebot/`，使该目录直接包含 `manifest.json`。重启后添加 Ninebot。手动更新可备份配置后替换集成目录，再重启。运行代码、翻译、品牌图和面板资源都随该目录分发。
+下载[正式发行包](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0)中的 `ninebot.zip`，解压后确认清单位于 `<config>/custom_components/ninebot/manifest.json`。重启 Home Assistant，在**设备与服务**中添加 Ninebot。翻译和仪表盘资源已随包提供。
 
 ## 更新已安装的集成
 
-Marketplace 的更新出现在 **设置 → 更新**。选择发布版并在安装后按「修复」提示重启。继续使用原有 Ninebot 账号条目和本地行程档案。Marketplace 通常每六小时刷新目录；链接添加的仓库从 GitHub 读取版本。预发布需要单独开启。较旧的 HA 可在商店中选用兼容的历史版本。[升级与回退](migration_zh.md) · [Marketplace 更新说明](https://www.home-assistant.io/integrations/marketplace/#keeping-installations-up-to-date)
+1. 先备份 HA。在**设置 → 更新**或 HACS 中选择目标版本，手动安装则从 GitHub 下载。Marketplace 和 HACS 需启用预发布选项才能选择预览版。
+2. 手动更新时用完整发行包替换 Ninebot 集成目录，然后按 HA 提示重启。
+3. 在**设备与服务 → Ninebot**确认运行版本与车辆。更新随包卡片后重新载入仪表盘。继续使用原有账号条目和档案。
+
+[升级与回退](migration_zh.md) · [Marketplace 更新说明](https://www.home-assistant.io/integrations/marketplace/#keeping-installations-up-to-date)
 
 ## 添加账号与车辆
 
-使用账号和密码登录。短信登录暂不可用，添加账号、重新认证和重新配置均不显示该入口。密码用于认证，不保存在 ConfigEntry，也不作为进程参数传递。验证成功后，新版HA自动进入账号配置，旧版HA在同一向导中选择车辆功能。会话/token 文件依然敏感，须保护本地配置与备份。
+使用官方 App 的账号和密码登录。新版 HA 验证后进入账号配置，较早的受支持版本在同一向导中选择车辆功能。密码用于登录验证，请妥善保护生成的本地会话和包含会话的 HA 备份。
 
-每个配置条目代表**一个账号**，会话与历史库独立；另一个账号通过新增条目添加。车辆在账号下自动发现，同一辆共享车辆在不同账号下可以有独立的 HA 表示。
+每个配置条目对应**一个账号**，档案独立保存。要接入另一个账号，请添加 Ninebot 条目。共享的同一辆实车可能分别出现在两个账号下。选择[历史行程](history_zh.md#添加历史地图)、[控制](#控制与反馈)和 [Assistant](assistant_zh.md#开启方式)的目标时，请核对账号。
 
-条目标题使用实际上报的 `用户名：账号`，缺失部分省略。地区字段含义尚未确认，暂不显示；用户自定义标题保留。外围分组标题由 HA 按集成类型生成，不修改全局前端翻译。
-
-凭据失效使用**重新认证**；重新配置仍是同一个账号，新增账号应添加新条目。旧账号缺用户名时，成功设置期间最多补充一次展示元数据，不循环查询用户名。
+凭据失效时，在原条目使用**重新认证**。使用**重新配置**更新原账号。条目标题按实际上报的 `用户名：账号` 展示，保留用户自定义标题。[登录排障](#账号尚未添加成功时的登录排障)
 
 ## 实体与数据
 
@@ -122,7 +126,7 @@ sections:
           - sensor.my_vehicle_today_duration
 ```
 
-设备详情页的标准实体区域由 HA 管理；仪表盘区块提供独立分组，不改变 unique_id、Recorder 历史或事件语义。原生 Map 不会直接读取私有归档中的任意历史折线；长程历史查询和可选 alpha 地图参见[本地历史指南](history_zh.md)。上述卡片读取已有实体和本地历史，不额外发起车辆查询。
+设备详情页的标准实体区域由 HA 管理。仪表盘区块可按用途独立分组并沿用原实体与 Recorder 历史。设备位置用原生地图卡查看，档案路线通过随包的 [Ninebot 行程卡片](history_zh.md#添加历史地图)回放。
 
 ## 配置选项
 
@@ -141,7 +145,7 @@ sections:
 | 控制与允许车辆 | 新账号开启/登录时核验的全部车辆 | 位于页面顶部，通过原生多选下拉框选取该账号的一辆或多辆车；启用控制须至少选择一辆，关闭保留选择。历史同步权限单独管理。 |
 | 保留本地历史数据库（Beta） | 开启 | 移除账号后保留历史，重新登录同账号接回。 |
 | 额定参数 | 关闭 | 额定电压/容量默认留空，可分别填写或清空；两项齐全才计算额定能量。保存失败会保留待保存状态并提示存储修复，处理后可重新保存；不恢复退役的低信电量估算。 |
-| 配置 Ninebot 助手 | 助手关闭，车辆默认无权限 | 为账号启用助手，再为每辆车选择允许读取的数据和历史任务权限。[设置与隐私](assistant_zh.md) |
+| 配置 Ninebot 助手（2.2.9 起支持逐车配置） | 助手关闭，车辆默认无权限 | 为账号启用助手，再为每辆车选择允许读取的数据和历史任务权限。[设置与隐私](assistant_zh.md) |
 | 显示诊断实体 | 关闭 | 有界当前解析信息，不额外轮询、不公开完整 raw。 |
 
 HA 2026.11+ 在启用控制时显示允许控制的车辆；开启自动同步历史详情后显示自动扫描、容量和请求额度。隐藏字段保留此前保存的设置。旧版 HA 直接显示这些字段；档案管理与删除账号后保留选项始终可用。
@@ -237,10 +241,9 @@ data:
 
 位置默认开启，详情保全可能保留精确路线；私有库与 HA 备份均包含位置记录，即使某次响应没带坐标。自动化 trace 可能保存请求的响应。诊断只输出审核后的 schema/状态，不包含凭据、身份或轨迹，分享前仍需检查。
 
-底图需单独开启并会联系外部服务，见[地图隐私](history_zh.md#地图隐私与单位)。保护会话目录和备份，主机同用户/高权限进程仍在本地信任边界内。
+兼容 HA 前端的底图请求使用 Home Assistant Map Tiles 服务。保护会话目录和备份，限制其他用户和特权进程对这些文件的访问。[地图隐私](history_zh.md#地图隐私与单位)
 
 **保留本地历史行程信息数据库（Beta）**默认勾选。移除账号会停止任务，保留行程、详细轨迹与恢复证据；重新添加同一已认证账号后接回原库，按已有选项继续同步。取消勾选后，下次删除账号会删除该账号的受管归档及恢复副本。无法识别的文件会保留并提示 Repair；该选项不会删除 Recorder 历史。不手工修改运行中的库或 registry，升级/降级见[迁移指南](migration_zh.md)。
-
 
 
 

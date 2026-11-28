@@ -1,51 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="888" viewBox="0 0 960 888" role="img" aria-labelledby="title desc" xml:lang="zh-Hans">
-<title id="title">Ninebot Assistant 如何回答问题</title>
-<desc id="desc">从当前用户与所选车辆，追溯到答案的依据</desc>
+<title id="title">从一个问题找到它的依据</title>
+<desc id="desc">宿主选择模型 · HA 用户身份 · 逐车授权</desc>
 <style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
 <rect width="960" height="888" rx="16" fill="#0d1117"/>
-<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">Ninebot Assistant 如何回答问题</text>
-<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">从当前用户与所选车辆，追溯到答案的依据</text>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">从一个问题找到它的依据</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">宿主选择模型 · HA 用户身份 · 逐车授权</text>
 <rect x="40" y="112" width="428" height="137" rx="12" fill="#15263b" stroke="#475569"/>
 <text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / A</text>
-<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">Assist 或 MCP</text>
-<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">在宿主选择模型</text>
-<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">选择统一的 Ninebot API</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">对话或 MCP</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">Assist 对话代理或外部客户端</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">选择 Ninebot 工具集</text>
 <rect x="492" y="112" width="428" height="137" rx="12" fill="#15263b" stroke="#475569"/>
 <text x="516" y="137" font-size="12" font-weight="700" fill="#91bfff">01 / B</text>
 <text x="516" y="166" font-size="21" font-weight="650" fill="#e6edf3">自动化</text>
-<text x="516" y="197" font-size="17" font-weight="400" fill="#aebdce">ninebot.ask 调用现有 HA AI Task</text>
-<text x="516" y="222" font-size="17" font-weight="400" fill="#aebdce">查询所选车辆</text>
+<text x="516" y="197" font-size="17" font-weight="400" fill="#aebdce">通过 HA AI Task 调用 ninebot.ask</text>
+<text x="516" y="222" font-size="17" font-weight="400" fill="#aebdce">绑定所选车辆与本轮业务日期</text>
 <path d="M254 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M706 249 V268 H480 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M476 281 L480 287 L484 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <rect x="40" y="297" width="880" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02</text>
-<text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">Home Assistant 用户身份</text>
-<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">核对管理员、车辆归属及所请求操作的权限</text>
-<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">返回私有结果前再次核对权限</text>
+<text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">Home Assistant 用户与车辆</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">核对所选设备、账号归属及本次操作权限</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">交付结果前再次校验原用户权限</text>
 <path d="M480 434 V453 H254 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M250 466 L254 472 L258 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M480 434 V453 H706 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M702 466 L706 472 L710 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <rect x="40" y="482" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / A</text>
-<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">查询车辆数据</text>
-<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">协调器快照与本地 SQLite</text>
-<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">数值、单位、观测时间与覆盖情况</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">核对读数</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">读缓存状态或一项档案指标</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">保留周期、单位与观测时间</text>
 <rect x="492" y="482" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
 <text x="516" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / B</text>
-<text x="516" y="536" font-size="21" font-weight="650" fill="#e6edf3">检索使用指南</text>
-<text x="516" y="567" font-size="17" font-weight="400" fill="#aebdce">按版本检索双语帮助和操作清单</text>
-<text x="516" y="592" font-size="17" font-weight="400" fill="#aebdce">返回原文节选和固定来源链接</text>
+<text x="516" y="536" font-size="21" font-weight="650" fill="#e6edf3">解释依据</text>
+<text x="516" y="567" font-size="17" font-weight="400" fill="#aebdce">引用指南与有界排查清单</text>
+<text x="516" y="592" font-size="17" font-weight="400" fill="#aebdce">逐车获准后读取同步状态</text>
 <path d="M254 619 V638 H480 V657" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M476 651 L480 657 L484 651" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M706 619 V638 H480 V657" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <path d="M476 651 L480 657 L484 651" fill="none" stroke="#94a3b8" stroke-width="2"/>
 <rect x="40" y="667" width="880" height="137" rx="12" fill="#28203a" stroke="#475569"/>
 <text x="64" y="692" font-size="12" font-weight="700" fill="#91bfff">04</text>
-<text x="64" y="721" font-size="21" font-weight="650" fill="#e6edf3">使用结果</text>
-<text x="64" y="752" font-size="17" font-weight="400" fill="#aebdce">Assist 与 MCP 获得结构化工具结果</text>
-<text x="64" y="777" font-size="17" font-weight="400" fill="#aebdce">Action 还可将核验后的结果整理成答案</text>
-<text x="40" y="845" font-size="16" font-weight="400" fill="#aebdce">获准的车辆可通过 Ninebot 预览或申请历史补同步，申请由用户在 HA 面板批准。</text>
+<text x="64" y="721" font-size="21" font-weight="650" fill="#e6edf3">将证据交还宿主</text>
+<text x="64" y="752" font-size="17" font-weight="400" fill="#aebdce">覆盖完整的已结束周期可一次读完</text>
+<text x="64" y="777" font-size="17" font-weight="400" fill="#aebdce">待核的问题保留覆盖情况与来源</text>
+<text x="40" y="845" font-size="16" font-weight="400" fill="#aebdce">历史任务单独逐车授权，由申请人在 HA 中确认执行。</text>
 </svg>

@@ -2,19 +2,25 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
-This guide covers releases through the 2.2.9 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/migration.md).
+This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/migration.md).
 
+For a normal 2.2 update, keep the installed account and archive. If you are restoring an older release, confirm the archive compatibility before restarting. Check the historical sections only for a version that crosses those changes.
+
+## Before upgrading
+
+1. Back up the full matching HA configuration and storage, including registries, account entries, private sessions, settings and archive/recovery files.
+2. To move saved rides or keep a separate copy of new data before restoring an older HA backup, use [archive export/import](guide.md#export-and-import-history-databases). Treat exports as private GPS records.
+3. Keep the account entry installed. After changing code, follow the restart prompt and refresh the dashboard browser. If moving to an older archive schema or identity store, use [storage rollback](#archive-schema-and-rollback).
 
 ## Move between 2.2 releases
 
-Use the existing account entry when installing a preview or returning to the stable release. The previews use the existing archive format, vehicle IDs, dashboard card type and resource URL.
+Use the existing account entry for **v2.2.0 stable** and the **v2.2.12 preview**. The preview uses the existing archive format, vehicle IDs, card type and module URL.
 
-1. Make an HA backup. Export the account archive separately if you also need a portable copy.
-2. Install the intended packaged version and follow HA’s restart prompt. Check the running integration version on the device page.
-3. For a card update, refresh the dashboard browser and open one saved ride. For Assistant, follow the [2.2.9 host migration](assistant.md#upgrade-to-the-single-ninebot-api) and check one authorized vehicle in a new session.
-4. When switching back to a version with an older storage schema, restore the matching backup. [Archive recovery](history.md#verification-and-recovery)
+1. Install the complete package for the version you chose and follow Home Assistant's restart prompt. Verify the running version in **Devices & services → Ninebot**.
+2. Reload the dashboard and open a known saved ride. In the preview, select two rides and check that **Keep current ride** preserves the active playback position.
+3. If you use Assistant, [update the saved API selection](assistant.md#upgrade-to-the-single-ninebot-api) and open a new host session. Verify access for one allowed vehicle and one intentionally ungranted operation before requesting history work.
 
-On return to an earlier 2.2 release, the saved Assistant settings represent the permissions that the older release can enforce. A vehicle appears in the older read list only if you allowed it all four reads. The older account-wide task switch is off if confirmation is pending, if no vehicle is selected, or if any vehicle in that older list lacks **Allow requests**. Review the previous version's options and host tool selection before resuming task applications. If you change the Assistant settings in the earlier release, review permissions again the next time you upgrade.
+When returning to an earlier 2.2 release, the old format can represent a vehicle as readable only when its four read categories are all granted. The old account-wide task switch is off while confirmation is pending, when the list is empty, or when any included vehicle lacks **Allow requests**. Review options and the host's API selection after switching versions. After changing permissions in an earlier release, confirm the per-vehicle choices when upgrading again.
 
 ## Upgrade to 2.2.0
 
@@ -25,35 +31,6 @@ On return to an earlier 2.2 release, the saved Assistant settings represent the 
 | 1.x | Back up HA and private storage, then review the account, entity and lock transitions below. |
 
 An existing 2.x archive stays in place. A rollback to an older storage format requires a matching pre-upgrade backup. Use the [archive transfer tools](guide.md#export-and-import-history-databases) to move saved rides between installations.
-
-## Moving to 2.0.0
-
-The stable release retains rc4 entity identities, archive schema 7, polling profiles and control timing. Upgrade the installed files and restart Home Assistant; keep the existing account entry. Moving from rc4 requires no account recreation or history import.
-
-For 1.x and earlier betas, back up the complete configuration and private storage first, then follow the relevant migration sections below. Recognized legacy archives are consolidated after validation. Review any automation or dashboard that names retired entities.
-
-## rc3 to rc4
-
-rc4 includes the polling-profile and seat-unlock message corrections from PR #152. New accounts and legacy numeric polling settings use Balanced once; an existing valid profile is retained. Seat-unlock confirmation uses a concise seat-specific message.
-
-Account cleanup, cancelled resource work, rated-parameter persistence and daily-index demand are more robust. A failed parameter save remains pending and can be retried after its Repair is resolved. History progress and per-vehicle summary updates avoid redundant local reads. Account/entity identities and archive schema 7 carry forward; no account recreation or history import is needed.
-
-## rc2 to rc3
-
-Upgrade through HACS or replace the integration directory, then restart Home Assistant. Existing configuration, entity identities and schema 7 archives continue unchanged. No account removal or database rebuild is required.
-
-Daily summaries share an in-memory projection with explicit data, date and freshness invalidation. Imports and legacy consolidation wait for active file work before cleanup. Removing an account clears entry-owned credentials, rated parameters and event cursors; its separate history archive follows the retention option. Credential cleanup checks all session identities and active references before removal; unsafe cleanup retains files and raises a Repair. Interrupted consolidation retains its unmerged original for recovery.
-
-## rc1 to rc2
-
-Existing custom polling intervals keep their previous targets until a profile is selected in Options. Existing 60-second/default entries use Balanced. Polling-only changes apply to the existing runtime. Archive schema, entity identities, history switches and control confirmation windows are unchanged. An earlier integration version does not interpret the new profile option; select its interval again after a code rollback.
-
-
-## Before upgrading
-
-Back up the **complete matching Home Assistant configuration/storage**: registries, ConfigEntries, account sessions, identity/nominal-parameter stores and private archives/recovery copies. Protect these files as credentials and location history. A code-only downgrade or SQLite-only copy does not reverse entity or storage migration.
-
-Install one complete selected release and follow HA/HACS restart guidance. Reload the browser for bundled card updates. Existing `custom:ninebot-trip-card` configurations and resource path remain supported. Do not delete/recreate the integration as a normal upgrade step.
 
 ## From 1.x to 2.0
 
@@ -110,6 +87,26 @@ If an archive has saved motor pages with v2.2.2, use an archive backup from befo
 
 Use recovery-job copies such as `.recovery-<job_id>.sqlite3` through the supported [verification and recovery](history.md#verification-and-recovery) workflow. Keep the matching full HA backup for version rollback and retain unresolved Repairs for diagnosis.
 
+<details>
+<summary>Historical 2.0 release transitions</summary>
+
+## Moving to 2.0.0
+
+v2.0.0 retained rc4 entity identities, schema 7, polling profiles and control timing. Updating the installed files and restarting HA is sufficient from rc4. From 1.x or an early beta, first check the applicable entity and archive migration notes above.
+
+## rc3 to rc4
+
+The legacy numeric polling interval moves to Balanced once. An existing valid profile is kept. PR #152 also introduced a seat-specific unlock message. Account and archive identities carried over unchanged; a failed nominal-parameter write remains pending for repair and retry.
+
+## rc2 to rc3
+
+Install the updated package and restart with the existing entries and schema 7 archive. Deleting an account now removes entry-owned credentials, rated parameters and event cursors independently of retained history. An interrupted archive consolidation retains the source needed for recovery. Unsafe credential cleanup raises a Repair.
+
+## rc1 to rc2
+
+At this stage an existing custom interval kept its previous target until a profile was explicitly selected. Default or 60-second entries used Balanced. Polling-only changes retargeted the current runtime. After a code rollback to rc1, set the interval again in that release. The later rc4 migration applies different rules as described above.
+
+</details>
 
 ## History controls and debug entities
 

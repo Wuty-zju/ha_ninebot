@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="938" viewBox="0 0 960 938" role="img" aria-labelledby="title desc" xml:lang="en">
+<title id="title">Reading a ride or requesting work</title>
+<desc id="desc">Two paths through the native Ninebot tools</desc>
+<style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
+<rect width="960" height="938" rx="16" fill="#0d1117"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#e6edf3">Reading a ride or requesting work</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#aebdce">Two paths through the native Ninebot tools</text>
+<rect x="40" y="112" width="880" height="137" rx="12" fill="#15263b" stroke="#475569"/>
+<text x="64" y="137" font-size="12" font-weight="700" fill="#91bfff">01</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#e6edf3">Choose a vehicle</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#aebdce">Home Assistant authenticates the caller</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#aebdce">Ninebot checks the operation for that vehicle</text>
+<path d="M480 249 V268 H254 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 281 L254 287 L258 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M480 249 V268 H706 V287" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 281 L706 287 L710 281" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="297" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="322" font-size="12" font-weight="700" fill="#91bfff">02 / A</text>
+<text x="64" y="351" font-size="21" font-weight="650" fill="#e6edf3">Read a statistic</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#aebdce">Choose the metric and business period</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#aebdce">Use the authorized local archive</text>
+<rect x="492" y="297" width="428" height="137" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="516" y="322" font-size="12" font-weight="700" fill="#91bfff">02 / B</text>
+<text x="516" y="351" font-size="21" font-weight="650" fill="#e6edf3">Preview a gap</text>
+<text x="516" y="382" font-size="17" font-weight="400" fill="#aebdce">Choose dates and preview missing detail</text>
+<text x="516" y="407" font-size="17" font-weight="400" fill="#aebdce">Inspect the attempt budget</text>
+<path d="M254 434 V453 H254 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 466 L254 472 L258 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M706 434 V453 H706 V472" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 466 L706 472 L710 466" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="482" width="428" height="162" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="64" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / A</text>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#e6edf3">Inspect the evidence</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#aebdce">Return the value and coverage</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#aebdce">Consult help if the metric is</text>
+<text x="64" y="617" font-size="17" font-weight="400" fill="#aebdce">unresolved</text>
+<rect x="492" y="482" width="428" height="162" rx="12" fill="#142d28" stroke="#475569"/>
+<text x="516" y="507" font-size="12" font-weight="700" fill="#91bfff">03 / B</text>
+<text x="516" y="536" font-size="21" font-weight="650" fill="#e6edf3">Apply for review</text>
+<text x="516" y="567" font-size="17" font-weight="400" fill="#aebdce">A request grant permits a local</text>
+<text x="516" y="592" font-size="17" font-weight="400" fill="#aebdce">application</text>
+<text x="516" y="617" font-size="17" font-weight="400" fill="#aebdce">The requester approves in the HA panel</text>
+<path d="M254 644 V663 H254 V682" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M250 676 L254 682 L258 676" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M706 644 V663 H706 V682" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<path d="M702 676 L706 682 L710 676" fill="none" stroke="#94a3b8" stroke-width="2"/>
+<rect x="40" y="692" width="428" height="162" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="64" y="717" font-size="12" font-weight="700" fill="#91bfff">04 / A</text>
+<text x="64" y="746" font-size="21" font-weight="650" fill="#e6edf3">Show the answer</text>
+<text x="64" y="777" font-size="17" font-weight="400" fill="#aebdce">The host receives the local receipt</text>
+<text x="64" y="802" font-size="17" font-weight="400" fill="#aebdce">Include its source and observation time</text>
+<rect x="492" y="692" width="428" height="162" rx="12" fill="#28203a" stroke="#475569"/>
+<text x="516" y="717" font-size="12" font-weight="700" fill="#91bfff">04 / B</text>
+<text x="516" y="746" font-size="21" font-weight="650" fill="#e6edf3">Verify the result</text>
+<text x="516" y="777" font-size="17" font-weight="400" fill="#aebdce">The scheduler uses the approved budget</text>
+<text x="516" y="802" font-size="17" font-weight="400" fill="#aebdce">Read saved details and the task</text>
+<text x="516" y="827" font-size="17" font-weight="400" fill="#aebdce">checkpoint</text>
+<text x="40" y="895" font-size="16" font-weight="400" fill="#aebdce">Turn off task requests per vehicle to allow local observations only.</text>
+</svg>

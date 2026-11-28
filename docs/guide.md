@@ -2,18 +2,18 @@
 
 [简体中文](guide_zh.md) · [Documentation](README.md) · [History and maps](history.md)
 
-This guide covers releases through the 2.2.9 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide.md).
+This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide.md).
 
 ## Requirements
 
-- Home Assistant **2026.1.0 or newer** and internet access to the Ninebot cloud service.
-- A Ninebot account with vehicles visible in the official App.
-- A compatible 64-bit host/container for the pinned runtime dependency. ARMv7/32-bit is unsupported.
-- Install the custom integration through Marketplace or HACS, or use the release ZIP.
+| Before installing | Check |
+|---|---|
+| Home Assistant | **2026.1.0 or newer** on a compatible 64-bit host/container. Use Marketplace on HA 2026.11+ or HACS on earlier supported versions. |
+| Vehicle and account | Verify the vehicle appears in the official Ninebot App and you can sign in with a password. |
+| Network | The HA host needs internet access to Ninebot's cloud. The verified service is for the mainland China App. |
+| Release | Start with **v2.2.0 stable**. Select **v2.2.12** explicitly to try [updated ride comparison](history.md#replay-saved-routes) or [focused statistics guidance](assistant.md#read-the-evidence). |
 
-The current connection has been verified against the Chinese App service; additional service regions require validation.
-
-The stable release covered here is **v2.2.0**. Back up your Home Assistant configuration and private storage before upgrading.
+Before updating an existing installation, back up HA configuration and private storage. [Upgrade checklist](migration.md#before-upgrading)
 
 ### Update speed
 
@@ -31,35 +31,39 @@ Vehicle profiles refresh hourly. Higher speed increases cloud requests, subject 
 
 ## Install through Marketplace — HA 2026.11+
 
-1. As an administrator, open **Settings → Marketplace** and accept the Marketplace warning.
-2. Install from **⋮ → Add from link** today. Connect GitHub when prompted, enter `Wuty-zju/ha_ninebot`, and choose **Integration**.
-3. Open **Ninebot** and install the stable release. A first install can open account setup immediately. If HA already loaded Ninebot, follow the restart reminder in Repairs.
+1. As an administrator, in **Settings → Marketplace**, open **⋮ → Add from link** and connect GitHub when prompted.
+2. Enter `Wuty-zju/ha_ninebot` and choose **Integration**.
+3. Open **Ninebot**, install the stable release and follow the account setup prompt. If HA has already loaded Ninebot, follow the restart reminder in **Repairs**.
 
-Once included in the default catalog, **Ninebot** can be installed directly from Marketplace search. The GitHub connection is part of adding a custom repository from a link. [Marketplace instructions](https://www.home-assistant.io/integrations/marketplace/) · [Default catalog](https://github.com/hacs/default/blob/master/integration)
+[Home Assistant Marketplace instructions](https://www.home-assistant.io/integrations/marketplace/) · [Default catalog request](https://github.com/hacs/default/pull/6217)
 
 ## Install with HACS
 
-On supported Home Assistant versions earlier than 2026.11, open **HACS → ⋮ → Custom repositories**. Add `https://github.com/Wuty-zju/ha_ninebot` as an **Integration**, open **Ninebot** and download the stable release. Restart when prompted, then choose **Settings → Devices & services → Add integration → Ninebot**. After listing, search in HACS. If you use its country filter, select China or **All**.
+1. In **HACS → ⋮ → Custom repositories**, add `https://github.com/Wuty-zju/ha_ninebot` as an **Integration**. If HACS applies a country filter, select China or **All**.
+2. Open **Ninebot**, download the stable release and follow the restart prompt.
+3. Open **Settings → Devices & services → Add integration → Ninebot**.
 
-Home Assistant 2026.11 migrates installed HACS projects, custom repositories and update entities into Marketplace at startup. [HACS migration](https://www.home-assistant.io/integrations/marketplace/#coming-from-hacs)
+An update to HA 2026.11 transfers installed projects, custom repositories and update entities to Marketplace. [HACS migration](https://www.home-assistant.io/integrations/marketplace/#coming-from-hacs)
 
 ## Install manually
 
-Download the stable `ninebot.zip` from [Releases](https://github.com/Wuty-zju/ha_ninebot/releases/latest). Extract it into `<config>/custom_components/ninebot/` with `manifest.json` at that folder's root. Restart and add Ninebot. For a manual update, back up the configuration, replace that integration folder with the new files and restart. The package contains all runtime code, translations, brand images and dashboard assets.
+Download `ninebot.zip` from [the stable release](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0). Extract it so the manifest is at `<config>/custom_components/ninebot/manifest.json`. Restart Home Assistant and add Ninebot from **Devices & services**. The ZIP already includes dashboard assets and translations.
 
 ## Update an installed integration
 
-Marketplace updates appear in **Settings → Updates**. Install the selected release and follow the restart reminder in **Repairs**. Your existing Ninebot account entries and local trip archives carry over. Marketplace normally checks its catalog every six hours. Repositories added from a link read their version from GitHub. Pre-releases require opt-in, and older supported HA versions can choose an earlier compatible release. [Upgrade and rollback](migration.md) · [Marketplace updates](https://www.home-assistant.io/integrations/marketplace/#keeping-installations-up-to-date)
+1. Back up HA. Choose the intended release in **Settings → Updates**, in HACS, or from GitHub for a manual install. Marketplace and HACS require opting into pre-releases.
+2. For a manual update, replace the Ninebot integration folder with the complete package. Follow the HA restart prompt.
+3. Confirm the running version and vehicle on **Devices & services → Ninebot**. Reload dashboard clients after updating the bundled card. Continue using the existing account entry and archive.
+
+[Upgrade and rollback](migration.md) · [Marketplace updates](https://www.home-assistant.io/integrations/marketplace/#keeping-installations-up-to-date)
 
 ## Add accounts and vehicles
 
-Sign in with your account and password. SMS sign-in is temporarily unavailable and is not offered in setup, reauthentication or reconfiguration. Passwords are used for authentication and are not stored in ConfigEntry or passed as process arguments. After authentication, current HA opens account options; older HA completes feature selection in the same setup wizard. Private local sessions/tokens remain sensitive: protect the HA configuration and backups.
+Use the account and password from the official App. The setup form currently offers password sign-in. Newer HA versions open account options after verification. Older supported versions include feature selection in the same wizard. The password is used during authentication. Protect the resulting local sessions and any HA backups that contain them.
 
-Each integration entry represents **one account**, with its own session and historical archive. Add another entry for a different account. Vehicles are discovered within that account; shared physical vehicles can have separate account-scoped HA representations.
+Each entry represents **one account** and owns a separate archive. Add another Ninebot entry for a second account. A physical vehicle shared between accounts can appear as a separate device under each account. Confirm the account when choosing devices for [history](history.md#add-the-history-map), [controls](#controls-and-confirmation) and [Assistant](assistant.md#enable-it).
 
-Account titles use reported `username：account`, omitting missing components. The opaque region metadata is retained internally and is not shown in the title. User-provided entry titles are retained. HA determines the surrounding entry-section heading from the integration type; the integration does not patch global frontend translations.
-
-Expired credentials use **Reauthenticate**. Reconfigure updates the same account; use a new entry to add another account. An older entry missing display metadata can make one enrichment read on successful setup; there is no recurring username polling loop.
+For expired credentials, use **Reauthenticate** on the existing entry. Use **Reconfigure** to update that account. The entry title uses the reported `username：account` when available and preserves any title you have set. [Login troubleshooting](#login-fails-before-the-account-is-added)
 
 ## Entities and data
 
@@ -122,7 +126,7 @@ sections:
           - sensor.my_vehicle_today_duration
 ```
 
-HA manages the standard regions on a device page. Dashboard sections provide independent grouping while preserving unique IDs, Recorder history and event semantics. The native Map does not read arbitrary archived polylines directly; see the [local history guide](history.md) for historical queries and the optional alpha map. These cards use existing states and local history without extra vehicle queries.
+HA manages the standard regions on a device page. Dashboard sections provide independent grouping while preserving unique IDs, Recorder history and event semantics. The native Map does not read arbitrary archived polylines directly; see the [local history guide](history.md) for historical queries and the bundled replay card. These cards use existing states and local history without extra vehicle queries.
 
 ## Options
 
@@ -138,10 +142,10 @@ Open **Settings → Devices & services → Ninebot → Configure**.
 | Automatically scan trip history (Beta) | Off for new accounts; existing choices retained | Starts/resumes first discovery and later incremental work when preservation is enabled. |
 | History storage limit (Beta) | 100 MiB/account; 32–2048 MiB | Quota exhaustion pauses writes and retains readable records; lowering the limit does not delete history. |
 | History request budget (Beta) | 60/account/hour; 0–120 | Shared logical month/detail calls; not a request for upstream permission. Transport retries are outside this counter. Enter 0 to remove the hourly quota (not recommended); serialization and upstream backoff remain active. |
-| Controls + allowed vehicles | New accounts: on / all vehicles verified at sign-in | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
+| Controls + allowed vehicles | On for vehicles verified at sign-in for a new account | The first settings on the page: adjust controls and the account vehicle selection in the native multi-select dropdown. Existing choices are preserved; vehicles added later are not silently allowed. Disabling controls retains the selection. History synchronization permissions are separate. |
 | Keep local history database (Beta) | On | Retain account history on removal and reconnect it on same-account sign-in. |
 | Nominal battery parameters | Off | Voltage and capacity start empty, can be filled independently or cleared, and produce rated energy only when both are present. A failed save keeps the edit pending and reports a storage Repair; save again after resolving it. Retired low-confidence SOC estimators remain removed. |
-| Configure Ninebot Assistant | Off, no vehicle access | Enable Assistant for the account, then choose allowed reads and history task access for each vehicle. [Setup and privacy](assistant.md) |
+| Configure Ninebot Assistant (per-vehicle setup in 2.2.9+) | Off, no vehicle access | Enable Assistant for the account, then choose allowed reads and history task access for each vehicle. [Setup and privacy](assistant.md) |
 | Show diagnostic entities | Off | Bounded parsed current information for investigation; no extra polling or public raw-data dump. |
 
 On HA 2026.11+, allowed vehicles appear when controls are enabled; automatic history scan, capacity and request-budget fields appear when automatic detail synchronization is enabled. Hidden settings retain their previously saved values. Earlier HA versions show the same fields directly. Archive management and retention remain available independently.
@@ -237,10 +241,9 @@ Include both software versions, model family, account-owner/shared status, the a
 
 Location display defaults on, and detail preservation can retain precise tracks. The archive and HA backups are private location records even if an individual response omits coordinates. Automation traces may retain requested Action responses. Diagnostics export reviewed schema/status metadata, not credentials, identities or GPS trails; review any file before sharing.
 
-Optional map tiles contact an external provider only when enabled; see [map privacy](history.md#map-privacy-and-units). Protect backups and local session directories from other users and privileged processes.
+On compatible HA frontends, basemap requests follow the HA Map Tiles service. Protect backups and local session directories from other users and privileged processes. [Map privacy](history.md#map-privacy-and-units)
 
 **Keep local trip history database (Beta)** is checked by default. Removing an account stops its tasks and retains trips, detailed tracks and recovery evidence. Adding the same authenticated account reconnects its archive; synchronization resumes under your selected options. If unchecked, the next account removal deletes that account’s managed archive and recovery copies. Unrecognized files are retained with a Repair. This setting does not delete Recorder history. Do not edit a running database or registry manually; see [migration](migration.md).
-
 
 
 ## Export and import history databases

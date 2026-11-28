@@ -1,8 +1,13 @@
 # Roadmap / 开发方向
 
-[Documentation](README.md) · [Releases](https://github.com/Wuty-zju/ha_ninebot/releases) · [2.0 development history](releases/2.0.md)
+[Documentation](README.md) · [Development and validation](development.md) · [Release history](../CHANGELOG.md)
 
-Version 2.2.0 brings the vehicle integration, the account-owned archive and the optional Assistant into the stable distribution. The table below dates the original 2.0 capabilities. See the [2.2 release summary](../CHANGELOG.md#220) for subsequent delivery.
+| Channel | Delivered scope |
+|---|---|
+| **v2.2.0 stable** | Native Home Assistant entities, controls, an account-owned ride archive and optional Assistant. [Release](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0) |
+| **v2.2.12 preview** | Current-ride versus selected-rides comparison and scoped explanations for a requested statistic. [Ride comparison](history.md#replay-saved-routes) · [Assistant evidence](assistant.md#read-the-evidence) |
+
+正式版 **v2.2.0** 包含原生实体、车控、账号档案和可选 Assistant。**v2.2.12 预览版**改进行程对比及指定统计项排查。以下阶段按可复现的场景及验收结果推进。
 
 <a id="added-in-200rc4"></a>
 <a id="available-in-200rc1"></a>
@@ -11,52 +16,46 @@ Version 2.2.0 brings the vehicle integration, the account-owned archive and the 
 
 ## Available in 2.0.0
 
-| Area | Delivered capability |
-|---|---|
-| Accounts and entities | Isolated login/reauth, stable account/vehicle identity, translated native entities and configurable battery specifications. |
-| Live updates and controls | Five adaptive profiles, shared reads, bounded activity boosts, discovery recovery, native vehicle/seat locks and replaceable confirmation observers. |
-| Ride summaries | Month/today/yesterday/latest periods, daily-index repair, semantic events, optional calendars and historical query/statistics Actions. |
-| Historical acquisition | Resumable month/page discovery, missing-detail updates, fair budgets, checkpoints and independent coverage scopes. |
-| Archive and recovery | Account-owned schema 7 SQLite, source evidence, better-track protection, same-account reconnection, scoped export/import, backup hooks and bounded integrity repair. |
-| Runtime reliability | Cancellation-safe resource ownership, acknowledged parameter writes, independent cleanup and reused local projections. |
+The 2.0 cycle established isolated account sessions, stable vehicle and entity identities, adaptive per-vehicle updates, single-attempt controls with confirmation, and native ride summaries and events. Resumable history scans, schema 7 archive protection, scoped exports and bounded integrity recovery laid the foundation for local maps and statistics. See the [2.0 timeline](releases/2.0.md).
 
-2.0 已交付独立账号与原生实体、五档自适应更新、控制确认、日／月／最近行程统计、事件与可选日历、可续接的历史同步、账号数据库、导入导出及有界校验恢复。正式版延续 rc4 的业务行为；完整 beta／RC 演进见[开发回顾](releases/2.0.md#简体中文)。
+2.0 建立了独立账号会话、实体身份、逐车自适应刷新、单次发令与回读确认、行程统计和事件。可续接同步、schema 7 档案、按范围导出及有界恢复是本地地图与统计的基础。[2.0 开发回顾](releases/2.0.md#简体中文)
 
 <a id="optional-assistant--21-preview"></a>
 
 ## Ninebot Assistant in 2.2
 
-Eight dedicated local tools expose authorized vehicle status, statistics, saved trips, synchronization health and versioned help through the native LLM API/MCP Server. The feature is off by default, uses separate account/vehicle consent and keeps coordinates and raw responses outside tool results. [Setup and tool reference](assistant.md).
+- **v2.2.0 stable** ships optional read tools, versioned bilingual help, and separately enabled, human-reviewed history tasks.
+- **v2.2.9–v2.2.11 previews** unify the native catalog at `/api/mcp/ninebot`, configure reads and task access per vehicle, distinguish same-name vehicles, and preserve the business date across a turn.
+- **v2.2.12 preview** checks only the requested statistic under the selected vehicle's statistics grant. A verified result, including zero, ends the plan. An unresolved result can use the SK05 public checklist and may inspect synchronization health when the same vehicle grants that read. [Assistant guide](assistant.md)
 
-Versioned bilingual help and bounded task checklists are available from 2.1.1. From 2.1.2, a separate task option supports local proposals, human review, exact request budgets and resumable execution through the existing history scheduler. [Task workflow](assistant.md#reviewable-history-tasks-beta).
-
-An optional native AI task Action returns verified local tool results through a user-selected provider. Queries bind to the selected vehicle; bounded statistics diagnostics reuse the existing archive, synchronization status and cited help. Provider failures can retain revalidated evidence as a partial result. [Query Action](assistant.md#query-through-an-existing-ai-task).
-
-The product uses the model configured in a compatible HA conversation agent or MCP client. Evaluation separates native protocol checks, actual model decisions and factual answers. The measured two-unit parallel experiment did not justify extra coordination, so the current direction remains a single agent with versioned retrieval and task checklists. [Validation approach](development.md#small-model-baseline).
-
-2.2 正式版随包提供八个本地只读工具，默认关闭，按账号和车辆单独授权。[使用说明](assistant_zh.md)。双语版本帮助、十项辅助清单以及独立任务选项支持本地申请、人工审核、精确请求预算和执行恢复。[任务流程](assistant_zh.md#可审核的历史任务beta)。原生AI任务Action使用用户选择的供应商，绑定已选车辆并返回真实工具结果；统计排查复用档案、同步状态与引用，供应商后续失败可保留重新鉴权后的部分证据。模型与宿主由用户选择；当前保留单Agent，双工作单元实验没有证明额外收益。
+2.2 正式版提供可选读取工具、双语版本化帮助及独立开关控制的人工审核任务。近期预览版统一 MCP 入口并逐车授权，支持区分同名车辆及固定单轮上海业务日期。v2.2.12 只核对所请求的统计项，已核验的零值也能直接结束排查。缺口可查 SK05 公开帮助，读取同步健康前须核对此车的对应权限。[助手指南](assistant_zh.md)
 
 ## Early alpha: visualization and cards
 
-The 2.2.8 preview has one Home Assistant map, up to five selected routes, numbered focus markers, sample playback and per-selection summaries. The same archive powers all views. Better source timestamps or verified point units would be needed for clock-accurate replay or a calibrated speed legend. [Ride guide](history.md#replay-saved-routes)
+The stock HA **Map** card displays a tracker and its Recorder observations. The **Ninebot trip card** uses the shared HA native map component to display archive polylines and saved-point playback, with a bundled fallback on older frontends. The preview compares up to five authorized rides on one map. In **v2.2.12**, the table compares the current ride and selected totals, with per-metric coverage. Keeping only the current ride preserves playback. [Map setup and replay](history.md#add-the-history-map)
 
-2.2.8 预览版在一张 HA 地图中完成跨车选程、点位回放及所选合计。后续优先验证真实 HA 地图在手机、键盘及高对比度模式的交互。按真实时钟回放、按实测速度着色仍需可信的逐点时间与单位。[中文行程指南](history_zh.md#重放已保存的轨迹)
+HA 自带的**地图**卡片读取定位实体与 Recorder 中的观察记录。随包的 **Ninebot 行程卡片**使用同一套 HA 原生地图组件绘制档案路线及采样点，旧前端保留随包绘图能力。v2.2.12 在一张地图上对比最多五趟已授权行程，展示当前行程、所选合计和缺失指标的覆盖数。仅保留当前行程会保留已播放位置。[地图设置与回放](history_zh.md#添加历史地图)
 
 ## Next candidates
 
-| Direction | Value | Gate |
+| Phase | Work | Acceptance gate |
 |---|---|---|
-| Map accessibility and coverage | Overlapping routes, narrow layouts and endpoint-only rides remain understandable. | Verify the same selected ride, map camera, archive reads and permissions in both renderers. |
-| Assistant answer quality | Improve focused status answers and cited support across model hosts. | Replay anonymized or synthetic questions and compare actual tool choices, evidence and source links. |
-| More vehicle and battery fields | Useful native HA representation across models/packs | Reviewed fixtures, units/enums, stable identity and meaningful state semantics. |
-| Archive/read efficiency | Migration progress, faster startup, clearer whole-archive/baseline coverage and bounded reads | Reproducible measurements; preserve integrity, better geometry and rollback. |
-| Statistics continuity | Account-owned external statistic identity across removal/re-addition | Explicit metadata migration, duplicate-series checks and historical continuity. |
-| Documentation and distribution | English/Chinese onboarding, HACS readiness and complete package-count aggregation | Accurate support statements, attribution, paginated asset counts and explicit submission approval. |
+| 1. Record behavior | Reuse small synthetic fixtures for multi-vehicle archive reads, overlapping routes, statistics coverage, task grants and reload. | Identify the first differing observation and record the base SHA, input, actor and expected result before changing shared code. |
+| 2. Refine map boundaries | Keep selection, replay state, archive access and rendering independently testable. Keep the default dashboard integration behavior and use the same view state for the native and fallback renderers. | On one synthetic set, compare HA native map and fallback behavior for focus, narrow layouts, keyboard/screen reader semantics, touch, endpoint-only tracks, revoke/disconnect and request counts. Verify that keeping one ride retains pointer, zoom and play state. Validate spoken feedback on a physical iPhone separately. |
+| 3. Refine Assistant boundaries | Use the existing tool catalog and deterministic local plans. Change queries, guidance or presentation at the boundary where a measured failure occurs. | Run the same cases through the direct tool, native host and Action. Include same-name vehicle selection, another vehicle's grants, midnight boundary, verified zero, pending/partial coverage and missing sync-health permission. Inspect actual tool calls separately from host prose. |
+| 4. Snow Leopard maintenance | Trace one regression at a time through auth/recovery, polling, storage, control, archive import or statistics. Prioritize duplicate month reads, restart recovery and protecting detailed geometry. | Compare before/after inputs and outputs, wire/SQL counts and timings where relevant. Preserve account identity, checkpoint/freshness semantics, rollback and better tracks. Keep behavior-preserving cleanup distinct from a verified fix. |
+| 5. Consider a standalone reader | Design a read-only history client over the **same authorized archive Actions and metadata-only WebSocket**. Keep the bundled Home Assistant card as the default. This is a planning item. | First prove bounded pages, current HA user/vehicle permissions, immediate clearing on disconnect or revocation, and reuse of map/selection logic. State supported browsers and an isolated validation plan before implementation. |
 
-后续按收益和证据推进历史交互、已取证字段、启动／存储效率、外部统计身份连续性与分发维护；每项独立评估，保持实体身份和历史完整性，避免重复请求。
+1. 建立可复用的合成场景，固定基线、输入、操作身份及验收结果。
+2. 在 HA 原生地图组件与随包绘图路径复核选择、视角、键盘、触摸、简化轨迹和归档请求数。实体 iPhone 上的读屏实际播报单独验证。
+3. 用原生工具、宿主及 Action 验证同名选择、逐车授权、跨午夜、零值、覆盖不足及同步健康未授权，逐项对照工具回执与宿主原文。
+4. 雪豹式维护从具体反例切入，检查次数、耗时、重启恢复、归属与历史几何质量，先量测再修改。
+5. 独立只读客户端处于规划阶段。复用现有授权档案 Action 与仅含变更元数据的 WebSocket，先验证跨客户端权限及撤权后清理。
+
+Each change integrates through a short branch from `dev`. Publish a numeric preview when a validated stage is usable. Stable promotion uses a separately reviewed candidate. [Branch and release channels](development.md#branch-and-release-channels)
 
 ## Research, not committed features
 
-Spatial indexing/geometry levels of detail, richer verified point metrics and an independently auditable replacement protocol backend may be evaluated when evidence justifies maintenance cost. Energy recovery, unknown sample units/CRS, cloud retention boundaries and model-specific telemetry require evidence. Synthetic estimates will not be presented as confirmed official measurements.
+Point timestamps, speed units and coordinate systems require reviewed source samples before a clock-accurate replay or calibrated legend. Evaluate archive indexing against representative workloads, and require an explicit migration with duplicate-series and rollback checks for account-stable Recorder statistics IDs. New vehicle fields need verified units and stable entity semantics. A replacement protocol backend needs comparable behavior, auditable sources and a maintenance case.
 
-研究项：空间索引／分级几何、可验证的逐点指标和可替换协议实现；先证据后模型，保留未知单位／坐标、回收里程和经验估计的来源与不确定性。
+真实时钟回放、轨迹速度图例以及更多车辆字段需补充可核验的源数据。归档索引以代表性负载评估，统计序列身份迁移须核对历史连续性、重复序列和回退。替代协议实现须具备可审核来源、等价行为验证和维护依据。
