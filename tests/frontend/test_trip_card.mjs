@@ -123,9 +123,11 @@ test('disconnection clears data and reconnect reads locally once; devices isolat
 
 test('raw/sample bounds and units stay separate; source precision survives', () => {
   const value = safeRide({ ...row(), trail: 'private', password: 'private',
+    warnings: ['duration_time_difference', 'unknown private warning'],
     speed_samples: Array.from({ length: 600 }, (_, sequence) => ({ sequence, speed_raw: 78.9 })) });
   assert.equal(value.speed_samples.length, 500); assert.equal(value.precision.mileages, 2);
   assert.ok(!('trail' in value)); assert.ok(!('password' in value));
+  assert.deepEqual(safeRide(value).warnings, ['duration_time_difference']);
   assert.equal(digits(99), 6); assert.equal(digits(-1), 0); assert.equal(digits(null, 2), 2);
   assert.equal(samplePolyline([]), null);
   assert.ok(!samplePolyline([{ sequence: 0, speed_raw: 5 }, { sequence: 1, speed_raw: 5 }]).includes('NaN'));
@@ -146,8 +148,9 @@ test('all 21 locale labels populated, date/time and metric precision valid', () 
   assert.equal(view.number(null, 2, 'km'), '—');
   assert.equal(view.number(1.2, 2, 'km'), '1.20 km');
   assert.equal(view.number(0, 0, 'Wh'), '0 Wh');
-  assert.deepEqual(view.readings({ ...row(), distance_m: null, energy_wh: null }),
-    ['—', '10 min', '—']);
+  assert.equal(view.reading('duration', { value: 600 }), '10 min');
+  assert.equal(view.reading('energy_intensity', { value: 53.333, precision: 1 }), '53.3 Wh/km');
+  assert.equal(view.reading('average_speed', { value: null }), '—');
 });
 
 test('configuration does not silently choose an account or ignore bad page bounds', () => {

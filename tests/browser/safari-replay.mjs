@@ -75,10 +75,10 @@ try {
   await click(dom + '.querySelectorAll(".overlay")[1]');
   await waitFor('fixtureCard.activeTrack?.label === "Synthetic B" && !fixtureCard.busy');
   const readCount = await js('return fixtureRequests.length');
-  const metrics = () => js('return Array.from(' + dom + '.querySelectorAll(".playback > .metrics dd"), n => n.textContent)');
+  const metrics = () => js('return Array.from(' + dom + '.querySelectorAll(".ride-statistics .current-value"), n => n.textContent)');
   const initial = await metrics();
   assert.equal(initial[0], '2.4 km');
-  assert.equal(initial[2], '180 Wh');
+  assert.deepEqual(initial.slice(2), ['120 Wh', '50.0 Wh/km', '9.6 km/h']);
   await js('window.initialMap = fixtureCard.routeMap.renderer.map; window.initialChip = ' +
     dom + '.querySelector(".focus-track")');
   await click('fixtureCard.routeMap.root.querySelectorAll(".ninebot-route-pin")[1]');
@@ -96,7 +96,9 @@ try {
   const active = await metrics();
   assert.equal(active[0], '1.2 km');
   assert.notEqual(active[1], initial[1]);
-  assert.equal(active[2], '90 Wh');
+  assert.deepEqual(active.slice(2), ['90 Wh', '75.0 Wh/km', '7.2 km/h']);
+  const compared = await js('return Array.from(' + dom + '.querySelectorAll("td.selected-value"), n => n.textContent)');
+  assert.deepEqual(compared, ['3.6 km', '25 min', '210 Wh', '58.3 Wh/km', '8.6 km/h']);
   const slider = await element(ui + 'slider');
   const role = await request('GET', slider + '/computedrole');
   const label = await request('GET', slider + '/computedlabel');

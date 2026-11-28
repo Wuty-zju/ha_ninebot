@@ -65,7 +65,13 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: 
         start_time: '2026-08-03T08:00:00Z', end_time: '2026-08-03T08:10:00Z' } : row;
     const second = data.device_id === 'synthetic-b';
     const ride = second && overlap ? { ...dated, distance_m: 2400, duration_s: 900, duration_h: .25,
-      end_time: dated.end_time.replace('08:10:', '08:15:'), energy_wh: 180 } : dated;
+      end_time: dated.end_time.replace('08:10:', '08:15:'), average_speed_m_s: 8/3,
+      energy_wh: 120, energy_intensity_wh_per_km: 50 } : { ...dated };
+    if (second && params.has('incomplete')) {
+      ride.end_time = dated.end_time.replace('08:10:', '08:20:');
+      ride.warnings = ['duration_time_difference'];
+      ride.average_speed_m_s = ride.energy_wh = ride.energy_intensity_wh_per_km = null;
+    }
     if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive', sort: 'desc', selection_version: 'a'.repeat(32) + ':1',
       rides: [{ ...ride, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
     if (request.service !== 'get_trip_detail') throw new Error('Only history reads are allowed');

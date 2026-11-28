@@ -3,7 +3,7 @@ import { formatEntityLabel, formatRideDuration, formatRideInterval } from './tri
 import { digits } from './trip-browser.js';
 import { hasEndpoints, trackKey } from './local-tracks.js';
 import { ROUTE_COLORS } from './route-map.js';
-import { MAX_SELECTED_ROUTES, selectionTotals } from './history-selection.js';
+import { MAX_SELECTED_ROUTES, rideInsights } from './history-selection.js';
 import { HISTORY_STYLE } from './trip-card-style.js';
 
 function element(tag, className = '', text = '') {
@@ -58,20 +58,28 @@ function iconButton(icon, glyph, action, control, className) {
   return node;
 }
 
-function metricStrip() {
-  const node = element('dl', 'metrics');
-  const readouts = ['distance', 'duration', 'energy'].map(key => {
-    const cell = element('div'), caption = element('dt'), value = element('dd');
-    cell.append(caption, value);
-    node.append(cell);
-    return { key, caption, value };
+const BASE_METRICS = ['distance', 'duration', 'energy'];
+const METRIC_UNITS = { distance: 'km', energy: 'Wh', energy_intensity: 'Wh/km', average_speed: 'km/h' };
+
+function metricsTable() {
+  const node = element('table', 'ride-statistics');
+  const caption = element('caption', 'sr-only');
+  const head = node.createTHead().insertRow();
+  const metricColumn = element('th'), current = element('th'), selection = element('th', 'selection-column');
+  metricColumn.scope = current.scope = selection.scope = 'col';
+  head.append(metricColumn, current, selection);
+  const body = node.createTBody();
+  const rows = [...BASE_METRICS, 'energy_intensity', 'average_speed'].map(key => {
+    const row = body.insertRow(), label = element('th', 'metric-label');
+    label.scope = 'row';
+    row.append(label);
+    const current = row.insertCell(), selected = row.insertCell();
+    current.className = 'current-value';
+    selected.className = 'selected-value selection-column';
+    return { key, label, current, selected };
   });
-  return { node, update(labels, values) {
-    readouts.forEach(({ key, caption, value }, index) => {
-      caption.textContent = labels[key];
-      value.textContent = values[index] ?? '—';
-    });
-  } };
+  node.prepend(caption);
+  return { node, caption, metricColumn, current, selection, rows };
 }
 
 export class TripCardView {
@@ -118,10 +126,14 @@ export class TripCardView {
       this.returnToChoice = false;
     });
     this.chips = new Map();
-    const metrics = metricStrip(), totals = metricStrip();
-    const selection = element('details', 'selection-totals');
-    const selectionLabel = element('summary');
-    selection.append(selectionLabel, totals.node);
+    const selection = element('div', 'selection-tools');
+    const selectionLabel = element('span', 'note');
+    const keep = button('', () => {
+      card.keepCurrentRide();
+      this.chips.get(card.selection.primary)?.focus.focus({ preventScroll: true });
+    }, 'keep-current', 'keep-current');
+    selection.append(selectionLabel, keep);
+    const metrics = metricsTable();
     const transport = element('div', 'transport glass');
     const play = iconButton('mdi:play', '▶', () => card.playOrPause(), 'play', 'play');
     const slider = element('input'), position = element('span', 'position');
@@ -148,7 +160,7 @@ export class TripCardView {
     const quality = element('p', 'route-note');
     const more = element('div', 'route-more');
     mapFrame.append(transport);
-    playback.append(chosen, interval, compare, metrics.node, selection, quality, more);
+    playback.append(chosen, interval, selection, compare, metrics.node, quality, more);
     player.append(mapFrame, playback);
 
     const library = element('section', 'library');
@@ -166,8 +178,9 @@ export class TripCardView {
     workspace.append(player, library);
     shell.append(header, workspace, picker);
     card.shadowRoot.append(element('style', '', HISTORY_STYLE), shell);
-    this.ui = { title, messages, activeRoute, picker, pickerTitle, choices, cancel, placeholder, mapTools, fit, follow, playback, chosen, interval, compare, metrics, totals, selection, selectionLabel,
-      transport, play, slider, position, restart, quality, more, heading, coverage, filterText, dates,
+    this.ui = { title, messages, activeRoute, picker, pickerTitle, choices, cancel, placeholder,
+      mapTools, fit, follow, playback, chosen, interval, compare, metrics, selection, selectionLabel, keep,
+      transport, play, slider, position, restart, quality, more, heading, coverage, range, filterText, dates,
       toolbar, items, pager };
   }
 
@@ -195,14 +208,41 @@ export class TripCardView {
     }).format(new Date(value));
   }
 
-  readings(ride) {
-    return [
-      Number.isFinite(ride.distance_m) ?
-        this.number(ride.distance_m / 1000, ride.precision.mileages, 'km') : '—',
-      Number.isFinite(ride.duration_s) || Number.isFinite(ride.duration_h) ?
-        formatRideDuration(ride.duration_s, ride.duration_h, this.language) : '—',
-      this.number(ride.energy_wh, ride.precision.ec, 'Wh'),
-    ];
+  reading(key, metric) {
+    const { value, precision } = metric;
+    if (value === null) return '—';
+    if (key === 'duration') return formatRideDuration(value, null, this.language);
+    return this.number(key === 'distance' ? value / 1000 : value, precision, METRIC_UNITS[key]);
+  }
+
+  renderMetrics(labels, ride, rides) {
+    const { metrics } = this.ui;
+    const comparing = rides.length > 1;
+    const current = rideInsights(ride ? [ride] : []);
+    const selection = comparing ? rideInsights(rides) : null;
+    metrics.caption.textContent = labels.ride_statistics;
+    metrics.metricColumn.textContent = labels.ride_metric;
+    metrics.current.textContent = labels.active_route;
+    metrics.selection.hidden = !comparing;
+    metrics.selection.textContent = labels.selected_rides;
+    for (const row of metrics.rows) {
+      const { key } = row;
+      row.label.textContent = labels[key];
+      row.current.textContent = this.reading(key, current[key]);
+      row.selected.hidden = !comparing;
+      if (!comparing) {
+        row.selected.replaceChildren();
+        continue;
+      }
+      const metric = selection[key];
+      row.selected.textContent = this.reading(key, metric);
+      if (metric.value === null) {
+        const coverage = labels.metric_coverage
+          .replace('{known}', this.number(metric.count, 0))
+          .replace('{total}', this.number(rides.length, 0));
+        row.selected.append(element('small', 'metric-coverage', coverage));
+      }
+    }
   }
 
   playbackInset() {
@@ -317,9 +357,12 @@ export class TripCardView {
       const selected = card.selection.selected.has(key);
       const choose = button('', () => card.choose(ride), `ride:${key}`, 'choose');
       const time = this.timestamp(ride.start_time);
+      const metrics = rideInsights([ride]);
+      const values = BASE_METRICS.map(key => this.reading(key, metrics[key])).filter(value => value !== '—');
       choose.append(element('strong', '', time || ride.vehicle_label), element('small', '',
-        [time && ride.vehicle_label, ...this.readings(ride).filter(value => value !== '—')].filter(Boolean).join(' · ')));
-      choose.disabled = card.busy;
+        [time && ride.vehicle_label, ...values].filter(Boolean).join(' · ')));
+      // Disabled actions stay focusable when the current archive read rerenders the library.
+      choose.setAttribute('aria-disabled', String(card.busy));
       choose.setAttribute('aria-pressed', String(key === card.selection.primary));
       choose.addEventListener('keydown', event => {
         const next = index + (event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0);
@@ -333,7 +376,8 @@ export class TripCardView {
         .filter(Boolean).join(' · '));
       overlay.setAttribute('aria-pressed', String(selected));
       if (selected) overlay.style.setProperty('--route-color', this.routeColor(key));
-      overlay.disabled = card.busy || (!selected && card.selection.selected.size >= MAX_SELECTED_ROUTES);
+      const selectionFull = card.selection.selected.size >= MAX_SELECTED_ROUTES;
+      overlay.setAttribute('aria-disabled', String(card.busy || (!selected && selectionFull)));
       row.append(choose, overlay);
       return row;
     }));
@@ -382,9 +426,25 @@ export class TripCardView {
     this.ui.choices.replaceChildren();
   }
 
+  removeFromComparison(key) {
+    const { card, ui } = this;
+    card.removeRide(key);
+    if (card.selection.selected.has(key)) return;
+    const next = this.chips.get(card.selection.primary)?.focus ??
+      [...ui.items.querySelectorAll('.choose')].find(row => row.dataset.control === `ride:${key}`) ??
+      ui.range;
+    next.focus({ preventScroll: true });
+  }
+
   renderRouteChips(labels) {
     const { card, ui } = this;
     const selected = card.selection.selected;
+    ui.selection.hidden = selected.size < 2;
+    ui.selectionLabel.textContent = labels.selection_count
+      .replace('{count}', this.number(selected.size, 0))
+      .replace('{limit}', this.number(MAX_SELECTED_ROUTES, 0));
+    ui.keep.textContent = labels.keep_current_ride;
+    ui.keep.disabled = card.busy;
     for (const [key, chip] of this.chips) {
       if (!selected.has(key)) {
         chip.node.remove();
@@ -399,7 +459,7 @@ export class TripCardView {
         const badge = element('span', 'swatch');
         const text = element('span', 'chip-text');
         focus.append(badge, text);
-        const remove = button('×', () => card.removeRide(key), `remove:${key}`, 'remove-track');
+        const remove = button('×', () => this.removeFromComparison(key), `remove:${key}`, 'remove-track');
         node.append(focus, remove);
         chip = { node, focus, badge, text, remove };
         this.chips.set(key, chip);
@@ -437,16 +497,10 @@ export class TripCardView {
     ui.chosen.textContent = ride?.vehicle_label ?? '';
     ui.interval.textContent = ride ?
       formatRideInterval(ride.start_time, ride.end_time, this.language, this.timeZone) : '';
-    ui.metrics.update(labels, ride ? this.readings(track?.summary ?? ride) : []);
-    const rides = [...card.selection.selected.values()];
-    ui.selection.hidden = rides.length < 2;
-    ui.selectionLabel.textContent = `${labels.selection_totals} (${rides.length})`;
-    if (ui.selection.hidden) ui.selection.open = false;
-    else ui.totals.update(labels, this.readings(selectionTotals(rides)));
+    this.renderMetrics(labels, ride, [...card.selection.selected.values()]);
     const title = ride ? this.routeTitle(card.selection.primary) : '';
     const announcement = title ? `${labels.active_route} · ${title}` : '';
     if (ui.activeRoute.textContent !== announcement) ui.activeRoute.textContent = announcement;
-    ui.metrics.node.setAttribute('aria-label', announcement);
     ui.slider.setAttribute('aria-label', [labels.map_title, title].filter(Boolean).join(' · '));
     ui.pickerTitle.textContent = labels.choose_route;
     ui.cancel.textContent = labels.cancel;
