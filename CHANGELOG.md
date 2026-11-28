@@ -2,6 +2,11 @@
 
 Choose a version to see what shipped. The [user guides](docs/README.md) cover setup and current behavior. For the original account, entity and archive redesign, read the [2.0 development history](docs/releases/2.0.md). The stable [2.2.0 release](#220) includes the optional Assistant.
 
+## 2.2.13
+
+- Follow up on one daily statistic. “What about yesterday?” uses the new business date. “And the other vehicle?” keeps the previous date and checks the other vehicle’s current statistics grant. The Action returns a fresh, attributable reading or asks for a device when several are visible.
+- Share route selection, replay position and whole-ride statistics between the history map and future frontends. Cross-vehicle and cross-month selections retain their identities. Browsing or scrubbing loaded routes uses the local cache.
+
 ## 2.2.12
 
 - Compare the active ride with up to five saved rides on one map. Distance, duration, energy, average speed and energy per kilometre use whole-ride data. Each missing measure shows its own coverage.

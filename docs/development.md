@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
 
-This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
+This guide covers **v2.2.13 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
 
 ## Start with a task, not the whole repository
 
@@ -99,6 +99,20 @@ Start in `frontend/history-selection.js`, `trip-card-view.js` and `route-map.js`
 
 For v2.2.12, compare one and several rides, including zero readings, missing inputs and an unusable denominator. For the average speed case, use rides that overlap in time. Check that **Keep current ride** keeps cursor, playing state and zoom while the other tracks clear, and leaves archive request counts unchanged. Change date and then revoke or disconnect access to verify both selection preservation and stale-result clearing at their respective boundaries. [Playback and privacy behavior](history.md#replay-saved-routes)
 
+### Reuse selection and playback in another frontend
+
+Import `HistorySelection` from `custom_components/ninebot/frontend/history-selection.js`. Give it the already authorized ride summaries and pass the vehicle-scoped track cache to each read. The module runs without the DOM, a map component or Home Assistant.
+
+```js
+const selection = new HistorySelection();
+selection.select(firstRide);
+selection.select(secondRide, true);
+const view = selection.snapshot(localTracks.tracks);
+const cursor = selection.seek(15, localTracks.tracks);
+```
+
+`view.primaryKey` identifies the current ride. Each entry in `view.routes` carries its stable color slot, ride summary and available track. `view.statistics.current` and `view.statistics.selected` describe whole rides. Seeking returns a bounded saved-point index, count and point. Use `point.sequence` for its original sample number. The map adapter owns rendering, playback timing and authorization lifetime. Clear selection and track data on access withdrawal and discard responses from the previous scope.
+
 ## Assistant development
 
 Trace normalized readings through `assistant_queries.SPECS`, the relevant projection in `assistant_views` and `assistant_evidence.render_evidence_answer`. Keep the same native HA Context across the model Action and local read. Cover reported zero, false, stale/missing data and revoked authorization.
@@ -120,6 +134,8 @@ Read-only tools run without cloud refresh. Recorded-list cursors bind the accoun
 The public catalog covers eight queries and five history-task operations. Tool discovery checks for at least one eligible vehicle. Execution checks the requested vehicle again, even when a host cached the list. Under full query permissions, expect eight tools with task access off, twelve with preview enabled and thirteen with requests allowed when review is ready. If review is unavailable, discovery and calls are limited to the authorized queries. The AI Task Action stays at a maximum of eight query tools. HA's main MCP URL can filter the request tool in read-only mode. The explicit `/api/mcp/ninebot` route selects the registered API directly.
 
 Sync health projects whole-vehicle counts from the same local snapshot used by the diagnostic entities. The current history plan provides its own discovery denominator. Pass both scopes through the native tool and retain them in the rendered answer. An unavailable archive projection leaves the whole-archive counts unknown.
+
+Use the native Action canary for short follow-ups. Its two identically named vehicles share the existing count and verified-zero fixtures. The three questions cross Shanghai midnight and then change vehicles a day later. Check the actual device, resolved date, metric, observation time and new receipt on every turn. Withdraw the statistics grant before a fourth question and require an empty private result. The native Conversation canary covers the same HA Context boundary with a retained chat log.
 
 ### Local task preview
 
