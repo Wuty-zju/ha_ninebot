@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
-This guide covers **v2.2.17 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+This guide covers **v2.2.18 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
 
 The runtime lives in `custom_components/ninebot`. Trace a reported value from the account's cloud session through normalization to a current entity or the private archive. Trace a query in the opposite direction, starting with the HA user's context and selected vehicle.
 
@@ -214,7 +214,7 @@ For single-metric follow-ups, a receipt carries the HA device reference, metric 
 
 The feature is off by default. Its modern native API requirement is separate from the overall integration minimum. [Setup, tool schemas and data disclosure](assistant.md) describe the optional tools, and [development entry points](development.md#assistant-development) identify the implementation and isolated checks.
 
-The optional `ninebot.ask` response Action delegates tool selection to an existing native AI Task entity. Each turn supplies up to eight query tools according to the selected vehicle's permissions, preserves the caller's context and returns actual tool evidence. Scope snapshots, explicit multi-vehicle selection, four-call admission, a 180-second deadline and a 32 KiB response bound apply independently of the chosen model. Provider-facing tool results are independent copies of the recorded evidence, including nested fields. A late provider failure retains successful tool receipts as an explicit partial response after the same final permission checks. The Action shares the Assistant API's lifetime.
+The optional `ninebot.ask` response Action delegates tool selection to an existing native AI Task entity. Each turn supplies up to nine query tools according to the selected vehicle's permissions, preserves the caller's context and returns actual tool evidence. Scope snapshots, explicit multi-vehicle selection, four-call admission, a 180-second deadline and a 32 KiB response bound apply independently of the chosen model. Provider-facing tool results are independent copies of the recorded evidence, including nested fields. A late provider failure retains successful tool receipts as an explicit partial response after the same final permission checks. The Action shares the Assistant API's lifetime.
 
 Approved tasks use the existing preservation scheduler. A restored driver rechecks its own and its Store's closure after reading durable tickets, before attaching to that scheduler; a late read cannot replace the active driver after detachment.
 
