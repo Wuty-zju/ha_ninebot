@@ -1,0 +1,88 @@
+blueprint:
+  name: Ninebot ride receipt
+  description: >-
+    Send a Companion app notification when the selected Ninebot ride event
+    confirms a new ride. Tap the notification to replay the ride in Ninebot
+    Ride Archive. Use a personal device whose signed-in user can read the
+    vehicle's archive and location. The notification includes ride totals.
+  domain: automation
+  homeassistant:
+    min_version: 2026.1.0
+  input:
+    ride_event:
+      name: Ninebot ride event
+      description: Select the ride event entity for the vehicle.
+      selector:
+        entity:
+          filter:
+            - integration: ninebot
+              domain: event
+    mobile_action:
+      name: Companion app notification action
+      description: Enter the notify.mobile_app_ action for your phone.
+      selector:
+        text:
+    notification_title:
+      name: Notification title
+      default: Ninebot ride receipt
+      selector:
+        text:
+    quiet_corrections:
+      name: Update corrections quietly
+      description: Use the same notification tag when the ride totals settle again.
+      default: true
+      selector:
+        boolean:
+
+mode: queued
+max: 25
+
+variables:
+  mobile_action: !input mobile_action
+  quiet_corrections: !input quiet_corrections
+
+triggers:
+  - trigger: event
+    event_type: ninebot_ride_receipt
+    event_data:
+      entity_id: !input ride_event
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ mobile_action is match('^notify[.]mobile_app_[a-z0-9_]+$') and
+         (trigger.event.data.phase == 'completed' or
+          (quiet_corrections and trigger.event.data.phase == 'corrected')) }}
+
+actions:
+  - variables:
+      ride: "{{ trigger.event.data }}"
+      corrected: "{{ trigger.event.data.phase == 'corrected' }}"
+  - action: "{{ mobile_action }}"
+    data:
+      title: !input notification_title
+      message: >-
+        {% set totals = [ride.vehicle_label] %}
+        {% if ride.distance_m is number %}
+          {% set totals = totals + [((ride.distance_m / 1000) | round(2)) ~ ' km'] %}
+        {% endif %}
+        {% if ride.duration_s is number %}
+          {% set totals = totals + [((ride.duration_s / 60) | round(1)) ~ ' min'] %}
+        {% endif %}
+        {% if ride.energy_wh is number %}
+          {% set totals = totals + [(ride.energy_wh | round(1)) ~ ' Wh'] %}
+        {% endif %}
+        {{ totals | join(' · ') }}
+      data:
+        tag: "{{ ride.tag }}"
+        url: "{{ ride.replay_url }}"
+        clickAction: "{{ ride.replay_url }}"
+        actions:
+          - action: URI
+            title: Open ride replay
+            uri: "{{ ride.replay_url }}"
+        alert_once: true
+        channel: "{{ 'Ninebot ride receipt corrections' if corrected else 'Ninebot ride receipts' }}"
+        importance: "{{ 'low' if corrected else 'default' }}"
+        push:
+          interruption-level: "{{ 'passive' if corrected else 'active' }}"
