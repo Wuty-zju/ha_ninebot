@@ -2,7 +2,7 @@
 
 [English](assistant.md) · [启用](#开启方式) · [工具参考](#查询本地数据) · [数据授权](#隐私与限额) · [历史任务](#可审核的历史任务beta)
 
-**2.2.14 预览版。** 你可以询问某辆车最近一次上报的电量、找出一次已保存的行程，或核对昨天的骑行次数。Ninebot 将本地证据交给你选择的对话宿主。旧版本请查看 [2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)和[统一工具入口迁移说明](#升级至统一的-ninebot-api)。
+**2.2.15 预览版。** 你可以询问某辆车最近一次上报的电量、找出一次已保存的行程，或核对昨天的骑行次数。Ninebot 将本地证据交给你选择的对话宿主。旧版本请查看 [2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)和[统一工具入口迁移说明](#升级至统一的-ninebot-api)。
 
 <a id="ninebot-assistant--21-预览"></a>
 
@@ -55,6 +55,7 @@ response_variable: ninebot_answer
 
 <a id="daily-follow-ups"></a>
 <a id="statistics-follow-ups"></a>
+<a id="compound-statistics"></a>
 
 ## 追问行程统计
 
@@ -65,10 +66,11 @@ response_variable: ninebot_answer
 | “那昨天呢？”或“那上个月呢？” | 按这次提问时的上海业务日期计算昨天或上一个自然月 | 车辆、指标 |
 | “耗电量呢？” | 改查行程总耗电量，单位 Wh | 车辆、确切起止日期 |
 | “另一辆呢？” | 当前可见范围内恰有一辆其他车且允许读取统计时，切换到该车 | 起止日期、指标 |
+| “那另一辆车上个月耗电多少？” | 同时切换车辆、月份和指标 | 根据上一辆车的设备 ID 排除原车 |
 
 例如，11 月问“那上个月呢？”，12 月接着问“耗电量呢？”，查询范围仍是 10 月 1–31 日。查询尚未结束的月份时，回执会记下统计截止日。下次追问时若档案只能提供更长时段的月汇总，助手会请你确认新的范围。
 
-Assist 和 MCP 客户端可读取上一份单指标回执的 `query_context`。其中含有 `device_id`、`metric`，以及单日的 `date` 或月度的 `month` 与 `through_date`。把原选择作为 `vehicle_ref`、`period`、`metric` 和月度的 `through_date` 传给 `get_statistics`，只用 `change` 指明这次要改的一项，例如 `last_month`、`energy_wh` 或 `other_vehicle`。若问题同时指定多项新条件，可用这些条件发起一次新查询。有多个候选时，先选定 HA 设备。
+Assist 和 MCP 客户端可读取上一份单指标回执的 `query_context`。其中含有 `device_id`、`metric`，以及单日的 `date` 或月度的 `month` 与 `through_date`。把原选择作为 `vehicle_ref`、`period`、`metric` 和月度的 `through_date` 传给 `get_statistics`。只变更一项时，`change` 可用 `last_month` 或 `energy_wh` 等简写。多项一起变化时，例如传入 `"change": {"vehicle": "other", "period": "last_month", "metric": "energy_wh"}`，助手会先选定另一辆车，按上海时区取上一个自然月，再从该车档案读取一次耗电总量。候选车辆有多辆时先选车。若统计权限已撤回，本次查询结束，回答不含数值。
 
 在自动化中，可把完整查询条件传回 `ninebot.ask`。明确指定 `device_id` 会把本次 Action 固定到该车。
 
