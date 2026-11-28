@@ -40,7 +40,8 @@ const dom = 'fixtureCard.shadowRoot';
 const ui = 'fixtureCard.view.ui.';
 async function click(expression) {
   // On iPhone the library and map occupy different screens. Finish scrolling before the tap.
-  await js(expression + '.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"})');
+  const modal = await js('return Boolean(' + expression + '.closest("dialog[open]"))');
+  if (!modal) await js(expression + '.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"})');
   await request('POST', '/execute/async', { script:
     'const done=arguments[0];requestAnimationFrame(()=>requestAnimationFrame(()=>done(null)))', args: [] });
   if (platform !== 'iOS') {
@@ -53,9 +54,11 @@ async function click(expression) {
     + 'const hit=e.getRootNode().elementFromPoint(x,y); return {x,y,hit:hit?.tagName,'
     + 'matches:e===hit||e.contains(hit),width:innerWidth,height:innerHeight}');
   assert.equal(target.matches, true, expression + ' ' + JSON.stringify(target));
+  // Top-layer controls have their own coordinate space when mobile Safari moves its toolbar.
+  const origin = modal ? await js('return ' + expression) : 'viewport';
   await request('POST', '/actions', { actions: [{ type: 'pointer', id: 'finger',
     parameters: { pointerType: 'touch' }, actions: [
-      { type: 'pointerMove', x: target.x, y: target.y, duration: 0, origin: 'viewport' },
+      { type: 'pointerMove', x: modal ? 0 : target.x, y: modal ? 0 : target.y, duration: 0, origin },
       { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 100 }, { type: 'pointerUp', button: 0 },
     ] }] });
   await request('DELETE', '/actions');

@@ -14,10 +14,15 @@ window.fixtureRequests = [];
 const params = new URL(location.href).searchParams;
 const endpointsOnly = params.has('endpoints');
 const overlap = params.has('overlap');
+let panel = document.body;
 if (params.has('dashboard')) {
   // Lovelace scrolls its panel inside the viewport; the Safari toolbar sits outside it.
   document.documentElement.style.overflow = 'hidden';
-  document.body.style.cssText = 'height:100dvh;box-sizing:border-box;overflow:auto;margin-block:0;padding-block:20px 50vh';
+  document.body.style.overflow = 'hidden';
+  panel = document.createElement('main');
+  panel.style.cssText = 'position:fixed;inset:0;overflow:auto;overscroll-behavior:contain;padding:20px 16px 50vh';
+  panel.append(...document.querySelectorAll('body > h1, body > p'));
+  document.body.append(panel);
 }
 if (params.has('native')) {
   class SyntheticMap extends HTMLElement {
@@ -95,5 +100,5 @@ window.fixtureConfig = { type: 'custom:ninebot-trip-card', vehicles: [
   start_date: '2026-09-01', end_date: '2026-09-30', limit: 10,
   statistics_entities: ['ninebot:synthetic_day_distance_km'] };
 fixtureCard.setConfig(fixtureConfig);
-fixtureCard.hass = fixtureHass; document.body.append(fixtureCard);
+fixtureCard.hass = fixtureHass; panel.append(fixtureCard);
 </script></html>
