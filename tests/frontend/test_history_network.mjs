@@ -55,6 +55,29 @@ test('shared subscriptions validate metadata, count references and cancel late a
   callback({ schema_version: 1, type: 'changed', vehicles: [] }); assert.equal(one.length, 1);
 });
 
+test('replay never borrows a summary-only history subscription', async () => {
+  const requests = [];
+  const hass = { user: { id: 'u' }, connection: { async subscribeMessage(callback, message) {
+    requests.push({ callback, message });
+    return () => {};
+  } } };
+  const standard = [], replay = [];
+  const stopStandard = watchHistory(hass, ['a'], event => standard.push(event));
+  const stopReplay = watchHistory(hass, ['a'], event => replay.push(event), { includeTrack: true });
+  await tick();
+  assert.deepEqual(requests.map(({ message }) => message), [
+    { type: 'ninebot/history/subscribe', device_ids: ['a'] },
+    { type: 'ninebot/history/subscribe', device_ids: ['a'], include_track: true },
+  ]);
+  requests[0].callback({ schema_version: 1, type: 'baseline',
+    vehicles: [{ device_id: 'a', selection_version: 'a'.repeat(32) + ':1' }] });
+  requests[1].callback({ schema_version: 1, type: 'closed', reason: 'denied' });
+  assert.equal(standard[0].type, 'baseline');
+  assert.deepEqual(replay, [{ type: 'denied' }]);
+  stopStandard();
+  stopReplay();
+});
+
 test('old unsupported backend does not poll/retry and malformed scopes fail closed', async () => {
   let calls = 0;
   const unsupported = [], stop = watchHistory({ user: { id: 'u' }, connection: { subscribeMessage() {

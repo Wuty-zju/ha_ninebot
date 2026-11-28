@@ -1,4 +1,4 @@
-:root {
+:root, :host {
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
   --background: #eff2f2;
@@ -16,7 +16,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root, :host {
     --background: #101819;
     --surface: #172323;
     --ink: #eef7f5;
@@ -34,7 +34,7 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--background); color: var(--ink); }
+body, :host { display: block; min-height: 100%; margin: 0; background: var(--background); color: var(--ink); }
 main { width: min(100% - 2rem, 73rem); margin-inline: auto; padding-block: 2.75rem; }
 h1, h2, p { margin: 0; }
 h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.05; letter-spacing: -.035em; }
@@ -199,3 +199,27 @@ dialog > button { margin-top: .7rem; }
   .marker:not(:empty) { border-color: ButtonText; }
   button[aria-pressed="true"] { border-color: Highlight; }
 }
+
+#archive-controls form, #pages, .stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+}
+#archive-controls form { align-items: end; margin-bottom: 1rem; }
+#archive-controls label { display: grid; gap: .35rem; min-width: 0; color: var(--muted); font-size: .86rem; }
+#archive-controls label:first-child { flex: 1 1 11rem; }
+#archive-controls select, #archive-controls input {
+  min-width: 0;
+  min-height: 44px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: .55rem;
+  padding-inline: .6rem;
+}
+#archive-controls output { display: block; margin-block: -.4rem .8rem; color: var(--muted); font-size: .86rem; }
+#pages { justify-content: space-between; padding: .75rem 1rem 0; font-size: .86rem; }
+.stage-actions { justify-content: end; }
+#startup:not([hidden]) { margin-bottom: .85rem; }

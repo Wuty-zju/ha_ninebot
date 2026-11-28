@@ -143,7 +143,7 @@ export class LocalTracks {
         // HA permission failures can also be translated device/coordinate
         // errors. Drop every private projection rather than classifying them.
         this.tracks.clear();
-        this.error = error?.translation_key ?? error?.message ?? 'track_read_failed';
+        this.error = error?.translation_key ?? error?.code ?? error?.message ?? 'track_read_failed';
       }
     } finally {
       if (this.epoch === epoch) { this.busy = false; this.changed(); }
