@@ -1,53 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="913" viewBox="0 0 960 913" role="img" aria-labelledby="title desc" xml:lang="en">
-<title id="title">How Ninebot Assistant answers a question</title>
-<desc id="desc">One signed-in user, an authorized vehicle and a traceable source</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="888" viewBox="0 0 960 888" role="img" aria-labelledby="title desc" xml:lang="en">
+<title id="title">From a question to its evidence</title>
+<desc id="desc">Model chosen by the host · one HA identity · per-vehicle permissions</desc>
 <style>text {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif}</style>
-<rect width="960" height="913" rx="16" fill="#ffffff"/>
-<text x="40" y="46" font-size="27" font-weight="700" fill="#182536">How Ninebot Assistant answers a question</text>
-<text x="40" y="77" font-size="16" font-weight="400" fill="#475569">One signed-in user, an authorized vehicle and a traceable source</text>
+<rect width="960" height="888" rx="16" fill="#ffffff"/>
+<text x="40" y="46" font-size="27" font-weight="700" fill="#182536">From a question to its evidence</text>
+<text x="40" y="77" font-size="16" font-weight="400" fill="#475569">Model chosen by the host · one HA identity · per-vehicle permissions</text>
 <rect x="40" y="112" width="428" height="137" rx="12" fill="#edf5ff" stroke="#cbd5e1"/>
 <text x="64" y="137" font-size="12" font-weight="700" fill="#245da8">01 / A</text>
-<text x="64" y="166" font-size="21" font-weight="650" fill="#182536">Assist or MCP</text>
-<text x="64" y="197" font-size="17" font-weight="400" fill="#475569">The host selects its model</text>
-<text x="64" y="222" font-size="17" font-weight="400" fill="#475569">Select the Ninebot API</text>
+<text x="64" y="166" font-size="21" font-weight="650" fill="#182536">Conversation or MCP</text>
+<text x="64" y="197" font-size="17" font-weight="400" fill="#475569">Assist agent or external client</text>
+<text x="64" y="222" font-size="17" font-weight="400" fill="#475569">Select the Ninebot tool collection</text>
 <rect x="492" y="112" width="428" height="137" rx="12" fill="#edf5ff" stroke="#cbd5e1"/>
 <text x="516" y="137" font-size="12" font-weight="700" fill="#245da8">01 / B</text>
-<text x="516" y="166" font-size="21" font-weight="650" fill="#182536">An automation</text>
-<text x="516" y="197" font-size="17" font-weight="400" fill="#475569">ninebot.ask uses an existing HA AI Task</text>
-<text x="516" y="222" font-size="17" font-weight="400" fill="#475569">Query the selected vehicle</text>
+<text x="516" y="166" font-size="21" font-weight="650" fill="#182536">Automation</text>
+<text x="516" y="197" font-size="17" font-weight="400" fill="#475569">ninebot.ask with an HA AI Task</text>
+<text x="516" y="222" font-size="17" font-weight="400" fill="#475569">Bind one vehicle and business date</text>
 <path d="M254 249 V268 H480 V287" fill="none" stroke="#64748b" stroke-width="2"/>
 <path d="M476 281 L480 287 L484 281" fill="none" stroke="#64748b" stroke-width="2"/>
 <path d="M706 249 V268 H480 V287" fill="none" stroke="#64748b" stroke-width="2"/>
 <path d="M476 281 L480 287 L484 281" fill="none" stroke="#64748b" stroke-width="2"/>
 <rect x="40" y="297" width="880" height="137" rx="12" fill="#edf9f4" stroke="#cbd5e1"/>
 <text x="64" y="322" font-size="12" font-weight="700" fill="#245da8">02</text>
-<text x="64" y="351" font-size="21" font-weight="650" fill="#182536">Home Assistant user context</text>
-<text x="64" y="382" font-size="17" font-weight="400" fill="#475569">Check administrator, ownership and each vehicle&#x27;s operation permissions</text>
-<text x="64" y="407" font-size="17" font-weight="400" fill="#475569">Recheck access before returning private results</text>
+<text x="64" y="351" font-size="21" font-weight="650" fill="#182536">Home Assistant user and vehicle</text>
+<text x="64" y="382" font-size="17" font-weight="400" fill="#475569">Resolve the device, account owner and requested operation</text>
+<text x="64" y="407" font-size="17" font-weight="400" fill="#475569">Validate the original user again before returning results</text>
 <path d="M480 434 V453 H254 V472" fill="none" stroke="#64748b" stroke-width="2"/>
 <path d="M250 466 L254 472 L258 466" fill="none" stroke="#64748b" stroke-width="2"/>
 <path d="M480 434 V453 H706 V472" fill="none" stroke="#64748b" stroke-width="2"/>
 <path d="M702 466 L706 472 L710 466" fill="none" stroke="#64748b" stroke-width="2"/>
-<rect x="40" y="482" width="428" height="162" rx="12" fill="#edf9f4" stroke="#cbd5e1"/>
+<rect x="40" y="482" width="428" height="137" rx="12" fill="#edf9f4" stroke="#cbd5e1"/>
 <text x="64" y="507" font-size="12" font-weight="700" fill="#245da8">03 / A</text>
-<text x="64" y="536" font-size="21" font-weight="650" fill="#182536">Read vehicle data</text>
-<text x="64" y="567" font-size="17" font-weight="400" fill="#475569">Coordinator snapshots and local SQLite</text>
-<text x="64" y="592" font-size="17" font-weight="400" fill="#475569">Value, unit, observation time,</text>
-<text x="64" y="617" font-size="17" font-weight="400" fill="#475569">coverage</text>
-<rect x="492" y="482" width="428" height="162" rx="12" fill="#edf9f4" stroke="#cbd5e1"/>
+<text x="64" y="536" font-size="21" font-weight="650" fill="#182536">Measure</text>
+<text x="64" y="567" font-size="17" font-weight="400" fill="#475569">Cached state or one archive metric</text>
+<text x="64" y="592" font-size="17" font-weight="400" fill="#475569">Period, unit and observation time</text>
+<rect x="492" y="482" width="428" height="137" rx="12" fill="#edf9f4" stroke="#cbd5e1"/>
 <text x="516" y="507" font-size="12" font-weight="700" fill="#245da8">03 / B</text>
-<text x="516" y="536" font-size="21" font-weight="650" fill="#182536">Retrieve a guide</text>
-<text x="516" y="567" font-size="17" font-weight="400" fill="#475569">Versioned bilingual help and</text>
-<text x="516" y="592" font-size="17" font-weight="400" fill="#475569">checklists</text>
-<text x="516" y="617" font-size="17" font-weight="400" fill="#475569">Excerpt and permanent source link</text>
-<path d="M254 644 V663 H480 V682" fill="none" stroke="#64748b" stroke-width="2"/>
-<path d="M476 676 L480 682 L484 676" fill="none" stroke="#64748b" stroke-width="2"/>
-<path d="M706 644 V663 H480 V682" fill="none" stroke="#64748b" stroke-width="2"/>
-<path d="M476 676 L480 682 L484 676" fill="none" stroke="#64748b" stroke-width="2"/>
-<rect x="40" y="692" width="880" height="137" rx="12" fill="#f5f1fc" stroke="#cbd5e1"/>
-<text x="64" y="717" font-size="12" font-weight="700" fill="#245da8">04</text>
-<text x="64" y="746" font-size="21" font-weight="650" fill="#182536">Use the result</text>
-<text x="64" y="777" font-size="17" font-weight="400" fill="#475569">Assist and MCP receive structured tool data</text>
-<text x="64" y="802" font-size="17" font-weight="400" fill="#475569">The Action can also render a verified answer</text>
-<text x="40" y="870" font-size="16" font-weight="400" fill="#475569">Ninebot can preview or request a history sync when permitted. Approve in the HA panel.</text>
+<text x="516" y="536" font-size="21" font-weight="650" fill="#182536">Explain</text>
+<text x="516" y="567" font-size="17" font-weight="400" fill="#475569">Cited guide and bounded checklist</text>
+<text x="516" y="592" font-size="17" font-weight="400" fill="#475569">Sync health with its own grant</text>
+<path d="M254 619 V638 H480 V657" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M476 651 L480 657 L484 651" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M706 619 V638 H480 V657" fill="none" stroke="#64748b" stroke-width="2"/>
+<path d="M476 651 L480 657 L484 651" fill="none" stroke="#64748b" stroke-width="2"/>
+<rect x="40" y="667" width="880" height="137" rx="12" fill="#f5f1fc" stroke="#cbd5e1"/>
+<text x="64" y="692" font-size="12" font-weight="700" fill="#245da8">04</text>
+<text x="64" y="721" font-size="21" font-weight="650" fill="#182536">Return evidence to the host</text>
+<text x="64" y="752" font-size="17" font-weight="400" fill="#475569">A complete period can resolve in one read</text>
+<text x="64" y="777" font-size="17" font-weight="400" fill="#475569">An open question carries its coverage and sources</text>
+<text x="40" y="845" font-size="16" font-weight="400" fill="#475569">History tasks use a separate vehicle grant and human approval in HA.</text>
 </svg>

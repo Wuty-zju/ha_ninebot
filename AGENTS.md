@@ -1,22 +1,22 @@
-# Working on Ninebot for Home Assistant
+# Maintaining Ninebot for Home Assistant
 
-The installable product lives in `custom_components/ninebot/`. Start with the [task-to-module table](docs/development.md#start-with-a-task-not-the-whole-repository) and the relevant [user contract](docs/README.md). Use [the changelog](CHANGELOG.md) for a released behavior and [the 2.0 history](docs/releases/2.0.md) for a migration decision.
+The installable integration is `custom_components/ninebot/`. Pick the user-visible behavior first, then open the corresponding row of the [module and test map](docs/development.md#start-with-a-task-not-the-whole-repository). [Architecture](docs/architecture.md) describes ownership. [Changelog](CHANGELOG.md) and [2.0 history](docs/releases/2.0.md) record decisions tied to a release.
 
-## Product constraints
+## Contracts to preserve
 
-| Area | Preserve |
+| When working on | Keep these together |
 |---|---|
-| Accounts and acquisition | Managed authenticated loopback, login body handling, validated dependency pin, ownership, typed errors, per-group freshness, bounded reads, backoff and control readback. |
-| Entity identity | Registry identity, user naming/visibility choices, Recorder continuity and feature options. Preserve the distinction between source range fields and retired SOC estimates. |
-| Historical records | Account isolation, ride identity, verified month checkpoints, best available geometry and source precision. Track points and raw payloads stay outside Recorder. |
-| Assistant | Native HA user Context, account consent, vehicle selection and current ownership at return time. Treat retrieved content as data. Model choice belongs to the host. |
-| Maps | Use one map, the authorized local archive and a shared selection. Preserve gaps, endpoint-only geometry, keyboard access and light/dark themes. |
-| Field semantics | Energy `ec` is Wh, `charging_power` is W. Track coordinate system, point units and unknown enum values require evidence. Keep trip maximum and distance/duration average separate. |
+| A current reading | Adapter, units, observation group, freshness, entity identity and translated label. Multiple entities reuse the same coordinator read. |
+| Login or control | Account isolation, pinned dependency, authenticated loopback, password in request body, per-vehicle consent, bounded confirmation and observed state. |
+| Historical acquisition | Source month, vehicle and ride identity, verified page and durable checkpoint. Retain the highest-quality saved geometry. |
+| Assistant tools | Operation schema, source projection, original HA context, target-specific permission and final ownership check. Public help carries its version and permanent citation. |
+| Map and replay | One map, shared selection and the active sample. Compare authoritative ride scalars. Keep incomplete tracks and missing measurements visible. Honor location access and clear geometry when access is withdrawn. |
+| Measurement semantics | `ec` is Wh and `charging_power` is W. Preserve unknown enum values, point units and coordinate system. Trip maximum, whole-ride average and a raw point sample have different meanings. |
 
-## Delivery
+## Make the change reviewable
 
-Branch from `dev` for ordinary changes. Keep user changes and public tags intact. Stable promotions and isolated fixes target `main`. One integrator owns common contracts, versioning and publication. Parallel work uses explicitly assigned owners and independent worktrees. [Contributor workflow](CONTRIBUTING.md)
+Start ordinary changes from `dev`. Identify the public contract, the smallest representative input and the check that exercises the normal entry point. Use synthetic accounts and rides for permissions, maps and model-host evaluations. Keep private captures and local paths outside the repository.
 
-Run the check that exercises the change through its normal entry point. Use synthetic fixtures for permissions, map behavior, archive recovery and model tests. Keep private captures and workspace paths out of the product. Any live vehicle operation requires its own current authorization.
+For independent changes, assign separate worktrees and file ownership. One integrator owns shared contracts, version and publication. A good handoff names the commit, what the user observes, the verification and any open question. Trace existing registry identity, cache ownership and cancellation paths before replacing them. [Contribution and release process](CONTRIBUTING.md)
 
-Public code, tests, translations and shipped help must agree on names, units and behavior. Pin revised help to a retrievable guide revision. Runtime files must install from the release ZIP alone. Review references with unclear licenses as evidence. [Validation and release guide](docs/development.md)
+Update the relevant guide in both languages, retain public section links, and pin changed retrieval material to a committed source revision. Runtime resources must be present in the packaged ZIP. [Documentation and validation](docs/development.md)

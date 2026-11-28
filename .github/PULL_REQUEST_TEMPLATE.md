@@ -1,18 +1,14 @@
-## Changes
+## User-visible change
 
-Describe the user-visible behavior or the failure this change fixes. Link the relevant issue or release.
+What can a user do or observe after this change? Link the related issue or guide.
 
-## Implementation
+## Implementation and verification
 
-Identify the data source and the owner of this behavior. Mention changes to entity identity, archive format, permissions, public responses or translations where they apply.
+Identify the owning module and the data or permission contract it uses. Give the smallest representative input and observed result. Link a relevant check, fixture or rendered comparison.
 
-## Validation
+## Upgrade and delivery
 
-Give the smallest reproducible check and its result. Use synthetic examples for location, account and Assistant scenarios. Link any CI or browser evidence a reviewer should inspect.
+Mention any change to defaults, entity identity, archive data, permissions or public responses. For a release, identify the source branch, reviewed candidate and any user action required.
 
-## Delivery
-
-Name the target branch and any steps required after an update. For a stable promotion, link the accepted candidate. For a stable fix, identify the backport.
-
-- [ ] The release package contains every runtime resource.
-- [ ] Examples, diagnostics and attachments are suitable for a public repository.
+- [ ] Updated guides or translations describe the delivered behavior.
+- [ ] Runtime assets install from the release ZIP and any shared examples are suitable for a public PR.

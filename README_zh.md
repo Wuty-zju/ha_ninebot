@@ -2,7 +2,7 @@
 
 # Ninebot for Home Assistant
 
-**在 Home Assistant 查看车辆状态，保存历史行程并配置自动化。**
+**在 Home Assistant 中查看车况、保留行程，并按需使用车辆助手。**
 
 [English](README.md) · 简体中文
 
@@ -14,19 +14,18 @@
 
 </div>
 
-将九号车辆接入 Home Assistant，查看电量和续航、操作车辆、统计行程，并在本地长期保存路线。每个账号有独立的车辆、更新调度和 SQLite 档案。仪表盘、自动化和可选 Assistant 都能使用这些记录。
+把九号车辆接入 Home Assistant，查看实时车况，长期保存行程，并将数据用于日常自动化。每个账号分别管理车辆、授权和本地 SQLite 档案。
 
-日常使用请选择[最新正式版](https://github.com/Wuty-zju/ha_ninebot/releases/latest)。[2.2.11 预览版](CHANGELOG.md#2211)支持点按重叠的地图编号选择行程，回放进度会标明当前车辆和采样点。使用 **Ninebot tasks** 的宿主请先查看[升级步骤](docs/assistant_zh.md#升级至统一的-ninebot-api)。[全部版本](https://github.com/Wuty-zju/ha_ninebot/releases)
+**正式版** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest)，适合日常使用。**预览版** · [v2.2.12](CHANGELOG.md#2212)，支持同图行程比较和按车辆权限排查统计。之前在宿主中选过 **Ninebot tasks** 的用户可查看[统一入口迁移说明](docs/assistant_zh.md#升级至统一的-ninebot-api)。
 
 ## 可以做什么
 
-| 入口 | 可以做什么 |
+| 从哪里开始 | 可以看到什么 |
 |---|---|
-| 车辆设备页面 | 查看主电池和应急通信电池电量、各类续航、BMS 读数及最近确认的锁状态。可用字段取决于车型。 |
-| 地图和自动化 | 查看最近上报的位置，用车辆或行程事件触发自动化，操作受支持的车辆控制并查看回读状态。 |
-| 行程档案 | 查找昨天骑过的路线，比较每月能耗，恢复已保存的行程。再次添加同一账号时可接回原档案。 |
-| 历史行程卡片 · 早期 Alpha | 按日期和车辆筛选，在同一张地图比较最多五条路线，按顺序回放已保存的采样点。 |
-| Ninebot Assistant · 按需启用 | 询问一辆车骑了多远、为什么历史记录不完整，并查看观测时间、覆盖情况、原始依据或公开指南。 |
+| **设备页面** | 查看车辆上报的主电池电量、续航、温度、位置和已确认的锁状态。这些实体可直接用于仪表盘与自动化。 |
+| **行程档案** | 查询日／月统计，启用行程日历，长期保存已经取得的详细轨迹。 |
+| **历史地图** · 预览 | 跨车辆和日期选取最多五趟行程。在一张地图上看路线从哪里分开，重放其中一趟，并比较整趟的时间、里程与能耗。 |
+| **Assistant** · 可选 | 向支持工具调用的宿主询问一辆车。回答可以引用观测时间、已存行程、周期统计或使用指南。 |
 
 <a id="升级与开发"></a>
 <a id="安装与账号"></a>
@@ -72,9 +71,9 @@
 
 ## 添加账号
 
-打开 **设置 → 设备与服务 → 添加集成 → Ninebot**，登录后进入该账号的**配置**。首次设置使用均衡刷新，启用车辆位置与支持的车辆控制。车辆还需要在允许控制的列表中。
+进入 **设置 → 设备与服务 → 添加集成 → Ninebot** 登录。每个账号独立配置。新账号使用**均衡**轮询，位置和符合条件的车辆控制可分别设置。在**配置**中选择允许接收控制指令的车辆。
 
-需要日历或后台扫描、保存详情时，分别在账号设置中开启。知道主电池额定参数时再填写。移除账号默认保留本地档案。[全部默认值与选项](docs/guide_zh.md#配置选项)
+如需建立轨迹库，可开启**自动扫描历史行程**和**自动同步历史详情**。行程日历与 Assistant 各有独立开关。主电池额定电压、容量可留空，知道铭牌值后再填。[默认值与选项](docs/guide_zh.md#配置选项)
 
 <a id="地图上的历史行程"></a>
 
@@ -90,16 +89,15 @@
 
 ## 历史行程、轨迹与详情同步
 
-单次行程的摘要与最高质量轨迹分别保存。云端修正里程后可以更新摘要，同时保留此前保存的完整路线。月份分页经过校验，后台任务共享账号预算并保存断点。中断后可续扫，浏览已保存的行程则直接读取本地档案。
+今日、昨日、本月与最近行程可直接看设备页面。要查看某次出行，打开行程卡片，选择车辆与日期范围，点选一趟，再用 **+** 加入其他行程。所有编号路线共享一张 Home Assistant 地图。路线重叠时，按车名和出发时间选择。
 
-| 想看什么 | 使用入口 |
+| 2.2.12 地图上可以看到 | 读数含义 |
 |---|---|
-| 今日、昨日、本月和最近一程 | 使用原生传感器。可选日历按日期展示，导入聚合数据后可用原生统计卡片画趋势图。 |
-| 一辆或多辆车的跨月记录 | 在仪表盘行程列表按车辆、日期筛选，用 **+** 加入比较，点击地图或列表选择当前行程。 |
-| 重放和比较路线 | 点击**播放**或拖动采样滑块。2.2.8 可点击地图编号切换路线，展开**所选行程合计**查看距离、时长和能耗。 |
-| 自动化所需的明细 | 用 `ninebot.get_recorded_trips` 列出本地记录，再用设备及行程标识调用 `ninebot.get_trip_detail`。 |
+| 轨迹回放 | 光标按保存顺序经过各点，可拖动查看。里程、时长与耗电量始终描述整趟行程。 |
+| 当前行程与全部所选行程 | 可将当前行程与最多五趟所选行程比较。平均速度取总里程除以各趟时长之和，平均能耗取总耗电量除以总里程。缺少输入时显示有数据的行程数。 |
+| 专看一趟 | 选择只保留当前行程可移除其余路线，保留当前回放位置。仅有起终点的记录以两个独立点展示。 |
 
-已采样路线按保存的点序播放。有些旧行程只返回起终点，地图会分别标记两点。[添加卡片、查询历史和理解覆盖率](docs/history_zh.md)
+卡片读取本地账号档案。自动化可使用 `ninebot.get_recorded_trips` 和 `ninebot.get_trip_detail` 查询同一批记录。[添加地图与理解覆盖情况](docs/history_zh.md)
 
 <a id="optional-assistant--21-preview"></a>
 
@@ -107,46 +105,57 @@
 
 ## Ninebot Assistant
 
-为账号开启 **Ninebot Assistant** 后，按车辆选择可读取的数据。在兼容的 Assist 对话代理或原生 MCP Server 中选择 **Ninebot**，MCP 客户端也可以直连 `/api/mcp/ninebot`。自动化可通过已有的 HA AI Task 调用 `ninebot.ask` 查询指定车辆。模型由宿主选择。
+为车辆选择可供助手读取的数据，再在 Assist 宿主或 Home Assistant MCP Server 中选择 **Ninebot**。外部客户端可连接 `/api/mcp/ninebot`。自动化可通过 `ninebot.ask` 指定车辆和已有的 `ai_task` 实体。模型由宿主选择。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/assistant-zh-dark.svg">
-  <img src="docs/assets/architecture/assistant-zh.svg" alt="Assist、MCP 和 AI Task 经过相同的车辆权限检查，读取本地记录与可引用的公开指南" width="960">
+  <img src="docs/assets/architecture/assistant-zh.svg" alt="Assist、MCP 和 AI Task 复用同一套用户与车辆权限，按需读取观测值或带引用的公开指南。" width="960">
 </picture>
 
-| 可以这样问 | 答案的依据 |
+| 问题或请求 | 回答依据或后续操作 |
 |---|---|
-| “这辆车的主电池电量是多少？” | 所选读数、单位和该组数据的观测时间。 |
-| “昨天骑了几趟？” | 该车按业务日期保存的本地统计和覆盖情况。 |
-| “为什么本月统计未知？” | 依次核对统计值、档案进度和适用指南。证据不足时会保留未知原因。 |
-| “地图回放按什么顺序播放？” | 当前版本的中英文公开指南与固定来源链接。 |
+| “昨天骑了几趟？” | 返回所选车辆的业务日期、次数、覆盖情况与观测时间。同名车辆可以用 HA 设备标识区分。 |
+| “这个次数为什么未知？” | 2.2.12 只查指定指标。已经结束、覆盖完整且值已核实的周期读一次即止。仍有疑问时可取带出处的帮助；获得该车的同步权限后才读取同步状态。 |
+| “把这几天缺少的详情存下来。” | 助手可预览本地缺口或提交有范围的申请。申请人在 Home Assistant 中审核日期和请求预算，确认后调度器才会开始。 |
 
-八项查询工具使用已有车况、本地档案和版本帮助。车辆获准后，同一集合还可预览历史缺口或申请限定范围的补同步。原申请人在 HA 面板核对范围和请求额度后批准。Assistant 的回复不含精确坐标和账号凭据。[配置访问与审核任务](docs/assistant_zh.md)
+精确轨迹保存在地图与档案中。使用外部模型前可逐车检查允许传出的指标、日期和名称。[配置 Assistant 与逐车授权](docs/assistant_zh.md)
+
+<details>
+<summary>查看本地查询与人工审核的任务流程</summary>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/assistant-tasks-zh-dark.svg">
+  <img src="docs/assets/architecture/assistant-tasks-zh.svg" alt="查询返回带来源的本地值，历史任务先预览和审核，再按额度同步。" width="960">
+</picture>
+
+</details>
 
 <a id="控制通过新状态确认"></a>
 
 ## 工作原理
 
+每个账号分别调度实时观测与历史采集。同组实体共享最近一次成功读取。打开已存行程或拖动回放时，卡片使用本地数据。
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/overview-zh-dark.svg">
-  <img src="docs/assets/architecture/overview-zh.svg" alt="协调器共享实时查询，独立调度器按账号保存历史档案" width="960">
+  <img src="docs/assets/architecture/overview-zh.svg" alt="一次车辆查询供多个 HA 实体复用；历史调度器另行校验月页及详情，写入本地档案。" width="960">
 </picture>
 
-同一辆车的状态、BMS、本月行程和车辆发现各有自己的查询周期。均衡档下，停车时状态和电池均以 60 秒为目标；充电时分别为 15 秒和 30 秒。ACC 活跃时分别为 10 秒和 30 秒。控制指令发出后有短时加速回读，多实体共享结果。[刷新档位](docs/guide_zh.md#刷新速度) · [控制回读](docs/architecture.md#realtime-scheduling-and-controls)
+**均衡**档位下，停车时状态和电池均以 60 秒为目标。充电时分别为 15 秒和 30 秒，ACC 开启时分别为 10 秒和 30 秒。控制指令使用独立的短时回读窗口。[刷新档位](docs/guide_zh.md#配置选项) · [技术架构](docs/architecture.md)
 
 <a id="隐私与数据含义"></a>
 <a id="隐私与限制"></a>
 
 ## 本地行程数据库
 
+每个账号用 SQLite 保存行程、归属月份、来源依据和已取得的最佳轨迹。每页数据与断点一起提交，中断后可接着同步。云端后续只返回起终点时，标量数据仍可更新，之前保存的多点轨迹可继续查看。
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture/archive-zh-dark.svg">
-  <img src="docs/assets/architecture/archive-zh.svg" alt="按账号保存的 SQLite 档案，以及限定范围、校验后合并的备份" width="960">
+  <img src="docs/assets/architecture/archive-zh.svg" alt="同一账号可重新连接保留的 SQLite 档案，也可按车辆导出，再经校验导入新实例。" width="960">
 </picture>
 
-每个账号的 SQLite 档案保存行程、月份归属、压缩后的来源记录和经核验的最佳轨迹。分页与断点在同一事务内提交。默认每账号每小时 60 次逻辑历史请求，存储限额 100 MiB。在本地浏览记录不会消耗云端请求额度。
-
-可以导出选定车辆或账号，也可在重装后接回同一账号档案。导入会校验归属并合并重叠记录。档案导出和 HA 备份可能包含精确位置。[导出和恢复](docs/guide_zh.md#导出和导入历史数据库) · [存储契约](docs/architecture.md#storage-and-integrity)
+每个账号默认 **100 MiB** 存储空间，后台采集默认共享**每小时 60 次逻辑请求**。删除账号默认保留档案。可导出一辆或多辆车用于迁移，也可重新添加同账号接续增量同步。含位置的导出文件和 HA 备份需要妥善保管。[备份与恢复](docs/guide_zh.md#导出和导入历史数据库) · [存储机制](docs/architecture.md#storage-and-integrity)
 
 <a id="20-重构内容"></a>
 <a id="22-正式版更新"></a>
@@ -160,11 +169,14 @@
 
 ## 文档与贡献
 
-[使用指南](docs/guide_zh.md) · [历史与地图](docs/history_zh.md) · [Assistant 工具与权限](docs/assistant_zh.md) · [升级和实体 ID](docs/migration_zh.md)
+| 用途 | 入口 |
+|---|---|
+| 安装与升级 | [日常使用](docs/guide_zh.md) · [迁移和实体身份](docs/migration_zh.md) |
+| 仪表盘与自动化 | [行程与地图](docs/history_zh.md) · [Assistant 工具与权限](docs/assistant_zh.md) |
+| 开发与审阅 | [源码与测试导航](docs/development.md) · [架构](docs/architecture.md) · [贡献流程](CONTRIBUTING.md) · [Agent 手册](AGENTS.md) |
+| 跟踪进展 | [开发路线](docs/roadmap.md) · [版本记录](CHANGELOG.md) · [全部文档](docs/README.md) |
 
-开发时可从源码索引和对应的小范围验证开始。路线图分别记录已交付能力与后续计划。[架构](docs/architecture.md) · [开发与验证](docs/development.md) · [贡献指南](CONTRIBUTING.md) · [Agent 导航](AGENTS.md) · [路线图](docs/roadmap.md)
-
-Downloads 徽章统计各版本 `ninebot.zip` 附件的下载次数，包含重复下载和更新。[统计口径](docs/development.md#package-download-audit)
+**Downloads** 统计 GitHub 各版本 `ninebot.zip` 安装包的下载次数，包含更新与重复下载。[下载量口径](docs/development.md#package-download-audit)
 
 ## 许可证与致谢
 
