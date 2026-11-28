@@ -177,13 +177,15 @@ class HistoryFeed:
             ):
                 self.launch_access()
 
-        for event_type in (
-            EVENT_USER_UPDATED,
-            EVENT_USER_REMOVED,
-            dr.EVENT_DEVICE_REGISTRY_UPDATED,
-            er.EVENT_ENTITY_REGISTRY_UPDATED,
-        ):
-            self.listeners.append(self.hass.bus.async_listen(event_type, changed))
+        listen = self.hass.bus.async_listen
+        self.listeners.extend(
+            (
+                listen(EVENT_USER_UPDATED, changed),
+                listen(EVENT_USER_REMOVED, changed),
+                listen(dr.EVENT_DEVICE_REGISTRY_UPDATED, changed),
+                listen(er.EVENT_ENTITY_REGISTRY_UPDATED, changed),
+            )
+        )
         self.access_timer = self.hass.loop.call_later(ACCESS_INTERVAL, self.launch_access)
 
     @callback
