@@ -7,7 +7,7 @@
 | Release | Where to start |
 |---|---|
 | **v2.2.0 stable** | [Install the stable package](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0) · [English handbook](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/README.md) |
-| **v2.2.17 preview** | [Release notes and package](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.17) · [Open a local archive](history.md#local-archive-replay) · [Choose a vehicle by number](assistant.md#vehicle-choice-follow-up) |
+| **v2.2.18 preview** | [Release notes and package](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.18) · [Open a local archive](history.md#local-archive-replay) · [Compare rides and open the map](assistant.md#compare-saved-rides) · [Ride receipts and postcards](history.md#ride-keepsakes) |
 
 Use the guides below for the current handbook. Stable users can open the matching tagged guide above. 正式版用户可查阅[随版中文安装指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide_zh.md)。预览版用户可直接查看下表。
 

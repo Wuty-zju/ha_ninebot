@@ -67,7 +67,7 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     ['energy_intensity', 'Wh/km'], ['average_speed', 'km/h']]);
   const metricRows = new Map();
   let rides = [], timer = null, comparingNext = false, epoch = 0, resetting = false;
-  let overlay = null;
+  let overlay = null, linked = false;
 
   function valueText(key, { value, precision }) {
     if (value === null) return '—';
@@ -157,7 +157,8 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     }
     const key = trackKey(ride.device_id, ride);
     const item = archive.tracks.get(key);
-    if (item) selection.update(item.summary);
+    // Linked statistics come from the same canonical archive row as the Assistant or receipt.
+    if (item && !linked) selection.update(item.summary);
     if (index !== null && key === selection.primary) selection.seek(index, archive.tracks);
     render(true);
   }
@@ -311,6 +312,7 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
 
   function clear() {
     epoch++;
+    linked = false;
     resetting = true;
     pause();
     picker.close();
@@ -368,6 +370,7 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
 
   function setLinkedRides(ordered) {
     clear();
+    linked = true;
     for (const ride of ordered) selection.select(ride, true);
     if (ordered.length) selection.activate(trackKey(ordered[0].device_id, ordered[0]));
     setPage(ordered);

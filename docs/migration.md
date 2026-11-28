@@ -2,7 +2,7 @@
 
 [简体中文](migration_zh.md) · [Documentation](README.md)
 
-This guide covers **v2.2.17 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/migration.md).
+This guide covers **v2.2.18 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/migration.md).
 
 For a normal 2.2 update, keep the installed account and archive. If you are restoring an older release, confirm the archive compatibility before restarting. Check the historical sections only for a version that crosses those changes.
 
@@ -14,7 +14,7 @@ For a normal 2.2 update, keep the installed account and archive. If you are rest
 
 ## Move between 2.2 releases
 
-Use the existing account entry for **v2.2.0 stable** and the **v2.2.17 preview**. The preview uses the existing archive format, vehicle IDs, card type and module URL.
+Use the existing account entry for **v2.2.0 stable** and the **v2.2.18 preview**. The preview uses the existing archive format, vehicle IDs, card type and module URL.
 
 1. Install the complete package for the version you chose and follow Home Assistant's restart prompt. Verify the running version in **Devices & services → Ninebot**.
 2. Reload the dashboard and open a known saved ride. In the preview, select two rides and check that **Keep current ride** preserves the active playback position.

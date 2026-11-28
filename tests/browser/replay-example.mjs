@@ -81,7 +81,7 @@ export async function checkStandaloneReplay(browser, origin, output) {
     assert.deepEqual(paths, [15, 43, 15, 43]);
     await ui.timeline.press('Home');
     for (let count = 0; count < 15; count++) await ui.timeline.press('ArrowRight');
-    assert.equal(await ui.timeline.getAttribute('aria-valuetext'), 'Point 16 of 58 · Source point sequence 17');
+    assert.match(await ui.timeline.getAttribute('aria-valuetext'), /^Point 16 of 58 · Source point sequence 17 · .+17$/);
     assert.match(await desktop.locator('#sample').innerText(), /Source point sequence 17 · Coordinates 30.00370,/);
     assert.equal(await desktop.evaluate(() => {
       const { lat, lng } = previewMap.renderer.focus.getLatLng();
@@ -102,7 +102,7 @@ export async function checkStandaloneReplay(browser, origin, output) {
     await ui.compare.press('Enter');
     assert.equal(await ui.timeline.inputValue(), '1');
     await ui.compare.press('Enter');
-    assert.equal(await ui.timeline.getAttribute('aria-valuetext'), 'Point 2 of 58 · Source point sequence 1');
+    assert.match(await ui.timeline.getAttribute('aria-valuetext'), /^Point 2 of 58 · Source point sequence 1 · .+1$/);
 
     await desktop.locator('.ninebot-route-pin').last().click();
     await ui.choose.getByRole('button', { name: /Synthetic A/ }).click();
@@ -191,8 +191,8 @@ export async function checkStandaloneReplay(browser, origin, output) {
     assert.ok(state.index > 16 && state.index < 57, JSON.stringify(state));
     assert.equal(state.source, state.index + 2);
     assert.deepEqual(state.cursor, state.expectedCursor);
-    assert.equal(await ui.timeline.getAttribute('aria-valuetext'),
-      `Point ${state.index + 1} of 58 · Source point sequence ${state.source}`);
+    assert.match(await ui.timeline.getAttribute('aria-valuetext'), new RegExp(
+      `^Point ${state.index + 1} of 58 · Source point sequence ${state.source} · .+${state.source}$`));
     assert.equal(await mobile.getByRole('button', { name: 'Play points', exact: true }).count(), 1);
     assert.deepEqual(await ui.current(), currentA);
     assert.deepEqual(await ui.selected(), both);

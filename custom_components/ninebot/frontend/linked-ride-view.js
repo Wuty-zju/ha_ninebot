@@ -38,6 +38,10 @@ export class LinkedRideView {
 
   async open() {
     try {
+      if (!this.hass.connection?.subscribeMessage) {
+        this.fail();
+        return;
+      }
       const { kind, value } = this.link;
       const message = { type: kind === 'view' ? 'ninebot/open_ride_view' : 'ninebot/open_ride_receipt',
         [kind]: value };

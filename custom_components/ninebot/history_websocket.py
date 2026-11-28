@@ -56,7 +56,10 @@ def archive_label(device: dr.DeviceEntry, entry: NinebotConfigEntry, sn: str) ->
     return safe_label(
         device.name_by_user or device.name or "Vehicle",
         sn,
-        *(str(entry.data.get(key, "")) for key in (CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY)),
+        *(
+            str(entry.data.get(key, ""))
+            for key in (CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY)
+        ),
     )
 
 
@@ -439,8 +442,13 @@ async def async_ride_summary(
 
         await check()
         row = await async_archive_ride_row(
-            co.statistics.archive, sn, message["query_month"], message["ride_id"],
-            device_id=device_id, vehicle_label=archive_label(device, entry, sn), guard=current,
+            co.statistics.archive,
+            sn,
+            message["query_month"],
+            message["ride_id"],
+            device_id=device_id,
+            vehicle_label=archive_label(device, entry, sn),
+            guard=current,
         )
         await check()
     except Unauthorized:
