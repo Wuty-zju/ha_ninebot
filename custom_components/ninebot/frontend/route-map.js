@@ -6,6 +6,28 @@ export const ROUTE_COLORS = ['#168af9', '#e67723', '#9968df', '#1a9b7b', '#de567
 
 const location = point => [point.latitude, point.longitude];
 
+/** Mobile Safari sometimes finishes a tap without generating a click. Keep map pans native. */
+export function onRouteTap(element, activate) {
+  let start;
+  const moved = touch => !touch || touch.identifier !== start.id ||
+    Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 10;
+  element.addEventListener('touchstart', event => {
+    const touch = event.touches[0];
+    start = event.touches.length === 1 ? { id: touch.identifier, x: touch.clientX, y: touch.clientY } : null;
+  }, { passive: true });
+  element.addEventListener('touchmove', event => {
+    if (start && moved(event.touches[0])) start = null;
+  }, { passive: true });
+  element.addEventListener('touchcancel', () => { start = null; });
+  element.addEventListener('touchend', event => {
+    const tap = start && !event.touches.length && !moved(event.changedTouches[0]);
+    start = null;
+    if (!tap || !event.cancelable) return;
+    event.preventDefault();
+    activate();
+  }, { passive: false });
+}
+
 function routePin(track) {
   // A saved sample keeps the pin on the route even when the endpoints coincide.
   const point = track.points[Math.floor((track.points.length - 1) / 2)];
@@ -181,7 +203,9 @@ class OfflineRouteMap {
           className: 'ninebot-route-pin' });
         const marker = this.library.marker(pin.location, { icon, title: pin.title, alt: pin.title,
           keyboard: true, autoPanOnFocus: false });
-        marker.on('click', () => this.select(pinChoices(pins, pin)));
+        const selectPin = () => this.select(pinChoices(pins, pin));
+        marker.on('click', selectPin);
+        onRouteTap(pin.element, selectPin);
         marker.on('keydown', ({ originalEvent: event }) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
