@@ -1498,10 +1498,10 @@
     "status": "specification_only",
     "evidence_note": "Test node references locate native coverage; references do not record execution or model acceptance. Native fixtures must create real synthetic Store/checkpoint state, never treat a model or context string as approval.",
     "full_scope_tool_counts": {
-      "queries": 8,
-      "preview": 12,
-      "apply": 13,
-      "ask_maximum": 8
+      "queries": 9,
+      "preview": 13,
+      "apply": 14,
+      "ask_maximum": 9
     }
   }
 }

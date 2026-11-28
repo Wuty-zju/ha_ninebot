@@ -2,9 +2,19 @@
 
 [English](assistant.md) · [启用](#开启方式) · [工具参考](#查询本地数据) · [数据授权](#隐私与限额) · [历史任务](#可审核的历史任务beta)
 
-**2.2.17 预览版。** 你可以询问某辆车最近一次上报的电量、找出一次已保存的行程，或核对昨天的骑行次数。Ninebot 将本地证据交给你选择的对话宿主。旧版本请查看 [2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)和[统一工具入口迁移说明](#升级至统一的-ninebot-api)。
+**2.2.18 预览版。** 你可以询问某辆车最近一次上报的电量、找出一次已保存的行程，或核对昨天的骑行次数。Ninebot 将本地证据交给你选择的对话宿主。旧版本请查看 [2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)和[统一工具入口迁移说明](#升级至统一的-ninebot-api)。
 
 <a id="ninebot-assistant--21-预览"></a>
+
+<a id="compare-saved-rides"></a>
+
+## 问两趟，点开同一张地图
+
+可以问「比较周一和周五的通勤，哪趟总耗电少？哪趟每公里更省电？」。匹配到多趟时，先给出车辆和日期。`compare_recorded_trips` 按选择顺序读取 2–5 趟本地行程，每辆车都需开启**单次行程**权限。绑定一辆车的 AI Task 可以比较该车多趟行程。跨车可用 Ninebot 工具入口，或使用具备各车访问权且未指定单车的任务。
+
+例如，第一趟 1.2 km、90 Wh，第二趟 2.4 km、120 Wh。第一趟总电量用得少，第二趟每公里更省电（50 对 75 Wh/km）。两趟合计 210 Wh，除以 3.6 km 得到 58.3 Wh/km。有行程缺能耗会显示覆盖数，合计留空。实测 0 Wh 参与统计，零里程没有每公里能耗。
+
+点击回答中的地图链接，即可回放刚才选中的行程。链接对原 HA 用户有效十分钟，打开时逐车核对档案、定位与位置读取权限。只有标量读取权限时仍可比较数字。轨迹坐标留在地图端。[回放操作](history_zh.md#ride-keepsakes)
 
 ## 开启方式
 
@@ -36,7 +46,7 @@
 
 总入口 `/api/mcp` 遵循原生 MCP Server 的配置。要使用指定工具集，先关闭**公开所有 AI 工具**，再选择所需集合。总入口的**只读**设置会过滤可创建申请的写工具。若开启公开全部工具，后续新增的集合也会被公开。
 
-专用入口 `/api/mcp/ninebot` 直接选择 Ninebot API。总入口的集合选择与只读过滤独立生效。要在所有宿主上阻止某辆车提交申请，可将该车任务级别设为**关闭**或**仅预览**。最多可以发现八个查询工具、四个任务预览或查询工具和一个申请工具。发现列表取各车授权的并集，调用时仍需目标车辆的对应权限。[MCP 配置说明](https://www.home-assistant.io/integrations/mcp_server/#configuration-options)
+专用入口 `/api/mcp/ninebot` 直接选择 Ninebot API。总入口的集合选择与只读过滤独立生效。要在所有宿主上阻止某辆车提交申请，可将该车任务级别设为**关闭**或**仅预览**。最多可以发现九个查询工具、四个任务预览或查询工具和一个申请工具。发现列表取各车授权的并集，调用时仍需目标车辆的对应权限。[MCP 配置说明](https://www.home-assistant.io/integrations/mcp_server/#configuration-options)
 
 ## 通过已有AI任务查询
 
@@ -100,6 +110,7 @@ response_variable: next_answer
 | `get_statistics` | 车辆、`period`，可选 `metric` 和 `other_vehicle` | 按业务日或月份统计。询问一个数值时指定单项指标。 |
 | `explain_statistics` | 车辆、`period`、`metric`，可选 `language` | 指定指标、质量，以及这辆车获准取得的进一步依据。 |
 | `get_recorded_trips` | 车辆、`start_date`、`end_date`，可选 `limit`、`cursor` | 按时间降序返回与日期范围重叠的一页行程。最多 31 天，默认每页 10 趟，上限 20 趟。 |
+| `compare_recorded_trips` | 2–5 趟，按顺序提供 `vehicle_ref`、`query_month`、`ride_id` | 逐趟 Wh、Wh/km、加权结果和各项覆盖数。所有所选车辆均允许回放时附地图链接。 |
 | `get_trip_detail` | 车辆、`ride_id`、`query_month` | 本地已保存的详情标量。使用行程列表给出的原始标识和 `YYYYMM` 月份。 |
 | `get_sync_health` | 车辆 | 已保存的不同车次、详情及简化轨迹数量、计划进度和请求节奏。 |
 | `search_help` | `query`，可选 `language`、`include_procedures` | 有版本和出处的公开帮助，可按需附带匹配的操作清单。 |

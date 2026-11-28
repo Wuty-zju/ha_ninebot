@@ -259,3 +259,50 @@ async def test_coordinate_option_change_retires_replay_and_hides_vehicle(hass, e
     await hass.async_block_till_done()
     await client.send_json({"id": 3, "type": "ninebot/history/vehicles"})
     assert (await client.receive_json())["result"] == {"vehicles": [], "more_available": False}
+
+
+async def test_favorite_reopens_exact_local_ride_with_current_access(
+    hass, entry, replay_local, app_client
+):
+    device, client, co = replay_local
+    at = int((NOW - timedelta(minutes=10)).timestamp())
+    await co.statistics.async_record(
+        "SyntheticSN",
+        travel(
+            {
+                "times": 1,
+                "list": [
+                    {
+                        "travel_id": "saved-favorite",
+                        "start_time": at,
+                        "end_time": at + 300,
+                        "mileages": 1,
+                        "duration": 300,
+                        "ec": 0,
+                    }
+                ],
+            },
+            "202610",
+        ),
+        NOW + timedelta(seconds=1),
+    )
+    request = {
+        "type": "ninebot/history/ride_summary",
+        "account_id": entry.entry_id,
+        "device_id": device,
+        "query_month": "202610",
+        "ride_id": "saved-favorite",
+    }
+
+    async def read(identity, **overrides):
+        await client.send_json({**request, **overrides, "id": identity})
+        return await asyncio.wait_for(client.receive_json(), 5)
+
+    row = (await read(1))["result"]["ride"]
+    assert row["device_id"] == device and row["energy_wh"] == 0
+    assert row["detail_saved"] is False and "track" not in row
+    assert (await read(2, query_month="202609"))["result"]["ride"] is None
+    assert (await read(3, account_id="other-account"))["error"]["code"] == "unauthorized"
+    with patch.object(ws, "async_check_history_access", side_effect=ws.Unauthorized):
+        assert (await read(4))["error"]["code"] == "unauthorized"
+    assert not app_client.mock_calls

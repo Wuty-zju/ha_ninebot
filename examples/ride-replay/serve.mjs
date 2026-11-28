@@ -6,10 +6,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const preview = fileURLToPath(new URL('./', import.meta.url));
 const frontend = fileURLToPath(new URL('../../custom_components/ninebot/frontend/', import.meta.url));
-const files = new Set(['index.html', 'replay.mjs', 'synthetic-archive.mjs']);
+const files = new Set(['index.html', 'replay.mjs', 'gpx.mjs', 'synthetic-archive.mjs']);
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png' };
-const policy = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
+const policy = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
   "connect-src 'none'; base-uri 'none'; form-action 'none'";
 
 export async function serveReplay({ port = 0, fixture = null, archiveFixture = null } = {}) {

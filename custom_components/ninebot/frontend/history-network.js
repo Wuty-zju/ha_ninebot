@@ -43,14 +43,14 @@ export function invokeHistory(hass, service, data, current = () => true) {
   return promise;
 }
 
-export function watchHistory(hass, devices, listener, { includeTrack = false, shared = true } = {}) {
+export function watchHistory(hass, devices, listener, { includeTrack = false, shared = true, view } = {}) {
   const connection = hass.connection;
   if (!connection?.subscribeMessage || !hass.user?.id) return () => {};
   const ids = [...new Set(devices)].sort();
   if (!ids.length || ids.length > 5) throw new Error('invalid_scope');
   let scopes = subscriptions.get(connection);
   if (!scopes) { scopes = new Map(); subscriptions.set(connection, scopes); }
-  const key = shared ? JSON.stringify([hass.user.id, ids, includeTrack]) : Symbol();
+  const key = shared ? JSON.stringify([hass.user.id, ids, includeTrack, view]) : Symbol();
   let feed = scopes.get(key);
   if (!feed) {
     if (scopes.size >= 64) throw new Error('subscription_limit');
@@ -88,7 +88,7 @@ export function watchHistory(hass, devices, listener, { includeTrack = false, sh
         notify({ type: event.type, vehicles: event.vehicles.map(row =>
           ({ device_id: row.device_id, selection_version: row.selection_version })) });
       }, { type: 'ninebot/history/subscribe', device_ids: ids,
-        ...(includeTrack ? { include_track: true } : {}) }, { resubscribe: false })).then(stop => {
+        ...(includeTrack ? { include_track: true } : {}), ...(view ? { view } : {}) }, { resubscribe: false })).then(stop => {
         if (feed.stopped || serial !== feed.serial) safeStop(stop); else feed.stop = stop;
       }).catch(error => {
         if (feed.stopped || serial !== feed.serial) return;

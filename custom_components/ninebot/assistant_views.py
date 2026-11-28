@@ -2,11 +2,13 @@
 
 import math
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
 from .archive_timeline import SELECTION_BASIS
+from .const import CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY
 from .exceptions import Endpoint as FailureEndpoint
 from .exceptions import EnvelopeCode, ErrorKind
 from .models import VehicleSnapshot
@@ -101,6 +103,15 @@ def timestamp(value: object) -> str | None:
     else:
         return None
     return parsed.isoformat() if parsed.tzinfo is not None else None
+
+
+def archive_vehicle_label(name: str | None, sn: str, data: Mapping[str, Any]) -> str:
+    """Use the HA vehicle name without disclosing account or vehicle identifiers."""
+    return safe_label(
+        name or "Vehicle",
+        sn,
+        *(str(data.get(key, "")) for key in (CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY)),
+    )
 
 
 def safe_label(value: str, *identifiers: str) -> str:

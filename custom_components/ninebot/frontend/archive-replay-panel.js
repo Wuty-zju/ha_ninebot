@@ -1,7 +1,8 @@
 /** Authenticated Home Assistant host for the same replay used by the standalone example. */
 import { mountReplay, replayLocale, REPLAY_COPY } from './archive-replay-view.js';
 import { FleetBrowser } from './fleet-browser.js';
-import { watchHistory } from './history-network.js';
+import { invokeHistory, watchHistory } from './history-network.js';
+import { LinkedRideView, readRideLink } from './linked-ride-view.js';
 import { recentDates } from './trip-browser.js';
 
 const MAX_VEHICLES = 5;
@@ -16,6 +17,8 @@ const TEXT = {
     cursorExpired: '档案分页已失效。点击“查看行程”从第一页开始。',
     stale: '档案正在更新…', coverage: '所选日期内有月份的本地清单缺失或未确认完整。',
     zone: '日期按上海时区计算。', limited: '仅显示前 100 辆可用车辆。',
+    archive: '浏览行程档案', reopen: '重新打开行程', linkUnavailable: '无法打开这组行程。请检查权限或重新选择行程。',
+    updated: '档案有更新。重新打开行程即可查看。',
   },
   en: {
     account: 'Account', choose: 'Choose an account', accountName: 'Account {n}', vehicle: 'Vehicle', all: 'All vehicles in this account',
@@ -27,6 +30,8 @@ const TEXT = {
     cursorExpired: 'This archive page has expired. Select Show rides to start again.',
     stale: 'The archive is updating…', coverage: 'Some months in this range have missing or unverified local ride lists.',
     zone: 'Dates use the Shanghai time zone.', limited: 'Showing the first 100 available vehicles.',
+    archive: 'Browse ride archive', reopen: 'Reopen rides', linkUnavailable: 'These rides could not be opened. Check access or select the rides again.',
+    updated: 'The archive has changed. Reopen the rides to see the update.',
   },
 };
 
@@ -39,7 +44,9 @@ const controls = `
     <button id="apply" type="submit"></button>
     <button id="refresh" type="button"></button>
   </form>
-  <output id="date-note"></output>`;
+  <output id="date-note"></output>
+  <nav id="linked-controls" hidden><a class="language" href="/ninebot-archive" id="all-rides"></a>
+    <button id="reopen" type="button"></button></nav>`;
 
 function accountGroups(vehicles) {
   if (!Array.isArray(vehicles) || vehicles.length > 100) throw new Error('invalid_discovery');
@@ -89,7 +96,12 @@ export class NinebotArchivePanel extends HTMLElement {
     };
     this._lost = () => this._setOnline(false);
     this._ready = () => this._setOnline(true);
+    this._routeChanged = () => {
+      if (this.isConnected && this._online && this._search !== window.location.search) void this._discover();
+    };
   }
+
+  set route(_value) { this._routeChanged(); }
 
   set hass(value) {
     const user = value?.user?.id, connection = value?.connection, locale = replayLocale(value?.language);
@@ -122,6 +134,8 @@ export class NinebotArchivePanel extends HTMLElement {
     document.addEventListener('visibilitychange', this._visibility);
     window.addEventListener('pagehide', this._pagehide);
     window.addEventListener('pageshow', this._pageshow);
+    window.addEventListener('popstate', this._routeChanged);
+    window.addEventListener('location-changed', this._routeChanged);
     const online = Boolean(this._user && this._connection && this._hass.connected !== false &&
       this._connection.connected !== false);
     this._setOnline(online, true);
@@ -131,6 +145,8 @@ export class NinebotArchivePanel extends HTMLElement {
     document.removeEventListener('visibilitychange', this._visibility);
     window.removeEventListener('pagehide', this._pagehide);
     window.removeEventListener('pageshow', this._pageshow);
+    window.removeEventListener('popstate', this._routeChanged);
+    window.removeEventListener('location-changed', this._routeChanged);
     this._unbindConnection();
     this._clearSession();
     this._online = false;
@@ -142,7 +158,9 @@ export class NinebotArchivePanel extends HTMLElement {
     this._text = TEXT[locale];
     this._view = mountReplay(this.shadowRoot, locale, {
       detail: (service, data) => this._readDetail(service, data),
-      onTrackError: error => void this._discover(
+      getMapHass: () => this._linked ? this._hass : null,
+      readCollectionRide: ref => this._collectionRide(ref),
+      onTrackError: error => this._linked ? this._linked.fail() : void this._discover(
         ['unauthorized', 'query_coordinates', 'query_device'].includes(error) ? 'withdrawn' : 'unavailable', false),
     });
     const css = document.createElement('link');
@@ -157,6 +175,9 @@ export class NinebotArchivePanel extends HTMLElement {
     }
     el('apply').textContent = this._text.apply;
     el('refresh').textContent = this._text.refresh;
+    el('all-rides').textContent = this._text.archive;
+    el('reopen').textContent = this._text.reopen;
+    el('reopen').addEventListener('click', () => void this._discover());
     el('date-note').textContent = this._text.zone;
     el('menu').hidden = false;
     el('menu').addEventListener('click', () => this.dispatchEvent(new CustomEvent('hass-toggle-menu', {
@@ -214,6 +235,8 @@ export class NinebotArchivePanel extends HTMLElement {
   }
 
   _clearScope() {
+    this._linked?.close();
+    this._linked = null;
     const scope = this._scope;
     this._scope = null;
     scope?.stop?.();
@@ -268,6 +291,22 @@ export class NinebotArchivePanel extends HTMLElement {
     if (this._suspended) return;
     this._clearSession(restoring);
     if (!this._online || !this.isConnected) return;
+    this._search = window.location.search;
+    const link = readRideLink(this._search);
+    this._view.el('archive-controls').querySelector('form').hidden = Boolean(link);
+    this._view.el('date-note').hidden = Boolean(link);
+    this._view.el('linked-controls').hidden = !link;
+    if (link) {
+      if (link.kind === 'invalid') {
+        this._view.status(this._text.linkUnavailable);
+        return;
+      }
+      this._view.status(this._text.loading);
+      this._linked = new LinkedRideView(this._hass, link, this._view,
+        () => this._view.status(this._text.linkUnavailable), () => this._view.status(this._text.updated));
+      await this._linked.open();
+      return;
+    }
     const session = this._session;
     this._view.status(this._text[reason ?? 'loading']);
     try {
@@ -421,16 +460,33 @@ export class NinebotArchivePanel extends HTMLElement {
       number: browser.pageNumber, previous: browser.pages.has(browser.pageNumber - 1),
       next: Boolean(page.next_cursor || browser.pages.has(browser.pageNumber + 1)),
       busy: browser.busy, note: partial ? this._text.coverage : '', restore,
+      collectionScope: JSON.stringify([this._user, this._account]),
     });
   }
 
-  _readDetail(service, data) {
+  _accountCanRead(scope, device) {
+    return Boolean(scope?.version && this._scope === scope && this._online && !this._suspended &&
+      this._accounts.get(this._account)?.some(vehicle => vehicle.device_id === device));
+  }
+
+  async _collectionRide(ref) {
     const scope = this._scope;
-    if (!scope?.version?.has(data.device_id) || !this._online ||
+    if (!this._accountCanRead(scope, ref.device_id)) throw new Error('unauthorized');
+    const result = await this._hass.callWS({ type: 'ninebot/history/ride_summary',
+      account_id: this._account, device_id: ref.device_id, query_month: ref.query_month, ride_id: ref.ride_id });
+    if (!this._accountCanRead(scope, ref.device_id)) throw new Error('unauthorized');
+    return result.ride;
+  }
+
+  _readDetail(service, data) {
+    if (this._linked) return this._linked.detail(service, data);
+    const scope = this._scope;
+    if (!this._accountCanRead(scope, data.device_id) ||
         service !== 'get_trip_detail' || data.local_only !== true || data.include_track !== true) {
       throw new Error('unauthorized');
     }
-    return scope.browser.invoke(service, data);
+    // Saved favorites may include other authorized vehicles in the same account.
+    return invokeHistory(this._hass, service, data, () => this._accountCanRead(scope, data.device_id));
   }
 }
 

@@ -5,6 +5,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { serveReplay } from './replay-server.mjs';
 import { checkStandaloneReplay } from './replay-example.mjs';
+import { checkLinkedRides } from './linked-rides.mjs';
 import { checkArchiveReplay } from './archive-replay.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require(join(process.env.BROWSER_TEST_DEPS, 'node_modules/playwright'));
@@ -212,7 +213,7 @@ try {
     ['2.4 km', '3.6 km', '15 min', '25 min', '120 Wh', '210 Wh', '50.0 Wh/km', '58.3 Wh/km', '9.6 km/h', '8.6 km/h']);
   const crossMonthSlider = page.getByRole('slider', { name: /2 · Synthetic B/ });
   for (let step = 0; step < 15; step++) await crossMonthSlider.press('ArrowRight');
-  assert.equal(await crossMonthSlider.getAttribute('aria-valuetext'), 'Point 16 of 58 · Source point sequence 17');
+  assert.match(await crossMonthSlider.getAttribute('aria-valuetext'), /^Point 16 of 58 · Source point sequence 17 · .+17$/);
   const crossMonthLatitude = await page.evaluate(() => fixtureCard.routeMap.renderer.focus.getLatLng().lat);
   assert.ok(Math.abs(crossMonthLatitude - 30.0037) < 1e-8);
   assert.deepEqual(await crossMonth.locator('td').allTextContents(), crossMonthValues);
@@ -390,7 +391,7 @@ try {
     const nativeSlider = page.getByRole('slider', { name: /1 · Synthetic A/ });
     await nativeSlider.press('Home');
     for (let step = 0; step < 15; step++) await nativeSlider.press('ArrowRight');
-    assert.equal(await nativeSlider.getAttribute('aria-valuetext'), 'Point 16 of 58 · Source point sequence 17');
+    assert.match(await nativeSlider.getAttribute('aria-valuetext'), /^Point 16 of 58 · Source point sequence 17 · .+17$/);
     assert.deepEqual(await currentValues.allTextContents(), currentSummary);
     assert.deepEqual(await selectedValues.allTextContents(), selectedSummary);
     const remove = page.getByRole('button', { name: /Remove this route · 2 · Synthetic B/ })
@@ -438,6 +439,7 @@ try {
   console.log('Synthetic replay passed: one map, local reads, sample gaps, stable viewport, endpoint-only tracks and scope cleanup.');
   await checkStandaloneReplay(browser, origin, output);
   await checkArchiveReplay(browser, origin, output);
+  await checkLinkedRides(browser, origin);
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

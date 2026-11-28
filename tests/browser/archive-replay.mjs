@@ -73,7 +73,7 @@ export async function checkArchivePaginationAndResume() {
   el('next').click();
   await waitForPage(3);
   record();
-  el('rides').children[1].click();
+  el('rides').querySelectorAll('.ride')[1].click();
   await wait(() => !el('compare').disabled && el('sample').textContent, 'Selected route did not load');
   el('timeline').value = '2';
   el('timeline').dispatchEvent(new Event('input'));
@@ -112,7 +112,7 @@ export async function checkArchivePaginationAndResume() {
 
   const { device_id: device } = browser().page.rides[0];
   fixture.hold(device);
-  el('rides').firstElementChild.click();
+  el('rides').querySelector('.ride').click();
   await wait(() => details().length === detailCount + 2, 'No pending saved route');
   visibility(true);
   fixture.lost.add(device);

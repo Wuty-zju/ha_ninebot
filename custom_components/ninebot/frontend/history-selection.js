@@ -88,9 +88,11 @@ export class HistorySelection {
     this.selected.set(key, { ...safeRide(ride), device_id: ride.device_id,
       vehicle_label: String(ride.vehicle_label ?? ride.device_id).slice(0, 128) });
   }
-  activate(key) {
+  activate(key, tracks) {
     if (this.selected.has(key) && this.primary !== key) {
+      const ordinal = tracks ? this.position(tracks).index : 0;
       this.#focus(key);
+      if (tracks) this.#index = this.#position(tracks, ordinal).index;
       this.changed();
     }
   }
@@ -126,6 +128,21 @@ export class HistorySelection {
   /** tracks is the authorized geometry cache keyed by trackKey(). Read point.sequence for the source index. */
   position(tracks) {
     return this.#position(tracks, this.#index);
+  }
+
+  /** Compare the Nth saved sample. A short or endpoint-only ride has no peer at that position. */
+  replayPeers(tracks) {
+    const { index, count } = this.position(tracks);
+    if (!count) return [];
+    const peers = [];
+    for (const [key, slot] of this.slots) {
+      const track = tracks.get(key);
+      if (key !== this.primary && track?.kind === 'sampled_unverified' &&
+          track.points.length > 1 && index < track.points.length) {
+        peers.push({ slot, point: track.points[index] });
+      }
+    }
+    return peers;
   }
 
   /** Move to a zero-based saved-point index and return the clamped replay position. */

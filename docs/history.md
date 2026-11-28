@@ -2,9 +2,18 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
-This guide covers **v2.2.17 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
+This guide covers **v2.2.18 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
 
 Use the bundled dashboard card to replay and compare saved rides, or use native Home Assistant views for position, dates and trends. The replay interface is a preview. Its archive Actions and storage run independently.
+
+<a id="ride-keepsakes"></a>
+
+## Compare commutes, receive a receipt and keep your favourites
+
+- **Replay together.** Open the map link in an [Assistant comparison](assistant.md#compare-saved-rides). The archive displays the selected rides on one map, using the HA map component where available. Select a numbered pin; overlapping pins offer the matching rides with their vehicles and dates. Drag **Saved points** to compare the same ordinal across sampled rides. Switching the active ride keeps that ordinal where available and updates the cursor and whole-ride table. A shorter route has no marker beyond its last observation. Older endpoint-only rides retain their saved metrics and show separate endpoint markers. The slider advances through saved observations; elapsed minutes require recorded per-point times.
+- **Receive a ride receipt.** [Import the Companion automation blueprint](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FWuty-zju%2Fha_ninebot%2Fblob%2Fv2.2.18%2Fblueprints%2Fautomation%2Fninebot%2Fride_receipt.yaml), select the vehicle’s Ninebot ride event entity and enter your phone’s `notify.mobile_app_…` action. One fresh completion sends distance, duration and available Wh. Tap the notification to open that ride. A timely correction uses the same notification tag; on platforms that support notification replacement it updates the existing receipt. Late history and startup catch-up do not send new arrival alerts.
+- **Make a monthly postcard.** From the HA sidebar, open **Ninebot Ride Archive**, choose an account and manually select the rides. Save them to **Weekend routes** or **Commute routes** on this browser. Choose the month and create the PNG. Only distance, duration and energy appear by default. Select the route sketch separately to include up to five saved shapes. Open and export check access again. This month's totals cover the selected rides with coverage shown for missing data.
+- **Compare a phone GPX locally.** In the [standalone example](#standalone-replay), choose a GPX file to add a separate dashed overlay. The browser reads the file locally and keeps it out of totals and postcard exports.
 
 ## Choose the right view
 
@@ -145,9 +154,9 @@ The panel shows 20 rides per page and keeps the five most recent pages in memory
 
 ## Try replay outside Home Assistant
 
-From a checkout of v2.2.17, run `node examples/ride-replay/serve.mjs` at the repository root and open **http://127.0.0.1:8765/replay/**. Choose the August and September rides on different vehicles, compare their totals and drag the playback slider. The two rides share an upstream ride ID. Switching or scrubbing updates the active point while each ride’s distance and energy stay fixed.
+From a checkout of v2.2.18, run `node examples/ride-replay/serve.mjs` at the repository root and open **http://127.0.0.1:8765/replay/**. Choose the August and September rides on different vehicles, compare their totals and drag the playback slider. The two rides share an upstream ride ID. Switching or scrubbing updates the active point while each ride’s distance and energy stay fixed.
 
-The [standalone example](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.17/examples/ride-replay) runs on loopback and reads bundled synthetic routes. It uses the same selection, local track loading and replay statistics as the dashboard card. The example is distributed in the source checkout. To view your own saved rides, use the [HA archive panel](#local-archive-replay) or the dashboard card.
+The [standalone example](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.18/examples/ride-replay) runs on loopback and reads bundled synthetic routes. It uses the same selection, local track loading and replay statistics as the dashboard card. The example is distributed in the source checkout. To view your own saved rides, use the [HA archive panel](#local-archive-replay) or the dashboard card.
 
 ## Ride summaries and vehicle events
 

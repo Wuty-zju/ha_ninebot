@@ -13,12 +13,20 @@ from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from .assistant_views import safe_label
+from .assistant_views import archive_vehicle_label
 from .compat import validation as vol
-from .const import CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN
+from .const import DOMAIN
 from .coordinator import NinebotCoordinator
 from .ride_archive import ArchiveError
-from .services import assert_query_scope, async_check_history_access, resolve_vehicle
+from .ride_comparison import async_archive_ride_row, async_open_ride_view, async_validate_ride_view
+from .ride_receipt import async_open_ride_receipt
+from .services import (
+    assert_query_scope,
+    async_check_history_access,
+    query_month,
+    resolve_vehicle,
+    ride_identifier,
+)
 
 KEY = "ninebot_history_feeds"
 MAX_CONNECTION = 8
@@ -57,6 +65,7 @@ class HistoryFeed:
         self.identity: int = message["id"]
         self.context: Context = connection.context(message)
         self.include_track: bool = message.get("include_track", False)
+        self.view: str | None = message.get("view")
         self.scopes: list[Scope] = []
         self.listeners: list[Callable[[], None]] = []
         self.timer: asyncio.TimerHandle | None = None
@@ -141,9 +150,16 @@ class HistoryFeed:
             version = await co.statistics.archive.async_catalog_version(scope.sn)
             await self.check_access(scope)
             result.append({"device_id": scope.device, "selection_version": version})
+        await self.check_link()
         if self.closed:
             raise asyncio.CancelledError
         return result
+
+    async def check_link(self) -> None:
+        if self.view is not None:
+            await async_validate_ride_view(
+                self.hass, self.context, self.view, {scope.device for scope in self.scopes}
+            )
 
     async def check_access(self, scope: Scope) -> None:
         await async_check_history_access(
@@ -203,6 +219,7 @@ class HistoryFeed:
         try:
             for scope in tuple(self.scopes):
                 await self.check_access(scope)
+            await self.check_link()
         except Unauthorized:
             self.finish("denied")
         except HomeAssistantError as err:
@@ -273,6 +290,7 @@ def async_revoke_coordinate_access(hass: HomeAssistant, entry: str) -> None:
             [vol.All(str, vol.Length(min=1, max=128))], vol.Length(min=1, max=5)
         ),
         vol.Optional("include_track", default=False): bool,
+        vol.Optional("view"): vol.All(str, vol.Match(r"^[a-f0-9]{32}$")),
     }
 )
 @websocket_api.async_response
@@ -314,7 +332,7 @@ async def async_subscribe_history(
             return
         # Changes during authorization/read are retained by ready=False/dirty.
         feed.ready = True
-        if feed.include_track:
+        if feed.include_track or feed.view:
             feed.watch_access()
         connection.send_result(message["id"])
         connection.send_event(
@@ -367,20 +385,74 @@ async def async_history_vehicles(
                 {
                     "account_id": entry.entry_id,
                     "device_id": device.id,
-                    "label": safe_label(
-                        device.name_by_user or device.name or "Vehicle",
-                        sn,
-                        *(
-                            str(entry.data.get(key, ""))
-                            for key in (CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY)
-                        ),
+                    "label": archive_vehicle_label(
+                        device.name_by_user or device.name, sn, entry.data
                     ),
                 }
             )
     connection.send_result(message["id"], {"vehicles": rows, "more_available": False})
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "ninebot/history/ride_summary",
+        vol.Required("account_id"): vol.All(str, vol.Length(min=1, max=128)),
+        vol.Required("device_id"): vol.All(str, vol.Length(min=1, max=128)),
+        vol.Required("ride_id"): ride_identifier,
+        vol.Required("query_month"): query_month,
+    }
+)
+@websocket_api.async_response
+async def async_ride_summary(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
+) -> None:
+    """Reopen a browser favorite with current archive permission and current local measurements."""
+    device_id = message["device_id"]
+    try:
+        entry, sn = resolve_vehicle(hass, device_id, require_live=False)
+        device = dr.async_get(hass).async_get(device_id)
+        if device is None or entry.entry_id != message["account_id"]:
+            raise Unauthorized
+        co = entry.runtime_data.coordinator
+        scope = Scope(device_id, entry.entry_id, sn, co, co._generation, co._ownership.get(sn, 0))
+        call = history_call(hass, connection.context(message), device_id)
+
+        def current() -> bool:
+            return (
+                co._generation == scope.generation
+                and co._ownership.get(sn, 0) == scope.ownership
+                and co.local_vehicle_available(sn)
+            )
+
+        async def check() -> None:
+            await async_check_history_access(hass, call, scope.entry, include_track=True)
+            assert_query_scope(hass, device_id, scope.entry, sn, True, require_live=False)
+            if not current() or not co.statistics.archive_ready:
+                raise HomeAssistantError
+
+        await check()
+        row = await async_archive_ride_row(
+            co.statistics.archive,
+            sn,
+            message["query_month"],
+            message["ride_id"],
+            device_id=device_id,
+            vehicle_label=archive_vehicle_label(device.name_by_user or device.name, sn, entry.data),
+            guard=current,
+        )
+        await check()
+    except Unauthorized:
+        connection.send_error(message["id"], "unauthorized", "History access denied")
+    except (HomeAssistantError, ArchiveError, OSError, ValueError):
+        connection.send_error(message["id"], "unavailable", "The ride could not be opened")
+    else:
+        connection.send_result(message["id"], {"ride": row})
+
+
 @callback
 def async_register_history_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, async_subscribe_history)
     websocket_api.async_register_command(hass, async_history_vehicles)
+    websocket_api.async_register_command(hass, async_ride_summary)
+    websocket_api.async_register_command(hass, async_open_ride_view)
+    websocket_api.async_register_command(hass, async_open_ride_receipt)

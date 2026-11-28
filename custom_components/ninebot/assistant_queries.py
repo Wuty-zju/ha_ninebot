@@ -48,6 +48,7 @@ from .history_actions import cursor_value
 from .history_budget import configured_budget, request_interval
 from .identity import device_sn
 from .recorded_actions import business_date
+from .ride_comparison import async_check_ride_scopes, async_compare_rides
 
 MAX_RIDE_BYTES = 2 * 1024
 MAX_VEHICLES = 20
@@ -575,7 +576,10 @@ async def _response(
     request_id: str,
     now: datetime,
 ) -> tuple[dict[str, Any], bool]:
-    await _validate_scopes(hass, scopes)
+    if scopes and scopes[0].operation == "compare_recorded_trips":
+        await async_check_ride_scopes(hass, scopes[0].context, tuple(scopes), track=False)
+    else:
+        await _validate_scopes(hass, scopes)
     response = {
         "schema_version": 1,
         "request_id": request_id,
@@ -698,6 +702,23 @@ async def async_query(
                             evidence={"source_kind": "bundled_public_help"},
                             warnings=["documentation_is_not_vehicle_evidence"],
                         )
+                elif key == "compare_recorded_trips":
+                    targets = dict.fromkeys(item["vehicle_ref"] for item in args["rides"])
+                    if _selected_vehicle is not None and set(targets) != {_selected_vehicle}:
+                        raise AssistantError("not_authorized")
+                    scopes = [
+                        await async_authorize(hass, context, target, operation=key)
+                        for target in targets
+                    ]
+                    roster = vehicle_list_view(hass, scopes).data["vehicles"]
+                    view = await async_compare_rides(
+                        hass,
+                        scopes[0].context,
+                        {s.vehicle_ref: s for s in scopes},
+                        {row["vehicle_ref"]: row["label"] for row in roster},
+                        args["rides"],
+                    )
+                    query = {"selected_rides": len(args["rides"])}
                 else:
                     scope = await async_authorize(hass, context, args["vehicle_ref"], operation=key)
                     scopes = [scope]

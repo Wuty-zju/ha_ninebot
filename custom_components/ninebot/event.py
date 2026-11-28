@@ -6,15 +6,19 @@ from typing import Any
 from homeassistant.components.event import EventEntity, EventExtraStoredData
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, State, callback
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 
 from .archive_runtime import ArchiveStatistics
+from .assistant_views import archive_vehicle_label
 from .const import CONF_EVENTS, DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .ride_models import Ride
 from .ride_presentation import ride_time_range
+from .ride_receipt import EVENT_RIDE_RECEIPT, receipt_locator, receipt_tag
 from .ride_reports import RideReportCursor
 from .runtime import NinebotConfigEntry
 from .vehicle_events import TRANSITIONS, StatusEventCursor
@@ -125,7 +129,9 @@ class NinebotRideEvent(NinebotObservedEvent):
         await super().async_added_to_hass()
         self._observe_reports()  # Rebaseline; do not replay a restored/imported ride.
         if pipeline := self.entry.runtime_data.events:
-            self.async_on_remove(await pipeline.async_subscribe(self.sn, self._completed))
+            self.async_on_remove(
+                await pipeline.async_subscribe(self.sn, self._completed, receipt=self._receipt)
+            )
         if isinstance(statistics := self.coordinator.statistics, ArchiveStatistics):
             self.async_on_remove(
                 statistics.async_add_archive_listener(self.sn, self._archive_updated)
@@ -177,6 +183,37 @@ class NinebotRideEvent(NinebotObservedEvent):
             },
         )
         self.async_write_ha_state()
+
+    @callback
+    def _receipt(self, ride: Ride, correction: bool, key: bytes) -> None:
+        """A live, GPS-free automation signal, separate from restored entity state."""
+        statistics = self.coordinator.statistics
+        row = er.async_get(self.hass).async_get(self.entity_id)
+        if not (
+            ride.ride_id
+            and row
+            and row.device_id
+            and (device := dr.async_get(self.hass).async_get(row.device_id))
+            and statistics.archive_ready
+        ):
+            return
+        owner = statistics.archive.owner
+        locator = receipt_locator(key, owner, device.id, ride.ride_id)
+        self.hass.bus.async_fire(
+            EVENT_RIDE_RECEIPT,
+            {
+                "entity_id": self.entity_id,
+                "phase": "corrected" if correction else "completed",
+                "vehicle_label": archive_vehicle_label(
+                    device.name_by_user or device.name, self.sn, self.entry.data
+                ),
+                "distance_m": ride.distance_m,
+                "duration_s": ride.duration_s,
+                "energy_wh": ride.energy_raw,
+                "tag": receipt_tag(device.id, owner, ride.ride_id),
+                "replay_url": f"/ninebot-archive?receipt={locator}",
+            },
+        )
 
 
 class NinebotVehicleEvent(NinebotObservedEvent):

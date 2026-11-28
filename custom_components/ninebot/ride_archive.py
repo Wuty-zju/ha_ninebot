@@ -2393,6 +2393,27 @@ class RideArchive:
 
         return await self._run(read, guard=guard)
 
+    async def async_current_detail_summary(
+        self, sn: str, ride_id: str, *, guard: Callable[[], bool]
+    ) -> Ride | None:
+        """Resolve an exact ride using its current, replayable source month."""
+        if not isinstance(ride_id, str) or opaque_id(ride_id) != ride_id:
+            raise ValueError("Invalid ride identity")
+
+        def read() -> Ride | None:
+            row = (
+                self._db()
+                .execute(
+                    "SELECT r.data FROM rides r WHERE r.vehicle=? AND r.id=? "
+                    f"AND {CURRENT_DETAIL_MAPPING}",
+                    (vehicle_key(sn), ride_id),
+                )
+                .fetchone()
+            )
+            return restored_ride(decoded(row[0])) if row else None
+
+        return await self._run(read, guard=guard)
+
     async def async_saved_detail_ids(self, sn: str, ids: tuple[str, ...]) -> frozenset[str]:
         """One bounded index lookup; never decompress detail payloads for a list."""
         if len(ids) > MAX_PAGE or any(

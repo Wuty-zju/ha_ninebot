@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
 
-This guide covers **v2.2.17 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
+This guide covers **v2.2.18 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
 
 For frontend work, the [archive panel](history.md#local-archive-replay) and [synthetic replay example](history.md#standalone-replay) share the card’s selection and playback logic. Reuse the same two synthetic rides when checking account changes, late reads and revoked GPS permissions. The [statistics receipt contract](assistant.md#compound-statistics) describes multi-field follow-ups.
 
@@ -133,7 +133,7 @@ Start with the failing boundary. The [user guide](assistant.md) owns the tool co
 
 Read-only tools run without cloud refresh. Recorded-list cursors bind the account, vehicle, date range and archive revision. Every page is authorized independently. Multi-vehicle queries need an explicit selection. A model host can phrase a reply differently from its inputs. Keep evidence fidelity and free-form answer quality as separate review decisions.
 
-The public catalog covers eight queries and five history-task operations. Tool discovery checks for at least one eligible vehicle. Execution checks the requested vehicle again, even when a host cached the list. Under full query permissions, expect eight tools with task access off, twelve with preview enabled and thirteen with requests allowed when review is ready. If review is unavailable, discovery and calls are limited to the authorized queries. The AI Task Action stays at a maximum of eight query tools. HA's main MCP URL can filter the request tool in read-only mode. The explicit `/api/mcp/ninebot` route selects the registered API directly.
+The public catalog covers nine queries and five history-task operations. Tool discovery checks for at least one eligible vehicle. Execution checks the requested vehicle again, even when a host cached the list. Under full query permissions, expect nine tools with task access off, thirteen with preview enabled and fourteen with requests allowed when review is ready. If review is unavailable, discovery and calls are limited to the authorized queries. The AI Task Action stays at a maximum of nine query tools. HA's main MCP URL can filter the request tool in read-only mode. The explicit `/api/mcp/ninebot` route selects the registered API directly.
 
 Sync health projects whole-vehicle counts from the same local snapshot used by the diagnostic entities. The current history plan provides its own discovery denominator. Pass both scopes through the native tool and retain them in the rendered answer. An unavailable archive projection leaves the whole-archive counts unknown.
 

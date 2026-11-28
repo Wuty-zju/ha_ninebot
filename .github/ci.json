@@ -34,6 +34,7 @@
         "tests/test_control_polling.py",
         "custom_components/ninebot/account.py",
         "custom_components/ninebot/event.py",
+        "custom_components/ninebot/event_store.py",
         "custom_components/ninebot/ride_reports.py",
         "tests/test_ride_reports.py",
         "tests/test_registry.py",
@@ -59,7 +60,10 @@
         "custom_components/ninebot/button.py",
         "custom_components/ninebot/async_utils.py",
         "tests/test_async_utils.py",
-        "custom_components/ninebot/exceptions.py"
+        "custom_components/ninebot/exceptions.py",
+        "custom_components/ninebot/ride_receipt.py",
+        "blueprints/automation/ninebot/ride_receipt.yaml",
+        "tests/test_ride_receipt.py"
       ],
       "tests": [
         "tests/test_account_archive.py",
@@ -88,7 +92,8 @@
         "tests/test_statistics_continuity.py",
         "tests/test_translations.py",
         "tests/test_vehicle_events.py",
-        "tests/test_async_utils.py"
+        "tests/test_async_utils.py",
+        "tests/test_ride_receipt.py"
       ]
     },
     "history": {
@@ -339,7 +344,8 @@
         "scripts/evaluate_assistant.py",
         "scripts/tests/test_assistant_ollama.py",
         "scripts/tests/test_assistant_evaluation.py",
-        "custom_components/ninebot/assistant_knowledge/**"
+        "custom_components/ninebot/assistant_knowledge/**",
+        "custom_components/ninebot/ride_comparison.py"
       ],
       "tests": [
         "tests/test_archive_lifecycle.py",

@@ -2,9 +2,18 @@
 
 [English](history.md) · [安装与选项](guide_zh.md) · [文档入口](README.md)
 
-本文说明至 **v2.2.17 预览版**。使用 **v2.2.0 正式版**时，请以[随版文档](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history_zh.md)为准。
+本文说明至 **v2.2.18 预览版**。使用 **v2.2.0 正式版**时，请以[随版文档](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history_zh.md)为准。
 
 使用随包仪表盘卡片回放及对比已保存行程，使用 HA 原生视图查看定位、日期和趋势。回放界面处于预览阶段，档案 Action 和存储可独立使用。
+
+<a id="ride-keepsakes"></a>
+
+## 两趟通勤同图回放、骑后小票与骑行月报
+
+- **同图回放。** 点开[助手比较结果](assistant_zh.md#compare-saved-rides)里的地图链接。当前 HA 支持时，档案使用系统地图组件。在重叠的编号标记上点一下，可以按车辆和行程起止时间选中准确的一趟。拖动「已保存采样点」会同时移动各条详细路线的游标；切换主行程尽量沿用当前序号，整趟统计同步切换。较短的路线在末个有效点之后不再显示游标。只剩起终点的旧行程仍参与整趟统计，两个端点独立显示。当前按已保存的点序对照，逐点时间有可靠来源后才能按出发分钟回放。
+- **骑后小票。** [导入 Companion 通知蓝图](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FWuty-zju%2Fha_ninebot%2Fblob%2Fv2.2.18%2Fblueprints%2Fautomation%2Fninebot%2Fride_receipt.yaml)，选择车辆的「车辆行程事件」实体，填写手机的 `notify.mobile_app_…` 通知动作。新行程完成时发送一次里程、时长和已知耗电量，点通知即可回看。短时间内数据修订沿用同一条通知标签，支持替换的客户端会更新原小票。启动补录及迟到的历史记录不触发新行程提醒。
+- **收藏与月报。** 在 HA 侧栏打开 **Ninebot Ride Archive**，选择账号，手动勾选行程，保存到当前浏览器的「周末路线」或「通勤路线」。选择月份即可生成 PNG 明信片。默认只显示里程、时长和耗电量，可单独勾选最多五趟的路线示意图。打开收藏、导出时重新读取获准行程。月报统计所选行程，缺失值附覆盖数。
+- **叠加手机 GPX。** 在[独立网页示例](#standalone-replay)选择本地 GPX 文件，可在同一张图上用虚线对照。文件由浏览器本地读取，叠加层不计入行程统计和导出的明信片。
 
 ## 选择展示方式
 
@@ -145,9 +154,9 @@ limit 是**整页总数** 1–100，可以小于选车数；多车真正按最�
 
 ## 在 Home Assistant 外试用回放
 
-在 v2.2.17 源码根目录运行 `node examples/ride-replay/serve.mjs`，用浏览器打开 **http://127.0.0.1:8765/replay/**。选取两辆车分别在 8 月和 9 月的行程，对比统计，再拖动回放滑块。两条行程的上游编号相同。切换行程或拖动滑块会更新当前轨迹点，每条行程的整程里程和耗电量保持不变。
+在 v2.2.18 源码根目录运行 `node examples/ride-replay/serve.mjs`，用浏览器打开 **http://127.0.0.1:8765/replay/**。选取两辆车分别在 8 月和 9 月的行程，对比统计，再拖动回放滑块。两条行程的上游编号相同。切换行程或拖动滑块会更新当前轨迹点，每条行程的整程里程和耗电量保持不变。
 
-[独立示例](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.17/examples/ride-replay) 在本机读取随源码附带的合成路线，与仪表盘卡片共用行程选择、轨迹读取与回放统计。查看自己的档案可用 [HA 本地行程档案面板](#local-archive-replay)或仪表盘卡片。
+[独立示例](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.18/examples/ride-replay) 在本机读取随源码附带的合成路线，与仪表盘卡片共用行程选择、轨迹读取与回放统计。查看自己的档案可用 [HA 本地行程档案面板](#local-archive-replay)或仪表盘卡片。
 
 ## 行程摘要与车辆事件
 
