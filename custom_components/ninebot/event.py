@@ -13,11 +13,12 @@ from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 
 from .archive_runtime import ArchiveStatistics
+from .assistant_views import archive_vehicle_label
 from .const import CONF_EVENTS, DOMAIN
 from .entity import NinebotEntity, async_setup_dynamic
 from .ride_models import Ride
 from .ride_presentation import ride_time_range
-from .ride_receipt import EVENT_RIDE_RECEIPT, receipt_label, receipt_locator, receipt_tag
+from .ride_receipt import EVENT_RIDE_RECEIPT, receipt_locator, receipt_tag
 from .ride_reports import RideReportCursor
 from .runtime import NinebotConfigEntry
 from .vehicle_events import TRANSITIONS, StatusEventCursor
@@ -203,7 +204,9 @@ class NinebotRideEvent(NinebotObservedEvent):
             {
                 "entity_id": self.entity_id,
                 "phase": "corrected" if correction else "completed",
-                "vehicle_label": receipt_label(self.entry, device, self.sn),
+                "vehicle_label": archive_vehicle_label(
+                    device.name_by_user or device.name, self.sn, self.entry.data
+                ),
                 "distance_m": ride.distance_m,
                 "duration_s": ride.duration_s,
                 "energy_wh": ride.energy_raw,

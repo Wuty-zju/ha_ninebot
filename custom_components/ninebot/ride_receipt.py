@@ -13,12 +13,11 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import device_registry as dr
 
-from .assistant_views import safe_label
+from .assistant_views import archive_vehicle_label
 from .compat import validation as vol
-from .const import CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN
+from .const import DOMAIN
 from .ride_archive import ArchiveError
 from .ride_comparison import async_archive_ride_row
-from .runtime import NinebotConfigEntry
 from .services import assert_query_scope, async_check_history_access, resolve_vehicle
 from .travel import opaque_id
 
@@ -55,17 +54,6 @@ def _ride_id(key: bytes, owner: str, device_id: str, encoded: str) -> str | None
     except (InvalidTag, ValueError):
         return None
     return ride_id if opaque_id(ride_id) == ride_id else None
-
-
-def receipt_label(entry: NinebotConfigEntry, device: dr.DeviceEntry, sn: str) -> str:
-    return safe_label(
-        device.name_by_user or device.name or "Vehicle",
-        sn,
-        *(
-            str(entry.data.get(key, ""))
-            for key in (CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY)
-        ),
-    )
 
 
 @websocket_api.websocket_command(
@@ -127,7 +115,7 @@ async def async_open_ride_receipt(
             None,
             ride_id,
             device_id=device_id,
-            vehicle_label=receipt_label(entry, device, sn),
+            vehicle_label=archive_vehicle_label(device.name_by_user or device.name, sn, entry.data),
             guard=scope_current,
         )
         await check_access()

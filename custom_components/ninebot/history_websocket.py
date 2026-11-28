@@ -13,14 +13,13 @@ from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
-from .assistant_views import safe_label
+from .assistant_views import archive_vehicle_label
 from .compat import validation as vol
-from .const import CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN
+from .const import DOMAIN
 from .coordinator import NinebotCoordinator
 from .ride_archive import ArchiveError
 from .ride_comparison import async_archive_ride_row, async_open_ride_view, async_validate_ride_view
 from .ride_receipt import async_open_ride_receipt
-from .runtime import NinebotConfigEntry
 from .services import (
     assert_query_scope,
     async_check_history_access,
@@ -50,17 +49,6 @@ class Scope:
 
 def history_call(hass: HomeAssistant, context: Context, device: str) -> ServiceCall:
     return ServiceCall(hass, DOMAIN, "get_recorded_trips", {"device_id": device}, context=context)
-
-
-def archive_label(device: dr.DeviceEntry, entry: NinebotConfigEntry, sn: str) -> str:
-    return safe_label(
-        device.name_by_user or device.name or "Vehicle",
-        sn,
-        *(
-            str(entry.data.get(key, ""))
-            for key in (CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY)
-        ),
-    )
 
 
 class HistoryFeed:
@@ -397,7 +385,9 @@ async def async_history_vehicles(
                 {
                     "account_id": entry.entry_id,
                     "device_id": device.id,
-                    "label": archive_label(device, entry, sn),
+                    "label": archive_vehicle_label(
+                        device.name_by_user or device.name, sn, entry.data
+                    ),
                 }
             )
     connection.send_result(message["id"], {"vehicles": rows, "more_available": False})
@@ -447,7 +437,7 @@ async def async_ride_summary(
             message["query_month"],
             message["ride_id"],
             device_id=device_id,
-            vehicle_label=archive_label(device, entry, sn),
+            vehicle_label=archive_vehicle_label(device.name_by_user or device.name, sn, entry.data),
             guard=current,
         )
         await check()
