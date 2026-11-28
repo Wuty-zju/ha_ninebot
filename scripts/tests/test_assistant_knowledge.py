@@ -68,9 +68,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 24)
-        self.assertEqual(catalog["corpus_version"], "1.2.15")
-        self.assertEqual(catalog["source_version"], "2.2.9")
+        self.assertEqual(len(catalog["entries"]), 26)
+        self.assertEqual(catalog["corpus_version"], "1.2.16")
+        self.assertEqual(catalog["source_version"], "2.2.12")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -78,6 +78,25 @@ class KnowledgeTests(unittest.TestCase):
             self.assertEqual(set(entry["translations"]), {"en", "zh-Hans"})
             self.assertEqual(k.content_hash(entry), entry["content_sha256"])
             self.assertIn(entry["source"]["commit"], entry["source"]["url"])
+
+    def test_comparison_and_metric_check_use_help_for_the_installed_version(self):
+        for query, lang, source, anchor in (
+            ("compare weighted selection", "en", "map_selection_statistics", "replay-saved-routes"),
+            ("比较所选行程", "zh-Hans", "map_selection_statistics", "replay-saved-routes"),
+            (
+                "explain_statistics metric_verified",
+                "en",
+                "metric_check_evidence",
+                "statistics-check",
+            ),
+            ("单项排查", "zh-Hans", "metric_check_evidence", "statistics-check"),
+        ):
+            with self.subTest(query=query):
+                current = k.search_help(query, lang, "2.2.12")["matches"][0]
+                self.assertEqual(current["source_id"], source)
+                self.assertIn("#" + anchor, current["citation"])
+                older = k.search_help(query, lang, "2.2.11")["matches"]
+                self.assertNotIn(source, [row["source_id"] for row in older])
 
     def test_shipped_version_finds_reviewed_help_and_its_checklist(self):
         manifest = k.CATALOG.parents[1] / "manifest.json"
