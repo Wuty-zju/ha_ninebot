@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic Ninebot Ride Archive</title>
+<style>body { margin: 0; }</style>
+<ninebot-archive-panel></ninebot-archive-panel>
+<script type="module">
+import '/ninebot-static/archive-replay-panel.js';
+import { syntheticDetail, syntheticRide } from '/replay/synthetic-archive.mjs';
+
+const panel = document.querySelector('ninebot-archive-panel');
+const rows = [
+  { account_id: 'account-a', device_id: 'synthetic-a', label: 'Synthetic A' },
+  { account_id: 'account-a', device_id: 'synthetic-b', label: 'Synthetic B' },
+  { account_id: 'account-b', device_id: 'synthetic-c', label: 'Synthetic C' },
+];
+const base = syntheticRide('synthetic-a');
+const rides = new Map([
+  ['synthetic-a', base],
+  ['synthetic-b', syntheticRide('synthetic-b', { august: true, sameId: true, overlap: true })],
+  ['synthetic-c', { ...base, device_id: 'synthetic-c', vehicle_label: 'Synthetic C', distance_m: 3400 }],
+]);
+const older = id => ({ ...rides.get(id), ride_id: 'synthetic-older', detail_id: 'synthetic-older-detail',
+  start_time: '2026-09-02T08:00:00Z', end_time: '2026-09-02T08:10:00Z' });
+const version = device => ({ device_id: device, selection_version: 'c'.repeat(32) + ':1' });
+const requests = [];
+const subscriptions = [];
+const deferred = new Map();
+const lost = new Set();
+const events = { ready: new Set(), disconnected: new Set() };
+const connection = {
+  connected: true,
+  addEventListener: (event, callback) => events[event].add(callback),
+  removeEventListener: (event, callback) => events[event].delete(callback),
+  async subscribeMessage(callback, message, options) {
+    requests.push({ message, options });
+    const sub = { callback, device_ids: message.device_ids, active: true };
+    subscriptions.push(sub);
+    return () => { sub.active = false; };
+  },
+};
+const respondDetail = (ride, data) => {
+  const result = syntheticDetail(ride, data, { overlap: true });
+  if (ride.device_id === 'synthetic-c') {
+    result.ride.track = result.ride.track.map(point => ({ ...point, latitude: point.latitude + 5 }));
+  }
+  return { response: result };
+};
+async function callWS(message) {
+  requests.push({ message });
+  if (message.type === 'ninebot/history/vehicles') {
+    return { vehicles: rows.filter(row => !lost.has(row.device_id)), more_available: false };
+  }
+  if (message.type !== 'call_service' || message.domain !== 'ninebot') throw Error('Unexpected command');
+  const data = message.service_data, ride = rides.get(data.device_id);
+  if (!ride || lost.has(data.device_id)) throw { code: 'unauthorized' };
+  if (message.service === 'get_recorded_trips') {
+    const datedRides = data.device_id === 'synthetic-c' ? [ride, older(data.device_id)] : [ride];
+    const requestedRides = datedRides.filter(row => {
+      const date = row.start_time.slice(0, 10);
+      return date >= data.start_date && date <= data.end_date;
+    });
+    return { response: { source_mode: 'ride_archive', sort: 'desc', selection_version: version(data.device_id).selection_version,
+      next_cursor: null, coverage: {}, rides: requestedRides.map(row => ({ ...row, detail_saved: true })) } };
+  }
+  if (message.service !== 'get_trip_detail' || !data.local_only || !data.include_track) throw Error('Unexpected service');
+  const requested = data.ride_id === ride.ride_id ? ride : older(data.device_id);
+  const gate = deferred.get(data.device_id);
+  if (gate) {
+    await gate.promise;
+    deferred.delete(data.device_id);
+  }
+  return respondDetail(requested, data);
+}
+const hass = { user: { id: 'ha-original' }, language: 'en', connected: true, connection, callWS };
+panel.hass = hass;
+window.fixture = {
+  panel, requests, subscriptions, lost,
+  baseline(index = -1) {
+    const sub = subscriptions.at(index);
+    sub.callback({ schema_version: 1, type: 'baseline', vehicles: sub.device_ids.map(version) });
+  },
+  close(reason) {
+    subscriptions.at(-1).callback({ schema_version: 1, type: 'closed', reason });
+  },
+  hold(id) {
+    let release;
+    const promise = new Promise(resolve => { release = resolve; });
+    deferred.set(id, { promise, release });
+  },
+  release(id) { deferred.get(id).release(); },
+  replaceUser() { panel.hass = { ...hass, user: { id: 'ha-replacement' } }; },
+  disconnect() {
+    connection.connected = false;
+    for (const cb of events.disconnected) cb();
+  },
+};
+</script>

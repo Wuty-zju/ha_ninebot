@@ -2,9 +2,9 @@
 
 [Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
 
-This guide covers **v2.2.14 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
+This guide covers **v2.2.15 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
 
-For frontend work, the [standalone replay example](history.md#standalone-replay) exercises the card’s shared model with two synthetic rides. Follow the [statistics receipt contract](assistant.md#statistics-follow-ups) when changing tool arguments or the archive projection.
+For frontend work, the [archive panel](history.md#local-archive-replay) and [synthetic replay example](history.md#standalone-replay) share the card’s selection and playback logic. Reuse the same two synthetic rides when checking account changes, late reads and revoked GPS permissions. The [statistics receipt contract](assistant.md#compound-statistics) describes multi-field follow-ups.
 
 ## Start with a task, not the whole repository
 

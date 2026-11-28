@@ -5,9 +5,9 @@
 | Channel | Delivered scope |
 |---|---|
 | **v2.2.0 stable** | Native Home Assistant entities, controls, an account-owned ride archive and optional Assistant. [Release](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0) |
-| **v2.2.14 preview** | Day, month and energy follow-ups verified under current access. A standalone replay example shares the dashboard’s selection and statistics. [Ride comparison](history.md#replay-saved-routes) · [Month and energy follow-ups](assistant.md#statistics-follow-ups) |
+| **v2.2.15 preview** | One follow-up can change vehicle, period and metric. A dedicated HA panel replays local account archives. [Assistant receipts](assistant.md#compound-statistics) · [Archive panel](history.md#local-archive-replay) |
 
-正式版 **v2.2.0** 包含原生实体、车控、账号档案和可选 Assistant。**v2.2.14 预览版**支持切换车辆、月份和指标后按当前权限取数，独立回放示例与卡片共用行程选择及统计。以下阶段按可复现的场景及验收结果推进。
+正式版 **v2.2.0** 包含原生实体、车控、账号档案和可选 Assistant。**v2.2.15 预览版**支持一次追问同时换车、月份和指标。独立档案面板按当前权限回放已保存的行程。
 
 <a id="added-in-200rc4"></a>
 <a id="available-in-200rc1"></a>
@@ -44,13 +44,13 @@ HA 自带的**地图**卡片读取定位实体与 Recorder 中的观察记录。
 | 2. Refine map boundaries | Keep selection, replay state, archive access and rendering independently testable. Keep the default dashboard integration behavior and use the same view state for the native and fallback renderers. | On one synthetic set, compare HA native map and fallback behavior for focus, narrow layouts, keyboard/screen reader semantics, touch, endpoint-only tracks, revoke/disconnect and request counts. Verify that keeping one ride retains pointer, zoom and play state. Validate spoken feedback on a physical iPhone separately. |
 | 3. Refine Assistant boundaries | Use the existing tool catalog and deterministic local plans. Change queries, guidance or presentation at the boundary where a measured failure occurs. | Run the same cases through the direct tool, native host and Action. Include same-name vehicle selection, another vehicle's grants, midnight boundary, verified zero, pending/partial coverage and missing sync-health permission. Inspect actual tool calls separately from host prose. |
 | 4. Snow Leopard maintenance | Trace one regression at a time through auth/recovery, polling, storage, control, archive import or statistics. Prioritize duplicate month reads, restart recovery and protecting detailed geometry. | Compare before/after inputs and outputs, wire/SQL counts and timings where relevant. Preserve account identity, checkpoint/freshness semantics, rollback and better tracks. Keep behavior-preserving cleanup distinct from a verified fix. |
-| 5. Consider a standalone reader | Design a read-only history client over the **same authorized archive Actions and metadata-only WebSocket**. Keep the bundled Home Assistant card as the default. This is a planning item. | First prove bounded pages, current HA user/vehicle permissions, immediate clearing on disconnect or revocation, and reuse of map/selection logic. State supported browsers and an isolated validation plan before implementation. |
+| 5. Maintain the archive reader | Exercise account changes, stale pages and GPS permission withdrawal against the [local archive panel](history.md#local-archive-replay). | Only extend the interface when a recorded case shows a missing workflow. Keep archive reads paged and scoped to the signed-in user. |
 
 1. 建立可复用的合成场景，固定基线、输入、操作身份及验收结果。
 2. 在 HA 原生地图组件与随包绘图路径复核选择、视角、键盘、触摸、简化轨迹和归档请求数。实体 iPhone 上的读屏实际播报单独验证。
 3. 用原生工具、宿主及 Action 验证同名选择、逐车授权、跨午夜、零值、覆盖不足及同步健康未授权，逐项对照工具回执与宿主原文。
 4. 雪豹式维护从具体反例切入，检查次数、耗时、重启恢复、归属与历史几何质量，先量测再修改。
-5. 独立只读客户端处于规划阶段。复用现有授权档案 Action 与仅含变更元数据的 WebSocket，先验证跨客户端权限及撤权后清理。
+5. 复用双账号跨月样例，继续核对只读面板在授权变化、后台恢复和分页期间的清理与恢复。
 
 Each change integrates through a short branch from `dev`. Publish a numeric preview when a validated stage is usable. Stable promotion uses a separately reviewed candidate. [Branch and release channels](development.md#branch-and-release-channels)
 

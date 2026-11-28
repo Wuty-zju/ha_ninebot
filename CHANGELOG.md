@@ -2,6 +2,11 @@
 
 Choose a version to see what shipped. The [user guides](docs/README.md) cover setup and current behavior. For the original account, entity and archive redesign, read the [2.0 development history](docs/releases/2.0.md). The stable [2.2.0 release](#220) includes the optional Assistant.
 
+## 2.2.15
+
+- Ask how much energy another vehicle used last month in a single follow-up. Ninebot resolves the vehicle, Shanghai calendar month and metric before reading its local statistics. The answer includes the selected dates, source and coverage. [Assistant guide](docs/assistant.md#compound-statistics)
+- Open **Ninebot Ride Archive** in the Home Assistant sidebar to replay saved local rides by account and date. Changing accounts, losing the connection or withdrawing access clears previous routes and totals. [Archive guide](docs/history.md#local-archive-replay)
+
 ## 2.2.14
 
 - Follow a statistic to the previous month or change the measure to energy consumed in Wh. Each question reads the selected vehicle under the current permissions. Monthly receipts preserve the last included day, including when the next question arrives in another month. [Assistant guide](docs/assistant.md#statistics-follow-ups)

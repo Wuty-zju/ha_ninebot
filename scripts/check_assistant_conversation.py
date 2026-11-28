@@ -9,6 +9,7 @@ checks establish host contracts rather than model answer quality.
 import asyncio
 from contextlib import suppress
 from dataclasses import replace
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -219,23 +220,33 @@ async def check(fixture: SimpleNamespace) -> None:
             "date": "2026-10-01",
             "metric": "ride_count",
         }
-        await turn("耗电量呢？")
+        compound = {
+            "vehicle_ref": fixture.vehicle_ref,
+            "period": "2026-11-05",
+            "metric": "ride_count",
+            "change": {"vehicle": "other", "period": "last_month", "metric": "energy_wh"},
+        }
+        before = len(action_contexts)
+        with patch.object(dt_util, "utcnow", return_value=datetime(2026, 11, 5, tzinfo=UTC)):
+            await turn("那另一辆车上个月耗电多少？")
+            combined = await stream_call("ninebot__get_statistics", compound)
+        assert not combined.result.error and len(action_contexts) == before + 1
+        assert combined.result.data["data"] == {
+            "energy_wh": PERIODS["last_month"]["energy_wh"],
+            "units": {"energy_wh": "Wh"},
+        }
+        assert combined.result.data["query_context"] == {
+            "device_id": fixture.other_ref,
+            "metric": "energy_wh",
+            "month": "2026-10",
+            "through_date": "2026-10-31",
+        }
         month_args = {
             "vehicle_ref": fixture.other_ref,
             "metric": "ride_count",
             "period": "2026-10",
             "change": "energy_wh",
         }
-        energy = await stream_call(
-            "ninebot__get_statistics", {**month_args, "through_date": "2026-10-31"}
-        )
-        assert energy.result.data["query_context"] == {
-            "device_id": fixture.other_ref,
-            "metric": "energy_wh",
-            "month": "2026-10",
-            "through_date": "2026-10-31",
-        }
-        assert energy.result.data["data"]["energy_wh"] == PERIODS["last_month"]["energy_wh"]
         count = len(action_contexts)
         moved = await stream_call(
             "ninebot__get_statistics", {**month_args, "through_date": "2026-10-01"}
@@ -246,7 +257,7 @@ async def check(fixture: SimpleNamespace) -> None:
         fixture.entry.options["assistant_vehicles"].remove(fixture.other_sn)
         try:
             await turn("再看下另一辆呢？")
-            absent = await stream_call("ninebot__get_statistics", followup)
+            absent = await stream_call("ninebot__get_statistics", compound)
             assert absent.result.error and "data" not in absent.result.data
             assert absent.result.data["error"]["code"] == "no_other_vehicle"
             assert len(action_contexts) == called

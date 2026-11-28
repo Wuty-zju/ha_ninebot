@@ -6,11 +6,16 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Any, cast
 
+from homeassistant.auth import EVENT_USER_REMOVED, EVENT_USER_UPDATED
 from homeassistant.components import websocket_api
-from homeassistant.core import Context, HomeAssistant, ServiceCall, callback
+from homeassistant.core import Context, Event, HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
+from .assistant_views import safe_label
 from .compat import validation as vol
+from .const import CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY, DOMAIN
 from .coordinator import NinebotCoordinator
 from .ride_archive import ArchiveError
 from .services import assert_query_scope, async_check_history_access, resolve_vehicle
@@ -20,6 +25,8 @@ MAX_CONNECTION = 8
 MAX_TOTAL = 64
 DEBOUNCE = 0.25
 RETRY_DELAYS = (1, 5)
+ACCESS_INTERVAL = 10
+MAX_DISCOVERED = 100
 
 
 @dataclass(frozen=True)
@@ -30,6 +37,10 @@ class Scope:
     coordinator: NinebotCoordinator
     generation: int
     ownership: int
+
+
+def history_call(hass: HomeAssistant, context: Context, device: str) -> ServiceCall:
+    return ServiceCall(hass, DOMAIN, "get_recorded_trips", {"device_id": device}, context=context)
 
 
 class HistoryFeed:
@@ -45,6 +56,7 @@ class HistoryFeed:
         self.connection = connection
         self.identity: int = message["id"]
         self.context: Context = connection.context(message)
+        self.include_track: bool = message.get("include_track", False)
         self.scopes: list[Scope] = []
         self.listeners: list[Callable[[], None]] = []
         self.timer: asyncio.TimerHandle | None = None
@@ -53,6 +65,9 @@ class HistoryFeed:
         self.ready = False
         self.dirty = False
         self.errors = 0
+        self.access_timer: asyncio.TimerHandle | None = None
+        self.access_task: asyncio.Task[Any] | None = None
+        self.access_dirty = False
 
     @callback
     def cancel(self) -> None:
@@ -66,6 +81,12 @@ class HistoryFeed:
         if self.task and self.task is not asyncio.current_task():
             self.task.cancel()
         self.task = None
+        if self.access_timer:
+            self.access_timer.cancel()
+            self.access_timer = None
+        if self.access_task and self.access_task is not asyncio.current_task():
+            self.access_task.cancel()
+        self.access_task = None
         for remove in self.listeners:
             remove()
         self.listeners.clear()
@@ -115,30 +136,92 @@ class HistoryFeed:
         for scope in tuple(self.scopes):
             if self.closed:
                 raise asyncio.CancelledError
-            call = ServiceCall(
-                self.hass,
-                "ninebot",
-                "get_recorded_trips",
-                {"device_id": scope.device},
-                context=self.context,
-            )
             co = scope.coordinator
-            await async_check_history_access(self.hass, call, scope.entry)
+            await self.check_access(scope)
             version = await co.statistics.archive.async_catalog_version(scope.sn)
-            await async_check_history_access(self.hass, call, scope.entry)
-            assert_query_scope(
-                self.hass, scope.device, scope.entry, scope.sn, False, require_live=False
-            )
-            if (
-                not co.statistics.archive_ready
-                or co._generation != scope.generation
-                or co._ownership.get(scope.sn, 0) != scope.ownership
-            ):
-                raise HomeAssistantError
+            await self.check_access(scope)
             result.append({"device_id": scope.device, "selection_version": version})
         if self.closed:
             raise asyncio.CancelledError
         return result
+
+    async def check_access(self, scope: Scope) -> None:
+        await async_check_history_access(
+            self.hass,
+            history_call(self.hass, self.context, scope.device),
+            scope.entry,
+            include_track=self.include_track,
+        )
+        assert_query_scope(
+            self.hass, scope.device, scope.entry, scope.sn, self.include_track, require_live=False
+        )
+        co = scope.coordinator
+        if (
+            not co.statistics.archive_ready
+            or co._generation != scope.generation
+            or co._ownership.get(scope.sn, 0) != scope.ownership
+        ):
+            raise HomeAssistantError
+
+    @callback
+    def watch_access(self) -> None:
+        """Check only the current in-memory authorization, even on a quiet archive."""
+        devices = {scope.device for scope in self.scopes}
+
+        @callback
+        def changed(event: Event[Any]) -> None:
+            if (
+                event.data.get("user_id") == self.context.user_id
+                or event.data.get("device_id") in devices
+                or event.data.get("entity_id", "").startswith(("calendar.", "device_tracker."))
+            ):
+                self.launch_access()
+
+        listen = self.hass.bus.async_listen
+        self.listeners.extend(
+            (
+                listen(EVENT_USER_UPDATED, changed),
+                listen(EVENT_USER_REMOVED, changed),
+                listen(dr.EVENT_DEVICE_REGISTRY_UPDATED, changed),
+                listen(er.EVENT_ENTITY_REGISTRY_UPDATED, changed),
+            )
+        )
+        self.access_timer = self.hass.loop.call_later(ACCESS_INTERVAL, self.launch_access)
+
+    @callback
+    def launch_access(self) -> None:
+        if self.access_timer:
+            self.access_timer.cancel()
+            self.access_timer = None
+        if self.access_task:
+            self.access_dirty = True
+        elif not self.closed:
+            # Cached auth can finish eagerly before the task is assigned here.
+            self.access_task = self.hass.async_create_task(self.recheck_access(), eager_start=False)
+
+    async def recheck_access(self) -> None:
+        try:
+            for scope in tuple(self.scopes):
+                await self.check_access(scope)
+        except Unauthorized:
+            self.finish("denied")
+        except HomeAssistantError as err:
+            reason = (
+                "denied"
+                if getattr(err, "translation_key", None) == "query_coordinates"
+                else "unavailable"
+            )
+            self.finish(reason)
+        finally:
+            self.access_task = None
+            if not self.closed:
+                if self.access_dirty:
+                    self.access_dirty = False
+                    self.launch_access()
+                else:
+                    self.access_timer = self.hass.loop.call_later(
+                        ACCESS_INTERVAL, self.launch_access
+                    )
 
     async def send(self) -> None:
         self.dirty = False
@@ -176,12 +259,20 @@ def async_close_entry_feeds(hass: HomeAssistant, entry: str) -> None:
             feed.finish("unloaded")
 
 
+@callback
+def async_revoke_coordinate_access(hass: HomeAssistant, entry: str) -> None:
+    for feed in tuple(feeds(hass)):
+        if feed.include_track and any(scope.entry == entry for scope in feed.scopes):
+            feed.finish("denied")
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "ninebot/history/subscribe",
         vol.Required("device_ids"): vol.All(
             [vol.All(str, vol.Length(min=1, max=128))], vol.Length(min=1, max=5)
         ),
+        vol.Optional("include_track", default=False): bool,
     }
 )
 @websocket_api.async_response
@@ -223,6 +314,8 @@ async def async_subscribe_history(
             return
         # Changes during authorization/read are retained by ready=False/dirty.
         feed.ready = True
+        if feed.include_track:
+            feed.watch_access()
         connection.send_result(message["id"])
         connection.send_event(
             message["id"], {"schema_version": 1, "type": "baseline", "vehicles": versions}
@@ -243,6 +336,51 @@ async def async_subscribe_history(
             feed.changed()
 
 
+@websocket_api.websocket_command({vol.Required("type"): "ninebot/history/vehicles"})
+@websocket_api.async_response
+async def async_history_vehicles(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
+) -> None:
+    """Discover loaded archive scopes the original HA user can replay."""
+    context = connection.context(message)
+    registry = dr.async_get(hass)
+    rows: list[dict[str, str]] = []
+    for account in hass.config_entries.async_entries(DOMAIN):
+        for device in dr.async_entries_for_config_entry(registry, account.entry_id):
+            try:
+                entry, sn = resolve_vehicle(hass, device.id, require_live=False)
+                if (
+                    entry is not account
+                    or not entry.runtime_data.coordinator.statistics.archive_ready
+                ):
+                    continue
+                await async_check_history_access(
+                    hass, history_call(hass, context, device.id), entry.entry_id, include_track=True
+                )
+                assert_query_scope(hass, device.id, entry.entry_id, sn, True, require_live=False)
+            except HomeAssistantError:
+                continue
+            if len(rows) == MAX_DISCOVERED:
+                connection.send_result(message["id"], {"vehicles": rows, "more_available": True})
+                return
+            rows.append(
+                {
+                    "account_id": entry.entry_id,
+                    "device_id": device.id,
+                    "label": safe_label(
+                        device.name_by_user or device.name or "Vehicle",
+                        sn,
+                        *(
+                            str(entry.data.get(key, ""))
+                            for key in (CONF_ACCOUNT, CONF_BUSINESS_UID, CONF_SESSION_KEY)
+                        ),
+                    ),
+                }
+            )
+    connection.send_result(message["id"], {"vehicles": rows, "more_available": False})
+
+
 @callback
 def async_register_history_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, async_subscribe_history)
+    websocket_api.async_register_command(hass, async_history_vehicles)

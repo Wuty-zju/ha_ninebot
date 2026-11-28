@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
-This guide covers **v2.2.14 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+This guide covers **v2.2.15 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
 
 The runtime lives in `custom_components/ninebot`. Trace a reported value from the account's cloud session through normalization to a current entity or the private archive. Trace a query in the opposite direction, starting with the HA user's context and selected vehicle.
 
@@ -110,7 +110,7 @@ The bundled replay card shares HA's map component. The stock HA **Map** card dis
 
 In **v2.2.12**, both the focused ride and the selected total use the selected summaries. Keep distance, recorded duration and Wh separate, compute weighted ratios from matching sums and preserve valid zero inputs. Incomplete inputs carry per-metric coverage and no aggregate value. **Keep current ride** drops other selections while keeping the current sample position, playback and map view. [Replay and comparison behavior](history.md#replay-saved-routes)
 
-A prospective standalone reader would reuse these authorized archive Actions and metadata-only WebSocket subscription. The default client remains the bundled HA card. [Roadmap and acceptance criteria](roadmap.md#next-candidates)
+The [archive panel](history.md#local-archive-replay) obtains authorized HA device IDs from `ninebot/history/vehicles`. A track-authorized subscription guards the displayed account while existing recorded-list and local-detail Actions supply archive pages and geometry. Both the card and panel share selection, playback and whole-ride statistics.
 
 ## Diagnostics and Repairs
 

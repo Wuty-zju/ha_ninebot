@@ -10,6 +10,7 @@ from homeassistant.helpers import device_registry as dr
 
 from custom_components.ninebot import history_websocket as ws
 from custom_components.ninebot.adapters import travel
+from custom_components.ninebot.const import CONF_COORDINATES
 from custom_components.ninebot.ride_archive import ArchiveError, ArchiveFailure
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -25,6 +26,16 @@ def clock(freezer, monkeypatch):
 
 @pytest.fixture
 async def local(hass, entry, app_client, hass_ws_client):
+    return await setup_local(hass, entry, app_client, hass_ws_client)
+
+
+@pytest.fixture
+async def replay_local(hass, entry, app_client, hass_ws_client):
+    hass.config_entries.async_update_entry(entry, options={**entry.options, CONF_COORDINATES: True})
+    return await setup_local(hass, entry, app_client, hass_ws_client)
+
+
+async def setup_local(hass, entry, app_client, hass_ws_client):
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     app_client.reset_mock()
@@ -40,9 +51,9 @@ async def local(hass, entry, app_client, hass_ws_client):
     return device, client, entry.runtime_data.coordinator
 
 
-async def subscribe(client, device, identity=1):
+async def subscribe(client, device, identity=1, **options):
     await client.send_json(
-        {"id": identity, "type": "ninebot/history/subscribe", "device_ids": [device]}
+        {"id": identity, "type": "ninebot/history/subscribe", "device_ids": [device], **options}
     )
     return await asyncio.wait_for(client.receive_json(), 5)
 
@@ -188,3 +199,63 @@ async def test_distinct_devices_and_subscription_capacity_are_bounded(hass, loca
     await client.receive_json()
     assert (await subscribe(client, device, 3))["error"]["code"] == "invalid_format"
     assert len(ws.feeds(hass)) == 1
+
+
+@pytest.mark.parametrize("notify", [True, False])
+async def test_replay_access_revocation_checks_quiet_archive_without_reading_it(
+    hass, replay_local, monkeypatch, freezer, notify
+):
+    device, client, co = replay_local
+    user = SimpleNamespace(is_active=True, permissions=Mock())
+    user.permissions.access_all_entities.return_value = False
+    tracker_allowed = True
+    user.permissions.check_entity.side_effect = lambda entity, _: (
+        entity.startswith("calendar.") or (tracker_allowed and entity.startswith("device_tracker."))
+    )
+    catalog = AsyncMock(wraps=co.statistics.archive.async_catalog_version)
+    monkeypatch.setattr(co.statistics.archive, "async_catalog_version", catalog)
+    with patch.object(hass.auth, "async_get_user", AsyncMock(return_value=user)):
+        assert (await subscribe(client, device, include_track=True))["success"]
+        assert (await client.receive_json())["event"]["type"] == "baseline"
+        feed = next(iter(ws.feeds(hass)))
+        if not notify:
+            freezer.tick(timedelta(seconds=ws.ACCESS_INTERVAL + 0.1))
+            await hass.async_block_till_done()
+            assert not feed.closed and feed.access_timer is not None and feed.access_task is None
+        tracker_allowed = False
+        if notify:
+            hass.bus.async_fire(ws.EVENT_USER_UPDATED, {"user_id": feed.context.user_id})
+            await hass.async_block_till_done()
+        else:
+            freezer.tick(timedelta(seconds=ws.ACCESS_INTERVAL + 0.1))
+            await hass.async_block_till_done()
+        closed = (await asyncio.wait_for(client.receive_json(), 5))["event"]
+        assert closed == {"schema_version": 1, "type": "closed", "reason": "denied"}
+        assert feed.closed and feed.access_timer is None and feed.access_task is None
+        catalog.assert_awaited_once_with("SyntheticSN")
+        assert (await subscribe(client, device, 2, include_track=True))["error"][
+            "code"
+        ] == "unauthorized"
+        assert (await subscribe(client, device, 3))["success"]
+
+
+async def test_coordinate_option_change_retires_replay_and_hides_vehicle(hass, entry, replay_local):
+    device, client, _ = replay_local
+    await client.send_json({"id": 1, "type": "ninebot/history/vehicles"})
+    result = (await client.receive_json())["result"]
+    assert result["more_available"] is False
+    (row,) = result["vehicles"]
+    assert row == {"account_id": entry.entry_id, "device_id": device, "label": row["label"]}
+    assert not {"fake-account", "SyntheticSN", "synthetic-business"}.intersection(
+        row["label"].split()
+    )
+    assert (await subscribe(client, device, 2, include_track=True))["success"]
+    await client.receive_json()
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, CONF_COORDINATES: False}
+    )
+    closed = (await asyncio.wait_for(client.receive_json(), 5))["event"]
+    assert closed == {"schema_version": 1, "type": "closed", "reason": "denied"}
+    await hass.async_block_till_done()
+    await client.send_json({"id": 3, "type": "ninebot/history/vehicles"})
+    assert (await client.receive_json())["result"] == {"vehicles": [], "more_available": False}

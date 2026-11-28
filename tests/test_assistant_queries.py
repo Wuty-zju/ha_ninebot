@@ -209,6 +209,76 @@ async def test_anonymous_or_revoked_user_is_not_an_automation(hass, assistant):
     assert error and result["error"]["code"] == "not_authorized"
 
 
+async def test_followup_receipts_on_supported_core_versions(hass, assistant):
+    """Replay native Action cases on both Core boundaries with a synthetic provider."""
+    from homeassistant.helpers import llm
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.ninebot import assistant_api, assistant_ask
+    from scripts.check_assistant_followups import check, check_period_metrics
+
+    entry = assistant.entry
+    registry = dr.async_get(hass)
+    primary = registry.async_get(assistant.device)
+    other_sn = "second-followup-vehicle"
+    snapshot = assistant.co.data[SN]
+    assistant.co.data[other_sn] = replace(snapshot, profile=replace(snapshot.profile, sn=other_sn))
+    other = registry.async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={("ninebot", other_sn)}, name=primary.name
+    )
+
+    def receipt(data, *, error=False):
+        return SimpleNamespace(data=data, error=error)
+
+    async def ask(question, arguments, selection):
+        async def generate(actual_hass, *, context, llm_api, instructions, **kwargs):
+            assert actual_hass is hass and context is assistant.context
+            assert instructions.startswith(question)
+
+            async def read(host, tool, invocation):
+                data, error = await async_query(
+                    host,
+                    "get_statistics",
+                    tool.tool_args,
+                    invocation.context,
+                    _period_now=llm_api.started_at,
+                )
+                return receipt(data, error=error)
+
+            await llm_api.async_call(
+                SimpleNamespace(async_call=read),
+                llm.ToolInput(tool_name="ninebot__get_statistics", tool_args=arguments),
+                SimpleNamespace(context=context),
+                bound_vehicle=llm_api.selected,
+            )
+
+        with patch.object(
+            assistant_ask,
+            "async_import_module",
+            return_value=SimpleNamespace(async_generate_data=generate),
+        ):
+            return await hass.services.async_call(
+                "ninebot",
+                "ask",
+                {"question": question, "ai_task_entity_id": "ai_task.synthetic", **selection},
+                blocking=True,
+                return_response=True,
+                context=assistant.context,
+            )
+
+    with (
+        patch.object(dt_util, "utcnow", return_value=datetime(2026, 12, 4, tzinfo=UTC)),
+        patch.object(assistant_ask, "turn_api", side_effect=lambda turn: turn),
+        patch.object(assistant_api, "native_result", side_effect=receipt),
+    ):
+        remove = assistant_ask.async_register(hass)
+        try:
+            await check(hass, entry, assistant.co, primary, other, ask)
+            await check_period_metrics(hass, entry, primary, other, ask)
+        finally:
+            remove()
+
+
 async def test_composite_tool_cannot_join_permissions_across_cars(hass, assistant):
     from custom_components.ninebot.assistant_access import (
         AssistantAccess,

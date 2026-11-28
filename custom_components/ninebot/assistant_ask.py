@@ -218,7 +218,11 @@ class EvidenceTurn:
             **({"through_date": previous["through_date"]} if "month" in previous else {}),
         }
         if "change" in supplied:
-            args = changed_statistic({**args, "change": supplied["change"]})
+            try:
+                args = changed_statistic({**args, "change": supplied["change"]})
+            except vol.Invalid as err:
+                self.stop = "invalid_arguments"
+                raise TurnStopped from err
         if args.pop("other_vehicle", False):
             if self.call.data.get("device_id"):
                 self.deny()
@@ -243,8 +247,12 @@ class EvidenceTurn:
         has_evidence = any(
             not row["error"] and row["tool"] != "ninebot__get_vehicles" for row in self.results
         )
-        if self.stop == "model_task_failed" and not has_evidence:
-            return failed("model_task_failed")
+        if (
+            self.stop is not None
+            and self.stop in {"model_task_failed", "invalid_arguments"}
+            and not has_evidence
+        ):
+            return failed(self.stop)
         response = {
             "schema_version": 1,
             "answer_mode": "verified_tool_results",
@@ -352,17 +360,22 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                 self.parameters = vol.Schema(parameters)
                 self.description = "Uses this Action's selected vehicle. " + spec.description
                 if turn.previous and spec.key == "get_statistics":
+                    allow_other = not turn.call.data.get("device_id")
                     self.parameters = vol.Schema(
-                        {
-                            vol.Optional("change"): statistic_change(
-                                allow_other=not turn.call.data.get("device_id")
-                            )
-                        }
+                        {vol.Optional("change"): statistic_change(allow_other=allow_other)}
+                    )
+                    example = (
+                        '{"vehicle":"other","period":"last_month","metric":"energy_wh"}'
+                        if allow_other
+                        else '{"vehicle":"previous","period":"last_month","metric":"energy_wh"}'
                     )
                     self.description = (
-                        "Change ONE thing in the selected statistic. Pass only change=last_month "
-                        "for '那上个月呢', yesterday for '那昨天呢', energy_wh for '耗电量呢', "
-                        "or other_vehicle for '另一辆呢' if offered. Omit change to reread."
+                        "Change only what the question asks. For a single change, pass a "
+                        "string: last_month, yesterday, energy_wh or other_vehicle if offered. "
+                        "For multiple changes pass one object, for example "
+                        f"{example}. "
+                        "For an object, choose the previous or other vehicle explicitly. "
+                        "Omit unchanged period and metric. Omit change to reread."
                     )
 
         async def async_call(
@@ -391,24 +404,33 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
             ]
             if not tools:
                 turn.deny()
-            return llm.APIInstance(
-                api=self,
-                api_prompt=PROMPT
-                + f" Use the Action's starting business date, {turn.business_date} "
-                f"({BUSINESS_TIMEZONE}), for relative periods. When the scope excludes a "
-                "requested read, report that limit without supplying a date or count."
-                + (
-                    " This Action has already selected a vehicle. Its vehicle tools are bound "
-                    "to that selection; call them directly without vehicle_ref. If the question "
-                    "requires another vehicle, ask the user to select it in the Action."
-                    if turn.selected is not None and not turn.previous
-                    else " This follow-up needs a fresh get_statistics result, "
-                    "using only its change argument. The Action supplies all unchanged fields."
-                    if turn.previous
-                    else " Multiple vehicles are available. For a vehicle question, list the "
+            if turn.previous:
+                scope_prompt = (
+                    "Read a fresh statistic for this follow-up. The previous vehicle is the "
+                    "reference point. For multiple changes, select vehicle=other when the user "
+                    "asks about another vehicle, or vehicle=previous for the same vehicle. "
+                    "Combine the vehicle, requested month or day, and requested measure in ONE "
+                    "change object. Omit unchanged fields. Energy use is energy_wh. "
+                    "For a single change its short string also works. Use only the new receipt."
+                )
+            elif turn.selected is not None:
+                scope_prompt = (
+                    PROMPT + " This Action has already selected a vehicle. Its vehicle tools are "
+                    "bound to that selection; call them directly without vehicle_ref. If the "
+                    "question requires another vehicle, ask the user to select it in the Action."
+                )
+            else:
+                scope_prompt = (
+                    PROMPT + " Multiple vehicles are available. For a vehicle question, list the "
                     "choices and ask the user to select the HA device. For general help, "
                     "search the guide directly."
-                ),
+                )
+            return llm.APIInstance(
+                api=self,
+                api_prompt=scope_prompt
+                + f" Use the Action's starting business date, {turn.business_date} "
+                f"({BUSINESS_TIMEZONE}), for relative periods. When the scope excludes a "
+                "requested read, report that limit without supplying a date or count.",
                 llm_context=llm_context,
                 tools=tools,
                 custom_serializer=tool_serializer,
@@ -440,13 +462,17 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
                 ):
                     return failed("unsupported_capability")
                 selection: dict[str, Any] = {
-                    "vehicle_selected": turn.selected is not None,
+                    "vehicle_selected": turn.selected is not None
+                    and (not turn.previous or bool(call.data.get("device_id"))),
                     "business_timezone": BUSINESS_TIMEZONE,
                     "business_date": turn.business_date,
                 }
                 if turn.selected_reads:
                     selection["allowed_reads"] = turn.selected_reads
                 if turn.previous:
+                    selection["previous_vehicle"] = (
+                        "explicitly_selected" if call.data.get("device_id") else "from_last_receipt"
+                    )
                     if "date" in turn.previous:
                         selection["previous_date"] = turn.previous["date"]
                     else:

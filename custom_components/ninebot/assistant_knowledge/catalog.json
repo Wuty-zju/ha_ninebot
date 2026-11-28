@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.18",
-  "source_version": "2.2.14",
+  "corpus_version": "1.2.19",
+  "source_version": "2.2.15",
   "entries": [
     {
       "id": "statistics_missing",
@@ -1256,6 +1256,44 @@
       },
       "procedure_id": null,
       "content_sha256": "41e6f93744b956a0e605318cf9615679297ac97df5ae8c672ffaeeec02f350c5"
+    },
+    {
+      "id": "combined_vehicle_statistics",
+      "applicable_versions": {
+        "min_inclusive": "2.2.15",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-28",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "b2e274658431c9b71aa1020acd236c2526c10a5b",
+        "sha256": "e6a2fdebb164a1ec3a5e2d3b3ed3bbc1821b9ee68bd2c1473d7e94fc289ac91b",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/b2e274658431c9b71aa1020acd236c2526c10a5b/docs/assistant.md#compound-statistics"
+      },
+      "translations": {
+        "en": {
+          "title": "Energy use on another vehicle last month",
+          "text": "Use the previous single-metric receipt and send one change object with vehicle=other, period=last_month and metric=energy_wh. With one eligible alternative the tool reads that vehicle for the previous Shanghai calendar month. Ambiguous choices need a device selection. A denied read returns no energy value.",
+          "keywords": [
+            "how much energy did the other vehicle use last month",
+            "compound statistics",
+            "change vehicle period metric"
+          ]
+        },
+        "zh-Hans": {
+          "title": "追问另一辆车上个月的耗电量",
+          "text": "带上上一份单指标回执，在一个 change 中同时指定另一辆车、上个自然月和 energy_wh。按上海时区确定日期，确认设备和本轮统计权限后只读目标车辆档案。多辆候选需要选车，撤回权限后不返回耗电量。",
+          "keywords": [
+            "那另一辆车上个月耗电多少",
+            "同时换车换月份换指标",
+            "复合统计追问"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "a711793a35d39bcc62e462b77547ed987d93b10e45ee07475947c6d7e6cb213e"
     }
   ],
   "procedures": [

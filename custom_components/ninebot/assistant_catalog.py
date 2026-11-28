@@ -26,16 +26,32 @@ PERIOD = vol.Any(vol.In(RELATIVE_PERIODS), business_date, business_month)
 
 
 def statistic_change(*, allow_other: bool = True) -> Any:
+    """Short answers change one field; an explicit compound question can change several."""
     choices = (*RELATIVE_PERIODS, *METRIC_UNITS)
+    fields = {
+        vol.Required("vehicle"): vol.In(("previous", "other") if allow_other else ("previous",)),
+        vol.Optional("period"): PERIOD,
+        vol.Optional("metric"): vol.In(tuple(METRIC_UNITS)),
+    }
     if allow_other:
         choices += ("other_vehicle",)
-    return vol.Any(vol.In(choices), business_date, business_month)
+    return vol.Any(
+        vol.In(choices),
+        business_date,
+        business_month,
+        vol.Schema(fields),
+        vol.Schema({vol.Required("period"): PERIOD}),
+        vol.Schema({vol.Required("metric"): vol.In(tuple(METRIC_UNITS))}),
+    )
+
+
+STATISTIC_CHANGE = statistic_change()
 
 
 def changed_statistic(arguments: dict[str, Any]) -> dict[str, Any]:
-    """Apply one requested change to the preceding single-metric receipt."""
+    """Apply all requested fields to one receipt before choosing a vehicle or reading."""
     args = dict(arguments)
-    change = args.pop("change")
+    change = STATISTIC_CHANGE(args.pop("change"))
     period = args["period"]
     if (
         "metric" not in args
@@ -45,12 +61,19 @@ def changed_statistic(arguments: dict[str, Any]) -> dict[str, Any]:
         or (len(period) != 7 and "through_date" in args)
     ):
         raise vol.Invalid("Use the absolute period and metric from the previous receipt")
-    if change == "other_vehicle":
+    if not isinstance(change, dict):
+        if change == "other_vehicle":
+            change = {"vehicle": "other"}
+        elif change in METRIC_UNITS:
+            change = {"metric": change}
+        else:
+            change = {"period": change}
+    if change.get("vehicle") == "other":
         args["other_vehicle"] = True
-    elif change in METRIC_UNITS:
-        args["metric"] = change
-    elif change != period:
-        args["period"] = change
+    if "metric" in change:
+        args["metric"] = change["metric"]
+    if "period" in change and change["period"] != period:
+        args["period"] = change["period"]
         args.pop("through_date", None)
     return args
 
@@ -191,9 +214,9 @@ QUERY_SPECS = (
         "This is the archive timezone, not the browser timezone; "
         "no alternate timezone is accepted. "
         "On a follow-up, copy the vehicle, absolute period, metric and any through_date from "
-        "query_context. Set change to the one requested difference: last_month for a new "
-        "month, energy_wh for total energy consumed, or other_vehicle to switch. "
-        "For the other vehicle pass its predecessor's vehicle_ref and other_vehicle=true. "
+        "query_context. For one change pass last_month, energy_wh or other_vehicle. "
+        "For several changes use a single change object: set vehicle to previous or other, "
+        "and include the requested period and metric. Recheck access on each read. "
         "For one requested measure, supply metric; omit it for a summary or multiple measures. "
         "Missing metrics are unknown. Use the returned values, units, exact dates, "
         "per-metric quality, observation time and source. Partial coverage leaves a full "
@@ -205,7 +228,7 @@ QUERY_SPECS = (
                 vol.Optional("metric"): vol.In(tuple(METRIC_UNITS)),
                 vol.Optional("other_vehicle"): bool,
                 vol.Optional("through_date"): business_date,
-                vol.Optional("change"): statistic_change(),
+                vol.Optional("change"): STATISTIC_CHANGE,
             }
         ),
         operation=Operation.STATISTICS,
