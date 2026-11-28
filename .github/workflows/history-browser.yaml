@@ -83,9 +83,11 @@ jobs:
           print(next(d["udid"] for k in runtimes for d in devices[k] if d["name"].startswith("iPhone")))')
           echo "SIMULATOR_UDID=$phone" >> "$GITHUB_ENV"
           xcrun simctl boot "$phone"
+          open -a "$(xcode-select -p)/Applications/Simulator.app" --args -CurrentDeviceUDID "$phone"
           xcrun simctl bootstatus "$phone" -b
           xcrun simctl spawn "$phone" defaults write com.apple.webinspectord RemoteAutomationEnabled -bool true
           xcrun simctl spawn "$phone" defaults write com.apple.mobilesafari AllowRemoteAutomation -bool true
+          xcrun simctl launch "$phone" com.apple.mobilesafari
       - name: Select overlapping routes, inspect accessible controls and drag to a saved point
         env:
           PLATFORM: ${{ matrix.platform }}
