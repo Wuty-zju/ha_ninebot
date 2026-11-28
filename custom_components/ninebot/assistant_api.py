@@ -14,13 +14,17 @@ from homeassistant.helpers import llm
 
 from .assistant import API_ID
 from .assistant_catalog import REQUEST_TOOL, SPECS, ToolSpec, parameter_schema
-from .assistant_queries import async_query, async_visible_keys
+from .assistant_queries import STATISTIC_MENUS, async_query, async_visible_keys
 from .assistant_task_queries import async_task_query
+from .compat import validation as vol
 
 PROMPT = (
     "Use the Ninebot tools for the vehicles and local data the user has allowed. "
-    "When several vehicles are available, ask which one the user wants. When labels match, "
-    "ask for the exact vehicle reference. Reuse an explicit selection without listing "
+    "When several vehicles are available, ask which one the user wants. Display a numbered "
+    "selection menu in the returned order, with each label and exact device reference. "
+    "An ordinal such as 第二辆 or the second one selects the displayed position, even for "
+    "identical labels. Never re-list or renumber the previous options to resolve an ordinal. "
+    "Reuse an explicit selection without listing "
     "vehicles again. Ask for unspecified statistical periods. "
     "Use references exactly as supplied by selection or discovery; never edit or guess them. "
     "An allowed selection does not substitute for a different or hidden target in the question. "
@@ -50,8 +54,9 @@ PROMPT = (
     "energy_wh or other_vehicle. If the user changes several things, send one change object "
     "with the explicit vehicle (previous or other) and requested period and metric. If selection "
     "is required, show the returned choices and wait for the user's HA device selection. "
-    "Copy next_step.query_context's anchor, absolute period, cutoff and metric. Call "
-    "get_statistics with those fields and selected_other_vehicle set to the chosen ID. "
+    "When a menu is returned, wait for the user's reply. For a reply such as 第二辆 use only "
+    "get_statistics(choice=the second row's choice). Send no vehicle, period, metric or change "
+    "with a choice. Ninebot resolves those from the displayed menu and checks access again. "
     "Use the new receipt. A denial ends the read. "
     "Business dates use the archive's Asia/Shanghai timezone. This is not evidence of the "
     "browser timezone. These tools cannot regroup statistics into browser-time day boundaries. "
@@ -147,6 +152,17 @@ class NinebotTool(llm.Tool):
         self.period_now = period_now
         self.name, self.title = f"ninebot__{spec.key}", spec.title
         self.description, self.parameters = spec.description, spec.parameters
+        if spec.key == "get_statistics" and selected_vehicle is None:
+            # The ordinary query still requires vehicle and period. A menu reply needs just choice.
+            self.parameters = vol.Schema(
+                {
+                    **{
+                        vol.Optional(str(key)): value
+                        for key, value in spec.parameters.schema.items()
+                    },
+                    vol.Optional("choice"): str,
+                }
+            )
         self.annotations = cast(Any, llm).ToolAnnotations(
             read_only=spec.read_only,
             destructive=False,
@@ -198,6 +214,7 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
         raise
 
     def remove() -> None:
+        hass.data.pop(STATISTIC_MENUS, None)
         remove_ask()
         remove_api()
 

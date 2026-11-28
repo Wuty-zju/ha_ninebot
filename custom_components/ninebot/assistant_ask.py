@@ -4,6 +4,7 @@ import asyncio
 import copy
 import inspect
 import json
+import re
 from collections.abc import Callable
 from dataclasses import replace
 from typing import Any, NoReturn
@@ -24,7 +25,7 @@ from .assistant_catalog import (
     statistic_change,
     vehicle_reference,
 )
-from .assistant_evidence import MAX_RECEIPTS, render_evidence_answer
+from .assistant_evidence import CONTRACT, MAX_RECEIPTS, render_evidence_answer
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .assistant_queries import (
     MAX_VEHICLES,
@@ -57,7 +58,32 @@ def question(value: object) -> str:
     return value.strip()
 
 
-def monthly_context(value: dict[str, str]) -> dict[str, str]:
+# These words are meaningful only as a whole reply to an outstanding numbered menu.
+_ORDINALS_EN = (
+    "first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth "
+    "thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth"
+).split()
+_ORDINALS_ZH = (
+    "一 二 三 四 五 六 七 八 九 十 十一 十二 十三 十四 十五 十六 十七 十八 十九 二十"
+).split()
+
+
+def reply_position(text: str) -> int | None:
+    """Recognize one explicit ordinal without interpreting additional instructions."""
+    reply = text.strip().casefold().rstrip(".。!！")
+    match = re.fullmatch(
+        r"(?:选(?:择)?\s*)?第?\s*([0-9]{1,2}|[一二三四五六七八九十]{1,3})\s*(?:辆|台|个)?", reply
+    )
+    if match:
+        number = match[1]
+        if number.isascii():
+            return int(number)
+        return _ORDINALS_ZH.index(number) + 1 if number in _ORDINALS_ZH else None
+    match = re.fullmatch(r"(?:the )?([a-z]+)(?: one| vehicle)?", reply)
+    return _ORDINALS_EN.index(match[1]) + 1 if match and match[1] in _ORDINALS_EN else None
+
+
+def monthly_context(value: dict[str, Any]) -> dict[str, Any]:
     if value["through_date"][:7] != value["month"]:
         raise vol.Invalid("The end date must belong to the selected month")
     return value
@@ -67,6 +93,9 @@ QUERY_SELECTION = {
     vol.Required("device_id"): vehicle_reference,
     vol.Required("metric"): vol.In(tuple(METRIC_UNITS)),
     vol.Optional("selection"): vol.In(("other_vehicle",)),
+    vol.Optional("choice_ids"): vol.All(
+        [vehicle_reference], vol.Length(min=2, max=MAX_VEHICLES), vol.Unique()
+    ),
 }
 QUERY_CONTEXT = vol.Any(
     vol.Schema({**QUERY_SELECTION, vol.Required("date"): business_date}),
@@ -103,7 +132,7 @@ class EvidenceTurn:
         self.started_at = dt_util.utcnow()
         self.business_date = period_dates("today", self.started_at)[0].isoformat()
         self.scopes: dict[str, AssistantScope] = {}
-        self.previous: dict[str, str] | None = call.data.get("query_context")
+        self.previous: dict[str, Any] | None = call.data.get("query_context")
         self.selected: str | None = call.data.get("device_id") or (
             self.previous["device_id"] if self.previous else None
         )
@@ -153,10 +182,16 @@ class EvidenceTurn:
             scope.assert_current(self.hass)
             self.selected_reads = sorted(current_access(scope.entry).vehicles[scope.sn].reads)
 
-    async def async_complete_choice(self, pending: dict[str, str]) -> dict[str, Any]:
+    async def async_complete_choice(self, pending: dict[str, Any]) -> dict[str, Any]:
         """The user resolved the last unknown. Read once using this call's HA identity."""
         chosen = self.call.data.get("device_id")
-        if not chosen:
+        ordered = pending.get("choice_ids", [])
+        position = reply_position(self.call.data["question"])
+        if ordered and position is not None:
+            if not 1 <= position <= len(ordered) or (chosen and chosen != ordered[position - 1]):
+                return failed("invalid_arguments")
+            chosen = ordered[position - 1]
+        if not chosen or (ordered and chosen not in ordered):
             return failed("invalid_arguments")
         arguments = {
             "vehicle_ref": pending["device_id"],
@@ -334,11 +369,20 @@ class EvidenceTurn:
             return failed("response_too_large")
         if (answer := render_evidence_answer(self.results)) is not None:
             response["answer"] = answer
-            if (
-                len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
-                > MAX_RESPONSE_BYTES
-            ):
-                del response["answer"]  # Prefer complete tool results over a truncated display.
+        elif self.next_step and "query_context" in self.next_step:
+            response["answer"] = {
+                "contract": CONTRACT,
+                "text": "\n".join(
+                    f"{row['position']}. {row['label']} ({row['device_id']})"
+                    for row in self.next_step["choices"]
+                ),
+                "request_ids": [],
+            }
+        if "answer" in response and (
+            len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
+            > MAX_RESPONSE_BYTES
+        ):
+            del response["answer"]  # Prefer complete tool results over a truncated display.
         return response
 
 

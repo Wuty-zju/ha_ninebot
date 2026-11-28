@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
-This guide covers **v2.2.16 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+This guide covers **v2.2.17 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
 
 The runtime lives in `custom_components/ninebot`. Trace a reported value from the account's cloud session through normalization to a current entity or the private archive. Trace a query in the opposite direction, starting with the HA user's context and selected vehicle.
 

@@ -207,6 +207,7 @@ QUERY_SPECS = (
     ToolSpec(
         "get_statistics",
         "Read local trip statistics",
+        "Numbered menu reply: use only the choice field from the selected position. "
         "Read the user's selected vehicle and explicit business period. Ask for a period if "
         "none is specified. Use today, yesterday, this_month, last_month, one YYYY-MM-DD "
         "date or one YYYY-MM month on or before today in Asia/Shanghai. "
@@ -216,9 +217,9 @@ QUERY_SPECS = (
         "On a follow-up, copy the vehicle, absolute period, metric and any through_date from "
         "query_context. For one change pass last_month, energy_wh or other_vehicle. "
         "For several changes use a single change object: set vehicle to previous or other, "
-        "and include the requested period and metric. If asked to choose, keep the "
-        "next_step.query_context period, metric and anchor, then pass the chosen device ID "
-        "as selected_other_vehicle. Recheck access on each read. "
+        "and include the requested period and metric. A reply to a numbered menu is a separate "
+        "mode: pass ONLY choice copied from the user-selected row, e.g. the second row for 第二辆. "
+        "Do not repeat the previous arguments. Ninebot retains the original period and metric. "
         "For one requested measure, supply metric; omit it for a summary or multiple measures. "
         "Missing metrics are unknown. Use the returned values, units, exact dates, "
         "per-metric quality, observation time and source. Partial coverage leaves a full "

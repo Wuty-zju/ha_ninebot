@@ -2,6 +2,10 @@
 
 Choose a version to see what shipped. The [user guides](docs/README.md) cover setup and current behavior. For the original account, entity and archive redesign, read the [2.0 development history](docs/releases/2.0.md). The stable [2.2.0 release](#220) includes the optional Assistant.
 
+## 2.2.17
+
+- Reply “the second one” to a [numbered vehicle choice](docs/assistant.md#vehicle-choice-follow-up). The Assistant keeps the displayed order, original dates and energy metric. Current access to both vehicles determines whether it can return a reading.
+
 ## 2.2.16
 
 - Choose the intended HA device when several vehicles share a name. The [statistics follow-up](docs/assistant.md#vehicle-choice-follow-up) keeps the original month and metric, then reads the selected archive under the current permissions.

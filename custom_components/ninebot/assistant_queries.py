@@ -6,6 +6,7 @@ import re
 from collections.abc import Iterable, Iterator
 from datetime import date, datetime, timedelta
 from functools import partial
+from time import monotonic
 from typing import Any
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -270,17 +271,70 @@ def other_vehicle_step(
     step = vehicle_selection_step(hass, choices)
     if "metric" in args:
         start, end, monthly = _statistic_window(args, now)
+        period = start.strftime("%Y-%m") if monthly else start.isoformat()
+        cutoff = {"through_date": end.isoformat()} if monthly else {}
+        for position, row in enumerate(step["choices"], 1):
+            row["position"] = position
         step["query_context"] = {
             "selection": "other_vehicle",
+            "choice_ids": [row["device_id"] for row in step["choices"]],
             "device_id": anchor,
             "metric": args["metric"],
-            **(
-                {"month": start.strftime("%Y-%m"), "through_date": end.isoformat()}
-                if monthly
-                else {"date": start.isoformat()}
-            ),
+            "month" if monthly else "date": period,
+            **cutoff,
         }
     return step
+
+
+# Per-instance native menus hold only query parameters; every use enters the ordinary read gate.
+STATISTIC_MENUS = "ninebot.assistant_statistics_menus"
+_MENU_LIFETIME = 15 * 60
+_MENU_LIMIT = 64
+
+
+def _numbered_read(
+    hass: HomeAssistant, user_id: str, request_id: str, step: dict[str, Any]
+) -> None:
+    pending = step.get("query_context")
+    if pending is None:
+        return
+    menus = hass.data.setdefault(STATISTIC_MENUS, {})
+    now = monotonic()
+    while menus:
+        oldest = next(iter(menus))
+        if menus[oldest][0] > now and len(menus) < _MENU_LIMIT:
+            break
+        del menus[oldest]
+    key = request_id[:12]
+    if (user_id, key) in menus:
+        key = request_id
+    arguments = {
+        "vehicle_ref": pending["device_id"],
+        "period": pending.get("date") or pending["month"],
+        "metric": pending["metric"],
+        **({"through_date": pending["through_date"]} if "month" in pending else {}),
+    }
+    menus[user_id, key] = (now + _MENU_LIFETIME, arguments, tuple(pending["choice_ids"]))
+    for row in step["choices"]:
+        row["choice"] = f"{key}.{row['position']}"
+    step["on_reply"] = "Call get_statistics with only the selected row's choice."
+
+
+def _resume_numbered_read(hass: HomeAssistant, user_id: str, choice: object) -> dict[str, Any]:
+    if not isinstance(choice, str) or not re.fullmatch(
+        r"(?:[a-f0-9]{12}|[a-f0-9]{32})\.[1-9][0-9]?", choice
+    ):
+        raise AssistantError("invalid_arguments")
+    key, _, position = choice.partition(".")
+    menus = hass.data.get(STATISTIC_MENUS, {})
+    menu = menus.get((user_id, key))
+    if menu is None or menu[0] <= monotonic():
+        menus.pop((user_id, key), None)
+        raise AssistantError("vehicle_selection_required")
+    _, arguments, order = menu
+    if int(position) > len(order):
+        raise AssistantError("invalid_arguments")
+    return {**arguments, "selected_other_vehicle": order[int(position) - 1]}
 
 
 async def _vehicle_query(
@@ -594,6 +648,10 @@ async def async_query(
             with read_slot(hass, user_id):
                 if key not in TOOL_SPECS:
                     raise AssistantError("invalid_arguments")
+                if key == "get_statistics" and "choice" in arguments:
+                    if _selected_vehicle is not None or arguments.keys() != {"choice"}:
+                        raise AssistantError("invalid_arguments")
+                    arguments = _resume_numbered_read(hass, user_id, arguments["choice"])
                 args = TOOL_SPECS[key].parameters(arguments)
                 selected_other = args.get("selected_other_vehicle")
                 if selected_other is not None and (
@@ -660,6 +718,7 @@ async def async_query(
                                 pending["next_step"] = other_vehicle_step(
                                     hass, choices, scope.vehicle_ref, args, _period_now or now
                                 )
+                                _numbered_read(hass, user_id, request_id, pending["next_step"])
                                 checked_result(pending)
                                 return pending, True
                             scopes.append(choices[0])

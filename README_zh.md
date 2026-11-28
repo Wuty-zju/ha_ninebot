@@ -16,7 +16,7 @@
 
 把九号车辆接入 Home Assistant，查看实时车况，长期保存行程，并将数据用于日常自动化。每个账号分别管理车辆、授权和本地 SQLite 档案。
 
-**正式版** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest)，适合日常使用。**预览版** · [v2.2.16](CHANGELOG.md#2216) 支持从[同名车辆中选车继续查原时段](docs/assistant_zh.md#vehicle-choice-follow-up)，[本地行程档案](docs/history_zh.md#local-archive-replay)回到前台时会先核对权限，再恢复浏览。之前在宿主中选过 **Ninebot tasks** 的用户可查看[统一入口迁移说明](docs/assistant_zh.md#升级至统一的-ninebot-api)。
+**正式版** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest)，适合日常使用。**预览版** · [v2.2.17](CHANGELOG.md#2217) 支持回复[“第二辆”继续查原月份和指标](docs/assistant_zh.md#vehicle-choice-follow-up)，[本地行程档案](docs/history_zh.md#local-archive-replay)回到前台时会先核对权限，再恢复浏览。之前在宿主中选过 **Ninebot tasks** 的用户可查看[统一入口迁移说明](docs/assistant_zh.md#升级至统一的-ninebot-api)。
 
 ## 可以做什么
 
