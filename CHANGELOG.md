@@ -2,6 +2,11 @@
 
 Choose a version to see what shipped. The [user guides](docs/README.md) cover setup and current behavior. For the original account, entity and archive redesign, read the [2.0 development history](docs/releases/2.0.md). The stable [2.2.0 release](#220) includes the optional Assistant.
 
+## 2.2.14
+
+- Follow a statistic to the previous month or change the measure to energy consumed in Wh. Each question reads the selected vehicle under the current permissions. Monthly receipts preserve the last included day, including when the next question arrives in another month. [Assistant guide](docs/assistant.md#statistics-follow-ups)
+- Run the [standalone ride replay example](docs/history.md#standalone-replay) locally. Compare August and September rides on two vehicles with the same upstream ride ID. The example reuses the dashboard card’s route selection, point cursor and whole-ride statistics.
+
 ## 2.2.13
 
 - Follow up on one daily statistic. “What about yesterday?” uses the new business date. “And the other vehicle?” keeps the previous date and checks the other vehicle’s current statistics grant. The Action returns a fresh, attributable reading or asks for a device when several are visible.

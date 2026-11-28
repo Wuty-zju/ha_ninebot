@@ -2,7 +2,7 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
-This guide covers **v2.2.13 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
+This guide covers **v2.2.14 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
 
 Use the bundled dashboard card to replay and compare saved rides, or use native Home Assistant views for position, dates and trends. The replay interface is a preview. Its archive Actions and storage run independently.
 
@@ -130,6 +130,14 @@ Enable **Show vehicle location** to display saved coordinates. The card plots th
 The card clears private tracks on a user, connection or vehicle-filter change, loss of archive access, or removal from the dashboard. A date edit keeps selected routes only while the local archive subscription is active. List pages expire when the archive changes. Track geometry stays in browser memory for the open card. GPS returned by an explicit Action can also appear in automation traces.
 
 Place native calendar or statistics cards next to the replay card for longer-term views. Earlier YAML with `statistics_entities` still loads. Configure the corresponding statistics graph as a separate card.
+
+<a id="standalone-replay"></a>
+
+## Try replay outside Home Assistant
+
+From a checkout of v2.2.14, run `node examples/ride-replay/serve.mjs` at the repository root and open **http://127.0.0.1:8765/replay/**. Choose the August and September rides on different vehicles, compare their totals and drag the playback slider. The two rides share an upstream ride ID. Switching or scrubbing updates the active point while each ride’s distance and energy stay fixed.
+
+The [standalone example](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.14/examples/ride-replay) runs on loopback and reads bundled synthetic routes. It uses the same selection, local track loading and replay statistics as the dashboard card. The example is distributed in the source checkout. HACS users replay their own archive through the dashboard card.
 
 ## Ride summaries and vehicle events
 
