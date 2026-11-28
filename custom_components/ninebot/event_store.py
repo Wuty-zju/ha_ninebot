@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import secrets
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -16,12 +17,67 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import NinebotCoordinator
-from .ride_events import SEEN_LIMIT, InvalidRideCursor, RideCursor, RideDiscovery, discover_rides
+from .ride_events import (
+    LATE_WINDOW,
+    SEEN_LIMIT,
+    InvalidRideCursor,
+    RideCursor,
+    RideDiscovery,
+    completed_report,
+    discover_rides,
+    ride_key,
+)
+from .ride_lifecycle import fingerprint
 from .ride_models import Ride
 
 LOGGER = logging.getLogger(__name__)
 MAX_EVENT_VEHICLES = 128
 MAX_CURSOR_BYTES = 3 * 1024 * 1024
+MAX_RECEIPT_SIGNATURES = 32
+
+
+def _digest(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
+def _receipt_revisions(
+    previous: dict[str, str],
+    discovery: RideDiscovery,
+    rides: tuple[Ride, ...],
+    high_water: datetime | None,
+    now: datetime,
+) -> tuple[dict[str, str], tuple[tuple[Ride, bool], ...]]:
+    """Track only initially announced rides and later stable revisions."""
+    recent = [key for key, end in discovery.cursor.seen if end >= now - LATE_WINDOW]
+    signatures = {key: previous[key] for key in recent if key in previous}
+    changes: list[tuple[Ride, bool]] = []
+    live = discovery.reason in {"discovered", "observed"}
+    for ride in rides if signatures else ():
+        if not ride.ride_id:
+            continue
+        key = ride_key(ride.ride_id)
+        if key not in signatures or not completed_report(ride, now):
+            continue
+        try:
+            current = fingerprint(ride)
+        except (ValueError, TypeError):
+            continue
+        if signatures[key] != current:
+            signatures[key] = current
+            if live:
+                changes.append((ride, True))
+    if live:
+        for ride in discovery.rides:
+            if not ride.ride_id or not ride.ended_at or (high_water and ride.ended_at < high_water):
+                continue
+            signatures[ride_key(ride.ride_id)] = fingerprint(ride)
+            changes.append((ride, False))
+    retained = {key: signatures[key] for key in recent if key in signatures}
+    return dict(list(retained.items())[-MAX_RECEIPT_SIGNATURES:]), tuple(changes)
 
 
 def read_cursor_file(path: Path, key: str) -> dict[str, Any] | None:
@@ -66,6 +122,9 @@ class RideEventPipeline:
         self._issue_id = f"ride_events_{entry_id}"
         self._cursors: dict[str, RideCursor] = {}
         self._callbacks: dict[str, Callable[[Ride, bool], None]] = {}
+        self._receipt_callbacks: dict[str, Callable[[Ride, bool, bytes], None]] = {}
+        self._receipt_signatures: dict[str, dict[str, str]] = {}
+        self._receipt_key: bytes | None = None
         self._processed: dict[str, datetime] = {}
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._lock = asyncio.Lock()
@@ -123,23 +182,48 @@ class RideEventPipeline:
             ):
                 raise InvalidRideCursor
             for key, value in raw["vehicles"].items():
-                if (
-                    not isinstance(key, str)
-                    or len(key) != 64
-                    or any(char not in "0123456789abcdef" for char in key)
-                ):
+                if not _digest(key):
                     raise InvalidRideCursor
                 self._cursors[key] = RideCursor.restore(value)
+            secrets_hex = raw.get("receipt_key")
+            if secrets_hex is not None:
+                if not _digest(secrets_hex):
+                    raise InvalidRideCursor
+                self._receipt_key = bytes.fromhex(secrets_hex)
+            signatures = raw.get("receipt_signatures", {})
+            if not isinstance(signatures, dict) or (signatures and self._receipt_key is None):
+                raise InvalidRideCursor
+            for key, rows in signatures.items():
+                if (
+                    key not in self._cursors
+                    or not isinstance(rows, dict)
+                    or len(rows) > MAX_RECEIPT_SIGNATURES
+                    or not all(
+                        _digest(ride) and _digest(signature) for ride, signature in rows.items()
+                    )
+                ):
+                    raise InvalidRideCursor
+            self._receipt_signatures = signatures
             ir.async_delete_issue(self.hass, DOMAIN, self._issue_id)
         except (OSError, ValueError):
             self._storage_problem()
+
+    async def async_receipt_key(self) -> bytes | None:
+        """Read a previously issued receipt even when its event entity is disabled."""
+        async with self._lock:
+            await self._load()
+            return self._receipt_key if self.available else None
 
     @staticmethod
     def _vehicle_key(sn: str) -> str:
         return hashlib.sha256(sn.encode()).hexdigest()
 
     async def async_subscribe(
-        self, sn: str, listener: Callable[[Ride, bool], None]
+        self,
+        sn: str,
+        listener: Callable[[Ride, bool], None],
+        *,
+        receipt: Callable[[Ride, bool, bytes], None] | None = None,
     ) -> Callable[[], None]:
         """Read storage only for an enabled entity; every subscription rebaselines."""
         async with self._lock:
@@ -148,6 +232,8 @@ class RideEventPipeline:
             await self._load()
             if not self._closed:
                 self._callbacks[sn] = listener
+                if receipt:
+                    self._receipt_callbacks[sn] = receipt
                 await self._process_locked(sn, baseline=True)
         if self._unsub is None and self._callbacks:
             self._unsub = self.coordinator.async_add_listener(self._schedule)
@@ -156,6 +242,7 @@ class RideEventPipeline:
         @callback
         def remove() -> None:
             self._callbacks.pop(sn, None)
+            self._receipt_callbacks.pop(sn, None)
             self._processed.pop(sn, None)
             if task := self._tasks.pop(sn, None):
                 task.cancel()
@@ -203,6 +290,8 @@ class RideEventPipeline:
             if last.ride is not None and last.ride.query_month != snapshot.travel.month:
                 rides += (last.ride,)
         key = self._vehicle_key(sn)
+        generation = self.coordinator._generation
+        ownership = self.coordinator._ownership.get(sn, 0)
         previous = self._cursors.get(key, RideCursor())
         now = dt_util.utcnow()
         if not baseline:
@@ -227,11 +316,28 @@ class RideEventPipeline:
                 self._storage_problem()
                 return False
             self._cursors.pop(stale)
+            self._receipt_signatures.pop(stale, None)
         candidate = {**self._cursors, key: result.cursor}
+        signatures, receipts = (
+            _receipt_revisions(
+                self._receipt_signatures.get(key, {}), result, rides, previous.high_water_end, now
+            )
+            if sn in self._receipt_callbacks
+            else ({}, ())
+        )
+        receipt_signatures = {**self._receipt_signatures}
+        if signatures:
+            receipt_signatures[key] = signatures
+        else:
+            receipt_signatures.pop(key, None)
+        receipt_key = self._receipt_key or (secrets.token_bytes(32) if receipts else None)
         committed = {
             "cursor_version": 1,
             "vehicles": {vehicle: cursor.dump() for vehicle, cursor in candidate.items()},
         }
+        if receipt_key is not None:
+            committed["receipt_key"] = receipt_key.hex()
+            committed["receipt_signatures"] = receipt_signatures
         try:
             await self._store.async_save(committed)
             acknowledged = await self.hass.async_add_executor_job(
@@ -243,6 +349,8 @@ class RideEventPipeline:
             self._storage_problem()
             return False
         self._cursors = candidate
+        self._receipt_key = receipt_key
+        self._receipt_signatures = receipt_signatures
         self._processed[sn] = received
         ir.async_delete_issue(self.hass, DOMAIN, self._issue_id)
         # Durable acknowledgement before EventEntity emission is at-most-once.
@@ -250,6 +358,8 @@ class RideEventPipeline:
         if (
             self.available
             and sn in self._callbacks
+            and generation == self.coordinator._generation
+            and ownership == self.coordinator._ownership.get(sn, 0)
             and self.coordinator.fresh(sn, "travel")
             and self.coordinator.fresh(sn, "profile")
         ):
@@ -260,6 +370,9 @@ class RideEventPipeline:
                     and ride.ended_at < previous.high_water_end
                 )
                 self._callbacks[sn](ride, late)
+            if receipt_key is not None and (notify := self._receipt_callbacks.get(sn)):
+                for ride, correction in receipts:
+                    notify(ride, correction, receipt_key)
         current = self.coordinator.data.get(sn)
         return bool(
             current
@@ -271,6 +384,7 @@ class RideEventPipeline:
     async def async_close(self) -> None:
         self._closed = True
         self._callbacks.clear()
+        self._receipt_callbacks.clear()
         if self._unsub:
             self._unsub()
             self._unsub = None
