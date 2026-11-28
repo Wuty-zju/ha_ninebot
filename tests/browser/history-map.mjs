@@ -279,7 +279,18 @@ try {
           { detail: { id: 'route-2' } })));
       } else await page.locator('.ninebot-route-pin').last().click();
     };
-    await showPicker();
+    if (nativeMode) {
+      await showPicker();
+    } else {
+      // Replay the iPhone sequence where both touch events arrive and no click follows.
+      await page.locator('.ninebot-route-pin').last().locator('span').first().evaluate(pin => {
+        const touch = new Touch({ target: pin, identifier: 1, clientX: 80, clientY: 60 });
+        for (const type of ['touchstart', 'touchend']) {
+          pin.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+            touches: type === 'touchstart' ? [touch] : [], changedTouches: [touch] }));
+        }
+      });
+    }
     const picker = page.getByRole('dialog', { name: 'Choose a ride at this spot' });
     if (!nativeMode) {
       const stillOpen = await picker.getByRole('button', { name: /1 · Synthetic A/ }).evaluate(option => {
