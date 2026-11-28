@@ -33,6 +33,10 @@ export async function checkArchiveReplay(browser, origin, output) {
     await page.waitForFunction(() => fixture.subscriptions.length === 1);
     assert.deepEqual(await page.evaluate(() => fixture.requests.map(({ message }) => message.type)),
       ['ninebot/history/vehicles', 'ninebot/history/subscribe']);
+    await page.getByLabel('Start date', { exact: true }).fill('2026-08-01');
+    await page.getByLabel('End date', { exact: true }).fill('2026-09-30');
+    await page.getByRole('button', { name: 'Show rides' }).click();
+    await page.waitForFunction(() => fixture.subscriptions.length === 2);
     await checkCleared(page);
     await page.evaluate(() => fixture.baseline());
     await page.locator('.leaflet-container').waitFor();
@@ -47,6 +51,7 @@ export async function checkArchiveReplay(browser, origin, output) {
       window.oldScope = fixture.panel._scope;
       fixture.hold('synthetic-b');
     });
+    assert.equal(await page.evaluate(() => oldScope.browser.pages.size), 1);
     await page.getByRole('button', { name: 'Compare another ride' }).click();
     await page.locator('#rides button').filter({ hasText: 'Synthetic B' }).click();
     await page.waitForFunction(() => fixture.requests.some(({ message }) =>
@@ -55,17 +60,17 @@ export async function checkArchiveReplay(browser, origin, output) {
     await checkCleared(page);
     const obsolete = await page.evaluate(() => ({
       pages: oldScope.browser.pages.size, streams: oldScope.browser.streams.length,
-      page: oldScope.browser.page, active: fixture.subscriptions[0].active,
+      page: oldScope.browser.page, active: fixture.subscriptions[1].active,
     }));
     assert.deepEqual(obsolete, { pages: 0, streams: 0, page: null, active: false });
-    await page.waitForFunction(() => fixture.subscriptions.length === 2);
+    await page.waitForFunction(() => fixture.subscriptions.length === 3);
     await page.evaluate(() => fixture.baseline());
     await page.locator('.leaflet-container').waitFor();
     assert.match(await page.locator('#sample').textContent(), /Coordinates 35.00000,/);
     assert.deepEqual(await page.locator('td.current').allTextContents(), currentC);
     await page.evaluate(() => {
       fixture.release('synthetic-b');
-      fixture.baseline(0);
+      fixture.baseline(1);
     });
     assert.equal(await page.locator('#rides button').filter({ hasText: 'Synthetic B' }).count(), 0);
     assert.match(await page.locator('#sample').textContent(), /Coordinates 35.00000,/);
@@ -87,18 +92,20 @@ export async function checkArchiveReplay(browser, origin, output) {
     await checkCleared(page);
 
     await account.selectOption('account-a');
-    await page.waitForFunction(() => fixture.subscriptions.length === 3);
+    await page.waitForFunction(() => fixture.subscriptions.length === 4);
     await page.evaluate(() => fixture.baseline());
     await page.locator('.leaflet-container').waitFor();
     await page.evaluate(() => fixture.replaceUser());
     await checkCleared(page);
-    await page.waitForFunction(() => fixture.subscriptions.length === 4);
+    await page.waitForFunction(() => fixture.subscriptions.length === 5);
     await page.evaluate(() => fixture.baseline());
     await page.locator('.leaflet-container').waitFor();
     await page.evaluate(() => fixture.disconnect());
     await checkCleared(page);
     assert.equal(await account.locator('option').count(), 1);
     assert.equal(await page.getByText('Disconnected from Home Assistant.').isVisible(), true);
+    await page.setViewportSize({ width: 320, height: 720 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 
     const log = await page.evaluate(() => fixture.requests);
     assert.ok(log.filter(({ message }) => message.type === 'ninebot/history/subscribe')
@@ -107,6 +114,8 @@ export async function checkArchiveReplay(browser, origin, output) {
       message.domain === 'ninebot' && message.return_response === true &&
       (message.service === 'get_recorded_trips' || (message.service === 'get_trip_detail' &&
         message.service_data.local_only === true && message.service_data.include_track === true))));
+    assert.ok(log.filter(({ message }) => message.service === 'get_recorded_trips').every(({ message }) =>
+      message.service_data.start_date === '2026-08-01' && message.service_data.end_date === '2026-09-30'));
     assert.deepEqual(external, []);
     assert.deepEqual(errors, []);
   } catch (error) {
