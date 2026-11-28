@@ -1,6 +1,7 @@
 """Synthetic statistics shared by the native Action and optional model smoke."""
 
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -13,7 +14,7 @@ PERIODS = json.loads(
 
 
 async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
-    from homeassistant.core import SupportsResponse
+    from homeassistant.core import Context, SupportsResponse
     from homeassistant.helpers import device_registry as dr
     from homeassistant.util import dt as dt_util
 
@@ -24,8 +25,8 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
         VehicleAccess,
         with_assistant_access,
     )
+    from custom_components.ninebot.assistant_queries import async_query
     from custom_components.ninebot.identity import device_sn
-    from custom_components.ninebot.models import VehicleProfile, VehicleSnapshot
 
     primary_sn, other_sn = device_sn(entry, primary), device_sn(entry, other)
     assert primary_sn and other_sn
@@ -133,22 +134,96 @@ async def check(hass, entry, co, primary, other, ask, *, model_smoke=False):
     assert absent["stop_reason"] == "no_other_vehicle"
     assert absent["next_step"] == {"type": "no_other_vehicle"} and absent["results"] == []
     third_sn = "third-synthetic-sn"
-    co.data[third_sn] = VehicleSnapshot(VehicleProfile(third_sn, "Vehicle A", "Synthetic"))
+    snapshot = co.data[primary_sn]
+    co.data[third_sn] = replace(snapshot, profile=replace(snapshot.profile, sn=third_sn))
     third = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id, identifiers={("ninebot", third_sn)}, name="Vehicle A"
     )
     grants(**{**both, other_sn: status, third_sn: statistics})
-    ambiguous = await ask(
-        "那另一辆车上个月耗电多少？",
-        {"change": {"vehicle": "other", "period": "last_month", "metric": "energy_wh"}},
-        {"query_context": anchor},
-    )
+    registry = dr.async_get(hass)
+    for device in (primary, other, third):
+        registry.async_update_device(device.id, name_by_user="City")
+    question = "那另一辆车上个月耗电多少？"
+    change = {"change": {"vehicle": "other", "period": "last_month", "metric": "energy_wh"}}
+    before_midnight = datetime(2026, 11, 30, 15, 59, 59, tzinfo=UTC)
+    with patch.object(dt_util, "utcnow", return_value=before_midnight):
+        ambiguous = await ask(question, change, {"query_context": anchor})
     assert ambiguous["outcome"] == "needs_input" and ambiguous["results"] == [], ambiguous
     assert {choice["device_id"] for choice in ambiguous["next_step"]["choices"]} == {
         other.id,
         third.id,
     }
     assert reads == [primary.id, primary.id, other.id]
+    assert {item["label"] for item in ambiguous["next_step"]["choices"]} == {"City"}
+    pending = ambiguous["next_step"]["query_context"]
+    assert pending == {
+        "device_id": primary.id,
+        "month": "2026-10",
+        "through_date": "2026-10-31",
+        "metric": "energy_wh",
+        "selection": "other_vehicle",
+    }
+    assert "query_context" not in ambiguous
+    with patch.object(dt_util, "utcnow", return_value=before_midnight):
+        native, error = await async_query(
+            hass,
+            "get_statistics",
+            {
+                "vehicle_ref": primary.id,
+                "period": anchor["date"],
+                "metric": anchor["metric"],
+                **change,
+            },
+            Context(user_id="synthetic-admin"),
+        )
+    assert error and native["error"]["code"] == "vehicle_selection_required"
+    assert native["next_step"] == ambiguous["next_step"] and "data" not in native
+    monthly = PERIODS["last_month"]
+
+    async def selected_archive(call):
+        assert call.context.user_id == "synthetic-admin"
+        assert call.data["device_id"] == third.id
+        assert call.data["start_month"] == call.data["end_month"] == "202610"
+        assert not call.data["refresh"] and not call.data["include_daily"]
+        reads.append(third.id)
+        return {
+            "months": [
+                {
+                    "month": "202610",
+                    "energy_wh": monthly["energy_wh"],
+                    "period_closed": True,
+                    "observed_after_period_end": True,
+                }
+            ]
+        }
+
+    hass.services.async_register(
+        "ninebot", "get_statistics", selected_archive, supports_response=SupportsResponse.ONLY
+    )
+    selected = {"device_id": third.id, "query_context": pending}
+    with patch.object(dt_util, "utcnow", return_value=before_midnight + timedelta(seconds=2)):
+        resumed = await ask("选这辆", {}, selected)
+        assert resumed["outcome"] == "evidence", resumed
+        assert resumed["query_context"] == {
+            "device_id": third.id,
+            "month": "2026-10",
+            "through_date": monthly["end_date"],
+            "metric": "energy_wh",
+        }
+        (receipt,) = resumed["results"]
+        assert receipt["result"]["data"] == {
+            "energy_wh": monthly["energy_wh"],
+            "units": {"energy_wh": "Wh"},
+        }
+        assert resumed["answer"]["request_ids"] == [receipt["result"]["request_id"]]
+        grants(**{**both, third_sn: status})
+        denied = await ask("还是这辆", {}, selected)
+        assert denied["outcome"] == "denied" and not denied["results"]
+        assert (
+            "query_context" not in denied
+            and str(monthly["energy_wh"]) not in denied["answer"]["text"]
+        )
+    assert reads == [primary.id, primary.id, other.id, third.id]
     return summary
 
 

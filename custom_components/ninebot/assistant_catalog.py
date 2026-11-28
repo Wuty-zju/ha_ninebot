@@ -216,7 +216,9 @@ QUERY_SPECS = (
         "On a follow-up, copy the vehicle, absolute period, metric and any through_date from "
         "query_context. For one change pass last_month, energy_wh or other_vehicle. "
         "For several changes use a single change object: set vehicle to previous or other, "
-        "and include the requested period and metric. Recheck access on each read. "
+        "and include the requested period and metric. If asked to choose, keep the "
+        "next_step.query_context period, metric and anchor, then pass the chosen device ID "
+        "as selected_other_vehicle. Recheck access on each read. "
         "For one requested measure, supply metric; omit it for a summary or multiple measures. "
         "Missing metrics are unknown. Use the returned values, units, exact dates, "
         "per-metric quality, observation time and source. Partial coverage leaves a full "
@@ -227,6 +229,7 @@ QUERY_SPECS = (
                 vol.Required("period"): PERIOD,
                 vol.Optional("metric"): vol.In(tuple(METRIC_UNITS)),
                 vol.Optional("other_vehicle"): bool,
+                vol.Optional("selected_other_vehicle"): vehicle_reference,
                 vol.Optional("through_date"): business_date,
                 vol.Optional("change"): STATISTIC_CHANGE,
             }

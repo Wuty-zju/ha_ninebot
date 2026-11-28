@@ -40,12 +40,25 @@ export function nativeCards(targets, statistics = []) {
   ] };
 }
 
-/** Same direction as the server keyset; device is a deterministic cross-stream tie. */
+const subMilliseconds = time => Number((/\.\d{3}(\d{1,3})/.exec(time)?.[1] ?? '').padEnd(3, '0'));
+
+function compareRideIds(a, b) {
+  if (a === b) return 0;
+  // SQLite's binary text order follows Unicode code points, including supplementary characters.
+  const left = [...a], right = [...b];
+  const index = left.findIndex((char, offset) => char !== right[offset]);
+  if (index < 0) return -1;
+  return right[index] === undefined ? 1 : left[index].codePointAt(0) - right[index].codePointAt(0);
+}
+
+/** Same direction and precision as the server keyset; device is the cross-stream tie. */
 export function compareRides(a, b) {
   const time = Date.parse(b.start_time) - Date.parse(a.start_time);
   if (time) return time;
-  const order = (a, b) => a === b ? 0 : a < b ? -1 : 1;
-  return order(a.device_id, b.device_id) || -order(a.ride_id ?? '', b.ride_id ?? '');
+  const fraction = subMilliseconds(b.start_time) - subMilliseconds(a.start_time);
+  if (fraction) return fraction;
+  if (a.device_id !== b.device_id) return a.device_id < b.device_id ? -1 : 1;
+  return -compareRideIds(a.ride_id ?? '', b.ride_id ?? '');
 }
 
 export class FleetBrowser extends TripBrowser {
@@ -90,6 +103,10 @@ export class FleetBrowser extends TripBrowser {
     this.pageNumber = number;
     this.changed();
   }
+  suspend() {
+    this.active = false;
+    this.epoch++;
+  }
   reset() { this.resolved = new Map(); super.reset(); }
   select(index, enabled) {
     if (this.busy || !Number.isInteger(index) || !this.targets[index]) return;
@@ -106,6 +123,7 @@ export class FleetBrowser extends TripBrowser {
     }
     const epoch = this.epoch;
     let failed = false;
+    let headReads = [];
     // Stage buffers atomically: failure must not consume half of a fleet page.
     const streams = cursor ? this.streams.map(stream => ({ ...stream, rows: [...stream.rows] })) : [];
     this.busy = true; this.error = null; this.awaitApply = false; this.changed();
@@ -151,12 +169,13 @@ export class FleetBrowser extends TripBrowser {
       };
       // At most two local reads in flight. Each stream retains <= one 100-row page.
       let index = 0;
-      await Promise.all(Array.from({ length: Math.min(2, streams.length) }, async () => {
+      headReads = Array.from({ length: Math.min(2, streams.length) }, async () => {
         while (index < streams.length) {
           if (failed || !this.current(epoch)) return;
           await fill(streams[index++]);
         }
-      }));
+      });
+      await Promise.all(headReads);
       if (!this.current(epoch)) return;
       const rides = [];
       while (rides.length < this.config.limit) {
@@ -194,8 +213,13 @@ export class FleetBrowser extends TripBrowser {
           error?.translation_key === 'history_cursor' ? 'cursor_error' : 'read_error';
         if (cursor && this.page && this.error === 'cursor_error') this.page.next_cursor = null;
         else this.page = null;
+        this.changed();
       }
-    } finally { if (this.current(epoch)) { this.busy = false; this.changed(); } }
+    } finally {
+      // A sibling may still be consuming its cursor. Publish the error immediately, but hold the read gate.
+      if (failed) await Promise.allSettled(headReads);
+      if (this.current(epoch)) { this.busy = false; this.changed(); }
+    }
   }
   async detail(ride) {
     if (!this.active || this.busy || !this.page?.rides.includes(ride) || !ride.ride_id || !ride.detail_id) return;

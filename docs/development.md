@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
 
-This guide covers **v2.2.15 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
+This guide covers **v2.2.16 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
 
 For frontend work, the [archive panel](history.md#local-archive-replay) and [synthetic replay example](history.md#standalone-replay) share the card’s selection and playback logic. Reuse the same two synthetic rides when checking account changes, late reads and revoked GPS permissions. The [statistics receipt contract](assistant.md#compound-statistics) describes multi-field follow-ups.
 

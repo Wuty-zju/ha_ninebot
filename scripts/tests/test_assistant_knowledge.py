@@ -68,9 +68,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 29)
-        self.assertEqual(catalog["corpus_version"], "1.2.19")
-        self.assertEqual(catalog["source_version"], "2.2.15")
+        self.assertEqual(len(catalog["entries"]), 30)
+        self.assertEqual(catalog["corpus_version"], "1.2.20")
+        self.assertEqual(catalog["source_version"], "2.2.16")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -96,6 +96,9 @@ class KnowledgeTests(unittest.TestCase):
             ("how much energy did the other vehicle use last month", "en"),
             ("那另一辆车上个月耗电多少", "zh-Hans"),
         ):
+            choice = k.search_help(query, language, "2.2.16")["matches"][0]
+            self.assertEqual(choice["source_id"], "confirmed_vehicle_choice")
+            self.assertIn("#vehicle-choice-follow-up", choice["citation"])
             match = k.search_help(query, language, "2.2.15")["matches"][0]
             self.assertEqual(match["source_id"], "combined_vehicle_statistics")
             self.assertIn("#compound-statistics", match["citation"])
