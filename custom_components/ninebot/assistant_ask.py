@@ -18,10 +18,12 @@ from homeassistant.util import dt as dt_util
 
 from .assistant import current_access
 from .assistant_catalog import (
+    BOUND_RIDES,
     QUERY_SPECS,
     ToolSpec,
     business_month,
     changed_statistic,
+    ride_selections,
     statistic_change,
     vehicle_reference,
 )
@@ -41,6 +43,7 @@ from .assistant_views import METRIC_UNITS
 from .compat import validation as vol
 from .const import BUSINESS_TIMEZONE, DOMAIN
 from .recorded_actions import business_date
+from .ride_comparison import async_check_ride_scopes
 
 ACTION = "ask"
 MAX_TOOL_CALLS = MAX_RECEIPTS
@@ -132,6 +135,7 @@ class EvidenceTurn:
         self.started_at = dt_util.utcnow()
         self.business_date = period_dates("today", self.started_at)[0].isoformat()
         self.scopes: dict[str, AssistantScope] = {}
+        self.trip_scopes: dict[str, AssistantScope] = {}
         self.previous: dict[str, Any] | None = call.data.get("query_context")
         self.selected: str | None = call.data.get("device_id") or (
             self.previous["device_id"] if self.previous else None
@@ -154,6 +158,10 @@ class EvidenceTurn:
             await async_require_admin(self.hass, self.call.context)
             for scope in tuple(self.scopes.values()):
                 await scope.async_validate(self.hass)
+            if self.trip_scopes:
+                await async_check_ride_scopes(
+                    self.hass, self.call.context, tuple(self.trip_scopes.values()), track=False
+                )
             # A later permission await may revoke an already checked vehicle.
             for scope in self.scopes.values():
                 scope.assert_current(self.hass)
@@ -246,6 +254,21 @@ class EvidenceTurn:
                 raise TurnStopped
             if tool_input.tool_args["vehicle_ref"] != expected:
                 self.deny()
+        if tool_input.tool_name == "ninebot__compare_recorded_trips":
+            if self.selected is not None:
+                items = BOUND_RIDES(tool_input.tool_args.get("rides"))
+                tool_input = replace(
+                    tool_input,
+                    tool_args={"rides": [{**item, "vehicle_ref": self.selected} for item in items]},
+                )
+            selections = ride_selections(tool_input.tool_args.get("rides"))
+            for target in dict.fromkeys(item["vehicle_ref"] for item in selections):
+                if target not in self.scopes:
+                    self.deny()
+                # Keep the original turn's generation and revision through final answer delivery.
+                scope = replace(self.scopes[target], operation="compare_recorded_trips")
+                scope.assert_current(self.hass)
+                self.trip_scopes[target] = scope
         result = await tool.async_call(self.hass, tool_input, context)
         await self.async_validate()
         payload = copy.deepcopy(result.data)
@@ -421,6 +444,13 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
             self.bound_vehicle = (
                 turn.selected if len(parameters) != len(spec.parameters.schema) else None
             )
+            if spec.key == "compare_recorded_trips" and turn.selected is not None:
+                self.parameters = vol.Schema({vol.Required("rides"): BOUND_RIDES})
+                self.description = (
+                    "Compare two to five recorded rides of the selected vehicle. Use each "
+                    "ride_id and query_month exactly as listed. Compare Wh and Wh/km separately; "
+                    "use the returned map_url for a clickable map link."
+                )
             if self.bound_vehicle is not None:
                 parameters = {
                     key: value
@@ -469,7 +499,9 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
             if turn.previous:
                 visible = visible.intersection({"get_statistics"})
             elif turn.selected is None:
-                visible = visible.intersection({"get_vehicles", "search_help"})
+                visible = visible.intersection(
+                    {"get_vehicles", "search_help", "compare_recorded_trips"}
+                )
             tools: list[llm.Tool] = [
                 EvidenceTool(spec) for spec in QUERY_SPECS if spec.key in visible
             ]
@@ -493,7 +525,8 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
             else:
                 scope_prompt = (
                     PROMPT + " Multiple vehicles are available. For a vehicle question, list the "
-                    "choices and ask the user to select the HA device. For general help, "
+                    "choices and ask the user to select the HA device. For a comparison with exact "
+                    "ride and vehicle references, use compare_recorded_trips. For general help, "
                     "search the guide directly."
                 )
             return llm.APIInstance(

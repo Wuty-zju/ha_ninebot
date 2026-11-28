@@ -9,9 +9,11 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from homeassistant.components import websocket_api
 from homeassistant.core import Context, ServiceCall
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from custom_components.ninebot.adapters import travel
 from custom_components.ninebot.assistant_ask import EvidenceTurn
@@ -38,6 +40,7 @@ from custom_components.ninebot.assistant_views import (
 from custom_components.ninebot.compat import validation as vol
 from custom_components.ninebot.exceptions import ErrorKind
 from custom_components.ninebot.raw import Endpoint, build_record
+from custom_components.ninebot.ride_comparison import async_open_ride_view, async_validate_ride_view
 from custom_components.ninebot.travel import merge_detail, parse_ride
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -86,10 +89,10 @@ def test_advertised_tool_parameters_preserve_actual_read_and_task_limits():
 @pytest.fixture
 async def assistant(hass, entry, app_client, freezer, request):
     freezer.move_to(NOW)
-    if (budget := getattr(request, "param", None)) is not None:
-        hass.config_entries.async_update_entry(
-            entry, options={**entry.options, "history_requests_per_hour": budget}
-        )
+    if (options := getattr(request, "param", None)) is not None:
+        if not isinstance(options, dict):
+            options = {"history_requests_per_hour": options}
+        hass.config_entries.async_update_entry(entry, options={**entry.options, **options})
     start = NOW - timedelta(days=1)
     app_client.async_get_travel.return_value = {
         "total_mileages": 2.4,
@@ -701,6 +704,233 @@ async def test_explicit_business_date_preserves_incomplete_daily_metrics(hass, a
     }
     assert result["quality"]["ride_window_complete"] is False
     assert result["evidence"]["distance_basis"] == "server_daily_chart"
+
+
+async def compare_sample(hass, assistant, *, energy=120, distance=2.4, coordinates=True):
+    second_sn = "SyntheticPeer"
+    snapshot = assistant.co.data[SN]
+    assistant.co.data[second_sn] = replace(
+        snapshot, profile=replace(snapshot.profile, sn=second_sn)
+    )
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=assistant.entry.entry_id, identifiers={("ninebot", second_sn)}
+    )
+    hass.config_entries.async_update_entry(
+        assistant.entry,
+        options={
+            **assistant.entry.options,
+            "enable_coordinates": coordinates,
+            "assistant_vehicles": [SN, second_sn],
+        },
+    )
+    selections = []
+    for sn, ref, key, dist, wh in (
+        (SN, assistant.device, "Ride-A", 1.2, 90),
+        (second_sn, device.id, "Ride-B", distance, energy),
+    ):
+        row = {
+            "travel_id": key,
+            "mileages": dist,
+            "duration": 600,
+            "start_time_format": "2026-09-06 19:00:00",
+            "end_time_format": "2026-09-06 19:10:00",
+        }
+        if wh is not None:
+            row["ec"] = wh
+        await assistant.co.statistics.archive.async_record_month(
+            sn,
+            travel({"times": 1, "list": [row]}, "202609"),
+            NOW,
+        )
+        selections.append({"vehicle_ref": ref, "query_month": "202609", "ride_id": key})
+    result, error = await async_query(
+        hass, "compare_recorded_trips", {"rides": selections}, assistant.context
+    )
+    assert not error, result
+    return selections, result
+
+
+@pytest.mark.parametrize("assistant", [{"enable_coordinates": True}], indirect=True)
+async def test_compare_summary_only_rides_and_open_the_exact_selection(hass, assistant):
+    selections, payload = await compare_sample(hass, assistant)
+    rows, combined = payload["data"]["rides"], payload["data"]["combined"]
+    assert [row["ride_id"] for row in rows] == ["Ride-A", "Ride-B"]
+    assert [(r["distance_m"], r["energy_wh"], r["energy_intensity_wh_per_km"]) for r in rows] == [
+        (1200, 90, 75),
+        (2400, 120, 50),
+    ]
+    assert all(r["detail_saved"] is False for r in rows)
+    assert all(not {"track", "latitude", "longitude", "speed_samples"} & r.keys() for r in rows)
+    assert payload["data"]["lowest_ride_positions"] == {
+        "energy_wh": [1],
+        "energy_intensity_wh_per_km": [2],
+    }
+    assert combined["energy_wh"] == 210
+    assert combined["energy_intensity_wh_per_km"] == pytest.approx(210 / 3.6)
+    assert payload["quality"]["known"] == {"energy_wh": 2, "energy_intensity_wh_per_km": 2}
+    turn = EvidenceTurn(hass, ServiceCall(hass, "ninebot", "ask", {}, context=assistant.context))
+    turn.results = [{"tool": "ninebot__compare_recorded_trips", "result": payload, "error": False}]
+    answer = turn.response()["answer"]["text"]
+    assert "Lowest total energy: ride 1." in answer
+    assert "Lowest average energy per distance: ride 2." in answer
+    url = payload["data"]["map_url"]
+    assert re.fullmatch(r"/ninebot-archive\?view=[a-f0-9]{32}", url)
+    assert f"]({url})" in answer
+    token, devices = url.split("=")[1], {row["vehicle_ref"] for row in selections}
+    with pytest.raises(Unauthorized):
+        await async_validate_ride_view(hass, Context(user_id="other-admin"), token, devices)
+    with pytest.raises(Unauthorized):
+        await async_validate_ride_view(hass, assistant.context, token, {assistant.device})
+    await async_validate_ride_view(hass, assistant.context, token, devices)
+    with patch.object(
+        assistant.co.statistics.archive,
+        "async_detail_summary",
+        new=AsyncMock(side_effect=AssertionError("Must not read revoked archive")),
+    ):
+        hass.config_entries.async_update_entry(
+            assistant.entry, options={**assistant.entry.options, "assistant_vehicles": [SN]}
+        )
+        with pytest.raises(Unauthorized):
+            await async_validate_ride_view(hass, assistant.context, token, devices)
+        denied, error = await async_query(
+            hass, "compare_recorded_trips", {"rides": selections}, assistant.context
+        )
+    assert error and denied["error"]["code"] == "not_authorized" and "data" not in denied
+
+
+@pytest.mark.parametrize("energy,distance,known", [(None, 2.4, (1, 1)), (0, 0, (2, 1))])
+async def test_compare_keeps_missing_measurements_unknown(hass, assistant, energy, distance, known):
+    selections, payload = await compare_sample(
+        hass, assistant, energy=energy, distance=distance, coordinates=False
+    )
+    data = payload["data"]
+    assert data["rides"][1]["energy_wh"] == energy
+    assert data["map_url"] is None
+    assert data["rides"][1]["energy_intensity_wh_per_km"] is None
+    assert data["combined"]["energy_wh"] == (None if energy is None else 90)
+    assert data["combined"]["energy_intensity_wh_per_km"] is None
+    assert data["lowest_ride_positions"]["energy_intensity_wh_per_km"] == []
+    assert payload["quality"]["known"] == dict(
+        zip(("energy_wh", "energy_intensity_wh_per_km"), known, strict=True)
+    )
+    text = render_evidence_answer(
+        [{"tool": "ninebot__compare_recorded_trips", "result": payload, "error": False}]
+    )["text"]
+    assert "Lowest average energy per distance: unknown (1/2 rides measured)." in text
+    assert "/ninebot-archive" not in text
+    missing, error = await async_query(
+        hass,
+        "compare_recorded_trips",
+        {"rides": [selections[0], {**selections[1], "query_month": "202608"}]},
+        assistant.context,
+    )
+    assert error and missing["error"]["code"] == "local_data_missing"
+
+
+@pytest.mark.parametrize("assistant", [{"enable_coordinates": True}], indirect=True)
+async def test_compare_requires_current_tracker_access_and_expires(hass, assistant):
+    selections, payload = await compare_sample(hass, assistant)
+    token = payload["data"]["map_url"].split("=")[1]
+    devices = {row["vehicle_ref"] for row in selections}
+    with patch("custom_components.ninebot.ride_comparison.monotonic", return_value=float("inf")):
+        with pytest.raises(Unauthorized):
+            await async_validate_ride_view(hass, assistant.context, token, devices)
+    hass.config_entries.async_update_entry(
+        assistant.entry, options={**assistant.entry.options, "enable_coordinates": False}
+    )
+    with pytest.raises(Unauthorized):
+        await async_validate_ride_view(hass, assistant.context, token, devices)
+    hass.config_entries.async_update_entry(
+        assistant.entry, options={**assistant.entry.options, "enable_coordinates": True}
+    )
+    with pytest.raises(Unauthorized):
+        await async_validate_ride_view(hass, assistant.context, token, devices)
+
+
+@pytest.mark.parametrize("assistant", [{"enable_coordinates": True}], indirect=True)
+async def test_compare_map_websocket_rechecks_tracker_permission(
+    hass, assistant, hass_admin_user, hass_ws_client
+):
+    try:
+        client = await hass_ws_client(hass)
+    except TypeError:
+        client = await hass_ws_client()
+    websocket_api.async_register_command(hass, async_open_ride_view)
+    assistant.context = Context(user_id=hass_admin_user.id)
+    selections, payload = await compare_sample(hass, assistant)
+    token = payload["data"]["map_url"].split("=")[1]
+
+    async def open_map(identity, **args):
+        await client.send_json(
+            {"id": identity, "type": "ninebot/open_ride_view", "view": token, **args}
+        )
+        return await asyncio.wait_for(client.receive_json(), 5)
+
+    rows = payload["data"]["rides"]
+    assert (await open_map(1))["result"]["rides"] == rows
+    rows[0]["ride_id"] = "changed-by-provider"
+    assert (await open_map(2))["result"]["rides"][0]["ride_id"] == "Ride-A"
+    for index, selection in enumerate(selections):
+        for domain in ("calendar", "device_tracker"):
+            er.async_get(hass).async_get_or_create(
+                domain,
+                "ninebot",
+                f"comparison-{index}-{domain}",
+                device_id=selection["vehicle_ref"],
+                config_entry=assistant.entry,
+            )
+    assistant.principal.permissions.access_all_entities.return_value = False
+    assistant.principal.permissions.check_entity = lambda entity_id, permission: True
+    assert (await open_map(3, validate_only=True))["result"] == {"valid": True}
+    assistant.principal.permissions.check_entity = lambda entity_id, permission: (
+        entity_id.startswith("calendar.")
+    )
+    denied = await open_map(4)
+    assert denied["error"]["code"] == "unauthorized" and "result" not in denied
+    reread, error = await async_query(
+        hass, "compare_recorded_trips", {"rides": selections}, assistant.context
+    )
+    assert not error and reread["data"]["combined"]["energy_wh"] == 210
+    assert reread["data"]["map_url"] is None
+
+
+async def test_compare_drops_all_rows_on_revocation_during_another_vehicle_read(hass, assistant):
+    selections, _ = await compare_sample(hass, assistant, coordinates=False)
+    archive = assistant.co.statistics.archive
+    original = archive.async_saved_detail_ids
+
+    async def revoke_on_second(sn, ids):
+        if sn == "SyntheticPeer":
+            hass.config_entries.async_update_entry(
+                assistant.entry, options={**assistant.entry.options, "assistant_vehicles": [sn]}
+            )
+        return await original(sn, ids)
+
+    with patch.object(archive, "async_saved_detail_ids", side_effect=revoke_on_second):
+        result, error = await async_query(
+            hass, "compare_recorded_trips", {"rides": selections}, assistant.context
+        )
+    assert error and result["error"]["code"] == "not_authorized" and "data" not in result
+
+
+def test_compare_schema_preserves_order_bounds_and_identity():
+    spec = next(spec for spec in SPECS if spec.key == "compare_recorded_trips")
+    field = next(iter(spec.parameters.schema.values()))
+    schema = parameter_schema(field)
+    assert schema["minItems"] == 2 and schema["maxItems"] == 5
+    assert set(schema["items"]["required"]) == {"vehicle_ref", "query_month", "ride_id"}
+    row = {"vehicle_ref": "fixture", "query_month": "202609", "ride_id": "A"}
+    ordered = [row, {**row, "ride_id": "B"}]
+    assert field(ordered) == ordered
+    for invalid in (
+        [row],
+        [row, row],
+        [row, {**row, "query_month": "202608"}],
+        [row, {**row, "extra": "unexpected"}],
+        ordered * 3,
+    ):
+        with pytest.raises(vol.Invalid):
+            field(invalid)
 
 
 async def test_recorded_pages_are_local_bounded_and_cursor_replay_is_explicit(

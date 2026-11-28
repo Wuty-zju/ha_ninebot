@@ -6,6 +6,7 @@ from datetime import datetime
 from functools import partial
 from typing import Any, cast
 
+from homeassistant.auth.models import User
 from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import UnitOfTime
@@ -683,6 +684,21 @@ async def async_check_history_access(
     if call.context.user_id is None:
         return
     user = await hass.auth.async_get_user(call.context.user_id)
+    check_user_history_access(
+        hass, call, user, entry_id, include_track=include_track, permission=permission
+    )
+
+
+def check_user_history_access(
+    hass: HomeAssistant,
+    call: ServiceCall,
+    user: User | None,
+    entry_id: str,
+    *,
+    include_track: bool = False,
+    permission: str = POLICY_READ,
+) -> None:
+    """Check a resolved user synchronously, also across several vehicles in one loop turn."""
     if user is None or not user.is_active:
         raise Unauthorized(context=call.context, permission=permission)
     if user.permissions.access_all_entities(permission):

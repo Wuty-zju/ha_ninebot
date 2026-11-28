@@ -86,6 +86,26 @@ def vehicle_reference(value: object) -> str:
     return value
 
 
+MIN_COMPARED_RIDES = 2
+MAX_COMPARED_RIDES = 5
+
+
+def ride_selections(value: Any, *, bound: bool = False) -> list[dict[str, str]]:
+    """Each archived vehicle/ride identity counts once, including cross-month aliases."""
+    fields = {vol.Required("query_month"): query_month, vol.Required("ride_id"): ride_identifier}
+    if not bound:
+        fields[vol.Required("vehicle_ref")] = vehicle_reference
+    if not isinstance(value, list) or not MIN_COMPARED_RIDES <= len(value) <= MAX_COMPARED_RIDES:
+        raise vol.Invalid("Choose two to five recorded rides")
+    items = vol.Schema([fields])(value)
+    if len({(row.get("vehicle_ref"), row["ride_id"]) for row in items}) != len(items):
+        raise vol.Invalid("Choose distinct recorded rides")
+    return items
+
+
+BOUND_RIDES = partial(ride_selections, bound=True)
+
+
 def help_query(value: object) -> str:
     if not isinstance(value, str) or not 1 <= len(value.strip()) <= 240 or not value.isprintable():
         raise vol.Invalid("Use a short public help question")
@@ -257,6 +277,19 @@ QUERY_SPECS = (
         idempotent=False,
     ),
     ToolSpec(
+        "compare_recorded_trips",
+        "Compare selected recorded rides",
+        "Compare two to five specific locally recorded rides, in the requested order. Copy "
+        "vehicle_ref, query_month and ride_id from discovery or the user's explicit selection. "
+        "If the selection is ambiguous ask which rides. Report total energy in Wh and average "
+        "energy per distance in Wh/km separately, including ties and missing coverage. "
+        "Use data.map_url verbatim as a clickable Markdown link when available. No GPS or cloud.",
+        vol.Schema({vol.Required("rides"): ride_selections}),
+        operation=Operation.TRIPS,
+        read_only=True,
+        idempotent=False,
+    ),
+    ToolSpec(
         "get_trip_detail",
         "Read a saved trip detail",
         "Read locally saved scalar detail using one ride_id/query_month from the trip list. "
@@ -380,6 +413,25 @@ REQUEST_TOOL = "request_detail_sync_approval"
 
 def parameter_schema(value: object) -> dict[str, Any] | None:
     """Publish constraints for our validators; execution still validates the Schema."""
+    if value is ride_selections or value is BOUND_RIDES:
+        fields = {
+            "query_month": parameter_schema(query_month),
+            "ride_id": parameter_schema(ride_identifier),
+        }
+        if value is ride_selections:
+            fields["vehicle_ref"] = parameter_schema(vehicle_reference)
+        return {
+            "type": "array",
+            "minItems": MIN_COMPARED_RIDES,
+            "maxItems": MAX_COMPARED_RIDES,
+            "uniqueItems": True,
+            "items": {
+                "type": "object",
+                "properties": fields,
+                "required": list(fields),
+                "additionalProperties": False,
+            },
+        }
     if value is vehicle_reference:
         return {"type": "string", "minLength": 1, "maxLength": 128}
     if value is help_query:

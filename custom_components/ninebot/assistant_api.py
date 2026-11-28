@@ -17,6 +17,7 @@ from .assistant_catalog import REQUEST_TOOL, SPECS, ToolSpec, parameter_schema
 from .assistant_queries import STATISTIC_MENUS, async_query, async_visible_keys
 from .assistant_task_queries import async_task_query
 from .compat import validation as vol
+from .ride_comparison import VIEWS
 
 PROMPT = (
     "Use the Ninebot tools for the vehicles and local data the user has allowed. "
@@ -39,6 +40,10 @@ PROMPT = (
     "allowed_reads, explain that limit. Other vehicles and public help cannot supply its value. "
     "An administrator edits vehicle read grants in Settings > Devices & services > Ninebot > "
     "Options > Assistant access. The query Action can select a device but cannot grant access. "
+    "To compare specific recorded rides use compare_recorded_trips with the selected rides "
+    "in order. If necessary list the relevant dates with get_recorded_trips to identify them. "
+    "Distinguish total energy (Wh) and average energy per distance (Wh/km). Report unknown "
+    "metrics and coverage. Include the returned map_url verbatim as a clickable Markdown link. "
     "For saved trip totals, limited routes, or progress, use get_sync_health. "
     "Distinguish all saved trips from the discovered trips in the synchronization plan. "
     "Capabilities report local cache/archive readiness, not hardware support, measurements "
@@ -215,6 +220,7 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
 
     def remove() -> None:
         hass.data.pop(STATISTIC_MENUS, None)
+        hass.data.pop(VIEWS, None)
         remove_ask()
         remove_api()
 

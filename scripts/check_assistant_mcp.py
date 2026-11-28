@@ -533,7 +533,10 @@ async def check_cutover(fixture) -> None:
             "end_date": "2026-11-06",
         }
         grant(TASK_PREVIEW)
-        assert set(await tools(private_path)) == preview_tools and len(preview_tools) == 12
+        assert (
+            set(await tools(private_path)) == preview_tools
+            and len(preview_tools) == len(queries) + 4
+        )
         _, prompt = await rpc("prompts/get", {"name": "Ninebot"}, path=private_path)
         text = prompt["result"]["messages"][0]["content"]["text"]
         assert "task_vehicles" in text and REQUEST_TOOL not in text
@@ -543,7 +546,7 @@ async def check_cutover(fixture) -> None:
 
         grant(TASK_REQUEST)
         formatted = await tools(private_path)
-        assert set(formatted) == complete and len(formatted) == 13
+        assert set(formatted) == complete and len(formatted) == len(queries) + 5
         assert formatted[request_name]["annotations"]["readOnlyHint"] is False
         assert formatted[request_name]["annotations"]["idempotentHint"] is False
         assert set(await tools()) == preview_tools
@@ -605,7 +608,7 @@ async def check_cutover(fixture) -> None:
         mcp.update(saved_mcp)
         await statistics.archive.async_close()
     print(
-        "Native MCP cutover: 8/12/13 tools, review readiness, cross-vehicle denial "
+        "Native MCP cutover: scoped tools, review readiness, cross-vehicle denial "
         "and saved API selection OK"
     )
 
