@@ -212,6 +212,15 @@ def status_view(
     )
 
 
+def statistics_period_complete(quality: dict[str, Any], source: object) -> bool:
+    """Closing a day needs its ride window; closing a month needs a later observation."""
+    if quality.get("period_closed") is not True:
+        return False
+    if source == "account_archive":
+        return quality.get("ride_window_complete") is True
+    return source == "server_month_summary" and quality.get("observed_after_period_end") is True
+
+
 def statistics_view(
     row: dict[str, Any], *, daily: bool, now: datetime, metric: str | None = None
 ) -> AssistantView:
