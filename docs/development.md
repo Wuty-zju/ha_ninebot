@@ -2,11 +2,11 @@
 
 [Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
 
-This guide covers releases through the 2.2.9 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
+This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/development.md).
 
 ## Start with a task, not the whole repository
 
-Start with [AGENTS](../AGENTS.md), inspect the checkout, then read the relevant guide and source boundary below. Current behavior is documented by topic; [CHANGELOG](../CHANGELOG.md) records its evolution.
+Read [AGENTS](../AGENTS.md), record the base SHA and reproduce the reported behavior before editing. Use the table to find the smallest source area and validation that exercises its normal entry point. See the [changelog](../CHANGELOG.md) when behavior differs by release.
 
 | Task | Source boundary | Offline evidence |
 |---|---|---|
@@ -24,7 +24,7 @@ Start with [AGENTS](../AGENTS.md), inspect the checkout, then read the relevant 
 
 Use `rg --files` to locate test families and [fixture metadata](../tests/fixtures/ninecli/0.1.7/metadata.json) to establish provenance. Each source file stays responsible for its own layer; shared contracts belong in the relevant model or protocol.
 
-Support evidence stays local and bounded. `diagnostics` projects current/previous cached months and history progress without acquisition or database scans; `history_progress` owns the percentage semantics. Query failures retain reviewed `FailureContext` metadata, and `control_results` emits one DEBUG outcome per explicit invocation. Preserve the original dispatch, confirmation, cancellation and ownership behavior when extending these records. See [data and control troubleshooting](guide.md#missing-data-and-controls).
+For a support case, collect one relevant observation of the failing operation before changing behavior. `diagnostics` reads bounded cached months and progress. `history_progress` owns percentage semantics. See `FailureContext` for the query stage and the single `Control result` DEBUG record for dispatch and confirmation. [Data and control troubleshooting](guide.md#missing-data-and-controls)
 
 ## Documentation ownership
 
@@ -93,11 +93,17 @@ python scripts/ci.py --plan --base FULL_BASE_SHA --head FULL_HEAD_SHA --output c
 Update the owning scope in `.github/ci.json` when adding a source/test boundary. CI selection has standard-library regression tests for new files, shared fixtures, overlapping scopes and renames. Documentation validation runs for every candidate so the release gate can always find its result. Workflow-only changes run a small pipeline canary; they do not automatically render the map or repeat archive profiling.
 
 
+## Map and archive browser development
+
+Start in `frontend/history-selection.js`, `trip-card-view.js` and `route-map.js`. Use the actual dashboard entry point with the bundled card and the same synthetic two-device set on the native map and fallback. Verify keyboard focus, overlapping touch markers, narrow layout, empty/endpoint-only tracks and light/dark contrast. Keep physical screen-reader speech verification distinct from DOM semantics.
+
+For v2.2.12, compare one and several rides, including zero readings, missing inputs and an unusable denominator. For the average speed case, use rides that overlap in time. Check that **Keep current ride** keeps cursor, playing state and zoom while the other tracks clear, and leaves archive request counts unchanged. Change date and then revoke or disconnect access to verify both selection preservation and stale-result clearing at their respective boundaries. [Playback and privacy behavior](history.md#replay-saved-routes)
+
 ## Assistant development
 
-Trace a cached reading through `assistant_queries.SPECS`, `assistant_views.status_view` and `assistant_evidence.render_evidence_answer`. Use the same native HA user context in the model Action and the underlying read. Cover a reported zero, a false boolean, a missing/stale observation and withdrawal of authorization. A model can choose a tool correctly while giving an inaccurate free-form answer. Evaluate those outcomes separately.
+Trace normalized readings through `assistant_queries.SPECS`, the relevant projection in `assistant_views` and `assistant_evidence.render_evidence_answer`. Keep the same native HA Context across the model Action and local read. Cover reported zero, false, stale/missing data and revoked authorization.
 
-For a route change, start in `frontend/history-selection.js`, `trip-card-view.js` and `route-map.js`. Repeat a selection with two synthetic vehicles, activate the marker by keyboard, and check the number of archived reads before and after. The browser fixture covers a native-map component contract and the bundled fallback. [Archived route behavior](history.md#replay-saved-routes)
+In v2.2.12, check `explain_statistics` with the statistics grant alone. A documented closed and complete value, including zero, returns `metric_verified` without requesting sync health. An unresolved metric enters `coverage_review` and keeps applicable SK05 public help. A missing synchronization grant for the selected vehicle yields a partial explanation with `sync_health_outside_grant`. Verify that a second vehicle's permission never supplies the first vehicle's missing grant. Current-day observations remain provisional.
 
 Start with the failing boundary. The [user guide](assistant.md) owns the tool contract, account options and response examples. The Assistant uses Home Assistant's native API registry and the existing account archive. The model is configured in the user's host.
 
@@ -131,7 +137,7 @@ See [native review](#native-task-review-panel) and [task notices](#task-notices)
 
 ### Versioned public help
 
-The 2.2.9 catalog provides 21 applicable bilingual topics and 10 advisory checklists. Each entry carries an applicability interval, a pinned source commit and anchor, and a content digest. When behavior changes, keep the old topic's source and close its interval at the first new version. Check both versions and the upper boundary. Test common searches against the candidate manifest version and include a query with no applicable match.
+The bilingual catalog records each topic or checklist with its applicability interval, source commit, anchor and content digest. When behavior changes, keep the old topic's source and close its interval at the first new version. Check both versions and the upper boundary. Test common searches against the candidate manifest version and include a query with no applicable match.
 
 ```sh
 python -m scripts.check_assistant_knowledge --verify-sources
@@ -175,9 +181,16 @@ Follow [CONTRIBUTING](../CONTRIBUTING.md#parallel-coding-agents). Give each auth
 
 `python -m scripts.profile_history --output /tmp/ninebot-profile.json` measures disposable 5k/50k/200k summaries and 512/4096/20000-point details. Compare changes on the same runner and fixture. Startup includes validation; report the workload with each measurement. Database indexes, compression or journaling changes should follow those measurements.
 
+## Incremental maintenance and refactoring
+
+1. For Snow Leopard maintenance, capture a reproducible problem such as repeated month reads after restart or loss of better geometry during import. Record the affected state and the original result first.
+2. Trace the normal code path across just the affected boundary. For polling or archive performance, reuse the same input and compare request counts, SQL plans and elapsed time. For recovery, check ownership, read/commit order and evidence after interruption.
+3. Make the smallest behavior-preserving change that removes the measured cost, or isolate an intentional correction. Replay the original case. Confirm that entity identity, authorization, archive version, budgets and control readback still meet their contracts.
+4. Integrate a slice when its normal entry point and relevant failure cases pass. Run the wider compatibility gate once on a fixed milestone candidate. The [roadmap](roadmap.md#next-candidates) describes the frontend and Assistant gates and the prospective read-only client.
+
 ## Publication
 
-New maintenance previews use numeric versions such as `2.0.4` with the GitHub **Pre-release** flag. Tags and release titles add `v`. Existing `a`, `b` and `rc` releases remain available. Each new release includes a complete `ninebot.zip` and SHA256 checksum. Release notes use English with an equivalent collapsed Simplified Chinese section.
+New maintenance previews use the next available numeric version with the GitHub **Pre-release** flag. Tags and release titles add `v`. Existing `a`, `b` and `rc` releases remain available. Each new release includes a complete `ninebot.zip` and SHA256 checksum. Release notes use English with an equivalent collapsed Simplified Chinese section.
 
 A stable release summarizes the full version cycle and compares against the previous final version. An RC marked as a regular GitHub Release or Latest retains its RC version identity and is excluded from that stable baseline. Preview and candidate notes compare against the preceding published version. Link installation and usage details to the matching README language; keep the development timeline in [the version history](releases/2.0.md).
 
@@ -203,7 +216,7 @@ Promote long-lived branches with normal merges, then merge `main` back into `dev
 Run the read-only preflight after fetching branches/tags:
 
 ```sh
-python scripts/check_release.py --channel preview --version 2.0.4 \
+python scripts/check_release.py --channel preview --version REPLACE_WITH_NUMERIC_VERSION \
   --source dev --sha REPLACE_WITH_REVIEWED_FULL_SHA
 ```
 
