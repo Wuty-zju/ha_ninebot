@@ -2,7 +2,7 @@
 
 [简体中文](assistant_zh.md) · [Setup](#enable-it) · [Tool reference](#ask-about-local-data) · [Permissions](#privacy-and-limits) · [History tasks](#reviewable-history-tasks-beta)
 
-**2.2.15 preview.** Ask about a vehicle’s latest reading, an archived ride or a statistic. Ninebot returns local evidence to the conversation host you already use. For earlier versions see the [stable 2.2.0 guide](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) and the [single-API upgrade](#upgrade-to-the-single-ninebot-api).
+**2.2.16 preview.** Ask about a vehicle’s latest reading, an archived ride or a statistic. Ninebot returns local evidence to the conversation host you already use. For earlier versions see the [stable 2.2.0 guide](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) and the [single-API upgrade](#upgrade-to-the-single-ninebot-api).
 
 <a id="ninebot-assistant--21-preview"></a>
 
@@ -69,6 +69,12 @@ Start with a single measure and a selected vehicle. Each follow-up reads the arc
 | “How much energy did the other vehicle use last month?” | Vehicle, period and metric together | The previous device ID identifies which vehicle to leave out |
 
 For example, ask about last month in November and follow up on energy use in December. The answer still covers October 1–31. A month-to-date receipt records the last included day. If the archive now offers a longer monthly summary, the tool asks you to confirm the expanded period.
+
+<a id="vehicle-choice-follow-up"></a>
+
+**Choosing among three vehicles with the same name.** If you ask on November 30 how much energy the other vehicle used last month, the Assistant offers the two other HA devices. Pick one by its device ID. Choosing on December 1 still reads October 1–31 in Wh. The original question's Shanghai date sets the range. If either the original or the chosen vehicle has lost statistics access, the query returns a denial.
+
+For `ninebot.ask`, pass `next_step.query_context` and the chosen `device_id` in the next call. The Action takes one fresh local reading directly. The completed receipt contains the measured value, exact dates and source. For Assist or MCP, call `get_statistics` with the context’s original `device_id` as `vehicle_ref`, its date or month as `period`, its `metric` and any `through_date`. Set `selected_other_vehicle` to the HA device ID the user picked. Keep the original list order if presenting numbered choices.
 
 Assist and MCP clients use the latest single-metric receipt’s `query_context`. It contains `device_id`, `metric` and either `date` or `month` with `through_date`. Pass that selection to `get_statistics` as `vehicle_ref`, `period`, `metric` and, for months, `through_date`. For one change, use a short value such as `last_month` or `energy_wh`. A combined follow-up uses one object, for example `"change": {"vehicle": "other", "period": "last_month", "metric": "energy_wh"}`. For an object, choose `previous` or `other` explicitly. Ninebot resolves the vehicle and the preceding Shanghai calendar month, then reads the requested total once. If several vehicles could be meant, choose one first. A revoked statistics grant ends the query without returning a value.
 

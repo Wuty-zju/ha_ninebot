@@ -21,6 +21,8 @@ Start with a problem a user can observe. For a bug, include the installed Core a
 
 The release workflow builds `ninebot.zip` from committed runtime files. Stable promotions require the full validation receipt for the reviewed inputs. Preserve existing public tags and assets. The default README can describe a named preview while the code on `main` remains stable. [Publication and download accounting](docs/development.md#branch-and-release-channels)
 
+For a small Assistant statistics or archive-panel preview, open a same-repository `preview/X.Y.Z` branch against `dev`. A version-only manifest patch and changes within the covered modules select the native follow-up smoke, minimum-Core Action checks and, for panel changes, the archive browser scenario. Other changes use the normal test selection. RC and stable candidates run the full validation on the release commit.
+
 ## Documentation and examples
 
 | What changed | Where to write |

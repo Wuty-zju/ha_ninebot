@@ -2,6 +2,11 @@
 
 Choose a version to see what shipped. The [user guides](docs/README.md) cover setup and current behavior. For the original account, entity and archive redesign, read the [2.0 development history](docs/releases/2.0.md). The stable [2.2.0 release](#220) includes the optional Assistant.
 
+## 2.2.16
+
+- Choose the intended HA device when several vehicles share a name. The [statistics follow-up](docs/assistant.md#vehicle-choice-follow-up) keeps the original month and metric, then reads the selected archive under the current permissions.
+- Browse large [local ride archives](docs/history.md#local-archive-replay) without reloading cached pages. Returning from the background rechecks access before restoring the selected route and sample.
+
 ## 2.2.15
 
 - Ask how much energy another vehicle used last month in a single follow-up. Ninebot resolves the vehicle, Shanghai calendar month and metric before reading its local statistics. The answer includes the selected dates, source and coverage. [Assistant guide](docs/assistant.md#compound-statistics)
