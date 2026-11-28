@@ -233,6 +233,10 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     if (this.activeTrack?.stale) void this.readRoute(this.activeRide);
   }
 
+  keepCurrentRide() {
+    if (!this.busy) this.selection.retainPrimary();
+  }
+
   removeRide(key) {
     if (this.busy) return;
     if (key === this.selection.primary) {

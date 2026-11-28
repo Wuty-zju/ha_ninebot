@@ -4,17 +4,45 @@ import { trackKey } from './local-tracks.js';
 
 export const MAX_SELECTED_ROUTES = 5;
 
-export function selectionTotals(rides) {
-  function sum(read) {
-    const values = rides.map(read);
-    return values.length && values.every(Number.isFinite) ? values.reduce((a, b) => a + b, 0) : null;
+const finiteAmount = value => Number.isFinite(value) && value >= 0 ? value : null;
+
+function total(values) {
+  return finiteAmount(values.reduce((sum, value) => sum + value, 0));
+}
+
+/** Compare complete recorded scalars, independent of geometry and playback state. */
+export function rideInsights(rides) {
+  const rows = rides.map(ride => ({
+    distance: finiteAmount(ride.distance_m),
+    duration: finiteAmount(ride.duration_s ?? (Number.isFinite(ride.duration_h) ? ride.duration_h * 3600 : null)),
+    energy: finiteAmount(ride.energy_wh),
+    durationConflict: ride.warnings?.includes('duration_time_difference'),
+  }));
+
+  function sum(key, precision = 0) {
+    const values = rows.map(row => row[key]).filter(value => value !== null);
+    return { value: values.length && values.length === rows.length ? total(values) : null,
+      count: values.length, precision };
   }
+
+  function ratio(numerator, denominator, usable, scale) {
+    const paired = rows.filter(usable);
+    let value = null;
+    if (paired.length && paired.length === rows.length) {
+      const top = total(paired.map(row => row[numerator]));
+      const bottom = total(paired.map(row => row[denominator]));
+      if (top !== null && bottom > 0) value = finiteAmount(top / bottom * scale);
+    }
+    return { value, count: paired.length, precision: 1 };
+  }
+
   return {
-    distance_m: sum(ride => ride.distance_m),
-    duration_s: sum(ride => ride.duration_s ?? (Number.isFinite(ride.duration_h) ? ride.duration_h * 3600 : null)),
-    energy_wh: sum(ride => ride.energy_wh),
-    precision: { mileages: Math.max(0, ...rides.map(ride => ride.precision.mileages)),
-      ec: Math.max(0, ...rides.map(ride => ride.precision.ec)) },
+    distance: sum('distance', Math.max(0, ...rides.map(ride => ride.precision?.mileages ?? 0))),
+    duration: sum('duration'),
+    energy: sum('energy', Math.max(0, ...rides.map(ride => ride.precision?.ec ?? 0))),
+    energy_intensity: ratio('energy', 'distance', row => row.energy !== null && row.distance > 0, 1000),
+    average_speed: ratio('distance', 'duration',
+      row => row.distance !== null && row.duration > 0 && !row.durationConflict, 3.6),
   };
 }
 
@@ -63,6 +91,16 @@ export class HistorySelection {
       this.primary = key;
       this.changed();
     }
+  }
+  retainPrimary() {
+    if (this.selected.size < 2) return;
+    for (const key of this.selected.keys()) {
+      if (key !== this.primary) {
+        this.selected.delete(key);
+        this.slots.delete(key);
+      }
+    }
+    this.changed();
   }
   remove(key) {
     if (!this.selected.delete(key)) return;
