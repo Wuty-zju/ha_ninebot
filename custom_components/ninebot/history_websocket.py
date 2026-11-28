@@ -169,7 +169,7 @@ class HistoryFeed:
         devices = {scope.device for scope in self.scopes}
 
         @callback
-        def changed(event: Event) -> None:
+        def changed(event: Event[Any]) -> None:
             if (
                 event.data.get("user_id") == self.context.user_id
                 or event.data.get("device_id") in devices
