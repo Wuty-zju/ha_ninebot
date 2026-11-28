@@ -2,7 +2,7 @@
 
 [简体中文](assistant_zh.md) · [Setup](#enable-it) · [Tool reference](#ask-about-local-data) · [Permissions](#privacy-and-limits) · [History tasks](#reviewable-history-tasks-beta)
 
-**2.2.12 preview.** Ask about a vehicle’s latest reading, an archived ride or a statistic. Ninebot returns local evidence to the conversation host you already use. For earlier versions see the [stable 2.2.0 guide](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) and the [single-API upgrade](#upgrade-to-the-single-ninebot-api).
+**2.2.13 preview.** Ask about a vehicle’s latest reading, an archived ride or a statistic. Ninebot returns local evidence to the conversation host you already use. For earlier versions see the [stable 2.2.0 guide](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant.md) and the [single-API upgrade](#upgrade-to-the-single-ninebot-api).
 
 <a id="ninebot-assistant--21-preview"></a>
 
@@ -53,13 +53,34 @@ Read `outcome` first. With `evidence` or `partial`, read `results` or display `{
 
 If multiple vehicles match, `needs_input` can return `next_step.choices`. Pick the intended HA device and repeat the question with its `device_id`. This also works for identically named vehicles. With an explicit target, the tool call is bound to that vehicle. The query Action is read-only and supports an explicit selection outside the first discovery page. A denied call discards private evidence.
 
+<a id="daily-follow-ups"></a>
+
+## Follow up on a daily statistic
+
+“What about yesterday?” uses the new question’s Shanghai business date and keeps the vehicle and metric. “And the other one?” keeps the preceding **absolute date** and metric. The tools switch automatically when exactly one other vehicle is visible and that vehicle allows statistics. If several vehicles qualify for selection, choose the HA device. Two vehicles may have the same name.
+
+Assist and MCP clients can read `query_context` from a daily, single-metric receipt. For another vehicle, call `get_statistics` with the previous vehicle reference, exact date, metric and `other_vehicle: true`. The returned receipt identifies the vehicle actually read.
+
+For an automation, pass the previous Action’s three query fields into a new call. Leave out `device_id` to allow a vehicle switch. Set it to pin the next question to a specific device.
+
+```yaml
+action: ninebot.ask
+data:
+  ai_task_entity_id: ai_task.your_model
+  question: And the other one?
+  query_context: "{{ ninebot_answer.query_context }}"
+response_variable: next_answer
+```
+
+Only a device reference, date and metric are carried forward. Each turn checks the current permissions and reads the local archive again. Its receipt gives the vehicle, date, observation time, source and coverage. If the previous car loses its statistics grant, start a new query by selecting a permitted device. Conversation hosts manage the messages already in their chat history.
+
 ## Ask about local data
 
 | Native tool (`ninebot__` prefix) | Inputs | Reads |
 |---|---|---|
 | `get_vehicles` | None | Authorized HA references, labels, `allowed_reads` and local readiness flags. |
 | `get_vehicle_status` | `vehicle_ref`, optional `metric` | One cached reading or an overview. The receipt identifies the observation group, time and freshness. |
-| `get_statistics` | Vehicle, `period`, optional `metric` | Business-day or monthly statistics. Use one metric for a numerical question. |
+| `get_statistics` | Vehicle, `period`, optional `metric` and `other_vehicle` | Business-day or monthly statistics. Use one metric for a numerical question. |
 | `explain_statistics` | Vehicle, `period`, `metric`, optional `language` | One metric, its quality and any further evidence justified for that vehicle. |
 | `get_recorded_trips` | Vehicle, `start_date`, `end_date`, optional `limit`, `cursor` | A descending page of rides overlapping up to 31 days. Default 10, maximum 20 per page. |
 | `get_trip_detail` | Vehicle, `ride_id`, `query_month` | Locally saved scalar detail. Use the exact ID and `YYYYMM` month returned by the ride list. |

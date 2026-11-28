@@ -2,7 +2,7 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
-This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
+This guide covers **v2.2.13 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
 
 Use the bundled dashboard card to replay and compare saved rides, or use native Home Assistant views for position, dates and trends. The replay interface is a preview. Its archive Actions and storage run independently.
 
@@ -112,6 +112,8 @@ The comparison uses the summaries for the selected rides, including those with o
 | Average speed | Total km ÷ total recorded hours. The two durations are both counted when rides overlap. |
 
 Each metric needs all applicable source readings. A dash and **2/3 rides usable** mean two of three selected rides have usable inputs for the metric. Confirmed zero contributes to totals and can be a numerator. Energy per km needs positive distance for each ride. Average speed needs positive, non-conflicting recorded duration for each ride. For example, two selected rides totaling 12 km, 45 minutes and 240 Wh show **16 km/h** and **20 Wh/km**. These are averages over whole rides. Playback follows saved point order, with exact point timing and speed units still unverified.
+
+In 2.2.13, the route chooser, map, replay slider and statistics use one selection. Scrubbing moves through the current ride’s saved samples. Its distance and energy totals stay fixed while the cursor moves. Trips with the same ride ID on two vehicles remain separate when you switch pages or months.
 
 With VoiceOver, activate the numbered route button labeled with vehicle and departure time. The current route button has a pressed state. On iPhone, swipe up or down on the replay slider to change position. On Mac, use the slider adjustment commands. [Apple's VoiceOver guide](https://support.apple.com/guide/iphone/iph3e2e2281/ios)
 
