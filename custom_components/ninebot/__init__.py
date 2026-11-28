@@ -32,6 +32,7 @@ from .client import NinecliClient
 from .const import (
     CONF_ACCOUNT,
     CONF_BUSINESS_UID,
+    CONF_COORDINATES,
     CONF_SESSION_KEY,
     DOMAIN,
     PLATFORMS,
@@ -41,9 +42,9 @@ from .coordinator import NinebotCoordinator
 from .entity import async_audit_device_identities
 from .event_store import RideEventPipeline
 from .exceptions import NinebotError
-from .frontend import async_register_frontend
+from .frontend import async_register_archive_panel, async_register_frontend
 from .history_capacity import history_capacity_mib
-from .history_websocket import async_register_history_websocket
+from .history_websocket import async_coordinate_access_changed, async_register_history_websocket
 from .identity import IdentityStore
 from .migration import async_migrate
 from .models import VehicleSnapshot
@@ -193,6 +194,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinebotConfigEntry) -> b
         async_sync_task_policy(hass, entry)
         await async_update_assistant_api(hass)
         await async_resume_task_execution(hass, entry)
+        await async_register_archive_panel(hass)
     except BaseException:
         await async_close_task_owner(hass, entry, permanent=True)
         if entry.runtime_data.events:
@@ -226,6 +228,8 @@ def _async_options_listener(
 ) -> Coroutine[Any, Any, None]:
     # ConfigEntries evaluates this callback before scheduling its returned coroutine/save.
     async_sync_task_policy(hass, entry)
+    if entry.options.get(CONF_COORDINATES) is False:
+        async_coordinate_access_changed(hass, entry.entry_id)
     return async_update_options(hass, entry)
 
 
