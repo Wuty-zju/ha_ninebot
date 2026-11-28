@@ -2,7 +2,7 @@
 
 [English](guide.md) · [文档入口](README.md) · [历史与地图](history_zh.md)
 
-本文说明至 **v2.2.16 预览版**。使用 **v2.2.0 正式版**时，请以[随版文档](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide_zh.md)为准。
+本文说明至 **v2.2.17 预览版**。使用 **v2.2.0 正式版**时，请以[随版文档](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide_zh.md)为准。
 
 ## 环境要求
 
@@ -11,7 +11,7 @@
 | Home Assistant | **2026.1.0 及以上**，使用兼容的 64 位主机或容器。HA 2026.11+ 使用 Marketplace，较早的受支持版本可使用 HACS。 |
 | 车辆与账号 | 官方九号 App 中能看到车辆，且能用密码登录。 |
 | 网络 | HA 主机需能连接九号云服务。已验证中国大陆 App 服务。 |
-| 版本 | 首次使用可选 **v2.2.0 正式版**。要试用[本地行程档案面板](history_zh.md#local-archive-replay)或[同时换车、月份和指标的追问](assistant_zh.md#compound-statistics)，请明确选用 **v2.2.16 预览版**。 |
+| 版本 | 首次使用可选 **v2.2.0 正式版**。要试用[本地行程档案面板](history_zh.md#local-archive-replay)或[同时换车、月份和指标的追问](assistant_zh.md#compound-statistics)，请明确选用 **v2.2.17 预览版**。 |
 
 已安装的用户请先备份 HA 配置和私有存储。[升级前检查](migration_zh.md#升级前)
 

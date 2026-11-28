@@ -16,7 +16,7 @@ English · [简体中文](README_zh.md)
 
 Check your vehicle, keep its rides and use both in Home Assistant. Each Ninebot account has its own vehicles, permissions and local SQLite archive.
 
-**Stable** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. **Preview** · [v2.2.16](CHANGELOG.md#2216) keeps the requested month and metric when you [choose between same-name vehicles](docs/assistant.md#vehicle-choice-follow-up). The [local ride archive](docs/history.md#local-archive-replay) resumes the selected page after checking access. If your host still selects **Ninebot tasks**, follow the [single-API upgrade](docs/assistant.md#upgrade-to-the-single-ninebot-api).
+**Stable** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. **Preview** · [v2.2.17](CHANGELOG.md#2217) accepts [a numbered choice between same-name vehicles](docs/assistant.md#vehicle-choice-follow-up) and keeps the requested month and metric. The [local ride archive](docs/history.md#local-archive-replay) resumes the selected page after checking access. If your host still selects **Ninebot tasks**, follow the [single-API upgrade](docs/assistant.md#upgrade-to-the-single-ninebot-api).
 
 ## What you can do
 
