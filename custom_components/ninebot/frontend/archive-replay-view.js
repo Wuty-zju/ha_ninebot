@@ -118,7 +118,7 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     }
   }
 
-  async function readTrack(ride) {
+  async function readTrack(ride, index = null) {
     const activeEpoch = epoch;
     await archive.read(ride.device_id, ride);
     if (activeEpoch !== epoch) return;
@@ -128,12 +128,14 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
       onTrackError(error);
       return;
     }
-    const item = archive.tracks.get(trackKey(ride.device_id, ride));
+    const key = trackKey(ride.device_id, ride);
+    const item = archive.tracks.get(key);
     if (item) selection.update(item.summary);
+    if (index !== null && key === selection.primary) selection.seek(index, archive.tracks);
     render(true);
   }
 
-  function changeRide(ride) {
+  function changeRide(ride, index = null) {
     if (archive.busy) return;
     const key = trackKey(ride.device_id, ride);
     if (selection.primary === key) return;
@@ -144,7 +146,7 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     else if (!selection.select(saved?.summary ?? ride, comparingNext)) return;
     comparingNext = false;
     render(!wasSelected);
-    if (!synthetic && ride.detail_saved === true && !saved) void readTrack(ride);
+    if (!synthetic && ride.detail_saved === true && !saved) void readTrack(ride, index);
   }
 
   function toggleComparison() {
@@ -291,7 +293,8 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     render(false);
   }
 
-  function setPage(pageRides, { number: page = 1, previous = false, next = false, note = '', busy = false } = {}) {
+  function setPage(pageRides, { number: page = 1, previous = false, next = false, note = '', busy = false,
+    restore = null } = {}) {
     if (rides !== pageRides) {
       rides = pageRides;
       rideButtons.clear();
@@ -312,8 +315,13 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     el('next').disabled = busy || !next;
     el('page').textContent = number.format(page);
     const first = rides.find(ride => ride.ride_id);
-    if (!selection.primary && first) changeRide(first);
+    const restored = restore && rides.find(ride => trackKey(ride.device_id, ride) === restore.key);
+    if (!selection.primary && first) changeRide(restored || first, restored ? restore.index : null);
     else render(false);
+  }
+
+  function bookmark() {
+    return selection.primary && { key: selection.primary, index: selection.position(archive.tracks).index };
   }
 
   el('compare').addEventListener('click', toggleComparison);
@@ -354,5 +362,5 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     el('startup').hidden = !message;
     el('startup').textContent = message;
   };
-  return { el, clear, setPage, pause, readTrack, status };
+  return { el, clear, setPage, pause, readTrack, status, bookmark };
 }

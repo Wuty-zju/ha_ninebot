@@ -43,14 +43,14 @@ export function invokeHistory(hass, service, data, current = () => true) {
   return promise;
 }
 
-export function watchHistory(hass, devices, listener, { includeTrack = false } = {}) {
+export function watchHistory(hass, devices, listener, { includeTrack = false, shared = true } = {}) {
   const connection = hass.connection;
   if (!connection?.subscribeMessage || !hass.user?.id) return () => {};
   const ids = [...new Set(devices)].sort();
   if (!ids.length || ids.length > 5) throw new Error('invalid_scope');
   let scopes = subscriptions.get(connection);
   if (!scopes) { scopes = new Map(); subscriptions.set(connection, scopes); }
-  const key = JSON.stringify([hass.user.id, ids, includeTrack]);
+  const key = shared ? JSON.stringify([hass.user.id, ids, includeTrack]) : Symbol();
   let feed = scopes.get(key);
   if (!feed) {
     if (scopes.size >= 64) throw new Error('subscription_limit');
