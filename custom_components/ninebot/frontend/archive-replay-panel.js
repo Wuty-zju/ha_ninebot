@@ -13,6 +13,7 @@ const TEXT = {
     loading: '正在读取本地档案…', noAccess: '没有可以回放的车辆。', chooseAccount: '选择一个九号账号以查看行程。',
     disconnected: '与 Home Assistant 的连接已断开。', withdrawn: '行程或位置权限已失效，请重新选择账号。',
     unavailable: '本地档案暂时不可用，请重新检查权限。', invalid: '请选择不超过五年的有效日期范围。',
+    cursorExpired: '档案分页已失效。点击“查看行程”从第一页开始。',
     stale: '档案正在更新…', coverage: '所选日期内有月份的本地清单缺失或未确认完整。',
     zone: '日期按上海时区计算。', limited: '仅显示前 100 辆可用车辆。',
   },
@@ -23,6 +24,7 @@ const TEXT = {
     chooseAccount: 'Choose a Ninebot account to open its archive.',
     disconnected: 'Disconnected from Home Assistant.', withdrawn: 'Ride or location access was withdrawn. Choose an account again.',
     unavailable: 'The local archive is unavailable. Check access again.', invalid: 'Choose a valid date range of up to five years.',
+    cursorExpired: 'This archive page has expired. Select Show rides to start again.',
     stale: 'The archive is updating…', coverage: 'Some months in this range have missing or unverified local ride lists.',
     zone: 'Dates use the Shanghai time zone.', limited: 'Showing the first 100 available vehicles.',
   },
@@ -73,9 +75,18 @@ export class NinebotArchivePanel extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._accounts = new Map();
     this._session = 0;
-    this._visibility = () => { if (document.hidden) this._view?.pause(); };
-    this._pagehide = () => this._clearSession();
-    this._pageshow = event => { if (event.persisted) void this._discover(); };
+    this._visibility = () => {
+      if (document.hidden) this._suspend();
+      else this._resume();
+    };
+    this._pagehide = () => {
+      this._pageHidden = true;
+      this._suspend();
+    };
+    this._pageshow = () => {
+      this._pageHidden = false;
+      this._resume();
+    };
     this._lost = () => this._setOnline(false);
     this._ready = () => this._setOnline(true);
   }
@@ -105,6 +116,7 @@ export class NinebotArchivePanel extends HTMLElement {
   }
 
   connectedCallback() {
+    this._suspended = document.hidden;
     this._mount(replayLocale(this._hass?.language));
     this._bindConnection();
     document.addEventListener('visibilitychange', this._visibility);
@@ -122,6 +134,7 @@ export class NinebotArchivePanel extends HTMLElement {
     this._unbindConnection();
     this._clearSession();
     this._online = false;
+    this._pageHidden = false;
   }
 
   _mount(locale) {
@@ -172,6 +185,8 @@ export class NinebotArchivePanel extends HTMLElement {
         return;
       }
       this._dates = dates;
+      const browser = this._scope?.browser;
+      if (browser && browser.start === dates[0] && browser.end === dates[1] && !browser.error) return;
       this._open(el('vehicle').value);
     });
   }
@@ -189,7 +204,9 @@ export class NinebotArchivePanel extends HTMLElement {
   _setOnline(online, changed = false) {
     if (!changed && this._online === online) return;
     this._online = online;
-    if (online) void this._discover();
+    if (online) {
+      if (!this._suspended) void this._discover();
+    }
     else {
       this._clearSession();
       this._view?.status(this._text.disconnected);
@@ -204,16 +221,52 @@ export class NinebotArchivePanel extends HTMLElement {
     this._view?.clear();
   }
 
-  _clearSession() {
+  _forgetResume() {
+    this._resumeState?.scope?.browser.disconnect();
+    this._resumeState = null;
+  }
+
+  _clearSession(keepResume = false) {
     this._session++;
     this._clearScope();
+    if (!keepResume) this._forgetResume();
     this._accounts.clear();
     this._account = '';
     this._renderAccounts(false);
   }
 
-  async _discover(reason, autoOpen = true) {
-    this._clearSession();
+  _suspend() {
+    if (this._suspended) return;
+    this._suspended = true;
+    const scope = this._scope;
+    if (scope) {
+      const { browser } = scope;
+      // An interrupted list read may have consumed continuation tokens. Keep only idle, verified pages.
+      if (!scope.resume && browser.page && !browser.busy && !browser.error && this._listMatches(scope)) {
+        scope.resume = { selection: this._view.bookmark() };
+      }
+      this._resumeState = { account: this._account, device: this._view.el('vehicle').value,
+        devices: browser.targets.map(target => target.device_id), scope: scope.resume ? scope : null };
+      if (scope.resume) {
+        this._scope = null;
+        scope.stop?.();
+        scope.stop = null;
+        browser.suspend();
+      }
+    }
+    this._clearSession(true);
+    if (this._online) this._view.status(this._text.loading);
+  }
+
+  _resume() {
+    if (!this._suspended || this._pageHidden || document.hidden) return;
+    this._suspended = false;
+    if (this._online) void this._discover(undefined, true, true);
+  }
+
+  async _discover(reason, autoOpen = true, restoring = false) {
+    if (this._suspended) return;
+    this._clearSession(restoring);
     if (!this._online || !this.isConnected) return;
     const session = this._session;
     this._view.status(this._text[reason ?? 'loading']);
@@ -222,10 +275,23 @@ export class NinebotArchivePanel extends HTMLElement {
       if (session !== this._session || !this.isConnected) return;
       this._accounts = accountGroups(response?.vehicles);
       this._renderAccounts(response.more_available === true);
-      if (autoOpen && this._accounts.size === 1) this._chooseAccount(this._accounts.keys().next().value);
+      const resume = this._resumeState;
+      if (resume) {
+        const ids = new Set(this._accounts.get(resume.account)?.map(target => target.device_id));
+        if (!resume.devices.every(device => ids.has(device)) || (!resume.device && ids.size > MAX_VEHICLES)) {
+          this._forgetResume();
+          this._view.status(this._text.withdrawn);
+          return;
+        }
+        this._resumeState = null;
+        this._chooseAccount(resume.account, resume);
+      } else if (autoOpen && this._accounts.size === 1) this._chooseAccount(this._accounts.keys().next().value);
       else this._view.status(this._text[reason ?? (this._accounts.size ? 'chooseAccount' : 'noAccess')]);
     } catch {
-      if (session === this._session) this._view.status(this._text[reason ?? 'unavailable']);
+      if (session === this._session) {
+        this._forgetResume();
+        this._view.status(this._text[reason ?? 'unavailable']);
+      }
     }
   }
 
@@ -242,7 +308,7 @@ export class NinebotArchivePanel extends HTMLElement {
     }
     select.value = this._account;
     select.disabled = !this._accounts.size;
-    el('refresh').disabled = !this._online;
+    el('refresh').disabled = !this._online || this._suspended;
     el('date-note').textContent = limited ? `${this._text.zone} ${this._text.limited}` : this._text.zone;
     this._renderVehicles();
   }
@@ -258,30 +324,42 @@ export class NinebotArchivePanel extends HTMLElement {
     for (const id of ['start-date', 'end-date', 'apply']) el(id).disabled = !vehicles.length;
   }
 
-  _chooseAccount(account) {
+  _chooseAccount(account, resume = null) {
     this._clearScope();
     this._account = this._accounts.has(account) ? account : '';
     this._view.el('account').value = this._account;
     this._renderVehicles();
-    if (this._account) this._open(this._view.el('vehicle').value);
+    if (this._account) {
+      const filter = this._view.el('vehicle');
+      if (resume) filter.value = resume.device;
+      this._open(filter.value, resume?.scope);
+    }
     else this._view.status(this._text.chooseAccount);
   }
 
-  _open(device) {
+  _open(device, savedScope) {
     this._clearScope();
     const targets = (this._accounts.get(this._account) ?? []).filter(vehicle => !device || vehicle.device_id === device);
-    if (!this._online || !targets.length || targets.length > MAX_VEHICLES) return;
+    if (!this._online || this._suspended || !targets.length || targets.length > MAX_VEHICLES) return;
     this._view.status(this._text.loading);
-    const browser = new FleetBrowser(() => this._browseChanged(scope), () => {
-      if (this._scope === scope) this._view.clear();
-    });
-    const scope = { browser, version: null, stop: null };
+    const reusable = savedScope && targets.length === savedScope.browser.targets.length && targets.every(target =>
+      savedScope.browser.targets.some(old => old.device_id === target.device_id && old.name === target.name));
+    const scope = reusable ? savedScope : { browser: null, stop: null };
+    if (!reusable) {
+      savedScope?.browser.disconnect();
+      scope.browser = new FleetBrowser(() => this._browseChanged(scope), () => {
+        if (this._scope === scope) this._view.clear();
+      });
+    }
+    scope.version = null;
     this._scope = scope;
+    const { browser } = scope;
     browser.setHass(this._hass);
-    browser.configure({ vehicles: targets, start_date: this._dates[0], end_date: this._dates[1] });
+    if (!reusable) browser.configure({ vehicles: targets, start_date: this._dates[0], end_date: this._dates[1] });
     try {
+      // A new authorization boundary needs a fresh baseline, including when another panel watches these vehicles.
       const stop = watchHistory(this._hass, targets.map(target => target.device_id),
-        event => this._handleFeed(scope, event), { includeTrack: true });
+        event => this._handleFeed(scope, event), { includeTrack: true, shared: false });
       if (this._scope === scope) scope.stop = stop;
       else stop();
     } catch {
@@ -298,9 +376,15 @@ export class NinebotArchivePanel extends HTMLElement {
     const version = new Map(event.vehicles.map(row => [row.device_id, row.selection_version]));
     if (scope.version && [...version].every(([device, key]) => scope.version.get(device) === key)) return;
     const initial = !scope.version;
+    if (initial && event.type !== 'baseline') return;
     scope.version = version;
-    if (initial) scope.browser.connect();
-    else {
+    if (initial) {
+      const saved = scope.resume;
+      scope.resume = null;
+      if (saved && !this._listMatches(scope)) scope.browser.clearPage();
+      scope.browser.connect();
+      if (scope.browser.page) this._browseChanged(scope, saved?.selection);
+    } else {
       this._view.clear();
       scope.browser.clearPage();
       this._view.status(this._text.loading);
@@ -308,7 +392,12 @@ export class NinebotArchivePanel extends HTMLElement {
     }
   }
 
-  _browseChanged(scope) {
+  _listMatches({ browser, version }) {
+    return version && browser.streams.length === version.size &&
+      browser.streams.every(stream => stream.revision === version.get(stream.device));
+  }
+
+  _browseChanged(scope, restore) {
     if (this._scope !== scope || !scope.version) return;
     const { browser } = scope, page = browser.page;
     if (browser.error === 'denied') {
@@ -317,11 +406,11 @@ export class NinebotArchivePanel extends HTMLElement {
     }
     if (browser.error) {
       this._view.clear();
-      this._view.status(REPLAY_COPY[this._locale].loadFailed);
+      this._view.status(browser.error === 'cursor_error' ? this._text.cursorExpired : REPLAY_COPY[this._locale].loadFailed);
       return;
     }
     if (!page) return;
-    if (browser.streams.some(stream => stream.revision !== scope.version.get(stream.device))) {
+    if (!this._listMatches(scope)) {
       this._view.clear();
       this._view.status(this._text.stale);
       return;
@@ -331,7 +420,7 @@ export class NinebotArchivePanel extends HTMLElement {
     this._view.setPage(page.rides, {
       number: browser.pageNumber, previous: browser.pages.has(browser.pageNumber - 1),
       next: Boolean(page.next_cursor || browser.pages.has(browser.pageNumber + 1)),
-      busy: browser.busy, note: partial ? this._text.coverage : '',
+      busy: browser.busy, note: partial ? this._text.coverage : '', restore,
     });
   }
 

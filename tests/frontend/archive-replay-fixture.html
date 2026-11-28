@@ -21,6 +21,21 @@ const rides = new Map([
 ]);
 const older = id => ({ ...rides.get(id), ride_id: 'synthetic-older', detail_id: 'synthetic-older-detail',
   start_time: '2026-09-02T08:00:00Z', end_time: '2026-09-02T08:10:00Z' });
+const large = new URL(location.href).searchParams.has('large');
+function rankedRides(device, count, step) {
+  return Array.from({ length: count }, (_, index) => {
+    const rank = (count - index - 1) * step;
+    return { ...rides.get(device), query_month: '202609', ride_id: `ride-${999 - rank}`,
+      start_time: `2026-09-03T08:00:00.${String(rank).padStart(6, '0')}Z`,
+      end_time: '2026-09-03T08:10:00Z' };
+  });
+}
+const histories = large ? new Map([
+  ['synthetic-a', rankedRides('synthetic-a', 113, 1)],
+  ['synthetic-b', rankedRides('synthetic-b', 27, 4)],
+]) : new Map();
+const continuations = new Map();
+let tokenIndex = 0;
 const version = device => ({ device_id: device, selection_version: 'c'.repeat(32) + ':1' });
 const requests = [];
 const subscriptions = [];
@@ -45,6 +60,12 @@ const respondDetail = (ride, data) => {
   }
   return { response: result };
 };
+async function waitForRelease(service, device) {
+  const key = `${service}:${device}`, gate = deferred.get(key);
+  if (!gate) return;
+  await gate.promise;
+  deferred.delete(key);
+}
 async function callWS(message) {
   requests.push({ message });
   if (message.type === 'ninebot/history/vehicles') {
@@ -53,22 +74,31 @@ async function callWS(message) {
   if (message.type !== 'call_service' || message.domain !== 'ninebot') throw Error('Unexpected command');
   const data = message.service_data, ride = rides.get(data.device_id);
   if (!ride || lost.has(data.device_id)) throw { code: 'unauthorized' };
+  const history = histories.get(data.device_id);
   if (message.service === 'get_recorded_trips') {
-    const datedRides = data.device_id === 'synthetic-c' ? [ride, older(data.device_id)] : [ride];
+    const datedRides = history ?? (data.device_id === 'synthetic-c' ? [ride, older(data.device_id)] : [ride]);
     const requestedRides = datedRides.filter(row => {
       const date = row.start_time.slice(0, 10);
       return date >= data.start_date && date <= data.end_date;
     });
+    let start = 0;
+    if (data.cursor) {
+      const continuation = continuations.get(data.cursor);
+      if (continuation?.device !== data.device_id) throw { translation_key: 'history_cursor' };
+      continuations.delete(data.cursor);
+      start = continuation.start;
+    }
+    const end = start + data.limit;
+    const next = end < requestedRides.length ? `cursor-${++tokenIndex}` : null;
+    if (next) continuations.set(next, { device: data.device_id, start: end });
+    await waitForRelease(message.service, data.device_id);
     return { response: { source_mode: 'ride_archive', sort: 'desc', selection_version: version(data.device_id).selection_version,
-      next_cursor: null, coverage: {}, rides: requestedRides.map(row => ({ ...row, detail_saved: true })) } };
+      next_cursor: next, coverage: {}, rides: requestedRides.slice(start, end).map(row => ({ ...row, detail_saved: true })) } };
   }
   if (message.service !== 'get_trip_detail' || !data.local_only || !data.include_track) throw Error('Unexpected service');
-  const requested = data.ride_id === ride.ride_id ? ride : older(data.device_id);
-  const gate = deferred.get(data.device_id);
-  if (gate) {
-    await gate.promise;
-    deferred.delete(data.device_id);
-  }
+  const requested = history?.find(row => row.ride_id === data.ride_id) ??
+    (data.ride_id === ride.ride_id ? ride : older(data.device_id));
+  await waitForRelease(message.service, data.device_id);
   return respondDetail(requested, data);
 }
 const hass = { user: { id: 'ha-original' }, language: 'en', connected: true, connection, callWS };
@@ -82,12 +112,12 @@ window.fixture = {
   close(reason) {
     subscriptions.at(-1).callback({ schema_version: 1, type: 'closed', reason });
   },
-  hold(id) {
+  hold(id, service = 'get_trip_detail') {
     let release;
     const promise = new Promise(resolve => { release = resolve; });
-    deferred.set(id, { promise, release });
+    deferred.set(`${service}:${id}`, { promise, release });
   },
-  release(id) { deferred.get(id).release(); },
+  release(id, service = 'get_trip_detail') { deferred.get(`${service}:${id}`).release(); },
   replaceUser() { panel.hass = { ...hass, user: { id: 'ha-replacement' } }; },
   disconnect() {
     connection.connected = false;
