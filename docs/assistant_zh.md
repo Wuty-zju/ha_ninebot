@@ -2,7 +2,7 @@
 
 [English](assistant.md) · [启用](#开启方式) · [工具参考](#查询本地数据) · [数据授权](#隐私与限额) · [历史任务](#可审核的历史任务beta)
 
-**2.2.13 预览版。** 你可以询问某辆车最近一次上报的电量、找出一次已保存的行程，或核对昨天的骑行次数。Ninebot 将本地证据交给你选择的对话宿主。旧版本请查看 [2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)和[统一工具入口迁移说明](#升级至统一的-ninebot-api)。
+**2.2.14 预览版。** 你可以询问某辆车最近一次上报的电量、找出一次已保存的行程，或核对昨天的骑行次数。Ninebot 将本地证据交给你选择的对话宿主。旧版本请查看 [2.2.0 正式版指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/assistant_zh.md)和[统一工具入口迁移说明](#升级至统一的-ninebot-api)。
 
 <a id="ninebot-assistant--21-预览"></a>
 
@@ -54,25 +54,34 @@ response_variable: ninebot_answer
 多辆车匹配时，`needs_input` 可通过 `next_step.choices` 返回候选。带上目标车辆的 HA `device_id` 再次提问，即使两辆车同名也能选定。指定后整轮查询绑定该车。这个只读 Action 可直接指定发现列表前二十辆以外的车辆。查询遭拒时丢弃私有结果。
 
 <a id="daily-follow-ups"></a>
+<a id="statistics-follow-ups"></a>
 
-## 追问某一天的统计
+## 追问行程统计
 
-问“那昨天呢？”会保留车辆和指标，按这次提问时的上海业务日期重新计算昨天。再问“另一辆呢？”会保留上一问已经确认的**具体日期**和指标。当前可见范围内恰有一辆其他车且允许读取统计时，助手才自动切换。还有多个候选时应选择 HA 设备，即使车辆同名也能区分。
+先选定车辆，询问一项指标。每次追问都按当前权限重新读取本地档案。同名车辆通过 Home Assistant 设备 ID 区分。
 
-Assist 或 MCP 客户端可从单日、单指标的回执取得 `query_context`。切换车辆时，把上一辆车的引用、具体日期、指标和 `other_vehicle: true` 传给 `get_statistics`；新回执会标出实际读取的车辆。
+| 追问 | 改变什么 | 沿用什么 |
+|---|---|---|
+| “那昨天呢？”或“那上个月呢？” | 按这次提问时的上海业务日期计算昨天或上一个自然月 | 车辆、指标 |
+| “耗电量呢？” | 改查行程总耗电量，单位 Wh | 车辆、确切起止日期 |
+| “另一辆呢？” | 当前可见范围内恰有一辆其他车且允许读取统计时，切换到该车 | 起止日期、指标 |
 
-自动化可把上一轮返回的查询条件传给下一次 Action。希望助手切换车辆时省略 `device_id`；若明确指定设备，本轮固定查询该车。
+例如，11 月问“那上个月呢？”，12 月接着问“耗电量呢？”，查询范围仍是 10 月 1–31 日。查询尚未结束的月份时，回执会记下统计截止日。下次追问时若档案只能提供更长时段的月汇总，助手会请你确认新的范围。
+
+Assist 和 MCP 客户端可读取上一份单指标回执的 `query_context`。其中含有 `device_id`、`metric`，以及单日的 `date` 或月度的 `month` 与 `through_date`。只换指标时，将同一车辆、绝对日期或月份及其截止日传给 `get_statistics`。换车时传入上一辆车的引用与 `other_vehicle: true`。有多个候选时，先选定 HA 设备。
+
+在自动化中，可把完整查询条件传回 `ninebot.ask`。明确指定 `device_id` 会把本次 Action 固定到该车。
 
 ```yaml
 action: ninebot.ask
 data:
   ai_task_entity_id: ai_task.your_model
-  question: 另一辆呢？
+  question: 耗电量呢？
   query_context: "{{ ninebot_answer.query_context }}"
 response_variable: next_answer
 ```
 
-跨轮只传设备引用、日期和指标。每次都重新核对权限、读取本地档案，并在回执中列出车辆、业务日、观察时间、来源和覆盖情况。原车辆的统计权限已撤销时，可以重新指定有权限的设备发起查询。宿主负责管理已显示的对话记录。
+新的回执列出来源、观察时间与覆盖情况。读取期间权限发生变化时，Ninebot 会丢弃这次结果。宿主负责管理已显示的聊天记录。
 
 ## 查询本地数据
 
