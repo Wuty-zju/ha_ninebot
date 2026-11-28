@@ -72,6 +72,67 @@ test('retaining the current ride keeps its identity, summary and color slot in o
   assert.equal(changes, 5);
 });
 
+test('snapshot binds the cursor to vehicle, month and saved sequence while keeping whole-ride metrics', () => {
+  const selection = new HistorySelection();
+  const a = { ...ride('a'), duration_s: 600, energy_wh: 90 };
+  const b = { ...ride('b'), distance_m: 2400, duration_s: 900, energy_wh: 120 };
+  const previousMonth = { ...a, query_month: '202609', distance_m: 600, energy_wh: null };
+  const aKey = trackKey(a.device_id, a), bKey = trackKey(b.device_id, b);
+  const monthKey = trackKey(previousMonth.device_id, previousMonth);
+  const makeTrack = sequences => ({ kind: 'sampled_unverified',
+    points: sequences.map(sequence => ({ sequence, speed_raw: sequence * 99 })) });
+  const tracks = new Map([[aKey, makeTrack([0, 2])], [bKey, makeTrack([4, 7, 9])],
+    [monthKey, makeTrack([3, 6])]]);
+  selection.select(a);
+  selection.select(b, true);
+  selection.select(previousMonth, true);
+  assert.deepEqual(selection.snapshot(tracks).routes.map(({ key, slot }) => [key, slot]),
+    [[aKey, 0], [bKey, 1], [monthKey, 2]]);
+
+  selection.activate(bKey);
+  const initial = selection.snapshot(tracks);
+  assert.equal(initial.primaryKey, bKey);
+  assert.deepEqual(initial.replay, { index: 0, count: 3, point: tracks.get(bKey).points[0] });
+  assert.equal(initial.statistics.current.distance.value, 2400);
+  assert.deepEqual(initial.statistics.selected.energy, { value: null, count: 2, precision: 0 });
+  assert.equal(initial.statistics.selected.distance.value, 4200);
+  assert.deepEqual(selection.seek(10, tracks), { index: 2, count: 3, point: tracks.get(bKey).points[2] });
+  assert.equal(selection.seek(NaN, tracks).point.sequence, 9);
+  assert.deepEqual(selection.snapshot(tracks).statistics, initial.statistics);
+  selection.remove(monthKey);
+  assert.equal(selection.position(tracks).point.sequence, 9);
+  assert.equal(selection.snapshot(tracks).statistics.selected.energy_intensity.value, 210 / 3600 * 1000);
+  selection.retainPrimary();
+  const narrowed = selection.snapshot(tracks);
+  assert.deepEqual(narrowed.routes.map(({ key, slot }) => [key, slot]), [[bKey, 1]]);
+  assert.equal(narrowed.replay.point.sequence, 9);
+  assert.deepEqual(narrowed.statistics.selected, initial.statistics.current);
+
+  selection.select(previousMonth, true);
+  assert.equal(selection.position(tracks).point.sequence, 3);
+  assert.equal(selection.seek(1, tracks).point.sequence, 6);
+  selection.remove(monthKey);
+  assert.equal(selection.position(tracks).point.sequence, 4);
+  selection.clear();
+  const cleared = selection.snapshot(tracks);
+  assert.equal(cleared.primaryKey, null);
+  assert.deepEqual(cleared.routes, []);
+  assert.deepEqual(cleared.replay, { index: 0, count: 0, point: null });
+  assert.equal(cleared.statistics.current.distance.value, null);
+  assert.equal(cleared.statistics.selected.distance.count, 0);
+});
+
+test('endpoint-only or absent geometry leaves whole-ride statistics available without a cursor', () => {
+  const selection = new HistorySelection();
+  selection.select(ride('a'));
+  const key = selection.primary;
+  const tracks = new Map([[key, { kind: 'server_simplified', points: [{ sequence: 0 }, { sequence: 1 }] }]]);
+  assert.equal(selection.snapshot().routes[0].track, null);
+  assert.equal(selection.snapshot(tracks).routes[0].track, tracks.get(key));
+  assert.deepEqual(selection.seek(1, tracks), { index: 0, count: 0, point: null });
+  assert.equal(selection.snapshot(tracks).statistics.current.distance.value, 1200);
+});
+
 test('insights keep exact seconds, zero and incomplete metrics distinct', () => {
   const first = { distance_m: 0, duration_s: 61, energy_wh: 0, precision: { mileages: 1, ec: 0 } };
   const second = { distance_m: 1250, duration_h: .25, energy_wh: null, precision: { mileages: 2, ec: 1 } };

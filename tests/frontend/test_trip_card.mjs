@@ -4,6 +4,8 @@ import { TripBrowser, safeRide, digits, businessDates, samplePolyline, NinebotTr
   from '../../custom_components/ninebot/frontend/ninebot-trip-card.js';
 import { LABELS } from '../../custom_components/ninebot/frontend/labels.js';
 import { TripCardView } from '../../custom_components/ninebot/frontend/trip-card-view.js';
+import { HistorySelection } from '../../custom_components/ninebot/frontend/history-selection.js';
+import { trackKey } from '../../custom_components/ninebot/frontend/local-tracks.js';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const row = (id = 'synthetic-ride') => ({ ride_id: id, detail_id: id, query_month: '202609',
@@ -187,15 +189,21 @@ test('recent windows and month navigation cross year/month and leap-day boundari
 
 
 test('loading a new comparison keeps active cached routes and evicts an inactive one first', async () => {
-  const { trackKey } = await import('../../custom_components/ninebot/frontend/local-tracks.js');
   const fresh = { ...row('new'), device_id: 'vehicle' }, key = trackKey('vehicle', fresh);
-  const selected = new Map([['active', {}], [key, fresh]]);
-  const cache = new Map([['active', {}], ['old-a', {}], ['old-b', {}], ['old-c', {}], ['old-d', {}]]);
+  const active = { ...fresh, ride_id: 'active' }, activeKey = trackKey('vehicle', active);
+  const selection = new HistorySelection();
+  selection.select(active);
+  selection.select(fresh, true);
+  const cache = new Map([[activeKey, {}], ['old-a', {}], ['old-b', {}], ['old-c', {}], ['old-d', {}]]);
   const removed = [];
   const fake = { browser: { active: true, epoch: 1, current: () => true }, stopPlayback() {},
-    selection: { selected, activate() {} }, mapError: false,
+    selection, mapError: false,
     tracks: { tracks: cache, busy: false, remove(key) { removed.push(key); cache.delete(key); },
-      async read() { assert.equal(cache.size, 4); assert.ok(cache.has('active')); } } };
+      async read(device, ride) {
+        assert.equal(trackKey(device, ride), key);
+        assert.equal(cache.size, 4);
+        assert.ok(cache.has(activeKey));
+      } } };
   await NinebotTripCard.prototype.readRoute.call(fake, fresh);
   assert.deepEqual(removed, ['old-a']);
 });
