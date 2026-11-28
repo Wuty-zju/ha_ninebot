@@ -17,6 +17,33 @@ export const replayMarkup = `
           <h2 id="library-heading" data-copy="rides">Rides</h2>
           <button id="compare" type="button" aria-pressed="false" data-copy="compareBoth">Compare both</button>
         </div>
+        <details id="collection-controls" hidden>
+          <summary id="collection-summary">
+            <span data-collection-copy="collection"></span>
+            <span id="collection-total"></span>
+          </summary>
+          <div class="collection-body">
+            <div class="collection-actions">
+              <label class="collection-field"><span data-collection-copy="shelf"></span><select id="collection-shelf"></select></label>
+              <button id="collection-open" data-collection-copy="open" type="button"></button>
+              <button id="collection-save" data-collection-copy="save" type="button"></button>
+            </div>
+            <ul id="collection-list" hidden></ul>
+            <div class="collection-actions">
+              <button id="collection-clear" data-collection-copy="clear" type="button"></button>
+            </div>
+            <div class="collection-actions postcard-actions">
+              <label class="collection-field"><span data-collection-copy="month"></span><select id="postcard-month"></select></label>
+              <button id="postcard-make" data-collection-copy="make" type="button"></button>
+            </div>
+            <label class="postcard-map-choice">
+              <input id="postcard-map" type="checkbox" aria-describedby="postcard-privacy">
+              <span data-collection-copy="map"></span>
+            </label>
+            <p id="postcard-privacy" class="collection-note" data-collection-copy="mapNote"></p>
+            <p id="collection-status" class="collection-note" role="status"></p>
+          </div>
+        </details>
         <div id="rides" class="rides"></div>
         <nav id="pages" aria-label="Pages" hidden>
           <button id="previous" type="button"></button>
@@ -74,6 +101,15 @@ export const replayMarkup = `
       <h2 id="picker-title" data-copy="choose_route">Choose a ride at this spot</h2>
       <div id="choices"></div>
       <button id="cancel" type="button" data-copy="cancel">Cancel</button>
+    </dialog>
+    <dialog id="postcard-preview" aria-labelledby="postcard-title">
+      <h2 id="postcard-title" data-collection-copy="title"></h2>
+      <img id="postcard-image" alt="">
+      <p id="postcard-note" class="note"></p>
+      <div class="collection-actions postcard-actions">
+        <a id="postcard-download" data-collection-copy="download"></a>
+        <button id="postcard-close" data-collection-copy="close" type="button"></button>
+      </div>
     </dialog>
     <template id="ride-template">
       <button class="ride" type="button" aria-pressed="false">

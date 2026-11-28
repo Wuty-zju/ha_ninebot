@@ -5,6 +5,7 @@ import { ROUTE_COLORS, RouteMap, onRouteTap } from './route-map.js';
 import { digits } from './trip-browser.js';
 import { formatRideDuration, formatRideInterval } from './trip-format.js';
 import { replayMarkup } from './archive-replay-template.js';
+import { mountRideCollection } from './ride-collection.js';
 
 export const REPLAY_COPY = {
   'zh-Hans': {
@@ -34,7 +35,8 @@ export function replayLocale(language) {
 }
 
 /** Shared full-page replay. Every private projection is owned by one mounted view. */
-export function mountReplay(root, locale, { detail, synthetic = false, onTrackError = () => {} }) {
+export function mountReplay(root, locale, { detail, synthetic = false, onTrackError = () => {},
+  readCollectionRide, getMapHass = () => null }) {
   const copy = REPLAY_COPY[locale], labels = LABELS[locale];
   root.innerHTML = replayMarkup;
   const el = id => root.querySelector('#' + id);
@@ -58,12 +60,14 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
   const archive = new LocalTracks(detail, () => render(false));
   const map = new RouteMap(() => showMap(false, copy.mapFailed), () => 0, chooseOnMap);
   const scrubbing = el('timeline'), picker = el('picker');
-  const rideButtons = new Map();
+  const rideButtons = new Map(), rideChecks = new Map();
+  const collection = mountRideCollection(el, locale, labels, { readRide: readCollectionRide, detail, changed: syncCollectionRows });
   const number = new Intl.NumberFormat(locale);
   const metricUnits = new Map([['distance', 'km'], ['duration', null], ['energy', 'Wh'],
     ['energy_intensity', 'Wh/km'], ['average_speed', 'km/h']]);
   const metricRows = new Map();
   let rides = [], timer = null, comparingNext = false, epoch = 0, resetting = false;
+  let overlay = null;
 
   function valueText(key, { value, precision }) {
     if (value === null) return '—';
@@ -80,6 +84,29 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     button.addEventListener('click', activate);
     onRouteTap(button, activate);
     return button;
+  }
+
+  function syncCollectionRows() {
+    for (const { label, input, ride } of rideChecks.values()) {
+      label.hidden = !collection.available() || !collection.selectable(ride);
+      input.disabled = collection.working();
+      input.checked = collection.selected(ride);
+    }
+  }
+
+  function makeRideRow(ride, button) {
+    const row = document.createElement('div');
+    row.className = 'ride-row';
+    const label = document.createElement('label');
+    label.className = 'ride-check';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.setAttribute('aria-label', collection.label(ride));
+    input.addEventListener('change', () => collection.select(ride, input.checked));
+    label.append(input);
+    rideChecks.set(trackKey(ride.device_id, ride), { label, input, ride });
+    row.append(label, button);
+    return row;
   }
 
   function setRideState(button, route, current) {
@@ -142,7 +169,7 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     pause();
     const wasSelected = selection.selected.has(key);
     const saved = archive.tracks.get(key);
-    if (wasSelected) selection.activate(key);
+    if (wasSelected) selection.activate(key, archive.tracks);
     else if (!selection.select(saved?.summary ?? ride, comparingNext)) return;
     comparingNext = false;
     render(!wasSelected);
@@ -157,6 +184,7 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
       const current = selection.primary;
       const { index } = selection.position(archive.tracks);
       const other = rides.find(ride => trackKey(ride.device_id, ride) !== current);
+      if (!other) return;
       const key = trackKey(other.device_id, other);
       selection.select(archive.tracks.get(key)?.summary ?? other, true);
       selection.activate(current);
@@ -184,7 +212,8 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
       setRideState(button, routes.find(route => route.key === key), key === primaryKey);
       button.disabled = archive.busy;
     }
-    el('compare').disabled = archive.busy || !active;
+    el('compare').disabled = archive.busy || !active ||
+      (synthetic && !comparing && !rides.some(ride => trackKey(ride.device_id, ride) !== primaryKey));
     el('compare').setAttribute('aria-pressed', String(comparing || comparingNext));
     el('compare').textContent = synthetic ? copy.compareBoth : comparing ? copy.stopComparing :
       comparingNext ? copy.pickComparison : copy.compare;
@@ -219,11 +248,16 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     el('more-points').disabled = archive.busy;
 
     const message = archive.busy ? labels.loading : rides.length ? copy.empty : copy.noRides;
-    showMap(mapped.length > 0, message);
-    if (mapped.length) {
-      // Supplying no HA basemap keeps archive coordinates entirely in the bundled renderer.
-      void map.update(mapped.map(route => route.track), null, labels,
-        mapped.map(route => route.slot), mapped.map(routeTitle));
+    showMap(mapped.length > 0 || overlay !== null, message);
+    if (mapped.length || overlay) {
+      const tracks = mapped.map(route => route.track);
+      const slots = mapped.map(route => route.slot), titles = mapped.map(routeTitle);
+      if (overlay) {
+        tracks.push(overlay.track);
+        slots.push(ROUTE_COLORS.length - 1);
+        titles.push(overlay.title);
+      }
+      void map.update(tracks, getMapHass(), labels, slots, titles);
       if (fit) map.fit();
     } else {
       map.clear();
@@ -238,11 +272,14 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     scrubbing.value = String(index);
     el('position').textContent = point ? `${index + 1} / ${count}` : '';
     const sequence = point ? `${labels.point_sequence} ${point.sequence}` : '';
+    const peers = selection.replayPeers?.(archive.tracks) ?? [];
+    const peerLabels = peers.map(({ slot, point }) => ` · ${labels.active_route} ${slot + 1}, ${labels.point_sequence} ${point.sequence}`);
+    const peerSamples = peers.map(({ slot, point }) => ` · ${'①②③④⑤'[slot]} #${point.sequence}`);
     scrubbing.setAttribute('aria-valuetext', point ?
-      `${labels.sample_position.replace('{n}', index + 1).replace('{total}', count)} · ${sequence}` : '');
+      `${labels.sample_position.replace('{n}', index + 1).replace('{total}', count)} · ${sequence}${peerLabels.join('')}` : '');
     el('sample').textContent = point ?
-      `${sequence} · ${copy.coords} ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}` : '';
-    map.highlight(point, ROUTE_COLORS[slot]);
+      `${sequence} · ${copy.coords} ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}${peerSamples.join('')}` : '';
+    map.highlight(point, ROUTE_COLORS[slot], false, peers);
   }
 
   function pause() {
@@ -280,9 +317,12 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     el('choices').replaceChildren();
     selection.clear();
     archive.clear();
+    collection.clear();
+    overlay = null;
     map.clear();
     rides = [];
     rideButtons.clear();
+    rideChecks.clear();
     el('rides').replaceChildren();
     el('archive-id').replaceChildren();
     el('pages').hidden = true;
@@ -294,23 +334,29 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
   }
 
   function setPage(pageRides, { number: page = 1, previous = false, next = false, note = '', busy = false,
-    restore = null } = {}) {
+    restore = null, collectionScope = null } = {}) {
     if (rides !== pageRides) {
       rides = pageRides;
       rideButtons.clear();
+      rideChecks.clear();
+      const rows = [];
       for (const ride of rides) {
         const key = trackKey(ride.device_id, ride);
-        if (!ride.ride_id) continue;
-        rideButtons.set(key, makeRideButton(ride, () => {
+        if (!ride.ride_id || rideButtons.has(key)) continue;
+        const button = makeRideButton(ride, () => {
           if (rides.includes(ride)) changeRide(ride);
-        }));
+        });
+        rideButtons.set(key, button);
+        rows.push(readCollectionRide && collectionScope ? makeRideRow(ride, button) : button);
       }
-      el('rides').replaceChildren(...rideButtons.values());
+      el('rides').replaceChildren(...rows);
+      syncCollectionRows();
     }
+    collection.setScope(collectionScope);
     el('workspace').hidden = false;
     el('startup').hidden = true;
     el('archive-id').textContent = note;
-    el('pages').hidden = synthetic || !(previous || next || page > 1);
+    el('pages').hidden = !(previous || next || page > 1);
     el('previous').disabled = busy || !previous;
     el('next').disabled = busy || !next;
     el('page').textContent = number.format(page);
@@ -318,6 +364,19 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     const restored = restore && rides.find(ride => trackKey(ride.device_id, ride) === restore.key);
     if (!selection.primary && first) changeRide(restored || first, restored ? restore.index : null);
     else render(false);
+  }
+
+  function setLinkedRides(ordered) {
+    clear();
+    for (const ride of ordered) selection.select(ride, true);
+    if (ordered.length) selection.activate(trackKey(ordered[0].device_id, ordered[0]));
+    setPage(ordered);
+  }
+
+  function setOverlay(track, title) {
+    if (!synthetic) return;
+    overlay = track?.points.length ? { track, title } : null;
+    render(true);
   }
 
   function bookmark() {
@@ -362,5 +421,5 @@ export function mountReplay(root, locale, { detail, synthetic = false, onTrackEr
     el('startup').hidden = !message;
     el('startup').textContent = message;
   };
-  return { el, clear, setPage, pause, readTrack, status, bookmark };
+  return { el, clear, setPage, setLinkedRides, setOverlay, pause, readTrack, status, bookmark };
 }
