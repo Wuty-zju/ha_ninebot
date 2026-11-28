@@ -8,7 +8,13 @@ from html import escape
 from typing import Any
 
 from .archive_timeline import SELECTION_BASIS
-from .assistant_views import RIDE_UNITS, STATUS_READINGS, archive_counts_view, numeric
+from .assistant_views import (
+    RIDE_UNITS,
+    STATUS_READINGS,
+    archive_counts_view,
+    numeric,
+    statistics_period_complete,
+)
 from .const import BUSINESS_TIMEZONE
 from .travel import opaque_id
 
@@ -191,11 +197,7 @@ def _statistics(payload: dict[str, Any], selected_metric: str | None = None) -> 
     ):
         return ""
     metrics = [selected_metric] if selected_metric is not None else list(METRIC_LABELS)
-    complete_period = quality.get("period_closed") is True and (
-        quality.get("ride_window_complete") is True
-        if source == "account_archive"
-        else quality.get("observed_after_period_end") is True
-    )
+    complete_period = statistics_period_complete(quality, source)
     qualified_metric = False
     for metric in metrics:
         name, unit = METRIC_LABELS[metric]
@@ -473,7 +475,9 @@ def _workflow(payload: dict[str, Any]) -> str:
                 sections.append(section)
     if _object(payload.get("quality")).get("partial") is True:
         sections.append("The local statistics check returned incomplete evidence.")
-    if sections:
+    if "sync_health_outside_grant" in payload.get("warnings", []):
+        sections.append("Sync health is outside this vehicle's Assistant permissions.")
+    if sections and _object(payload.get("evidence")).get("outcome") != "metric_verified":
         sections.append("These observations leave the underlying cause unverified.")
     return "\n\n".join(filter(None, sections))
 

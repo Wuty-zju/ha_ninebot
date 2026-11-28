@@ -285,7 +285,7 @@ async def check(directory: str) -> None:
         context = Context(user_id=principal.id)
         for target, expected in (
             (None, set()),
-            (device.id, {"ninebot__get_statistics"}),
+            (device.id, {"ninebot__get_statistics", "ninebot__explain_statistics"}),
             (other.id, {"ninebot__get_vehicle_status"}),
         ):
             call = ServiceCall(

@@ -40,7 +40,8 @@ const dom = 'fixtureCard.shadowRoot';
 const ui = 'fixtureCard.view.ui.';
 async function click(expression) {
   // On iPhone the library and map occupy different screens. Finish scrolling before the tap.
-  await js(expression + '.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"})');
+  const modal = await js('return Boolean(' + expression + '.closest("dialog[open]"))');
+  if (!modal) await js(expression + '.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"})');
   await request('POST', '/execute/async', { script:
     'const done=arguments[0];requestAnimationFrame(()=>requestAnimationFrame(()=>done(null)))', args: [] });
   if (platform !== 'iOS') {
@@ -53,9 +54,11 @@ async function click(expression) {
     + 'const hit=e.getRootNode().elementFromPoint(x,y); return {x,y,hit:hit?.tagName,'
     + 'matches:e===hit||e.contains(hit),width:innerWidth,height:innerHeight}');
   assert.equal(target.matches, true, expression + ' ' + JSON.stringify(target));
+  // Top-layer controls have their own coordinate space when mobile Safari moves its toolbar.
+  const origin = modal ? await js('return ' + expression) : 'viewport';
   await request('POST', '/actions', { actions: [{ type: 'pointer', id: 'finger',
     parameters: { pointerType: 'touch' }, actions: [
-      { type: 'pointerMove', x: target.x, y: target.y, duration: 0, origin: 'viewport' },
+      { type: 'pointerMove', x: modal ? 0 : target.x, y: modal ? 0 : target.y, duration: 0, origin },
       { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 100 }, { type: 'pointerUp', button: 0 },
     ] }] });
   await request('DELETE', '/actions');
@@ -75,10 +78,10 @@ try {
   await click(dom + '.querySelectorAll(".overlay")[1]');
   await waitFor('fixtureCard.activeTrack?.label === "Synthetic B" && !fixtureCard.busy');
   const readCount = await js('return fixtureRequests.length');
-  const metrics = () => js('return Array.from(' + dom + '.querySelectorAll(".playback > .metrics dd"), n => n.textContent)');
+  const metrics = () => js('return Array.from(' + dom + '.querySelectorAll(".ride-statistics .current-value"), n => n.textContent)');
   const initial = await metrics();
   assert.equal(initial[0], '2.4 km');
-  assert.equal(initial[2], '180 Wh');
+  assert.deepEqual(initial.slice(2), ['120 Wh', '50.0 Wh/km', '9.6 km/h']);
   await js('window.initialMap = fixtureCard.routeMap.renderer.map; window.initialChip = ' +
     dom + '.querySelector(".focus-track")');
   await click('fixtureCard.routeMap.root.querySelectorAll(".ninebot-route-pin")[1]');
@@ -96,7 +99,9 @@ try {
   const active = await metrics();
   assert.equal(active[0], '1.2 km');
   assert.notEqual(active[1], initial[1]);
-  assert.equal(active[2], '90 Wh');
+  assert.deepEqual(active.slice(2), ['90 Wh', '75.0 Wh/km', '7.2 km/h']);
+  const compared = await js('return Array.from(' + dom + '.querySelectorAll("td.selected-value"), n => n.textContent)');
+  assert.deepEqual(compared, ['3.6 km', '25 min', '210 Wh', '58.3 Wh/km', '8.6 km/h']);
   const slider = await element(ui + 'slider');
   const role = await request('GET', slider + '/computedrole');
   const label = await request('GET', slider + '/computedlabel');

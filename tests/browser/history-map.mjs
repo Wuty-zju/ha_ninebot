@@ -40,9 +40,11 @@ try {
     window.savedRenderer = renderer;
     window.savedLayers = renderer.routes.getLayers();
   });
-  const totals = page.locator('.selection-totals');
-  await totals.locator('summary').click();
-  assert.deepEqual(await totals.locator('dt').allTextContents(), ['里程', '时长', '能耗']);
+  const statistics = page.getByRole('table', { name: '已保存行程统计' });
+  const summaryValues = selector => statistics.locator(selector).allTextContents();
+  assert.deepEqual(await summaryValues('.metric-label'), ['里程', '时长', '能耗', '每公里能耗', '平均速度']);
+  assert.deepEqual(await summaryValues('td.selected-value'),
+    ['2.4 km', '20分钟', '180 Wh', '75.0 Wh/km', '7.2 km/h']);
   const routePin = page.getByRole('button', { name: /1 · Synthetic A/ }).and(page.locator('.ninebot-route-pin'));
   await routePin.press('Enter');
   assert.equal(await page.evaluate(() => fixtureCard.activeTrack.label), 'Synthetic A');
@@ -82,8 +84,14 @@ try {
   const mapBox = await page.locator('.map-frame').boundingBox(), listBox = await page.locator('.library').boundingBox();
   assert.ok(listBox.y >= mapBox.y + mapBox.height);
   assert.ok((await page.getByRole('button', { name: '按点播放', exact: true }).boundingBox()).height >= 44);
-  assert.deepEqual(await page.locator('.playback > .metrics dt').allTextContents(), ['里程', '时长', '能耗']);
+  assert.equal(await statistics.isVisible(), true);
   if (output) await page.screenshot({ path: join(output, 'replay-mobile-light.png'), fullPage: true });
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.emulateMedia({ forcedColors: 'active' });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  const phoneTable = await statistics.boundingBox();
+  assert.ok(phoneTable.x >= 0 && phoneTable.x + phoneTable.width <= 320);
+  await page.emulateMedia({ forcedColors: 'none' });
   await page.setViewportSize({ width: 1080, height: 900 });
 
   await page.locator('.ride .choose').last().click();
@@ -271,7 +279,18 @@ try {
           { detail: { id: 'route-2' } })));
       } else await page.locator('.ninebot-route-pin').last().click();
     };
-    await showPicker();
+    if (nativeMode) {
+      await showPicker();
+    } else {
+      // Replay the iPhone sequence where both touch events arrive and no click follows.
+      await page.locator('.ninebot-route-pin').last().locator('span').first().evaluate(pin => {
+        const touch = new Touch({ target: pin, identifier: 1, clientX: 80, clientY: 60 });
+        for (const type of ['touchstart', 'touchend']) {
+          pin.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+            touches: type === 'touchstart' ? [touch] : [], changedTouches: [touch] }));
+        }
+      });
+    }
     const picker = page.getByRole('dialog', { name: 'Choose a ride at this spot' });
     if (!nativeMode) {
       const stillOpen = await picker.getByRole('button', { name: /1 · Synthetic A/ }).evaluate(option => {
@@ -290,21 +309,59 @@ try {
     }
     await picker.getByRole('button', { name: /1 · Synthetic A/ }).click();
     await page.waitForFunction(() => fixtureCard.shadowRoot.activeElement?.className === 'focus-track');
-    assert.deepEqual(await page.locator('.playback > .metrics dd').allTextContents(),
-      ['1.2 km', '10 min', '90 Wh']);
-    const selectedTotals = page.locator('.selection-totals');
-    await selectedTotals.locator('summary').click();
-    assert.deepEqual(await selectedTotals.locator('dd').allTextContents(), ['3.6 km', '25 min', '270 Wh']);
+    const comparison = page.getByRole('table', { name: 'Saved ride statistics' });
+    const currentValues = comparison.locator('.current-value');
+    const selectedValues = comparison.locator('td.selected-value');
+    const currentSummary = ['1.2 km', '10 min', '90 Wh', '75.0 Wh/km', '7.2 km/h'];
+    const selectedSummary = ['3.6 km', '25 min', '210 Wh', '58.3 Wh/km', '8.6 km/h'];
+    assert.deepEqual(await currentValues.allTextContents(), currentSummary);
+    assert.deepEqual(await selectedValues.allTextContents(), selectedSummary);
     const nativeSlider = page.getByRole('slider', { name: /1 · Synthetic A/ });
     await nativeSlider.press('Home');
     for (let step = 0; step < 15; step++) await nativeSlider.press('ArrowRight');
     assert.equal(await nativeSlider.getAttribute('aria-valuetext'), 'Point 16 of 58 · Source point sequence 17');
+    assert.deepEqual(await currentValues.allTextContents(), currentSummary);
+    assert.deepEqual(await selectedValues.allTextContents(), selectedSummary);
+    const remove = page.getByRole('button', { name: /Remove this route · 2 · Synthetic B/ })
+      .and(page.locator('.remove-track'));
+    await remove.press('Enter');
+    assert.equal(await page.locator('.focus-track').count(), 1);
+    assert.equal(await page.evaluate(() => fixtureCard.shadowRoot.activeElement?.className), 'focus-track');
+    assert.equal(await page.evaluate(() => fixtureCard.index), 15);
+    assert.equal(await comparison.getByRole('columnheader', { name: /All selected rides/ }).count(), 0);
+    // Previously read rides can rejoin the comparison from the library.
+    await page.getByRole('button', { name: /Compare · Synthetic B/ }).press('Enter');
+    await page.locator('.focus-track').first().press('Enter');
+    await page.getByRole('button', { name: 'Play points', exact: true }).click();
+    await page.waitForFunction(() => fixtureCard.index > 0);
+    const activeTimer = await page.evaluate(() => fixtureCard.playback);
+    await page.getByRole('button', { name: 'Keep current ride', exact: true }).press('Enter');
+    assert.equal(await page.evaluate(() => fixtureCard.playback), activeTimer);
+    assert.equal(await page.evaluate(() => fixtureCard.shadowRoot.activeElement?.className), 'focus-track');
+    assert.deepEqual(await currentValues.allTextContents(), currentSummary);
+    assert.equal(await page.locator('.focus-track').count(), 1);
+    assert.equal(await page.locator(nativeMode ? 'ha-map' : '.leaflet-container').count(), 1);
     assert.equal(await page.evaluate(() => fixtureRequests.length), beforePicking);
+    await page.getByRole('button', { name: /Compare · Synthetic B/ }).press('Enter');
     await showPicker();
     await page.evaluate(() => fixtureHass.connection.fire('disconnected'));
     assert.equal(await picker.count(), 0);
     assert.equal(await page.locator('.pin-choices button').count(), 0);
+    assert.equal(await comparison.count(), 0);
   }
+  await page.goto(origin + '/?overlap&english&incomplete');
+  await page.waitForFunction(() => fixtureCard.routeMap.renderer && !fixtureCard.busy);
+  await page.getByRole('button', { name: /Compare · Synthetic B/ }).click();
+  await page.waitForFunction(() => fixtureCard.activeTrack?.label === 'Synthetic B' && !fixtureCard.busy);
+  const incomplete = page.getByRole('table', { name: 'Saved ride statistics' });
+  const incompleteCurrent = await incomplete.locator('.current-value').allTextContents();
+  assert.deepEqual(incompleteCurrent, ['2.4 km', '15 min', '—', '—', '—']);
+  assert.deepEqual(await incomplete.locator('td.selected-value').allTextContents(),
+    ['3.6 km', '25 min', '—1/2 rides usable', '—1/2 rides usable', '—1/2 rides usable']);
+  assert.equal(await incomplete.getByRole('rowheader', { name: 'Average speed' }).count(), 1);
+  await page.setViewportSize({ width: 320, height: 720 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  if (output) await page.screenshot({ path: join(output, 'replay-mobile-partial.png'), fullPage: true });
   assert.equal(external.length, 0);
   assert.deepEqual(errors, []);
   console.log('Synthetic replay passed: one map, local reads, sample gaps, stable viewport, endpoint-only tracks and scope cleanup.');

@@ -262,12 +262,25 @@ async def test_composite_tool_cannot_join_permissions_across_cars(hass, assistan
             "more_available": False,
         }
     keys = await async_visible_keys(hass, assistant.context)
-    assert {"get_statistics", "get_sync_health"} <= keys and "explain_statistics" not in keys
-    for vehicle_ref in (assistant.device, other.id):
-        with pytest.raises(AssistantError, match="not_authorized"):
-            await async_authorize(
-                hass, assistant.context, vehicle_ref, operation="explain_statistics"
-            )
+    assert {"get_statistics", "get_sync_health", "explain_statistics"} <= keys
+    with pytest.raises(AssistantError, match="not_authorized"):
+        await async_authorize(hass, assistant.context, other.id, operation="explain_statistics")
+    original = hass.services.async_call
+    with patch.object(type(hass.services), "async_call", new=AsyncMock(wraps=original)) as call:
+        receipt, error = await query(
+            hass, assistant, "explain_statistics", period="2026-09", metric="ride_count"
+        )
+    assert not error and receipt["quality"]["partial"]
+    assert "sync_health_outside_grant" in receipt["warnings"]
+    assert [step["tool"] for step in receipt["data"]["steps"]] == [
+        "ninebot__get_statistics",
+        "ninebot__search_help",
+    ]
+    assert [request.args[1] for request in call.await_args_list] == ["get_statistics"]
+    answer = render_evidence_answer(
+        [{"tool": "ninebot__explain_statistics", "error": False, "result": receipt}]
+    )
+    assert "Sync health is outside this vehicle" in answer["text"]
     captured = await async_authorize(
         hass, assistant.context, assistant.device, operation="get_statistics"
     )
@@ -1223,11 +1236,16 @@ async def test_revocation_before_busy_retry_prevents_second_action(hass, assista
 
 
 @pytest.mark.parametrize(
-    "period,count,status",
-    [("yesterday", 2, "available"), ("today", 0, "available"), ("2026-09", None, "missing")],
+    "period,count,status,verified",
+    [
+        ("yesterday", 2, "available", True),
+        ("2026-10-05", 0, "available", True),
+        ("today", 0, "available", False),
+        ("2026-09", None, "missing", False),
+    ],
 )
 async def test_statistics_check_uses_real_local_statistics_health_and_cited_checklist(
-    hass, assistant, period, count, status
+    hass, assistant, period, count, status, verified
 ):
     original = hass.services.async_call
 
@@ -1255,6 +1273,19 @@ async def test_statistics_check_uses_real_local_statistics_health_and_cited_chec
         },
     }
     steps = result["data"]["steps"]
+    assert steps[0]["result"]["data"] == {"ride_count": count, "units": {"ride_count": None}}
+    assert result["evidence"]["outcome"] == ("metric_verified" if verified else "coverage_review")
+    if verified:
+        assert [step["tool"] for step in steps] == ["ninebot__get_statistics"]
+        assert action.await_count == 1
+        assert len(hass.data[LIMITS_KEY].calls[assistant.context.user_id]) == 2
+        answer = render_evidence_answer(
+            [{"tool": "ninebot__explain_statistics", "error": False, "result": result}]
+        )
+        assert f"Ride count: {count}" in answer["text"]
+        assert "underlying cause" not in answer["text"]
+        assert hass.data[LIMITS_KEY].active == 0
+        return
     assert [step["tool"] for step in steps] == [
         "ninebot__get_statistics",
         "ninebot__get_sync_health",
@@ -1389,7 +1420,7 @@ async def test_statistics_check_discards_all_evidence_when_consent_is_revoked(ha
 
     with patch.object(type(hass.services), "async_call", new=AsyncMock(side_effect=revoke)):
         result, error = await query(
-            hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+            hass, assistant, "explain_statistics", period="today", metric="ride_count"
         )
     assert error and result["error"]["code"] == "not_authorized" and "data" not in result
 
@@ -1400,10 +1431,10 @@ async def test_statistics_check_marks_missing_applicable_help_as_partial(hass, a
         return_value={"matches": [], "procedures": [], "match_status": "no_applicable_knowledge"},
     ):
         result, error = await query(
-            hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+            hass, assistant, "explain_statistics", period="today", metric="ride_count"
         )
     assert not error and result["quality"]["partial"]
-    assert result["data"]["steps"][0]["result"]["data"]["ride_count"] == 2
+    assert result["data"]["steps"][0]["result"]["data"]["ride_count"] == 0
     assert result["data"]["steps"][2]["result"]["data"]["match_status"] == "no_applicable_knowledge"
 
 
@@ -1413,7 +1444,7 @@ async def test_statistics_check_stops_when_child_admission_is_limited(hass, assi
     original = hass.services.async_call
     with patch.object(type(hass.services), "async_call", new=AsyncMock(wraps=original)) as action:
         result, error = await query(
-            hass, assistant, "explain_statistics", period="yesterday", metric="ride_count"
+            hass, assistant, "explain_statistics", period="today", metric="ride_count"
         )
     assert not error and result["quality"]["partial"]
     assert len(result["data"]["steps"]) == 2

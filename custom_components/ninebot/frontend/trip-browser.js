@@ -35,6 +35,9 @@ const SCALARS = ['ride_id', 'detail_id', 'query_month', 'source', 'start_time', 
 export function safeRide(ride) {
   const result = Object.fromEntries(SCALARS.map(key => [key, ride[key] ?? null]));
   result.detail_saved = typeof ride.detail_saved === 'boolean' ? ride.detail_saved : null;
+  // The archive suppresses derived speed when the recorded duration conflicts with its timestamps.
+  result.warnings = Array.isArray(ride.warnings) && ride.warnings.includes('duration_time_difference') ?
+    ['duration_time_difference'] : [];
   result.precision = Object.fromEntries(['mileages', 'duration', 'speed', 'ec'].map(
     key => [key, digits(ride.precision?.[key], key === 'mileages' ? 2 : 0)]));
   result.field_provenance = Object.fromEntries(['started_at', 'ended_at', 'distance_m',

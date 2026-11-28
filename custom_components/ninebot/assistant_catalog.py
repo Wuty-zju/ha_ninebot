@@ -65,14 +65,12 @@ class Operation(StrEnum):
                 return bool(grant.reads)
             case Operation.STATUS:
                 return "status" in grant.reads
-            case Operation.STATISTICS:
+            case Operation.STATISTICS | Operation.EXPLAIN:
                 return "statistics" in grant.reads
             case Operation.TRIPS:
                 return "trips" in grant.reads
             case Operation.HEALTH:
                 return "sync" in grant.reads
-            case Operation.EXPLAIN:
-                return {"statistics", "sync"} <= grant.reads
             case Operation.HELP:
                 return bool(grant.reads) or grant.tasks in ("preview", "request")
             case Operation.PREVIEW | Operation.APPLICATIONS:
@@ -227,11 +225,11 @@ QUERY_SPECS = (
     ToolSpec(
         "explain_statistics",
         "Check a local statistic",
-        "Check a selected vehicle's statistic using a fixed local workflow: statistics, "
-        "synchronization health and cited help with the SK05 checklist. Specify the user's "
-        "period and metric; ask if either is missing. Report observed quality/reasons, not "
-        "a guessed root cause. Null is not zero. At most three local steps share one deadline. "
-        "No cloud refresh or repair; a partial result names failed steps.",
+        "Explain one metric for the selected vehicle and business period. A verified value "
+        "for a closed, complete period needs one local read. For unresolved coverage, use "
+        "the returned metric reason, public checklist and any permitted sync observations. "
+        "A statistics grant suffices. Sync health requires its own grant on the same vehicle. "
+        "Report only observed evidence. Up to three local reads share one deadline.",
         vol.Schema(
             {
                 **VEHICLE,

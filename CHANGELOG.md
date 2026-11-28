@@ -1,6 +1,13 @@
 # Changelog
 
-Select a tag for changes shipped in that version. The [2.0 development history](docs/releases/2.0.md) covers the archive and entity refactor. [2.2.0](#220) brings the Assistant and the maintained vehicle integration into the stable release line. For installation and current defaults, use the [guides](docs/README.md).
+Choose a version to see what shipped. The [user guides](docs/README.md) cover setup and current behavior. For the original account, entity and archive redesign, read the [2.0 development history](docs/releases/2.0.md). The stable [2.2.0 release](#220) includes the optional Assistant.
+
+## 2.2.12
+
+- Compare the active ride with up to five saved rides on one map. Distance, duration, energy, average speed and energy per kilometre use whole-ride data. Each missing measure shows its own coverage.
+- Keep just the current route without restarting playback. The selected points and statistics are already local.
+- Explain one statistic with that vehicle’s statistics permission. A verified reading for a closed period uses one local read. For unresolved coverage the tool consults public help and reads sync health only with the same vehicle’s grant.
+- Reorganize the English and Chinese manuals around installation, daily use, access, maintenance and recovery. The Assistant guide and diagrams trace each answer to its owner and evidence.
 
 ## 2.2.11
 

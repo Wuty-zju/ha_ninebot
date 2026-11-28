@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.15",
-  "source_version": "2.2.9",
+  "corpus_version": "1.2.16",
+  "source_version": "2.2.12",
   "entries": [
     {
       "id": "statistics_missing",
@@ -1094,6 +1094,88 @@
       },
       "procedure_id": null,
       "content_sha256": "381f0304a9a04b000095b54cc952261655d841741a98db60a5473e3b455633fb"
+    },
+    {
+      "id": "map_selection_statistics",
+      "applicable_versions": {
+        "min_inclusive": "2.2.12",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-28",
+      "supersedes": [],
+      "procedure_id": null,
+      "source": {
+        "path": "docs/history.md",
+        "commit": "91afba096b755c70b7119540159188891547cb17",
+        "sha256": "3608c6f4fa7f3c2a4aec9e44a973b5ebae1b323fb20e9e0cb93a4660625a6fde",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/91afba096b755c70b7119540159188891547cb17/docs/history.md#replay-saved-routes"
+      },
+      "translations": {
+        "en": {
+          "title": "Compare selected rides on one map",
+          "text": "The comparison uses complete saved rides. Energy per kilometre divides total Wh by total km. Average speed divides total distance by summed ride durations, including overlapping rides. A missing metric shows the number of rides with usable inputs. The replay cursor follows saved samples and leaves the whole-ride statistics unchanged.",
+          "keywords": [
+            "compare",
+            "weighted",
+            "selection",
+            "keep current ride",
+            "Wh/km"
+          ]
+        },
+        "zh-Hans": {
+          "title": "比较地图中所选的行程",
+          "text": "比较表采用已保存的整趟数据。平均能耗取总耗电量除以总里程，平均速度取总里程除以各趟时长之和，重叠时段也逐趟计算。指标缺少输入时显示可用行程数。回放光标按样本移动，整趟统计保持不变。",
+          "keywords": [
+            "所选行程",
+            "比较",
+            "加权",
+            "只保留当前行程",
+            "平均能耗"
+          ]
+        }
+      },
+      "content_sha256": "9d401c5fb374fd3b59139515019f00a0d68946617dff4cc249f336516ed8c746"
+    },
+    {
+      "id": "metric_check_evidence",
+      "applicable_versions": {
+        "min_inclusive": "2.2.12",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-28",
+      "supersedes": [],
+      "procedure_id": "SK05",
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "597dcc8c874443ace4ccf7052eac734423cf2ef6",
+        "sha256": "ba490d277917c318888c8ef6c4c70e5d6fd5159068f58415aa18854388aad2f2",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/597dcc8c874443ace4ccf7052eac734423cf2ef6/docs/assistant.md#statistics-check"
+      },
+      "translations": {
+        "en": {
+          "title": "How the metric check chooses its evidence",
+          "text": "A statistics grant permits explain_statistics for the selected vehicle. A closed, complete period with an available observed metric returns metric_verified after one local read. For other cases the check can cite public help. It consults sync health only with that vehicle's separate grant. The receipt lists the executed steps and reports missing scope or incomplete coverage.",
+          "keywords": [
+            "explain_statistics",
+            "metric_verified",
+            "coverage_review",
+            "sync_health_outside_grant"
+          ]
+        },
+        "zh-Hans": {
+          "title": "单项统计排查如何选择依据",
+          "text": "逐车汇总统计权限可用于单项排查。周期已结束、覆盖完整且有观测依据时，一次本地读取便可返回 metric_verified。其余情况可引用公开帮助。只有同一辆车另有同步健康权限时才查同步状态。回执列出实际步骤，注明未开放的权限或不完整的覆盖。",
+          "keywords": [
+            "单项排查",
+            "统计排查步骤",
+            "权限不足的统计排查",
+            "metric_verified"
+          ]
+        }
+      },
+      "content_sha256": "fd4f75f93fcce1f4141f9247566ad6da3beac11dc2f612648af9d643c8e0b555"
     }
   ],
   "procedures": [

@@ -2,21 +2,21 @@
 
 ## Reporting a concern
 
-Check the repository’s **Security → Advisories** page for private reporting. If the private reporting option is unavailable, ask for a private contact through GitHub and share the details there. Ordinary integration bugs belong in Issues. Include the installed version, one reproduction and the smallest relevant redacted diagnostic. [Security advisories](https://github.com/Wuty-zju/ha_ninebot/security/advisories) · [Issue tracker](https://github.com/Wuty-zju/ha_ninebot/issues)
+Use GitHub’s private reporting option under **Security → Advisories** for a suspected security issue. If private reporting is unavailable, request a private contact before sharing technical details. For a regular support issue, include the installed versions, one occurrence and the relevant redacted diagnostic. [Security advisories](https://github.com/Wuty-zju/ha_ninebot/security/advisories) · [Issue tracker](https://github.com/Wuty-zju/ha_ninebot/issues)
 
-For exposed credentials, revoke or replace them through the account provider. Review attachments for account identifiers, tokens and exact routes before sharing.
+If a credential has been exposed, replace or revoke it with its provider. Review attachments and automation traces for account identifiers, secrets and precise routes before sharing them.
 
 ## Trust boundaries
 
-| Boundary | What travels across it |
+| Data or operation | Who can receive it |
 |---|---|
-| Vehicle service | Account-specific credentials are handled by an authenticated loopback service. Vehicle controls check the current owner and the account’s control selection. |
-| Local history | Account archives, transfers, HA backups and automation traces can contain precise routes. An exported archive is unencrypted. Transfer and store it privately. |
-| Maps | Saved geometry is delivered only for authorized vehicles with location enabled. The native HA map uses the configured HA tile service. A tile request reveals the viewed area to that service. |
-| Assistant | Native HA identity, account consent, vehicle selection and current ownership govern every private read. An external model host may receive the selected measurements, dates and labels. Dedicated tools exclude credentials, raw payloads and exact GPS. |
-| Sync tasks | Separate consent and human approval bind a request to its requester, vehicle, range and cloud budget. |
-| Support | Diagnostics contain selected schema and error metadata. Share only the lines needed to reproduce a problem. |
+| Login and live queries | The account’s managed backend uses an authenticated loopback connection. Vehicle commands require current ownership and the configured control selection. |
+| Local history and exports | SQLite archives, unencrypted exports and HA backups can contain exact routes. Transfer them privately. |
+| History map | The signed-in frontend requires vehicle access and location permission for geometry. The configured external tile service can learn which area was viewed. |
+| Assistant queries | The chosen model host can receive authorized vehicle labels, dates, scalar values and ride references. Each tool checks the caller, vehicle, operation and current grant. Exact GPS, credentials, full logs and raw responses are excluded. |
+| Background sync applications | The requester reviews a bounded range and budget in HA. Approval, queued work and verified saved results are separate stages. |
+| Diagnostics | The public support surface is a reviewed projection of schema and error metadata. Inspect any additional log excerpt before attaching it. |
 
 [Account backup and removal](docs/guide.md#privacy-backup-and-removal) · [Map privacy](docs/history.md#map-privacy-and-units) · [Assistant access](docs/assistant.md) · [Third-party notices](NOTICE)
 
-简体中文：普通故障请提供版本、一次复现和相关的脱敏片段。安全问题优先使用仓库的私密反馈通道。档案导出未加密，可能含精确轨迹。第三方模型只应获得你明确选择的车辆数据。[隐私、备份与移除](docs/guide_zh.md#隐私备份与移除) · [Assistant 授权](docs/assistant_zh.md)
+简体中文：安全问题优先走仓库的私密反馈渠道。普通故障可附版本、一次复现与脱敏诊断。档案导出未加密，可能含精确轨迹。模型可读取的车辆数据通过逐车权限设置。[隐私、备份与移除](docs/guide_zh.md#隐私备份与移除) · [助手授权](docs/assistant_zh.md)

@@ -34,6 +34,7 @@ from .assistant_views import (
     detail_view,
     mapping,
     safe_label,
+    statistics_period_complete,
     statistics_view,
     status_view,
     sync_view,
@@ -360,9 +361,13 @@ async def _explain_statistics(
     start, end = period_dates(args["period"], now)
     monthly = args["period"] in {"this_month", "last_month"} or len(args["period"]) == 7
     period = start.strftime("%Y-%m") if monthly else start.isoformat()
+    metric = args["metric"]
+    may_read_sync = operation_allowed(current_access(scope.entry), scope.sn, "get_sync_health")
     steps: list[dict[str, Any]] = []
+    help_data: dict[str, Any] = {}
+    metric_verified = False
     for key, arguments in (
-        ("get_statistics", {"vehicle_ref": scope.vehicle_ref, "period": period}),
+        ("get_statistics", {"vehicle_ref": scope.vehicle_ref, "period": period, "metric": metric}),
         ("get_sync_health", {"vehicle_ref": scope.vehicle_ref}),
         (
             "search_help",
@@ -373,6 +378,8 @@ async def _explain_statistics(
             },
         ),
     ):
+        if key == "get_sync_health" and not may_read_sync:
+            continue
         await scope.async_validate(hass)
         result, error = await async_query(
             hass,
@@ -386,8 +393,20 @@ async def _explain_statistics(
         if error and result["error"]["code"] == "not_authorized":
             raise AssistantError("not_authorized")
         steps.append({"tool": f"ninebot__{key}", "error": error, "result": result})
-        if error and "retry_after_seconds" in result["error"]:
-            break
+        if error:
+            if "retry_after_seconds" in result["error"]:
+                break
+        elif key == "get_statistics":
+            quality = result["quality"]
+            metric_verified = (
+                quality["metrics"][metric] == {"status": "available", "reason": "available"}
+                and quality["received_at"] is not None
+                and statistics_period_complete(quality, result["evidence"]["source_kind"])
+            )
+            if metric_verified:
+                break
+        elif key == "search_help":
+            help_data = result["data"]
     if all(step["error"] for step in steps):
         failure = steps[0]["result"]["error"]
         if "retry_after_seconds" in failure:
@@ -399,18 +418,27 @@ async def _explain_statistics(
         if not statistics["error"]
         else {"status": "unknown", "reason": "statistics_query_failed"}
     )
-    help_data = steps[2]["result"]["data"] if len(steps) == 3 and not steps[2]["error"] else {}
     help_complete = any(
         match["source_id"] == "statistics_missing" for match in help_data.get("matches", [])
     ) and any(procedure["id"] == "SK05" for procedure in help_data.get("procedures", []))
+    warnings = []
+    if not metric_verified:
+        warnings.append("observed_conditions_do_not_establish_root_cause")
+        if not may_read_sync:
+            warnings.append("sync_health_outside_grant")
     return AssistantView(
-        data={"metric": args["metric"], "steps": steps},
+        data={"metric": metric, "steps": steps},
         quality={
-            "partial": not help_complete or any(step["error"] for step in steps),
+            "partial": not metric_verified
+            and (not may_read_sync or not help_complete or any(step["error"] for step in steps)),
             "metric": metric_quality,
         },
-        evidence={"source_kind": "local_statistics_check", "workflow": "statistics-check-v1"},
-        warnings=["observed_conditions_do_not_establish_root_cause"],
+        evidence={
+            "source_kind": "local_statistics_check",
+            "workflow": "statistics-check-v2",
+            "outcome": "metric_verified" if metric_verified else "coverage_review",
+        },
+        warnings=warnings,
     ), {
         "period": args["period"],
         "resolved_period": period,

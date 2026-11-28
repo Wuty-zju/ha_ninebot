@@ -44,7 +44,14 @@ class DocumentationChecks(unittest.TestCase):
             set(images),
             {
                 f"{name}-{language}{theme}.svg"
-                for name in ("overview", "assistant", "history", "controls", "archive")
+                for name in (
+                    "overview",
+                    "assistant",
+                    "assistant-tasks",
+                    "history",
+                    "controls",
+                    "archive",
+                )
                 for language in ("en", "zh")
                 for theme in ("", "-dark")
             },
