@@ -223,3 +223,85 @@ dialog > button { margin-top: .7rem; }
 #pages { justify-content: space-between; padding: .75rem 1rem 0; font-size: .86rem; }
 .stage-actions { justify-content: end; }
 #startup:not([hidden]) { margin-bottom: .85rem; }
+
+.ride-row { display: flex; align-items: stretch; gap: .35rem; min-width: 0; }
+.ride-row .ride { flex: 1; }
+.ride-check {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: .55rem;
+  cursor: pointer;
+}
+.ride-check:has(:checked) { background: var(--engaged); }
+.ride-check input, .postcard-map-choice input { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }
+#collection-controls {
+  margin: 0 1rem .8rem;
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  background: var(--soft);
+}
+#collection-summary {
+  display: list-item;
+  min-height: 44px;
+  padding: .72rem;
+  color: var(--accent);
+  font-weight: 650;
+  cursor: pointer;
+}
+#collection-total { float: inline-end; padding-inline-start: .4rem; color: var(--muted); font-size: .85rem; }
+.collection-body { display: grid; gap: .6rem; padding: 0 .72rem .72rem; }
+.collection-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .45rem; }
+.collection-field { display: grid; flex: 1 1 8rem; min-width: 0; gap: .24rem; font-size: .83rem; }
+.collection-field select {
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: .5rem;
+  border: 1px solid var(--line);
+  border-radius: .55rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+#collection-list {
+  display: grid;
+  max-height: 13rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#collection-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .45rem;
+  padding: .2rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: .84rem;
+}
+#collection-list li span { overflow-wrap: anywhere; }
+#collection-list button { flex: none; padding-inline: .25rem; font-size: 1.25rem; }
+.postcard-actions { border-top: 1px solid var(--line); padding-top: .6rem; }
+.postcard-map-choice { display: flex; align-items: center; min-height: 44px; gap: .4rem; font-size: .85rem; cursor: pointer; }
+.postcard-map-choice input { flex: none; }
+.collection-note { color: var(--muted); font-size: .8rem; line-height: 1.4; }
+#collection-status:empty, #postcard-note:empty { display: none; }
+#postcard-preview { width: min(33rem, calc(100% - 1rem)); }
+#postcard-image { display: block; width: 100%; max-height: 58vh; object-fit: contain; border-radius: .4rem; }
+#postcard-note { margin-top: .6rem; }
+#postcard-preview .postcard-actions { margin-top: .65rem; }
+#postcard-download {
+  display: inline-grid;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: .75rem;
+  border-radius: .55rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: .86rem;
+  font-weight: 650;
+  text-underline-offset: .2em;
+}
+@media (max-width: 25rem) { #collection-controls { margin-inline: .65rem; } }
