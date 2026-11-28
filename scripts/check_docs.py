@@ -148,7 +148,9 @@ def asset_errors(root: Path) -> list[str]:
     fixture = root / data["fixture"]
     if not fixture.resolve().is_relative_to(root.resolve()) or not fixture.is_file():
         return ["Asset fixture must belong to this repository"]
-    if hashlib.sha256(fixture.read_bytes()).hexdigest() != data["fixture_sha256"]:
+    if data["assets"] and hashlib.sha256(fixture.read_bytes()).hexdigest() != data.get(
+        "fixture_sha256"
+    ):
         errors.append("Documentation fixture changed: review/re-record assets and provenance")
     declared = set()
     for item in data["assets"]:
