@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Synthetic Ninebot Ride Archive</title>
+<style>body { margin: 0; }</style>
 <ninebot-archive-panel></ninebot-archive-panel>
 <script type="module">
 import '/ninebot-static/archive-replay-panel.js';
@@ -54,8 +55,12 @@ async function callWS(message) {
   if (!ride || lost.has(data.device_id)) throw { code: 'unauthorized' };
   if (message.service === 'get_recorded_trips') {
     const datedRides = data.device_id === 'synthetic-c' ? [ride, older(data.device_id)] : [ride];
+    const requestedRides = datedRides.filter(row => {
+      const date = row.start_time.slice(0, 10);
+      return date >= data.start_date && date <= data.end_date;
+    });
     return { response: { source_mode: 'ride_archive', sort: 'desc', selection_version: version(data.device_id).selection_version,
-      next_cursor: null, coverage: {}, rides: datedRides.map(row => ({ ...row, detail_saved: true })) } };
+      next_cursor: null, coverage: {}, rides: requestedRides.map(row => ({ ...row, detail_saved: true })) } };
   }
   if (message.service !== 'get_trip_detail' || !data.local_only || !data.include_track) throw Error('Unexpected service');
   const requested = data.ride_id === ride.ride_id ? ride : older(data.device_id);
