@@ -218,6 +218,10 @@ async def test_replay_access_revocation_checks_quiet_archive_without_reading_it(
         assert (await subscribe(client, device, include_track=True))["success"]
         assert (await client.receive_json())["event"]["type"] == "baseline"
         feed = next(iter(ws.feeds(hass)))
+        if not notify:
+            freezer.tick(timedelta(seconds=ws.ACCESS_INTERVAL + 0.1))
+            await hass.async_block_till_done()
+            assert not feed.closed and feed.access_timer is not None and feed.access_task is None
         tracker_allowed = False
         if notify:
             hass.bus.async_fire(ws.EVENT_USER_UPDATED, {"user_id": feed.context.user_id})
@@ -251,8 +255,7 @@ async def test_coordinate_option_change_retires_replay_and_hides_vehicle(hass, e
         entry, options={**entry.options, CONF_COORDINATES: False}
     )
     closed = (await asyncio.wait_for(client.receive_json(), 5))["event"]
-    assert closed["type"] == "closed"
-    assert closed["reason"] in {"denied", "unloaded"}
+    assert closed == {"schema_version": 1, "type": "closed", "reason": "denied"}
     await hass.async_block_till_done()
     await client.send_json({"id": 3, "type": "ninebot/history/vehicles"})
     assert (await client.receive_json())["result"] == {"vehicles": [], "more_available": False}

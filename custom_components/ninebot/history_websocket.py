@@ -196,7 +196,8 @@ class HistoryFeed:
         if self.access_task:
             self.access_dirty = True
         elif not self.closed:
-            self.access_task = self.hass.async_create_task(self.recheck_access())
+            # Cached auth can finish eagerly before the task is assigned here.
+            self.access_task = self.hass.async_create_task(self.recheck_access(), eager_start=False)
 
     async def recheck_access(self) -> None:
         try:
@@ -259,10 +260,10 @@ def async_close_entry_feeds(hass: HomeAssistant, entry: str) -> None:
 
 
 @callback
-def async_coordinate_access_changed(hass: HomeAssistant, entry: str) -> None:
+def async_revoke_coordinate_access(hass: HomeAssistant, entry: str) -> None:
     for feed in tuple(feeds(hass)):
         if feed.include_track and any(scope.entry == entry for scope in feed.scopes):
-            feed.launch_access()
+            feed.finish("denied")
 
 
 @websocket_api.websocket_command(
