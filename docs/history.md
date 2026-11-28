@@ -2,7 +2,7 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
-This guide covers **v2.2.14 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
+This guide covers **v2.2.15 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
 
 Use the bundled dashboard card to replay and compare saved rides, or use native Home Assistant views for position, dates and trends. The replay interface is a preview. Its archive Actions and storage run independently.
 
@@ -131,13 +131,21 @@ The card clears private tracks on a user, connection or vehicle-filter change, l
 
 Place native calendar or statistics cards next to the replay card for longer-term views. Earlier YAML with `statistics_entities` still loads. Configure the corresponding statistics graph as a separate card.
 
+<a id="local-archive-replay"></a>
+
+## Open your saved ride archive
+
+Open **Ninebot Ride Archive** in the Home Assistant sidebar, or go to `/ninebot-archive` on your Home Assistant server. Select a Ninebot account, choose vehicles and dates, then select **Show rides**. Dates follow Asia/Shanghai. Select a ride to replay its saved points. Select additional rides to compare totals. A missing detail stays available for separate synchronization through the integration’s history controls.
+
+The panel reads local archive pages and saved details through your signed-in Home Assistant session. The account must have **Show vehicle location** enabled. Restricted users need read access to the vehicle’s calendar and tracker. Switching accounts or losing the connection clears the current selection, routes and totals. When Home Assistant reports access withdrawal, the panel clears the view and discards pending results. An active track subscription also rechecks permissions in memory every ten seconds. The panel draws saved coordinates on a local grid without contacting a tile provider.
+
 <a id="standalone-replay"></a>
 
 ## Try replay outside Home Assistant
 
-From a checkout of v2.2.14, run `node examples/ride-replay/serve.mjs` at the repository root and open **http://127.0.0.1:8765/replay/**. Choose the August and September rides on different vehicles, compare their totals and drag the playback slider. The two rides share an upstream ride ID. Switching or scrubbing updates the active point while each ride’s distance and energy stay fixed.
+From a checkout of v2.2.15, run `node examples/ride-replay/serve.mjs` at the repository root and open **http://127.0.0.1:8765/replay/**. Choose the August and September rides on different vehicles, compare their totals and drag the playback slider. The two rides share an upstream ride ID. Switching or scrubbing updates the active point while each ride’s distance and energy stay fixed.
 
-The [standalone example](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.14/examples/ride-replay) runs on loopback and reads bundled synthetic routes. It uses the same selection, local track loading and replay statistics as the dashboard card. The example is distributed in the source checkout. HACS users replay their own archive through the dashboard card.
+The [standalone example](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.15/examples/ride-replay) runs on loopback and reads bundled synthetic routes. It uses the same selection, local track loading and replay statistics as the dashboard card. The example is distributed in the source checkout. To view your own saved rides, use the [HA archive panel](#local-archive-replay) or the dashboard card.
 
 ## Ride summaries and vehicle events
 

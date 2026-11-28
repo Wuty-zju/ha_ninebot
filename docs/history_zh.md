@@ -2,7 +2,7 @@
 
 [English](history.md) · [安装与选项](guide_zh.md) · [文档入口](README.md)
 
-本文说明至 **v2.2.14 预览版**。使用 **v2.2.0 正式版**时，请以[随版文档](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history_zh.md)为准。
+本文说明至 **v2.2.15 预览版**。使用 **v2.2.0 正式版**时，请以[随版文档](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history_zh.md)为准。
 
 使用随包仪表盘卡片回放及对比已保存行程，使用 HA 原生视图查看定位、日期和趋势。回放界面处于预览阶段，档案 Action 和存储可独立使用。
 
@@ -131,13 +131,21 @@ limit 是**整页总数** 1–100，可以小于选车数；多车真正按最�
 
 行程日历和长期统计图可在同一仪表板上各自配置原生卡片。已有 YAML 中的 `statistics_entities` 仍可保留。
 
+<a id="local-archive-replay"></a>
+
+## 打开本地行程档案
+
+在 Home Assistant 侧栏打开 **Ninebot Ride Archive**，或在自己的 HA 地址后加 `/ninebot-archive`。选择九号账号、车辆和日期，点击“查看行程”，再选一条已保存的行程回放。选择多条可比较整程统计。日期使用上海时区。缺少轨迹详情的行程可另行通过历史同步补取。
+
+面板使用当前 HA 登录身份，读取本地档案分页和已保存的详情。账号需开启“显示车辆位置”，受限用户需有车辆日历和定位实体的读取权限。切换账号或断开连接会清空选择、轨迹与统计。面板收到撤权通知后清空当前视图，丢弃仍在途的旧结果；连接期间另有每十秒一次的内存权限复核。轨迹绘制在本地网格上，无需向地图服务商请求瓦片。
+
 <a id="standalone-replay"></a>
 
 ## 在 Home Assistant 外试用回放
 
-在 v2.2.14 源码根目录运行 `node examples/ride-replay/serve.mjs`，用浏览器打开 **http://127.0.0.1:8765/replay/**。选取两辆车分别在 8 月和 9 月的行程，对比统计，再拖动回放滑块。两条行程的上游编号相同。切换行程或拖动滑块会更新当前轨迹点，每条行程的整程里程和耗电量保持不变。
+在 v2.2.15 源码根目录运行 `node examples/ride-replay/serve.mjs`，用浏览器打开 **http://127.0.0.1:8765/replay/**。选取两辆车分别在 8 月和 9 月的行程，对比统计，再拖动回放滑块。两条行程的上游编号相同。切换行程或拖动滑块会更新当前轨迹点，每条行程的整程里程和耗电量保持不变。
 
-[独立示例](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.14/examples/ride-replay) 在本机读取随源码附带的合成路线，与仪表盘卡片共用行程选择、轨迹读取与回放统计。通过 HACS 安装的用户可在仪表盘卡片中查看自己的本地档案。
+[独立示例](https://github.com/Wuty-zju/ha_ninebot/tree/v2.2.15/examples/ride-replay) 在本机读取随源码附带的合成路线，与仪表盘卡片共用行程选择、轨迹读取与回放统计。查看自己的档案可用 [HA 本地行程档案面板](#local-archive-replay)或仪表盘卡片。
 
 ## 行程摘要与车辆事件
 
