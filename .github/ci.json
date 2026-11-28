@@ -34,6 +34,7 @@
         "tests/test_control_polling.py",
         "custom_components/ninebot/account.py",
         "custom_components/ninebot/event.py",
+        "custom_components/ninebot/event_store.py",
         "custom_components/ninebot/ride_reports.py",
         "tests/test_ride_reports.py",
         "tests/test_registry.py",
