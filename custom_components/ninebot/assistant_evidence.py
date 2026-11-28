@@ -373,6 +373,67 @@ def _recorded_trips(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _ride_comparison(payload: dict[str, Any]) -> str:
+    data, evidence = _object(payload.get("data")), _object(payload.get("evidence"))
+    rides = data.get("rides")
+    if (
+        not _local_archive(evidence)
+        or evidence.get("selection_basis") != "selected_recorded_rides"
+        or not isinstance(rides, list)
+        or not 2 <= len(rides) <= 5
+    ):
+        return ""
+    sections = []
+    for position, row in enumerate(rides, 1):
+        ride = _object(row)
+        identity = ride.get("ride_id")
+        if not isinstance(identity, str) or opaque_id(identity) != identity:
+            return ""
+        sections.append(
+            f"{position}. {_prose(identity)} ({_prose(str(ride.get('vehicle_label', '')))})"
+        )
+        for key, label, unit in (
+            ("energy_wh", "Total energy", "Wh"),
+            ("energy_intensity_wh_per_km", "Average energy per distance", "Wh/km"),
+        ):
+            value = numeric(ride.get(key))
+            sections.append(
+                f"   {label}: "
+                + (f"{value:g} {unit}" if value is not None else f"unknown ({unit})")
+            )
+    combined = _object(data.get("combined"))
+    lines = []
+    lowest = _object(data.get("lowest_ride_positions"))
+    for key, label, unit in (
+        ("energy_wh", "total energy", "Wh"),
+        ("energy_intensity_wh_per_km", "average energy per distance", "Wh/km"),
+    ):
+        known = sum(numeric(_object(ride).get(key)) is not None for ride in rides)
+        positions = lowest.get(key)
+        if (
+            known == len(rides)
+            and isinstance(positions, list)
+            and positions
+            and all(type(p) is int and 1 <= p <= len(rides) for p in positions)
+        ):
+            order = ", ".join(str(p) for p in positions)
+            lines.append(
+                f"Lowest {label}: ride {order}."
+                if len(positions) == 1
+                else f"Tied lowest {label}: rides {order}."
+            )
+        else:
+            lines.append(f"Lowest {label}: unknown ({known}/{len(rides)} rides measured).")
+        value = numeric(combined.get(key))
+        result = f"{value:.6g} {unit}" if value is not None else f"unknown ({unit})"
+        lines.append(f"Combined {label}: {result} ({known}/{len(rides)} rides).")
+    link = data.get("map_url")
+    sections += ["", *lines, "Source: local ride archive."]
+    if isinstance(link, str) and re.fullmatch(r"/ninebot-archive\?view=[0-9a-f]{32}", link):
+        sections.extend(["", f"[Open these rides on the map]({link})"])
+    return "\n".join(sections)
+
+
 def _saved_detail(payload: dict[str, Any]) -> str:
     query, ride = _object(payload.get("query")), _object(payload.get("data"))
     quality, evidence = _object(payload.get("quality")), _object(payload.get("evidence"))
@@ -521,6 +582,8 @@ def render_evidence_answer(
             text = _statistics(payload)
         elif tool == "ninebot__get_recorded_trips":
             text = _recorded_trips(payload)
+        elif tool == "ninebot__compare_recorded_trips":
+            text = _ride_comparison(payload)
         elif tool == "ninebot__get_trip_detail":
             text = _saved_detail(payload)
         elif tool == "ninebot__get_sync_health":

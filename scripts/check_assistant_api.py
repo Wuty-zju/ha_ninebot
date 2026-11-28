@@ -15,16 +15,18 @@ from unittest.mock import AsyncMock, patch
 
 def check_task_evaluation_catalog(api_id: str, names: set[str]) -> None:
     """Bind unexecuted task specifications to real tools and named native tests."""
+    from custom_components.ninebot.assistant_catalog import QUERY_SPECS, SPECS
+
     root = Path(__file__).resolve().parents[1]
     catalog = json.loads((root / "tests/fixtures/assistant/evaluation-tasks.json").read_text())
     contract = catalog["task_execution_contract"]
     assert catalog["contract_revision"] == "task-boundaries-v3"
     assert contract["api_id"] == api_id and contract["tool_namespace"] == "ninebot__"
     assert contract["full_scope_tool_counts"] == {
-        "queries": 8,
-        "preview": 12,
-        "apply": 13,
-        "ask_maximum": 8,
+        "queries": len(QUERY_SPECS),
+        "preview": len(SPECS) - 1,
+        "apply": len(SPECS),
+        "ask_maximum": len(QUERY_SPECS),
     }
     assert contract["model_cloud_call_limit"] == 0
     assert contract["approval_channel"] == contract["cancellation_channel"] == "native_human_review"
@@ -90,6 +92,10 @@ async def check(config_dir: str) -> None:
         assert set(formatted.input_schema["properties"]) == {
             marker.schema for marker in tool.parameters.schema
         }
+        if tool.name == "ninebot__compare_recorded_trips":
+            array = formatted.input_schema["properties"]["rides"]
+            assert array["minItems"] == 2 and array["maxItems"] == 5
+            assert set(array["items"]["required"]) == {"vehicle_ref", "query_month", "ride_id"}
         if tool.name == "ninebot__get_recorded_trips":
             properties = formatted.input_schema["properties"]
             assert properties["limit"]["minimum"] == 1 and properties["limit"]["maximum"] == 20
@@ -260,7 +266,7 @@ async def check_task_collection(hass, context) -> None:
             new=AsyncMock(return_value=all_keys - {request_key}),
         ) as discover:
             preview = await llm.async_get_api(hass, API_ID, context)
-            assert len(preview.tools) == 12
+            assert len(preview.tools) == len(all_keys) - 1
             assert "task_vehicles" in preview.api_prompt
             assert request_key not in preview.api_prompt
             assert all(request_key not in tool.description for tool in preview.tools)
@@ -268,7 +274,7 @@ async def check_task_collection(hass, context) -> None:
             instance = await llm.async_get_api(hass, API_ID, context)
             assert instance.api.requires_admin
             assert request_key in instance.api_prompt
-            assert len(instance.tools) == 13
+            assert len(instance.tools) == len(all_keys)
             formatted = {
                 tool.name: _format_tool(tool, instance.custom_serializer) for tool in instance.tools
             }
@@ -293,9 +299,7 @@ async def check_task_collection(hass, context) -> None:
     finally:
         remove()
     assert llm.async_get_apis(hass) == []
-    print(
-        "Native tools: one API, 12/13 tools, scoped prompts, nonce-free schema and read-only filter"
-    )
+    print("Native tools: one API, scoped prompts, nonce-free schema and read-only filter")
 
 
 if __name__ == "__main__":

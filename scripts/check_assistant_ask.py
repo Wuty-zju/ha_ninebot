@@ -1,6 +1,7 @@
 """Actual Action/AI Task/LLM path with a synthetic provider; no model or cloud."""
 
 import asyncio
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -26,6 +27,7 @@ async def check(directory: str) -> None:
     from homeassistant.util import dt as dt_util
     from probatio import to_openapi
 
+    from custom_components.ninebot.adapters import travel
     from custom_components.ninebot.assistant import async_sync_task_policy
     from custom_components.ninebot.assistant_access import (
         READ_STATISTICS,
@@ -46,6 +48,7 @@ async def check(directory: str) -> None:
         VehicleSnapshot,
         VehicleStatus,
     )
+    from custom_components.ninebot.ride_archive import RideArchive
     from scripts.check_assistant_followups import check as check_followups
     from scripts.check_assistant_followups import check_period_metrics
 
@@ -147,6 +150,19 @@ async def check(directory: str) -> None:
                 raise
 
         async def _async_generate_test_data(self, task, chat_log):
+            if "comparison" in current:
+                # The Action binds the selected HA vehicle. The model only returns the ride keys.
+                value = await chat_log.llm_api.async_call_tool(
+                    llm.ToolInput(
+                        tool_name="ninebot__compare_recorded_trips",
+                        tool_args={"rides": current["comparison"]},
+                    )
+                )
+                assert not value.error and value.data["data"]["map_url"]
+                value.data["data"]["rides"][0]["energy_wh"] = 9999
+                return ai_task.GenDataTaskResult(
+                    conversation_id=chat_log.conversation_id, data="unverified comparison"
+                )
             if "stat_args" in current:
                 await chat_log.llm_api.async_call_tool(
                     llm.ToolInput(
@@ -274,6 +290,43 @@ async def check(directory: str) -> None:
                 )
         assert len(provider_calls) == len(cases)
         configure(all_reads)
+        archive = RideArchive(
+            Path(directory) / "comparison.sqlite", hashlib.sha256(b"synthetic").hexdigest()
+        )
+        await archive.async_open()
+        co.statistics.archive = archive
+        try:
+            rides = [
+                {"travel_id": "A", "mileages": 1.2, "ec": 90},
+                {"travel_id": "B", "mileages": 2.4, "ec": 120},
+            ]
+            await archive.async_record_month(
+                "synthetic-sn", travel({"times": 2, "list": rides}, "202001"), now
+            )
+            current["comparison"] = [
+                {"ride_id": row["travel_id"], "query_month": "202001"} for row in rides
+            ]
+            result = await hass.services.async_call(
+                "ninebot",
+                "ask",
+                {
+                    "question": "Compare rides A and B in Wh and Wh/km. Link to the map.",
+                    "device_id": device.id,
+                    "ai_task_entity_id": entity_id,
+                },
+                context=Context(user_id=principal.id),
+                blocking=True,
+                return_response=True,
+            )
+            assert result["outcome"] == "evidence", result
+            answer = result["answer"]["text"]
+            link = result["results"][0]["result"]["data"]["map_url"]
+            assert f"]({link})" in answer and "9999" not in answer
+            assert "Lowest total energy: ride 1." in answer
+            assert "Lowest average energy per distance: ride 2." in answer
+        finally:
+            current.pop("comparison", None)
+            await archive.async_close()
         other_sn = "second-synthetic-sn"
         co.data[other_sn] = VehicleSnapshot(VehicleProfile(other_sn, "Vehicle A", "Synthetic"))
         other = dr.async_get(hass).async_get_or_create(
