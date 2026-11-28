@@ -44,7 +44,7 @@ from .event_store import RideEventPipeline
 from .exceptions import NinebotError
 from .frontend import async_register_frontend, async_update_archive_panel
 from .history_capacity import history_capacity_mib
-from .history_websocket import async_coordinate_access_changed, async_register_history_websocket
+from .history_websocket import async_register_history_websocket, async_revoke_coordinate_access
 from .identity import IdentityStore
 from .migration import async_migrate
 from .models import VehicleSnapshot
@@ -231,7 +231,7 @@ def _async_options_listener(
     # ConfigEntries evaluates this callback before scheduling its returned coroutine/save.
     async_sync_task_policy(hass, entry)
     if entry.options.get(CONF_COORDINATES) is False:
-        async_coordinate_access_changed(hass, entry.entry_id)
+        async_revoke_coordinate_access(hass, entry.entry_id)
     return async_update_options(hass, entry)
 
 
