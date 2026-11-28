@@ -70,7 +70,7 @@ response_variable: ninebot_answer
 
 例如，11 月问“那上个月呢？”，12 月接着问“耗电量呢？”，查询范围仍是 10 月 1–31 日。查询尚未结束的月份时，回执会记下统计截止日。下次追问时若档案只能提供更长时段的月汇总，助手会请你确认新的范围。
 
-Assist 和 MCP 客户端可读取上一份单指标回执的 `query_context`。其中含有 `device_id`、`metric`，以及单日的 `date` 或月度的 `month` 与 `through_date`。把原选择作为 `vehicle_ref`、`period`、`metric` 和月度的 `through_date` 传给 `get_statistics`。只变更一项时，`change` 可用 `last_month` 或 `energy_wh` 等简写。多项一起变化时，例如传入 `"change": {"vehicle": "other", "period": "last_month", "metric": "energy_wh"}`，助手会先选定另一辆车，按上海时区取上一个自然月，再从该车档案读取一次耗电总量。候选车辆有多辆时先选车。若统计权限已撤回，本次查询结束，回答不含数值。
+Assist 和 MCP 客户端可读取上一份单指标回执的 `query_context`。其中含有 `device_id`、`metric`，以及单日的 `date` 或月度的 `month` 与 `through_date`。把原选择作为 `vehicle_ref`、`period`、`metric` 和月度的 `through_date` 传给 `get_statistics`。只变更一项时，`change` 可用 `last_month` 或 `energy_wh` 等简写。多项一起变化时，例如传入 `"change": {"vehicle": "other", "period": "last_month", "metric": "energy_wh"}`。组合变更须用 `previous` 或 `other` 明确选车。助手按上海时区取上一个自然月，再从所选车辆档案读取一次耗电总量。候选车辆有多辆时先选车。若统计权限已撤回，本次查询结束，回答不含数值。
 
 在自动化中，可把完整查询条件传回 `ninebot.ask`。明确指定 `device_id` 会把本次 Action 固定到该车。
 
