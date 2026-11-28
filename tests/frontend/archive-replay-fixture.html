@@ -8,6 +8,7 @@ import '/ninebot-static/archive-replay-panel.js';
 import { syntheticDetail, syntheticRide } from '/replay/synthetic-archive.mjs';
 
 const panel = document.querySelector('ninebot-archive-panel');
+const params = new URLSearchParams(location.search);
 const rows = [
   { account_id: 'account-a', device_id: 'synthetic-a', label: 'Synthetic A' },
   { account_id: 'account-a', device_id: 'synthetic-b', label: 'Synthetic B' },
@@ -16,7 +17,8 @@ const rows = [
 const base = syntheticRide('synthetic-a');
 const rides = new Map([
   ['synthetic-a', base],
-  ['synthetic-b', syntheticRide('synthetic-b', { august: true, sameId: true, overlap: true })],
+  ['synthetic-b', syntheticRide('synthetic-b', { august: true, sameId: true, overlap: true,
+    incomplete: params.has('partial') })],
   ['synthetic-c', { ...base, device_id: 'synthetic-c', vehicle_label: 'Synthetic C', distance_m: 3400 }],
 ]);
 const older = id => ({ ...rides.get(id), ride_id: 'synthetic-older', detail_id: 'synthetic-older-detail',
@@ -54,7 +56,8 @@ const connection = {
   },
 };
 const respondDetail = (ride, data) => {
-  const result = syntheticDetail(ride, data, { overlap: true });
+  const result = syntheticDetail(ride, data, { overlap: true,
+    endpointsOnly: ride.device_id === 'synthetic-b' && params.has('endpoints') });
   if (ride.device_id === 'synthetic-c') {
     result.ride.track = result.ride.track.map(point => ({ ...point, latitude: point.latitude + 5 }));
   }
@@ -68,6 +71,21 @@ async function waitForRelease(service, device) {
 }
 async function callWS(message) {
   requests.push({ message });
+  if (message.type === 'ninebot/open_ride_view' || message.type === 'ninebot/open_ride_receipt') {
+    if (params.has('denied') || lost.size || message.view && message.view !== 'a'.repeat(32)) {
+      throw { code: 'unauthorized' };
+    }
+    if (message.validate_only) return { valid: true };
+    const selected = message.receipt ? ['synthetic-b'] : ['synthetic-a', 'synthetic-b'];
+    return { rides: selected.map(id => ({ ...rides.get(id), detail_saved: true })) };
+  }
+  if (message.type === 'ninebot/history/ride_summary') {
+    const row = rows.find(r => r.device_id === message.device_id && r.account_id === message.account_id);
+    if (!row || lost.has(row.device_id)) throw { code: 'unauthorized' };
+    const value = (histories.get(row.device_id) ?? [rides.get(row.device_id)])
+      .find(r => r.ride_id === message.ride_id && r.query_month === message.query_month);
+    return { ride: value ? { ...value, detail_saved: true } : null };
+  }
   if (message.type === 'ninebot/history/vehicles') {
     return { vehicles: rows.filter(row => !lost.has(row.device_id)), more_available: false };
   }
@@ -101,7 +119,8 @@ async function callWS(message) {
   await waitForRelease(message.service, data.device_id);
   return respondDetail(requested, data);
 }
-const hass = { user: { id: 'ha-original' }, language: 'en', connected: true, connection, callWS };
+const hass = { user: { id: 'ha-original' }, language: 'en', connected: true, connection, callWS,
+  config: { components: params.has('native') ? ['map_tiles'] : [] } };
 panel.hass = hass;
 window.fixture = {
   panel, requests, subscriptions, lost,

@@ -117,6 +117,7 @@ class NativeRouteMap {
     };
     map.addEventListener('editable-location-clicked', this.selectPin);
     this.canFollow = typeof map.setView === 'function' && typeof map.containsLocation === 'function';
+    this.peerCursors = new Map();
     this.cursor = document.createElement('div');
     this.cursor.style.cssText = 'width:18px;height:18px;border:3px solid white;border-radius:100%;background:#168af9;box-shadow:0 1px 6px #0008';
     map.style.cssText = 'display:block;width:100%;height:100%';
@@ -137,10 +138,21 @@ class NativeRouteMap {
       this.map.setView(coords, this.map.getView()?.zoom);
     }
   }
-  highlight(point, color) {
+  highlight(point, color, peers = []) {
     if (color) this.cursor.style.backgroundColor = color;
+    const markers = peers.map(({ slot, point: peer }) => {
+      let element = this.peerCursors.get(slot);
+      if (!element) {
+        element = document.createElement('span');
+        element.style.cssText = 'width:13px;height:13px;border-radius:50%;box-sizing:border-box;background:white;box-shadow:0 0 2px #0008;border:3px solid';
+        element.style.borderColor = ROUTE_COLORS[slot];
+        this.peerCursors.set(slot, element);
+      }
+      return { id: `ninebot-peer-${slot}`, location: location(peer), element,
+        elementSize: [13, 13], locationEditable: false, fit: false };
+    });
     this.map.editableLocations = point ? [{ id: 'ninebot-replay', location: location(point),
-      element: this.cursor, elementSize: [18, 18], locationEditable: false, fit: false }, ...this.pins] : this.pins;
+      element: this.cursor, elementSize: [18, 18], locationEditable: false, fit: false }, ...markers, ...this.pins] : this.pins;
   }
   fit(bottomInset) {
     if (this.bounds?.length) this.map.fitBounds(this.bounds, {
@@ -177,17 +189,20 @@ class OfflineRouteMap {
     this.map.attributionControl.setPrefix('Leaflet 1.9.4');
     L.control.scale({ imperial: false }).addTo(this.map);
     this.routes = L.layerGroup().addTo(this.map);
+    this.peers = new Map();
     this.resize = new ResizeObserver(() => this.map.invalidateSize({ pan: false, debounceMoveend: true }));
     this.resize.observe(this.container);
   }
   setRoutes(tracks, labels) {
     this.routes.clearLayers();
-    const pins = tracks.length > 1 ? tracks.map(routePin) : [];
+    const selectable = tracks.filter(track => !track.overlay);
+    const pins = selectable.length > 1 ? selectable.map(routePin) : [];
     this.bounds = tracks.flatMap(trackBounds);
-    for (const [index, track] of tracks.entries()) {
+    for (const track of tracks) {
       for (const { points, name } of displayedPaths(track, labels)) {
         const layer = points.length > 1 ?
-          this.library.polyline(points, { color: track.color, weight: 4, interactive: false }) :
+          this.library.polyline(points, { color: track.color, weight: 4, interactive: false,
+            dashArray: track.overlay ? '7 5' : undefined }) :
           this.library.circleMarker(points[0], { color: track.color, radius: 4, fillOpacity: 0.85,
             interactive: false });
         if (hasEndpoints(track)) {
@@ -197,7 +212,7 @@ class OfflineRouteMap {
         }
         layer.addTo(this.routes);
       }
-      const pin = pins[index];
+      const pin = pins.find(candidate => candidate.key === track.key);
       if (pin) {
         const icon = this.library.divIcon({ html: pin.element, iconSize: pin.elementSize,
           className: 'ninebot-route-pin' });
@@ -222,7 +237,21 @@ class OfflineRouteMap {
     const coords = location(point);
     if (center || !this.map.getBounds().contains(coords)) this.map.panTo(coords, { animate: false });
   }
-  highlight(point, color = ROUTE_COLORS[0]) {
+  highlight(point, color = ROUTE_COLORS[0], peers = []) {
+    for (const [slot, marker] of this.peers) {
+      if (!peers.some(peer => peer.slot === slot)) {
+        marker.remove();
+        this.peers.delete(slot);
+      }
+    }
+    for (const peer of peers) {
+      const marker = this.peers.get(peer.slot);
+      if (marker) marker.setLatLng(location(peer.point));
+      else this.peers.set(peer.slot, this.library.circleMarker(location(peer.point), {
+        color: ROUTE_COLORS[peer.slot], fillColor: '#fff', radius: 5, weight: 3,
+        fillOpacity: 1, interactive: false,
+      }).addTo(this.map));
+    }
     if (!point) {
       this.focus?.remove();
       this.focus = null;
@@ -298,6 +327,7 @@ export class RouteMap {
     this.titles = [];
     this.labels = null;
     this.point = null;
+    this.peers = [];
     this.fitting = false;
   }
   async update(tracks, hass, labels, slots = [], titles = []) {
@@ -335,14 +365,16 @@ export class RouteMap {
       ...track, slot: this.slots[index] ?? index, title: this.titles[index],
       color: ROUTE_COLORS[this.slots[index] ?? index],
     })), this.labels);
-    this.renderer.highlight(this.point, this.pointColor);
+    this.renderer.highlight(this.point, this.pointColor, this.peers);
     if (this.fitting) this.fit();
   }
-  highlight(point, color, follow = false) {
-    if (this.point === point && this.pointColor === color) return;
+  highlight(point, color, follow = false, peers = []) {
+    if (this.point === point && this.pointColor === color && this.peers?.length === peers.length &&
+        peers.every((peer, i) => peer.slot === this.peers[i].slot && peer.point === this.peers[i].point)) return;
     this.point = point;
     this.pointColor = color;
-    this.renderer?.highlight(point, color);
+    this.peers = peers;
+    this.renderer?.highlight(point, color, peers);
     if (follow) this.followPoint(false);
   }
   followPoint(center) {

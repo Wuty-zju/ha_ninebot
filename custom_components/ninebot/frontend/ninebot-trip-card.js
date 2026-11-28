@@ -227,7 +227,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   activate(key) {
     if (!this.selection.selected.has(key) || key === this.selection.primary || this.busy) return;
     this.stopPlayback();
-    this.selection.activate(key);
+    this.selection.activate(key, this.tracks.tracks);
     if (this.activeTrack?.stale) void this.readRoute(this.activeRide);
   }
 

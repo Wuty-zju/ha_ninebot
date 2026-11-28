@@ -239,9 +239,11 @@ export class TripCardView {
     slider.max = String(Math.max(0, count - 1));
     slider.value = String(index);
     position.textContent = point ? `${index + 1} / ${count}` : '';
+    const peers = this.card.selection.replayPeers(this.card.tracks.tracks);
+    const peerText = peers.map(peer => ` · ${peer.slot + 1} · ${labels.point_sequence} ${peer.point.sequence}`).join('');
     slider.setAttribute('aria-valuetext', point ?
-      `${labels.sample_position.replace('{n}', index + 1).replace('{total}', count)} · ${labels.point_sequence} ${point.sequence}` : '');
-    this.card.routeMap.highlight(point, this.routeColor(this.card.selection.primary), this.card.follow);
+      `${labels.sample_position.replace('{n}', index + 1).replace('{total}', count)} · ${labels.point_sequence} ${point.sequence}${peerText}` : '');
+    this.card.routeMap.highlight(point, this.routeColor(this.card.selection.primary), this.card.follow, peers);
   }
 
   renderFilters(labels) {

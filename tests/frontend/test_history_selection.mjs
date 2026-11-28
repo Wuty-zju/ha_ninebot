@@ -2,9 +2,31 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { HistorySelection, rideInsights } from '../../custom_components/ninebot/frontend/history-selection.js';
 import { trackKey } from '../../custom_components/ninebot/frontend/local-tracks.js';
+import { syntheticRide } from '../../examples/ride-replay/synthetic-archive.mjs';
 
 const ride = device_id => ({ device_id, ride_id: 'shared-id', query_month: '202610',
   distance_m: 1200, vehicle_label: device_id, trail: 'private-raw', account: 'secret' });
+
+test('overlapping commutes follow the ordinal of saved samples, preserving the selected ride and its metrics', () => {
+  const a = syntheticRide('synthetic-a'), b = syntheticRide('synthetic-b', { august: true, sameId: true, overlap: true });
+  const s = new HistorySelection();
+  s.select(a); s.select(b, true);
+  const [ak, bk] = s.selected.keys();
+  const track = sequences => ({ kind: 'sampled_unverified', points: sequences.map(sequence => ({ sequence })) });
+  const tracks = new Map([[ak, track([0, 3])], [bk, track([0, 8, 12])]]);
+  s.seek(1, tracks);
+  assert.deepEqual(s.replayPeers(tracks), [{ slot: 0, point: { sequence: 3 } }]);
+  s.activate(ak, tracks);
+  assert.equal(s.position(tracks).point.sequence, 3);
+  assert.deepEqual(s.replayPeers(tracks), [{ slot: 1, point: { sequence: 8 } }]);
+  assert.equal(s.snapshot(tracks).statistics.current.energy.value, 90);
+  s.activate(bk, tracks); s.seek(2, tracks);
+  assert.deepEqual(s.replayPeers(tracks), []);
+  tracks.get(ak).kind = 'server_simplified';
+  s.seek(0, tracks);
+  assert.deepEqual(s.replayPeers(tracks), []);
+  assert.equal(s.snapshot(tracks).statistics.selected.energy.value, 210);
+});
 
 test('single and multi-car selections share one primary and retain only reviewed summaries', () => {
   const session = new HistorySelection();
