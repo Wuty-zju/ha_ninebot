@@ -1,31 +1,32 @@
-# Documentation
+<a id="documentation"></a>
+
+# Ninebot documentation / 文档入口
 
 [English overview](../README.md) · [中文首页](../README_zh.md)
 
-Start with the row that matches your task. These pages describe the 2.2 stable foundation and label additions in the 2.2 previews. For an older installation, select its tag on GitHub. [Stable changes](../CHANGELOG.md#220) · [Latest preview changes](../CHANGELOG.md#2211)
+| Release | Where to start |
+|---|---|
+| **v2.2.0 stable** | [Install the stable package](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.0) · [English handbook](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/README.md) |
+| **v2.2.12 preview** | [Release notes and package](https://github.com/Wuty-zju/ha_ninebot/releases/tag/v2.2.12) · [Compare saved rides](history.md#replay-saved-routes) · [Read statistics evidence](assistant.md#read-the-evidence) |
 
-| Task | English | 简体中文 |
+Use the guides below for the current handbook. Stable users can open the matching tagged guide above. 正式版用户可查阅[随版中文安装指南](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/guide_zh.md)。预览版用户可直接查看下表。
+
+| I want to… | English | 简体中文 |
 |---|---|---|
-| Install, add accounts, entities/options and troubleshoot | [Everyday guide](guide.md) | [安装与日常使用](guide_zh.md) |
-| Synchronize, browse maps/trips, calendar, statistics and recovery | [History and maps](history.md) | [历史行程与地图](history_zh.md) |
-| Use the optional local Assistant tools and configure AI access | [Assistant guide](assistant.md) | [Assistant 使用指南](assistant_zh.md) |
-| Upgrade, entity IDs and rollback | [Migration guide](migration.md) | [升级与迁移](migration_zh.md) |
-| Architecture, data lifecycle, security and dependencies | [Architecture](architecture.md) | 英文正文含简中摘要 |
-| Source/test routing and efficient development | [Development](development.md) | 英文正文含简中摘要 |
-| 2.0 beta, RC and stable milestones and design decisions | [Development overview](releases/2.0.md) | 同页折叠简中 |
-| Delivered capabilities and future directions | [Roadmap](roadmap.md) | 同页双语 |
+| Install Ninebot, add a vehicle or diagnose a failed request | [Installation and everyday use](guide.md) | [安装与日常使用](guide_zh.md) |
+| Save rides, set up a map or read archive coverage | [Ride history, maps and statistics](history.md) | [历史行程、地图与统计](history_zh.md) |
+| Set up Assist or MCP and read tool evidence | [Ninebot Assistant](assistant.md) | [Assistant 使用指南](assistant_zh.md) |
+| Switch versions, check entity changes or restore a backup | [Upgrades, entity identity and rollback](migration.md) | [升级、实体身份与回滚](migration_zh.md) |
+| Trace data, ownership or authorization | [Architecture and data contracts](architecture.md) | 英文正文含中文摘要 |
+| Patch, test or package the integration | [Development and validation](development.md) | 英文正文含中文摘要 |
+| Look up the 2.0 beta and RC milestones | [2.0 development history](releases/2.0.md) | [2.0 开发回顾](releases/2.0.md#简体中文) |
+| Review upcoming work and its acceptance criteria | [Roadmap](roadmap.md) | [开发方向](roadmap.md) |
 
-For archive playback, start with the [map setup](history.md#add-the-history-map). For spoken or typed questions, start with [host selection](assistant.md#choose-a-host-and-model). The current-position tracker and the archived playback cursor have separate sources.
-
-New coding agents start with [AGENTS](../AGENTS.md), the relevant guide and the task table in [Development](development.md). The task table links directly to the relevant modules and offline tests.
-
-[Contribute](../CONTRIBUTING.md) · [Security/privacy reporting](../SECURITY.md) · [Synthetic asset provenance](assets/manifest.json)
-
-Maintainers preparing distribution: [HACS and brand checklist](development.md#hacs-readiness-and-branding).
+[Contributor workflow](../CONTRIBUTING.md) · [Agent entry point](../AGENTS.md) · [Security and privacy reporting](../SECURITY.md) · [Synthetic asset provenance](assets/manifest.json)
 
 ## Earlier documentation links
 
-The previous long behavior page was consolidated by topic. These anchors preserve existing bookmarks and map each former section to its current home. Some headings describe an older beta; current guides supersede intermediate defaults. The complete original remains available at the [fixed b94 commit](https://github.com/Wuty-zju/ha_ninebot/blob/fa3a7ec04dacc7f791bfd79d8ee469538ac95878/docs/README.md).
+Older bookmarks open the matching topic below. To inspect an intermediate beta decision, see the [archived b94 guide](https://github.com/Wuty-zju/ha_ninebot/blob/fa3a7ec04dacc7f791bfd79d8ee469538ac95878/docs/README.md).
 
 <details>
 <summary>Find an earlier section by name</summary>

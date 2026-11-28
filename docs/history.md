@@ -2,9 +2,9 @@
 
 [简体中文](history_zh.md) · [Setup and options](guide.md) · [Documentation](README.md)
 
-This guide covers releases through the 2.2.8 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
+This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/history.md).
 
-> **Map and cards: early alpha.** Navigation and linked views are under active development. The instructions below cover the current implementation; synchronization, storage and Actions work independently.
+Use the bundled dashboard card to replay and compare saved rides, or use native Home Assistant views for position, dates and trends. The replay interface is a preview. Its archive Actions and storage run independently.
 
 ## Choose the right view
 
@@ -62,7 +62,7 @@ Each vehicle also has two archive counters in **Diagnostics**. **Trip count** co
 
 ## Add the history map
 
-The current-position Map card draws tracker history recorded by HA. The bundled Ninebot card draws the archive’s saved geometry on the same HA map component and offers ride selection and replay. A calendar entity or a Ninebot device ID supplies the target.
+Use the bundled **Ninebot trip card** for archived polylines and replay. It shares the native Home Assistant map component for drawing, while the stock **Map** dashboard card reads the tracker and its Recorder history. Use a calendar entity or a Ninebot device ID to select a replay target. [Home Assistant Map card](https://www.home-assistant.io/dashboards/map/)
 
 1. Install/load the integration. Review location/history options above.
 2. In **Dashboard → Resources** (enable advanced mode if needed), add `/ninebot-static/ninebot-trip-card.js` as **JavaScript module**.
@@ -97,19 +97,27 @@ limit: 40
 
 ### Replay saved routes
 
-1. Choose vehicles and a business-date range in **Filters**. A row opens one ride. **+** adds it to the comparison and **×** removes it. Compare up to five authorized rides across vehicles, accounts or months. With the local archive connection active, existing selections survive a date change. The last five list pages are reusable.
-2. Each compared route with saved geometry has a numbered marker. In **2.2.11**, tap overlapping markers to open **Choose a ride at this spot**. Select by number, vehicle and start time. You can also choose the numbered buttons below the map. Selecting a ride updates its summary and resets its cursor to the first saved point, keeping the current map view.
-3. Read distance, duration and energy beneath the active route. Expand **Selected rides total** for the same quantities across the selection. These totals cover the selected list records only. A quantity with any missing contributing measurement shows a dash. A confirmed zero remains zero.
-4. Press **Play** or drag the slider to a saved point. Touching the slider pauses playback. Its screen-reader label identifies the active ride. For example, “Point 16 of 58 · Source point sequence 17” means two original rows are missing from this zero-based sequence. The map cursor moves to that point. Distance, duration and energy remain totals for the full ride. Gaps break the drawn line. Point timestamps and a measured speed for each segment are unavailable. The live vehicle position comes from the separate device tracker.
-5. **Follow replay** centers the current point and follows it at your zoom level when it leaves the view. **Show all routes** fits the routes above the playback controls. **Local records updated · Read latest** reloads the selection after the archive changes.
+1. In **Filters**, pick the vehicles and the Shanghai business-date range. Open a row to focus a ride, use **+** to add it to the comparison and **×** to remove it. Select up to five authorized rides across vehicles, accounts or months. Changing dates preserves the selection while the archive connection is healthy. You can revisit the last five list pages locally.
+2. Choose a numbered route marker or its matching button below the map. Since **v2.2.11**, tapping overlapping markers opens a chooser with vehicle and departure time. Changing the current ride moves the cursor to its first saved point and keeps the map view.
+3. In **v2.2.12 preview**, read **Current ride** beside **All selected rides** in the **Saved ride statistics** table. Use **Keep current ride** to clear the other routes and continue from the same replay position, with no repeat archive read.
+4. Press **Play** or drag the slider to a saved point. Touching the slider pauses playback. The slider names the current ride and shows the saved point index and, where available, the source sequence. A jump in source sequence breaks the drawn line. Each summary describes the whole ride throughout playback.
+5. **Follow replay** tracks the point at your current zoom. **Show all routes** fits the selected routes above the controls. When **Local records updated** appears, select **Read latest** to reload the selection.
 
-With VoiceOver, move to a numbered route button and activate it. Its label gives the vehicle and departure time, and the active button has a pressed state. Move to the replay slider. On iPhone, swipe up or down to change the replay position. On a Mac, use the slider’s adjustment commands. [Apple’s VoiceOver gesture guide](https://support.apple.com/guide/iphone/iph3e2e2281/ios)
+The comparison uses the summaries for the selected rides, including those with only a point, endpoints or no coordinates. The selected column includes the current ride. With a single ride, the card shows one value column.
 
-Each detail read uses up to four chunks of 512 source rows. **Read more saved points** continues from the next offset. The browser retains at most 4,096 samples per ride. The card can simplify lines for drawing while the archive keeps its original geometry.
+| Metric | How the selected value is calculated |
+|---|---|
+| Distance, duration, energy | Sum of the recorded km, duration or Wh for the selected rides. |
+| Energy per km | Total Wh ÷ total km. |
+| Average speed | Total km ÷ total recorded hours. The two durations are both counted when rides overlap. |
 
-A server-simplified ride may have two usable positions. The map marks the start and end individually. One position gets one marker. A ride without positions still has a summary. The server may report a detailed-track window of 180 days. Previously saved higher-quality routes remain available locally beyond that window.
+Each metric needs all applicable source readings. A dash and **2/3 rides usable** mean two of three selected rides have usable inputs for the metric. Confirmed zero contributes to totals and can be a numerator. Energy per km needs positive distance for each ride. Average speed needs positive, non-conflicting recorded duration for each ride. For example, two selected rides totaling 12 km, 45 minutes and 240 Wh show **16 km/h** and **20 Wh/km**. These are averages over whole rides. Playback follows saved point order, with exact point timing and speed units still unverified.
 
-If the local archive lacks a detail, enable background detail sync or fetch that ride once using `ninebot.get_trip_detail` in **Developer tools → Actions**. Check the persistence result, then read the local records again. [HA Map](https://www.home-assistant.io/dashboards/map/) · [Home Assistant Map Tiles](https://www.home-assistant.io/integrations/map_tiles/)
+With VoiceOver, activate the numbered route button labeled with vehicle and departure time. The current route button has a pressed state. On iPhone, swipe up or down on the replay slider to change position. On Mac, use the slider adjustment commands. [Apple's VoiceOver guide](https://support.apple.com/guide/iphone/iph3e2e2281/ios)
+
+The card reads up to four chunks of 512 source rows at a time and retains up to 4,096 samples per ride in browser memory. Select **Read more saved points** to continue. A simplified route with two usable positions shows its start and end. A single usable position gets one marker. The archive retains any better saved geometry when later cloud data is simplified. Cloud reports of a 180-day detailed-track window are observations.
+
+If a saved ride has no detail yet, enable [detail preservation](#enable-preservation-and-synchronization) or fetch it explicitly using [Get trip detail](#query-actions). Check that it was saved, then choose **Read latest**.
 
 ### Map privacy and units
 
@@ -139,7 +147,7 @@ Diagnostic entities can appear in Recorder. Use explicit Recorder filters to exc
 
 ## Query Actions
 
-Use Developer Tools → Actions or a response-capable automation/script. Targets are **HA vehicle device IDs**, not Ninebot serials. Month input is `YYYYMM`; dates are inclusive Shanghai business days. [services.yaml](../custom_components/ninebot/services.yaml) is the authoritative field list.
+Use Developer Tools → Actions or a response-capable automation/script. Identify the vehicle with its **HA device ID**. Month input is `YYYYMM`; dates are inclusive Shanghai business days. [services.yaml](../custom_components/ninebot/services.yaml) is the authoritative field list.
 
 | Action | Use and limits | Cloud / write behavior |
 |---|---|---|
@@ -194,7 +202,7 @@ Cloud monthly totals, the latest returned list, accumulated local rides, saved d
 
 Today/yesterday count, duration and Wh need a verified complete selection or locally accumulated IDs/count/distance that reconcile with the month; energy and duration additionally reconcile independently. Missing/conflicting fields stay unknown; proven empty windows return zero. Rides are attributed wholly to their Shanghai **end date**, with no invented midnight allocation. Month boundaries can require adjacent-month evidence.
 
-Daily distance prefers the server's daily mileage chart (`server_daily_chart`); when that value is missing, verified ride distances can supply `returned_unique_rides`. Count, duration, energy and matching ride-based average consumption use the whole-ride end-date selection. Check the returned `distance_basis` before comparing these projections. Recorded-trip pages select rides that overlap the requested dates, so page membership is a browsing scope rather than a daily-statistics attribution rule.
+Daily distance prefers the server's daily mileage chart (`server_daily_chart`); when that value is missing, verified ride distances can supply `returned_unique_rides`. Count, duration, energy and matching ride-based average consumption use the whole-ride end-date selection. Check the returned `distance_basis` before comparing these projections. Recorded-trip pages include rides overlapping the requested dates. Use daily-statistics responses for totals by ride end date.
 
 Numeric entities retain verified values for the same date/month through a short outage or restart. Attributes preserve the actual receipt time and distinguish `current`, `cached`, `awaiting_day_close` and `reported_history`; cached values do not claim a new cloud observation. Yesterday can show its last verified same-day report while waiting for a closing report. A new day/month never inherits the previous period's totals. After setup and at Shanghai midnight, demanded trip data is scheduled promptly through the existing coalesced requests and backoff. Archive updates notify affected entities without another poll.
 
