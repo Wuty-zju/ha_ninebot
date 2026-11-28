@@ -1291,6 +1291,10 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select a vehicle when more than one is allowed for Assistant."
+        },
+        "query_context": {
+          "name": "前回の日別統計の問い合わせ",
+          "description": "続けて質問するには、前回の日別統計に含まれる query_context を指定します。"
         }
       }
     }

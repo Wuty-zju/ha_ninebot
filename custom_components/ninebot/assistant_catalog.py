@@ -160,6 +160,8 @@ QUERY_SPECS = (
         "The current month ends at today's business date. "
         "This is the archive timezone, not the browser timezone; "
         "no alternate timezone is accepted. "
+        "For a follow-up keep the previous metric. For the other vehicle pass its predecessor's "
+        "vehicle_ref and other_vehicle=true. Reuse its resolved period unless the user changes it. "
         "For one requested measure, supply metric; omit it for a summary or multiple measures. "
         "Missing metrics are unknown. Use the returned values, units, exact dates, "
         "per-metric quality, observation time and source. Partial coverage leaves a full "
@@ -169,6 +171,7 @@ QUERY_SPECS = (
                 **VEHICLE,
                 vol.Required("period"): PERIOD,
                 vol.Optional("metric"): vol.In(tuple(METRIC_UNITS)),
+                vol.Optional("other_vehicle"): bool,
             }
         ),
         operation=Operation.STATISTICS,

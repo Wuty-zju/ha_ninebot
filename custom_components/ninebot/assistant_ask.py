@@ -16,18 +16,21 @@ from homeassistant.helpers.importlib import async_import_module
 from homeassistant.util import dt as dt_util
 
 from .assistant import current_access
-from .assistant_catalog import QUERY_SPECS, ToolSpec
+from .assistant_catalog import PERIOD, QUERY_SPECS, ToolSpec, vehicle_reference
 from .assistant_evidence import MAX_RECEIPTS, render_evidence_answer
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .assistant_queries import (
     MAX_VEHICLES,
+    async_other_vehicle_choices,
     async_vehicle_scopes,
     async_visible_keys,
     period_dates,
     vehicle_list_view,
 )
+from .assistant_views import METRIC_UNITS
 from .compat import validation as vol
 from .const import BUSINESS_TIMEZONE, DOMAIN
+from .recorded_actions import business_date
 
 ACTION = "ask"
 MAX_TOOL_CALLS = MAX_RECEIPTS
@@ -50,6 +53,13 @@ SCHEMA = vol.Schema(
         vol.Required("question"): question,
         vol.Required("ai_task_entity_id"): vol.Match(r"^ai_task\.[a-z0-9_]+$"),
         vol.Optional("device_id"): vol.All(str, vol.Length(min=1, max=128)),
+        vol.Optional("query_context"): vol.Schema(
+            {
+                vol.Required("device_id"): vehicle_reference,
+                vol.Required("date"): business_date,
+                vol.Required("metric"): vol.In(tuple(METRIC_UNITS)),
+            }
+        ),
     }
 )
 
@@ -64,7 +74,11 @@ class EvidenceTurn:
         self.started_at = dt_util.utcnow()
         self.business_date = period_dates("today", self.started_at)[0].isoformat()
         self.scopes: dict[str, AssistantScope] = {}
-        self.selected: str | None = call.data.get("device_id")
+        self.previous: dict[str, str] | None = call.data.get("query_context")
+        self.selected: str | None = call.data.get("device_id") or (
+            self.previous["device_id"] if self.previous else None
+        )
+        self.other_choices: list[AssistantScope] | None = None
         self.selected_reads: list[str] = []
         self.results: list[dict[str, Any]] = []
         self.calls = 0
@@ -80,7 +94,7 @@ class EvidenceTurn:
             self.deny()
         try:
             await async_require_admin(self.hass, self.call.context)
-            for scope in self.scopes.values():
+            for scope in tuple(self.scopes.values()):
                 await scope.async_validate(self.hass)
             # A later permission await may revoke an already checked vehicle.
             for scope in self.scopes.values():
@@ -92,7 +106,10 @@ class EvidenceTurn:
     async def async_prepare(self) -> None:
         if self.selected is not None:
             scope = await async_authorize(
-                self.hass, self.call.context, self.selected, operation="get_vehicles"
+                self.hass,
+                self.call.context,
+                self.selected,
+                operation="get_statistics" if self.previous else "get_vehicles",
             )
             scopes = [scope]
         else:
@@ -118,10 +135,14 @@ class EvidenceTurn:
         if context.context is not self.call.context:
             self.deny()
         await self.async_validate()
-        if self.calls >= MAX_TOOL_CALLS:
-            self.stop = "tool_budget"
+        if self.calls >= (1 if self.previous else MAX_TOOL_CALLS):
+            self.stop = self.stop or "tool_budget"
             raise TurnStopped
         self.calls += 1  # Reserve before awaiting a possibly parallel native tool call.
+        expected = self.selected
+        if bound_vehicle is not None and self.previous is not None:
+            bound_vehicle, tool_input = await self._async_followup(bound_vehicle, tool_input)
+            expected = bound_vehicle
         if bound_vehicle is not None:
             if "vehicle_ref" in tool_input.tool_args:
                 self.deny()
@@ -132,7 +153,7 @@ class EvidenceTurn:
             if self.selected is None:
                 self.stop = "vehicle_selection_required"
                 raise TurnStopped
-            if tool_input.tool_args["vehicle_ref"] != self.selected:
+            if tool_input.tool_args["vehicle_ref"] != expected:
                 self.deny()
         result = await tool.async_call(self.hass, tool_input, context)
         await self.async_validate()
@@ -156,6 +177,40 @@ class EvidenceTurn:
 
         return native_result(copy.deepcopy(payload), error=result.error)
 
+    async def _async_followup(
+        self, anchor: str, tool_input: llm.ToolInput
+    ) -> tuple[str, llm.ToolInput]:
+        """Resolve a daily statistic from fresh grants and the caller's prior query."""
+        assert self.previous is not None
+        args = dict(tool_input.tool_args)
+        if tool_input.tool_name != "ninebot__get_statistics" or args.keys() - {
+            "period",
+            "other_vehicle",
+        }:
+            self.deny()
+        other = args.pop("other_vehicle", False)
+        if not isinstance(other, bool):
+            self.deny()
+        if other:
+            if self.call.data.get("device_id"):
+                self.deny()
+            choices = await async_other_vehicle_choices(self.hass, self.call.context, anchor)
+            self.scopes.update((scope.vehicle_ref, scope) for scope in choices)
+            await self.async_validate()
+            if len(choices) != 1:
+                self.other_choices = choices
+                self.stop = "vehicle_selection_required" if choices else "no_other_vehicle"
+                raise TurnStopped
+            anchor = choices[0].vehicle_ref
+            scope = await async_authorize(
+                self.hass, self.call.context, anchor, operation="get_statistics"
+            )
+            choices[0].assert_current(self.hass)
+            self.scopes[anchor] = scope
+        args.setdefault("period", self.previous["date"])
+        args["metric"] = self.previous["metric"]
+        return anchor, replace(tool_input, tool_args=args)
+
     def response(self) -> dict[str, Any]:
         if self.denied:
             return failed("not_authorized")
@@ -177,12 +232,17 @@ class EvidenceTurn:
         }
         if not has_evidence and any(row["error"] for row in self.results):
             response["outcome"] = "failed"
-        if (
+        if self.other_choices == []:
+            response["next_step"] = {"type": "no_other_vehicle"}
+        elif self.other_choices is not None or (
             self.selected is None
             and len(self.scopes) > 1
             and (self.stop == "vehicle_selection_required" or response["outcome"] == "needs_input")
         ):
-            roster = vehicle_list_view(self.hass, list(self.scopes.values())).data
+            options = (
+                self.other_choices if self.other_choices is not None else list(self.scopes.values())
+            )
+            roster = vehicle_list_view(self.hass, options).data
             response["next_step"] = {
                 "type": "select_vehicle",
                 "parameter": "device_id",
@@ -199,6 +259,13 @@ class EvidenceTurn:
                 "business_date": self.business_date,
                 "business_timezone": BUSINESS_TIMEZONE,
             }
+        contexts = [
+            row["result"].get("query_context")
+            for row in self.results
+            if row["tool"] in {"ninebot__get_statistics", "ninebot__explain_statistics"}
+        ]
+        if contexts and contexts[0] and all(item == contexts[0] for item in contexts):
+            response["query_context"] = contexts[0]
         if (
             len(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
             > MAX_RESPONSE_BYTES
@@ -234,7 +301,13 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
 
     class EvidenceTool(NinebotTool):
         def __init__(self, spec: ToolSpec) -> None:
-            super().__init__(spec, selected_vehicle=turn.selected, period_now=turn.started_at)
+            super().__init__(
+                spec,
+                selected_vehicle=None
+                if turn.previous and not turn.call.data.get("device_id")
+                else turn.selected,
+                period_now=turn.started_at,
+            )
             parameters = {
                 key: value
                 for key, value in spec.parameters.schema.items()
@@ -244,8 +317,23 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                 turn.selected if len(parameters) != len(spec.parameters.schema) else None
             )
             if self.bound_vehicle is not None:
+                parameters = {
+                    key: value
+                    for key, value in parameters.items()
+                    if getattr(key, "schema", key) != "other_vehicle"
+                }
                 self.parameters = vol.Schema(parameters)
                 self.description = "Uses this Action's selected vehicle. " + spec.description
+                if turn.previous and spec.key == "get_statistics":
+                    followup_parameters: dict[Any, Any] = {vol.Optional("period"): PERIOD}
+                    if not turn.call.data.get("device_id"):
+                        followup_parameters[vol.Optional("other_vehicle")] = bool
+                    self.parameters = vol.Schema(followup_parameters)
+                    self.description = (
+                        "Read the previous daily metric again. Omit period to keep its exact date. "
+                        "For 'what about yesterday?' set period=yesterday. For 'the other one' "
+                        "use other_vehicle=true if offered. Keep an explicit device selection."
+                    )
 
         async def async_call(
             self, hass: HomeAssistant, tool_input: llm.ToolInput, llm_context: llm.LLMContext
@@ -264,7 +352,9 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                 turn.hass, turn.call.context, vehicle_ref=turn.selected, queries_only=True
             )
             await turn.async_validate()
-            if turn.selected is None:
+            if turn.previous:
+                visible = visible.intersection({"get_statistics"})
+            elif turn.selected is None:
                 visible = visible.intersection({"get_vehicles", "search_help"})
             tools: list[llm.Tool] = [
                 EvidenceTool(spec) for spec in QUERY_SPECS if spec.key in visible
@@ -281,7 +371,10 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                     " This Action has already selected a vehicle. Its vehicle tools are bound "
                     "to that selection; call them directly without vehicle_ref. If the question "
                     "requires another vehicle, ask the user to select it in the Action."
-                    if turn.selected is not None
+                    if turn.selected is not None and not turn.previous
+                    else " This daily follow-up needs a fresh get_statistics result, "
+                    "keeping the previous metric and dates except for what the user has changed."
+                    if turn.previous
                     else " Multiple vehicles are available. For a vehicle question, list the "
                     "choices and ask the user to select the HA device. For general help, "
                     "search the guide directly."
@@ -323,6 +416,9 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
                 }
                 if turn.selected_reads:
                     selection["allowed_reads"] = turn.selected_reads
+                if turn.previous:
+                    selection["previous_date"] = turn.previous["date"]
+                    selection["previous_metric"] = turn.previous["metric"]
                 instructions = (
                     call.data["question"] + "\nUser selection (data): " + json.dumps(selection)
                 )
@@ -342,7 +438,7 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
                 except Exception:
                     # Provider implementations own their exceptions. Keep their
                     # arbitrary messages outside this response/log boundary.
-                    turn.stop = "model_task_failed"
+                    turn.stop = turn.stop or "model_task_failed"
                 # Generated prose is not a source of numeric facts or executable instructions.
                 await turn.async_validate()
                 return turn.response()

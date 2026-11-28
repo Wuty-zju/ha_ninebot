@@ -1,4 +1,4 @@
-/** One bounded, in-memory selection for the ride list and shared map. */
+/** One bounded, in-memory selection and sample cursor for saved rides. */
 import { safeRide } from './trip-browser.js';
 import { trackKey } from './local-tracks.js';
 
@@ -47,6 +47,8 @@ export function rideInsights(rides) {
 }
 
 export class HistorySelection {
+  #index = 0;
+
   constructor(changed = () => {}) {
     this.changed = changed;
     this.selected = new Map();
@@ -56,7 +58,7 @@ export class HistorySelection {
   clear() {
     this.selected.clear();
     this.slots.clear();
-    this.primary = null;
+    this.#focus(null);
     this.changed();
   }
   select(ride, compare = false) {
@@ -76,7 +78,7 @@ export class HistorySelection {
       this.selected.set(key, null);
     }
     this.update(ride);
-    this.primary = key;
+    this.#focus(key);
     this.changed();
     return true;
   }
@@ -88,7 +90,7 @@ export class HistorySelection {
   }
   activate(key) {
     if (this.selected.has(key) && this.primary !== key) {
-      this.primary = key;
+      this.#focus(key);
       this.changed();
     }
   }
@@ -105,7 +107,47 @@ export class HistorySelection {
   remove(key) {
     if (!this.selected.delete(key)) return;
     this.slots.delete(key);
-    if (this.primary === key) this.primary = this.selected.keys().next().value ?? null;
+    if (this.primary === key) this.#focus(this.selected.keys().next().value ?? null);
     this.changed();
+  }
+
+  #focus(key) {
+    if (this.primary !== key) this.#index = 0;
+    this.primary = key;
+  }
+
+  #position(tracks, index) {
+    const track = tracks?.get(this.primary);
+    const count = track?.kind === 'sampled_unverified' && track.points.length > 1 ? track.points.length : 0;
+    const bounded = Math.max(0, Math.min(index, count - 1));
+    return { index: bounded, count, point: count ? track.points[bounded] : null };
+  }
+
+  /** tracks is the authorized geometry cache keyed by trackKey(). Read point.sequence for the source index. */
+  position(tracks) {
+    return this.#position(tracks, this.#index);
+  }
+
+  /** Move to a zero-based saved-point index and return the clamped replay position. */
+  seek(index, tracks) {
+    const position = this.#position(tracks, Number.isFinite(index) ? Math.trunc(index) : this.#index);
+    this.#index = position.index;
+    return position;
+  }
+
+  /** Read-only projection for views. The owner must clear the selection and tracks when the scope expires. */
+  snapshot(tracks) {
+    const routes = [...this.selected].map(([key, ride]) =>
+      ({ key, slot: this.slots.get(key), ride, track: tracks?.get(key) ?? null }));
+    const current = this.selected.get(this.primary);
+    return {
+      primaryKey: this.primary,
+      routes,
+      replay: this.position(tracks),
+      statistics: {
+        current: rideInsights(current ? [current] : []),
+        selected: rideInsights(routes.map(({ ride }) => ride)),
+      },
+    };
   }
 }

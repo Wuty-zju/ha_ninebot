@@ -40,6 +40,11 @@ ERROR_MESSAGES = {
         "Check the exact supplied vehicle reference and Home Assistant permissions. "
         "This does not establish whether a trip or vehicle exists, or which check failed."
     ),
+    "no_other_vehicle": "Only the selected vehicle is visible in the current scope.",
+    "vehicle_selection_required": (
+        "Choose a vehicle explicitly. There is no unique other vehicle in the current "
+        "selection. List the visible vehicles and ask which HA device to use."
+    ),
     "invalid_arguments": (
         "Arguments do not match the tool. Use the user's selected vehicle and date range."
     ),

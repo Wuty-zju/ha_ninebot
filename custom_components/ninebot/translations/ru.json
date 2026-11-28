@@ -1291,6 +1291,10 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select a vehicle when more than one is allowed for Assistant."
+        },
+        "query_context": {
+          "name": "Предыдущий запрос за день",
+          "description": "Передайте query_context из предыдущей статистики за день, чтобы задать уточняющий вопрос."
         }
       }
     }

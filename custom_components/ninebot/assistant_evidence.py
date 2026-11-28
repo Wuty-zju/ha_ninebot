@@ -35,6 +35,8 @@ ERROR_TEXT = {
     ),
     "retry_later": "The local read could not finish. Use any retry delay supplied in the result.",
     "timeout": "The local read timed out. The result remains unknown.",
+    "no_other_vehicle": "There is no other vehicle in the current selection.",
+    "vehicle_selection_required": "Choose the other vehicle by its Home Assistant device.",
     "invalid_arguments": "The supplied arguments do not match this tool's input.",
     "unsupported_capability": "The local operation or returned result shape is unsupported.",
     "response_too_large": "The result exceeded the response limit. Narrow the local query range.",

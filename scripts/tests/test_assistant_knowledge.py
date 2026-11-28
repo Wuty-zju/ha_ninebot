@@ -68,9 +68,9 @@ class KnowledgeTests(unittest.TestCase):
 
     def test_catalog_provenance_and_two_languages(self):
         catalog = k.load_catalog()
-        self.assertEqual(len(catalog["entries"]), 26)
-        self.assertEqual(catalog["corpus_version"], "1.2.16")
-        self.assertEqual(catalog["source_version"], "2.2.12")
+        self.assertEqual(len(catalog["entries"]), 27)
+        self.assertEqual(catalog["corpus_version"], "1.2.17")
+        self.assertEqual(catalog["source_version"], "2.2.13")
         self.assertEqual(
             {row["id"] for row in catalog["procedures"]}, {f"SK{i:02}" for i in range(1, 11)}
         )
@@ -78,6 +78,15 @@ class KnowledgeTests(unittest.TestCase):
             self.assertEqual(set(entry["translations"]), {"en", "zh-Hans"})
             self.assertEqual(k.content_hash(entry), entry["content_sha256"])
             self.assertIn(entry["source"]["commit"], entry["source"]["url"])
+
+    def test_daily_followups_require_the_new_query_contract(self):
+        for query, language in (("daily follow-up", "en"), ("另一辆呢", "zh-Hans")):
+            with self.subTest(language=language):
+                match = k.search_help(query, language, "2.2.13")["matches"][0]
+                self.assertEqual(match["source_id"], "daily_query_followups")
+                self.assertIn("#daily-follow-ups", match["citation"])
+                older = k.search_help(query, language, "2.2.12")["matches"]
+                self.assertNotIn("daily_query_followups", [row["source_id"] for row in older])
 
     def test_comparison_and_metric_check_use_help_for_the_installed_version(self):
         for query, lang, source, anchor in (

@@ -14,6 +14,7 @@ window.fixtureRequests = [];
 const params = new URL(location.href).searchParams;
 const endpointsOnly = params.has('endpoints');
 const overlap = params.has('overlap');
+const paged = params.has('paged');
 let panel = document.body;
 if (params.has('dashboard')) {
   // Lovelace scrolls its panel inside the viewport; the Safari toolbar sits outside it.
@@ -65,10 +66,12 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: 
     if (request.type === 'config/entity_registry/get') return { device_id: 'synthetic-a' };
     if (window.fixtureDeny) throw { code: 'unauthorized' };
     const data = request.service_data;
-    const dated = data.start_date?.startsWith('2026-08') || data.query_month === '202608'
-      ? { ...row, ride_id: 'synthetic-august', query_month: '202608',
-        start_time: '2026-08-03T08:00:00Z', end_time: '2026-08-03T08:10:00Z' } : row;
     const second = data.device_id === 'synthetic-b';
+    const august = data.query_month === '202608' || (!data.query_month &&
+      (paged ? second : data.start_date?.startsWith('2026-08')));
+    const dated = august
+      ? { ...row, ride_id: paged ? row.ride_id : 'synthetic-august', query_month: '202608',
+        start_time: '2026-08-03T08:00:00Z', end_time: '2026-08-03T08:10:00Z' } : row;
     const ride = second && overlap ? { ...dated, distance_m: 2400, duration_s: 900, duration_h: .25,
       end_time: dated.end_time.replace('08:10:', '08:15:'), average_speed_m_s: 8/3,
       energy_wh: 120, energy_intensity_wh_per_km: 50 } : { ...dated };
@@ -97,7 +100,7 @@ if (params.has('english')) fixtureHass.language = document.documentElement.lang 
 window.fixtureCard = document.createElement('ninebot-trip-card');
 window.fixtureConfig = { type: 'custom:ninebot-trip-card', vehicles: [
   { device_id: 'synthetic-a', name: 'Synthetic A' }, { device_id: 'synthetic-b', name: 'Synthetic B' }],
-  start_date: '2026-09-01', end_date: '2026-09-30', limit: 10,
+  start_date: paged ? '2026-08-01' : '2026-09-01', end_date: '2026-09-30', limit: paged ? 1 : 10,
   statistics_entities: ['ninebot:synthetic_day_distance_km'] };
 fixtureCard.setConfig(fixtureConfig);
 fixtureCard.hass = fixtureHass; panel.append(fixtureCard);

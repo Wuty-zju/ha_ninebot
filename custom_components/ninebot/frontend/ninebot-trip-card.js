@@ -32,7 +32,6 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
       }
       return true;
     });
-    this.index = 0;
     this.visibility = () => {
       if (document.hidden) this.stopPlayback();
     };
@@ -50,7 +49,6 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.view?.dismissRouteChoices();
     this.follow = false;
     this.stopPlayback();
-    this.index = 0;
     this.mapError = false;
     this.selection.clear();
     this.tracks.clear();
@@ -206,6 +204,8 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   get busy() { return this.browser.busy || this.tracks.busy; }
   get activeRide() { return this.selection.selected.get(this.selection.primary); }
   get activeTrack() { return this.tracks.tracks.get(this.selection.primary); }
+  get replayPosition() { return this.selection.position(this.tracks.tracks); }
+  get index() { return this.replayPosition.index; }
 
   choose(ride, compare = false) {
     if (this.busy || !ride?.ride_id || !this.browser.active) return;
@@ -216,7 +216,6 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     }
     if (compare && this.selection.selected.size >= MAX_SELECTED_ROUTES) return;
     this.stopPlayback();
-    this.index = 0;
     this.mapError = false;
     if (!this.selection.select(ride, compare)) return;
     // The only automatic detail read is through the authenticated local archive.
@@ -228,7 +227,6 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
   activate(key) {
     if (!this.selection.selected.has(key) || key === this.selection.primary || this.busy) return;
     this.stopPlayback();
-    this.index = 0;
     this.selection.activate(key);
     if (this.activeTrack?.stale) void this.readRoute(this.activeRide);
   }
@@ -239,10 +237,7 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
 
   removeRide(key) {
     if (this.busy) return;
-    if (key === this.selection.primary) {
-      this.stopPlayback();
-      this.index = 0;
-    }
+    if (key === this.selection.primary) this.stopPlayback();
     this.selection.remove(key);
   }
 
@@ -251,8 +246,8 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     const key = trackKey(ride.device_id, ride);
     if (!this.selection.selected.has(key)) return;
     const previous = this.tracks.tracks.get(key);
+    if (!continuation) this.selection.seek(0, this.tracks.tracks);
     this.stopPlayback();
-    if (!continuation) this.index = 0;
     this.mapError = false;
     if (!previous && this.tracks.tracks.size >= MAX_SELECTED_ROUTES) {
       const inactive = [...this.tracks.tracks.keys()].find(cached => !this.selection.selected.has(cached));
@@ -281,25 +276,28 @@ export class NinebotTripCard extends (globalThis.HTMLElement ?? class {}) {
     this.routeMap.fit();
   }
 
+  seek(index) {
+    if (this.busy) return;
+    this.selection.seek(index, this.tracks.tracks);
+    this.stopPlayback();
+  }
+
   playOrPause() {
-    const track = this.activeTrack;
-    if (!this.canReplay(track)) return;
+    const { count, index } = this.replayPosition;
+    if (!count) return;
     if (this.playback) {
       this.stopPlayback();
       return;
     }
-    if (this.index >= track.points.length - 1) this.index = 0;
-    const step = Math.max(1, Math.ceil((track.points.length - 1) / 250));
+    const last = count - 1;
+    if (index === last) this.selection.seek(0, this.tracks.tracks);
+    const step = Math.max(1, Math.ceil(last / 250));
     this.playback = setInterval(() => {
-      this.index = Math.min(this.index + step, track.points.length - 1);
-      if (this.index === track.points.length - 1) this.stopPlayback();
+      const position = this.selection.seek(this.index + step, this.tracks.tracks);
+      if (position.index >= position.count - 1) this.stopPlayback();
       else this.view?.updatePlayback();
     }, 100);
     this.view?.updatePlayback();
-  }
-
-  canReplay(track) {
-    return track?.kind === 'sampled_unverified' && track.points.length > 1;
   }
 
   render() {
