@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { serveReplay } from './replay-server.mjs';
+import { checkStandaloneReplay } from './replay-example.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require(join(process.env.BROWSER_TEST_DEPS, 'node_modules/playwright'));
 const { server, origin } = await serveReplay();
@@ -434,6 +435,7 @@ try {
   assert.equal(external.length, 0);
   assert.deepEqual(errors, []);
   console.log('Synthetic replay passed: one map, local reads, sample gaps, stable viewport, endpoint-only tracks and scope cleanup.');
+  await checkStandaloneReplay(browser, origin, output);
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

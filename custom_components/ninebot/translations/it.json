@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "Richiesta giornaliera precedente",
-          "description": "Per una domanda successiva, passa il campo query_context della statistica giornaliera precedente."
+          "name": "Richiesta statistica precedente",
+          "description": "Passa il campo query_context della statistica giornaliera o mensile precedente."
         }
       }
     }

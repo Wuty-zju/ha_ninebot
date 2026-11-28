@@ -52,6 +52,10 @@ ERROR_MESSAGES = {
         "The requested data is not available or verified locally. "
         "This does not prove zero trips. No cloud fetch was performed."
     ),
+    "period_changed": (
+        "The available monthly summary covers a different date range now. "
+        "Ask whether to use the updated month before reading it."
+    ),
     "retry_later": (
         "The local read could not complete now. Respect retry_after_seconds when present. "
         "Do not loop or refresh the cloud."

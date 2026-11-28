@@ -17,7 +17,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from .assistant import current_access, tasks_ready
-from .assistant_catalog import BY_KEY, QUERY_SPECS, TASK_SPECS
+from .assistant_catalog import BY_KEY, QUERY_SPECS, TASK_SPECS, changed_statistic
 from .assistant_errors import TOOL_ERRORS, TOOL_TIMEOUT, checked_result, tool_failure
 from .assistant_knowledge import KnowledgeUnavailable, search_help
 from .assistant_limits import ReadLimitExceeded, read_slot
@@ -260,6 +260,11 @@ async def _vehicle_query(
     if key == "get_statistics":
         start, end = period_dates(args["period"], period_now or now)
         daily = args["period"] not in {"this_month", "last_month"} and len(args["period"]) != 7
+        if "through_date" in args:
+            if daily:
+                raise AssistantError("invalid_arguments")
+            if args["through_date"] != end.isoformat():
+                raise AssistantError("period_changed")
         query = {
             "period": args["period"],
             "resolved_period": start.isoformat() if daily else start.strftime("%Y-%m"),
@@ -486,10 +491,14 @@ async def _response(
         "warnings": view.warnings,
     }
     period = query.get("resolved_period")
-    if args.get("metric") and isinstance(period, str) and len(period) == 10:
+    if args.get("metric") and isinstance(period, str):
         response["query_context"] = {
             "device_id": args["vehicle_ref"],
-            "date": period,
+            **(
+                {"month": period, "through_date": query["end_date"]}
+                if len(period) == 7
+                else {"date": period}
+            ),
             "metric": args["metric"],
         }
     return checked_result(response)
@@ -540,6 +549,8 @@ async def async_query(
                 if key not in TOOL_SPECS:
                     raise AssistantError("invalid_arguments")
                 args = TOOL_SPECS[key].parameters(arguments)
+                if key == "get_statistics" and "change" in args:
+                    args = changed_statistic(args)
                 if key in {"get_vehicles", "search_help"}:
                     if _selected_vehicle is not None:
                         scopes = [

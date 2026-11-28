@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "पिछली दैनिक क्वेरी",
-          "description": "अगला सवाल पूछने के लिए पिछले दैनिक आँकड़े का query_context दें।"
+          "name": "पिछली सांख्यिकीय क्वेरी",
+          "description": "पिछले दैनिक या मासिक आँकड़े का query_context दें।"
         }
       }
     }

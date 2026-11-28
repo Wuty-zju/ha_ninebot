@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
-This guide covers **v2.2.13 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+This guide covers **v2.2.14 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
 
 The runtime lives in `custom_components/ninebot`. Trace a reported value from the account's cloud session through normalization to a current entity or the private archive. Trace a query in the opposite direction, starting with the HA user's context and selected vehicle.
 
@@ -210,7 +210,7 @@ A compatible host selects **Ninebot** in the HA LLM registry or MCP Server. The 
 
 In **v2.2.12**, `explain_statistics` requires the selected vehicle's statistics grant. A closed, complete reading with supporting evidence ends the plan, including zero. A current-day or otherwise unresolved value can use the public SK05 checklist. Reading local synchronization health requires that vehicle's separate sync-health grant. Evidence reports the missing grant when it limits the explanation. History task approval and execution stay in the existing scheduler and native review flow.
 
-For daily single-metric follow-ups, the receipt includes the HA device reference, resolved business date and metric. An automation can pass those fields into the next Action. That Action authorizes the anchor again and checks any alternative vehicle before reading. Multiple visible alternatives require selection. The integration stores no conversation transcript. [Follow-up contract](assistant.md#daily-follow-ups)
+For single-metric follow-ups, a receipt carries the HA device reference, metric and absolute business date or month. A monthly receipt includes its last covered date. A metric change reads the same interval, and an extended month-to-date summary requires a new selection. An automation can pass those fields into the next Action. That Action authorizes the anchor again and checks any alternative vehicle before reading. Multiple visible alternatives require selection. The integration stores no conversation transcript. [Follow-up contract](assistant.md#statistics-follow-ups)
 
 The feature is off by default. Its modern native API requirement is separate from the overall integration minimum. [Setup, tool schemas and data disclosure](assistant.md) describe the optional tools, and [development entry points](development.md#assistant-development) identify the implementation and isolated checks.
 

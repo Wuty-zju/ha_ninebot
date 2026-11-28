@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "Truy vấn hằng ngày trước đó",
-          "description": "Truyền query_context từ thống kê hằng ngày trước đó để đặt câu hỏi tiếp theo."
+          "name": "Truy vấn thống kê trước đó",
+          "description": "Truyền query_context từ thống kê theo ngày hoặc tháng trước đó."
         }
       }
     }

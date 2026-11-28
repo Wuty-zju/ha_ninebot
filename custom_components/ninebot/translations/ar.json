@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "الاستعلام اليومي السابق",
-          "description": "مرّر query_context من الإحصاء اليومي السابق لطرح سؤال متابعة."
+          "name": "الاستعلام الإحصائي السابق",
+          "description": "مرّر query_context من الإحصاء اليومي أو الشهري السابق."
         }
       }
     }

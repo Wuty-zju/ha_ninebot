@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "Vorige dagstatistiek",
-          "description": "Geef query_context uit de vorige dagstatistiek mee om een vervolgvraag te stellen."
+          "name": "Vorige statistiekvraag",
+          "description": "Geef query_context uit de vorige dag- of maandstatistiek mee."
         }
       }
     }

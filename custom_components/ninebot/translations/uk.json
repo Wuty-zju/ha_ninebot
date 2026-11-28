@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "Попередній запит за день",
-          "description": "Передайте query_context з попередньої статистики за день, щоб поставити уточнювальне запитання."
+          "name": "Попередній статистичний запит",
+          "description": "Передайте query_context з попередньої статистики за день або місяць."
         }
       }
     }

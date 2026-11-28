@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "上一次每日統計查詢",
-          "description": "傳入上一次每日統計傳回的 query_context，即可繼續提問。"
+          "name": "上一次統計查詢",
+          "description": "傳入上一次單日或月度統計傳回的 query_context，即可繼續提問。"
         }
       }
     }
