@@ -1291,6 +1291,10 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select a vehicle when more than one is allowed for Assistant."
+        },
+        "query_context": {
+          "name": "Kueri harian sebelumnya",
+          "description": "Sertakan query_context dari statistik harian sebelumnya untuk mengajukan pertanyaan lanjutan."
         }
       }
     }

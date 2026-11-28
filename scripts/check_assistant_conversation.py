@@ -190,6 +190,42 @@ async def check(fixture: SimpleNamespace) -> None:
         assert missing.result.data["data"]["ride_count"] is None
         assert action_contexts[-1] is current_context
 
+        # The host keeps the chat log. Every call in the next turn uses a new HA Context.
+        async def other_statistics(call):
+            assert call.context is current_context
+            assert call.data["device_id"] == fixture.other_ref
+            assert call.data["refresh"] is False
+            action_contexts.append(call.context)
+            return {"days": [{"date": "2026-10-01", "ride_count": 2}]}
+
+        hass.services.async_register(
+            "ninebot", "get_statistics", other_statistics, supports_response=SupportsResponse.ONLY
+        )
+        followup = {
+            "vehicle_ref": fixture.vehicle_ref,
+            "metric": "ride_count",
+            "period": "2026-10-01",
+            "other_vehicle": True,
+        }
+        await turn("另一辆呢？")
+        other = await stream_call("ninebot__get_statistics", followup)
+        assert not other.result.error
+        assert other.result.data["query_context"] == {
+            "device_id": fixture.other_ref,
+            "date": "2026-10-01",
+            "metric": "ride_count",
+        }
+        called = len(action_contexts)
+        fixture.entry.options["assistant_vehicles"].remove(fixture.other_sn)
+        try:
+            await turn("再看下另一辆呢？")
+            absent = await stream_call("ninebot__get_statistics", followup)
+            assert absent.result.error and "data" not in absent.result.data
+            assert absent.result.data["error"]["code"] == "no_other_vehicle"
+            assert len(action_contexts) == called
+        finally:
+            fixture.entry.options["assistant_vehicles"].append(fixture.other_sn)
+
         entered, cancelled = asyncio.Event(), asyncio.Event()
 
         async def blocked_statistics(call):

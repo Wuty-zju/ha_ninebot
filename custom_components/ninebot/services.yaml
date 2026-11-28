@@ -14,6 +14,9 @@ ask:
       selector:
         device:
           integration: ninebot
+    query_context:
+      selector:
+        object:
 get_recorded_trips:
   fields:
     device_id:

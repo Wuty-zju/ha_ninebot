@@ -1291,6 +1291,10 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select a vehicle when more than one is allowed for Assistant."
+        },
+        "query_context": {
+          "name": "Truy vấn hằng ngày trước đó",
+          "description": "Truyền query_context từ thống kê hằng ngày trước đó để đặt câu hỏi tiếp theo."
         }
       }
     }

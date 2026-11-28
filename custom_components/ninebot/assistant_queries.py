@@ -183,6 +183,15 @@ async def async_visible_keys(
     return frozenset(visible)
 
 
+async def async_other_vehicle_choices(
+    hass: HomeAssistant, context: Context | None, reference: str
+) -> list[AssistantScope]:
+    """Exclude the anchor from visible vehicles before checking the requested read grant."""
+    # One extra slot for the anchor and one for a truncated choice list.
+    visible = await async_vehicle_scopes(hass, context, limit=MAX_VEHICLES + 2)
+    return [scope for scope in visible if scope.vehicle_ref != reference]
+
+
 def vehicle_list_view(hass: HomeAssistant, scopes: list[AssistantScope]) -> AssistantView:
     registry = dr.async_get(hass)
     rows: list[dict[str, Any]] = []
@@ -253,6 +262,7 @@ async def _vehicle_query(
         daily = args["period"] not in {"this_month", "last_month"} and len(args["period"]) != 7
         query = {
             "period": args["period"],
+            "resolved_period": start.isoformat() if daily else start.strftime("%Y-%m"),
             "start_date": start.isoformat(),
             "end_date": end.isoformat(),
         }
@@ -475,6 +485,13 @@ async def _response(
         },
         "warnings": view.warnings,
     }
+    period = query.get("resolved_period")
+    if args.get("metric") and isinstance(period, str) and len(period) == 10:
+        response["query_context"] = {
+            "device_id": args["vehicle_ref"],
+            "date": period,
+            "metric": args["metric"],
+        }
     return checked_result(response)
 
 
@@ -560,6 +577,23 @@ async def async_query(
                 else:
                     scope = await async_authorize(hass, context, args["vehicle_ref"], operation=key)
                     scopes = [scope]
+                    if key == "get_statistics" and args.get("other_vehicle"):
+                        if _selected_vehicle is not None:
+                            raise AssistantError("not_authorized")
+                        choices = await async_other_vehicle_choices(
+                            hass, context, scope.vehicle_ref
+                        )
+                        await scope.async_validate(hass)
+                        if len(choices) != 1:
+                            raise AssistantError(
+                                "vehicle_selection_required" if choices else "no_other_vehicle"
+                            )
+                        scope = await async_authorize(
+                            hass, context, choices[0].vehicle_ref, operation=key
+                        )
+                        choices[0].assert_current(hass)
+                        scopes.append(scope)
+                        args = {**args, "vehicle_ref": scope.vehicle_ref}
                     view, query = await _vehicle_query(hass, scope, key, args, now, _period_now)
                 return await _response(hass, scopes, args, view, query, request_id, now)
     except TOOL_ERRORS as err:

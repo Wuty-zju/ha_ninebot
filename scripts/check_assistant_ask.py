@@ -46,6 +46,7 @@ async def check(directory: str) -> None:
         VehicleSnapshot,
         VehicleStatus,
     )
+    from scripts.check_assistant_followups import check as check_followups
 
     hass = HomeAssistant(directory)
     hass.config_entries = ConfigEntries(hass, {})
@@ -145,6 +146,15 @@ async def check(directory: str) -> None:
                 raise
 
         async def _async_generate_test_data(self, task, chat_log):
+            if "stat_args" in current:
+                await chat_log.llm_api.async_call_tool(
+                    llm.ToolInput(
+                        tool_name="ninebot__get_statistics", tool_args=current["stat_args"]
+                    )
+                )
+                return ai_task.GenDataTaskResult(
+                    conversation_id=chat_log.conversation_id, data="unverified model text"
+                )
             provider_calls.append(current["context"])
             assert task.llm_api is not None and chat_log.llm_api is not None
             assert chat_log.llm_api.llm_context.context is current["context"]
@@ -338,7 +348,20 @@ async def check(directory: str) -> None:
             return_response=True,
         )
         assert response["outcome"] == "denied" and len(provider_calls) == len(cases)
-        print("Native query: Context, same-name vehicle choices, scoped tools and withdrawal OK")
+
+        async def followup(question, args, selection):
+            current["stat_args"] = args
+            return await hass.services.async_call(
+                "ninebot",
+                "ask",
+                {"question": question, "ai_task_entity_id": entity_id, **selection},
+                context=Context(user_id=principal.id),
+                blocking=True,
+                return_response=True,
+            )
+
+        await check_followups(hass, entry, co, device, other, followup)
+        print("Native query: same-name choices, midnight follow-ups, fresh grants and receipts OK")
     finally:
         if remove is not None:
             remove()

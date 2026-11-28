@@ -1291,6 +1291,10 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select a vehicle when more than one is allowed for Assistant."
+        },
+        "query_context": {
+          "name": "الاستعلام اليومي السابق",
+          "description": "مرّر query_context من الإحصاء اليومي السابق لطرح سؤال متابعة."
         }
       }
     }

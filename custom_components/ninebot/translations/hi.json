@@ -1291,6 +1291,10 @@
         "device_id": {
           "name": "Vehicle",
           "description": "Select a vehicle when more than one is allowed for Assistant."
+        },
+        "query_context": {
+          "name": "पिछली दैनिक क्वेरी",
+          "description": "अगला सवाल पूछने के लिए पिछले दैनिक आँकड़े का query_context दें।"
         }
       }
     }
