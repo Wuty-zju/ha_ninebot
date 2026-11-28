@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "corpus_version": "1.2.17",
-  "source_version": "2.2.13",
+  "corpus_version": "1.2.18",
+  "source_version": "2.2.14",
   "entries": [
     {
       "id": "statistics_missing",
@@ -1216,6 +1216,46 @@
       },
       "content_sha256": "bbd8d5fab0be9ef9605ff8731ee02bb9c9c7c0a6a1d19f33f2d78cc6164f72a2",
       "procedure_id": null
+    },
+    {
+      "id": "monthly_metric_followups",
+      "applicable_versions": {
+        "min_inclusive": "2.2.14",
+        "max_exclusive": "2.3.0"
+      },
+      "evidence_status": "first_party_contract",
+      "reviewed_at": "2026-11-28",
+      "supersedes": [],
+      "source": {
+        "path": "docs/assistant.md",
+        "commit": "81dc7ced7d45dec2b6eec075ea8092f095732d7f",
+        "sha256": "01231f67a4304366572ae9e4507a5b9aec7584833a0304fb29741ebcda8a1c77",
+        "url": "https://github.com/Wuty-zju/ha_ninebot/blob/81dc7ced7d45dec2b6eec075ea8092f095732d7f/docs/assistant.md#statistics-follow-ups"
+      },
+      "translations": {
+        "en": {
+          "title": "Change the month or metric in a follow-up",
+          "text": "Use change=last_month to select the previous Shanghai business month or change=energy_wh to read energy for the previous vehicle and exact dates. A monthly receipt records the month and through_date. If the available interval grows, confirm the new dates. Every read checks current access.",
+          "keywords": [
+            "what about last month",
+            "and energy use",
+            "monthly follow-up",
+            "through_date"
+          ]
+        },
+        "zh-Hans": {
+          "title": "追问上个月或同一时段的耗电量",
+          "text": "追问上个月时用 change=last_month，按新问题的上海业务日期取上一个自然月。追问耗电量时用 change=energy_wh，沿用车辆和确切起止日期。月度回执记录月份和截止日。月汇总范围扩大时需确认新范围。每次都重新检查权限。",
+          "keywords": [
+            "那上个月呢",
+            "耗电量呢",
+            "月统计追问",
+            "截止日"
+          ]
+        }
+      },
+      "procedure_id": null,
+      "content_sha256": "41e6f93744b956a0e605318cf9615679297ac97df5ae8c672ffaeeec02f350c5"
     }
   ],
   "procedures": [

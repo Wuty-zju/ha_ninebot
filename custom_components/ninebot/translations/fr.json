@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "Requête quotidienne précédente",
-          "description": "Transmettez le champ query_context de la statistique quotidienne précédente pour poursuivre la discussion."
+          "name": "Requête statistique précédente",
+          "description": "Transmettez le champ query_context de la statistique journalière ou mensuelle précédente."
         }
       }
     }

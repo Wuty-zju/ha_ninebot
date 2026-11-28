@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "Vorherige Tagesabfrage",
-          "description": "Für eine Anschlussfrage query_context aus der vorherigen Tagesstatistik übergeben."
+          "name": "Vorherige Statistikabfrage",
+          "description": "Für eine Anschlussfrage query_context aus der vorherigen Tages- oder Monatsstatistik übergeben."
         }
       }
     }

@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "Previous daily query",
-          "description": "Pass query_context from the previous daily statistic to ask a follow-up."
+          "name": "Previous statistics query",
+          "description": "Pass query_context from the previous daily or monthly statistic."
         }
       }
     }

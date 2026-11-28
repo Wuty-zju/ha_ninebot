@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "Önceki günlük sorgu",
-          "description": "Devam sorusu sormak için önceki günlük istatistikten dönen query_context değerini iletin."
+          "name": "Önceki istatistik sorgusu",
+          "description": "Önceki günlük veya aylık istatistikten dönen query_context değerini iletin."
         }
       }
     }

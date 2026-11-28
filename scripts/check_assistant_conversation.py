@@ -31,6 +31,7 @@ async def check(fixture: SimpleNamespace) -> None:
     from custom_components.ninebot.assistant_catalog import QUERY_SPECS
     from custom_components.ninebot.assistant_limits import DATA_KEY
     from custom_components.ninebot.statistics_actions import months_between, statistics_response
+    from scripts.check_assistant_followups import PERIODS
 
     hass = fixture.hass
     log = ChatLog(hass, "synthetic-conversation", content=[SystemContent("")])
@@ -196,7 +197,10 @@ async def check(fixture: SimpleNamespace) -> None:
             assert call.data["device_id"] == fixture.other_ref
             assert call.data["refresh"] is False
             action_contexts.append(call.context)
-            return {"days": [{"date": "2026-10-01", "ride_count": 2}]}
+            if call.data["include_daily"]:
+                return {"days": [{"date": "2026-10-01", "ride_count": 2}]}
+            month = call.data["start_month"]
+            return {"months": [{"month": month, "energy_wh": PERIODS["last_month"]["energy_wh"]}]}
 
         hass.services.async_register(
             "ninebot", "get_statistics", other_statistics, supports_response=SupportsResponse.ONLY
@@ -215,6 +219,29 @@ async def check(fixture: SimpleNamespace) -> None:
             "date": "2026-10-01",
             "metric": "ride_count",
         }
+        await turn("耗电量呢？")
+        month_args = {
+            "vehicle_ref": fixture.other_ref,
+            "metric": "ride_count",
+            "period": "2026-10",
+            "change": "energy_wh",
+        }
+        energy = await stream_call(
+            "ninebot__get_statistics", {**month_args, "through_date": "2026-10-31"}
+        )
+        assert energy.result.data["query_context"] == {
+            "device_id": fixture.other_ref,
+            "metric": "energy_wh",
+            "month": "2026-10",
+            "through_date": "2026-10-31",
+        }
+        assert energy.result.data["data"]["energy_wh"] == PERIODS["last_month"]["energy_wh"]
+        count = len(action_contexts)
+        moved = await stream_call(
+            "ninebot__get_statistics", {**month_args, "through_date": "2026-10-01"}
+        )
+        assert moved.result.error and moved.result.data["error"]["code"] == "period_changed"
+        assert len(action_contexts) == count
         called = len(action_contexts)
         fixture.entry.options["assistant_vehicles"].remove(fixture.other_sn)
         try:

@@ -16,7 +16,14 @@ from homeassistant.helpers.importlib import async_import_module
 from homeassistant.util import dt as dt_util
 
 from .assistant import current_access
-from .assistant_catalog import PERIOD, QUERY_SPECS, ToolSpec, vehicle_reference
+from .assistant_catalog import (
+    QUERY_SPECS,
+    ToolSpec,
+    business_month,
+    changed_statistic,
+    statistic_change,
+    vehicle_reference,
+)
 from .assistant_evidence import MAX_RECEIPTS, render_evidence_answer
 from .assistant_policy import AssistantError, AssistantScope, async_authorize, async_require_admin
 from .assistant_queries import (
@@ -48,18 +55,37 @@ def question(value: object) -> str:
     return value.strip()
 
 
+def monthly_context(value: dict[str, str]) -> dict[str, str]:
+    if value["through_date"][:7] != value["month"]:
+        raise vol.Invalid("The end date must belong to the selected month")
+    return value
+
+
+QUERY_SELECTION = {
+    vol.Required("device_id"): vehicle_reference,
+    vol.Required("metric"): vol.In(tuple(METRIC_UNITS)),
+}
+QUERY_CONTEXT = vol.Any(
+    vol.Schema({**QUERY_SELECTION, vol.Required("date"): business_date}),
+    vol.All(
+        vol.Schema(
+            {
+                **QUERY_SELECTION,
+                vol.Required("month"): business_month,
+                vol.Required("through_date"): business_date,
+            }
+        ),
+        monthly_context,
+    ),
+)
+
+
 SCHEMA = vol.Schema(
     {
         vol.Required("question"): question,
         vol.Required("ai_task_entity_id"): vol.Match(r"^ai_task\.[a-z0-9_]+$"),
         vol.Optional("device_id"): vol.All(str, vol.Length(min=1, max=128)),
-        vol.Optional("query_context"): vol.Schema(
-            {
-                vol.Required("device_id"): vehicle_reference,
-                vol.Required("date"): business_date,
-                vol.Required("metric"): vol.In(tuple(METRIC_UNITS)),
-            }
-        ),
+        vol.Optional("query_context"): QUERY_CONTEXT,
     }
 )
 
@@ -180,18 +206,20 @@ class EvidenceTurn:
     async def _async_followup(
         self, anchor: str, tool_input: llm.ToolInput
     ) -> tuple[str, llm.ToolInput]:
-        """Resolve a daily statistic from fresh grants and the caller's prior query."""
+        """Resolve a statistic from the current grants and the preceding selection."""
         assert self.previous is not None
-        args = dict(tool_input.tool_args)
-        if tool_input.tool_name != "ninebot__get_statistics" or args.keys() - {
-            "period",
-            "other_vehicle",
-        }:
+        supplied = tool_input.tool_args
+        if tool_input.tool_name != "ninebot__get_statistics" or supplied.keys() - {"change"}:
             self.deny()
-        other = args.pop("other_vehicle", False)
-        if not isinstance(other, bool):
-            self.deny()
-        if other:
+        previous = self.previous
+        args = {
+            "period": previous.get("date") or previous["month"],
+            "metric": previous["metric"],
+            **({"through_date": previous["through_date"]} if "month" in previous else {}),
+        }
+        if "change" in supplied:
+            args = changed_statistic({**args, "change": supplied["change"]})
+        if args.pop("other_vehicle", False):
             if self.call.data.get("device_id"):
                 self.deny()
             choices = await async_other_vehicle_choices(self.hass, self.call.context, anchor)
@@ -207,8 +235,6 @@ class EvidenceTurn:
             )
             choices[0].assert_current(self.hass)
             self.scopes[anchor] = scope
-        args.setdefault("period", self.previous["date"])
-        args["metric"] = self.previous["metric"]
         return anchor, replace(tool_input, tool_args=args)
 
     def response(self) -> dict[str, Any]:
@@ -320,19 +346,23 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                 parameters = {
                     key: value
                     for key, value in parameters.items()
-                    if getattr(key, "schema", key) != "other_vehicle"
+                    if getattr(key, "schema", key)
+                    not in {"other_vehicle", "change", "through_date"}
                 }
                 self.parameters = vol.Schema(parameters)
                 self.description = "Uses this Action's selected vehicle. " + spec.description
                 if turn.previous and spec.key == "get_statistics":
-                    followup_parameters: dict[Any, Any] = {vol.Optional("period"): PERIOD}
-                    if not turn.call.data.get("device_id"):
-                        followup_parameters[vol.Optional("other_vehicle")] = bool
-                    self.parameters = vol.Schema(followup_parameters)
+                    self.parameters = vol.Schema(
+                        {
+                            vol.Optional("change"): statistic_change(
+                                allow_other=not turn.call.data.get("device_id")
+                            )
+                        }
+                    )
                     self.description = (
-                        "Read the previous daily metric again. Omit period to keep its exact date. "
-                        "For 'what about yesterday?' set period=yesterday. For 'the other one' "
-                        "use other_vehicle=true if offered. Keep an explicit device selection."
+                        "Change ONE thing in the selected statistic. Pass only change=last_month "
+                        "for '那上个月呢', yesterday for '那昨天呢', energy_wh for '耗电量呢', "
+                        "or other_vehicle for '另一辆呢' if offered. Omit change to reread."
                     )
 
         async def async_call(
@@ -372,8 +402,8 @@ def turn_api(turn: EvidenceTurn) -> llm.API:
                     "to that selection; call them directly without vehicle_ref. If the question "
                     "requires another vehicle, ask the user to select it in the Action."
                     if turn.selected is not None and not turn.previous
-                    else " This daily follow-up needs a fresh get_statistics result, "
-                    "keeping the previous metric and dates except for what the user has changed."
+                    else " This follow-up needs a fresh get_statistics result, "
+                    "using only its change argument. The Action supplies all unchanged fields."
                     if turn.previous
                     else " Multiple vehicles are available. For a vehicle question, list the "
                     "choices and ask the user to select the HA device. For general help, "
@@ -417,7 +447,11 @@ def async_register(hass: HomeAssistant) -> Callable[[], None]:
                 if turn.selected_reads:
                     selection["allowed_reads"] = turn.selected_reads
                 if turn.previous:
-                    selection["previous_date"] = turn.previous["date"]
+                    if "date" in turn.previous:
+                        selection["previous_date"] = turn.previous["date"]
+                    else:
+                        selection["previous_month"] = turn.previous["month"]
+                        selection["previous_through_date"] = turn.previous["through_date"]
                     selection["previous_metric"] = turn.previous["metric"]
                 instructions = (
                     call.data["question"] + "\nUser selection (data): " + json.dumps(selection)

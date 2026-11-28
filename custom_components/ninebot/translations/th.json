@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "คำถามสถิติรายวันก่อนหน้า",
-          "description": "ส่งค่า query_context จากสถิติรายวันก่อนหน้าเพื่อถามคำถามต่อเนื่อง"
+          "name": "คำถามสถิติก่อนหน้า",
+          "description": "ส่งค่า query_context จากสถิติรายวันหรือรายเดือนก่อนหน้า"
         }
       }
     }

@@ -47,6 +47,7 @@ async def check(directory: str) -> None:
         VehicleStatus,
     )
     from scripts.check_assistant_followups import check as check_followups
+    from scripts.check_assistant_followups import check_period_metrics
 
     hass = HomeAssistant(directory)
     hass.config_entries = ConfigEntries(hass, {})
@@ -361,7 +362,8 @@ async def check(directory: str) -> None:
             )
 
         await check_followups(hass, entry, co, device, other, followup)
-        print("Native query: same-name choices, midnight follow-ups, fresh grants and receipts OK")
+        await check_period_metrics(hass, entry, device, other, followup)
+        print("Native query: same-name vehicles, day/month/energy follow-ups and fresh grants OK")
     finally:
         if remove is not None:
             remove()

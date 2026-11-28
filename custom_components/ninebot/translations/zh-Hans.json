@@ -1293,8 +1293,8 @@
           "description": "允许多辆车使用 Assistant 时，请选择车辆。"
         },
         "query_context": {
-          "name": "上一次日统计查询",
-          "description": "传入上一次日统计返回的 query_context，即可继续追问。"
+          "name": "上一次统计查询",
+          "description": "传入上一次单日或月度统计返回的 query_context，即可继续追问。"
         }
       }
     }

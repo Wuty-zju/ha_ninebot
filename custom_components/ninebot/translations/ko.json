@@ -1293,8 +1293,8 @@
           "description": "Select a vehicle when more than one is allowed for Assistant."
         },
         "query_context": {
-          "name": "이전 일별 통계 조회",
-          "description": "후속 질문에는 이전 일별 통계에서 반환된 query_context를 전달하세요."
+          "name": "이전 통계 조회",
+          "description": "이전 일별 또는 월별 통계에서 반환된 query_context를 전달하세요."
         }
       }
     }

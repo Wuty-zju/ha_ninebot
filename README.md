@@ -16,7 +16,7 @@ English · [简体中文](README_zh.md)
 
 Check your vehicle, keep its rides and use both in Home Assistant. Each Ninebot account has its own vehicles, permissions and local SQLite archive.
 
-**Stable** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. **Preview** · [v2.2.13](CHANGELOG.md#2213) supports daily follow-ups across vehicles and shares the map’s selection, replay and statistics. If your host still selects **Ninebot tasks**, follow the [single-API upgrade](docs/assistant.md#upgrade-to-the-single-ninebot-api).
+**Stable** · [v2.2.0](https://github.com/Wuty-zju/ha_ninebot/releases/latest) for everyday use. **Preview** · [v2.2.14](CHANGELOG.md#2214) adds [month and energy follow-ups](docs/assistant.md#statistics-follow-ups) and a [standalone ride replay example](docs/history.md#standalone-replay). If your host still selects **Ninebot tasks**, follow the [single-API upgrade](docs/assistant.md#upgrade-to-the-single-ninebot-api).
 
 ## What you can do
 

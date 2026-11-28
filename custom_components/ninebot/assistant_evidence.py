@@ -33,6 +33,7 @@ ERROR_TEXT = {
     "local_data_missing": (
         "The requested data is unavailable or unverified locally. The result remains unknown."
     ),
+    "period_changed": "The monthly summary now covers different dates. Confirm the updated range.",
     "retry_later": "The local read could not finish. Use any retry delay supplied in the result.",
     "timeout": "The local read timed out. The result remains unknown.",
     "no_other_vehicle": "There is no other vehicle in the current selection.",
