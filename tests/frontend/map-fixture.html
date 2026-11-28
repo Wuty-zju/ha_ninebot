@@ -6,10 +6,7 @@
 <p>No real account or ride data. Map tiles are disabled.</p>
 <script type="module">
 import '/ninebot-static/ninebot-trip-card.js';
-const row = { ride_id: 'synthetic-ride', detail_id: 'synthetic-detail', query_month: '202609',
-  start_time: '2026-09-03T08:00:00Z', end_time: '2026-09-03T08:10:00Z', distance_m: 1200,
-  duration_s: 600, duration_h: 1/6, max_speed_m_s: 10, average_speed_m_s: 2, energy_wh: 90,
-  precision: { mileages: 1 }, source: 'trip_detail', energy_intensity_wh_per_km: 75 };
+import { syntheticDetail, syntheticRide, syntheticVehicles } from '/replay/synthetic-archive.mjs';
 window.fixtureRequests = [];
 const params = new URL(location.href).searchParams;
 const endpointsOnly = params.has('endpoints');
@@ -69,37 +66,16 @@ window.fixtureHass = { user: { id: 'synthetic-reader' }, connection, connected: 
     const second = data.device_id === 'synthetic-b';
     const august = data.query_month === '202608' || (!data.query_month &&
       (paged ? second : data.start_date?.startsWith('2026-08')));
-    const dated = august
-      ? { ...row, ride_id: paged ? row.ride_id : 'synthetic-august', query_month: '202608',
-        start_time: '2026-08-03T08:00:00Z', end_time: '2026-08-03T08:10:00Z' } : row;
-    const ride = second && overlap ? { ...dated, distance_m: 2400, duration_s: 900, duration_h: .25,
-      end_time: dated.end_time.replace('08:10:', '08:15:'), average_speed_m_s: 8/3,
-      energy_wh: 120, energy_intensity_wh_per_km: 50 } : { ...dated };
-    if (second && params.has('incomplete')) {
-      ride.end_time = dated.end_time.replace('08:10:', '08:20:');
-      ride.warnings = ['duration_time_difference'];
-      ride.average_speed_m_s = ride.energy_wh = ride.energy_intensity_wh_per_km = null;
-    }
+    const ride = syntheticRide(data.device_id, { august, sameId: paged, overlap,
+      incomplete: params.has('incomplete') });
     if (request.service === 'get_recorded_trips') return { response: { source_mode: 'ride_archive', sort: 'desc', selection_version: 'a'.repeat(32) + ':1',
       rides: [{ ...ride, detail_saved: fixtureSaved }], next_cursor: null, coverage: { missing_months: [], partial_months: ['202609'], unknown_months: [], enumerated_months: ['202609'] } } };
     if (request.service !== 'get_trip_detail') throw new Error('Only history reads are allowed');
-    const pointCount = endpointsOnly ? 2 : 60;
-    const all = Array.from({ length: pointCount }, (_, sequence) => {
-      const shift = second && !(overlap && sequence >= 20 && sequence <= 40) ? 0.002 : 0;
-      return { sequence, latitude: 30 + sequence * .0001 + shift, longitude: 120 + Math.sin(sequence / 8) * .001 + shift,
-        speed_raw: 25 + Math.sin(sequence / 4) * 12, distance_delta_raw: 40 + Math.cos(sequence / 5) * 9 };
-    }).filter(point => ![15, 16].includes(point.sequence));
-    return { response: { source_mode: 'ride_archive', query_month: ride.query_month, received_at: ride.end_time,
-      detail_context: { source_mode: 'ride_archive', archive_revision: 1, scalar_revision: 1, geometry_received_at: ride.end_time },
-      ride: { ...ride, detail_saved: true, track: data.include_track ? all.slice(data.point_offset, data.point_offset + data.max_points) : [],
-        track_summary: { total_known: pointCount, offset: data.point_offset, limit: data.max_points,
-          server_window_days: endpointsOnly ? 180 : null, next_offset: null,
-          geometry_kind: endpointsOnly ? 'server_simplified' : 'sampled_unverified' } } } };
+    return { response: syntheticDetail(ride, data, { endpointsOnly, overlap }) };
   } };
 if (params.has('english')) fixtureHass.language = document.documentElement.lang = 'en';
 window.fixtureCard = document.createElement('ninebot-trip-card');
-window.fixtureConfig = { type: 'custom:ninebot-trip-card', vehicles: [
-  { device_id: 'synthetic-a', name: 'Synthetic A' }, { device_id: 'synthetic-b', name: 'Synthetic B' }],
+window.fixtureConfig = { type: 'custom:ninebot-trip-card', vehicles: syntheticVehicles,
   start_date: paged ? '2026-08-01' : '2026-09-01', end_date: '2026-09-30', limit: paged ? 1 : 10,
   statistics_entities: ['ninebot:synthetic_day_distance_km'] };
 fixtureCard.setConfig(fixtureConfig);
