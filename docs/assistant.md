@@ -68,7 +68,7 @@ Start with a single measure and a selected vehicle. Each follow-up reads the arc
 
 For example, ask about last month in November and follow up on energy use in December. The answer still covers October 1–31. A month-to-date receipt records the last included day. If the archive now offers a longer monthly summary, the tool asks you to confirm the expanded period.
 
-Assist and MCP clients use the latest single-metric receipt’s `query_context`. It contains `device_id`, `metric` and either `date` or `month` with `through_date`. For a new metric, pass the same vehicle and absolute period to `get_statistics`, including the monthly cutoff. For another vehicle, pass the previous reference and `other_vehicle: true`. If several alternatives are visible, select the intended HA device.
+Assist and MCP clients use the latest single-metric receipt’s `query_context`. It contains `device_id`, `metric` and either `date` or `month` with `through_date`. Pass that selection to `get_statistics` as `vehicle_ref`, `period`, `metric` and, for months, `through_date`. Set only `change` to the requested difference, such as `last_month`, `energy_wh` or `other_vehicle`. For a question that introduces several new conditions together, start a new query with those explicit values. If several alternatives are visible, select the intended HA device.
 
 In an automation, pass the complete selection back to `ninebot.ask`. An explicit `device_id` pins the Action to that vehicle.
 
@@ -89,7 +89,7 @@ The new receipt identifies the source, observation time and coverage. If access 
 |---|---|---|
 | `get_vehicles` | None | Authorized HA references, labels, `allowed_reads` and local readiness flags. |
 | `get_vehicle_status` | `vehicle_ref`, optional `metric` | One cached reading or an overview. The receipt identifies the observation group, time and freshness. |
-| `get_statistics` | Vehicle, `period`, optional `metric`, `other_vehicle`, `through_date` | Business-day or monthly statistics. Use one metric for a numerical question. |
+| `get_statistics` | Vehicle, `period`, optional `metric`, `other_vehicle`, `through_date`, `change` | Business-day or monthly statistics. Use one metric for a numerical question. |
 | `explain_statistics` | Vehicle, `period`, `metric`, optional `language` | One metric, its quality and any further evidence justified for that vehicle. |
 | `get_recorded_trips` | Vehicle, `start_date`, `end_date`, optional `limit`, `cursor` | A descending page of rides overlapping up to 31 days. Default 10, maximum 20 per page. |
 | `get_trip_detail` | Vehicle, `ride_id`, `query_month` | Locally saved scalar detail. Use the exact ID and `YYYYMM` month returned by the ride list. |

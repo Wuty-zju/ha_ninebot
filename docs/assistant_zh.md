@@ -68,7 +68,7 @@ response_variable: ninebot_answer
 
 例如，11 月问“那上个月呢？”，12 月接着问“耗电量呢？”，查询范围仍是 10 月 1–31 日。查询尚未结束的月份时，回执会记下统计截止日。下次追问时若档案只能提供更长时段的月汇总，助手会请你确认新的范围。
 
-Assist 和 MCP 客户端可读取上一份单指标回执的 `query_context`。其中含有 `device_id`、`metric`，以及单日的 `date` 或月度的 `month` 与 `through_date`。只换指标时，将同一车辆、绝对日期或月份及其截止日传给 `get_statistics`。换车时传入上一辆车的引用与 `other_vehicle: true`。有多个候选时，先选定 HA 设备。
+Assist 和 MCP 客户端可读取上一份单指标回执的 `query_context`。其中含有 `device_id`、`metric`，以及单日的 `date` 或月度的 `month` 与 `through_date`。把原选择作为 `vehicle_ref`、`period`、`metric` 和月度的 `through_date` 传给 `get_statistics`，只用 `change` 指明这次要改的一项，例如 `last_month`、`energy_wh` 或 `other_vehicle`。若问题同时指定多项新条件，可用这些条件发起一次新查询。有多个候选时，先选定 HA 设备。
 
 在自动化中，可把完整查询条件传回 `ninebot.ask`。明确指定 `device_id` 会把本次 Action 固定到该车。
 
