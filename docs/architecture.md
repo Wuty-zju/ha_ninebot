@@ -2,16 +2,23 @@
 
 [Documentation](README.md) · [Development](development.md) · [History behavior](history.md)
 
-This guide covers releases through the 2.2.9 preview. For the stable release, use the [v2.2.0 edition](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
+This guide covers **v2.2.12 preview**. For **v2.2.0 stable**, use the [documentation shipped with that release](https://github.com/Wuty-zju/ha_ninebot/blob/v2.2.0/docs/architecture.md).
 
-This is a Home Assistant integration with a cloud adapter and a private historical archive. Current-state entities, large historical queries and control acknowledgements have separate responsibilities. The runtime is entirely inside `custom_components/ninebot`; docs/tests/scripts are not runtime dependencies.
+The runtime lives in `custom_components/ninebot`. Trace a reported value from the account's cloud session through normalization to a current entity or the private archive. Trace a query in the opposite direction, starting with the HA user's context and selected vehicle.
+
+| If you are investigating | Start here |
+|---|---|
+| Sign-in, discovery, group polling or a command | [Accounts and lifecycle](#accounts-and-lifecycle) · [Realtime scheduling](#realtime-scheduling-and-controls) |
+| Source fields, missing values or physical units | [Normalized models](#raw-evidence-and-normalized-models) |
+| Missing months, damaged records or a transfer | [Historical acquisition](#historical-acquisition) · [Archive lifecycle](#account-archive-lifecycle-and-portability) |
+| Archive playback, authorization or model evidence | [Local queries and frontend](#local-query-and-frontend-contracts) · [Assistant boundary](#optional-assistant-boundary) |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/overview-en-dark.svg">
   <img src="assets/architecture/overview-en.svg" alt="Account-isolated realtime and historical data flow" width="960">
 </picture>
 
-Arrows describe data relationships, not upstream push. The frontend's local archive notification is not a Ninebot cloud subscription. See [user options](guide.md#options) for current periods and budgets.
+The diagram follows polled vehicle data and local archive updates. The frontend subscription carries archive-change metadata. See [user options](guide.md#options) for intervals and budgets.
 
 ## Accounts and lifecycle
 
@@ -92,13 +99,18 @@ Local reconstruction has durable jobs/recovery points, captured search bounds an
 
 ## Local query and frontend contracts
 
-The map card owns selection and sample position, the archive reader owns local pagination, and the renderer owns the HA map surface. Each route retains a slot throughout a comparison. Map markers and list buttons resolve the same selection. An active ride drives playback and individual metrics. Group totals use the selected summaries, require each contributing value, and perform no additional reads. Saved start/end markers describe only the known endpoints. [Map interaction contract](history.md#replay-saved-routes)
+| Boundary | Owner and contract |
+|---|---|
+| Local list and detail | `recorded_actions.py` and `archive_browse.py` serve bounded, authorized pages and track chunks. Existing ascending callers keep the account revision fence. Descending cursors are vehicle-catalog scoped and single-use after a successful read. `geometry_version` binds the selected source, parser shape and integrity roles. These versions fence managed updates across reads. |
+| Change notification | `history_websocket.py` sends metadata for one to five device IDs after checking read permission and ownership. It allows eight subscriptions per connection and 64 active or pending total. Commit bursts coalesce. Route geometry stays in Action responses. |
+| Client state | The card owns selection, focus and the sample index. Numbered markers and list controls share that state. In-flight detail reads can share one promise. Session or permission loss clears GPS and invalidates late results. |
+| Renderer | On newer HA frontends, one native map stays mounted while `ha-map.paths` changes and the location interface moves the replay cursor. Older frontends use the bundled Leaflet display without tiles. Check the Canvas redraw hook in `route-renderer.js` when upgrading Leaflet. |
 
-`recorded_actions.py`/`archive_browse.py` expose bounded date pages. Older asc callers retain account revision behavior; desc pages use transactional connection-local vehicle catalog versions and single-use successful continuations. `geometry_version` binds selected evidence and parser/shape/integrity roles. These are fences against managed writes, not persistent MVCC across requests or protection from arbitrary external database edits.
+The bundled replay card shares HA's map component. The stock HA **Map** card displays tracker observations from Recorder. The replay card reads archive geometry through local-only detail chunks and moves along saved sample order.
 
-`history_websocket.py` provides authenticated metadata-only subscriptions for 1–5 device IDs, at most eight per connection and 64 active/pending total. It checks read permission/ownership before delivery and debounces commit bursts. No raw/GPS is pushed. Browser network/session modules share identical local-detail in-flight promises and cancel timers/listeners on unload, reconnection or revocation; cloud operations and consumed page tokens are not shared/replayed.
+In **v2.2.12**, both the focused ride and the selected total use the selected summaries. Keep distance, recorded duration and Wh separate, compute weighted ratios from matching sums and preserve valid zero inputs. Incomplete inputs carry per-metric coverage and no aggregate value. **Keep current ride** drops other selections while keeping the current sample position, playback and map view. [Replay and comparison behavior](history.md#replay-saved-routes)
 
-The replay card uses local-only detail chunks and keeps one map mounted across ride changes. Current Home Assistant frontends draw route segments through `ha-map.paths` and move a static cursor through the map location interface. A scrubber follows saved sample order. Older frontends use bundled Leaflet with no tile layer. When upgrading Leaflet, recheck the Canvas redraw hook in `route-renderer.js`.
+A prospective standalone reader would reuse these authorized archive Actions and metadata-only WebSocket subscription. The default client remains the bundled HA card. [Roadmap and acceptance criteria](roadmap.md#next-candidates)
 
 ## Diagnostics and Repairs
 
@@ -187,14 +199,16 @@ Today mileage declares the DAY dependency used by daily-index repair. History pr
 |---|---|
 | Native host | Assist and MCP use the single `ninebot` API. A `ninebot.ask` turn binds to its selected HA device and uses the query tools. |
 | Policy | Require an active administrator. Resolve the account, vehicle, ownership and permission for the requested operation. Revalidate before returning private results. |
-| Data | A selected status metric reads its own group snapshot. Trip, sync and statistics tools use deterministic local projections. |
+| Data | A selected status metric reads its own group snapshot. Trip, sync and statistics tools use deterministic local projections under the selected vehicle’s grant. |
 | Knowledge | Search the packaged, versioned bilingual corpus. A checklist names the next check. |
 | History requests | Preview gaps locally, then record applications for eligible vehicles when the review service is ready. The requester approves in the native HA panel. |
 | Presentation | Tools return structured receipts. The Action can render a supported measurement or a pinned citation. Host-generated prose is outside this contract. |
 
 [Native LLM API](https://contributors.home-assistant.io/core/internals/llm-api/) · [Tool and task contracts](assistant.md)
 
-A compatible AI host selects **Ninebot** in HA's LLM registry or MCP Server. The dedicated MCP URL is `/api/mcp/ninebot`. The adapter preserves the authenticated context and uses each vehicle's operation permissions for discovery, calls and result delivery. Queries reuse cached snapshots and existing local history Actions. Safe result projections carry units, freshness and coverage. Applications create local requests and the existing scheduler owns approved work.
+A compatible host selects **Ninebot** in the HA LLM registry or MCP Server. The dedicated MCP URL is `/api/mcp/ninebot`. HA context and each vehicle's operation grants govern discovery, execution and delivery. The API uses cached snapshots and existing local archive Actions. Structured results retain units, freshness, timestamps and coverage.
+
+In **v2.2.12**, `explain_statistics` requires the selected vehicle's statistics grant. A closed, complete reading with supporting evidence ends the plan, including zero. A current-day or otherwise unresolved value can use the public SK05 checklist. Reading local synchronization health requires that vehicle's separate sync-health grant. Evidence reports the missing grant when it limits the explanation. History task approval and execution stay in the existing scheduler and native review flow.
 
 The feature is off by default. Its modern native API requirement is separate from the overall integration minimum. [Setup, tool schemas and data disclosure](assistant.md) describe the optional tools, and [development entry points](development.md#assistant-development) identify the implementation and isolated checks.
 
